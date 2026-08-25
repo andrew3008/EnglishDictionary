@@ -9,7 +9,6 @@ platformJavaLibrary {
 }
 
 dependencies {
-    // API
     api 'org.springframework.boot:spring-boot-autoconfigure'
     api 'org.springframework.boot:spring-boot-actuator'
     api 'org.springframework.boot:spring-boot-actuator-autoconfigure'
@@ -18,46 +17,31 @@ dependencies {
     api 'com.zaxxer:HikariCP'
     api 'org.apache.commons:commons-lang3'
 
-
-    // === Optional / conditional dependencies (compileOnly) ===
-
-    // MinIO SDK
     compileOnly 'io.minio:minio'
     testImplementation 'io.minio:minio'
 
-    // Validation API
     compileOnly 'org.springframework.boot:spring-boot-starter-validation'
 
-    // Annotation Processors
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
 
-
-    // === Test infrastructure ===
-
-    // Базовые тестовые зависимости
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-    // Разделяемые тестовые зависимости — из каталога `gradle/libs.versions.toml`
     testImplementation libs.bundles.testcontainers
     testImplementation libs.testcontainers.kafka
     testImplementation libs.testcontainers.postgresql
     testImplementation libs.testcontainers.minio
 
-    // Testcontainers-интеграция для Spring Boot
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
 
-    // Persistence
     testImplementation 'org.postgresql:postgresql'
     testImplementation 'com.h2database:h2'
 
-    // Messaging
     testImplementation 'org.springframework.kafka:spring-kafka'
 
-    // Validation
     testImplementation 'org.springframework.boot:spring-boot-starter-validation'
 }

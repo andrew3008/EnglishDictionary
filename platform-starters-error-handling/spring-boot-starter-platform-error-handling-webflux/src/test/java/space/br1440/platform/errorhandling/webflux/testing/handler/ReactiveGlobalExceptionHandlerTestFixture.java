@@ -3,6 +3,7 @@ package space.br1440.platform.errorhandling.webflux.testing.handler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.codec.json.Jackson2JsonEncoder;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import space.br1440.platform.errorhandling.core.handler.ReactiveExceptionHandlerConfig;
 import space.br1440.platform.errorhandling.core.handler.ReactiveExceptionHandlerDependencies;
 import space.br1440.platform.errorhandling.core.handler.ReactiveGlobalExceptionHandler;
@@ -13,16 +14,17 @@ import space.br1440.platform.errorhandling.extension.TopExceptionHandlingStrateg
 import space.br1440.platform.errorhandling.extension.UnknownExceptionHandler;
 import space.br1440.platform.errorhandling.extension.metrics.ExceptionMetricRecorder;
 import space.br1440.platform.errorhandling.metrics.NoopExceptionMetricRecorder;
+import space.br1440.platform.errorhandling.model.RequestContext;
 import space.br1440.platform.errorhandling.model.mapping.ErrorEntryToDtoMapper;
 import space.br1440.platform.errorhandling.properties.ErrorHandlingProperties;
 import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingEnricherProperties;
 import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingSafetyNetProperties;
-import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingUpstreamProperties;
 import space.br1440.platform.errorhandling.webflux.testing.support.TestUnknownExceptionHandler;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 public final class ReactiveGlobalExceptionHandlerTestFixture {
 
@@ -51,7 +53,6 @@ public final class ReactiveGlobalExceptionHandlerTestFixture {
         private ErrorHandlingProperties properties = new ErrorHandlingProperties();
         private ErrorHandlingEnricherProperties enricherProperties = new ErrorHandlingEnricherProperties();
         private ErrorHandlingSafetyNetProperties safetyNetProperties = new ErrorHandlingSafetyNetProperties();
-        private ErrorHandlingUpstreamProperties upstreamProperties = new ErrorHandlingUpstreamProperties();
         private UnknownExceptionHandler unknownHandler = new TestUnknownExceptionHandler();
         private ExceptionMetricRecorder recorder = new NoopExceptionMetricRecorder();
         private String applicationName = "test-app";
@@ -61,6 +62,7 @@ public final class ReactiveGlobalExceptionHandlerTestFixture {
         private final Jackson2JsonEncoder jsonEncoder = new Jackson2JsonEncoder(new ObjectMapper());
         private final ErrorEntryToDtoMapper entryToDtoMapper = new ErrorEntryToDtoMapper();
         private ReactiveCorrelationIdResolver correlationIdResolverOverride;
+        private Supplier<RequestContext> tracingRequestContextSupplier;
 
         private static <T> T req(@NonNull T value, @NonNull String name) {
             return Objects.requireNonNull(value, name);
@@ -81,12 +83,6 @@ public final class ReactiveGlobalExceptionHandlerTestFixture {
         @NonNull
         public Builder safetyNetProperties(@NonNull ErrorHandlingSafetyNetProperties safetyNetProperties) {
             this.safetyNetProperties = req(safetyNetProperties, "safetyNetProperties");
-            return this;
-        }
-
-        @NonNull
-        public Builder upstreamProperties(@NonNull ErrorHandlingUpstreamProperties upstreamProperties) {
-            this.upstreamProperties = req(upstreamProperties, "upstreamProperties");
             return this;
         }
 
@@ -133,6 +129,12 @@ public final class ReactiveGlobalExceptionHandlerTestFixture {
         }
 
         @NonNull
+        public Builder tracingRequestContextSupplier(@Nullable Supplier<RequestContext> tracingRequestContextSupplier) {
+            this.tracingRequestContextSupplier = tracingRequestContextSupplier;
+            return this;
+        }
+
+        @NonNull
         public ReactiveGlobalExceptionHandler build() {
             return new ReactiveGlobalExceptionHandler(
                     config(),
@@ -146,8 +148,7 @@ public final class ReactiveGlobalExceptionHandlerTestFixture {
             return new ReactiveExceptionHandlerConfig(
                     properties,
                     enricherProperties,
-                    safetyNetProperties,
-                    upstreamProperties
+                    safetyNetProperties
             );
         }
 
@@ -161,7 +162,8 @@ public final class ReactiveGlobalExceptionHandlerTestFixture {
                     jsonEncoder,
                     List.copyOf(entryEnrichers),
                     stackHintExtractor,
-                    resolver
+                    resolver,
+                    tracingRequestContextSupplier
             );
         }
 

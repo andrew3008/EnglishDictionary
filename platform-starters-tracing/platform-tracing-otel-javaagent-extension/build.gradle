@@ -1,0 +1,51 @@
+plugins {
+    id 'platform.java-library'
+    id 'platform.testing'
+}
+
+group = 'space.br1440.platform.starters.tracing'
+
+platformJavaLibrary {
+    bomProjectPath = ':spring-boot-starter-platform-bom'
+}
+
+dependencies {
+    implementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
+    implementation project(':platform-starters-tracing:platform-tracing-runtime-policy')
+    implementation project(':platform-starters-common:platform-starters-common-util')
+
+    compileOnly 'io.opentelemetry:opentelemetry-sdk'
+    compileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
+    compileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure'
+    compileOnly 'io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api'
+    compileOnly 'org.projectlombok:lombok'
+
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation project(':platform-starters-tracing:platform-tracing-testkit')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.openjdk.jol:jol-core:0.17'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure'
+    testImplementation('io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api') {
+        exclude group: 'net.bytebuddy', module: 'byte-buddy-dep'
+    }
+    testImplementation 'io.opentelemetry:opentelemetry-extension-trace-propagators'
+    testImplementation 'io.opentelemetry:opentelemetry-exporter-logging'
+    testImplementation 'io.opentelemetry:opentelemetry-exporter-logging-otlp'
+    testImplementation 'io.opentelemetry:opentelemetry-exporter-otlp'
+    testImplementation 'org.slf4j:slf4j-api'
+    testImplementation 'ch.qos.logback:logback-classic'
+    testImplementation libs.jsonschema.validator
+
+    testCompileOnly 'com.google.auto.service:auto-service-annotations:1.1.1'
+
+    testAnnotationProcessor 'com.google.auto.service:auto-service:1.1.1'
+
+    testRuntimeOnly project(path: ':spring-boot-starter-platform-logging', configuration: 'platformLogMaskingElements')
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

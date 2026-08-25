@@ -1,0 +1,208 @@
+package space.br1440.platform.tracing.autoconfigure.control.settings;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
+
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+class CompleteTracingSettingsTest {
+
+    // The builder deliberately rejects a partial (fewer than eight leaves) snapshot — see
+    // P4ArchitectureTest.snapshotBuilderRejectsPartialSnapshot() — so every test here supplies
+    // all eight leaves, mirroring the only shape the real production adapters ever build.
+    private static CompleteTracingSettings.Builder fullBuilder() {
+        return CompleteTracingSettings.builder()
+                .samplingEnabled(true)
+                .samplingRatio(1.0)
+                .samplingRouteRatios(Map.of())
+                .validationEnabled(true)
+                .validationStrict(false)
+                .exporterEnabled(true)
+                .traceControlHeadersEnabled(true)
+                .diagnosticsLogLevel("INFO");
+    }
+
+    @Test
+    void builderProducesAllEightLeaves() {
+        CompleteTracingSettings s = CompleteTracingSettings.builder()
+                .samplingEnabled(true)
+                .samplingRatio(0.5)
+                .samplingRouteRatios(Map.of("/api", 0.1))
+                .validationEnabled(true)
+                .validationStrict(false)
+                .exporterEnabled(true)
+                .traceControlHeadersEnabled(true)
+                .diagnosticsLogLevel("DEBUG")
+                .build();
+
+        assertThat(s.samplingEnabled()).isTrue();
+        assertThat(s.samplingRatio()).isEqualTo(0.5);
+        assertThat(s.samplingRouteRatios()).containsEntry("/api", 0.1);
+        assertThat(s.validationEnabled()).isTrue();
+        assertThat(s.validationStrict()).isFalse();
+        assertThat(s.exporterEnabled()).isTrue();
+        assertThat(s.traceControlHeadersEnabled()).isTrue();
+        assertThat(s.diagnosticsLogLevel()).isEqualTo("DEBUG");
+    }
+
+    @Test
+    void withMethodsProduceCopyWithOneDiff() {
+        CompleteTracingSettings original = fullBuilder()
+                .samplingEnabled(true)
+                .samplingRatio(1.0)
+                .exporterEnabled(true)
+                .build();
+
+        CompleteTracingSettings modified = original.withSamplingEnabled(false);
+        assertThat(modified.samplingEnabled()).isFalse();
+        assertThat(modified.samplingRatio()).isEqualTo(original.samplingRatio());
+        assertThat(modified.exporterEnabled()).isEqualTo(original.exporterEnabled());
+    }
+
+    @Test
+    void snapshotIsImmutable() {
+        Map<String, Double> mutable = new HashMap<>();
+        mutable.put("/api", 0.5);
+        CompleteTracingSettings s = fullBuilder()
+                .samplingRouteRatios(mutable)
+                .build();
+        mutable.put("/other", 0.9);
+        assertThat(s.samplingRouteRatios()).doesNotContainKey("/other");
+    }
+
+    @Test
+    void equalSnapshotsAreEqual() {
+        CompleteTracingSettings a = fullBuilder().build();
+        CompleteTracingSettings b = fullBuilder().build();
+        assertThat(a).isEqualTo(b);
+        assertThat(a.hashCode()).isEqualTo(b.hashCode());
+    }
+
+    @Test
+    void rejectsNonFiniteAndOutOfRangeSamplingRatio() {
+        assertThatThrownBy(() -> fullBuilder().samplingRatio(Double.NaN).build())
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> fullBuilder().samplingRatio(Double.POSITIVE_INFINITY).build())
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> fullBuilder().samplingRatio(-0.1).build())
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> fullBuilder().samplingRatio(1.1).build())
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void canonicalizesNegativeZeroBeforePublication() {
+        CompleteTracingSettings s = fullBuilder()
+                .samplingRatio(-0.0d)
+                .samplingRouteRatios(Map.of("/z", -0.0d))
+                .build();
+
+        assertThat(Double.doubleToRawLongBits(s.samplingRatio()))
+                .isEqualTo(Double.doubleToRawLongBits(0.0d));
+        assertThat(Double.doubleToRawLongBits(s.samplingRouteRatios().get("/z")))
+                .isEqualTo(Double.doubleToRawLongBits(0.0d));
+    }
+
+    @Test
+    void rejectsNullBlankControlAndOversizedRoutePrefixesWithoutEcho() {
+        // null в builder — completeness (лист не задан), не value-invariant.
+        assertThatThrownBy(() -> fullBuilder().samplingRouteRatios(null).build())
+                .isInstanceOf(TracingSettingsManifestException.class);
+
+        // null через with* — value-invariant на уже полном snapshot.
+        assertThatThrownBy(() -> fullBuilder().build().withSamplingRouteRatios(null))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        Map<String, Double> withNullKey = new HashMap<>();
+        withNullKey.put(null, 0.5);
+        assertThatThrownBy(() -> fullBuilder().samplingRouteRatios(withNullKey).build())
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() -> fullBuilder().samplingRouteRatios(Map.of("   ", 0.5)).build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageNotContaining("   ");
+
+        String canary = "/secret-route-canary";
+        assertThatThrownBy(() -> fullBuilder()
+                .samplingRouteRatios(Map.of(canary + "\u0001", 0.5))
+                .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageNotContaining(canary);
+
+        String tooLong = "a".repeat(256);
+        assertThatThrownBy(() -> fullBuilder().samplingRouteRatios(Map.of(tooLong, 0.5)).build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageNotContaining(tooLong);
+    }
+
+    @Test
+    void rejectsOversizedRouteMapAndNullOrInvalidRouteRatio() {
+        Map<String, Double> oversized = new HashMap<>();
+        for (int i = 0; i < 101; i++) {
+            oversized.put("/r" + i, 0.5);
+        }
+        assertThatThrownBy(() -> fullBuilder().samplingRouteRatios(oversized).build())
+                .isInstanceOf(IllegalArgumentException.class);
+
+        Map<String, Double> nullRatio = new HashMap<>();
+        nullRatio.put("/api", null);
+        assertThatThrownBy(() -> fullBuilder().samplingRouteRatios(nullRatio).build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageNotContaining("/api");
+
+        assertThatThrownBy(() -> fullBuilder().samplingRouteRatios(Map.of("/api", 1.5)).build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageNotContaining("/api");
+    }
+
+    @Test
+    void acceptsExactMaximumRouteBounds() {
+        Map<String, Double> maximum = new HashMap<>();
+        for (int i = 0; i < 100; i++) {
+            maximum.put("/r" + i, 0.5);
+        }
+        assertThat(fullBuilder().samplingRouteRatios(maximum).build().samplingRouteRatios())
+                .hasSize(100);
+
+        String exact = "a".repeat(255);
+        assertThat(fullBuilder().samplingRouteRatios(Map.of(exact, 0.5)).build()
+                .samplingRouteRatios()).containsKey(exact);
+    }
+
+    @Test
+    void canonicalizesLogLevelCaseInsensitivelyAndRejectsWhitespace() {
+        assertThat(fullBuilder().diagnosticsLogLevel("info").build().diagnosticsLogLevel())
+                .isEqualTo("INFO");
+        assertThatThrownBy(() -> fullBuilder().diagnosticsLogLevel(" INFO ").build())
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> fullBuilder().diagnosticsLogLevel("VERBOSE").build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageNotContaining("VERBOSE");
+    }
+
+    @Test
+    @ResourceLock(Resources.LOCALE)
+    void logLevelCanonicalizationUsesRootLocale() {
+        Locale previous = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+            // В турецкой локали "i".toUpperCase() → "İ", что сломало бы allowlist без Locale.ROOT.
+            assertThat(fullBuilder().diagnosticsLogLevel("info").build().diagnosticsLogLevel())
+                    .isEqualTo("INFO");
+        } finally {
+            Locale.setDefault(previous);
+        }
+    }
+
+    @Test
+    void incompleteBuilderStillThrowsManifestException() {
+        assertThatThrownBy(() -> CompleteTracingSettings.builder().samplingEnabled(true).build())
+                .isInstanceOf(TracingSettingsManifestException.class);
+    }
+}

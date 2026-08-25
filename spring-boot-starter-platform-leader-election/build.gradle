@@ -9,54 +9,35 @@ platformJavaLibrary {
 }
 
 dependencies {
-    // API
     api 'org.springframework.boot:spring-boot-starter-data-redis'
 
-    // Implementation
     implementation 'org.apache.commons:commons-lang3'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
 
-
-    // === Optional / conditional dependencies (compileOnly) ===
-
-    // Spring Boot autoconfigure
     compileOnly 'org.springframework.boot:spring-boot-autoconfigure'
 
-    // AspectJ
     compileOnly 'org.aspectj:aspectjweaver'
 
-    // Redis-клиент Lettuce
     compileOnly 'io.lettuce:lettuce-core'
 
-    // Observability
     compileOnly 'io.micrometer:micrometer-core'
 
-    // Validation API
     compileOnly 'org.springframework.boot:spring-boot-starter-validation'
 
-    // JetBrains Annotations — `@NotNull`/`@Nullable`
     compileOnly 'org.jetbrains:annotations'
 
-    // Annotation Processors
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-
-    // === Test infrastructure ===
-
-    // Базовые тестовые зависимости
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-    // Разделяемые тестовые зависимости — из каталога `gradle/libs.versions.toml`
     testImplementation libs.bundles.testcontainers
     testImplementation libs.awaitility
     testImplementation libs.jedis
 
-    // Observability
     testImplementation 'io.micrometer:micrometer-core'
 
-    // AOP
     testImplementation 'org.aspectj:aspectjweaver'
 }

@@ -23,16 +23,6 @@ public class ErrorHandlingUpstreamProperties {
 
     private DataSize maxBodyBytes = DEFAULT_MAX_BODY_BYTES;
 
-    /**
-     * Пропагировать ли HTTP-статус upstream в публичный {@code clientMetadata} ответа.
-     */
-    private boolean exposeStatusToClient = false;
-
-    /**
-     * Пропагировать ли категорию ошибки ({@code network} / {@code upstream_response}) клиенту.
-     */
-    private boolean exposeCategoryToClient = true;
-
     public ErrorHandlingUpstreamProperties setMaxBodyBytes(DataSize maxBodyBytes) {
         this.maxBodyBytes = (maxBodyBytes != null) ? maxBodyBytes : DEFAULT_MAX_BODY_BYTES;
         return this;

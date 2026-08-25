@@ -1,6 +1,6 @@
 pluginManagement {
-    def platformConventionsVersion = '1.0.3'
-    
+    def platformConventionsVersion = '1.0.4'
+
     repositories {
         maven {
             url = "https://n.1440.space/repository/platform-maven/"
@@ -14,7 +14,16 @@ pluginManagement {
         maven {
             url = "https://n.1440.space/repository/repo1.maven.org-proxy"
         }
-        mavenLocal()
+
+        boolean allowMavenLocal = providers.gradleProperty('allowMavenLocal')
+                .map { value -> Boolean.parseBoolean(value) }
+                .getOrElse(false)
+        if (allowMavenLocal) {
+            if (providers.environmentVariable('CI').isPresent()) {
+                throw new GradleException('mavenLocal is forbidden in CI')
+            }
+            mavenLocal()
+        }
     }
 
     plugins {
@@ -23,6 +32,7 @@ pluginManagement {
         id 'platform.java-library-publish' version platformConventionsVersion
         id 'platform.java-platform-publish' version platformConventionsVersion
         id 'platform.testing' version platformConventionsVersion
+        id 'com.gradleup.shadow' version '9.2.2'
     }
 }
 
@@ -42,7 +52,16 @@ dependencyResolutionManagement {
         maven {
             url = uri("https://n.1440.space/repository/plugins.gradle.org-proxy/")
         }
-        mavenLocal()
+
+        boolean allowMavenLocal = providers.gradleProperty('allowMavenLocal')
+                .map { value -> Boolean.parseBoolean(value) }
+                .getOrElse(false)
+        if (allowMavenLocal) {
+            if (providers.environmentVariable('CI').isPresent()) {
+                throw new GradleException('mavenLocal is forbidden in CI')
+            }
+            mavenLocal()
+        }
     }
 }
 
@@ -56,23 +75,33 @@ include('spring-boot-starter-platform-health-checks')
 include('spring-boot-starter-platform-security')
 include('spring-boot-starter-platform-postgres-read-write-split-jdbc')
 
-include(':spring-boot-starter-platform-tracing-api')
-project(':spring-boot-starter-platform-tracing-api').projectDir = file("${rootDir}/platform-starters-tracing/tracing-api")
+include('platform-starters-tracing')
+include('platform-starters-tracing:spring-boot-starter-platform-tracing-api')
+include('platform-starters-tracing:platform-tracing-runtime-policy')
+include('platform-starters-tracing:spring-boot-starter-platform-tracing-otel')
+include('platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure')
+include('platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webmvc')
+include('platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webflux')
+include('platform-starters-tracing:spring-boot-starter-platform-tracing-mvc')
+include('platform-starters-tracing:spring-boot-starter-platform-tracing-webflux')
+include('platform-starters-tracing:platform-tracing-testkit')
+include('platform-starters-tracing:platform-tracing-otel-javaagent-extension')
+include('platform-starters-tracing:platform-tracing-otel-javaagent-distribution')
+include('platform-starters-tracing:platform-tracing-gradle-plugin')
 
-include(':platform-error-handling-core')
-project(':platform-error-handling-core').projectDir = file("${rootDir}/platform-starters-error-handling/platform-error-handling-core")
+include('platform-starters-error-handling')
+include('platform-starters-error-handling:platform-error-handling-core')
+include('platform-starters-error-handling:spring-boot-starter-platform-error-handling-mvc')
+include('platform-starters-error-handling:spring-boot-starter-platform-error-handling-webflux')
 
-include(':spring-boot-starter-platform-error-handling-mvc')
-project(':spring-boot-starter-platform-error-handling-mvc').projectDir = file("${rootDir}/platform-starters-error-handling/spring-boot-starter-platform-error-handling-mvc")
-
-include(':spring-boot-starter-platform-error-handling-webflux')
-project(':spring-boot-starter-platform-error-handling-webflux').projectDir = file("${rootDir}/platform-starters-error-handling/spring-boot-starter-platform-error-handling-webflux")
-
-include(':spring-boot-starter-platform-common-uid1440')
-project(':spring-boot-starter-platform-common-uid1440').projectDir = file("${rootDir}/platform-starters-common/spring-boot-starter-uid1440")
-
-include(':spring-boot-starter-platform-common-header-based-routing')
-project(':spring-boot-starter-platform-common-header-based-routing').projectDir = file("${rootDir}/platform-starters-common/spring-boot-starter-header-based-routing")
-
-include(':spring-boot-starter-platform-common-x-trace-id')
-project(':spring-boot-starter-platform-common-x-trace-id').projectDir = file("${rootDir}/platform-starters-common/spring-boot-starter-x-trace-id")
+include('platform-starters-common')
+include('platform-starters-common:spring-boot-starter-platform-common-uid1440')
+include('platform-starters-common:spring-boot-starter-platform-common-header-based-routing')
+include('platform-starters-common:spring-boot-starter-platform-common-x-trace-id')
+include('platform-starters-common:platform-starters-common-util')
+project(':platform-starters-common:spring-boot-starter-platform-common-uid1440').projectDir =
+        file("${rootDir}/platform-starters-common/spring-boot-starter-uid1440")
+project(':platform-starters-common:spring-boot-starter-platform-common-header-based-routing').projectDir =
+        file("${rootDir}/platform-starters-common/spring-boot-starter-header-based-routing")
+project(':platform-starters-common:spring-boot-starter-platform-common-x-trace-id').projectDir =
+        file("${rootDir}/platform-starters-common/spring-boot-starter-x-trace-id")

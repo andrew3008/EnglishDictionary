@@ -1,0 +1,25 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.java]
+indent_style = space
+indent_size = 4
+continuation_indent_size = 8
+
+# IntelliJ IDEA Java imports
+ij_java_use_single_class_imports = true
+ij_java_class_count_to_use_import_on_demand = 999
+ij_java_names_count_to_use_import_on_demand = 999
+
+# Keep static imports in a separate section
+ij_java_layout_static_imports_separately = true
+
+# Import order.
+# $* = all static imports
+# |  = blank line
+ij_java_imports_layout = $*,|,java.**,javax.**,jakarta.**,|,org.**,|,com.**,|,space.**,|,*

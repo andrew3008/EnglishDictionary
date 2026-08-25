@@ -9,8 +9,7 @@ import space.br1440.platform.errorhandling.model.ErrorEntry;
 
 public final class ErrorMdcContext implements AutoCloseable {
 
-    private static final String[] MANAGED_KEYS = {
-            ErrorHandlingMdcKeys.CORRELATION_ID,
+    private static final String[] OWN_KEYS = {
             ErrorHandlingMdcKeys.EXCEPTION_TYPE,
             ErrorHandlingMdcKeys.ERROR_STATUS,
             ErrorHandlingMdcKeys.ERROR_CODE,
@@ -19,13 +18,24 @@ public final class ErrorMdcContext implements AutoCloseable {
             ErrorHandlingMdcKeys.REQUEST_URI
     };
 
-    private ErrorMdcContext() {
+    private final boolean manageCorrelationId;
+
+    private ErrorMdcContext(boolean manageCorrelationId) {
+        this.manageCorrelationId = manageCorrelationId;
     }
 
     @NonNull
     public static ErrorMdcContext open(@NonNull String correlationId, @NonNull Throwable exception) {
-        ErrorMdcContext ctx = new ErrorMdcContext();
-        putSafe(ErrorHandlingMdcKeys.CORRELATION_ID, correlationId);
+        return open(correlationId, exception, true);
+    }
+
+    @NonNull
+    public static ErrorMdcContext open(@NonNull String correlationId, @NonNull Throwable exception, boolean manageCorrelationId) {
+        ErrorMdcContext ctx = new ErrorMdcContext(manageCorrelationId);
+        if (manageCorrelationId) {
+            putSafe(ErrorHandlingMdcKeys.CORRELATION_ID, correlationId);
+        }
+
         putSafe(ErrorHandlingMdcKeys.EXCEPTION_TYPE, exception.getClass().getName());
         return ctx;
     }
@@ -58,7 +68,11 @@ public final class ErrorMdcContext implements AutoCloseable {
 
     @Override
     public void close() {
-        for (String key : MANAGED_KEYS) {
+        if (manageCorrelationId) {
+            MDC.remove(ErrorHandlingMdcKeys.CORRELATION_ID);
+        }
+
+        for (String key : OWN_KEYS) {
             MDC.remove(key);
         }
     }

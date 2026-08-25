@@ -1,0 +1,30 @@
+plugins {
+    id 'platform.java-library-publish'
+    id 'platform.java-library'
+    id 'platform.testing'
+}
+
+group = 'space.br1440.platform.starters.tracing'
+
+platformJavaLibrary {
+    bomProjectPath = ':spring-boot-starter-platform-bom'
+}
+
+dependencies {
+    api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
+    api project(':platform-starters-tracing:platform-tracing-runtime-policy')
+    api 'io.opentelemetry:opentelemetry-api'
+
+    implementation project(':platform-starters-common:platform-starters-common-util')
+    implementation 'org.slf4j:slf4j-api'
+
+    compileOnly 'org.projectlombok:lombok'
+
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation project(':platform-starters-tracing:platform-tracing-testkit')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testRuntimeOnly 'ch.qos.logback:logback-classic'
+}

@@ -1,0 +1,183 @@
+package space.br1440.platform.tracing.otel.javaagent.scrubbing.loader;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.diagnostics.FailedProviderReason;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
+import java.util.ServiceConfigurationError;
+import java.util.Set;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Тесты загрузчика внешних правил (PR-2): пустое свойство, отсутствующий путь, JAR hygiene по
+ * {@code *.class}, режим валидации (LENIENT/STRICT), дедупликация canonical-путей.
+ */
+class ExtensionRuleLoaderTest {
+
+    private static ExtensionRuleLoader loader() {
+        return new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.LENIENT, Set.of());
+    }
+
+    @Test
+    void empty_property_yields_zero_rules_without_errors() {
+        try (ExtensionRuleLoader loader = loader()) {
+            assertThat(loader.load(null)).isEmpty();
+            assertThat(loader.load("   ")).isEmpty();
+            assertThat(loader.load(", ,")).isEmpty();
+            assertThat(loader.getFailedProviders()).isZero();
+        }
+    }
+
+    @Test
+    void nonexistent_path_is_recorded_as_MISSING_PATH() {
+        try (ExtensionRuleLoader loader = loader()) {
+            assertThat(loader.load("/no/such/path/rules.jar")).isEmpty();
+            assertThat(loader.getFailedEntries())
+                    .extracting(ExtensionRuleLoader.FailedEntry::reason)
+                    .containsExactly(FailedProviderReason.MISSING_PATH);
+        }
+    }
+
+    @Test
+    void jar_with_forbidden_class_is_rejected_by_hygiene(@TempDir Path dir) throws IOException {
+        Path jar = dir.resolve("dirty.jar");
+        writeJar(jar, Map.of(
+                "io/opentelemetry/Foo.class", "x",
+                "space/br1440/platform/tracing/api/spi/SpanAttributeScrubbingRule.class", "y"));
+
+        try (ExtensionRuleLoader loader = loader()) {
+            assertThat(loader.load(jar.toString())).isEmpty();
+            assertThat(loader.getFailedEntries())
+                    .extracting(ExtensionRuleLoader.FailedEntry::reason)
+                    .containsExactly(FailedProviderReason.FORBIDDEN_CLASSES);
+        }
+    }
+
+    @Test
+    void non_class_entries_with_forbidden_prefix_do_not_trigger_hygiene(@TempDir Path dir) throws IOException {
+        // Записи с префиксом space/br1440 и io/opentelemetry, но НЕ *.class, не должны давать
+        // ложного hygiene-отказа (Javadoc, POM, package-info.html и т.п.).
+        Path jar = dir.resolve("clean.jar");
+        writeJar(jar, Map.of(
+                "space/br1440/platform/tracing/api/spi/package-info.html", "<html/>",
+                "io/opentelemetry/notes.txt", "doc",
+                "META-INF/maven/space/br1440/pom.xml", "<project/>"));
+
+        try (ExtensionRuleLoader loader = loader()) {
+            // Провайдеров нет (нет META-INF/services), но и hygiene-отказа быть не должно.
+            assertThat(loader.load(jar.toString())).isEmpty();
+            assertThat(loader.getFailedProviders()).isZero();
+        }
+    }
+
+    @Test
+    void corrupt_services_file_is_recorded_as_SERVICE_CONFIGURATION_ERROR(@TempDir Path dir) throws IOException {
+        // META-INF/services ссылается на несуществующий класс — JAR не должен валить старт.
+        Path jar = dir.resolve("broken.jar");
+        writeJar(jar, Map.of(
+                "META-INF/services/space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule",
+                "com.example.DoesNotExist"));
+
+        try (ExtensionRuleLoader loader = loader()) {
+            assertThat(loader.load(jar.toString())).isEmpty();
+            assertThat(loader.getFailedEntries())
+                    .extracting(ExtensionRuleLoader.FailedEntry::reason)
+                    .containsExactly(FailedProviderReason.SERVICE_CONFIGURATION_ERROR);
+        }
+    }
+
+    @Test
+    void duplicate_jar_in_LENIENT_is_skipped_with_DUPLICATE_CONFIG(@TempDir Path dir) throws IOException {
+        Path jar = dir.resolve("rules.jar");
+        writeJar(jar, Map.of("com/example/Marker.txt", "x"));
+        String canonical = jar.toFile().getCanonicalPath();
+
+        try (ExtensionRuleLoader loader =
+                     new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.LENIENT, Set.of(canonical))) {
+            assertThat(loader.load(jar.toString())).isEmpty();
+            assertThat(loader.getFailedEntries())
+                    .extracting(ExtensionRuleLoader.FailedEntry::reason)
+                    .containsExactly(FailedProviderReason.DUPLICATE_CONFIG);
+        }
+    }
+
+    @Test
+    void duplicate_jar_in_STRICT_throws(@TempDir Path dir) throws IOException {
+        Path jar = dir.resolve("rules.jar");
+        writeJar(jar, Map.of("com/example/Marker.txt", "x"));
+        String canonical = jar.toFile().getCanonicalPath();
+
+        try (ExtensionRuleLoader loader =
+                     new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.STRICT, Set.of(canonical))) {
+            org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                    () -> loader.load(jar.toString()));
+        }
+    }
+
+    @Test
+    void STRICT_mode_throws_on_hygiene_violation(@TempDir Path dir) throws IOException {
+        Path jar = dir.resolve("dirty.jar");
+        writeJar(jar, Map.of("io/opentelemetry/Foo.class", "x"));
+
+        try (ExtensionRuleLoader loader =
+                     new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.STRICT, Set.of())) {
+            org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                    () -> loader.load(jar.toString()));
+        }
+    }
+
+    @Test
+    void same_jar_listed_twice_is_deduplicated_by_canonical_path(@TempDir Path dir) throws IOException {
+        // Один и тот же JAR передан и как файл, и через директорию: должен учитываться один раз
+        // и не попадать в failed (это не ошибка, а штатная дедупликация).
+        Path jar = dir.resolve("rules.jar");
+        writeJar(jar, Map.of("com/example/Marker.txt", "x"));
+
+        String property = jar.toString() + "," + dir.toString();
+        try (ExtensionRuleLoader loader = loader()) {
+            assertThat(loader.load(property)).isEmpty();
+            assertThat(loader.getFailedProviders()).isZero();
+        }
+    }
+
+    @Test
+    void linkage_error_is_rethrown_as_fatal_and_not_classified_as_sanitizer_failure() {
+        NoClassDefFoundError linkage = new NoClassDefFoundError("company/MandatoryRule");
+        org.junit.jupiter.api.Assertions.assertThrows(NoClassDefFoundError.class,
+                () -> PlatformThrowables.propagateFatalCauseChain(linkage));
+    }
+
+    @Test
+    void linkage_error_wrapped_as_ServiceConfigurationError_cause_is_still_fatal() {
+        NoClassDefFoundError linkage = new NoClassDefFoundError("company/MandatoryRule");
+        ServiceConfigurationError wrapper = new ServiceConfigurationError("provider init failed", linkage);
+
+        org.junit.jupiter.api.Assertions.assertThrows(NoClassDefFoundError.class,
+                () -> PlatformThrowables.propagateFatalCauseChain(wrapper));
+    }
+
+    @Test
+    void ordinary_RuntimeException_in_LENIENT_mode_is_still_skipped() {
+        PlatformThrowables.propagateFatalCauseChain(new IllegalStateException("provider misbehaved"));
+    }
+
+    private static void writeJar(Path jar, Map<String, String> entries) throws IOException {
+        try (OutputStream os = Files.newOutputStream(jar);
+             JarOutputStream jos = new JarOutputStream(os)) {
+            for (Map.Entry<String, String> e : entries.entrySet()) {
+                jos.putNextEntry(new JarEntry(e.getKey()));
+                jos.write(e.getValue().getBytes());
+                jos.closeEntry();
+            }
+        }
+    }
+}

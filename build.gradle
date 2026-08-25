@@ -4,25 +4,25 @@ plugins {
 
 allprojects {
     group = 'space.br1440.platform.starters'
-    version = '1.1.0'
+    version = '1.2.0'
 }
 
-configure(subprojects.findAll { project ->
-    project.path in [
-            ':platform-error-handling-core',
-            ':spring-boot-starter-platform-error-handling-mvc',
-            ':spring-boot-starter-platform-error-handling-webflux',
-    ]
-}) {
-    group = 'space.br1440.platform.starters.errorhandling'
-}
+def nonPublishedProjects = [
+        ':platform-starters-tracing',
+        ':platform-starters-tracing:platform-tracing-testkit',
+        ':platform-starters-tracing:platform-tracing-otel-javaagent-extension',
+        ':platform-starters-error-handling',
+        ':platform-starters-common',
+] as Set
+
+def publishedProjects = subprojects.findAll { project -> project.path !in nonPublishedProjects }
 
 tasks.register('publishAllToNexus') {
     group = 'publishing'
-    dependsOn subprojects.collect { "${it.path}:publishAllToNexus" }
+    dependsOn publishedProjects.collect { "${it.path}:publishAllToNexus" }
 }
 
 tasks.register('publishAllToMavenLocal') {
     group = 'publishing'
-    dependsOn subprojects.collect { "${it.path}:publishAllToMavenLocal" }
+    dependsOn publishedProjects.collect { "${it.path}:publishAllToMavenLocal" }
 }

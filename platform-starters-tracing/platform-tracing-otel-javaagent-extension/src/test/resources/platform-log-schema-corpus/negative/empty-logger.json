@@ -1,0 +1,7 @@
+{
+  "timestamp": "2026-08-16T19:00:00Z",
+  "level": "INFO",
+  "logger": "",
+  "message": "Platform logging started",
+  "event_code": "APP-BOOT-001"
+}

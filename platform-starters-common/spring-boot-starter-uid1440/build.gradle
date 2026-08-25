@@ -11,9 +11,6 @@ platformJavaLibrary {
 group = rootProject.group
 version = rootProject.version
 
-description = 'Генерация уникальных идентификаторов платформы: UUID v7 и uid1440.'
-
-// Имя JAR фиксируем: Gradle-проект с префиксом platform-common, артефакт Maven — spring-boot-starter-uid1440
 tasks.named('jar', Jar).configure {
     archiveBaseName = 'spring-boot-starter-uid1440'
 }
@@ -26,7 +23,6 @@ publishing {
 }
 
 dependencies {
-    // UUID v7 / генерация идентификаторов — версия из платформенного BOM
     api 'com.github.f4b6a3:uuid-creator'
 
     compileOnly 'org.projectlombok:lombok'

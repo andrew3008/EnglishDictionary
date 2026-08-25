@@ -11,8 +11,6 @@ platformJavaLibrary {
 group = rootProject.group
 version = rootProject.version
 
-description = 'Фильтры и автоконфигурация для заголовка X-Trace-Id (Servlet, Micrometer Tracing).'
-
 tasks.named('jar', Jar).configure {
     archiveBaseName = 'spring-boot-starter-x-trace-id'
 }
@@ -25,7 +23,6 @@ publishing {
 }
 
 dependencies {
-    // Рантайм-зависимости стартера; micrometer-tracing версионируется Spring Boot BOM
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
     implementation 'org.springframework:spring-web'
     implementation 'io.micrometer:micrometer-tracing'
@@ -38,7 +35,6 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
-    // Тесты: Brave + mock-tracer из micrometer-tracing-test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-web'
     testImplementation 'jakarta.servlet:jakarta.servlet-api'

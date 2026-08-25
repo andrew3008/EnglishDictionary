@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-08-16T19:00:00Z",
+  "level": "WARN",
+  "logger": "space.br1440.platform.logging.example.Owner",
+  "message": "Policy rejected the update",
+  "event_code": "APP-CTRL-001",
+  "fields": {
+    "kind": "rejected"
+  }
+}

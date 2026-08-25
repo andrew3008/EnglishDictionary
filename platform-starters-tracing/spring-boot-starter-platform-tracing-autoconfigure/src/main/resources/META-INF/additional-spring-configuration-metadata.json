@@ -1,0 +1,37 @@
+{
+  "properties": [
+    {
+      "name": "platform.tracing.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Включает платформенную трассировку. true (default) требует READY Controlled Platform Agent. false публикует NoOp facade и требует отсутствия Agent в течение startup validation window; dynamic attach после старта не поддерживается. Не отключает уже прикреплённый Java Agent.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.tracing.configuration.authority",
+      "type": "space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority",
+      "description": "Единственный разрешенный источник изменения runtime-политики трассировки."
+    },
+    {
+      "name": "platform.environment",
+      "type": "space.br1440.platform.tracing.autoconfigure.bootstrap.PlatformEnvironmentPosture",
+      "description": "Операционный профиль окружения, ограничивающий доступные поверхности управления."
+    },
+    {
+      "name": "platform.tracing.kafka.batch-links-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Включает создание links для пакетной обработки Kafka-сообщений.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.tracing.kafka.propagate-platform-headers",
+      "type": "java.lang.Boolean",
+      "description": "Разрешает исходящую передачу платформенных управляющих заголовков для доверенных Kafka topics.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.tracing.suppression.suppress-micrometer-http-observations",
+      "type": "java.lang.Boolean",
+      "description": "Подавляет Micrometer HTTP server/client observations (http.server.requests / http.client.requests). Не создаёт и не убирает Agent HTTP spans. Штатный стартер не содержит micrometer-tracing-bridge-otel и не публикует второй OTel span. При отсутствии значения выводится из присутствия Java Agent. Игнорируется при platform.tracing.enabled=false, чтобы не гасить Actuator HTTP-метрики без трассировки."
+    }
+  ]
+}

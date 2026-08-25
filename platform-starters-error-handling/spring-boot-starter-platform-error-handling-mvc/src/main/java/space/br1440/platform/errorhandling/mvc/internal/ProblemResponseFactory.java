@@ -4,7 +4,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
-import space.br1440.platform.errorhandling.core.constants.ErrorHandlingHeaders;
 import space.br1440.platform.errorhandling.core.util.RetryabilityResolver;
 import space.br1440.platform.errorhandling.core.util.StringUtils;
 import space.br1440.platform.errorhandling.properties.ErrorHandlingProperties;
@@ -24,12 +23,15 @@ import java.util.Map;
  * <ul>
  *   <li>HTTP-статус — из {@link ErrorEntry#getHttpStatus()}.</li>
  *   <li>Content-Type: {@code application/problem+json;version=1}.</li>
- *   <li>Заголовок {@code X-Correlation-Id} — копия использованного при обработке.</li>
  *   <li>Заголовок {@code Retry-After} — если в entry есть {@code RetryInfoDetail}
  *       с положительной задержкой.</li>
  *   <li>Дозаполнение {@code domain} (из {@code applicationName}) и {@code requestURI},
  *       если они не были заданы стратегией.</li>
  * </ul>
+ *
+ * <p>Заголовок {@code X-Correlation-Id} эта фабрика <b>не пишет</b> — в joint-режиме
+ * им владеет tracing identity boundary, поэтому решение echo принимает вызывающий
+ * ({@code GlobalExceptionHandler}), а не фабрика (см. {@code adr-correlation-ownership.md}).
  *
  * <h2>Safety-net</h2>
  * <p>{@link #safetyNet(String)} формирует минимально валидный 500-ответ для случая,
@@ -63,8 +65,7 @@ public final class ProblemResponseFactory {
 
         ResponseEntity.BodyBuilder bodyBuilder = ResponseEntity
                 .status(finalEntry.getHttpStatus())
-                .contentType(ErrorMediaTypes.ERROR_RESPONSE_MEDIA_TYPE)
-                .header(ErrorHandlingHeaders.X_CORRELATION_ID, correlationId);
+                .contentType(ErrorMediaTypes.ERROR_RESPONSE_MEDIA_TYPE);
 
         long retryDelaySeconds = RetryabilityResolver.retryDelayHeaderSeconds(finalEntry);
         if (retryDelaySeconds > 0) {
@@ -77,12 +78,9 @@ public final class ProblemResponseFactory {
 
     /**
      * Safety-net ответ: используется при критическом сбое самого pipeline обработки.
-     * Тело гарантированно соответствует контракту платформенного {@code ErrorEntryDTO}.
      */
     @NonNull
     public ResponseEntity<ErrorEntryDTO> safetyNet(@NonNull String correlationId) {
-        // Решение secure-by-default: при сбое самого error-handling pipeline клиент
-        // не должен узнавать, какой именно сервис упал. Включается отдельным флагом только для trusted-сетей.
         String safetyDomain = exposeApplicationNameInSafetyNet
                 ? applicationName
                 : SAFETY_NET_GENERIC_DOMAIN;
@@ -101,7 +99,6 @@ public final class ProblemResponseFactory {
 
         return ResponseEntity.internalServerError()
                 .contentType(ErrorMediaTypes.ERROR_RESPONSE_MEDIA_TYPE)
-                .header(ErrorHandlingHeaders.X_CORRELATION_ID, correlationId)
                 .body(error);
     }
 

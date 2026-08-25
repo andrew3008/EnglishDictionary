@@ -1,18 +1,17 @@
 package space.br1440.platform.errorhandling.core.strategy.top;
 
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+
 import space.br1440.platform.errorhandling.core.resolver.CauseChainResolver;
 import space.br1440.platform.errorhandling.core.util.DiagnosticMetadataBuilder;
 import space.br1440.platform.errorhandling.core.util.StringUtils;
 import space.br1440.platform.errorhandling.core.util.WebFluxExceptionUtils;
-import space.br1440.platform.errorhandling.core.util.http.UpstreamErrorBodyParser;
+import space.br1440.platform.errorhandling.core.util.http.UpstreamIntegrationDomain;
 import space.br1440.platform.errorhandling.core.util.sanitize.MessageSanitizer;
 import space.br1440.platform.errorhandling.core.util.sanitize.PathSanitizer;
 import space.br1440.platform.errorhandling.extension.ErrorHandlingContext;
@@ -22,7 +21,6 @@ import space.br1440.platform.errorhandling.extension.order.TopExceptionStrategyO
 import space.br1440.platform.errorhandling.model.ErrorEntry;
 import space.br1440.platform.errorhandling.model.error_detail.ErrorInfoDetail;
 import space.br1440.platform.errorhandling.utils.ClientMetadataBuilder;
-import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingUpstreamProperties;
 
 import java.net.URI;
 import java.util.List;
@@ -38,10 +36,8 @@ import java.util.Map;
  * <p>{@code clientMetadata} собирается через {@link ClientMetadataBuilder}:
  * <ul>
  *   <li>{@code clientType} — тип клиента ({@code "WebClient"})</li>
- *   <li>{@code errorCategory} — категория ошибки ({@code network} / {@code upstream_response}),
- *       только если {@code upstream.expose-category-to-client=true}</li>
- *   <li>{@code upstreamStatus} — HTTP-статус ответа upstream-сервиса,
- *       только если {@code upstream.expose-status-to-client=true} (default {@code false})</li>
+ *   <li>{@code errorCategory} — категория ошибки ({@code network} / {@code upstream_response})</li>
+ *   <li>{@code upstreamStatus} — HTTP-статус ответа upstream-сервиса (если он был получен)</li>
  * </ul>
  *
  * <p>{@code diagnosticMetadata} — внутренние данные (только логи, не в DTO):
@@ -58,8 +54,8 @@ import java.util.Map;
  * <h2>Безопасность (CWE-209 / CWE-400)</h2>
  * <ul>
  *   <li>URL upstream-сервиса (включая query string) не включаются в публичный ответ.</li>
- *   <li>Тело upstream-ответа парсится только если {@code Content-Type} JSON-совместимый
- *       и размер ≤ {@code upstream.max-body-bytes} (default {@code 8KB}). Защита от OOM.</li>
+ *   <li>Тело upstream-ответа эта стратегия не читает вовсе — identity прямого upstream
+ *       разбирает pipeline один раз ({@code UpstreamResponseReader}), вне event-loop.</li>
  *   <li>Все сообщения проходят {@link MessageSanitizer} до truncate (Bearer / Basic / cards / query secrets).</li>
  *   <li>Path-сегменты проходят {@link PathSanitizer} с поддержкой polyglot цифр.</li>
  * </ul>
@@ -72,16 +68,8 @@ public class WebFluxExceptionStrategy extends AbstractTopExceptionStrategy {
     private static final int CAUSE_CHAIN_DEPTH = 5;
     private static final int MAX_CAUSE_MESSAGE_LENGTH = 300;
 
-    private final ErrorHandlingUpstreamProperties upstreamProperties;
-
     public WebFluxExceptionStrategy(@NonNull CauseChainResolver causeChainResolver) {
-        this(causeChainResolver, new ErrorHandlingUpstreamProperties());
-    }
-
-    public WebFluxExceptionStrategy(@NonNull CauseChainResolver causeChainResolver,
-                                    @NonNull ErrorHandlingUpstreamProperties upstreamProperties) {
         super(TopExceptionStrategyOrder.WEBFLUX, causeChainResolver);
-        this.upstreamProperties = upstreamProperties;
     }
 
     @Override
@@ -111,98 +99,6 @@ public class WebFluxExceptionStrategy extends AbstractTopExceptionStrategy {
                 httpStatus, isRequestException, upstreamStatus,
                 clientMetadata, diagnosticMetadata, context
         );
-    }
-
-    @NonNull
-    public ErrorEntry parseUpstreamErrorCode(@NonNull Exception exception,
-                                             @NonNull ErrorEntry entry,
-                                             @NonNull ErrorHandlingContext context) {
-        return enrichWithUpstreamErrorCode(exception, entry, context);
-    }
-
-    @NonNull
-    public static ErrorEntry parseUpstreamErrorCodeWithLimit(@NonNull Exception exception,
-                                                             @NonNull ErrorEntry entry,
-                                                             @NonNull ErrorHandlingContext context,
-                                                             long maxBodyBytes) {
-        if (!(exception instanceof WebClientResponseException response)) {
-            return entry;
-        }
-
-        if (isNotJsonCompatible(response.getHeaders())) {
-            return entry;
-        }
-
-        long declaredLength = declaredContentLength(response.getHeaders());
-        if (declaredLength > maxBodyBytes) {
-            return entry;
-        }
-
-        String body = response.getResponseBodyAsString();
-        if (!StringUtils.hasText(body) || body.length() > maxBodyBytes) {
-            return entry;
-        }
-
-        boolean includeReason = Boolean.TRUE.equals(context.getProperties().getPropagateUpstreamReason());
-        return UpstreamErrorBodyParser.parse(body, includeReason)
-                .map(info -> UpstreamErrorBodyParser.applyUpstreamInfo(entry, info))
-                .orElse(entry);
-    }
-
-    @NonNull
-    private ErrorEntry enrichWithUpstreamErrorCode(@NonNull Exception exception,
-                                                   @NonNull ErrorEntry entry,
-                                                   @NonNull ErrorHandlingContext context) {
-        if (!(exception instanceof WebClientResponseException response)) {
-            return entry;
-        }
-
-        if (isNotJsonCompatible(response.getHeaders())) {
-            return entry;
-        }
-
-        long maxBodyBytes = upstreamProperties.getMaxBodyBytes().toBytes();
-        long declaredLength = declaredContentLength(response.getHeaders());
-        if (declaredLength > maxBodyBytes) {
-            return entry;
-        }
-
-        String body = response.getResponseBodyAsString();
-        if (!StringUtils.hasText(body) || body.length() > maxBodyBytes) {
-            return entry;
-        }
-
-        boolean includeReason = Boolean.TRUE.equals(context.getProperties().getPropagateUpstreamReason());
-        return UpstreamErrorBodyParser.parse(body, includeReason)
-                .map(info -> UpstreamErrorBodyParser.applyUpstreamInfo(entry, info))
-                .orElse(entry);
-    }
-
-    private static boolean isNotJsonCompatible(@NonNull HttpHeaders headers) {
-        MediaType contentType = headers.getContentType();
-        if (contentType == null) {
-            return true;
-        }
-
-        if (contentType.isCompatibleWith(MediaType.APPLICATION_JSON)) {
-            return false;
-        }
-
-        String subtype = contentType.getSubtype();
-        return !subtype.endsWith("+json");
-    }
-
-    private static long declaredContentLength(@NonNull HttpHeaders headers) {
-        String cl = headers.getFirst(HttpHeaders.CONTENT_LENGTH);
-        if (cl == null) {
-            return -1L;
-        }
-
-        try {
-            return Long.parseLong(cl.trim());
-        } catch (NumberFormatException ex) {
-            return -1L;
-        }
     }
 
     @NonNull
@@ -245,18 +141,14 @@ public class WebFluxExceptionStrategy extends AbstractTopExceptionStrategy {
     }
 
     @NonNull
-    private Map<String, String> buildClientMetadata(boolean isResponseException,
-                                                   boolean isRequestException,
-                                                   int upstreamStatus) {
+    private static Map<String, String> buildClientMetadata(boolean isResponseException,
+                                                           boolean isRequestException,
+                                                           int upstreamStatus) {
         ClientMetadataBuilder clientBuilder = ClientMetadataBuilder.builder()
-                .put("clientType", CLIENT_TYPE);
+                .put("clientType", CLIENT_TYPE)
+                .put("errorCategory", WebFluxExceptionUtils.resolveErrorCategory(isResponseException, isRequestException));
 
-        if (upstreamProperties.isExposeCategoryToClient()) {
-            String errorCategory = WebFluxExceptionUtils.resolveErrorCategory(isResponseException, isRequestException);
-            clientBuilder.put("errorCategory", errorCategory);
-        }
-
-        if (upstreamStatus > 0 && upstreamProperties.isExposeStatusToClient()) {
+        if (upstreamStatus > 0) {
             clientBuilder.put("upstreamStatus", upstreamStatus);
         }
 
@@ -308,7 +200,7 @@ public class WebFluxExceptionStrategy extends AbstractTopExceptionStrategy {
                                           @NonNull ErrorHandlingContext context) {
         ErrorInfoDetail.ErrorInfoDetailBuilder infoBuilder = ErrorInfoDetail.builder()
                 .reason(clientMetadata.getOrDefault("errorCategory", "WEB_CLIENT"))
-                .domain("webflux");
+                .domain(UpstreamIntegrationDomain.HTTP_INTEGRATION);
 
         if (!clientMetadata.isEmpty()) {
             infoBuilder.clientMetadata(clientMetadata);

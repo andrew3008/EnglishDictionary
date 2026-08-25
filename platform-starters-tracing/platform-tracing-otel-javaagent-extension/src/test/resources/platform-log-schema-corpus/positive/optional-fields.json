@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-08-16T19:00:00Z",
+  "level": "DEBUG",
+  "logger": "space.br1440.platform.logging.example.Owner",
+  "message": "Scrubbing rule applied",
+  "event_code": "APP-SCRUB-001",
+  "fields": {
+    "kind": "optional",
+    "count": "2"
+  }
+}
