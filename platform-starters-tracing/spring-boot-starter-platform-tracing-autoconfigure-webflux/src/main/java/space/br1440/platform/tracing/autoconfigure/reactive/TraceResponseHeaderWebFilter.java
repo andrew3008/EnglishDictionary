@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.autoconfigure.reactive;
 
+import org.springframework.http.HttpStatusCode;
 import org.springframework.lang.NonNull;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
@@ -7,6 +8,7 @@ import org.springframework.web.server.WebFilterChain;
 
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
@@ -17,6 +19,7 @@ import space.br1440.platform.tracing.runtime.propagation.CorrelationIdSupport;
 
 import io.opentelemetry.api.trace.Span;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.SignalType;
 import reactor.util.context.Context;
 
 public class TraceResponseHeaderWebFilter implements WebFilter {
@@ -74,7 +77,10 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
 
                     return chain.filter(filteredExchange);
                 })
-                .doFinally(signal -> OtelReactorContextPropagation.detachEndedCurrentContext())
+                .doFinally(signal -> {
+                    applyHttpServerResult(wrapped, signal == SignalType.ON_ERROR);
+                    OtelReactorContextPropagation.detachEndedCurrentContext();
+                })
                 .contextWrite(context -> {
                     ReactiveIdentityContextPropagation.IdentityState currentState = context
                             .<ReactiveIdentityContextPropagation.IdentityState>getOrEmpty(ReactiveIdentityContextPropagation.KEY)
@@ -105,5 +111,20 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
         return CorrelationIdSupport.resolveInbound(
                 exchange.getRequest().getHeaders().get(PlatformHeaders.X_CORRELATION_ID)
         );
+    }
+
+    private static void applyHttpServerResult(PlatformOwnedServerHttpResponse response, boolean failed) {
+        try {
+            Span span = Span.current();
+            if (!span.getSpanContext().isValid()) {
+                return;
+            }
+
+            HttpStatusCode statusCode = response.getStatusCode();
+            boolean errorStatus = statusCode != null && statusCode.value() >= 400;
+            SpanResult result = (failed || errorStatus) ? SpanResult.FAILURE : SpanResult.SUCCESS;
+            span.setAttribute(PlatformAttributes.PLATFORM_RESULT, result.value());
+        } catch (RuntimeException ignored) {
+        }
     }
 }

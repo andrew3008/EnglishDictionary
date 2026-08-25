@@ -9,9 +9,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
+import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
@@ -22,6 +24,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.context.Scope;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
+import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -36,6 +46,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class TraceResponseHeaderServletFilterTest {
+
+    private static final AttributeKey<String> RESULT_KEY =
+            AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT);
 
     private ActiveTraceContextView traceContextView;
     private TracingProperties properties;
@@ -215,5 +228,70 @@ class TraceResponseHeaderServletFilterTest {
         // then
         assertThat(seenInsideChain.get()).contains("trusted-correlation");
         assertThat(runtime.currentCorrelationId()).isEmpty();
+    }
+
+    @Test
+    void writesSuccessResultOnCurrentSpanAfterSuccessfulChain() throws Exception {
+        when(traceContextView.traceId()).thenReturn(Optional.empty());
+        when(response.isCommitted()).thenReturn(false);
+        when(response.getStatus()).thenReturn(200);
+
+        SpanData data = runFilterWithCurrentSpan();
+
+        assertThat(data.getAttributes().get(RESULT_KEY)).isEqualTo(SpanResult.SUCCESS.value());
+    }
+
+    @Test
+    void writesFailureResultOnCurrentSpanWhenStatusIsClientError() throws Exception {
+        when(traceContextView.traceId()).thenReturn(Optional.empty());
+        when(response.isCommitted()).thenReturn(false);
+        when(response.getStatus()).thenReturn(400);
+
+        SpanData data = runFilterWithCurrentSpan();
+
+        assertThat(data.getAttributes().get(RESULT_KEY)).isEqualTo(SpanResult.FAILURE.value());
+    }
+
+    @Test
+    void writesFailureResultOnCurrentSpanWhenChainThrows() throws Exception {
+        when(traceContextView.traceId()).thenReturn(Optional.empty());
+        when(response.isCommitted()).thenReturn(false);
+        when(response.getStatus()).thenReturn(200);
+        doThrow(new ServletException("boom")).when(chain).doFilter(eq(request), any(HttpServletResponse.class));
+
+        InMemorySpanExporter exporter = InMemorySpanExporter.create();
+        SdkTracerProvider provider = SdkTracerProvider.builder()
+                .addSpanProcessor(SimpleSpanProcessor.create(exporter))
+                .build();
+        try {
+            Span span = provider.get("test").spanBuilder("http.server").startSpan();
+            try (Scope ignored = span.makeCurrent()) {
+                assertThatThrownBy(() -> filter.doFilter(request, response, chain))
+                        .isInstanceOf(ServletException.class);
+            }
+            span.end();
+
+            assertThat(exporter.getFinishedSpanItems().getFirst().getAttributes().get(RESULT_KEY))
+                    .isEqualTo(SpanResult.FAILURE.value());
+        } finally {
+            provider.close();
+        }
+    }
+
+    private SpanData runFilterWithCurrentSpan() throws Exception {
+        InMemorySpanExporter exporter = InMemorySpanExporter.create();
+        SdkTracerProvider provider = SdkTracerProvider.builder()
+                .addSpanProcessor(SimpleSpanProcessor.create(exporter))
+                .build();
+        try {
+            Span span = provider.get("test").spanBuilder("http.server").startSpan();
+            try (Scope ignored = span.makeCurrent()) {
+                filter.doFilter(request, response, chain);
+            }
+            span.end();
+            return exporter.getFinishedSpanItems().getFirst();
+        } finally {
+            provider.close();
+        }
     }
 }

@@ -32,6 +32,7 @@ pluginManagement {
         id 'platform.java-library-publish' version platformConventionsVersion
         id 'platform.java-platform-publish' version platformConventionsVersion
         id 'platform.testing' version platformConventionsVersion
+        id 'com.gradleup.shadow' version '9.2.2'
     }
 }
 
@@ -86,6 +87,7 @@ include('platform-starters-tracing:spring-boot-starter-platform-tracing-webflux'
 include('platform-starters-tracing:platform-tracing-testkit')
 include('platform-starters-tracing:platform-tracing-otel-javaagent-extension')
 include('platform-starters-tracing:platform-tracing-otel-javaagent-distribution')
+include('platform-starters-tracing:platform-tracing-gradle-plugin')
 
 include('platform-starters-error-handling')
 include('platform-starters-error-handling:platform-error-handling-core')

@@ -8,24 +8,36 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.server.WebFilterChain;
 
 import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
+import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 import space.br1440.platform.tracing.runtime.propagation.control.DefaultInboundTraceControlExtractor;
 
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.context.Scope;
+import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Mono;
 
 class TraceResponseHeaderWebFilterTest {
 
     private static final String TRACE_ID = "0af7651916cd43dd8448eb211c80319c";
+    private static final AttributeKey<String> RESULT_KEY =
+            AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT);
 
     @BeforeAll
     static void enableAutomaticContextPropagation() {
@@ -206,5 +218,56 @@ class TraceResponseHeaderWebFilterTest {
 
         // then
         assertThat(exchange.getResponse().getHeaders().get("X-Trace-Id")).containsExactly(TRACE_ID);
+    }
+
+    @Test
+    void writesSuccessResultOnCurrentSpanAfterSuccessfulChain() {
+        SpanData data = runFilterWithCurrentSpan(ignored -> Mono.empty());
+
+        assertThat(data.getAttributes().get(RESULT_KEY)).isEqualTo(SpanResult.SUCCESS.value());
+    }
+
+    @Test
+    void writesFailureResultOnCurrentSpanWhenStatusIsClientError() {
+        SpanData data = runFilterWithCurrentSpan(current -> {
+            current.getResponse().setStatusCode(HttpStatus.BAD_REQUEST);
+            return Mono.empty();
+        });
+
+        assertThat(data.getAttributes().get(RESULT_KEY)).isEqualTo(SpanResult.FAILURE.value());
+    }
+
+    @Test
+    void writesFailureResultOnCurrentSpanWhenChainErrors() {
+        SpanData data = runFilterWithCurrentSpan(ignored -> Mono.error(new IllegalStateException("boom")));
+
+        assertThat(data.getAttributes().get(RESULT_KEY)).isEqualTo(SpanResult.FAILURE.value());
+    }
+
+    private static SpanData runFilterWithCurrentSpan(WebFilterChain chain) {
+        TraceOperations traceOperations = mock(TraceOperations.class);
+        ActiveTraceContextView traceContext = mock(ActiveTraceContextView.class);
+        when(traceOperations.traceContext()).thenReturn(traceContext);
+        when(traceContext.traceId()).thenReturn(Optional.empty());
+        var filter = new TraceResponseHeaderWebFilter(
+                traceOperations, new TracingProperties(), new DefaultInboundTraceControlExtractor());
+        var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/result").build());
+
+        InMemorySpanExporter exporter = InMemorySpanExporter.create();
+        SdkTracerProvider provider = SdkTracerProvider.builder()
+                .addSpanProcessor(SimpleSpanProcessor.create(exporter))
+                .build();
+        try {
+            Span span = provider.get("test").spanBuilder("http.server").startSpan();
+            try (Scope ignored = span.makeCurrent()) {
+                filter.filter(exchange, chain)
+                        .onErrorResume(error -> Mono.empty())
+                        .block();
+            }
+            span.end();
+            return exporter.getFinishedSpanItems().getFirst();
+        } finally {
+            provider.close();
+        }
     }
 }

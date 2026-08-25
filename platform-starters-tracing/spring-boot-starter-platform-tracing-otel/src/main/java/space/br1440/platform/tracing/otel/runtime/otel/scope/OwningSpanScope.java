@@ -19,6 +19,7 @@ public final class OwningSpanScope implements AutoCloseable {
     private final Scope scope;
     private final ExceptionRecorder exceptionRecorder;
     private final AtomicBoolean closed = new AtomicBoolean(false);
+    private final AtomicBoolean resultDeclared = new AtomicBoolean(false);
 
     public OwningSpanScope(@Nonnull Span span, @Nonnull Scope scope,
                            @Nonnull ExceptionRecorder exceptionRecorder) {
@@ -55,20 +56,19 @@ public final class OwningSpanScope implements AutoCloseable {
     }
 
     @Nonnull
-    public OwningSpanScope addEvent(@Nonnull String name) {
-        span.addEvent(name);
-        return this;
-    }
-
-    @Nonnull
     public OwningSpanScope setResult(@Nonnull SpanResult result) {
         applyResult(result);
+        resultDeclared.set(true);
         return this;
     }
 
     @Nonnull
     public OwningSpanScope recordException(@Nullable Throwable throwable) {
         exceptionRecorder.record(span, throwable);
+        if (throwable != null) {
+            resultDeclared.set(true);
+        }
+
         return this;
     }
 
@@ -85,6 +85,14 @@ public final class OwningSpanScope implements AutoCloseable {
     public void close() {
         if (!closed.compareAndSet(false, true)) {
             return;
+        }
+
+        if (!resultDeclared.get()) {
+            try {
+                applyResult(SpanResult.SUCCESS);
+            } catch (RuntimeException e) {
+                log.warn("Failed to apply default result for span '{}': {}", span, e.getMessage());
+            }
         }
 
         try {

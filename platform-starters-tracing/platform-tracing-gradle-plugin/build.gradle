@@ -1,0 +1,176 @@
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
+import java.security.MessageDigest
+
+plugins {
+    id 'platform.java-library-publish'
+    id 'platform.java-library'
+    id 'platform.testing'
+    id 'java-gradle-plugin'
+}
+
+group = 'space.br1440.platform.starters.tracing'
+
+platformJavaLibrary {
+    bomProjectPath = ':spring-boot-starter-platform-bom'
+}
+
+gradlePlugin {
+    plugins {
+        platformTracingJavaAgent {
+            id = 'platform.tracing-javaagent'
+            implementationClass = 'space.br1440.platform.tracing.gradle.PlatformTracingJavaAgentPlugin'
+            displayName = 'Platform Tracing controlled Java agent'
+            description = """
+                    Adds the controlled Platform Tracing Java agent to a service build \
+                    without any configuration in the consuming build script."""
+        }
+    }
+    testSourceSets(sourceSets.test)
+}
+
+tasks.withType(AbstractPublishToMaven).configureEach { task ->
+    task.onlyIf { task.publication.name != 'mavenJava' }
+}
+
+def distributionProjectPath = ':platform-starters-tracing:platform-tracing-otel-javaagent-distribution'
+
+def controlledAgentDistribution = configurations.create('controlledAgentDistribution') {
+    canBeConsumed = false
+    canBeResolved = true
+    transitive = false
+}
+
+dependencies {
+    add(controlledAgentDistribution.name, project(path: distributionProjectPath, configuration: 'controlledAgentElements'))
+
+    implementation project(':platform-starters-common:platform-starters-common-util')
+
+    testImplementation gradleTestKit()
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+def controlledAgentJar = controlledAgentDistribution.incoming.files.elements.map { locations ->
+    List<File> files = locations.collect { it.asFile }
+    if (files.size() != 1) {
+        throw new GradleException("""
+                controlledAgentDistribution must resolve to exactly one \
+                artifact, got ${files.size()}: ${files}"""
+        )
+    }
+
+    files.first()
+}
+
+abstract class GenerateControlledAgentPin extends DefaultTask {
+
+    private static final String PIN_ENTRY_PATH = 'META-INF/platform-tracing/controlled-agent-pin.properties'
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getAgentJar()
+
+    @Input
+    abstract Property<String> getAgentVersion()
+
+    @OutputDirectory
+    abstract DirectoryProperty getOutputDirectory()
+
+    @TaskAction
+    void generate() {
+        String version = agentVersion.get()
+        if (version.isBlank() || version.trim() != version) {
+            throw new GradleException("Controlled agent version must be a trimmed non-blank value")
+        }
+
+        byte[] bytes = Files.readAllBytes(agentJar.get().asFile.toPath())
+        String content = 'agent.sha256=' + sha256Hex(bytes) + '\n' + 'agent.version=' + version + '\n'
+
+        Path target = outputDirectory.get().file(PIN_ENTRY_PATH).asFile.toPath()
+        Files.createDirectories(target.parent)
+        Files.write(target, content.getBytes(StandardCharsets.UTF_8))
+    }
+
+    private static String sha256Hex(byte[] bytes) {
+        byte[] digest = MessageDigest.getInstance('SHA-256').digest(bytes)
+        StringBuilder result = new StringBuilder(64)
+        for (byte value : digest) {
+            result.append(Character.forDigit((value >> 4) & 0xF, 16))
+            result.append(Character.forDigit(value & 0xF, 16))
+        }
+
+        result.toString()
+    }
+}
+
+def generateControlledAgentPin = tasks.register(
+        'generateControlledAgentPin',
+        GenerateControlledAgentPin
+) {
+    agentJar.fileProvider(controlledAgentJar)
+    agentVersion.set(project.version.toString())
+    outputDirectory.set(layout.buildDirectory.dir('generated/controlled-agent-pin'))
+}
+
+tasks.named('processResources', ProcessResources) {
+    from generateControlledAgentPin
+}
+
+abstract class FunctionalTestArguments implements CommandLineArgumentProvider {
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getControlledAgentJar()
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getPluginJar()
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getCommonUtilJar()
+
+    @Input
+    abstract Property<String> getPluginVersion()
+
+    @Internal
+    abstract DirectoryProperty getTestKitDirectory()
+
+    @Override
+    Iterable<String> asArguments() {
+        [
+                '-DplatformTracing.controlledAgentJar=' + controlledAgentJar.get().asFile.absolutePath,
+                '-DplatformTracing.pluginJar=' + pluginJar.get().asFile.absolutePath,
+                '-DplatformTracing.commonUtilJar=' + commonUtilJar.get().asFile.absolutePath,
+                '-DplatformTracing.pluginVersion=' + pluginVersion.get(),
+                '-DplatformTracing.testKitDirectory=' + testKitDirectory.get().asFile.absolutePath
+        ]
+    }
+}
+
+tasks.named('test', Test) {
+    def arguments = objects.newInstance(FunctionalTestArguments)
+
+    arguments.controlledAgentJar
+            .fileProvider(controlledAgentJar)
+
+    arguments.pluginJar
+            .set(tasks
+                    .named('jar', Jar)
+                    .flatMap { it.archiveFile }
+            )
+
+    arguments.commonUtilJar.set(
+            project(':platform-starters-common:platform-starters-common-util')
+                    .tasks
+                    .named('jar', Jar)
+                    .flatMap { it.archiveFile }
+    )
+
+    arguments.pluginVersion.set(project.version.toString())
+    arguments.testKitDirectory.set(layout.buildDirectory.dir('test-kit'))
+    jvmArgumentProviders.add(arguments)
+}

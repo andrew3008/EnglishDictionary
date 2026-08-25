@@ -115,6 +115,8 @@ bom-springcloud = "2025.0.0"
 # Тестовые и вспомогательные зависимости (только для сборки/тестирования стартеров)
 # ---------------------------------------------------------------------------
 archunit                 = "1.3.0"
+junit-jupiter            = "5.12.2"
+assertj                  = "3.27.7"
 json-schema-validator    = "1.5.6"
 testcontainers           = "1.21.3"
 byte-buddy               = "1.15.10"
@@ -124,6 +126,7 @@ jedis                    = "7.0.0"
 
 [libraries]
 archunit-junit5             = { module = "com.tngtech.archunit:archunit-junit5",      version.ref = "archunit" }
+assertj-core                = { module = "org.assertj:assertj-core",                  version.ref = "assertj" }
 jsonschema-validator        = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
 testcontainers-core         = { module = "org.testcontainers:testcontainers",         version.ref = "testcontainers" }
 testcontainers-junit        = { module = "org.testcontainers:junit-jupiter",          version.ref = "testcontainers" }

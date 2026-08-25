@@ -51,7 +51,7 @@ class TracePipelineSpiAttestationEvidenceTest {
     }
 
     @Test
-    void exact_on_test_classpath_fails_because_upstream_set_is_empty() {
+    void exact_on_test_classpath_fails_because_otel_java_agent_set_is_empty() {
         // given
         System.setProperty(
                 ExtensionPropertyNames.SPI_ATTESTATION_MODE,

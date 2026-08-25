@@ -25,19 +25,6 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrap
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
 
-/**
- * Unit-level coverage for {@link TracePipelineSpiAttestation}: generated upstream pin for
- * {@link AutoConfigurationCustomizerProvider} (order-only attestation was a BLOCKER — order()
- * determines only when {@code customize()} runs, not whether a provider can mutate the exporter
- * chain later from a properties-customizer callback) and the empty allowlist for the legacy
- * tracer-provider configurer service descriptor applied after exporter/processor customization.
- *
- * <p>These tests overlay a synthetic {@code META-INF/services} entry on top of the real
- * application classloader (without touching the real registration) and call
- * {@code attest(...)} directly. See {@link TracePipelineSpiAttestationIntegrationTest} for the
- * real {@code AutoConfiguredOpenTelemetrySdk.builder().build()} lifecycle proof that the attacker
- * customizer/configurer is never actually invoked.
- */
 class TracePipelineSpiAttestationTest {
 
     private static final int PLATFORM_ORDER = 100;
@@ -51,10 +38,10 @@ class TracePipelineSpiAttestationTest {
     @Test
     void pinned_names_reject_attacker_prefix_and_keep_reviewed_names() {
         // given
-        Set<String> names = PinnedUpstreamAcpProviders.NAMES;
+        Set<String> names = PinnedOtelJavaAgentAcpProviders.NAMES;
 
         // when
-        boolean attackerAllowed = TracePipelineSpiAttestation.isAllowlistedUpstreamProviderName(
+        boolean attackerAllowed = TracePipelineSpiAttestation.isAllowlistedOtelJavaAgentProviderName(
                 "attacker.io.opentelemetry.javaagent.tooling.AgentTracerProviderConfigurer");
 
         // then
@@ -63,8 +50,8 @@ class TracePipelineSpiAttestationTest {
                 "attacker.io.opentelemetry.javaagent.tooling.AgentTracerProviderConfigurer");
         assertThat(attackerAllowed).isFalse();
         assertThat(PlatformOtelAcpPinHashes.sha256Hex(names))
-                .isEqualTo(PinnedUpstreamAcpProviders.PIN_SHA256);
-        assertThat(names).hasSize(PinnedUpstreamAcpProviders.PIN_COUNT);
+                .isEqualTo(PinnedOtelJavaAgentAcpProviders.PIN_SHA256);
+        assertThat(names).hasSize(PinnedOtelJavaAgentAcpProviders.PIN_COUNT);
     }
 
     @Test
@@ -89,11 +76,6 @@ class TracePipelineSpiAttestationTest {
 
     @Test
     void lowerOrderDelayedAcpMutationFails(@TempDir Path overlayDir) throws IOException {
-        // The canonical bypass: order()==0 runs customize() before the platform provider, so an
-        // order-only check would treat it as "already executed, therefore safe". It only registers
-        // an exporter customizer LATER, from a properties-customizer callback executed during
-        // getConfig() — after the platform boundary is already registered. Presence on the
-        // classloader is rejected outright, independent of order() and of what customize() does.
         ClassLoader overlay = withOverlayAcpProvider(overlayDir, LowerOrderDelayedMutationProvider.class);
         LowerOrderDelayedMutationProvider.RAW_EXPORTER_ACTIVATED.set(false);
 
@@ -107,10 +89,6 @@ class TracePipelineSpiAttestationTest {
 
     @Test
     void unknownProviderConstructorIsNotInvokedByAttestation(@TempDir Path overlayDir) throws IOException {
-        // Discovery must reject a foreign provider by FQN alone (ServiceLoader.Provider::type),
-        // never calling ::get() and therefore never running the foreign provider's constructor —
-        // constructor side effects (e.g. process-global registration) must not happen just because
-        // an unapproved provider is present on the classloader.
         ClassLoader overlay = withOverlayAcpProvider(overlayDir, ConstructorSideEffectProvider.class);
         ConstructorSideEffectProvider.CONSTRUCTED.set(false);
 
@@ -194,7 +172,6 @@ class TracePipelineSpiAttestationTest {
                 TracePipelineSpiAttestationTest.class.getClassLoader());
     }
 
-    /** Hides a single {@code META-INF/services} resource, simulating its total absence. */
     private static final class ServiceHidingClassLoader extends ClassLoader {
         private final String hiddenResourceName;
 

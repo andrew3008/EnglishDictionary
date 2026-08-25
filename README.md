@@ -56,6 +56,7 @@
 | `:platform-starters-tracing:platform-tracing-testkit` | [`platform-tracing-testkit`](platform-starters-tracing/platform-tracing-testkit) — внутренние тестовые fixtures, не публикуются |
 | `:platform-starters-tracing:platform-tracing-otel-javaagent-extension` | [`platform-tracing-otel-javaagent-extension`](platform-starters-tracing/platform-tracing-otel-javaagent-extension) — внутренний модуль исходного кода и тестов; упаковкой управляет distribution, отдельно не публикуется |
 | `:platform-starters-tracing:platform-tracing-otel-javaagent-distribution` | [`platform-tracing-otel-javaagent-distribution`](platform-starters-tracing/platform-tracing-otel-javaagent-distribution) — единственный владелец deployable-артефакта `platform-tracing-javaagent` |
+| `:platform-starters-tracing:platform-tracing-gradle-plugin` | [`platform-tracing-gradle-plugin`](platform-starters-tracing/platform-tracing-gradle-plugin) — Gradle-плагин `platform.tracing-javaagent`; build tooling, не входит в BOM |
 
 Controlled Platform Agent поставляется артефактом
 `space.br1440.platform.starters.tracing:platform-tracing-javaagent:<version>`.
@@ -65,6 +66,25 @@ Controlled Platform Agent поставляется артефактом
 передавать отдельно через `otel.javaagent.extensions`. Версия агента должна точно совпадать
 с версией starter/BOM release train; сам агент не входит в application BOM. Deployment
 закрепляет GAV и SHA-256 JAR, проверяет digest до старта JVM и запускает его на Java 21.
+
+Сервис подключает агент одной строкой в `plugins {}`. Версия и SHA-256 принадлежат
+релизу плагина и совпадают с версией агента:
+
+```groovy
+plugins {
+    id 'platform.tracing-javaagent' version '<V>'
+}
+```
+
+Плагин резолвит агент вне application classpath, сверяет SHA-256 со вшитым pin,
+кладёт JAR в `build/platform-tracing/agent/platform-tracing-javaagent-<V>.jar`
+и пишет `build/platform-tracing/docker-build-args.env` с `PLATFORM_AGENT_JAR`.
+Публичная задача — `prepareControlledAgent`. `bootJar` и `assemble` агент не тянут.
+`bootRun` получает `-javaagent` на проверенный файл.
+
+Это build-time верификация. Runtime-проверка SHA-256 до старта JVM, mount path
+и delivery mechanism остаются за deployment/GitOps-слоем и в этом репозитории
+не реализованы.
 
 Контракт ownership, развёртывание и release/rollback:
 
@@ -97,10 +117,10 @@ BOM или публикации tracing-платформы.
 - `publishAllToNexus` — публикация всех подпроектов, у которых настроен `publish`;
 - `publishAllToMavenLocal` — то же в локальный Maven.
 
-Конфигурация репозиториев Nexus для обычных Java-библиотек задаётся convention-плагином
-`platform.java-library-publish`, для BOM — BOM-модулем. Controlled javaagent публикуется
-отдельной artifact-only publication: только собранный main JAR и минимальный POM, без Java
-component, Gradle Module Metadata, dependencies, sources/javadoc и отдельного extension-артефакта.
+Конфигурация репозиториев Nexus и агрегаторы `publishAllToNexus` / `publishAllToMavenLocal`
+задаются convention-плагином `platform.java-library-publish`, для BOM — BOM-модулем.
+Controlled javaagent публикуется той же convention-публикацией `mavenJava`: в неё
+подставляется собранный `platform-tracing-javaagent` JAR, без отдельного extension-артефакта.
 
 ## Полный список Gradle-проектов
 
