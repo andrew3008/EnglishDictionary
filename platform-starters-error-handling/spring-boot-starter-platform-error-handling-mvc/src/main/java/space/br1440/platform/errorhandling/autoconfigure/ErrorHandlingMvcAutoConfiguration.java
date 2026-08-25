@@ -1,6 +1,7 @@
 package space.br1440.platform.errorhandling.autoconfigure;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
@@ -32,8 +33,10 @@ import space.br1440.platform.errorhandling.mvc.observability.ExceptionObservabil
 import space.br1440.platform.errorhandling.mvc.observability.MicrometerExceptionMetricsRecorder;
 import space.br1440.platform.errorhandling.mvc.observability.OtelExceptionRecorder;
 import space.br1440.platform.errorhandling.properties.ErrorHandlingProperties;
+import space.br1440.platform.errorhandling.model.RequestContext;
 import space.br1440.platform.errorhandling.model.mapping.ErrorEntryToDtoMapper;
 import java.util.List;
+import java.util.function.Supplier;
 
 @AutoConfiguration(after = ErrorHandlingCoreAutoConfiguration.class)
 @AutoConfigureBefore(ErrorMvcAutoConfiguration.class)
@@ -79,7 +82,9 @@ public class ErrorHandlingMvcAutoConfiguration {
                                                          @Qualifier("orderedErrorEntryEnrichers")
                                                          List<ErrorEntryEnricher> entryEnrichers,
                                                          StackHintExtractor stackHintExtractor,
-                                                         List<ExceptionObservabilityHook> observabilityHooks) {
+                                                         List<ExceptionObservabilityHook> observabilityHooks,
+                                                         @Qualifier("tracingRequestContextSupplier")
+                                                         ObjectProvider<Supplier<RequestContext>> tracingRequestContextSupplierProvider) {
         return new GlobalExceptionHandler(
                 properties,
                 strategies,
@@ -90,7 +95,8 @@ public class ErrorHandlingMvcAutoConfiguration {
                 correlationIdResolver,
                 entryEnrichers,
                 stackHintExtractor,
-                observabilityHooks
+                observabilityHooks,
+                tracingRequestContextSupplierProvider.getIfAvailable()
         );
     }
 
@@ -117,15 +123,17 @@ public class ErrorHandlingMvcAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(CorrelationIdFilter.class)
-    public CorrelationIdFilter correlationIdFilter(CorrelationIdResolver resolver) {
-        return new CorrelationIdFilter(resolver);
+    public CorrelationIdFilter correlationIdFilter(CorrelationIdResolver resolver,
+                                                    @Qualifier("tracingRequestContextSupplier")
+                                                    ObjectProvider<Supplier<RequestContext>> tracingRequestContextSupplierProvider) {
+        return new CorrelationIdFilter(resolver, tracingRequestContextSupplierProvider.getIfAvailable());
     }
 
     @Bean
     @ConditionalOnMissingBean(name = "correlationIdFilterRegistration")
     public FilterRegistrationBean<CorrelationIdFilter> correlationIdFilterRegistration(CorrelationIdFilter filter) {
         FilterRegistrationBean<CorrelationIdFilter> registration = new FilterRegistrationBean<>(filter);
-        registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 60);
         registration.addUrlPatterns("/*");
         registration.setName("correlationIdFilter");
         return registration;

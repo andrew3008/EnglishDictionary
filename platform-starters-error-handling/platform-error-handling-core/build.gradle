@@ -4,6 +4,8 @@ plugins {
     id 'platform.testing'
 }
 
+group = 'space.br1440.platform.starters.errorhandling'
+
 platformJavaLibrary {
     bomProjectPath = ':spring-boot-starter-platform-bom'
 }
@@ -22,59 +24,42 @@ ext {
 }
 
 dependencies {
-    // API
     api 'org.springframework.boot:spring-boot-starter'
     api 'org.springframework:spring-web'
     api 'space.br1440.platform:error-handling-model'
-    api project(':spring-boot-starter-platform-tracing-api')
+    api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
 
-    // Implementation
     implementation 'org.apache.commons:commons-lang3'
     implementation 'org.slf4j:slf4j-api'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation project(':platform-starters-common:platform-starters-common-util')
 
-
-    // === Optional / conditional dependencies (compileOnly) ===
-
-    // Spring Security
     compileOnly 'org.springframework.boot:spring-boot-starter-security'
     compileOnly 'org.springframework.security:spring-security-oauth2-core'
 
-    // Persistence
     compileOnly 'org.springframework:spring-tx'
     compileOnly 'org.jooq:jooq'
 
-    // Validation API
     compileOnly 'jakarta.validation:jakarta.validation-api'
 
-    // Observability
     compileOnly 'io.micrometer:micrometer-core'
 
-    // Annotation Processors
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-
-    // === Test infrastructure ===
-
-    // Базовые тестовые зависимости
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-    // Разделяемые тестовые зависимости — из каталога `gradle/libs.versions.toml`
     testImplementation libs.archunit.junit5
     testImplementation libs.bundles.testcontainers
     testImplementation libs.testcontainers.postgresql
     testImplementation libs.testcontainers.kafka
 
-    // Redis
     testImplementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
-    // Kafka
     testImplementation 'org.springframework.boot:spring-boot-autoconfigure'
 
-    // Persistence
     testImplementation 'org.postgresql:postgresql'
     testImplementation 'org.springframework:spring-jdbc'
     testImplementation 'com.zaxxer:HikariCP'
@@ -82,29 +67,23 @@ dependencies {
     testImplementation 'org.hibernate.orm:hibernate-core'
     testImplementation 'org.springframework:spring-orm'
 
-    // Validation
     testImplementation 'jakarta.validation:jakarta.validation-api'
     testImplementation 'org.hibernate.validator:hibernate-validator'
     testImplementation "org.glassfish.expressly:expressly:${coreTestVersions.expressly}"
 
-     // Security / OAuth2
     testImplementation 'org.springframework.security:spring-security-core'
     testImplementation 'org.springframework.security:spring-security-oauth2-core'
     testImplementation 'org.springframework.security:spring-security-oauth2-client'
 
-    // Observability
     testImplementation 'io.micrometer:micrometer-core'
 
-    // Reactive stack
     testImplementation 'org.springframework:spring-webflux'
     testImplementation 'org.springframework:spring-websocket'
 
-    // Messaging
     testImplementation 'org.springframework.kafka:spring-kafka'
     testImplementation 'org.springframework.amqp:spring-amqp'
     testImplementation 'org.springframework.amqp:spring-rabbit'
 
-    // Resilience
     testImplementation "io.github.resilience4j:resilience4j-circuitbreaker:${coreTestVersions.resilience4j}"
 
     testImplementation 'io.lettuce:lettuce-core'
@@ -116,17 +95,13 @@ dependencies {
         exclude group: 'at.yawk.lz4', module: 'lz4-java'
     }
 
-    // Netty
     testImplementation "io.netty:netty-codec-dns:${coreTestVersions.netty}"
     testImplementation "io.netty:netty-resolver-dns:${coreTestVersions.netty}"
     testImplementation "io.netty:netty-handler:${coreTestVersions.netty}"
 
-    // Feign-клиенты
     testImplementation "io.github.openfeign:feign-core:${coreTestVersions.feign}"
 
-    // Spring Vault
     testImplementation "org.springframework.vault:spring-vault-core:${coreTestVersions.vault}"
 
-    // Protobuf
     testImplementation "com.google.protobuf:protobuf-java:${coreTestVersions.protobufJava}"
 }

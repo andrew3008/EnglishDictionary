@@ -1,0 +1,154 @@
+package space.br1440.platform.tracing.otel.javaagent.sampler;
+
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+
+import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
+
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
+import io.opentelemetry.sdk.trace.samplers.SamplingResult;
+import org.junit.jupiter.api.Test;
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
+import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
+import space.br1440.platform.tracing.test.harness.SamplerHarness;
+
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Контракт {@code RouteRatioRule} на уровне {@code CompositeSampler} (PR-E gap-check:
+ * route-ratio ветка не имела ни одного unit-теста; ADR-runtime-sampling-policy, разделы 2.1/2.3).
+ */
+class CompositeSamplerRouteRatioTest {
+
+    private static final AttributeKey<String> REASON =
+            AttributeKey.stringKey(PlatformAttributes.PLATFORM_SAMPLING_REASON);
+
+    @Test
+    void route_ratio_1_samples_when_global_ratio_0() {
+        // Route-правило стоит в цепочке ДО DefaultRatioRule — глобальный 0.0 не должен задавить route 1.0.
+        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(
+                true, Map.of("/api/v1/critical", 1.0), 0.0);
+        CompositeSampler sampler = new CompositeSampler(
+                holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
+
+        SamplingResult result = SamplerHarness.of(sampler)
+                .spanKind(SpanKind.SERVER)
+                .putStringAttribute("url.path", "/api/v1/critical/checkout")
+                .sample();
+
+        SamplerDecisionAssert.assertThat(result).isRecordAndSample();
+        assertThat(result.getAttributes().get(REASON))
+                .isEqualTo(PlatformSamplingReasons.ROUTE_RATIO);
+    }
+
+    @Test
+    void route_ratio_0_drops_when_global_ratio_1() {
+        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(
+                true, Map.of("/api/v1/noisy", 0.0), 1.0);
+        CompositeSampler sampler = new CompositeSampler(
+                holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
+
+        SamplingResult result = SamplerHarness.of(sampler)
+                .spanKind(SpanKind.SERVER)
+                .putStringAttribute("url.path", "/api/v1/noisy/search")
+                .sample();
+
+        SamplerDecisionAssert.assertThat(result).isDrop();
+        assertThat(result.getAttributes().get(REASON))
+                .isEqualTo(PlatformSamplingReasons.ROUTE_RATIO_DROP);
+    }
+
+    @Test
+    void path_outside_route_ratios_falls_back_to_global_ratio() {
+        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(
+                true, Map.of("/api/v1/noisy", 0.0), 1.0);
+        CompositeSampler sampler = new CompositeSampler(
+                holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
+
+        SamplingResult result = SamplerHarness.of(sampler)
+                .spanKind(SpanKind.SERVER)
+                .putStringAttribute("url.path", "/api/v1/orders")
+                .sample();
+
+        SamplerDecisionAssert.assertThat(result).isRecordAndSample();
+        assertThat(result.getAttributes().get(REASON))
+                .isEqualTo(PlatformSamplingReasons.GLOBAL_RATIO);
+    }
+
+    @Test
+    void decision_is_deterministic_by_traceId_for_fractional_ratio() {
+        // ADR раздел 2.3: traceIdRatioBased — функция traceId; повторные вызовы и независимые
+        // инстансы сэмплера с одинаковой конфигурацией обязаны давать одно и то же решение.
+        TracingSettingsSource holderA = TracingSettingsSource.isolatedSampling(true, Map.of("/api", 0.5), 0.0);
+        TracingSettingsSource holderB = TracingSettingsSource.isolatedSampling(true, Map.of("/api", 0.5), 0.0);
+        CompositeSampler samplerA = new CompositeSampler(
+                holderA, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
+        CompositeSampler samplerB = new CompositeSampler(
+                holderB, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
+
+        String traceId = "0af7651916cd43dd8448eb211c80319c";
+        SamplingDecision first = sampleDecision(samplerA, traceId);
+        for (int i = 0; i < 100; i++) {
+            assertThat(sampleDecision(samplerA, traceId))
+                    .as("повторный вызов #%s с тем же traceId", i)
+                    .isEqualTo(first);
+        }
+        assertThat(sampleDecision(samplerB, traceId))
+                .as("независимый инстанс с той же конфигурацией")
+                .isEqualTo(first);
+    }
+
+    @Test
+    void overlapping_prefixes_most_specific_wins_deterministically() {
+        // PR-9G (Opus B2): /api=0.0, /api/v2=0.0, /api/v2/orders=1.0 → самый специфичный (1.0) сэмплирует.
+        // LinkedHashMap в «обратном» порядке доказывает независимость от порядка вставки.
+        java.util.LinkedHashMap<String, Double> ratios = new java.util.LinkedHashMap<>();
+        ratios.put("/api", 0.0);
+        ratios.put("/api/v2", 0.0);
+        ratios.put("/api/v2/orders", 1.0);
+        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, ratios, 0.0);
+        CompositeSampler sampler = new CompositeSampler(
+                holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
+
+        SamplingResult result = SamplerHarness.of(sampler)
+                .spanKind(SpanKind.SERVER)
+                .putStringAttribute("url.path", "/api/v2/orders/123")
+                .sample();
+
+        SamplerDecisionAssert.assertThat(result).isRecordAndSample();
+        assertThat(result.getAttributes().get(REASON))
+                .isEqualTo(PlatformSamplingReasons.ROUTE_RATIO);
+    }
+
+    @Test
+    void hard_drop_beats_route_ratio_1() {
+        // Порядок цепочки (ADR 2.1): HardDropRule (#2) стоит до RouteRatioRule (#6).
+        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(
+                true, Map.of("/api/v1/critical", 1.0), 1.0);
+        CompositeSampler sampler = new CompositeSampler(
+                holder, CategoryBSamplingAccess.snapshot(List.of("/api/v1/critical"), List.of("on")));
+
+        SamplingResult result = SamplerHarness.of(sampler)
+                .spanKind(SpanKind.SERVER)
+                .putStringAttribute("url.path", "/api/v1/critical/checkout")
+                .sample();
+
+        SamplerDecisionAssert.assertThat(result).isDrop();
+        assertThat(result.getAttributes().get(REASON))
+                .isEqualTo(PlatformSamplingReasons.DROP_PATH);
+    }
+
+    private static SamplingDecision sampleDecision(CompositeSampler sampler, String traceId) {
+        return SamplerHarness.of(sampler)
+                .traceId(traceId)
+                .spanKind(SpanKind.SERVER)
+                .putStringAttribute("url.path", "/api/v1/orders")
+                .sample()
+                .getDecision();
+    }
+}

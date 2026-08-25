@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-08-16T19:00:00Z",
+  "level": "ERROR",
+  "logger": "space.br1440.platform.logging.example.Owner",
+  "message": "Operation failed",
+  "event_code": "APP-FAIL-001",
+  "error_stacktrace": "java.lang.IllegalStateException\n\tat <platform-frame>"
+}

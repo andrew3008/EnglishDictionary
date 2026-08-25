@@ -1,0 +1,103 @@
+package space.br1440.platform.tracing.otel.javaagent.configuration;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
+class PlatformTracingDefaultsProviderTest {
+
+    @Test
+    void supply_returns_all_BSP_defaults() {
+        // when
+        Map<String, String> defaults = new PlatformTracingDefaultsProvider().supply();
+
+        // then
+        assertThat(defaults)
+                .containsEntry("otel.bsp.max.queue.size",
+                        String.valueOf(OtelSdkDefaults.DEFAULT_BSP_MAX_QUEUE_SIZE))
+                .containsEntry("otel.bsp.max.export.batch.size",
+                        String.valueOf(OtelSdkDefaults.DEFAULT_BSP_MAX_EXPORT_BATCH_SIZE))
+                .containsEntry("otel.bsp.schedule.delay",
+                        String.valueOf(OtelSdkDefaults.DEFAULT_BSP_SCHEDULE_DELAY.toMillis()))
+                .containsEntry("otel.bsp.export.timeout",
+                        String.valueOf(OtelSdkDefaults.DEFAULT_BSP_EXPORT_TIMEOUT.toMillis()));
+    }
+
+    @Test
+    void supply_returns_all_span_limit_defaults() {
+        // when
+        Map<String, String> defaults = new PlatformTracingDefaultsProvider().supply();
+
+        // then
+        assertThat(defaults)
+                .containsEntry("otel.span.attribute.count.limit",
+                        String.valueOf(OtelSdkDefaults.DEFAULT_SPAN_ATTRIBUTE_COUNT_LIMIT))
+                .containsEntry("otel.span.attribute.value.length.limit",
+                        String.valueOf(OtelSdkDefaults.DEFAULT_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT))
+                .containsEntry("otel.span.event.count.limit",
+                        String.valueOf(OtelSdkDefaults.DEFAULT_SPAN_EVENT_COUNT_LIMIT))
+                .containsEntry("otel.span.link.count.limit",
+                        String.valueOf(OtelSdkDefaults.DEFAULT_SPAN_LINK_COUNT_LIMIT))
+                .containsEntry("otel.attribute.count.limit",
+                        String.valueOf(OtelSdkDefaults.DEFAULT_ATTRIBUTE_COUNT_LIMIT));
+    }
+
+    @Test
+    void supply_returns_canonical_logging_mdc_key_defaults() {
+        // when
+        Map<String, String> defaults = new PlatformTracingDefaultsProvider().supply();
+
+        // then
+        assertThat(defaults)
+                .containsEntry("otel.instrumentation.common.logging.trace-id-key", "traceId")
+                .containsEntry("otel.instrumentation.common.logging.span-id-key", "spanId")
+                .containsEntry("otel.instrumentation.common.logging.trace-flags-key", "traceFlags");
+    }
+
+    @Test
+    void supply_does_not_contain_empty_values() {
+        // when
+        Map<String, String> defaults = new PlatformTracingDefaultsProvider().supply();
+
+        // then: все значения непустые.
+        assertThat(defaults).isNotEmpty();
+        defaults.forEach((key, value) ->
+                assertThat(value).as("значение для ключа '%s' не должно быть пустым", key).isNotBlank());
+    }
+
+    @Test
+    void supply_without_env_var_does_not_override_overflow_policy() {
+        Map<String, String> defaults = new PlatformTracingDefaultsProvider().supply();
+
+        assertThat(defaults).doesNotContainKey(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY);
+        assertThat(ExtensionDefaults.DEFAULT_QUEUE_OVERFLOW_POLICY).isEqualTo("DROP_OLDEST");
+    }
+
+    @Test
+    void supply_env_var_overrides_default_overflow_policy() {
+        PlatformTracingDefaultsProvider provider =
+                new PlatformTracingDefaultsProvider(name ->
+                        ExtensionEnvironmentVariables.QUEUE_OVERFLOW_POLICY.equals(name) ? "UPSTREAM" : null);
+
+        Map<String, String> defaults = provider.supply();
+
+        assertThat(defaults)
+                .containsEntry(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY, "UPSTREAM");
+    }
+
+    @Test
+    void supply_returns_independent_copy_on_each_call() {
+        // given
+        PlatformTracingDefaultsProvider provider = new PlatformTracingDefaultsProvider();
+
+        // when: модификация результата первого вызова не должна повлиять на следующий вызов.
+        Map<String, String> first = provider.supply();
+        first.put("otel.injected", "yes");
+        Map<String, String> second = provider.supply();
+
+        // then
+        assertThat(second).doesNotContainKey("otel.injected");
+    }
+}

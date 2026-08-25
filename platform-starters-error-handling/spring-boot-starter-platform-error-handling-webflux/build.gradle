@@ -4,54 +4,39 @@ plugins {
     id 'platform.testing'
 }
 
+group = 'space.br1440.platform.starters.errorhandling'
+
 platformJavaLibrary {
     bomProjectPath = ':spring-boot-starter-platform-bom'
 }
 
 dependencies {
-    // API
-    api project(':platform-error-handling-core')
+    api project(':platform-starters-error-handling:platform-error-handling-core')
     api 'org.springframework.boot:spring-boot-starter-webflux'
 
-    // Implementation
     implementation 'io.micrometer:context-propagation'
 
-
-    // === Optional / conditional dependencies (compileOnly) ===
-
-    // Spring Security
     compileOnly 'org.springframework.boot:spring-boot-starter-security'
 
-    // Observability
     compileOnly 'io.micrometer:micrometer-core'
 
-    // Validation API
     compileOnly 'jakarta.validation:jakarta.validation-api'
 
-    // Annotation Processors
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-
-    // === Test infrastructure ===
-
-    // Базовые тестовые зависимости
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testCompileOnly 'org.junit.platform:junit-platform-launcher'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-    // Reactive stack
     testImplementation 'io.projectreactor:reactor-test'
     testImplementation libs.blockhound
 
-    // Security / OAuth2
     testImplementation 'org.springframework.boot:spring-boot-starter-security'
 
-    // Observability
     testImplementation 'io.micrometer:micrometer-core'
 
-    // Validation
     testRuntimeOnly 'org.hibernate.validator:hibernate-validator'
 }
 

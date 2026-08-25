@@ -71,7 +71,7 @@ repositories {
 
 ```groovy
 dependencies {
-    implementation project(":spring-boot-starter-platform-common:spring-boot-starter-header-based-routing")
+    implementation project(":platform-starters-common:spring-boot-starter-platform-common-header-based-routing")
 }
 ```
 

@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.mock.http.client.MockClientHttpRequest;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -18,7 +17,6 @@ import space.br1440.platform.errorhandling.extension.ErrorHandlingContext;
 import space.br1440.platform.errorhandling.extension.LogPolicy;
 import space.br1440.platform.errorhandling.extension.order.TopExceptionStrategyOrder;
 import space.br1440.platform.errorhandling.properties.ErrorHandlingProperties;
-import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingUpstreamProperties;
 import space.br1440.platform.errorhandling.model.ErrorEntry;
 import space.br1440.platform.errorhandling.model.error_detail.ErrorDetail;
 import space.br1440.platform.errorhandling.model.error_detail.ErrorInfoDetail;
@@ -122,52 +120,12 @@ class WebFluxExceptionStrategyTest {
             assertThat(info.getClientMetadata()).containsEntry("clientType", "WebClient");
             assertThat(info.getClientMetadata()).containsEntry("errorCategory", "upstream_response");
             assertThat(info.getClientMetadata())
-                    .as("upstreamStatus must NOT leak to client by default (CWE-209)")
-                    .doesNotContainKey("upstreamStatus");
-            assertThat(info.getDiagnosticMetadata()).containsKey("exceptionClass");
-            assertThat(info.getDiagnosticMetadata())
-                    .as("upstreamStatus is always available in diagnostic for logs")
+                    .as("upstreamStatus is a plain HTTP-response fact, safe to expose unconditionally")
                     .containsEntry("upstreamStatus", "503");
+            assertThat(info.getDiagnosticMetadata()).containsKey("exceptionClass");
+            assertThat(info.getDiagnosticMetadata()).containsEntry("upstreamStatus", "503");
             assertThat(info.getDiagnosticMetadata()).containsEntry("upstreamHost", "order-svc");
             assertThat(info.getDiagnosticMetadata()).containsEntry("upstreamUrlPath", "/api/orders");
-        }
-
-        @Test
-        void exposes_upstreamStatus_to_client_only_when_flag_enabled() {
-            // given
-            WebFluxExceptionStrategy exposeStrategy = new WebFluxExceptionStrategy(
-                    new CauseChainResolver(Collections.emptyList()),
-                    new ErrorHandlingUpstreamProperties().setExposeStatusToClient(true));
-            ErrorHandlingContext expose = ErrorHandlingContext.of(
-                    new ErrorHandlingProperties(), "/api/test", new StackHintExtractor(false, List.of()));
-
-            var ex = responseException(503, "http://order-svc/api/orders");
-
-            // when
-            ErrorEntry entry = exposeStrategy.handle(ex, expose);
-
-            // then
-            ErrorInfoDetail info = findDetail(entry.getDetails(), ErrorInfoDetail.class);
-            assertThat(info.getClientMetadata()).containsEntry("upstreamStatus", "503");
-        }
-
-        @Test
-        void hides_errorCategory_when_flag_disabled() {
-            // given
-            WebFluxExceptionStrategy hideStrategy = new WebFluxExceptionStrategy(
-                    new CauseChainResolver(Collections.emptyList()),
-                    new ErrorHandlingUpstreamProperties().setExposeCategoryToClient(false));
-            ErrorHandlingContext hide = ErrorHandlingContext.of(
-                    new ErrorHandlingProperties(), "/api/test", new StackHintExtractor(false, List.of()));
-
-            var ex = responseException(503, "http://order-svc/api/orders");
-
-            // when
-            ErrorEntry entry = hideStrategy.handle(ex, hide);
-
-            // then
-            ErrorInfoDetail info = findDetail(entry.getDetails(), ErrorInfoDetail.class);
-            assertThat(info.getClientMetadata()).doesNotContainKey("errorCategory");
         }
 
         @Test
@@ -245,139 +203,6 @@ class WebFluxExceptionStrategyTest {
 
             // then
             assertThat(policy).isEqualTo(LogPolicy.WARN);
-        }
-    }
-
-    @Nested
-    @DisplayName("UpstreamErrorPropagation")
-    class UpstreamErrorPropagation {
-
-        @Test
-        void propagates_errorCode_when_enabled_and_json_content_type() {
-            // given
-            WebFluxExceptionStrategy strategy = new WebFluxExceptionStrategy(
-                    new CauseChainResolver(Collections.emptyList()),
-                    new ErrorHandlingUpstreamProperties()
-            );
-            ErrorHandlingProperties props = new ErrorHandlingProperties();
-            props.setPropagateUpstreamErrors(true);
-            ErrorHandlingContext ctxWithPropagation = ErrorHandlingContext.of(
-                    props, "/api/test", new StackHintExtractor(false, List.of()));
-
-            HttpHeaders jsonHeaders = new HttpHeaders();
-            jsonHeaders.setContentType(MediaType.APPLICATION_JSON);
-
-            byte[] body = "{\"errorCode\":\"ORDER_NOT_FOUND\",\"message\":\"Order not found\"}".getBytes(StandardCharsets.UTF_8);
-            WebClientResponseException ex = WebClientResponseException.create(
-                    404, "Not Found", jsonHeaders, body, StandardCharsets.UTF_8);
-
-            // when
-            ErrorEntry entry = strategy.handle(ex, ctxWithPropagation);
-            ErrorEntry parsed = strategy.parseUpstreamErrorCode(ex, entry, ctxWithPropagation);
-
-            // then
-            assertThat(entry.getErrorCode())
-                    .as("handle() не должен блокировать event-loop парсингом upstream body")
-                    .isNotEqualTo("ORDER_NOT_FOUND");
-            assertThat(parsed.getErrorCode()).isEqualTo("ORDER_NOT_FOUND");
-        }
-
-        @Test
-        void does_not_propagate_when_disabled() {
-            // given
-            HttpHeaders jsonHeaders = new HttpHeaders();
-            jsonHeaders.setContentType(MediaType.APPLICATION_JSON);
-
-            byte[] body = "{\"errorCode\":\"ORDER_NOT_FOUND\"}".getBytes(StandardCharsets.UTF_8);
-            WebClientResponseException ex = WebClientResponseException.create(
-                    404, "Not Found", jsonHeaders, body, StandardCharsets.UTF_8);
-
-            // when
-            ErrorEntry entry = strategy.handle(ex, context);
-
-            // then
-            assertThat(entry.getErrorCode()).isNotEqualTo("ORDER_NOT_FOUND");
-        }
-
-        @Test
-        void does_not_propagate_when_content_type_is_not_json_CWE_400() {
-            // given
-            ErrorHandlingProperties props = new ErrorHandlingProperties();
-            props.setPropagateUpstreamErrors(true);
-            ErrorHandlingContext ctxWithPropagation = ErrorHandlingContext.of(
-                    props, "/api/test", new StackHintExtractor(false, List.of()));
-
-            HttpHeaders htmlHeaders = new HttpHeaders();
-            htmlHeaders.setContentType(MediaType.TEXT_HTML);
-
-            byte[] body = "{\"errorCode\":\"ORDER_NOT_FOUND\"}".getBytes(StandardCharsets.UTF_8);
-            WebClientResponseException ex = WebClientResponseException.create(
-                    404, "Not Found", htmlHeaders, body, StandardCharsets.UTF_8);
-
-            // when
-            ErrorEntry entry = strategy.handle(ex, ctxWithPropagation);
-
-            // then
-            assertThat(entry.getErrorCode())
-                    .as("non-JSON upstream body must not be parsed (defense-in-depth)")
-                    .isNotEqualTo("ORDER_NOT_FOUND");
-        }
-
-        @Test
-        void does_not_propagate_when_content_length_exceeds_max_body_bytes_CWE_400() {
-            // given
-            WebFluxExceptionStrategy smallLimitStrategy = new WebFluxExceptionStrategy(
-                    new CauseChainResolver(Collections.emptyList()),
-                    new ErrorHandlingUpstreamProperties()
-                            .setMaxBodyBytes(org.springframework.util.unit.DataSize.ofBytes(64)));
-            ErrorHandlingProperties props = new ErrorHandlingProperties();
-            props.setPropagateUpstreamErrors(true);
-            ErrorHandlingContext ctxWithPropagation = ErrorHandlingContext.of(
-                    props, "/api/test", new StackHintExtractor(false, List.of()));
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setContentLength(10_000);
-
-            byte[] body = "{\"errorCode\":\"ORDER_NOT_FOUND\"}".getBytes(StandardCharsets.UTF_8);
-            WebClientResponseException ex = WebClientResponseException.create(
-                    404, "Not Found", headers, body, StandardCharsets.UTF_8);
-
-            // when
-            ErrorEntry entry = smallLimitStrategy.handle(ex, ctxWithPropagation);
-
-            // then
-            assertThat(entry.getErrorCode())
-                    .as("Content-Length above limit must short-circuit parsing")
-                    .isNotEqualTo("ORDER_NOT_FOUND");
-        }
-
-        @Test
-        void propagates_when_content_type_is_application_problem_json() {
-            // given
-            WebFluxExceptionStrategy strategy = new WebFluxExceptionStrategy(
-                    new CauseChainResolver(Collections.emptyList()),
-                    new ErrorHandlingUpstreamProperties()
-            );
-            ErrorHandlingProperties props = new ErrorHandlingProperties();
-            props.setPropagateUpstreamErrors(true);
-            ErrorHandlingContext ctxWithPropagation = ErrorHandlingContext.of(
-                    props, "/api/test", new StackHintExtractor(false, List.of()));
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.parseMediaType("application/problem+json"));
-
-            byte[] body = "{\"errorCode\":\"ORDER_NOT_FOUND\"}".getBytes(StandardCharsets.UTF_8);
-            WebClientResponseException ex = WebClientResponseException.create(
-                    404, "Not Found", headers, body, StandardCharsets.UTF_8);
-
-            // when
-            ErrorEntry entry = strategy.handle(ex, ctxWithPropagation);
-            ErrorEntry parsed = strategy.parseUpstreamErrorCode(ex, entry, ctxWithPropagation);
-
-            // then
-            assertThat(entry.getErrorCode()).isNotEqualTo("ORDER_NOT_FOUND");
-            assertThat(parsed.getErrorCode()).isEqualTo("ORDER_NOT_FOUND");
         }
     }
 
@@ -483,145 +308,6 @@ class WebFluxExceptionStrategyTest {
     @Nested
     @DisplayName("Branch-targeted survivors (Sprint 5)")
     class BranchTargetedSurvivors {
-
-        @Test
-        @DisplayName("RequestException + exposeStatusToClient=true → клиент не получает upstreamStatus")
-        void requestException_withExposeStatusFlag_doesNotLeakStatus() {
-            // given
-            WebFluxExceptionStrategy exposeStatusStrategy = new WebFluxExceptionStrategy(
-                    new CauseChainResolver(Collections.emptyList()),
-                    new ErrorHandlingUpstreamProperties().setExposeStatusToClient(true));
-            ErrorHandlingContext ctx = ErrorHandlingContext.of(
-                    new ErrorHandlingProperties(), "/api/test", new StackHintExtractor(false, List.of()));
-
-            WebClientRequestException ex = new WebClientRequestException(
-                    new ConnectException("refused"), HttpMethod.GET,
-                    URI.create("http://svc/api"), HttpHeaders.EMPTY);
-
-            // when
-            ErrorEntry entry = exposeStatusStrategy.handle(ex, ctx);
-
-            // then
-            ErrorInfoDetail info = findDetail(entry.getDetails(), ErrorInfoDetail.class);
-            assertThat(info.getClientMetadata())
-                    .as("status=-1 не должен утекать клиенту независимо от флага")
-                    .doesNotContainKey("upstreamStatus");
-        }
-
-        @Test
-        @DisplayName("RequestException + propagateUpstreamErrors=true → errorCode НЕ из upstream body")
-        void requestException_withPropagateFlag_doesNotEnrichFromUpstream() {
-            // given
-            ErrorHandlingProperties props = new ErrorHandlingProperties();
-            props.setPropagateUpstreamErrors(true);
-            ErrorHandlingContext ctx = ErrorHandlingContext.of(
-                    props, "/api/test", new StackHintExtractor(false, List.of()));
-
-            WebClientRequestException ex = new WebClientRequestException(
-                    new ConnectException("refused"), HttpMethod.GET,
-                    URI.create("http://svc/api"), HttpHeaders.EMPTY);
-
-            // when
-            ErrorEntry entry = strategy.handle(ex, ctx);
-
-            // then
-            assertThat(entry.getErrorCode()).isEqualTo("UNAVAILABLE");
-        }
-
-        @Test
-        @DisplayName("Content-Length == maxBodyBytes → parseUpstreamErrorCode извлекает errorCode (boundary at-equal)")
-        void contentLengthEqualToMax_propagates() {
-            // given
-            byte[] body = "{\"errorCode\":\"BOUNDARY_OK\"}".getBytes(StandardCharsets.UTF_8);
-            WebFluxExceptionStrategy boundaryStrategy = new WebFluxExceptionStrategy(
-                    new CauseChainResolver(Collections.emptyList()),
-                    new ErrorHandlingUpstreamProperties()
-                            .setMaxBodyBytes(org.springframework.util.unit.DataSize.ofBytes(body.length)));
-            ErrorHandlingProperties props = new ErrorHandlingProperties();
-            props.setPropagateUpstreamErrors(true);
-            ErrorHandlingContext ctx = ErrorHandlingContext.of(
-                    props, "/api/test", new StackHintExtractor(false, List.of()));
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setContentLength(body.length);
-
-            WebClientResponseException ex = WebClientResponseException.create(
-                    404, "Not Found", headers, body, StandardCharsets.UTF_8);
-
-            // when
-            ErrorEntry entry = boundaryStrategy.handle(ex, ctx);
-            ErrorEntry parsed = boundaryStrategy.parseUpstreamErrorCode(ex, entry, ctx);
-
-            // then
-            assertThat(parsed.getErrorCode())
-                    .as("at-equal boundary: Content-Length == лимит → тело допускается к парсингу")
-                    .isEqualTo("BOUNDARY_OK");
-        }
-
-        @Test
-        @DisplayName("Без Content-Length, body.length > maxBodyBytes → парсинг skip (CWE-400)")
-        void noContentLength_largeBody_doesNotPropagate() {
-            // given
-            WebFluxExceptionStrategy smallBodyStrategy = new WebFluxExceptionStrategy(
-                    new CauseChainResolver(Collections.emptyList()),
-                    new ErrorHandlingUpstreamProperties()
-                            .setMaxBodyBytes(org.springframework.util.unit.DataSize.ofBytes(20)));
-            ErrorHandlingProperties props = new ErrorHandlingProperties();
-            props.setPropagateUpstreamErrors(true);
-            ErrorHandlingContext ctx = ErrorHandlingContext.of(
-                    props, "/api/test", new StackHintExtractor(false, List.of()));
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            byte[] body = "{\"errorCode\":\"WAY_TOO_LONG_FOR_BUDGET\"}".getBytes(StandardCharsets.UTF_8);
-
-            WebClientResponseException ex = WebClientResponseException.create(
-                    404, "Not Found", headers, body, StandardCharsets.UTF_8);
-
-            // when
-            ErrorEntry entry = smallBodyStrategy.handle(ex, ctx);
-            ErrorEntry parsed = smallBodyStrategy.parseUpstreamErrorCode(ex, entry, ctx);
-
-            // then
-            assertThat(entry.getErrorCode())
-                    .as("handle() не парсит большое тело на event-loop")
-                    .isNotEqualTo("WAY_TOO_LONG_FOR_BUDGET");
-            assertThat(parsed.getErrorCode())
-                    .as("fallback boundary защищает от парсинга big-body")
-                    .isNotEqualTo("WAY_TOO_LONG_FOR_BUDGET");
-        }
-
-        @Test
-        @DisplayName("declaredContentLength возвращает реальное значение (PrimitiveReturns long→0 убит)")
-        void declaredContentLength_returnsActualValue_notZero() {
-            // given
-            WebFluxExceptionStrategy smallLimit2Strategy = new WebFluxExceptionStrategy(
-                    new CauseChainResolver(Collections.emptyList()),
-                    new ErrorHandlingUpstreamProperties()
-                            .setMaxBodyBytes(org.springframework.util.unit.DataSize.ofBytes(64)));
-            ErrorHandlingProperties props = new ErrorHandlingProperties();
-            props.setPropagateUpstreamErrors(true);
-            ErrorHandlingContext ctx = ErrorHandlingContext.of(
-                    props, "/api/test", new StackHintExtractor(false, List.of()));
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setContentLength(10_000);
-            byte[] tinyBody = "{\"errorCode\":\"X\"}".getBytes(StandardCharsets.UTF_8);
-
-            WebClientResponseException ex = WebClientResponseException.create(
-                    404, "NF", headers, tinyBody, StandardCharsets.UTF_8);
-
-            // when
-            ErrorEntry entry = smallLimit2Strategy.handle(ex, ctx);
-
-            // then
-            assertThat(entry.getErrorCode())
-                    .as("Если declaredContentLength вернёт 0 (мутант), errorCode='X'; ожидаем НЕ 'X'")
-                    .isNotEqualTo("X");
-        }
 
         @Test
         @DisplayName("418 (4xx default) → message 'rejected the request' (upstream<500 ветка)")

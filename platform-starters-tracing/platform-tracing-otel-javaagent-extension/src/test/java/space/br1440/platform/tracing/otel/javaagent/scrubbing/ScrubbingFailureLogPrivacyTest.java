@@ -1,0 +1,170 @@
+package space.br1440.platform.tracing.otel.javaagent.scrubbing;
+
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.BoundedThrowableRenderer;
+import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+/**
+ * DEBUG не является более доверенным приёмником, чем WARN/ERROR.
+ */
+class ScrubbingFailureLogPrivacyTest {
+
+    private static final String SECRET = "card=4111111111111111";
+
+    private final AgentLogCapture capture = new AgentLogCapture();
+
+    @BeforeEach
+    void enableDebug() {
+        capture.install();
+        capture.applyLevel(AgentLogLevel.DEBUG);
+        PlatformLogControl.shared().setLevel(AgentLogLevel.DEBUG);
+    }
+
+    @AfterEach
+    void restore() {
+        capture.restore();
+    }
+
+    @Test
+    @DisplayName("Neither ERROR nor DEBUG publishes the exception message, its cause or a rendered stack trace")
+    void debugChannelNeverCarriesTheSensitiveInput() {
+        Throwable failure = new IllegalStateException(
+                "rule failed on " + SECRET,
+                new IllegalArgumentException("nested " + SECRET));
+
+        ScrubbingFailureLog.error(new RateLimitedLogger(getClass()), "test.rule_failed", failure);
+
+        List<AgentLogEvent> events = capture.events();
+        assertThat(events).isNotEmpty();
+        assertThat(events).allSatisfy(event -> {
+            assertThat(event.message()).doesNotContain(SECRET, "rule failed on", "nested ");
+            assertThat(event.fields().values().toString())
+                    .doesNotContain(SECRET, "rule failed on", "nested ");
+            if (event.throwableDigest() != null) {
+                assertThat(event.throwableDigest())
+                        .doesNotContain(SECRET, "rule failed on", "nested ");
+            }
+        });
+
+        assertThat(events).anySatisfy(event -> {
+            assertThat(event.level()).isEqualTo(AgentLogLevel.ERROR);
+            assertThat(event.throwableDigest())
+                    .contains("java.lang.IllegalStateException")
+                    .contains("java.lang.IllegalArgumentException")
+                    .contains("<platform-frame>");
+        });
+    }
+
+    @Test
+    @DisplayName("Detail is skipped entirely when the DEBUG channel is disabled")
+    void detailIsNotRenderedWhenDebugIsDisabled() {
+        PlatformLogControl.shared().setLevel(AgentLogLevel.WARN);
+
+        ScrubbingFailureLog.warn(new RateLimitedLogger(getClass()),
+                "test.rule_failed", new IllegalStateException(SECRET));
+
+        assertThat(capture.events())
+                .noneMatch(event -> event.level() == AgentLogLevel.DEBUG);
+    }
+
+    @Test
+    @DisplayName("The digest bounds the cause chain and never reads getMessage()")
+    void digestIsBoundedAndMessageFree() {
+        Throwable deepest = new IllegalStateException(SECRET);
+        Throwable current = deepest;
+        for (int i = 0; i < 10; i++) {
+            current = new IllegalStateException(SECRET, current);
+        }
+
+        String rendered = BoundedThrowableRenderer.render(current);
+
+        assertThat(rendered).doesNotContain(SECRET);
+        assertThat(rendered).contains("cause chain truncated");
+        assertThat(rendered.lines().filter(line -> line.contains("caused by"))).hasSize(4);
+    }
+
+    @Test
+    @DisplayName("A throwable that fails to render is still reported by class name only")
+    void hostileThrowableDoesNotBreakTheFailClosedPath() {
+        Throwable hostile = new IllegalStateException(SECRET) {
+            @Override
+            public StackTraceElement[] getStackTrace() {
+                throw new UnsupportedOperationException(SECRET);
+            }
+        };
+
+        String rendered = BoundedThrowableRenderer.render(hostile);
+
+        assertThat(rendered).doesNotContain(SECRET);
+        assertThat(rendered).contains("detail rendering failed");
+    }
+
+    @Test
+    @DisplayName("A synthetic external stack frame carrying a secret in its method/file/class name is never logged")
+    void syntheticStackFrameContainingSecretIsNeverLogged() {
+        Throwable failure = new IllegalStateException("boom");
+        failure.setStackTrace(new StackTraceElement[] {
+                new StackTraceElement("com.attacker." + SECRET, "call", "leak-" + SECRET + ".java", 1)
+        });
+
+        String rendered = BoundedThrowableRenderer.render(failure);
+
+        assertThat(rendered).doesNotContain(SECRET);
+        assertThat(rendered).contains("<external-frame>");
+    }
+
+    @Test
+    @DisplayName("A synthetic frame whose class name merely starts with the platform prefix never leaks its suffix")
+    void platformPrefixSpoofedFrameNeverLeaksSecretSuffix() {
+        Throwable failure = new IllegalStateException("boom");
+        failure.setStackTrace(new StackTraceElement[] {
+                new StackTraceElement("space.br1440.platform.tracing." + SECRET, "call", "leak.java", 1)
+        });
+
+        String rendered = BoundedThrowableRenderer.render(failure);
+
+        assertThat(rendered).doesNotContain(SECRET);
+        assertThat(rendered).contains("<platform-frame>");
+    }
+
+    @Test
+    @DisplayName("A secret placed in the module name of a synthetic frame is never logged")
+    void secretInModuleNameIsNeverLogged() {
+        Throwable failure = new IllegalStateException("boom");
+        failure.setStackTrace(new StackTraceElement[] {
+                new StackTraceElement("module-" + SECRET, "1.0", null,
+                        "com.attacker.Caller", "call", "Caller.java", 1)
+        });
+
+        String rendered = BoundedThrowableRenderer.render(failure);
+
+        assertThat(rendered).doesNotContain(SECRET);
+        assertThat(rendered).contains("<external-frame>");
+    }
+
+    @Test
+    @DisplayName("A fatal error raised while reading a hostile stack trace is propagated, not swallowed")
+    void fatalFailureFromGetStackTraceIsPropagated() {
+        Throwable hostile = new IllegalStateException(SECRET) {
+            @Override
+            public StackTraceElement[] getStackTrace() {
+                throw new OutOfMemoryError(SECRET);
+            }
+        };
+
+        assertThrows(OutOfMemoryError.class, () -> BoundedThrowableRenderer.render(hostile));
+    }
+}

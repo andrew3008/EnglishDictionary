@@ -1,0 +1,17 @@
+plugins {
+    id 'platform.java-library-publish'
+    id 'platform.java-library'
+    id 'platform.testing'
+}
+
+group = 'space.br1440.platform.starters.tracing'
+
+platformJavaLibrary {
+    bomProjectPath = ':spring-boot-starter-platform-bom'
+}
+
+dependencies {
+    api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure')
+    api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webflux')
+    api 'org.springframework.boot:spring-boot-starter-webflux'
+}

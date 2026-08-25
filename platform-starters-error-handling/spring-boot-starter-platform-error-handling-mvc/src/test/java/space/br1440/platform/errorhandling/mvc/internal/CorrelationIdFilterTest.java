@@ -11,6 +11,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import space.br1440.platform.errorhandling.core.constants.ErrorHandlingHeaders;
 import space.br1440.platform.errorhandling.core.constants.ErrorHandlingMdcKeys;
 import space.br1440.platform.errorhandling.core.util.CorrelationIdResolver;
+import space.br1440.platform.errorhandling.model.RequestContext;
 import space.br1440.platform.errorhandling.properties.ErrorHandlingProperties;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,7 +29,7 @@ class CorrelationIdFilterTest {
                 new ErrorHandlingProperties().getCorrelationId(),
                 false
         );
-        filter = new CorrelationIdFilter(resolver);
+        filter = new CorrelationIdFilter(resolver, null);
     }
 
     @AfterEach
@@ -135,6 +136,33 @@ class CorrelationIdFilterTest {
 
         // then
         assertThat(MDC.get(ErrorHandlingMdcKeys.CORRELATION_ID)).isNull();
+    }
+
+    @Test
+    @DisplayName("joint-режим: correlationId берётся из tracingRequestContextSupplier, MDC и response-заголовок не пишутся")
+    void jointMode_readsFromTracingSupplier_skipsMdcAndResponseHeader() throws Exception {
+        // given
+        CorrelationIdResolver resolver = new CorrelationIdResolver(
+                new ErrorHandlingProperties().getCorrelationId(),
+                false
+        );
+        CorrelationIdFilter jointFilter = new CorrelationIdFilter(
+                resolver,
+                () -> RequestContext.builder().correlationId("joint-corr-id").build()
+        );
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        String[] mdcDuringChain = new String[1];
+        FilterChain chain = (req, resp) -> mdcDuringChain[0] = MDC.get(ErrorHandlingMdcKeys.CORRELATION_ID);
+
+        // when
+        jointFilter.doFilter(request, response, chain);
+
+        // then
+        assertThat(request.getAttribute(CorrelationIdFilter.CORRELATION_ID_ATTRIBUTE)).isEqualTo("joint-corr-id");
+        assertThat(mdcDuringChain[0]).isNull();
+        assertThat(response.getHeader(ErrorHandlingHeaders.X_CORRELATION_ID)).isNull();
     }
 
     @Test

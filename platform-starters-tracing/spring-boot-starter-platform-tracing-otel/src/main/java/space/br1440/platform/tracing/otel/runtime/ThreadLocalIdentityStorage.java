@@ -1,0 +1,144 @@
+package space.br1440.platform.tracing.otel.runtime;
+
+import java.util.Objects;
+import java.util.Optional;
+
+import org.slf4j.MDC;
+
+import space.br1440.platform.tracing.api.context.CorrelationScope;
+import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
+import space.br1440.platform.tracing.runtime.propagation.CorrelationIdSupport;
+
+/**
+ * {@link ThreadLocal}-хранилище request/correlation identity для {@link NoOpTracingRuntime}
+ * (режимы disabled/unavailable/noop) — без зависимости на OpenTelemetry {@code Context}.
+ * <p>
+ * Функциональный аналог {@code OtelIdentityStorage} (пакет {@code runtime.otel}), который решает
+ * ту же задачу через OTel {@code Context}/{@code Baggage} для включённого {@code OtelTracingRuntime}.
+ * Здесь отдельная ThreadLocal-реализация нужна потому, что при disabled/unavailable OTel SDK
+ * либо не инициализирован, либо не должен участвовать в identity-контексте.
+ * <p>
+ * Реактивный (WebFlux) код не обращается к этому классу напрямую: {@code ReactiveIdentityContextPropagation}
+ * переносит значения из Reactor {@code Context} на это ThreadLocal-хранилище через Micrometer
+ * {@code ThreadLocalAccessor} при каждой смене потока-исполнителя, так что открытие/закрытие scope
+ * фактически происходит здесь.
+ */
+final class ThreadLocalIdentityStorage {
+
+    private final ThreadLocal<IdentityFrame> current = new ThreadLocal<>();
+
+    Optional<String> requestId() {
+        IdentityFrame frame = current.get();
+        return Optional.ofNullable(frame == null ? null : frame.requestId());
+    }
+
+    Optional<String> correlationId() {
+        IdentityFrame frame = current.get();
+        return Optional.ofNullable(frame == null ? null : frame.correlationId());
+    }
+
+    TraceControlBoundaryState traceControlBoundary() {
+        IdentityFrame frame = current.get();
+        return (frame == null)
+                ? TraceControlBoundaryState.EMPTY
+                : new TraceControlBoundaryState(frame.forceTrace(), frame.qaTrace());
+    }
+
+    String requireCanonicalCorrelationId(String correlationId) {
+        return CorrelationIdSupport.requireCanonical(correlationId);
+    }
+
+    CorrelationScope openCorrelationScope(String correlationId) {
+        String canonical = CorrelationIdSupport.requireCanonical(correlationId);
+        IdentityFrame previous = current.get();
+        return open(new IdentityFrame(
+                (previous == null) ? null : previous.requestId(),
+                canonical,
+                (previous != null) && previous.forceTrace(),
+                (previous != null) && previous.qaTrace(),
+                previous));
+    }
+
+    CorrelationScope openRequestScope(String requestId, boolean forceTrace, boolean qaTrace) {
+        Objects.requireNonNull(requestId, "requestId");
+        IdentityFrame previous = current.get();
+        return open(new IdentityFrame(
+                requestId,
+                (previous == null) ? null : previous.correlationId(),
+                forceTrace,
+                qaTrace,
+                previous));
+    }
+
+    private CorrelationScope open(IdentityFrame frame) {
+        String previousRequestId = MDC.get(TracingMdcKeys.REQUEST_ID);
+        String previousCorrelationId = MDC.get(TracingMdcKeys.CORRELATION_ID);
+        current.set(frame);
+
+        putOrRemove(TracingMdcKeys.REQUEST_ID, frame.requestId());
+        putOrRemove(TracingMdcKeys.CORRELATION_ID, frame.correlationId());
+
+        return new IdentityScope(
+                Thread.currentThread(),
+                frame,
+                previousRequestId,
+                previousCorrelationId);
+    }
+
+    private static void putOrRemove(String key, String value) {
+        if (value == null) {
+            MDC.remove(key);
+        } else {
+            MDC.put(key, value);
+        }
+    }
+
+    private record IdentityFrame(String requestId, String correlationId,
+                                  boolean forceTrace, boolean qaTrace,
+                                  IdentityFrame previous) {
+    }
+
+    private final class IdentityScope implements CorrelationScope {
+
+        private final Thread owner;
+        private final IdentityFrame installed;
+        private final String previousRequestId;
+        private final String previousCorrelationId;
+        private boolean closed;
+
+        private IdentityScope(Thread owner,
+                              IdentityFrame installed,
+                              String previousRequestId,
+                              String previousCorrelationId) {
+            this.owner = owner;
+            this.installed = installed;
+            this.previousRequestId = previousRequestId;
+            this.previousCorrelationId = previousCorrelationId;
+        }
+
+        @Override
+        public void close() {
+            if (Thread.currentThread() != owner) {
+                throw new IllegalStateException("CorrelationScope must be closed by its owner thread");
+            }
+
+            if (closed) {
+                return;
+            }
+
+            if (current.get() != installed) {
+                throw new IllegalStateException("CorrelationScope must be closed in LIFO order");
+            }
+
+            if (installed.previous() == null) {
+                current.remove();
+            } else {
+                current.set(installed.previous());
+            }
+
+            closed = true;
+            putOrRemove(TracingMdcKeys.REQUEST_ID, previousRequestId);
+            putOrRemove(TracingMdcKeys.CORRELATION_ID, previousCorrelationId);
+        }
+    }
+}

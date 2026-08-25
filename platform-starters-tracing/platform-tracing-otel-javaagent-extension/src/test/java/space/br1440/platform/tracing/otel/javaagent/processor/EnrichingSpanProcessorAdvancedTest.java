@@ -1,0 +1,151 @@
+package space.br1440.platform.tracing.otel.javaagent.processor;
+
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.api.trace.Tracer;
+import org.junit.jupiter.api.Test;
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
+
+import java.util.Arrays;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Дополнительные кейсы {@link EnrichingSpanProcessor}: кастомный приоритет атрибутов через
+ * конструктор, фильтрация null/blank-имён, мэппинг {@link SpanKind} в категории.
+ * <p>
+ * Здесь каждый тест требует своей конфигурации процессора, поэтому используется
+ * {@link SpanProcessorHarness} в {@code try-with-resources}, а не общий
+ * {@code @RegisterExtension static OtelSdkExtension}.
+ */
+class EnrichingSpanProcessorAdvancedTest {
+
+    private static final AttributeKey<String> PLATFORM_TYPE_KEY =
+            AttributeKey.stringKey(PlatformAttributes.PLATFORM_TYPE);
+    private static final AttributeKey<String> PLATFORM_RESULT_KEY =
+            AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT);
+    private static final AttributeKey<String> PLATFORM_REMOTE_SERVICE_KEY =
+            AttributeKey.stringKey(PlatformAttributes.PLATFORM_REMOTE_SERVICE);
+
+    @Test
+    void custom_attribute_priority_is_passed_via_constructor() {
+        // Меняем порядок: сначала server.address, потом peer.service. Должны получить server.address.
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(
+                new EnrichingSpanProcessor(List.of("server.address", "peer.service")))) {
+            Tracer tracer = h.tracer("t");
+            Span span = tracer.spanBuilder("client").setSpanKind(SpanKind.CLIENT).startSpan();
+            span.setAttribute("peer.service", "billing");
+            span.setAttribute("server.address", "billing.example.com");
+            span.setStatus(StatusCode.ERROR, "boom");
+            span.end();
+
+            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY))
+                    .isEqualTo("billing.example.com");
+        }
+    }
+
+    @Test
+    void blank_and_null_attribute_names_are_filtered_at_construction() {
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(
+                new EnrichingSpanProcessor(Arrays.asList(null, "", "  ", "peer.service")))) {
+            Tracer tracer = h.tracer("t");
+            Span span = tracer.spanBuilder("client").setSpanKind(SpanKind.CLIENT).startSpan();
+            span.setAttribute("peer.service", "orders");
+            span.setStatus(StatusCode.ERROR, "boom");
+            span.end();
+
+            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY))
+                    .isEqualTo("orders");
+        }
+    }
+
+    @Test
+    void attribute_names_are_trimmed_before_use() {
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(
+                new EnrichingSpanProcessor(List.of("  peer.service  ")))) {
+            Tracer tracer = h.tracer("t");
+            Span span = tracer.spanBuilder("client").setSpanKind(SpanKind.CLIENT).startSpan();
+            span.setAttribute("peer.service", "trim-test");
+            span.setStatus(StatusCode.ERROR, "boom");
+            span.end();
+
+            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY))
+                    .isEqualTo("trim-test");
+        }
+    }
+
+    @Test
+    void INTERNAL_kind_gets_internal_category() {
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(new EnrichingSpanProcessor())) {
+            h.tracer("t").spanBuilder("internal-op").setSpanKind(SpanKind.INTERNAL).startSpan().end();
+            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(PLATFORM_TYPE_KEY))
+                    .isEqualTo("internal");
+        }
+    }
+
+    @Test
+    void PRODUCER_and_CONSUMER_kind_get_kafka_categories() {
+        // Фаза 13: единая категория rpc разделена — PRODUCER→kafka_producer, CONSUMER→kafka_consumer.
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(new EnrichingSpanProcessor())) {
+            Tracer tracer = h.tracer("t");
+            tracer.spanBuilder("p").setSpanKind(SpanKind.PRODUCER).startSpan().end();
+            tracer.spanBuilder("c").setSpanKind(SpanKind.CONSUMER).startSpan().end();
+
+            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(PLATFORM_TYPE_KEY)).isEqualTo("kafka_producer");
+            assertThat(h.exporter().getFinishedSpanItems().get(1).getAttributes().get(PLATFORM_TYPE_KEY)).isEqualTo("kafka_consumer");
+        }
+    }
+
+    @Test
+    void platform_remote_service_does_not_overwrite_pre_set_value() {
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(new EnrichingSpanProcessor())) {
+            Tracer tracer = h.tracer("t");
+            Span span = tracer.spanBuilder("client").setSpanKind(SpanKind.CLIENT).startSpan();
+            span.setAttribute("peer.service", "auto-extracted");
+            span.setAttribute(PlatformAttributes.PLATFORM_REMOTE_SERVICE, "manual-override");
+            span.setStatus(StatusCode.ERROR, "boom");
+            span.end();
+
+            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY))
+                    .isEqualTo("manual-override");
+        }
+    }
+
+    @Test
+    void platform_result_is_not_overwritten_if_already_set_by_application() {
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(new EnrichingSpanProcessor())) {
+            Tracer tracer = h.tracer("t");
+            Span span = tracer.spanBuilder("op").setSpanKind(SpanKind.SERVER).startSpan();
+            span.setAttribute(PlatformAttributes.PLATFORM_RESULT, "partial");
+            span.setStatus(StatusCode.ERROR, "boom");
+            span.end();
+
+            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(PLATFORM_RESULT_KEY))
+                    .isEqualTo("partial");
+        }
+    }
+
+    @Test
+    void DEFAULT_REMOTE_SERVICE_PRIORITY_matches_semantic_conventions_contract() {
+        assertThat(EnrichingSpanProcessor.DEFAULT_REMOTE_SERVICE_PRIORITY)
+                .containsExactly("peer.service", "rpc.service", "server.address");
+    }
+
+    @Test
+    void empty_priority_results_in_no_name_extraction() {
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(new EnrichingSpanProcessor(List.of()))) {
+            Tracer tracer = h.tracer("t");
+            Span span = tracer.spanBuilder("client").setSpanKind(SpanKind.CLIENT).startSpan();
+            span.setAttribute("peer.service", "billing");
+            span.setStatus(StatusCode.ERROR, "boom");
+            span.end();
+
+            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY))
+                    .isNull();
+        }
+    }
+}
