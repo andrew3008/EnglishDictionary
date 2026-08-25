@@ -110,6 +110,8 @@ def generateControlledAgentPin = tasks.register(
         'generateControlledAgentPin',
         GenerateControlledAgentPin
 ) {
+    dependsOn controlledAgentDistribution
+
     agentJar.fileProvider(controlledAgentJar)
     agentVersion.set(project.version.toString())
     outputDirectory.set(layout.buildDirectory.dir('generated/controlled-agent-pin'))
