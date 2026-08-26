@@ -7,7 +7,7 @@
 - интеграцию в Spring Boot-проекты через авто-конфигурацию.
 
 ---
-
+Логгируются эндпойнты по маске "/api/*".
 ## Подключение зависимости
 Для подключения библиотеки в Gradle-проекте нужно добавить зависимость:
 ```groovy
@@ -145,15 +145,15 @@ rules:
 Если type равен array, то используется параметр mask-item.
 
 В Web-приложении, использующем библиотеку, можно добавить кастомные рулы в YAML-файл, путь к которому указывается в
-параметре platform.http-logging.custom-sensitive-data-rules-file-path. Кастомные рулы дополняют рулы по-умолчанию из 
+параметре platform.http-logging.custom-sensitive-data-rules-file-path. Кастомные рулы дополняют рулы по-умолчанию из
 файла "platform-log-masking-rules.yaml", а не переопределяют их.
 
-Пример маскирования HTTP-запроса и ответа:  
+Пример маскирования HTTP-запроса и ответа:
 ![HTTP_logs_masking_example](docs/diagrams/HTTP_logs_masking_example.png)
 
 
 ## Аннотации для MDC-логирования
-В библиотеку были добавлены специальные аннотации для управления тем, какие данные методов бизнес-логики должны быть автоматически помещены 
+В библиотеку были добавлены специальные аннотации для управления тем, какие данные методов бизнес-логики должны быть автоматически помещены
 в Mapped Diagnostic Context (MDC) для последующего использования в логировании.
 
 | **Аннотация**    | **Уровень<br> применения** | **Назначение**                                                                     | **Когда использовать**                                                           |
@@ -215,20 +215,20 @@ public class ProfileService {
 ```
 
 ## Кастомизация логирования
-Логирование HTTP-запросов и ответов осуществляется с использованием библиотеки [Zalando Logbook](https://github.com/zalando/logbook). 
-Реализация построена модульно и позволяет расширять функциональность через Spring-бины. 
+Логирование HTTP-запросов и ответов осуществляется с использованием библиотеки [Zalando Logbook](https://github.com/zalando/logbook).
+Реализация построена модульно и позволяет расширять функциональность через Spring-бины.
 Последовательность обработки запросов и ответов проиллюстрирована на Sequence-диаграмме ниже.
 
 ![HTTP Logging Sequence](docs/diagrams/HTTP_filtering_via_LogBook.png)
 
-В этой диаграмме:  
-    - Client вызывает приложение.  
-    - LogbookFilter (через FilterRegistrationBean) перехватывает HTTP-запрос и ответ.  
-    - Через цепочку RequestFilters, ResponseFilters, HeaderFilter, QueryFilter, BodyFilter применяется маскирование чувствительных данных.  
-    - HttpLogFormatter отвечает за RFC7230 формат и исключение заголовков.  
-    - HttpLogWriter пишет строку.  
+В этой диаграмме:
+    - Client вызывает приложение.
+    - LogbookFilter (через FilterRegistrationBean) перехватывает HTTP-запрос и ответ.
+    - Через цепочку RequestFilters, ResponseFilters, HeaderFilter, QueryFilter, BodyFilter применяется маскирование чувствительных данных.
+    - HttpLogFormatter отвечает за RFC7230 формат и исключение заголовков.
+    - HttpLogWriter пишет строку.
 
-consoleSink — компонент, обеспечивающий вывод логов HTTP-запросов и ответов в системный лог (консоль или файл) с применением настроенного HttpLogFormatter и HttpLogWriter 
+consoleSink — компонент, обеспечивающий вывод логов HTTP-запросов и ответов в системный лог (консоль или файл) с применением настроенного HttpLogFormatter и HttpLogWriter
 через Logback-аппендеры.
 
 Для кастомизации фильтрации в Web-приложении, использующем библиотеку, необходимо реализовать соответствующий интерфейс из пакета "org.zalando.logbook"
@@ -276,7 +276,7 @@ public FilterRegistrationBean<LogbookFilter> platformLogbookFilterRegistration(L
 }
 ```
 
-При необходимости библиотечный Servlet-фильтр можно отключить через свойство "platform.http-logging.servlet-filter.enabled" и 
+При необходимости библиотечный Servlet-фильтр можно отключить через свойство "platform.http-logging.servlet-filter.enabled" и
 заменить на собственную реализацию Servlet-фильтра для интеграции с Logbook.
 
 ## Динамическое изменение уровня логирования в runtime

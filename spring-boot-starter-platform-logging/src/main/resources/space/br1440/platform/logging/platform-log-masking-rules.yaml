@@ -61,3 +61,10 @@ rules:
       - emails
       - email_list
     mask-item: "***@***.***"
+
+  - name: auth
+    type: scalar
+    apply-to-keys:
+      - authorization
+      - x-auth-header
+    mask: "*****"
