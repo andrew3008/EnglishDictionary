@@ -1,0 +1,180 @@
+contract:
+  schemaId: platform-tracing-jmx-wire-contract
+  schemaMajor: 1
+  schemaMinor: 0
+  observationSchemaVersion: 2
+  schemaDigestSha256: 6e9ad260019ff87addf8e9ffb3a1d780b821c0d3f6afef229456875bbdeaaee5
+  descriptorDigestSha256: 6605506ebcbf3f9b9551da0a31630f9101d4ae9f4ca2dd1516dfe0185adff96d
+  policyDigestAlgorithmId: SHA-256
+  policyDigestAlgorithmVersion: 1
+
+policies:
+  - id: normal
+    equivalenceGroup: normal-order
+    policy:
+      samplingEnabled: true
+      samplingRatio: 0.25
+      samplingRouteRatios:
+        /orders: 0.5
+        /health: 0.0
+      validationEnabled: true
+      validationStrict: false
+      exporterEnabled: true
+      traceControlHeadersEnabled: true
+      diagnosticsLogLevel: INFO
+    expectedSha256: 32f8d43cea97ff26a36b47374314ff8df8d14366e6449a3fe89699d963afdaf1
+  - id: reordered-input-fields-and-routes
+    equivalenceGroup: normal-order
+    policy:
+      diagnosticsLogLevel: INFO
+      traceControlHeadersEnabled: true
+      exporterEnabled: true
+      validationStrict: false
+      validationEnabled: true
+      samplingRouteRatios:
+        /health: 0.0
+        /orders: 0.5
+      samplingRatio: 0.25
+      samplingEnabled: true
+    expectedSha256: 32f8d43cea97ff26a36b47374314ff8df8d14366e6449a3fe89699d963afdaf1
+  - id: empty-route-map
+    policy:
+      samplingEnabled: true
+      samplingRatio: 0.25
+      samplingRouteRatios: {}
+      validationEnabled: true
+      validationStrict: false
+      exporterEnabled: true
+      traceControlHeadersEnabled: true
+      diagnosticsLogLevel: INFO
+    expectedSha256: 5c7749beaa1333762487aafe8103a92f68c2757186aa944b756025a0696c2993
+  - id: unicode-route-prefixes
+    policy:
+      samplingEnabled: true
+      samplingRatio: 0.125
+      samplingRouteRatios:
+        "/заказы/東京": 0.125
+        "😀": 1.0
+      validationEnabled: false
+      validationStrict: false
+      exporterEnabled: true
+      traceControlHeadersEnabled: false
+      diagnosticsLogLevel: WARN
+    expectedSha256: 43de819b1c0e61cb6fa613698c1a014cea24a30f7be511843ddae00137b9c3b9
+  - id: numeric-boundaries
+    policy:
+      samplingEnabled: false
+      samplingRatio: 1.0
+      samplingRouteRatios:
+        /zero: 0.0
+        /one: 1.0
+      validationEnabled: true
+      validationStrict: true
+      exporterEnabled: false
+      traceControlHeadersEnabled: false
+      diagnosticsLogLevel: 'OFF'
+    expectedSha256: 12afe89986dc0185131ebec0b46661c0c614ab6f4b6ae0b8a9bc2d29652613c4
+  - id: negative-zero-normalization
+    equivalenceGroup: zero-normalization
+    policy:
+      samplingEnabled: true
+      samplingRatio: -0.0
+      samplingRouteRatios:
+        /zero: -0.0
+      validationEnabled: true
+      validationStrict: false
+      exporterEnabled: true
+      traceControlHeadersEnabled: true
+      diagnosticsLogLevel: DEBUG
+    expectedSha256: 9795716d2f8813d4acde6c81a5cb4a244aac9aa7fdba0d1bde200a4c12866476
+  - id: positive-zero-normalization
+    equivalenceGroup: zero-normalization
+    policy:
+      samplingEnabled: true
+      samplingRatio: 0.0
+      samplingRouteRatios:
+        /zero: 0.0
+      validationEnabled: true
+      validationStrict: false
+      exporterEnabled: true
+      traceControlHeadersEnabled: true
+      diagnosticsLogLevel: DEBUG
+    expectedSha256: 9795716d2f8813d4acde6c81a5cb4a244aac9aa7fdba0d1bde200a4c12866476
+
+invalidPolicies:
+  - id: nullable-map-is-rejected
+    policy:
+      samplingEnabled: true
+      samplingRatio: 0.25
+      samplingRouteRatios: null
+      validationEnabled: true
+      validationStrict: false
+      exporterEnabled: true
+      traceControlHeadersEnabled: true
+      diagnosticsLogLevel: INFO
+    expectedCode: JMX_POLICY_FIELD_TYPE_MISMATCH
+  - id: changed-field-type-is-rejected
+    policy:
+      samplingEnabled: "true"
+      samplingRatio: 0.25
+      samplingRouteRatios: {}
+      validationEnabled: true
+      validationStrict: false
+      exporterEnabled: true
+      traceControlHeadersEnabled: true
+      diagnosticsLogLevel: INFO
+    expectedCode: JMX_POLICY_FIELD_TYPE_MISMATCH
+  - id: unknown-field-is-rejected
+    policy:
+      samplingEnabled: true
+      samplingRatio: 0.25
+      samplingRouteRatios: {}
+      validationEnabled: true
+      validationStrict: false
+      exporterEnabled: true
+      traceControlHeadersEnabled: true
+      diagnosticsLogLevel: INFO
+      futureUnknownField: true
+    expectedCode: JMX_POLICY_UNKNOWN_FIELD
+  - id: oversized-route-prefix-is-rejected
+    policy:
+      samplingEnabled: true
+      samplingRatio: 0.25
+      samplingRouteRatios:
+        "/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 0.5
+      validationEnabled: true
+      validationStrict: false
+      exporterEnabled: true
+      traceControlHeadersEnabled: true
+      diagnosticsLogLevel: INFO
+    expectedCode: JMX_POLICY_INVALID_ROUTE_PREFIX
+  - id: missing-field-is-rejected
+    policy:
+      samplingEnabled: true
+      samplingRatio: 0.25
+      samplingRouteRatios: {}
+      validationEnabled: true
+      validationStrict: false
+      traceControlHeadersEnabled: true
+      diagnosticsLogLevel: INFO
+    expectedCode: JMX_POLICY_REQUIRED_FIELD_MISSING
+
+invalidContracts:
+  - id: unknown-manifest-field
+    mutation: addUnknownTopLevelField
+    expectedCode: JMX_SCHEMA_UNKNOWN_FIELD
+  - id: incompatible-major-version
+    mutation: setIncompatibleSchemaMajor
+    expectedCode: JMX_SCHEMA_VERSION_INCOMPATIBLE
+  - id: invalid-observation-schema-version
+    mutation: setInvalidObservationSchemaVersion
+    expectedCode: JMX_SCHEMA_VERSION_INVALID
+  - id: digest-field-type-change
+    mutation: changeDigestFieldType
+    expectedCode: JMX_SCHEMA_DIGEST_FIELD_INVALID
+  - id: required-object-name-removed
+    mutation: removeRequiredObjectName
+    expectedCode: JMX_SCHEMA_REQUIRED_FIELD_MISSING
+  - id: object-name-collision
+    mutation: duplicateObjectName
+    expectedCode: JMX_SCHEMA_OBJECT_NAME_COLLISION

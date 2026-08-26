@@ -88,6 +88,7 @@ include('platform-starters-tracing:platform-tracing-testkit')
 include('platform-starters-tracing:platform-tracing-otel-javaagent-extension')
 include('platform-starters-tracing:platform-tracing-otel-javaagent-distribution')
 include('platform-starters-tracing:platform-tracing-gradle-plugin')
+include('platform-starters-tracing:platform-tracing-jmx-contract')
 
 include('platform-starters-error-handling')
 include('platform-starters-error-handling:platform-error-handling-core')
