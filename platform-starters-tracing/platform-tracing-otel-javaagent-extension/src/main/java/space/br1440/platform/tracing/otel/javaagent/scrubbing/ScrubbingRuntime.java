@@ -477,7 +477,18 @@ public final class ScrubbingRuntime {
     }
 
     public void recordBoundaryValueAttributesRemoved(long removed) {
-        boundaryValueAttributesRemoved.add(removed);
+        boundaryValueAttributesRemoved.add(requireNonNegative(removed, "removed"));
+    }
+
+    /**
+     * Счётчики границы монотонны: отрицательная дельта откатила бы уже опубликованное
+     * значение и сделала бы диагностику недостоверной.
+     */
+    private static long requireNonNegative(long count, String name) {
+        if (count < 0L) {
+            throw new IllegalArgumentException(name + " must not be negative: " + count);
+        }
+        return count;
     }
 
     public void recordBoundaryInputSpan() {
@@ -497,7 +508,7 @@ public final class ScrubbingRuntime {
     }
 
     public void recordBoundarySpansDroppedFailClosed(long count) {
-        boundarySpansDroppedFailClosed.add(count);
+        boundarySpansDroppedFailClosed.add(requireNonNegative(count, "count"));
     }
 
     public void recordBoundaryEventScrubbed() {
@@ -533,15 +544,15 @@ public final class ScrubbingRuntime {
     }
 
     public void recordBoundaryCriticalFailures(long count) {
-        boundaryCriticalFailures.add(count);
+        boundaryCriticalFailures.add(requireNonNegative(count, "count"));
     }
 
     public void recordBoundaryNonCriticalFailures(long count) {
-        boundaryNonCriticalFailures.add(count);
+        boundaryNonCriticalFailures.add(requireNonNegative(count, "count"));
     }
 
     public void recordBoundarySkippedCircuitOpen(long count) {
-        boundarySkippedCircuitOpen.add(count);
+        boundarySkippedCircuitOpen.add(requireNonNegative(count, "count"));
     }
 
     public void recordBoundarySurfaceCollapsedFailClosed() {
