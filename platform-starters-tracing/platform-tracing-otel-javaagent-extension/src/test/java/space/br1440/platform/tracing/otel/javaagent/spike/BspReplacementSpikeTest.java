@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.AutoConfiguredSdkPrivateControlIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.testsupport.BootstrapIsolatedClassLoader;
 
 import java.util.Collection;
@@ -64,7 +64,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * через {@code otel.traces.exporter=none} либо подменяют их inline через customizer,
  * чтобы не выходить в сеть и наблюдать только нужные взаимодействия.</p>
  */
-@ExtendWith(AutoConfiguredSdkPrivateControlIsolationExtension.class)
+@ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 class BspReplacementSpikeTest {
 
     /**

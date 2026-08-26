@@ -8,7 +8,7 @@ import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
 
@@ -25,16 +25,25 @@ class ProcessorMetricsControlTest {
                 AGENT_INSTANCE_ID);
 
         CompositeData observation = control.getProcessorMetricsObservation();
-        CompositeData watchdog = (CompositeData) observation.get(JmxObservationWireContract.PROCESSOR_METRICS_ITEM_WATCHDOG);
-        CompositeData composite = (CompositeData) observation.get(JmxObservationWireContract.PROCESSOR_METRICS_ITEM_COMPOSITE);
-        CompositeData metrics = (CompositeData) observation.get(JmxObservationWireContract.PROCESSOR_METRICS_ITEM_METRICS);
+        CompositeData watchdog = (CompositeData) observation.get(
+                GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG);
+        CompositeData composite = (CompositeData) observation.get(
+                GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_COMPOSITE);
+        CompositeData metrics = (CompositeData) observation.get(
+                GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_METRICS);
 
-        assertThat((Boolean) watchdog.get(JmxObservationWireContract.ITEM_OWNER_PRESENT)).isFalse();
-        assertThat((Boolean) composite.get(JmxObservationWireContract.ITEM_OWNER_PRESENT)).isFalse();
-        assertThat((Boolean) metrics.get(JmxObservationWireContract.ITEM_OWNER_PRESENT)).isFalse();
-        assertThat((Long) watchdog.get(JmxObservationWireContract.ITEM_OWNER_GENERATION)).isEqualTo(0L);
-        assertThat((Long) composite.get(JmxObservationWireContract.ITEM_OWNER_GENERATION)).isEqualTo(0L);
-        assertThat((Long) metrics.get(JmxObservationWireContract.ITEM_OWNER_GENERATION)).isEqualTo(0L);
+        assertThat((Boolean) watchdog.get(
+                GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_PRESENT)).isFalse();
+        assertThat((Boolean) composite.get(
+                GeneratedJmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_PRESENT)).isFalse();
+        assertThat((Boolean) metrics.get(
+                GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_PRESENT)).isFalse();
+        assertThat((Long) watchdog.get(
+                GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_GENERATION)).isEqualTo(0L);
+        assertThat((Long) composite.get(
+                GeneratedJmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_GENERATION)).isEqualTo(0L);
+        assertThat((Long) metrics.get(
+                GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_GENERATION)).isEqualTo(0L);
     }
 
     @Test
@@ -53,14 +62,15 @@ class ProcessorMetricsControlTest {
         // when
         CompositeData observation = control.getProcessorMetricsObservation();
         CompositeData watchdogValues = (CompositeData) observation.get(
-                JmxObservationWireContract.PROCESSOR_METRICS_ITEM_WATCHDOG);
+                GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG);
 
         // then
-        assertThat((Boolean) watchdogValues.get(JmxObservationWireContract.ITEM_OWNER_PRESENT)).isTrue();
+        assertThat((Boolean) watchdogValues.get(
+                GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_PRESENT)).isTrue();
         assertThat((Long) watchdogValues.get(
-                JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_FORCED_SPAN_CLOSES)).isZero();
+                GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_FORCED_SPAN_CLOSES)).isZero();
         assertThat((Integer) watchdogValues.get(
-                JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_ACTIVE_SPAN_COUNT)).isZero();
+                GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_ACTIVE_SPAN_COUNT)).isZero();
         watchdog.shutdown();
     }
 }

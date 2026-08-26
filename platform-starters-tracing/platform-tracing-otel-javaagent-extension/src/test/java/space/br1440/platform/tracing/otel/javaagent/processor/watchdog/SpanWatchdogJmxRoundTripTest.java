@@ -9,8 +9,8 @@ import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.metrics.ProcessorMetricsControl;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 
 import io.opentelemetry.api.trace.Span;
@@ -45,15 +45,16 @@ class SpanWatchdogJmxRoundTripTest {
         // when
         CompositeData observation = control.getProcessorMetricsObservation();
         CompositeData watchdogValues = (CompositeData) observation.get(
-                JmxObservationWireContract.PROCESSOR_METRICS_ITEM_WATCHDOG);
+                GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG);
 
         // then
-        assertThat((Boolean) watchdogValues.get(JmxObservationWireContract.ITEM_OWNER_PRESENT)).isTrue();
+        assertThat((Boolean) watchdogValues.get(
+                GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_PRESENT)).isTrue();
         assertThat((Long) watchdogValues.get(
-                JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_FORCED_SPAN_CLOSES)
+                GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_FORCED_SPAN_CLOSES)
         ).isEqualTo(1L);
         assertThat((Integer) watchdogValues.get(
-                JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_ACTIVE_SPAN_COUNT)
+                GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_ACTIVE_SPAN_COUNT)
         ).isZero();
         hung.end();
         watchdog.shutdown();

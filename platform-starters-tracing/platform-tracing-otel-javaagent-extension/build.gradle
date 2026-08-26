@@ -39,15 +39,9 @@ dependencies {
     }
 }
 
-// Тесты плоскости агента идут с выключенным attach-механизмом: политика удалённой
-// JMX-экспозиции читает это как измеренный факт. Поэтому Mockito подключается
-// -javaagent'ом, а путь к нему разрешается лениво, а не на этапе конфигурации.
-def mockitoAgentPath = mockitoAgentConfiguration.elements
-        .map { elements -> elements.iterator().next().asFile.absolutePath }
-
 tasks.named('test', Test) {
-    jvmArgumentProviders.add({ ["-javaagent:${mockitoAgentPath.get()}".toString()] } as CommandLineArgumentProvider)
     jvmArgs(
+            "-javaagent:${mockitoAgentConfiguration.singleFile.absolutePath}",
             '-XX:+DisableAttachMechanism',
             '-Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED',
             '-Dplatform.tracing.jmx.remote.listener-confirmed=false',

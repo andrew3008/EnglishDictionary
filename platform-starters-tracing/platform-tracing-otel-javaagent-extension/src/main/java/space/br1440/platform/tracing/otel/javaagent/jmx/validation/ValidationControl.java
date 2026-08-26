@@ -2,35 +2,42 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.validation;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenType;
-import javax.management.openmbean.SimpleType;
 
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationSnapshotControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerCapture;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 
-public final class ValidationControl implements ValidationControlMBean {
-
-    private static final JmxOpenTypeSupport.CompositeSchema OBSERVATION_TYPE = buildObservationType();
+public final class ValidationControl implements ValidationControlMBean, ObservationSnapshotControl {
 
     private final OwnerRegistrationSlot<ValidatingSpanProcessor> validatingSlot;
     private final UUID agentInstanceId;
     private final AtomicLong captureSequence = new AtomicLong();
+    private final AtomicReference<CompositeData> published = new AtomicReference<>();
 
     public ValidationControl(OwnerRegistrationSlot<ValidatingSpanProcessor> validatingSlot, UUID agentInstanceId) {
         this.validatingSlot = Objects.requireNonNull(validatingSlot, "validatingSlot");
         this.agentInstanceId = Objects.requireNonNull(agentInstanceId, "agentInstanceId");
+        publishObservationSnapshot();
     }
 
     @Override
     public CompositeData getValidationObservation() {
+        return published.get();
+    }
+
+    @Override
+    public synchronized void publishObservationSnapshot() {
         long sequence = captureSequence.incrementAndGet();
         long startedAt = Instant.now().toEpochMilli();
 
@@ -45,38 +52,29 @@ public final class ValidationControl implements ValidationControlMBean {
             snapshot = ValidationSnapshot.absent();
         }
 
-        long completedAt = Instant.now().toEpochMilli();
-        return JmxOpenTypeSupport.compositeData(
-                OBSERVATION_TYPE,
-                JmxObservationWireContract.SCHEMA_VERSION,
-                sequence,
-                agentInstanceId.toString(),
-                startedAt,
-                completedAt,
-                snapshot.ownerPresent(),
-                state.generation(),
-                offsetNanos,
-                snapshot.enabled(),
-                snapshot.strict(),
-                snapshot.strictRuntimeAllowed(),
-                snapshot.violationsTotal(),
-                snapshot.configVersion(),
-                snapshot.configSource()
-        );
-    }
-
-    private static JmxOpenTypeSupport.CompositeSchema buildObservationType() {
-        LinkedHashMap<String, OpenType<?>> items = JmxOpenTypeSupport.observationFrameItems();
-        items.put(JmxObservationWireContract.ITEM_OWNER_PRESENT, SimpleType.BOOLEAN);
-        items.put(JmxObservationWireContract.ITEM_OWNER_GENERATION, SimpleType.LONG);
-        items.put(JmxObservationWireContract.ITEM_OWNER_CAPTURED_OFFSET_NANOS, SimpleType.LONG);
-        items.put(JmxObservationWireContract.VALIDATION_ITEM_ENABLED, SimpleType.BOOLEAN);
-        items.put(JmxObservationWireContract.VALIDATION_ITEM_STRICT, SimpleType.BOOLEAN);
-        items.put(JmxObservationWireContract.VALIDATION_ITEM_STRICT_RUNTIME_ALLOWED, SimpleType.BOOLEAN);
-        items.put(JmxObservationWireContract.VALIDATION_ITEM_VIOLATIONS_TOTAL, SimpleType.LONG);
-        items.put(JmxObservationWireContract.VALIDATION_ITEM_CONFIG_VERSION, SimpleType.LONG);
-        items.put(JmxObservationWireContract.VALIDATION_ITEM_CONFIG_LAST_UPDATED_SOURCE, SimpleType.STRING);
-        return JmxOpenTypeSupport.compositeType(JmxObservationWireContract.VALIDATION_COMPOSITE_TYPE_NAME, items);
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put(GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_SCHEMA_VERSION,
+                GeneratedJmxWireContract.OBSERVATION_SCHEMA_VERSION);
+        values.put(GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_CAPTURE_SEQUENCE, sequence);
+        values.put(GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_AGENT_INSTANCE_ID,
+                agentInstanceId.toString());
+        values.put(GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_CAPTURE_STARTED_AT, startedAt);
+        values.put(GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_CAPTURE_COMPLETED_AT,
+                Instant.now().toEpochMilli());
+        values.put(GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT, snapshot.ownerPresent());
+        values.put(GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_GENERATION, state.generation());
+        values.put(GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_CAPTURED_OFFSET_NANOS, offsetNanos);
+        values.put(GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_ENABLED, snapshot.enabled());
+        values.put(GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT, snapshot.strict());
+        values.put(GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT_RUNTIME_ALLOWED,
+                snapshot.strictRuntimeAllowed());
+        values.put(GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_VIOLATIONS_TOTAL,
+                snapshot.violationsTotal());
+        values.put(GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_VERSION,
+                snapshot.configVersion());
+        values.put(GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_LAST_UPDATED_SOURCE,
+                snapshot.configSource());
+        published.set(JmxOpenTypeSupport.compositeData(GeneratedJmxOpenTypes.VALIDATION_OBSERVATION, values));
     }
 
     private record ValidationSnapshot(boolean ownerPresent,

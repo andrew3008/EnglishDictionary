@@ -1,7 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.validation;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.UUID;
@@ -10,7 +8,8 @@ import javax.management.openmbean.CompositeData;
 import io.opentelemetry.sdk.resources.Resource;
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
@@ -30,11 +29,17 @@ class ValidationControlTest {
 
         CompositeData observation = control.getValidationObservation();
 
-        assertThat((Boolean) observation.get(JmxObservationWireContract.ITEM_OWNER_PRESENT)).isFalse();
-        assertThat((Long) observation.get(JmxObservationWireContract.ITEM_OWNER_GENERATION)).isEqualTo(0L);
-        assertThat((Boolean) observation.get(JmxObservationWireContract.VALIDATION_ITEM_ENABLED)).isFalse();
-        assertThat((Long) observation.get(JmxObservationWireContract.VALIDATION_ITEM_CONFIG_VERSION)).isEqualTo(0L);
-        assertThat((String) observation.get(JmxObservationWireContract.VALIDATION_ITEM_CONFIG_LAST_UPDATED_SOURCE)).isEmpty();
+        assertThat((Boolean) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT)).isFalse();
+        assertThat((Long) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_GENERATION)).isEqualTo(0L);
+        assertThat((Boolean) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_ENABLED)).isFalse();
+        assertThat((Long) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_VERSION)).isEqualTo(0L);
+        assertThat((String) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_LAST_UPDATED_SOURCE))
+                .isEmpty();
     }
 
     @Test
@@ -50,9 +55,13 @@ class ValidationControlTest {
 
         CompositeData observation = control.getValidationObservation();
 
-        assertThat((Boolean) observation.get(JmxObservationWireContract.ITEM_OWNER_PRESENT)).isTrue();
-        assertThat((Long) observation.get(JmxObservationWireContract.ITEM_OWNER_GENERATION)).isPositive();
-        assertThat((Boolean) observation.get(JmxObservationWireContract.VALIDATION_ITEM_ENABLED)).isTrue();
-        assertThat((Long) observation.get(JmxObservationWireContract.VALIDATION_ITEM_VIOLATIONS_TOTAL)).isEqualTo(1L);
+        assertThat((Boolean) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT)).isTrue();
+        assertThat((Long) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_GENERATION)).isPositive();
+        assertThat((Boolean) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_ENABLED)).isTrue();
+        assertThat((Long) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_VIOLATIONS_TOTAL)).isEqualTo(1L);
     }
 }

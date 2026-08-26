@@ -1,87 +1,250 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.readiness;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Pattern;
 
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.CompositeDataSupport;
+import javax.management.openmbean.OpenDataException;
+
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
 
-public record ExtensionReadinessWireSnapshot(String extensionVersion,
-                                             int protocolVersion,
-                                             String profile,
-                                             String lifecycle,
-                                             String failureCode,
-                                             String failureMessage,
-                                             String[] capabilities) {
+/** Предварительно собранный coherent readiness envelope для одной runtime epoch. */
+public final class ExtensionReadinessWireSnapshot {
 
-    public ExtensionReadinessWireSnapshot {
-        Objects.requireNonNull(extensionVersion, "extensionVersion");
-        Objects.requireNonNull(profile, "profile");
-        Objects.requireNonNull(lifecycle, "lifecycle");
-        Objects.requireNonNull(failureCode, "failureCode");
-        Objects.requireNonNull(failureMessage, "failureMessage");
-        Objects.requireNonNull(capabilities, "capabilities");
-        capabilities = capabilities.clone();
-    }
+    private static final String INITIALIZING = PlatformExtensionLifecycle.INITIALIZING.name();
+    private static final String READY = PlatformExtensionLifecycle.READY.name();
+    private static final String FAILED = PlatformExtensionLifecycle.FAILED.name();
+    private static final Pattern FAILURE_CODE_PATTERN =
+            Pattern.compile("[A-Z][A-Z0-9_]{0,127}");
 
-    @Override
-    public String[] capabilities() {
-        return capabilities.clone();
+    private final String runtimeEpoch;
+    private final long evidenceGeneration;
+    private final String batchId;
+    private final String lifecycle;
+    private final String[] capabilities;
+    private final String[] missingRequired;
+    private final String failureCode;
+    private final ExtensionRuntimeEvidence evidence;
+    private final CompositeData readinessSnapshot;
+
+    private ExtensionReadinessWireSnapshot(String runtimeEpoch,
+                                           long evidenceGeneration,
+                                           String batchId,
+                                           String lifecycle,
+                                           String[] capabilities,
+                                           String[] missingRequired,
+                                           String failureCode,
+                                           ExtensionRuntimeEvidence evidence) {
+        this.runtimeEpoch = Objects.requireNonNull(runtimeEpoch, "runtimeEpoch");
+        this.evidenceGeneration = evidenceGeneration;
+        this.batchId = Objects.requireNonNull(batchId, "batchId");
+        this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
+        this.capabilities = Objects.requireNonNull(capabilities, "capabilities").clone();
+        this.missingRequired = Objects.requireNonNull(missingRequired, "missingRequired").clone();
+        this.failureCode = Objects.requireNonNull(failureCode, "failureCode");
+        this.evidence = Objects.requireNonNull(evidence, "evidence");
+        if (evidenceGeneration < 0L) {
+            throw new IllegalArgumentException("evidenceGeneration must not be negative");
+        }
+        this.readinessSnapshot = buildCompositeData();
     }
 
     public static ExtensionReadinessWireSnapshot initializing() {
         return new ExtensionReadinessWireSnapshot(
-                "development",
-                PlatformExtensionReadiness.PROTOCOL_VERSION,
-                PlatformExtensionReadiness.PROFILE,
-                "INITIALIZING",
                 "",
+                0L,
                 "",
-                new String[0]
+                INITIALIZING,
+                new String[0],
+                requiredCapabilities(),
+                "",
+                ExtensionRuntimeEvidence.unavailable("development")
         );
     }
 
     public static ExtensionReadinessWireSnapshot initializing(PlatformExtensionReadiness readiness) {
+        return initializing(readiness, "");
+    }
+
+    public static ExtensionReadinessWireSnapshot initializing(PlatformExtensionReadiness readiness,
+                                                              String runtimeEpoch) {
         Objects.requireNonNull(readiness, "readiness");
         return new ExtensionReadinessWireSnapshot(
-                readiness.extensionVersion(),
-                PlatformExtensionReadiness.PROTOCOL_VERSION,
-                PlatformExtensionReadiness.PROFILE,
-                "INITIALIZING",
+                Objects.requireNonNull(runtimeEpoch, "runtimeEpoch"),
+                0L,
                 "",
+                INITIALIZING,
+                readiness.capabilities(),
+                missingRequired(readiness),
                 "",
-                readiness.capabilities()
+                ExtensionRuntimeEvidence.unavailable(readiness.extensionVersion())
         );
     }
 
-    public static ExtensionReadinessWireSnapshot ready(PlatformExtensionReadiness readiness) {
+    public static ExtensionReadinessWireSnapshot ready(PlatformExtensionReadiness readiness,
+                                                       String runtimeEpoch,
+                                                       String batchId,
+                                                       long evidenceGeneration,
+                                                       ExtensionRuntimeEvidence evidence) {
         Objects.requireNonNull(readiness, "readiness");
-
+        Objects.requireNonNull(evidence, "evidence");
         if (readiness.lifecycle() != PlatformExtensionLifecycle.READY) {
-            throw new IllegalStateException("Cannot construct a READY wire snapshot: underlying lifecycle=" + readiness.lifecycle());
+            throw new IllegalStateException(
+                    "Cannot construct a READY wire snapshot: underlying lifecycle=" + readiness.lifecycle()
+            );
         }
 
+        String[] missingRequired = missingRequired(readiness);
+        if (missingRequired.length != 0) {
+            throw new IllegalStateException(
+                    "Cannot construct a READY wire snapshot with missing required capabilities"
+            );
+        }
+        if (runtimeEpoch == null || runtimeEpoch.isBlank()) {
+            throw new IllegalArgumentException("READY runtimeEpoch must not be blank");
+        }
+        if (batchId == null || batchId.isBlank()) {
+            throw new IllegalArgumentException("READY batchId must not be blank");
+        }
+        if (evidenceGeneration <= 0L) {
+            throw new IllegalArgumentException("READY evidenceGeneration must be positive");
+        }
+        if (!evidence.complete()) {
+            throw new IllegalStateException("Cannot construct a READY wire snapshot with incomplete evidence");
+        }
+        if (!readiness.extensionVersion().equals(evidence.extensionVersion())) {
+            throw new IllegalStateException("Readiness and attested extension versions do not match");
+        }
         return new ExtensionReadinessWireSnapshot(
-                readiness.extensionVersion(),
-                PlatformExtensionReadiness.PROTOCOL_VERSION,
-                PlatformExtensionReadiness.PROFILE,
-                "READY",
+                runtimeEpoch,
+                evidenceGeneration,
+                batchId,
+                READY,
+                readiness.capabilities(),
+                missingRequired,
                 "",
-                "",
-                readiness.capabilities());
+                evidence
+        );
     }
 
     public static ExtensionReadinessWireSnapshot failed(PlatformExtensionReadiness readiness,
+                                                        String runtimeEpoch,
+                                                        String batchId,
+                                                        long evidenceGeneration,
                                                         String failureCode,
-                                                        String failureMessage) {
+                                                        ExtensionRuntimeEvidence evidence) {
         Objects.requireNonNull(readiness, "readiness");
+        String effectiveFailureCode = requireFailureCode(failureCode);
         return new ExtensionReadinessWireSnapshot(
-                readiness.extensionVersion(),
-                PlatformExtensionReadiness.PROTOCOL_VERSION,
-                PlatformExtensionReadiness.PROFILE,
-                "FAILED",
-                failureCode == null ? "" : failureCode,
-                failureMessage == null ? "" : failureMessage,
-                readiness.capabilities()
+                (runtimeEpoch == null) ? "" : runtimeEpoch,
+                evidenceGeneration,
+                (batchId == null) ? "" : batchId,
+                FAILED,
+                readiness.capabilities(),
+                missingRequired(readiness),
+                effectiveFailureCode,
+                Objects.requireNonNull(evidence, "evidence")
         );
+    }
+
+    public CompositeData readinessSnapshot() {
+        return readinessSnapshot;
+    }
+
+    public String runtimeEpoch() {
+        return runtimeEpoch;
+    }
+
+    public long evidenceGeneration() {
+        return evidenceGeneration;
+    }
+
+    public String batchId() {
+        return batchId;
+    }
+
+    public String lifecycle() {
+        return lifecycle;
+    }
+
+    public String[] capabilities() {
+        return capabilities.clone();
+    }
+
+    public String[] missingRequired() {
+        return missingRequired.clone();
+    }
+
+    public String failureCode() {
+        return failureCode;
+    }
+
+    public ExtensionRuntimeEvidence evidence() {
+        return evidence;
+    }
+
+    private CompositeData buildCompositeData() {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_CONTRACT_ID,
+                GeneratedJmxWireContract.SCHEMA_ID);
+        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_MAJOR,
+                GeneratedJmxWireContract.SCHEMA_MAJOR);
+        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_MINOR,
+                GeneratedJmxWireContract.SCHEMA_MINOR);
+        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_DIGEST,
+                GeneratedJmxWireContract.SCHEMA_DIGEST_SHA256);
+        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_RUNTIME_EPOCH, runtimeEpoch);
+        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION,
+                evidenceGeneration);
+        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID, batchId);
+        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE, lifecycle);
+        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES, capabilities.clone());
+        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_MISSING_REQUIRED,
+                missingRequired.clone());
+        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE, failureCode);
+        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_DISTRIBUTION_SHA256,
+                evidence.agentDistributionSha256());
+        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_UPSTREAM_AGENT_VERSION,
+                evidence.upstreamAgentVersion());
+        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_VERSION,
+                evidence.extensionVersion());
+        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_DEFINING_LOADER,
+                evidence.extensionDefiningLoader());
+        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_SDK_DEFINING_LOADER,
+                evidence.sdkDefiningLoader());
+        try {
+            return new CompositeDataSupport(GeneratedJmxOpenTypes.READINESS_SNAPSHOT, values);
+        } catch (OpenDataException exception) {
+            throw new IllegalStateException("Unable to construct the readiness OpenData snapshot", exception);
+        }
+    }
+
+    private static String[] missingRequired(PlatformExtensionReadiness readiness) {
+        Set<String> installed = Set.of(readiness.capabilities());
+        return GeneratedJmxWireContract.REQUIRED_CAPABILITIES.stream()
+                .filter(capability -> !installed.contains(capability))
+                .sorted()
+                .toArray(String[]::new);
+    }
+
+    private static String[] requiredCapabilities() {
+        return GeneratedJmxWireContract.REQUIRED_CAPABILITIES.stream()
+                .sorted()
+                .toArray(String[]::new);
+    }
+
+    private static String requireFailureCode(String failureCode) {
+        if (failureCode == null || !FAILURE_CODE_PATTERN.matcher(failureCode).matches()) {
+            throw new IllegalArgumentException(
+                    "FAILED failureCode must match [A-Z][A-Z0-9_]{0,127}");
+        }
+        return failureCode;
     }
 }

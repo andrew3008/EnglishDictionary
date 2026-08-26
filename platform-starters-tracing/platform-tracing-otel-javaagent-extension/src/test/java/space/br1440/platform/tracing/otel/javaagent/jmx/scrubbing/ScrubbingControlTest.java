@@ -1,20 +1,20 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+import java.util.UUID;
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.TabularData;
+
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
-
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.TabularData;
-import java.util.List;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Contract tests for {@link ScrubbingControl}: владелец наблюдения — {@link ScrubbingRuntime},
@@ -39,11 +39,16 @@ class ScrubbingControlTest {
 
         CompositeData observation = control.getScrubbingObservation();
 
-        assertThat((Boolean) observation.get(JmxObservationWireContract.ITEM_OWNER_PRESENT)).isFalse();
-        assertThat((Long) observation.get(JmxObservationWireContract.ITEM_OWNER_GENERATION)).isEqualTo(0L);
-        assertThat((Boolean) observation.get(JmxObservationWireContract.SCRUBBING_ITEM_ENABLED)).isFalse();
-        assertThat((Long) observation.get(JmxObservationWireContract.SCRUBBING_ITEM_POLICY_VERSION)).isEqualTo(0L);
-        TabularData metrics = (TabularData) observation.get(JmxObservationWireContract.SCRUBBING_ITEM_METRICS);
+        assertThat((Boolean) observation.get(
+                GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_OWNER_PRESENT)).isFalse();
+        assertThat((Long) observation.get(
+                GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_OWNER_GENERATION)).isEqualTo(0L);
+        assertThat((Boolean) observation.get(
+                GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_SCRUBBING_ENABLED)).isFalse();
+        assertThat((Long) observation.get(
+                GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_POLICY_VERSION)).isEqualTo(0L);
+        TabularData metrics = (TabularData) observation.get(
+                GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_SCRUBBING_METRICS);
         assertThat(metrics.size()).isZero();
     }
 
@@ -55,9 +60,12 @@ class ScrubbingControlTest {
 
         CompositeData observation = control.getScrubbingObservation();
 
-        assertThat((Boolean) observation.get(JmxObservationWireContract.ITEM_OWNER_PRESENT)).isTrue();
-        assertThat((Long) observation.get(JmxObservationWireContract.ITEM_OWNER_GENERATION)).isPositive();
-        assertThat((Boolean) observation.get(JmxObservationWireContract.SCRUBBING_ITEM_ENABLED)).isTrue();
+        assertThat((Boolean) observation.get(
+                GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_OWNER_PRESENT)).isTrue();
+        assertThat((Long) observation.get(
+                GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_OWNER_GENERATION)).isPositive();
+        assertThat((Boolean) observation.get(
+                GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_SCRUBBING_ENABLED)).isTrue();
     }
 
     @Test
@@ -69,7 +77,7 @@ class ScrubbingControlTest {
         ScrubbingControl control = new ScrubbingControl(slot, AGENT_INSTANCE_ID);
 
         TabularData metrics = (TabularData) control.getScrubbingObservation()
-                .get(JmxObservationWireContract.SCRUBBING_ITEM_METRICS);
+                .get(GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_SCRUBBING_METRICS);
 
         assertThat((Long) metrics.get(new Object[]{"attributes_verified"}).get("value")).isEqualTo(0L);
         assertThat((Long) metrics.get(new Object[]{"runtime_state"}).get("value"))
@@ -94,7 +102,7 @@ class ScrubbingControlTest {
         ScrubbingControl control = new ScrubbingControl(slot, AGENT_INSTANCE_ID);
 
         TabularData metrics = (TabularData) control.getScrubbingObservation()
-                .get(JmxObservationWireContract.SCRUBBING_ITEM_METRICS);
+                .get(GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_SCRUBBING_METRICS);
 
         assertThat((Long) metrics.get(new Object[]{"collapse_mode_activations"}).get("value")).isEqualTo(1L);
         assertThat((Long) metrics.get(new Object[]{"collapsed_spans"}).get("value")).isEqualTo(2L);
@@ -118,7 +126,8 @@ class ScrubbingControlTest {
             CompositeData observation = (CompositeData) isolated.getAttribute(
                     space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames.SCRUBBING,
                     "ScrubbingObservation");
-            assertThat((Boolean) observation.get(JmxObservationWireContract.ITEM_OWNER_PRESENT)).isTrue();
+            assertThat((Boolean) observation.get(
+                    GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_OWNER_PRESENT)).isTrue();
         } finally {
             javax.management.MBeanServerFactory.releaseMBeanServer(isolated);
         }

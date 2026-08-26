@@ -1,16 +1,16 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.export;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.UUID;
+import javax.management.openmbean.CompositeData;
+
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
-
-import javax.management.openmbean.CompositeData;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Contract tests for {@link ExportControl}: два независимо заменяемых владельца
@@ -27,31 +27,47 @@ class ExportControlTest {
                 new OwnerRegistrationSlot<>(), new OwnerRegistrationSlot<>(), AGENT_INSTANCE_ID);
 
         CompositeData observation = control.getExportObservation();
-        CompositeData processor = (CompositeData) observation.get(JmxObservationWireContract.EXPORT_ITEM_PROCESSOR);
-        CompositeData exporter = (CompositeData) observation.get(JmxObservationWireContract.EXPORT_ITEM_EXPORTER);
+        CompositeData processor = (CompositeData) observation.get(
+                GeneratedJmxWireContract.FIELD_EXPORT_OBSERVATION_PROCESSOR);
+        CompositeData exporter = (CompositeData) observation.get(
+                GeneratedJmxWireContract.FIELD_EXPORT_OBSERVATION_EXPORTER);
 
-        assertThat((Integer) observation.get(JmxObservationWireContract.ITEM_SCHEMA_VERSION))
-                .isEqualTo(JmxObservationWireContract.SCHEMA_VERSION);
-        assertThat((String) observation.get(JmxObservationWireContract.ITEM_AGENT_INSTANCE_ID))
+        assertThat((Integer) observation.get(GeneratedJmxWireContract.FIELD_EXPORT_OBSERVATION_SCHEMA_VERSION))
+                .isEqualTo(GeneratedJmxWireContract.OBSERVATION_SCHEMA_VERSION);
+        assertThat((String) observation.get(GeneratedJmxWireContract.FIELD_EXPORT_OBSERVATION_AGENT_INSTANCE_ID))
                 .isEqualTo(AGENT_INSTANCE_ID.toString());
-        assertThat((Boolean) processor.get(JmxObservationWireContract.ITEM_OWNER_PRESENT)).isFalse();
-        assertThat((Long) processor.get(JmxObservationWireContract.ITEM_OWNER_GENERATION)).isEqualTo(0L);
-        assertThat((Integer) processor.get(JmxObservationWireContract.EXPORT_PROCESSOR_ITEM_QUEUE_CAPACITY))
+        assertThat((Boolean) processor.get(
+                GeneratedJmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_OWNER_PRESENT)).isFalse();
+        assertThat((Long) processor.get(
+                GeneratedJmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_OWNER_GENERATION)).isEqualTo(0L);
+        assertThat((Integer) processor.get(
+                GeneratedJmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_QUEUE_CAPACITY))
                 .isEqualTo(0);
-        assertThat((Boolean) exporter.get(JmxObservationWireContract.ITEM_OWNER_PRESENT)).isFalse();
-        assertThat((Long) exporter.get(JmxObservationWireContract.ITEM_OWNER_GENERATION)).isEqualTo(0L);
+        assertThat((Boolean) exporter.get(
+                GeneratedJmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_PRESENT)).isFalse();
+        assertThat((Long) exporter.get(
+                GeneratedJmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_GENERATION)).isEqualTo(0L);
     }
 
     @Test
-    void captureSequenceIsStrictlyMonotonicAcrossSequentialCaptures() {
+    void getterReturnsPublishedSnapshotAndExplicitPublishAdvancesSequence() {
+        // given
         ExportControl control = new ExportControl(
                 new OwnerRegistrationSlot<PlatformDropOldestExportSpanProcessor>(),
                 new OwnerRegistrationSlot<SafeSpanExporter>(),
                 AGENT_INSTANCE_ID);
 
-        long first = (Long) control.getExportObservation().get(JmxObservationWireContract.ITEM_CAPTURE_SEQUENCE);
-        long second = (Long) control.getExportObservation().get(JmxObservationWireContract.ITEM_CAPTURE_SEQUENCE);
+        // when
+        CompositeData first = control.getExportObservation();
+        CompositeData repeated = control.getExportObservation();
+        control.publishObservationSnapshot();
+        CompositeData refreshed = control.getExportObservation();
 
-        assertThat(second).isEqualTo(first + 1);
+        // then
+        assertThat(repeated).isSameAs(first);
+        assertThat(refreshed).isNotSameAs(first);
+        assertThat((Long) refreshed.get(GeneratedJmxWireContract.FIELD_EXPORT_OBSERVATION_CAPTURE_SEQUENCE))
+                .isEqualTo((Long) first.get(
+                        GeneratedJmxWireContract.FIELD_EXPORT_OBSERVATION_CAPTURE_SEQUENCE) + 1L);
     }
 }

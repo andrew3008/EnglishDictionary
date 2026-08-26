@@ -1,29 +1,32 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import static org.assertj.core.api.Assertions.assertThat;
+import static space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationTestFixtures.initializingReadinessProjection;
+import static space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxAuthorizationTestFixtures.mutationRegistrationPermit;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-
-import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
-import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
-
-import javax.management.MBeanInfo;
-import javax.management.MBeanOperationInfo;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import javax.management.MBeanInfo;
+import javax.management.MBeanOperationInfo;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
 /**
  * Защищает live-контракт production read-only MBean от неявного изменения.
@@ -41,12 +44,17 @@ class DomainMBeanJmxComplianceTest {
             DomainObjectNames.EXTENSION_READINESS);
 
     private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+    private final List<AutoCloseable> registrations = new ArrayList<>();
     private DomainMBeanRegistrar registrar;
 
     @AfterEach
     void cleanup() {
-        if (registrar != null) {
-            registrar.unregisterAllMBeans();
+        for (int index = registrations.size() - 1; index >= 0; index--) {
+            try {
+                registrations.get(index).close();
+            } catch (Exception ignored) {
+                // Следующий handle должен быть закрыт даже после локальной ошибки deregistration.
+            }
         }
     }
 
@@ -101,22 +109,24 @@ class DomainMBeanJmxComplianceTest {
         }
     }
 
-    @Test
-    void legacyControlProtocolMBeanNotRegisteredOnPlatformServer() {
-        assertThat(server.isRegistered(DomainObjectNames.CONTROL_PROTOCOL)).isFalse();
-    }
-
-    private static void wireRequiredComponents(
+    private void wireRequiredComponents(
             DomainMBeanRegistrar registrar,
             TracingSettingsSource acceptedPolicy) {
         CompositeSampler sampler = new CompositeSampler(
                 acceptedPolicy, CategoryBSamplingAccess.snapshot(Collections.emptyList(), Collections.emptyList()));
         ValidatingSpanProcessor validating = new ValidatingSpanProcessor(acceptedPolicy);
 
-        registrar.registerDiagnosticReadiness();
+        trackRegistration(registrar.registerDiagnosticReadiness(initializingReadinessProjection()));
         registrar.setCompositeSampler(sampler);
         registrar.setValidating(validating);
-        registrar.registerRuntimeControls(acceptedPolicy);
+        trackRegistration(registrar.registerRuntimeControls(
+                acceptedPolicy,
+                mutationRegistrationPermit()));
+    }
+
+    private <T extends AutoCloseable> T trackRegistration(T registration) {
+        registrations.add(registration);
+        return registration;
     }
 
     private static String readBaseline() throws IOException {

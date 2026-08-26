@@ -55,6 +55,8 @@ public final class ExtensionPropertyNames {
     public static final String BAGGAGE_PROCESSOR_DENY_PATTERNS = "platform.tracing.baggage.processor.deny-patterns";
 
     public static final String OTEL_JAVAAGENT_EXTENSIONS = "otel.javaagent.extensions";
+    public static final String CONTROLLED_AGENT_EXPECTED_SHA256 =
+            "platform.tracing.controlled-agent.expected-sha256";
 
     public static final String SPI_ATTESTATION_MODE = "platform.tracing.spi-attestation.mode";
 

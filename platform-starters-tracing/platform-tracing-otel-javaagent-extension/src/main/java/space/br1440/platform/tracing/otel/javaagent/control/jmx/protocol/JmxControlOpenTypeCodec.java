@@ -1,0 +1,373 @@
+package space.br1440.platform.tracing.otel.javaagent.control.jmx.protocol;
+
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.TreeMap;
+
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.CompositeDataSupport;
+import javax.management.openmbean.OpenDataException;
+import javax.management.openmbean.TabularData;
+
+import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsRejectionReason;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
+
+final class JmxControlOpenTypeCodec {
+
+    DecodedSettingsUpdate decode(CompositeData request) {
+        requireValidRequestShape(request);
+        verifyProtocolVersion(request);
+
+        String runtimeId = value(
+                request,
+                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_RUNTIME_INSTANCE_ID,
+                String.class);
+        long sequence = value(
+                request,
+                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_ACCEPTED_SEQUENCE,
+                Long.class);
+        String attemptId = value(
+                request,
+                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID,
+                String.class);
+        String authority = token(
+                request,
+                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_SOURCE_AUTHORITY);
+        String trigger = token(
+                request,
+                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_APPLY_TRIGGER);
+        String sourceRevision = value(
+                request,
+                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_SOURCE_REVISION,
+                String.class);
+        String candidateDigest = value(
+                request,
+                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_CANDIDATE_DIGEST,
+                String.class);
+        CompositeData policyData = value(
+                request,
+                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_RUNTIME_POLICY,
+                CompositeData.class);
+
+        requireNonNegativeSequence(sequence);
+        requireValidDigestFormat(candidateDigest);
+        requirePolicyType(policyData);
+
+        TracingSettings settings = decodePolicySafely(policyData);
+        requireWithinLogicalRequestBudget(
+                runtimeId,
+                attemptId,
+                authority,
+                trigger,
+                sourceRevision,
+                candidateDigest,
+                settings);
+        requireDigestMatches(candidateDigest, settings);
+
+        return buildDecodedRequest(
+                runtimeId,
+                sequence,
+                attemptId,
+                authority,
+                trigger,
+                sourceRevision,
+                settings);
+    }
+
+    CompositeData encode(SettingsUpdateResult result, String attemptId) {
+        try {
+            String[] violations = result.messageCode() == SettingsRejectionReason.NONE
+                    ? new String[0]
+                    : new String[]{result.messageCode().name()};
+
+            Map<String, Object> fields = new LinkedHashMap<>();
+            fields.put(
+                    GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_ACCEPTED_SEQUENCE,
+                    result.accepted().acceptedSequence());
+            fields.put(GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_ATTEMPT_ID, attemptId);
+            fields.put(
+                    GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_MESSAGE_CODE,
+                    result.messageCode().name());
+            fields.put(
+                    GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_OUTCOME,
+                    result.outcome().name());
+            fields.put(
+                    GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_PAYLOAD_DIGEST,
+                    result.payloadDigest());
+            fields.put(
+                    GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_PROTOCOL_VERSION,
+                    GeneratedJmxWireContract.SCHEMA_MAJOR);
+            fields.put(
+                    GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_RUNTIME_INSTANCE_ID,
+                    result.accepted().runtimeInstanceId());
+            fields.put(
+                    GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_VIOLATION_CODES,
+                    violations);
+
+            return new CompositeDataSupport(GeneratedJmxOpenTypes.APPLY_SNAPSHOT_RESPONSE, fields);
+        } catch (OpenDataException exception) {
+            throw new IllegalStateException("Cannot encode JMX settings mutation response", exception);
+        }
+    }
+
+    private static void requireValidRequestShape(CompositeData request) {
+        if (request == null) {
+            throw rejected(SettingsRejectionReason.MISSING_REQUIRED_FIELD, "Request is required");
+        }
+        if (request.getClass().getClassLoader() != null) {
+            throw rejected(
+                    SettingsRejectionReason.TYPE_MISMATCH,
+                    "Request must use a bootstrap-defined CompositeData implementation");
+        }
+        if (!GeneratedJmxOpenTypes.APPLY_SNAPSHOT_REQUEST.equals(request.getCompositeType())) {
+            throw rejected(SettingsRejectionReason.TYPE_MISMATCH, "Unexpected request CompositeType");
+        }
+    }
+
+    private static void verifyProtocolVersion(CompositeData request) {
+        int version = value(
+                request,
+                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_PROTOCOL_VERSION,
+                Integer.class);
+        if (version != GeneratedJmxWireContract.SCHEMA_MAJOR) {
+            throw rejected(
+                    SettingsRejectionReason.PROTOCOL_VERSION_MISMATCH,
+                    "Unsupported protocol version");
+        }
+    }
+
+    private static void requireNonNegativeSequence(long sequence) {
+        if (sequence < 0L) {
+            throw rejected(
+                    SettingsRejectionReason.INVALID_VALUE,
+                    "expectedAcceptedSequence is negative");
+        }
+    }
+
+    private static void requireValidDigestFormat(String candidateDigest) {
+        if (!candidateDigest.matches("[0-9a-f]{64}")) {
+            throw rejected(SettingsRejectionReason.INVALID_VALUE, "candidateDigest is invalid");
+        }
+    }
+
+    private static void requirePolicyType(CompositeData policyData) {
+        if (policyData.getClass().getClassLoader() != null) {
+            throw rejected(
+                    SettingsRejectionReason.TYPE_MISMATCH,
+                    "runtimePolicy must use a bootstrap-defined CompositeData implementation");
+        }
+        if (!GeneratedJmxOpenTypes.RUNTIME_POLICY.equals(policyData.getCompositeType())) {
+            throw rejected(SettingsRejectionReason.TYPE_MISMATCH, "Unexpected runtimePolicy CompositeType");
+        }
+    }
+
+    private static TracingSettings decodePolicySafely(CompositeData policyData) {
+        try {
+            return decodePolicy(policyData);
+        } catch (JmxControlDecodeException exception) {
+            throw exception;
+        } catch (IllegalArgumentException | NullPointerException exception) {
+            throw rejected(SettingsRejectionReason.INVALID_VALUE, "Runtime policy is invalid");
+        }
+    }
+
+    private static TracingSettings decodePolicy(CompositeData data) {
+        TabularData routes = value(
+                data,
+                GeneratedJmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_ROUTE_RATIOS,
+                TabularData.class);
+        if (routes.getClass().getClassLoader() != null) {
+            throw rejected(
+                    SettingsRejectionReason.TYPE_MISMATCH,
+                    "samplingRouteRatios must use a bootstrap-defined TabularData implementation");
+        }
+        if (!GeneratedJmxOpenTypes.ROUTE_RATIOS.equals(routes.getTabularType())) {
+            throw rejected(
+                    SettingsRejectionReason.TYPE_MISMATCH,
+                    "Unexpected samplingRouteRatios TabularType");
+        }
+        if (routes.size() > GeneratedJmxWireContract.MAX_ROUTE_ENTRIES) {
+            throw rejected(SettingsRejectionReason.LIMIT_EXCEEDED, "Too many route ratios");
+        }
+
+        Map<String, Double> decodedRoutes = new TreeMap<>();
+        for (Object rawRow : routes.values()) {
+            if (!(rawRow instanceof CompositeData row)
+                    || row.getClass().getClassLoader() != null
+                    || !GeneratedJmxOpenTypes.ROUTE_RATIO.equals(row.getCompositeType())) {
+                throw rejected(SettingsRejectionReason.TYPE_MISMATCH, "Unexpected route-ratio row type");
+            }
+            String prefix = value(
+                    row,
+                    GeneratedJmxWireContract.FIELD_ROUTE_RATIO_ROUTE_PREFIX,
+                    String.class);
+            Double ratio = value(
+                    row,
+                    GeneratedJmxWireContract.FIELD_ROUTE_RATIO_RATIO,
+                    Double.class);
+            requireValidRoutePrefix(prefix);
+            if (decodedRoutes.put(prefix, ratio) != null) {
+                throw rejected(SettingsRejectionReason.INVALID_VALUE, "Duplicate route prefix");
+            }
+        }
+
+        return TracingSettings.of(
+                value(
+                        data,
+                        GeneratedJmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_ENABLED,
+                        Boolean.class),
+                value(
+                        data,
+                        GeneratedJmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_RATIO,
+                        Double.class),
+                decodedRoutes,
+                value(
+                        data,
+                        GeneratedJmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_ENABLED,
+                        Boolean.class),
+                value(
+                        data,
+                        GeneratedJmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_STRICT,
+                        Boolean.class),
+                value(
+                        data,
+                        GeneratedJmxWireContract.FIELD_RUNTIME_POLICY_EXPORTER_ENABLED,
+                        Boolean.class),
+                value(
+                        data,
+                        GeneratedJmxWireContract.FIELD_RUNTIME_POLICY_TRACE_CONTROL_HEADERS_ENABLED,
+                        Boolean.class),
+                TracingLogLevel.valueOf(token(
+                        data,
+                        GeneratedJmxWireContract.FIELD_RUNTIME_POLICY_DIAGNOSTICS_LOG_LEVEL)));
+    }
+
+    private static void requireWithinLogicalRequestBudget(
+            String runtimeId,
+            String attemptId,
+            String authority,
+            String trigger,
+            String sourceRevision,
+            String candidateDigest,
+            TracingSettings settings
+    ) {
+        long logicalBytes = Integer.BYTES + Long.BYTES + Double.BYTES + 5L;
+        logicalBytes += utf8Length(runtimeId);
+        logicalBytes += utf8Length(attemptId);
+        logicalBytes += utf8Length(authority);
+        logicalBytes += utf8Length(trigger);
+        logicalBytes += utf8Length(sourceRevision);
+        logicalBytes += utf8Length(candidateDigest);
+        logicalBytes += utf8Length(settings.diagnosticsLogLevel().name());
+        for (String routePrefix : settings.samplingRouteRatios().keySet()) {
+            logicalBytes += utf8Length(routePrefix) + Double.BYTES;
+        }
+
+        if (logicalBytes > GeneratedJmxWireContract.MAX_LOGICAL_BYTES) {
+            throw rejected(
+                    SettingsRejectionReason.LIMIT_EXCEEDED,
+                    "Logical request exceeds %d bytes"
+                            .formatted(GeneratedJmxWireContract.MAX_LOGICAL_BYTES));
+        }
+    }
+
+    private static void requireDigestMatches(String candidateDigest, TracingSettings settings) {
+        if (!candidateDigest.equals(TracingSettingsDigest.sha256(settings))) {
+            throw rejected(
+                    SettingsRejectionReason.INVALID_VALUE,
+                    "candidateDigest does not match policy");
+        }
+    }
+
+    private static DecodedSettingsUpdate buildDecodedRequest(
+            String runtimeId,
+            long sequence,
+            String attemptId,
+            String authority,
+            String trigger,
+            String sourceRevision,
+            TracingSettings settings
+    ) {
+        try {
+            return new DecodedSettingsUpdate(
+                    new SettingsUpdateAttempt(
+                            attemptId,
+                            Instant.now(),
+                            SettingsSourceAuthority.valueOf(authority),
+                            SettingsUpdateTrigger.valueOf(trigger),
+                            sourceRevision),
+                    new ExpectedSettingsRevision(runtimeId, sequence),
+                    settings);
+        } catch (IllegalArgumentException | NullPointerException exception) {
+            throw rejected(SettingsRejectionReason.INVALID_VALUE, "Settings update request is invalid");
+        }
+    }
+
+    private static void requireValidRoutePrefix(String prefix) {
+        int utf8Bytes = prefix.length() > GeneratedJmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES
+                ? GeneratedJmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES + 1
+                : utf8Length(prefix);
+        if (prefix.isBlank()
+                || utf8Bytes > GeneratedJmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES
+                || containsControl(prefix)) {
+            throw rejected(SettingsRejectionReason.INVALID_VALUE, "Invalid route prefix");
+        }
+    }
+
+    private static String token(CompositeData data, String field) {
+        String fieldValue = value(data, field, String.class);
+        if (!fieldValue.equals(fieldValue.trim())) {
+            throw rejected(SettingsRejectionReason.INVALID_VALUE, field + " must be trimmed");
+        }
+        return fieldValue;
+    }
+
+    private static <T> T value(CompositeData data, String field, Class<T> type) {
+        Object fieldValue = data.get(field);
+        if (fieldValue == null) {
+            throw rejected(SettingsRejectionReason.MISSING_REQUIRED_FIELD, field + " is required");
+        }
+        if (!type.isInstance(fieldValue)) {
+            throw rejected(SettingsRejectionReason.TYPE_MISMATCH, field + " has wrong type");
+        }
+        if (fieldValue instanceof String text
+                && boundedUtf8Length(text, GeneratedJmxWireContract.MAX_STRING_UTF8_BYTES)
+                > GeneratedJmxWireContract.MAX_STRING_UTF8_BYTES) {
+            throw rejected(SettingsRejectionReason.LIMIT_EXCEEDED, field + " exceeds the UTF-8 size limit");
+        }
+        return type.cast(fieldValue);
+    }
+
+    private static int boundedUtf8Length(String value, int limit) {
+        if (value.length() > limit) {
+            return limit + 1;
+        }
+        return utf8Length(value);
+    }
+
+    private static int utf8Length(String value) {
+        return value.getBytes(StandardCharsets.UTF_8).length;
+    }
+
+    private static boolean containsControl(String value) {
+        return value.chars().anyMatch(character -> character == 0 || Character.isISOControl(character));
+    }
+
+    private static JmxControlDecodeException rejected(
+            SettingsRejectionReason code,
+            String message
+    ) {
+        return new JmxControlDecodeException(code, message);
+    }
+}

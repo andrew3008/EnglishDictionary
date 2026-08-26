@@ -22,9 +22,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.AutoConfiguredSdkPrivateControlIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
 
@@ -43,25 +43,23 @@ import io.opentelemetry.sdk.trace.samplers.Sampler;
  * ({@link BootstrapCoordinator#activate()}), а не property/component фазы. Тесты, которые
  * проверяют MBean-состояние, явно вызывают {@code coordinator.activate()} после прайминга.
  */
-@ExtendWith(AutoConfiguredSdkPrivateControlIsolationExtension.class)
+@ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 class PlatformAutoConfigurationCustomizerProcessorsTest {
 
     private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+    private BootstrapCoordinator activeCoordinator;
 
     @AfterEach
-    void cleanup() throws Exception {
-        for (ObjectName name : new ObjectName[]{
-                DomainObjectNames.SAMPLING,
-                DomainObjectNames.SCRUBBING,
-                DomainObjectNames.VALIDATION,
-                DomainObjectNames.EXPORT,
-                DomainObjectNames.PROCESSOR_METRICS,
-                DomainObjectNames.DIAGNOSTICS
-        }) {
-            if (server.isRegistered(name)) {
-                server.unregisterMBean(name);
-            }
+    void cleanup() {
+        if (activeCoordinator != null) {
+            activeCoordinator.close();
+            activeCoordinator = null;
         }
+    }
+
+    private BootstrapCoordinator trackActiveCoordinator(BootstrapCoordinator coordinator) {
+        activeCoordinator = coordinator;
+        return coordinator;
     }
 
     private static BootstrapAutoConfigurationCustomizerProvider newProvider(BootstrapCoordinator coordinator) {
@@ -180,7 +178,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
     @Test
     void MBean_registration_runs_after_activation() throws Exception {
-        BootstrapCoordinator coordinator = BootstrapCoordinator.create();
+        BootstrapCoordinator coordinator = trackActiveCoordinator(RuntimeEvidenceTestFixtures.coordinator());
         Recorder recorder = new Recorder();
         newProvider(coordinator).customize(recorder.proxy());
 
@@ -199,7 +197,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
     @Test
     void custom_sampling_ratio_is_reflected_in_registered_MBean() throws Exception {
-        BootstrapCoordinator coordinator = BootstrapCoordinator.create();
+        BootstrapCoordinator coordinator = trackActiveCoordinator(RuntimeEvidenceTestFixtures.coordinator());
         Recorder recorder = new Recorder();
         newProvider(coordinator).customize(recorder.proxy());
 
@@ -219,7 +217,8 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
     private double samplingRatioFromObservation(ObjectName objectName) throws Exception {
         CompositeData observation = (CompositeData) server.getAttribute(objectName, "SamplingObservation");
-        return (double) observation.get(JmxObservationWireContract.SAMPLING_ITEM_SAMPLING_RATIO);
+        return (double) observation.get(
+                GeneratedJmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO);
     }
 
     @Test
@@ -402,14 +401,14 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     /** Sanity-check: sampling-домен MBean зафиксирован контрактом. */
     @Test
     void object_name_sampling_MBean_matches_public_contract() {
-        assertThat(DomainObjectNames.SAMPLING_OBJECT_NAME_STR)
+        assertThat(GeneratedJmxWireContract.SAMPLING_OBSERVATION_OBJECT_NAME_STR)
                 .isEqualTo("space.br1440.platform.tracing:type=Sampling,name=PlatformSamplingControl");
     }
 
     /** Единственный атрибут sampling-домена ({@code SamplingObservation}) не writable после перехода на CompositeData. */
     @Test
     void setSamplingRatio_via_platform_JMX_is_rejected() throws Exception {
-        BootstrapCoordinator coordinator = BootstrapCoordinator.create();
+        BootstrapCoordinator coordinator = trackActiveCoordinator(RuntimeEvidenceTestFixtures.coordinator());
         Recorder recorder = new Recorder();
         newProvider(coordinator).customize(recorder.proxy());
         // PR-5: ratio поступает из addPropertiesCustomizer (extensionConfig).

@@ -1,0 +1,146 @@
+package space.br1440.platform.tracing.otel.javaagent.processor.dropoldest;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.time.Duration;
+import java.util.Collection;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.junit.jupiter.api.Test;
+
+import io.opentelemetry.sdk.common.CompletableResultCode;
+import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.export.SpanExporter;
+
+class ProcessorLifecycleThreadOwnershipTest {
+
+    private static final Duration AWAIT_TIMEOUT = Duration.ofSeconds(2);
+
+    @Test
+    void lifecycleDeclaresNoProcessWideExecutor() {
+        // given
+        Field[] fields = ProcessorLifecycle.class.getDeclaredFields();
+
+        // when
+        boolean staticExecutorPresent = false;
+        for (Field field : fields) {
+            if (Modifier.isStatic(field.getModifiers()) && Executor.class.isAssignableFrom(field.getType())) {
+                staticExecutorPresent = true;
+                break;
+            }
+        }
+
+        // then
+        assertThat(staticExecutorPresent).isFalse();
+    }
+
+    @Test
+    void firstShutdownOwnsOneDaemonTerminatorWhichEndsWithCleanup() throws InterruptedException {
+        // given
+        BlockingShutdownExporter exporter = new BlockingShutdownExporter();
+        PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)
+                .scheduleDelay(Duration.ofMinutes(1))
+                .shutdownTimeout(Duration.ofSeconds(5))
+                .build();
+        Thread worker = threadNamed("platform-tracing-drop-oldest-exporter");
+        assertThat(worker).isNotNull();
+        assertThat(worker.isDaemon()).isTrue();
+        assertThat(worker.isAlive()).isTrue();
+
+        // when
+        CompletableResultCode first = processor.shutdown();
+        Thread terminator = null;
+        try {
+            assertThat(exporter.awaitShutdownEntered(AWAIT_TIMEOUT)).isTrue();
+            terminator = exporter.terminatorThread();
+            for (int invocation = 0; invocation < 32; invocation++) {
+                assertThat(processor.shutdown()).isSameAs(first);
+            }
+
+            // then
+            assertThat(exporter.shutdownCalls()).isEqualTo(1);
+            assertThat(terminator).isNotNull();
+            assertThat(terminator.isDaemon()).isTrue();
+            assertThat(terminator.getName()).startsWith(ProcessorLifecycle.TERMINATOR_THREAD_NAME_PREFIX);
+            assertThat(terminator.isAlive()).isTrue();
+            assertThat(worker.isAlive()).isFalse();
+        } finally {
+            exporter.releaseShutdown();
+            first.join(AWAIT_TIMEOUT.toNanos(), TimeUnit.NANOSECONDS);
+            worker.join(AWAIT_TIMEOUT.toMillis());
+            if (terminator != null) {
+                terminator.join(AWAIT_TIMEOUT.toMillis());
+            }
+        }
+
+        assertThat(first.isSuccess()).isTrue();
+        assertThat(terminator).isNotNull();
+        assertThat(terminator.isAlive()).isFalse();
+        assertThat(exporter.shutdownCalls()).isEqualTo(1);
+    }
+
+    private static Thread threadNamed(String name) {
+        for (Thread thread : Thread.getAllStackTraces().keySet()) {
+            if (name.equals(thread.getName())) {
+                return thread;
+            }
+        }
+        return null;
+    }
+
+    private static final class BlockingShutdownExporter implements SpanExporter {
+
+        private final CountDownLatch shutdownEntered = new CountDownLatch(1);
+        private final CountDownLatch shutdownRelease = new CountDownLatch(1);
+        private final AtomicInteger shutdownCalls = new AtomicInteger();
+        private final AtomicReference<Thread> terminatorThread = new AtomicReference<>();
+
+        @Override
+        public CompletableResultCode export(Collection<SpanData> spans) {
+            return CompletableResultCode.ofSuccess();
+        }
+
+        @Override
+        public CompletableResultCode flush() {
+            return CompletableResultCode.ofSuccess();
+        }
+
+        @Override
+        public CompletableResultCode shutdown() {
+            shutdownCalls.incrementAndGet();
+            terminatorThread.compareAndSet(null, Thread.currentThread());
+            shutdownEntered.countDown();
+            try {
+                if (!shutdownRelease.await(AWAIT_TIMEOUT.toNanos(), TimeUnit.NANOSECONDS)) {
+                    return CompletableResultCode.ofFailure();
+                }
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                return CompletableResultCode.ofFailure();
+            }
+            return CompletableResultCode.ofSuccess();
+        }
+
+        boolean awaitShutdownEntered(Duration timeout) throws InterruptedException {
+            return shutdownEntered.await(timeout.toNanos(), TimeUnit.NANOSECONDS);
+        }
+
+        void releaseShutdown() {
+            shutdownRelease.countDown();
+        }
+
+        int shutdownCalls() {
+            return shutdownCalls.get();
+        }
+
+        Thread terminatorThread() {
+            return terminatorThread.get();
+        }
+    }
+}

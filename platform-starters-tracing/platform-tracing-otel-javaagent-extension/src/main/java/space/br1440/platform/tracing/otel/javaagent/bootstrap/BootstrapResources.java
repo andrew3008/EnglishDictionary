@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 final class BootstrapResources implements AutoCloseable {
 
@@ -28,7 +29,7 @@ final class BootstrapResources implements AutoCloseable {
     }
 
     @SuppressWarnings("SameParameterValue")
-    void installShutdownHook(String threadName) {
+    void installShutdownHook(String threadName, Consumer<Throwable> completion) {
         synchronized (lock) {
             if (closed) {
                 throw new IllegalStateException("Platform bootstrap resources are already closed");
@@ -38,7 +39,11 @@ final class BootstrapResources implements AutoCloseable {
                 return;
             }
 
-            shutdownHook = hookRegistry.register(threadName, this::closeFromShutdownHook);
+            Consumer<Throwable> shutdownCompletion = Objects.requireNonNull(completion, "completion");
+            shutdownHook = hookRegistry.register(
+                    threadName,
+                    () -> closeFromShutdownHook(shutdownCompletion)
+            );
         }
     }
 
@@ -50,12 +55,12 @@ final class BootstrapResources implements AutoCloseable {
             }
             closed = true;
 
-            RuntimeException aggregate = null;
+            Throwable aggregate = null;
             if (shutdownHook != null) {
                 try {
                     shutdownHook.close();
-                } catch (RuntimeException failure) {
-                    aggregate = new IllegalStateException("Platform bootstrap resource cleanup failed", failure);
+                } catch (RuntimeException | Error failure) {
+                    aggregate = aggregate(aggregate, failure);
                 }
                 shutdownHook = null;
             }
@@ -64,31 +69,53 @@ final class BootstrapResources implements AutoCloseable {
                 Registration registration = registrations.pop();
                 try {
                     registration.close();
-                } catch (RuntimeException failure) {
-                    aggregate = newAggregate(aggregate, failure);
+                } catch (RuntimeException | Error failure) {
+                    aggregate = aggregate(aggregate, failure);
                 }
             }
 
             if (aggregate != null) {
-                throw aggregate;
+                rethrow(aggregate);
             }
         }
     }
 
-    private static RuntimeException newAggregate(RuntimeException aggregate, RuntimeException failure) {
+    private static Throwable aggregate(Throwable aggregate, Throwable failure) {
+        if (aggregate == null && failure instanceof Error) {
+            return failure;
+        }
         if (aggregate == null) {
             return new IllegalStateException("Platform bootstrap resource cleanup failed", failure);
+        }
+        if (failure instanceof Error && !(aggregate instanceof Error)) {
+            failure.addSuppressed(aggregate);
+            return failure;
         }
 
         aggregate.addSuppressed(failure);
         return aggregate;
     }
 
-    private void closeFromShutdownHook() {
+    private static void rethrow(Throwable failure) {
+        if (failure instanceof Error error) {
+            throw error;
+        }
+        throw (RuntimeException) failure;
+    }
+
+    private void closeFromShutdownHook(Consumer<Throwable> completion) {
+        Throwable cleanupFailure = null;
         try {
             close();
-        } catch (RuntimeException failure) {
+        } catch (RuntimeException | Error failure) {
+            cleanupFailure = failure;
             System.err.println("[platform-tracing] shutdown-hook resource cleanup failed: " + failure);
+        } finally {
+            try {
+                completion.accept(cleanupFailure);
+            } catch (RuntimeException | Error failure) {
+                System.err.println("[platform-tracing] shutdown-hook completion failed: " + failure);
+            }
         }
     }
 }

@@ -17,10 +17,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.AutoConfiguredSdkPrivateControlIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.resource.PlatformResourceCustomizer;
 
-@ExtendWith(AutoConfiguredSdkPrivateControlIsolationExtension.class)
+@ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 class ResourceCustomizerAutoconfigureIntegrationTest {
 
     private static final AttributeKey<String> SERVICE_NAME =

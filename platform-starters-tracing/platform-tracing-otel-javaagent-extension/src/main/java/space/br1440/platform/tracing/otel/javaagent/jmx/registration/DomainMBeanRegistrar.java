@@ -1,11 +1,23 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 
+import java.lang.management.ManagementFactory;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.LongAdder;
+import java.util.function.Supplier;
+
+import javax.management.MBeanServer;
+
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationSnapshotPublisher;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessDynamicMBean;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
+import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxExposurePolicy.MutationRegistrationPermit;
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
@@ -15,17 +27,15 @@ import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionR
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 
-import javax.management.MBeanServer;
-import java.lang.management.ManagementFactory;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.atomic.LongAdder;
-import java.util.function.Supplier;
-
 public final class DomainMBeanRegistrar {
+
+    public interface RuntimeRegistration extends AutoCloseable {
+
+        UUID batchId();
+
+        @Override
+        void close();
+    }
 
     final LongAdder sharedInvalidConfigCounter = new LongAdder();
 
@@ -38,7 +48,9 @@ public final class DomainMBeanRegistrar {
     private final AtomicLong runtimeGeneration = new AtomicLong();
     private final Object registrationLock = new Object();
 
-    private volatile boolean mbeansRegistered;
+    private MBeanBatchRegistrar.RegisteredBatch diagnosticBatch;
+    private MBeanBatchRegistrar.RegisteredBatch runtimeBatch;
+    private volatile ObservationSnapshotPublisher observationPublisher;
     private long activeDiagnosticGeneration;
     private long activeRuntimeGeneration;
 
@@ -51,8 +63,8 @@ public final class DomainMBeanRegistrar {
     }
 
     DomainMBeanRegistrar(MBeanServer mbeanServer, PlatformExtensionReadiness extensionReadiness) {
-        this.extensionReadiness = extensionReadiness;
-        this.batchRegistrar = new MBeanBatchRegistrar(mbeanServer);
+        this.extensionReadiness = Objects.requireNonNull(extensionReadiness, "extensionReadiness");
+        this.batchRegistrar = new MBeanBatchRegistrar(Objects.requireNonNull(mbeanServer, "mbeanServer"));
     }
 
     public AutoCloseable registerDiagnosticReadiness(Supplier<ExtensionReadinessWireSnapshot> projection) {
@@ -60,49 +72,102 @@ public final class DomainMBeanRegistrar {
 
         synchronized (registrationLock) {
             if (activeDiagnosticGeneration != 0L) {
-                throw new IllegalStateException("DomainMBeanRegistrar already has an active diagnostic readiness registration");
+                throw new IllegalStateException("DomainMBeanRegistrar already has an active readiness registration");
             }
 
             long token = diagnosticGeneration.incrementAndGet();
-            registerReadinessMBean(projection);
+            try {
+                diagnosticBatch = batchRegistrar.registerOne(MBeanBatchRegistrar.Registration.dynamic(
+                        DomainObjectNames.EXTENSION_READINESS,
+                        new ExtensionReadinessDynamicMBean(projection)
+                ));
+            } catch (JmxRegistrationException failure) {
+                failRegistration("READINESS_MBEAN_REGISTRATION_FAILED", failure);
+                throw failure;
+            }
             activeDiagnosticGeneration = token;
             return new DiagnosticReadinessRegistration(token);
         }
     }
 
-    public AutoCloseable registerDiagnosticReadiness() {
-        AtomicReference<ExtensionReadinessWireSnapshot> projection = new AtomicReference<>(
-                ExtensionReadinessWireSnapshot.initializing(extensionReadiness)
-        );
-
-        return registerDiagnosticReadiness(projection::get);
-    }
-
-    public AutoCloseable registerRuntimeControls(TracingSettingsSource acceptedPolicy) {
+    public RuntimeRegistration registerRuntimeControls(
+            TracingSettingsSource acceptedPolicy,
+            MutationRegistrationPermit permit) {
         Objects.requireNonNull(acceptedPolicy, "acceptedPolicy");
+        Objects.requireNonNull(permit, "Mutation registration permit must not be null");
 
         synchronized (registrationLock) {
             if (activeRuntimeGeneration != 0L) {
-                throw new IllegalStateException("DomainMBeanRegistrar already has an active runtime-controls registration");
+                throw new IllegalStateException("DomainMBeanRegistrar already has an active runtime registration");
             }
-
-            TracingSettingsSource previous = registeredAcceptedPolicy.get();
-            long token = runtimeGeneration.incrementAndGet();
-            registeredAcceptedPolicy.set(acceptedPolicy);
-            try {
-                tryRegisterMBeans();
-            } catch (RuntimeException | Error failure) {
-                registeredAcceptedPolicy.set(previous);
-                throw failure;
-            }
-
-            activeRuntimeGeneration = token;
-            return new RuntimeControlsRegistration(token, previous);
+            return registerRuntimeControlsLocked(acceptedPolicy, permit);
         }
+    }
+
+    private RuntimeRegistration registerRuntimeControlsLocked(
+            TracingSettingsSource acceptedPolicy,
+            MutationRegistrationPermit permit) {
+        permit.verify();
+        TracingSettingsSource previous = registeredAcceptedPolicy.getAndSet(acceptedPolicy);
+        long token = runtimeGeneration.incrementAndGet();
+        DomainMBeanFactory.DomainMBeans domainMBeans;
+        try {
+            domainMBeans = DomainMBeanFactory.build(
+                    slots,
+                    acceptedPolicy,
+                    sharedInvalidConfigCounter,
+                    agentInstanceId
+            );
+        } catch (RuntimeException | Error failure) {
+            registeredAcceptedPolicy.set(previous);
+            failRegistration("JMX_OBSERVATION_INITIALIZATION_FAILED", failure);
+            throw failure;
+        }
+
+        try {
+            runtimeBatch = batchRegistrar.registerAllOrRollback(domainMBeans.registrations());
+        } catch (JmxRegistrationException failure) {
+            domainMBeans.observationPublisher().close();
+            registeredAcceptedPolicy.set(previous);
+            failRegistration(
+                    failure.rollbackIncomplete() ? "FAILED_ROLLBACK_INCOMPLETE" : "JMX_BATCH_REGISTRATION_FAILED",
+                    failure
+            );
+            throw failure;
+        } catch (Error failure) {
+            domainMBeans.observationPublisher().close();
+            registeredAcceptedPolicy.set(previous);
+            failRegistration(
+                    failure.getSuppressed().length == 0
+                            ? "JMX_BATCH_REGISTRATION_FAILED"
+                            : "FAILED_ROLLBACK_INCOMPLETE",
+                    failure
+            );
+            throw failure;
+        }
+
+        observationPublisher = domainMBeans.observationPublisher();
+        try {
+            observationPublisher.start();
+        } catch (RuntimeException | Error failure) {
+            registeredAcceptedPolicy.set(previous);
+            try {
+                closeRuntimeLocked();
+            } catch (RuntimeException | Error rollbackFailure) {
+                failure.addSuppressed(rollbackFailure);
+                failRegistration("FAILED_ROLLBACK_INCOMPLETE", rollbackFailure);
+            }
+            failRegistration("JMX_OBSERVATION_PUBLISHER_START_FAILED", failure);
+            throw failure;
+        }
+
+        activeRuntimeGeneration = token;
+        return new RuntimeControlsRegistration(token, previous, runtimeBatch.batchId());
     }
 
     public void setAcceptedPolicy(TracingSettingsSource acceptedPolicy) {
         registeredAcceptedPolicy.set(Objects.requireNonNull(acceptedPolicy, "acceptedPolicy"));
+        requestObservationSnapshotPublication();
     }
 
     public void setCompositeSampler(CompositeSampler compositeSampler) {
@@ -139,71 +204,58 @@ public final class DomainMBeanRegistrar {
 
     private <T> void attachOwner(OwnerRegistrationSlot<T> slot, T owner) {
         slot.replace(owner);
+        requestObservationSnapshotPublication();
+    }
+
+    private void requestObservationSnapshotPublication() {
+        ObservationSnapshotPublisher publisher = observationPublisher;
+        if (publisher != null) {
+            publisher.requestPublish();
+        }
     }
 
     public PlatformExtensionReadiness extensionReadiness() {
         return extensionReadiness;
     }
 
-    public void tryRegisterMBeans() {
-        if (mbeansRegistered) {
+    private void failRegistration(String code, Throwable failure) {
+        extensionReadiness.fail(code, failure);
+    }
+
+    private void closeRuntimeLocked() {
+        ObservationSnapshotPublisher publisher = observationPublisher;
+        observationPublisher = null;
+        if (publisher != null) {
+            publisher.close();
+        }
+
+        if (runtimeBatch == null) {
+            activeRuntimeGeneration = 0L;
             return;
         }
-
-        if (registeredAcceptedPolicy.get() == null) {
-            return;
-        }
-
-        synchronized (registrationLock) {
-            if (mbeansRegistered) {
-                return;
-            }
-
-            registerAllOrRollback();
-            mbeansRegistered = true;
-        }
-    }
-
-    public void unregisterAllMBeans() {
-        synchronized (registrationLock) {
-            unregisterRuntimeMBeansLocked();
-            unregisterDiagnosticReadinessLocked();
-        }
-    }
-
-    private void unregisterRuntimeMBeansLocked() {
-        batchRegistrar.unregisterSilently(DomainObjectNames.SAMPLING);
-        batchRegistrar.unregisterSilently(DomainObjectNames.SCRUBBING);
-        batchRegistrar.unregisterSilently(DomainObjectNames.VALIDATION);
-        batchRegistrar.unregisterSilently(DomainObjectNames.EXPORT);
-        batchRegistrar.unregisterSilently(DomainObjectNames.PROCESSOR_METRICS);
-        batchRegistrar.unregisterSilently(DomainObjectNames.DIAGNOSTICS);
-        mbeansRegistered = false;
-    }
-
-    private void unregisterDiagnosticReadinessLocked() {
-        batchRegistrar.unregisterSilently(DomainObjectNames.EXTENSION_READINESS);
-    }
-
-    private void registerAllOrRollback() {
-        List<MBeanBatchRegistrar.Registration> registrations = DomainMBeanFactory.build(
-                slots,
-                registeredAcceptedPolicy.get(),
-                sharedInvalidConfigCounter,
-                agentInstanceId
-        );
-        batchRegistrar.registerAllOrRollback(registrations);
-    }
-
-    private void registerReadinessMBean(Supplier<ExtensionReadinessWireSnapshot> projection) {
         try {
-            batchRegistrar.replaceExisting(
-                    new ExtensionReadinessDynamicMBean(projection),
-                    DomainObjectNames.EXTENSION_READINESS
-            );
-        } catch (Exception e) {
-            extensionReadiness.fail("READINESS_MBEAN_REGISTRATION_FAILED", e);
-            throw new JmxRegistrationException("Extension readiness MBean registration failed: " + e.getMessage(), e);
+            runtimeBatch.close();
+        } catch (JmxRegistrationException failure) {
+            failRegistration("FAILED_ROLLBACK_INCOMPLETE", failure);
+            throw failure;
+        } finally {
+            runtimeBatch = null;
+            activeRuntimeGeneration = 0L;
+        }
+    }
+
+    private void closeDiagnosticLocked() {
+        if (diagnosticBatch == null) {
+            return;
+        }
+        try {
+            diagnosticBatch.close();
+        } catch (JmxRegistrationException failure) {
+            failRegistration("FAILED_ROLLBACK_INCOMPLETE", failure);
+            throw failure;
+        } finally {
+            diagnosticBatch = null;
+            activeDiagnosticGeneration = 0L;
         }
     }
 
@@ -223,24 +275,29 @@ public final class DomainMBeanRegistrar {
                     return;
                 }
                 closed = true;
-                if (activeDiagnosticGeneration != token) {
-                    return;
+                if (activeDiagnosticGeneration == token) {
+                    closeDiagnosticLocked();
                 }
-                unregisterDiagnosticReadinessLocked();
-                activeDiagnosticGeneration = 0L;
             }
         }
     }
 
-    private final class RuntimeControlsRegistration implements AutoCloseable {
+    private final class RuntimeControlsRegistration implements RuntimeRegistration {
 
         private final long token;
         private final TracingSettingsSource previous;
+        private final UUID batchId;
         private boolean closed;
 
-        private RuntimeControlsRegistration(long token, TracingSettingsSource previous) {
+        private RuntimeControlsRegistration(long token, TracingSettingsSource previous, UUID batchId) {
             this.token = token;
             this.previous = previous;
+            this.batchId = batchId;
+        }
+
+        @Override
+        public UUID batchId() {
+            return batchId;
         }
 
         @Override
@@ -250,14 +307,15 @@ public final class DomainMBeanRegistrar {
                     return;
                 }
                 closed = true;
-
                 if (activeRuntimeGeneration != token) {
                     return;
                 }
 
-                unregisterRuntimeMBeansLocked();
-                registeredAcceptedPolicy.set(previous);
-                activeRuntimeGeneration = 0L;
+                try {
+                    closeRuntimeLocked();
+                } finally {
+                    registeredAcceptedPolicy.set(previous);
+                }
             }
         }
     }

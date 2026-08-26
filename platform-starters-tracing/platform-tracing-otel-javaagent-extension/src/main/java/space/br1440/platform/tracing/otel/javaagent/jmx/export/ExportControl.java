@@ -1,51 +1,50 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.export;
 
-import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerCapture;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
-import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
-
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenType;
-import javax.management.openmbean.SimpleType;
-import javax.management.openmbean.TabularType;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import javax.management.openmbean.CompositeData;
 
-public final class ExportControl implements ExportControlMBean {
+import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationSnapshotControl;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerCapture;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
+import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
 
-    private static final TabularType SAFE_EXPORTER_METRICS_TYPE = JmxOpenTypeSupport.stringLongMapType(
-            "space.br1440.platform.tracing.SafeExporterMetrics", "SafeExporterMetricsEntry"
-    );
+public final class ExportControl implements ExportControlMBean, ObservationSnapshotControl {
 
     private static final String ABSENT_LIFECYCLE_STATE_PLACEHOLDER = "ABSENT";
-
-    private static final JmxOpenTypeSupport.CompositeSchema PROCESSOR_VALUES_SCHEMA = buildProcessorValuesType();
-    private static final JmxOpenTypeSupport.CompositeSchema EXPORTER_VALUES_SCHEMA = buildExporterValuesType();
-    private static final JmxOpenTypeSupport.CompositeSchema OBSERVATION_TYPE = buildObservationType();
 
     private final OwnerRegistrationSlot<PlatformDropOldestExportSpanProcessor> processorSlot;
     private final OwnerRegistrationSlot<SafeSpanExporter> exporterSlot;
     private final UUID agentInstanceId;
     private final AtomicLong captureSequence = new AtomicLong();
+    private final AtomicReference<CompositeData> published = new AtomicReference<>();
 
     public ExportControl(OwnerRegistrationSlot<PlatformDropOldestExportSpanProcessor> processorSlot,
-                                 OwnerRegistrationSlot<SafeSpanExporter> exporterSlot,
-                                 UUID agentInstanceId) {
+                         OwnerRegistrationSlot<SafeSpanExporter> exporterSlot,
+                         UUID agentInstanceId) {
         this.processorSlot = Objects.requireNonNull(processorSlot, "processorSlot");
         this.exporterSlot = Objects.requireNonNull(exporterSlot, "exporterSlot");
         this.agentInstanceId = Objects.requireNonNull(agentInstanceId, "agentInstanceId");
+        publishObservationSnapshot();
     }
 
     @Override
     public CompositeData getExportObservation() {
+        return published.get();
+    }
+
+    @Override
+    public synchronized void publishObservationSnapshot() {
         long sequence = captureSequence.incrementAndGet();
         long captureStartedAtMillis = Instant.now().toEpochMilli();
 
@@ -55,17 +54,17 @@ public final class ExportControl implements ExportControlMBean {
         CompositeData processorValues = buildProcessorValues(processorCapture.state(), processorCapture.offsetNanos());
         CompositeData exporterValues = buildExporterValues(exporterCapture.state(), exporterCapture.offsetNanos());
 
-        long captureCompletedAtMillis = Instant.now().toEpochMilli();
-        return JmxOpenTypeSupport.compositeData(
-                OBSERVATION_TYPE,
-                JmxObservationWireContract.SCHEMA_VERSION,
-                sequence,
-                agentInstanceId.toString(),
-                captureStartedAtMillis,
-                captureCompletedAtMillis,
-                processorValues,
-                exporterValues
-        );
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_OBSERVATION_SCHEMA_VERSION,
+                GeneratedJmxWireContract.OBSERVATION_SCHEMA_VERSION);
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_OBSERVATION_CAPTURE_SEQUENCE, sequence);
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_OBSERVATION_AGENT_INSTANCE_ID, agentInstanceId.toString());
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_OBSERVATION_CAPTURE_STARTED_AT, captureStartedAtMillis);
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_OBSERVATION_CAPTURE_COMPLETED_AT,
+                Instant.now().toEpochMilli());
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_OBSERVATION_PROCESSOR, processorValues);
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_OBSERVATION_EXPORTER, exporterValues);
+        published.set(JmxOpenTypeSupport.compositeData(GeneratedJmxOpenTypes.EXPORT_OBSERVATION, values));
     }
 
     private static CompositeData buildProcessorValues(OwnerRegistrationState<PlatformDropOldestExportSpanProcessor> state, long offsetNanos) {
@@ -73,20 +72,24 @@ public final class ExportControl implements ExportControlMBean {
                 PlatformDropOldestExportSpanProcessor owner, long generation
         )) {
             PlatformDropOldestExportSpanProcessor.MetricsSnapshot snapshot = owner.metricsSnapshot();
-            return JmxOpenTypeSupport.compositeData(PROCESSOR_VALUES_SCHEMA,
-                    true, generation, offsetNanos,
-                    snapshot.queueCapacity(), snapshot.queueSize(),
-                    snapshot.droppedOverflowTotal(), snapshot.droppedAfterShutdownTotal(),
-                    snapshot.failuresTotal(), snapshot.timeoutsTotal(),
-                    snapshot.lifecycleState(), snapshot.shutdownFailuresTotal(),
-                    snapshot.droppedAfterFailureTotal(), snapshot.discardedQueuedTotal());
+            return processorValues(
+                    true,
+                    generation,
+                    offsetNanos,
+                    snapshot.queueCapacity(),
+                    snapshot.queueSize(),
+                    snapshot.droppedOverflowTotal(),
+                    snapshot.droppedAfterShutdownTotal(),
+                    snapshot.failuresTotal(),
+                    snapshot.timeoutsTotal(),
+                    snapshot.lifecycleState(),
+                    snapshot.shutdownFailuresTotal(),
+                    snapshot.droppedAfterFailureTotal(),
+                    snapshot.discardedQueuedTotal());
         }
 
-        return JmxOpenTypeSupport.compositeData(
-                PROCESSOR_VALUES_SCHEMA,
-                false, state.generation(), offsetNanos, 0, 0, 0L, 0L, 0L, 0L,
-                ABSENT_LIFECYCLE_STATE_PLACEHOLDER, 0L, 0L, 0L
-        );
+        return processorValues(false, state.generation(), offsetNanos, 0, 0, 0L, 0L, 0L, 0L,
+                ABSENT_LIFECYCLE_STATE_PLACEHOLDER, 0L, 0L, 0L);
     }
 
     private static CompositeData buildExporterValues(OwnerRegistrationState<SafeSpanExporter> state, long offsetNanos) {
@@ -94,54 +97,67 @@ public final class ExportControl implements ExportControlMBean {
                 SafeSpanExporter owner, long generation
         )) {
             Map<String, Long> metrics = owner.metricsSnapshot();
-            return JmxOpenTypeSupport.compositeData(EXPORTER_VALUES_SCHEMA,
-                    true, generation, offsetNanos,
-                    owner.isExportEnabled(),
-                    owner.getLastExportDurationNanos(),
-                    JmxOpenTypeSupport.stringLongMap(SAFE_EXPORTER_METRICS_TYPE, metrics)
-            );
+            return exporterValues(true, generation, offsetNanos, owner.isExportEnabled(),
+                    owner.getLastExportDurationNanos(), metrics);
         }
 
-        return JmxOpenTypeSupport.compositeData(
-                EXPORTER_VALUES_SCHEMA,
-                false, state.generation(), offsetNanos, false, 0L,
-                JmxOpenTypeSupport.stringLongMap(SAFE_EXPORTER_METRICS_TYPE, Map.of())
-        );
+        return exporterValues(false, state.generation(), offsetNanos, false, 0L, Map.of());
     }
 
-    private static JmxOpenTypeSupport.CompositeSchema buildProcessorValuesType() {
-        LinkedHashMap<String, OpenType<?>> items = new LinkedHashMap<>();
-        items.put(JmxObservationWireContract.ITEM_OWNER_PRESENT, SimpleType.BOOLEAN);
-        items.put(JmxObservationWireContract.ITEM_OWNER_GENERATION, SimpleType.LONG);
-        items.put(JmxObservationWireContract.ITEM_OWNER_CAPTURED_OFFSET_NANOS, SimpleType.LONG);
-        items.put(JmxObservationWireContract.EXPORT_PROCESSOR_ITEM_QUEUE_CAPACITY, SimpleType.INTEGER);
-        items.put(JmxObservationWireContract.EXPORT_PROCESSOR_ITEM_QUEUE_SIZE, SimpleType.INTEGER);
-        items.put(JmxObservationWireContract.EXPORT_PROCESSOR_ITEM_DROPPED_OVERFLOW_TOTAL, SimpleType.LONG);
-        items.put(JmxObservationWireContract.EXPORT_PROCESSOR_ITEM_DROPPED_AFTER_SHUTDOWN_TOTAL, SimpleType.LONG);
-        items.put(JmxObservationWireContract.EXPORT_PROCESSOR_ITEM_FAILURES_TOTAL, SimpleType.LONG);
-        items.put(JmxObservationWireContract.EXPORT_PROCESSOR_ITEM_TIMEOUTS_TOTAL, SimpleType.LONG);
-        items.put(JmxObservationWireContract.EXPORT_PROCESSOR_ITEM_LIFECYCLE_STATE, SimpleType.STRING);
-        items.put(JmxObservationWireContract.EXPORT_PROCESSOR_ITEM_SHUTDOWN_FAILURES_TOTAL, SimpleType.LONG);
-        items.put(JmxObservationWireContract.EXPORT_PROCESSOR_ITEM_DROPPED_AFTER_FAILURE_TOTAL, SimpleType.LONG);
-        items.put(JmxObservationWireContract.EXPORT_PROCESSOR_ITEM_DISCARDED_QUEUED_TOTAL, SimpleType.LONG);
-        return JmxOpenTypeSupport.compositeType(JmxObservationWireContract.EXPORT_PROCESSOR_VALUES_TYPE_NAME, items);
+    private static CompositeData processorValues(boolean present,
+                                                 long generation,
+                                                 long offsetNanos,
+                                                 int queueCapacity,
+                                                 int queueSize,
+                                                 long droppedOverflowTotal,
+                                                 long droppedAfterShutdownTotal,
+                                                 long failuresTotal,
+                                                 long timeoutsTotal,
+                                                 String lifecycleState,
+                                                 long shutdownFailuresTotal,
+                                                 long droppedAfterFailureTotal,
+                                                 long discardedQueuedTotal) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_OWNER_PRESENT, present);
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_OWNER_GENERATION, generation);
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_OWNER_CAPTURED_OFFSET_NANOS, offsetNanos);
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_QUEUE_CAPACITY, queueCapacity);
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_QUEUE_SIZE, queueSize);
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_DROPPED_OVERFLOW_TOTAL,
+                droppedOverflowTotal);
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_DROPPED_AFTER_SHUTDOWN_TOTAL,
+                droppedAfterShutdownTotal);
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_FAILURES_TOTAL, failuresTotal);
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_TIMEOUTS_TOTAL, timeoutsTotal);
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_LIFECYCLE_STATE, lifecycleState);
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_SHUTDOWN_FAILURES_TOTAL,
+                shutdownFailuresTotal);
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_DROPPED_AFTER_FAILURE_TOTAL,
+                droppedAfterFailureTotal);
+        values.put(GeneratedJmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_DISCARDED_QUEUED_TOTAL,
+                discardedQueuedTotal);
+        return JmxOpenTypeSupport.compositeData(GeneratedJmxOpenTypes.EXPORT_PROCESSOR_VALUES, values);
     }
 
-    private static JmxOpenTypeSupport.CompositeSchema buildExporterValuesType() {
-        LinkedHashMap<String, OpenType<?>> items = new LinkedHashMap<>();
-        items.put(JmxObservationWireContract.ITEM_OWNER_PRESENT, SimpleType.BOOLEAN);
-        items.put(JmxObservationWireContract.ITEM_OWNER_GENERATION, SimpleType.LONG);
-        items.put(JmxObservationWireContract.ITEM_OWNER_CAPTURED_OFFSET_NANOS, SimpleType.LONG);
-        items.put(JmxObservationWireContract.EXPORT_EXPORTER_ITEM_ENABLED, SimpleType.BOOLEAN);
-        items.put(JmxObservationWireContract.EXPORT_EXPORTER_ITEM_LAST_DURATION_NANOS, SimpleType.LONG);
-        items.put(JmxObservationWireContract.EXPORT_EXPORTER_ITEM_METRICS, SAFE_EXPORTER_METRICS_TYPE);
-        return JmxOpenTypeSupport.compositeType(JmxObservationWireContract.EXPORT_EXPORTER_VALUES_TYPE_NAME, items);
-    }
-
-    private static JmxOpenTypeSupport.CompositeSchema buildObservationType() {
-        LinkedHashMap<String, OpenType<?>> items = JmxOpenTypeSupport.observationFrameItems();
-        items.put(JmxObservationWireContract.EXPORT_ITEM_PROCESSOR, PROCESSOR_VALUES_SCHEMA.type());
-        items.put(JmxObservationWireContract.EXPORT_ITEM_EXPORTER, EXPORTER_VALUES_SCHEMA.type());
-        return JmxOpenTypeSupport.compositeType(JmxObservationWireContract.EXPORT_COMPOSITE_TYPE_NAME, items);
+    private static CompositeData exporterValues(boolean present,
+                                                long generation,
+                                                long offsetNanos,
+                                                boolean exportEnabled,
+                                                long lastExportDurationNanos,
+                                                Map<String, Long> metrics) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put(GeneratedJmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_PRESENT, present);
+        values.put(GeneratedJmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_GENERATION, generation);
+        values.put(GeneratedJmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_CAPTURED_OFFSET_NANOS, offsetNanos);
+        values.put(GeneratedJmxWireContract.FIELD_SAFE_EXPORTER_VALUES_EXPORT_ENABLED, exportEnabled);
+        values.put(GeneratedJmxWireContract.FIELD_SAFE_EXPORTER_VALUES_LAST_EXPORT_DURATION_NANOS,
+                lastExportDurationNanos);
+        values.put(GeneratedJmxWireContract.FIELD_SAFE_EXPORTER_VALUES_SAFE_EXPORTER_METRICS,
+                JmxOpenTypeSupport.stringLongMap(
+                        GeneratedJmxOpenTypes.SAFE_EXPORTER_METRICS,
+                        GeneratedJmxWireContract.FIELD_SAFE_EXPORTER_METRICS_KEY,
+                        GeneratedJmxWireContract.FIELD_SAFE_EXPORTER_METRICS_VALUE,
+                        metrics));
+        return JmxOpenTypeSupport.compositeData(GeneratedJmxOpenTypes.SAFE_EXPORTER_VALUES, values);
     }
 }

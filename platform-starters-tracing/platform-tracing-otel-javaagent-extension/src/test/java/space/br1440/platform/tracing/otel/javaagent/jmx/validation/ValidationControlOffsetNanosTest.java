@@ -6,13 +6,12 @@ import static org.mockito.Mockito.when;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-
 import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
@@ -51,7 +50,8 @@ class ValidationControlOffsetNanosTest {
         CompositeData observation = control.getValidationObservation();
 
         // then
-        long offsetNanos = (long) observation.get(JmxObservationWireContract.ITEM_OWNER_CAPTURED_OFFSET_NANOS);
+        long offsetNanos = (long) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_CAPTURED_OFFSET_NANOS);
         long inducedDelayNanos = TimeUnit.MILLISECONDS.toNanos(INDUCED_CAPTURE_DELAY_MILLIS);
         long lowerBoundNanos = (long) (inducedDelayNanos * LOWER_BOUND_FRACTION);
 
@@ -81,7 +81,8 @@ class ValidationControlOffsetNanosTest {
         CompositeData observation = control.getValidationObservation();
 
         // then
-        long offsetNanos = (long) observation.get(JmxObservationWireContract.ITEM_OWNER_CAPTURED_OFFSET_NANOS);
+        long offsetNanos = (long) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_CAPTURED_OFFSET_NANOS);
 
         assertThat(offsetNanos)
                 .as("offsetNanos should stay small when capture() is effectively instantaneous")
@@ -113,14 +114,20 @@ class ValidationControlOffsetNanosTest {
         CompositeData observation = control.getValidationObservation();
 
         // then
-        assertThat((Boolean) observation.get(JmxObservationWireContract.ITEM_OWNER_PRESENT)).isTrue();
-        assertThat((Boolean) observation.get(JmxObservationWireContract.VALIDATION_ITEM_ENABLED)).isTrue();
-        assertThat((Boolean) observation.get(JmxObservationWireContract.VALIDATION_ITEM_STRICT)).isTrue();
-        assertThat((Boolean) observation.get(JmxObservationWireContract.VALIDATION_ITEM_STRICT_RUNTIME_ALLOWED))
+        assertThat((Boolean) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT)).isTrue();
+        assertThat((Boolean) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_ENABLED)).isTrue();
+        assertThat((Boolean) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT)).isTrue();
+        assertThat((Boolean) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT_RUNTIME_ALLOWED))
                 .isFalse();
-        assertThat((Long) observation.get(JmxObservationWireContract.VALIDATION_ITEM_CONFIG_VERSION))
+        assertThat((Long) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_VERSION))
                 .isEqualTo(42L);
-        assertThat((String) observation.get(JmxObservationWireContract.VALIDATION_ITEM_CONFIG_LAST_UPDATED_SOURCE))
+        assertThat((String) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_LAST_UPDATED_SOURCE))
                 .isEqualTo("dynamic-config");
     }
 
@@ -141,14 +148,20 @@ class ValidationControlOffsetNanosTest {
         CompositeData observation = control.getValidationObservation();
 
         // then
-        assertThat((Boolean) observation.get(JmxObservationWireContract.ITEM_OWNER_PRESENT)).isFalse();
-        assertThat((Boolean) observation.get(JmxObservationWireContract.VALIDATION_ITEM_ENABLED)).isFalse();
-        assertThat((Boolean) observation.get(JmxObservationWireContract.VALIDATION_ITEM_STRICT)).isFalse();
-        assertThat((Boolean) observation.get(JmxObservationWireContract.VALIDATION_ITEM_STRICT_RUNTIME_ALLOWED))
+        assertThat((Boolean) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT)).isFalse();
+        assertThat((Boolean) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_ENABLED)).isFalse();
+        assertThat((Boolean) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT)).isFalse();
+        assertThat((Boolean) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT_RUNTIME_ALLOWED))
                 .isFalse();
-        assertThat((Long) observation.get(JmxObservationWireContract.VALIDATION_ITEM_CONFIG_VERSION))
+        assertThat((Long) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_VERSION))
                 .isEqualTo(0L);
-        assertThat((String) observation.get(JmxObservationWireContract.VALIDATION_ITEM_CONFIG_LAST_UPDATED_SOURCE))
+        assertThat((String) observation.get(
+                GeneratedJmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_LAST_UPDATED_SOURCE))
                 .isEmpty();
     }
 }

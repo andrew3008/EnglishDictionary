@@ -12,7 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.AutoConfiguredSdkPrivateControlIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.spike.baggage.RecordingTextMapSetter;
 import space.br1440.platform.tracing.otel.javaagent.spike.baggage.SpikeFilteringBaggagePropagator;
 import space.br1440.platform.tracing.otel.javaagent.testsupport.BootstrapIsolatedClassLoader;
@@ -26,7 +26,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@ExtendWith(AutoConfiguredSdkPrivateControlIsolationExtension.class)
+@ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 class BaggageFilteringSpikeTest {
 
     private static final Set<String> ALLOWLIST = Set.of("traffic_source", "tenant_class", "correlation-id");

@@ -4,6 +4,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import java.time.Instant;
+import java.util.Set;
 
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
@@ -34,7 +35,11 @@ class ControlPlaneBoundaryArchTest {
     private static final String CONTROL_JMX = CONTROL + ".jmx";
     private static final String LIFECYCLE = CONTROL_JMX + ".lifecycle";
     private static final String PROTOCOL = CONTROL_JMX + ".protocol";
-    private static final String WRITER = PROTOCOL + ".PrivateControlWriterMBean";
+    private static final String WRITER = PROTOCOL + ".PlatformSettingsMutationMBean";
+    private static final Set<String> MUTATION_METHODS = Set.of(
+            "apply",
+            "rejectBeforeApply",
+            "failBeforeApply");
 
     @ArchTest
     static final ArchRule controlRootDoesNotDependOnJmx =
@@ -79,13 +84,6 @@ class ControlPlaneBoundaryArchTest {
                     .because("TracingSettingsUpdater is the single settings mutation authority");
 
     @ArchTest
-    static final ArchRule statusMBeanIsReadOnly =
-            noClasses()
-                    .that().haveSimpleName("PlatformSettingsStatusMBean")
-                    .should().dependOnClassesThat().haveSimpleName("TracingSettingsUpdater")
-                    .because("the platform status MBean is read only");
-
-    @ArchTest
     static final ArchRule writerRoutesTerminalFailuresThroughUpdater =
             classes()
                     .that().haveFullyQualifiedName(WRITER)
@@ -106,7 +104,7 @@ class ControlPlaneBoundaryArchTest {
             noClasses()
                     .that().resideInAPackage(PROTOCOL)
                     .should().dependOnClassesThat().resideInAPackage(LIFECYCLE)
-                    .because("the private protocol must not own MBeanServer lifecycle");
+                    .because("the mutation protocol must not own MBeanServer lifecycle");
 
     @ArchTest
     static final ArchRule writerIsTheOnlyJmxUpdaterCaller =
@@ -114,7 +112,7 @@ class ControlPlaneBoundaryArchTest {
                     .that().resideInAPackage(CONTROL_JMX + "..")
                     .and().doNotHaveFullyQualifiedName(WRITER)
                     .should().callMethodWhere(targetsTracingSettingsUpdater())
-                    .because("PrivateControlWriterMBean is the only JMX update adapter");
+                    .because("PlatformSettingsMutationMBean is the only JMX mutation adapter");
 
     @ArchTest
     static final ArchRule jmxDoesNotWriteDiagnosticsDirectly =
@@ -153,8 +151,6 @@ class ControlPlaneBoundaryArchTest {
             noClasses()
                     .that().resideInAPackage("space.br1440.platform.tracing.otel.javaagent..")
                     .and().doNotHaveSimpleName("MBeanBatchRegistrar")
-                    .and().doNotHaveSimpleName("PrivateControlServer")
-                    .and().doNotHaveSimpleName("PlatformSettingsStatusRegistration")
                     .should().callMethod(
                             "javax.management.MBeanServer",
                             "registerMBean",
@@ -177,11 +173,19 @@ class ControlPlaneBoundaryArchTest {
                     .should().callConstructor("javax.management.ObjectName", "java.lang.String")
                     .because("raw ObjectName values belong to dedicated constants owners");
 
+    @ArchTest
+    static final ArchRule traceHotPathsDoNotDependOnJmx =
+            noClasses()
+                    .that().resideInAnyPackage("..sampler..", "..processor..", "..exporter..")
+                    .should().dependOnClassesThat().resideInAnyPackage("javax.management..", "..jmx..")
+                    .because("trace hot paths must remain independent from JMX transport and publication");
+
     private static DescribedPredicate<JavaMethodCall> targetsTracingSettingsUpdater() {
-        return new DescribedPredicate<>("target owner is TracingSettingsUpdater") {
+        return new DescribedPredicate<>("target is a TracingSettingsUpdater mutation method") {
             @Override
             public boolean test(JavaMethodCall call) {
-                return TracingSettingsUpdater.class.getName().equals(call.getTargetOwner().getName());
+                return TracingSettingsUpdater.class.getName().equals(call.getTargetOwner().getName())
+                        && MUTATION_METHODS.contains(call.getTarget().getName());
             }
         };
     }

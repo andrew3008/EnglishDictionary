@@ -15,7 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
-import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.AutoConfiguredSdkPrivateControlIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.testsupport.BootstrapIsolatedClassLoader;
 import space.br1440.platform.tracing.otel.javaagent.testsupport.spi.LegacyTracerProviderConfigurerProbe;
@@ -28,7 +28,7 @@ import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvide
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
-@ExtendWith(AutoConfiguredSdkPrivateControlIsolationExtension.class)
+@ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 class TracePipelineSpiAttestationIntegrationTest {
 
     private static final int PLATFORM_ORDER = 100;

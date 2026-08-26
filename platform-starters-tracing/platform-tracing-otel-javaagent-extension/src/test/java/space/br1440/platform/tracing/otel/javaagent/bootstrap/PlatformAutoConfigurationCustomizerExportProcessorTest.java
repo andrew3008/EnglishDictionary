@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.AutoConfiguredSdkPrivateControlIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
@@ -47,7 +47,7 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTe
  *   <li>неизвестное значение → WARN + DROP_OLDEST (безопасный fallback).</li>
  * </ul>
  */
-@ExtendWith(AutoConfiguredSdkPrivateControlIsolationExtension.class)
+@ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 class PlatformAutoConfigurationCustomizerExportProcessorTest {
 
     private static BootstrapAutoConfigurationCustomizerProvider newProvider() {
@@ -278,7 +278,7 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
     @DisplayName("Foreign SafeSpanExporter fails the real customizer chain before readiness")
     void foreignSafeSpanExporterFailsTheRealCustomizerChainBeforeReadiness() {
         // given
-        BootstrapCoordinator bootstrap = BootstrapCoordinator.create();
+        BootstrapCoordinator bootstrap = RuntimeEvidenceTestFixtures.coordinator();
         AutoConfiguredOpenTelemetrySdkBuilder builder = baseBuilder();
         builder.addSpanExporterCustomizer((exporter, config) -> new SafeSpanExporter(
                 exporter, TracingSettingsSource.isolatedDefaults(), ScrubbingRuntimeTestFixtures.disabled()));
@@ -304,7 +304,7 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
     @DisplayName("Hostless OTLP endpoint is rejected without publishing a READY snapshot")
     void hostlessOtlpEndpointIsRejectedWithoutPublishingReadySnapshot() {
         // given
-        BootstrapCoordinator bootstrap = BootstrapCoordinator.create();
+        BootstrapCoordinator bootstrap = RuntimeEvidenceTestFixtures.coordinator();
         AutoConfiguredOpenTelemetrySdkBuilder builder = AutoConfiguredOpenTelemetrySdk.builder()
                 .setServiceClassLoader(
                         AutoConfigurationCustomizerTestClassLoader.withoutDiscoveredCustomizers())

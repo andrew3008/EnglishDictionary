@@ -6,39 +6,41 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenType;
-import javax.management.openmbean.SimpleType;
-import javax.management.openmbean.TabularType;
 
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationSnapshotControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerCapture;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 
-public final class ScrubbingControl implements ScrubbingControlMBean {
+public final class ScrubbingControl implements ScrubbingControlMBean, ObservationSnapshotControl {
 
     private static final long RUNTIME_STATE_ACTIVE = 0L;
     private static final long RUNTIME_STATE_DEGRADED_FAIL_CLOSED = 1L;
 
-    private static final TabularType METRICS_TYPE = JmxOpenTypeSupport.stringLongMapType(
-            "space.br1440.platform.tracing.ScrubbingMetrics", "ScrubbingMetricsEntry"
-    );
-    private static final JmxOpenTypeSupport.CompositeSchema OBSERVATION_TYPE = buildObservationType();
-
     private final OwnerRegistrationSlot<ScrubbingRuntime> scrubbingSlot;
     private final UUID agentInstanceId;
     private final AtomicLong captureSequence = new AtomicLong();
+    private final AtomicReference<CompositeData> published = new AtomicReference<>();
 
     public ScrubbingControl(OwnerRegistrationSlot<ScrubbingRuntime> scrubbingSlot, UUID agentInstanceId) {
         this.scrubbingSlot = Objects.requireNonNull(scrubbingSlot, "scrubbingSlot");
         this.agentInstanceId = Objects.requireNonNull(agentInstanceId, "agentInstanceId");
+        publishObservationSnapshot();
     }
 
     @Override
     public CompositeData getScrubbingObservation() {
+        return published.get();
+    }
+
+    @Override
+    public synchronized void publishObservationSnapshot() {
         long sequence = captureSequence.incrementAndGet();
         long startedAt = Instant.now().toEpochMilli();
 
@@ -53,23 +55,30 @@ public final class ScrubbingControl implements ScrubbingControlMBean {
             snapshot = ScrubbingSnapshot.absent();
         }
 
-        long completedAt = Instant.now().toEpochMilli();
-        return JmxOpenTypeSupport.compositeData(
-                OBSERVATION_TYPE,
-                JmxObservationWireContract.SCHEMA_VERSION,
-                sequence,
-                agentInstanceId.toString(),
-                startedAt,
-                completedAt,
-                snapshot.ownerPresent(),
-                state.generation(),
-                offsetNanos,
-                snapshot.enabled(),
-                snapshot.policyVersion(),
-                snapshot.rulesLoaded(),
-                snapshot.circuitBreakersOpen(),
-                JmxOpenTypeSupport.stringLongMap(METRICS_TYPE, snapshot.metrics())
-        );
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put(GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_SCHEMA_VERSION,
+                GeneratedJmxWireContract.OBSERVATION_SCHEMA_VERSION);
+        values.put(GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_CAPTURE_SEQUENCE, sequence);
+        values.put(GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_AGENT_INSTANCE_ID,
+                agentInstanceId.toString());
+        values.put(GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_CAPTURE_STARTED_AT, startedAt);
+        values.put(GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_CAPTURE_COMPLETED_AT,
+                Instant.now().toEpochMilli());
+        values.put(GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_OWNER_PRESENT, snapshot.ownerPresent());
+        values.put(GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_OWNER_GENERATION, state.generation());
+        values.put(GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_OWNER_CAPTURED_OFFSET_NANOS, offsetNanos);
+        values.put(GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_SCRUBBING_ENABLED, snapshot.enabled());
+        values.put(GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_POLICY_VERSION, snapshot.policyVersion());
+        values.put(GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_RULES_LOADED, snapshot.rulesLoaded());
+        values.put(GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_CIRCUIT_BREAKERS_OPEN,
+                snapshot.circuitBreakersOpen());
+        values.put(GeneratedJmxWireContract.FIELD_SCRUBBING_OBSERVATION_SCRUBBING_METRICS,
+                JmxOpenTypeSupport.stringLongMap(
+                        GeneratedJmxOpenTypes.SCRUBBING_METRICS,
+                        GeneratedJmxWireContract.FIELD_SCRUBBING_METRICS_KEY,
+                        GeneratedJmxWireContract.FIELD_SCRUBBING_METRICS_VALUE,
+                        snapshot.metrics()));
+        published.set(JmxOpenTypeSupport.compositeData(GeneratedJmxOpenTypes.SCRUBBING_OBSERVATION, values));
     }
 
     private record ScrubbingSnapshot(boolean ownerPresent,
@@ -121,16 +130,4 @@ public final class ScrubbingControl implements ScrubbingControlMBean {
         return snapshot;
     }
 
-    private static JmxOpenTypeSupport.CompositeSchema buildObservationType() {
-        LinkedHashMap<String, OpenType<?>> items = JmxOpenTypeSupport.observationFrameItems();
-        items.put(JmxObservationWireContract.ITEM_OWNER_PRESENT, SimpleType.BOOLEAN);
-        items.put(JmxObservationWireContract.ITEM_OWNER_GENERATION, SimpleType.LONG);
-        items.put(JmxObservationWireContract.ITEM_OWNER_CAPTURED_OFFSET_NANOS, SimpleType.LONG);
-        items.put(JmxObservationWireContract.SCRUBBING_ITEM_ENABLED, SimpleType.BOOLEAN);
-        items.put(JmxObservationWireContract.SCRUBBING_ITEM_POLICY_VERSION, SimpleType.LONG);
-        items.put(JmxObservationWireContract.SCRUBBING_ITEM_RULES_LOADED, SimpleType.LONG);
-        items.put(JmxObservationWireContract.SCRUBBING_ITEM_CIRCUIT_BREAKERS_OPEN, SimpleType.LONG);
-        items.put(JmxObservationWireContract.SCRUBBING_ITEM_METRICS, METRICS_TYPE);
-        return JmxOpenTypeSupport.compositeType(JmxObservationWireContract.SCRUBBING_COMPOSITE_TYPE_NAME, items);
-    }
 }

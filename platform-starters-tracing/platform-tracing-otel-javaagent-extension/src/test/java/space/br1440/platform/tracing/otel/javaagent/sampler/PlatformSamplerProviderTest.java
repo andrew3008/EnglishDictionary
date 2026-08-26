@@ -2,13 +2,9 @@ package space.br1440.platform.tracing.otel.javaagent.sampler;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.management.ManagementFactory;
 import java.util.List;
 import java.util.Map;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -16,7 +12,6 @@ import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.factory.PlatformSamplerFactory;
-import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
 import space.br1440.platform.tracing.runtime.propagation.control.DefaultInboundTraceControlExtractor;
 import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
@@ -32,24 +27,6 @@ import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
 
 @DisplayName("PlatformSamplerProvider + idempotency-guard")
 class PlatformSamplerProviderTest {
-
-    private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
-
-    @AfterEach
-    void cleanupMBean() throws Exception {
-        for (ObjectName name : new ObjectName[]{
-                DomainObjectNames.SAMPLING,
-                DomainObjectNames.SCRUBBING,
-                DomainObjectNames.VALIDATION,
-                DomainObjectNames.EXPORT,
-                DomainObjectNames.PROCESSOR_METRICS,
-                DomainObjectNames.DIAGNOSTICS
-        }) {
-            if (server.isRegistered(name)) {
-                server.unregisterMBean(name);
-            }
-        }
-    }
 
     private static ConfigProperties config(Map<String, String> map) {
         return DefaultConfigProperties.createFromMap(map);

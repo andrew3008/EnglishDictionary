@@ -1,36 +1,28 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "7fb61184bc4a7fa2d79e07c6fd71209b5e6aa629",
+  "generatedFromCommit": "dc3594ad21cca45ccfe74e5079e2be5d34c808ca",
   "javaVersion": "21.0.6",
   "objectNameCount": 7,
-  "memberCount": 13,
-  "readOnlyMemberCount": 13,
+  "memberCount": 7,
+  "readOnlyMemberCount": 7,
   "mutatingMemberCount": 0,
   "objectNames": [
     {
       "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
-      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.DiagnosticsControl",
-      "description": "Information on the management interface of the MBean",
+      "className": "space.br1440.platform.tracing.jmx.GeneratedReadOnlyEndpoint",
+      "description": "Generated platform tracing read-only endpoint",
       "descriptor": [
-        {
-          "name": "immutableInfo",
-          "value": "true"
-        },
-        {
-          "name": "interfaceClassName",
-          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.DiagnosticsControlMBean"
-        },
-        {
-          "name": "mxbean",
-          "value": "false"
-        }
       ],
       "attributes": [
         {
           "name": "DiagnosticsObservation",
-          "description": "Attribute exposed for management",
+          "description": "Generated platform tracing read-only snapshot",
           "javaType": "javax.management.openmbean.CompositeData",
           "descriptor": [
+            {
+              "name": "openType",
+              "value": "javax.management.openmbean.CompositeType(name=space.br1440.platform.tracing.DiagnosticsObservation,items=((itemName=agentInstanceId,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=captureCompletedAt,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=captureSequence,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=captureStartedAt,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=invalidConfigCount,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=platformLogLevel,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=propagationEnabled,itemType=javax.management.openmbean.SimpleType(name=java.lang.Boolean)),(itemName=safeWrapperMetrics,itemType=javax.management.openmbean.TabularType(name=space.br1440.platform.tracing.SafeWrapperMetrics,rowType=javax.management.openmbean.CompositeType(name=SafeWrapperMetricsEntry,items=((itemName=key,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=value,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)))),indexNames=(key))),(itemName=schemaVersion,itemType=javax.management.openmbean.SimpleType(name=java.lang.Integer))))"
+            }
           ],
           "readable": true,
           "writable": false,
@@ -44,28 +36,20 @@
     },
     {
       "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.export.ExportControl",
-      "description": "Information on the management interface of the MBean",
+      "className": "space.br1440.platform.tracing.jmx.GeneratedReadOnlyEndpoint",
+      "description": "Generated platform tracing read-only endpoint",
       "descriptor": [
-        {
-          "name": "immutableInfo",
-          "value": "true"
-        },
-        {
-          "name": "interfaceClassName",
-          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.export.ExportControlMBean"
-        },
-        {
-          "name": "mxbean",
-          "value": "false"
-        }
       ],
       "attributes": [
         {
           "name": "ExportObservation",
-          "description": "Attribute exposed for management",
+          "description": "Generated platform tracing read-only snapshot",
           "javaType": "javax.management.openmbean.CompositeData",
           "descriptor": [
+            {
+              "name": "openType",
+              "value": "javax.management.openmbean.CompositeType(name=space.br1440.platform.tracing.ExportObservation,items=((itemName=agentInstanceId,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=captureCompletedAt,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=captureSequence,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=captureStartedAt,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=exporter,itemType=javax.management.openmbean.CompositeType(name=space.br1440.platform.tracing.SafeExporterValues,items=((itemName=exportEnabled,itemType=javax.management.openmbean.SimpleType(name=java.lang.Boolean)),(itemName=lastExportDurationNanos,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerCapturedOffsetNanos,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerGeneration,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerPresent,itemType=javax.management.openmbean.SimpleType(name=java.lang.Boolean)),(itemName=safeExporterMetrics,itemType=javax.management.openmbean.TabularType(name=space.br1440.platform.tracing.SafeExporterMetrics,rowType=javax.management.openmbean.CompositeType(name=SafeExporterMetricsEntry,items=((itemName=key,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=value,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)))),indexNames=(key)))))),(itemName=processor,itemType=javax.management.openmbean.CompositeType(name=space.br1440.platform.tracing.ExportProcessorValues,items=((itemName=discardedQueuedTotal,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=droppedAfterFailureTotal,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=droppedAfterShutdownTotal,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=droppedOverflowTotal,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=failuresTotal,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=lifecycleState,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=ownerCapturedOffsetNanos,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerGeneration,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerPresent,itemType=javax.management.openmbean.SimpleType(name=java.lang.Boolean)),(itemName=queueCapacity,itemType=javax.management.openmbean.SimpleType(name=java.lang.Integer)),(itemName=queueSize,itemType=javax.management.openmbean.SimpleType(name=java.lang.Integer)),(itemName=shutdownFailuresTotal,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=timeoutsTotal,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long))))),(itemName=schemaVersion,itemType=javax.management.openmbean.SimpleType(name=java.lang.Integer))))"
+            }
           ],
           "readable": true,
           "writable": false,
@@ -80,75 +64,19 @@
     {
       "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
       "className": "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessDynamicMBean",
-      "description": "Platform extension readiness (protocol v1, snapshot-backed)",
+      "description": "Platform extension readiness generated from the JMX wire contract",
       "descriptor": [
       ],
       "attributes": [
         {
-          "name": "Capabilities",
-          "description": "Capabilities",
-          "javaType": "[Ljava.lang.String;",
+          "name": "ReadinessSnapshot",
+          "description": "Coherent platform extension readiness snapshot",
+          "javaType": "javax.management.openmbean.CompositeData",
           "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "ExtensionVersion",
-          "description": "ExtensionVersion",
-          "javaType": "java.lang.String",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "FailureCode",
-          "description": "FailureCode",
-          "javaType": "java.lang.String",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "FailureMessage",
-          "description": "FailureMessage",
-          "javaType": "java.lang.String",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "LifecycleState",
-          "description": "LifecycleState",
-          "javaType": "java.lang.String",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "Profile",
-          "description": "Profile",
-          "javaType": "java.lang.String",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "ProtocolVersion",
-          "description": "ProtocolVersion",
-          "javaType": "int",
-          "descriptor": [
+            {
+              "name": "openType",
+              "value": "javax.management.openmbean.CompositeType(name=space.br1440.platform.tracing.ReadinessSnapshot.v1,items=((itemName=agentDistributionSha256,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=batchId,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=capabilities,itemType=javax.management.openmbean.ArrayType(name=[Ljava.lang.String;,dimension=1,elementType=javax.management.openmbean.SimpleType(name=java.lang.String),primitiveArray=false)),(itemName=contractId,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=evidenceGeneration,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=extensionDefiningLoader,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=extensionVersion,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=failureCode,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=lifecycle,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=missingRequired,itemType=javax.management.openmbean.ArrayType(name=[Ljava.lang.String;,dimension=1,elementType=javax.management.openmbean.SimpleType(name=java.lang.String),primitiveArray=false)),(itemName=runtimeEpoch,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=schemaDigest,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=schemaMajor,itemType=javax.management.openmbean.SimpleType(name=java.lang.Integer)),(itemName=schemaMinor,itemType=javax.management.openmbean.SimpleType(name=java.lang.Integer)),(itemName=sdkDefiningLoader,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=upstreamAgentVersion,itemType=javax.management.openmbean.SimpleType(name=java.lang.String))))"
+            }
           ],
           "readable": true,
           "writable": false,
@@ -162,28 +90,20 @@
     },
     {
       "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.ProcessorMetricsControl",
-      "description": "Information on the management interface of the MBean",
+      "className": "space.br1440.platform.tracing.jmx.GeneratedReadOnlyEndpoint",
+      "description": "Generated platform tracing read-only endpoint",
       "descriptor": [
-        {
-          "name": "immutableInfo",
-          "value": "true"
-        },
-        {
-          "name": "interfaceClassName",
-          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.ProcessorMetricsControlMBean"
-        },
-        {
-          "name": "mxbean",
-          "value": "false"
-        }
       ],
       "attributes": [
         {
           "name": "ProcessorMetricsObservation",
-          "description": "Attribute exposed for management",
+          "description": "Generated platform tracing read-only snapshot",
           "javaType": "javax.management.openmbean.CompositeData",
           "descriptor": [
+            {
+              "name": "openType",
+              "value": "javax.management.openmbean.CompositeType(name=space.br1440.platform.tracing.ProcessorMetricsObservation,items=((itemName=agentInstanceId,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=captureCompletedAt,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=captureSequence,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=captureStartedAt,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=composite,itemType=javax.management.openmbean.CompositeType(name=space.br1440.platform.tracing.ProcessorCompositeValues,items=((itemName=ownerCapturedOffsetNanos,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerGeneration,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerPresent,itemType=javax.management.openmbean.SimpleType(name=java.lang.Boolean)),(itemName=processorErrorsByName,itemType=javax.management.openmbean.TabularType(name=space.br1440.platform.tracing.ProcessorErrorsByName,rowType=javax.management.openmbean.CompositeType(name=ProcessorErrorsByNameEntry,items=((itemName=key,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=value,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)))),indexNames=(key))),(itemName=processorErrorsTotal,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long))))),(itemName=metrics,itemType=javax.management.openmbean.CompositeType(name=space.br1440.platform.tracing.ProcessorMetricsValues,items=((itemName=droppedAttributesTotal,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=droppedEventsTotal,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=droppedLinksTotal,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerCapturedOffsetNanos,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerGeneration,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerPresent,itemType=javax.management.openmbean.SimpleType(name=java.lang.Boolean))))),(itemName=schemaVersion,itemType=javax.management.openmbean.SimpleType(name=java.lang.Integer)),(itemName=watchdog,itemType=javax.management.openmbean.CompositeType(name=space.br1440.platform.tracing.ProcessorWatchdogValues,items=((itemName=activeSpanCount,itemType=javax.management.openmbean.SimpleType(name=java.lang.Integer)),(itemName=activeTraceCount,itemType=javax.management.openmbean.SimpleType(name=java.lang.Integer)),(itemName=forcedSpanCloses,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=forcedTraceCloses,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerCapturedOffsetNanos,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerGeneration,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerPresent,itemType=javax.management.openmbean.SimpleType(name=java.lang.Boolean)),(itemName=spanLedgerInvariantViolationTotal,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=spansRejectedGlobalTotal,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=spansRejectedPerTraceTotal,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=trackedSpanCapacity,itemType=javax.management.openmbean.SimpleType(name=java.lang.Integer)),(itemName=trackedSpanPerTraceCapacity,itemType=javax.management.openmbean.SimpleType(name=java.lang.Integer)),(itemName=trackedTraceCapacity,itemType=javax.management.openmbean.SimpleType(name=java.lang.Integer)),(itemName=trackedTraceCount,itemType=javax.management.openmbean.SimpleType(name=java.lang.Integer)),(itemName=trackingEvictedTotal,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)))))))"
+            }
           ],
           "readable": true,
           "writable": false,
@@ -197,28 +117,20 @@
     },
     {
       "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.SamplingControl",
-      "description": "Information on the management interface of the MBean",
+      "className": "space.br1440.platform.tracing.jmx.GeneratedReadOnlyEndpoint",
+      "description": "Generated platform tracing read-only endpoint",
       "descriptor": [
-        {
-          "name": "immutableInfo",
-          "value": "true"
-        },
-        {
-          "name": "interfaceClassName",
-          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.SamplingControlMBean"
-        },
-        {
-          "name": "mxbean",
-          "value": "false"
-        }
       ],
       "attributes": [
         {
           "name": "SamplingObservation",
-          "description": "Attribute exposed for management",
+          "description": "Generated platform tracing read-only snapshot",
           "javaType": "javax.management.openmbean.CompositeData",
           "descriptor": [
+            {
+              "name": "openType",
+              "value": "javax.management.openmbean.CompositeType(name=space.br1440.platform.tracing.SamplingObservation,items=((itemName=agentInstanceId,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=captureCompletedAt,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=captureSequence,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=captureStartedAt,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=routeRatios,itemType=javax.management.openmbean.TabularType(name=space.br1440.platform.tracing.SamplingRouteRatios,rowType=javax.management.openmbean.CompositeType(name=SamplingRouteRatioEntry,items=((itemName=key,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=value,itemType=javax.management.openmbean.SimpleType(name=java.lang.Double)))),indexNames=(key))),(itemName=samplerDecisionCounts,itemType=javax.management.openmbean.TabularType(name=space.br1440.platform.tracing.SamplerDecisionCounts,rowType=javax.management.openmbean.CompositeType(name=SamplerDecisionCountEntry,items=((itemName=key,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=value,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)))),indexNames=(key))),(itemName=samplerEnabled,itemType=javax.management.openmbean.SimpleType(name=java.lang.Boolean)),(itemName=samplerOwnerCapturedOffsetNanos,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=samplerOwnerGeneration,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=samplerOwnerPresent,itemType=javax.management.openmbean.SimpleType(name=java.lang.Boolean)),(itemName=samplingConfigLastUpdatedSource,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=samplingRatio,itemType=javax.management.openmbean.SimpleType(name=java.lang.Double)),(itemName=schemaVersion,itemType=javax.management.openmbean.SimpleType(name=java.lang.Integer))))"
+            }
           ],
           "readable": true,
           "writable": false,
@@ -232,28 +144,20 @@
     },
     {
       "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
-      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.ScrubbingControl",
-      "description": "Information on the management interface of the MBean",
+      "className": "space.br1440.platform.tracing.jmx.GeneratedReadOnlyEndpoint",
+      "description": "Generated platform tracing read-only endpoint",
       "descriptor": [
-        {
-          "name": "immutableInfo",
-          "value": "true"
-        },
-        {
-          "name": "interfaceClassName",
-          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.ScrubbingControlMBean"
-        },
-        {
-          "name": "mxbean",
-          "value": "false"
-        }
       ],
       "attributes": [
         {
           "name": "ScrubbingObservation",
-          "description": "Attribute exposed for management",
+          "description": "Generated platform tracing read-only snapshot",
           "javaType": "javax.management.openmbean.CompositeData",
           "descriptor": [
+            {
+              "name": "openType",
+              "value": "javax.management.openmbean.CompositeType(name=space.br1440.platform.tracing.ScrubbingObservation,items=((itemName=agentInstanceId,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=captureCompletedAt,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=captureSequence,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=captureStartedAt,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=circuitBreakersOpen,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerCapturedOffsetNanos,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerGeneration,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerPresent,itemType=javax.management.openmbean.SimpleType(name=java.lang.Boolean)),(itemName=policyVersion,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=rulesLoaded,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=schemaVersion,itemType=javax.management.openmbean.SimpleType(name=java.lang.Integer)),(itemName=scrubbingEnabled,itemType=javax.management.openmbean.SimpleType(name=java.lang.Boolean)),(itemName=scrubbingMetrics,itemType=javax.management.openmbean.TabularType(name=space.br1440.platform.tracing.ScrubbingMetrics,rowType=javax.management.openmbean.CompositeType(name=ScrubbingMetricsEntry,items=((itemName=key,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=value,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)))),indexNames=(key)))))"
+            }
           ],
           "readable": true,
           "writable": false,
@@ -267,28 +171,20 @@
     },
     {
       "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
-      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationControl",
-      "description": "Information on the management interface of the MBean",
+      "className": "space.br1440.platform.tracing.jmx.GeneratedReadOnlyEndpoint",
+      "description": "Generated platform tracing read-only endpoint",
       "descriptor": [
-        {
-          "name": "immutableInfo",
-          "value": "true"
-        },
-        {
-          "name": "interfaceClassName",
-          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationControlMBean"
-        },
-        {
-          "name": "mxbean",
-          "value": "false"
-        }
       ],
       "attributes": [
         {
           "name": "ValidationObservation",
-          "description": "Attribute exposed for management",
+          "description": "Generated platform tracing read-only snapshot",
           "javaType": "javax.management.openmbean.CompositeData",
           "descriptor": [
+            {
+              "name": "openType",
+              "value": "javax.management.openmbean.CompositeType(name=space.br1440.platform.tracing.ValidationObservation,items=((itemName=agentInstanceId,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=captureCompletedAt,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=captureSequence,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=captureStartedAt,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerCapturedOffsetNanos,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerGeneration,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=ownerPresent,itemType=javax.management.openmbean.SimpleType(name=java.lang.Boolean)),(itemName=schemaVersion,itemType=javax.management.openmbean.SimpleType(name=java.lang.Integer)),(itemName=validationConfigLastUpdatedSource,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=validationConfigVersion,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)),(itemName=validationEnabled,itemType=javax.management.openmbean.SimpleType(name=java.lang.Boolean)),(itemName=validationStrict,itemType=javax.management.openmbean.SimpleType(name=java.lang.Boolean)),(itemName=validationStrictRuntimeAllowed,itemType=javax.management.openmbean.SimpleType(name=java.lang.Boolean)),(itemName=validationViolationsTotal,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long))))"
+            }
           ],
           "readable": true,
           "writable": false,

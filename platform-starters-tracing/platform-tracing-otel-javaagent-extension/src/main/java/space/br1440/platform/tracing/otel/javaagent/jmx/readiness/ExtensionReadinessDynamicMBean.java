@@ -2,17 +2,28 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.readiness;
 
 import java.util.Objects;
 import java.util.function.Supplier;
+
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.AttributeNotFoundException;
 import javax.management.DynamicMBean;
-import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanException;
 import javax.management.MBeanInfo;
+import javax.management.MBeanNotificationInfo;
 import javax.management.ReflectionException;
+import javax.management.openmbean.OpenMBeanAttributeInfo;
+import javax.management.openmbean.OpenMBeanAttributeInfoSupport;
+import javax.management.openmbean.OpenMBeanConstructorInfo;
+import javax.management.openmbean.OpenMBeanInfoSupport;
+import javax.management.openmbean.OpenMBeanOperationInfo;
+
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
 
 public final class ExtensionReadinessDynamicMBean implements DynamicMBean {
 
+    private static final String READINESS_ATTRIBUTE =
+            GeneratedJmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT;
     private static final MBeanInfo INFO = buildMBeanInfo();
 
     private final Supplier<ExtensionReadinessWireSnapshot> projection;
@@ -23,7 +34,10 @@ public final class ExtensionReadinessDynamicMBean implements DynamicMBean {
 
     @Override
     public Object getAttribute(String attribute) throws AttributeNotFoundException {
-        return attributeValue(attribute, snapshot());
+        if (!READINESS_ATTRIBUTE.equals(attribute)) {
+            throw new AttributeNotFoundException("Unknown extension readiness attribute: " + attribute);
+        }
+        return snapshot().readinessSnapshot();
     }
 
     @Override
@@ -38,14 +52,12 @@ public final class ExtensionReadinessDynamicMBean implements DynamicMBean {
             return result;
         }
 
-        ExtensionReadinessWireSnapshot snap = snapshot();
+        ExtensionReadinessWireSnapshot captured = snapshot();
         for (String attribute : attributes) {
-            try {
-                result.add(new Attribute(attribute, attributeValue(attribute, snap)));
-            } catch (AttributeNotFoundException ignored) {
+            if (READINESS_ATTRIBUTE.equals(attribute)) {
+                result.add(new Attribute(READINESS_ATTRIBUTE, captured.readinessSnapshot()));
             }
         }
-
         return result;
     }
 
@@ -68,41 +80,22 @@ public final class ExtensionReadinessDynamicMBean implements DynamicMBean {
         return Objects.requireNonNull(projection.get(), "projection.get()");
     }
 
-    private static Object attributeValue(String attribute, ExtensionReadinessWireSnapshot snap) throws AttributeNotFoundException {
-        return switch (attribute) {
-            case "ExtensionVersion" -> snap.extensionVersion();
-            case "ProtocolVersion" -> snap.protocolVersion();
-            case "Profile" -> snap.profile();
-            case "LifecycleState" -> snap.lifecycle();
-            case "FailureCode" -> snap.failureCode();
-            case "FailureMessage" -> snap.failureMessage();
-            case "Capabilities" -> snap.capabilities();
-            default -> throw new AttributeNotFoundException("Unknown Extension Readiness attribute: " + attribute);
-        };
-    }
-
     private static MBeanInfo buildMBeanInfo() {
-        MBeanAttributeInfo[] attributes = {
-                attribute("ExtensionVersion", String.class),
-                attribute("ProtocolVersion", int.class),
-                attribute("Profile", String.class),
-                attribute("LifecycleState", String.class),
-                attribute("FailureCode", String.class),
-                attribute("FailureMessage", String.class),
-                attribute("Capabilities", String[].class)
-        };
-
-        return new MBeanInfo(
-                ExtensionReadinessDynamicMBean.class.getName(),
-                "Platform extension readiness (protocol v1, snapshot-backed)",
-                attributes,
-                null,
-                null,
-                null
+        OpenMBeanAttributeInfo readiness = new OpenMBeanAttributeInfoSupport(
+                READINESS_ATTRIBUTE,
+                "Coherent platform extension readiness snapshot",
+                GeneratedJmxOpenTypes.READINESS_SNAPSHOT,
+                true,
+                false,
+                false
         );
-    }
-
-    private static MBeanAttributeInfo attribute(String name, Class<?> type) {
-        return new MBeanAttributeInfo(name, type.getName(), name, true, false, false);
+        return new OpenMBeanInfoSupport(
+                ExtensionReadinessDynamicMBean.class.getName(),
+                "Platform extension readiness generated from the JMX wire contract",
+                new OpenMBeanAttributeInfo[] {readiness},
+                new OpenMBeanConstructorInfo[0],
+                new OpenMBeanOperationInfo[0],
+                new MBeanNotificationInfo[0]
+        );
     }
 }

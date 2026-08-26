@@ -41,7 +41,7 @@ public record SettingsUpdateAttempt(String attemptId,
         );
     }
 
-    static boolean isCanonicalAttemptId(String value) {
+    public static boolean isCanonicalAttemptId(String value) {
         if (StringUtils.isNullOrEmpty(value)) {
             return false;
         }

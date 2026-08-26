@@ -1,5 +1,17 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationTestFixtures.initializingReadinessProjection;
+import static space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxAuthorizationTestFixtures.mutationRegistrationPermit;
+
+import java.lang.management.ManagementFactory;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import javax.management.MBeanServer;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -9,23 +21,20 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
-import javax.management.MBeanServer;
-import java.lang.management.ManagementFactory;
-import java.util.List;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 class DomainMBeanRegistrarRegistrationTest {
 
     private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+    private final List<AutoCloseable> registrations = new ArrayList<>();
     private DomainMBeanRegistrar registrar;
 
     @AfterEach
     void cleanup() {
-        if (registrar != null) {
-            registrar.unregisterAllMBeans();
+        for (int index = registrations.size() - 1; index >= 0; index--) {
+            try {
+                registrations.get(index).close();
+            } catch (Exception ignored) {
+                // Последующие handles всё равно должны получить возможность освободить свои MBeans.
+            }
         }
     }
 
@@ -36,16 +45,38 @@ class DomainMBeanRegistrarRegistrationTest {
     }
 
     @Test
+    void runtimeRegistrationRejectsMissingPermitBeforeAnyMBeanIsRegistered() {
+        // given
+        registrar = new DomainMBeanRegistrar();
+        TracingSettingsSource policy = TracingSettingsSource.isolatedSampling(
+                true,
+                Map.of(),
+                0.5d);
+
+        // when
+        // then
+        assertThatThrownBy(() -> registrar.registerRuntimeControls(policy, null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("Mutation registration permit must not be null");
+        assertThat(server.isRegistered(DomainObjectNames.SETTINGS_STATUS)).isFalse();
+        assertThat(server.isRegistered(DomainObjectNames.SETTINGS_MUTATION)).isFalse();
+        assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isFalse();
+    }
+
+    @Test
     void diagnosticAndRuntimeRegistrationsAreGenerationSafe() throws Exception {
         registrar = new DomainMBeanRegistrar();
         TracingSettingsSource policyA = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.1d);
         TracingSettingsSource policyB = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.9d);
 
-        AutoCloseable diagnostic = registrar.registerDiagnosticReadiness();
+        AutoCloseable diagnostic = trackRegistration(
+                registrar.registerDiagnosticReadiness(initializingReadinessProjection()));
         assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isTrue();
 
         wireOwners(registrar, policyA);
-        AutoCloseable runtime1 = registrar.registerRuntimeControls(policyA);
+        AutoCloseable runtime1 = trackRegistration(registrar.registerRuntimeControls(
+                policyA,
+                mutationRegistrationPermit()));
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
 
         runtime1.close();
@@ -54,7 +85,9 @@ class DomainMBeanRegistrarRegistrationTest {
                 .as("diagnostic readiness retained after runtime close")
                 .isTrue();
 
-        AutoCloseable runtime2 = registrar.registerRuntimeControls(policyB);
+        AutoCloseable runtime2 = trackRegistration(registrar.registerRuntimeControls(
+                policyB,
+                mutationRegistrationPermit()));
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
 
         runtime1.close();
@@ -62,9 +95,11 @@ class DomainMBeanRegistrarRegistrationTest {
                 .as("stale runtime close must not clear newer registration")
                 .isTrue();
 
-        assertThatThrownBy(registrar::registerDiagnosticReadiness)
+        assertThatThrownBy(() -> registrar.registerDiagnosticReadiness(initializingReadinessProjection()))
                 .isInstanceOf(IllegalStateException.class);
-        assertThatThrownBy(() -> registrar.registerRuntimeControls(policyA))
+        assertThatThrownBy(() -> registrar.registerRuntimeControls(
+                policyA,
+                mutationRegistrationPermit()))
                 .isInstanceOf(IllegalStateException.class);
 
         runtime2.close();
@@ -74,20 +109,30 @@ class DomainMBeanRegistrarRegistrationTest {
     }
 
     @Test
-    void partialRuntimeRegistrationFailureDoesNotLeaveActiveGeneration() throws Exception {
+    void closedRuntimeGenerationAllowsNewRegistrationWithoutOwners() throws Exception {
         registrar = new DomainMBeanRegistrar();
-        registrar.registerDiagnosticReadiness();
+        trackRegistration(registrar.registerDiagnosticReadiness(initializingReadinessProjection()));
 
         TracingSettingsSource policy = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.2d);
-        // No owners attached: registerRuntimeControls still succeeds with empty-ish domain beans.
-        // Force failure via second open attempt after success to cover rebind; partial rollback
-        // of policy is covered by successful path + close restore.
-        AutoCloseable runtime = registrar.registerRuntimeControls(policy);
-        assertThatThrownBy(() -> registrar.registerRuntimeControls(policy))
+        // Владельцы ещё не подключены, поэтому снимки содержат явное отсутствие owner evidence.
+        // Повторный вызов проверяет запрет rebind, а close восстанавливает предыдущую policy.
+        AutoCloseable runtime = trackRegistration(registrar.registerRuntimeControls(
+                policy,
+                mutationRegistrationPermit()));
+        assertThatThrownBy(() -> registrar.registerRuntimeControls(
+                policy,
+                mutationRegistrationPermit()))
                 .isInstanceOf(IllegalStateException.class);
         runtime.close();
-        AutoCloseable again = registrar.registerRuntimeControls(policy);
+        AutoCloseable again = trackRegistration(registrar.registerRuntimeControls(
+                policy,
+                mutationRegistrationPermit()));
         again.close();
+    }
+
+    private <T extends AutoCloseable> T trackRegistration(T registration) {
+        registrations.add(registration);
+        return registration;
     }
 
     private static void wireOwners(DomainMBeanRegistrar registrar, TracingSettingsSource policy) {

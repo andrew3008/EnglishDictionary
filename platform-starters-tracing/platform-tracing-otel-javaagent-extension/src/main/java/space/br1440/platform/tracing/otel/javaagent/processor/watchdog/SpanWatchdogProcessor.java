@@ -45,6 +45,13 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
     private static final String DIAGNOSTIC_ID = "watchdog";
     private static final Runnable NO_BEFORE_COMPUTE_HOOK = () -> { };
 
+    /**
+     * Ограничение ожидания остановки сканера в {@link #shutdown()}. Без него результат
+     * завершения сообщал бы об успехе, пока сканирование ещё работает с индексом,
+     * который тут же дренируется.
+     */
+    private static final long SHUTDOWN_TIMEOUT_MILLIS = 2_000L;
+
     private final ScheduledExecutorService scheduler;
     private final LongSupplier nanoTime;
     private final WatchdogTraceIndex index;
@@ -170,9 +177,7 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
     public CompletableResultCode shutdown() {
         admissionOpen.set(false);
 
-        if (scheduler != null) {
-            scheduler.shutdownNow();
-        }
+        boolean scannerStopped = stopScanner();
 
         int leakedSpans = getActiveSpanCount();
         if (leakedSpans > 0) {
@@ -182,7 +187,34 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
 
         index.drainAll();
 
-        return CompletableResultCode.ofSuccess();
+        return scannerStopped ? CompletableResultCode.ofSuccess() : CompletableResultCode.ofFailure();
+    }
+
+    /**
+     * Останавливает сканер и дожидается завершения текущего прохода. Дренаж индекса
+     * выполняется только после этого, иначе сканирование и дренаж работали бы
+     * с одним состоянием одновременно.
+     */
+    private boolean stopScanner() {
+        if (scheduler == null) {
+            return true;
+        }
+
+        scheduler.shutdownNow();
+        try {
+            if (scheduler.awaitTermination(SHUTDOWN_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
+                return true;
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            log.warn(AgentEventCodes.EXPORT_WATCHDOG,
+                    "Interrupted while waiting for the watchdog scanner to stop");
+            return false;
+        }
+
+        log.warn(AgentEventCodes.EXPORT_WATCHDOG, "Watchdog scanner did not stop within the shutdown timeout",
+                "timeoutMillis", String.valueOf(SHUTDOWN_TIMEOUT_MILLIS));
+        return false;
     }
 
     @Override

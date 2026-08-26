@@ -1,8 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.control;
 
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -11,6 +8,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
 
 class EffectiveTracingPolicyTest {
 
@@ -77,7 +78,7 @@ class EffectiveTracingPolicyTest {
     @Test
     void enforcesRouteCollectionAndKeyBounds() {
         Map<String, Double> tooMany = new LinkedHashMap<>();
-        for (int index = 0; index <= TracingSettings.MAX_ROUTE_ENTRIES; index++) {
+        for (int index = 0; index <= GeneratedJmxWireContract.MAX_ROUTE_ENTRIES; index++) {
             tooMany.put("/route/" + index, 0.5d);
         }
 
@@ -86,7 +87,10 @@ class EffectiveTracingPolicyTest {
                 .hasMessageContaining("at most 100");
         assertThatThrownBy(() -> policy(Map.of("x".repeat(256), 0.5d)))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("at most 255");
+                .hasMessageContaining("at most 255 UTF-8 bytes");
+        assertThatThrownBy(() -> policy(Map.of("я".repeat(128), 0.5d)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("at most 255 UTF-8 bytes");
         assertThatThrownBy(() -> policy(Map.of(" \t", 0.5d)))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> policy(Map.of("/orders\u0000admin", 0.5d)))

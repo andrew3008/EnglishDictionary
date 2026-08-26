@@ -5,24 +5,26 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Map;
 
 import javax.management.MBeanServer;
+import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 
-import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.AutoConfiguredSdkPrivateControlIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.testsupport.BootstrapIsolatedClassLoader;
 
-@ExtendWith(AutoConfiguredSdkPrivateControlIsolationExtension.class)
+@ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 class PlatformExtensionReadinessIntegrationTest {
 
     @Test
-    void realAutoconfigureCallbacksPublishReadyOnlyForCompletePipeline() throws Exception {
+    void completeUnpackagedPipelineFailsAttestationBeforePublishingReady() throws Exception {
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         // Fresh classloader isolates the shared ExtensionRuntime coordinator for this
         // build (r5 plan §3 acceptance #9). Outside a real java agent, nothing invokes
@@ -43,22 +45,33 @@ class PlatformExtensionReadinessIntegrationTest {
             Class<?> listenerClass = isolatedLoader.loadClass(
                     "space.br1440.platform.tracing.otel.javaagent.bootstrap.ActivationAgentListener");
             Object listener = listenerClass.getDeclaredConstructor().newInstance();
-            listenerClass.getMethod("afterAgent", AutoConfiguredOpenTelemetrySdk.class)
-                    .invoke(listener, sdk);
+            AutoCloseable bootstrapOwner = bootstrapOwner(isolatedLoader);
 
-            assertThat(server.getAttribute(
-                    DomainObjectNames.EXTENSION_READINESS, "LifecycleState"))
-                    .isEqualTo("READY");
-            assertThat((String[]) server.getAttribute(
-                    DomainObjectNames.EXTENSION_READINESS, "Capabilities"))
-                    .containsExactlyInAnyOrder(
-                            "CONFIGURATION_LOADED",
-                            "PLATFORM_SAMPLER_INSTALLED",
-                            "REQUIRED_SPAN_PROCESSORS_INSTALLED",
-                            "SANITIZER_INSTALLED",
-                            "PROPAGATION_HOOKS_INSTALLED",
-                            "SAFE_EXPORTER_INSTALLED",
-                            "EXPORT_PATH_PROTECTED");
+            try {
+                assertThatThrownBy(() -> listenerClass
+                        .getMethod("afterAgent", AutoConfiguredOpenTelemetrySdk.class)
+                        .invoke(listener, sdk))
+                        .isInstanceOf(InvocationTargetException.class)
+                        .cause()
+                        .hasMessageContaining("DEVELOPMENT_VERSION_FORBIDDEN");
+
+                CompositeData readiness = readinessSnapshot(server);
+                assertThat(readiness.get(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE))
+                        .isEqualTo("FAILED");
+                assertThat(readiness.get(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE))
+                        .isEqualTo("DEVELOPMENT_VERSION_FORBIDDEN");
+                assertThat((String[]) readiness.get(
+                        GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES))
+                        .containsExactlyInAnyOrder(
+                                "CONFIGURATION_LOADED",
+                                "PLATFORM_SAMPLER_INSTALLED",
+                                "REQUIRED_SPAN_PROCESSORS_INSTALLED",
+                                "PROPAGATION_HOOKS_INSTALLED",
+                                "SAFE_EXPORTER_INSTALLED",
+                                "EXPORT_PATH_PROTECTED");
+            } finally {
+                bootstrapOwner.close();
+            }
         } catch (Exception e) {
             throw new AssertionError(e);
         } finally {
@@ -83,20 +96,43 @@ class PlatformExtensionReadinessIntegrationTest {
             Class<?> listenerClass = isolatedLoader.loadClass(
                     "space.br1440.platform.tracing.otel.javaagent.bootstrap.ActivationAgentListener");
             Object listener = listenerClass.getDeclaredConstructor().newInstance();
+            AutoCloseable bootstrapOwner = bootstrapOwner(isolatedLoader);
 
-            assertThatThrownBy(() -> listenerClass
-                    .getMethod("afterAgent", AutoConfiguredOpenTelemetrySdk.class)
-                    .invoke(listener, sdk))
-                    .isInstanceOf(InvocationTargetException.class)
-                    .cause()
-                    .hasMessageContaining("ACTIVATION_FAILED");
+            try {
+                assertThatThrownBy(() -> listenerClass
+                        .getMethod("afterAgent", AutoConfiguredOpenTelemetrySdk.class)
+                        .invoke(listener, sdk))
+                        .isInstanceOf(InvocationTargetException.class)
+                        .cause()
+                        .hasMessageContaining("DEVELOPMENT_VERSION_FORBIDDEN");
 
-            assertThat(server.getAttribute(DomainObjectNames.EXTENSION_READINESS, "LifecycleState"))
-                    .isEqualTo("FAILED");
-            assertThat((String[]) server.getAttribute(DomainObjectNames.EXTENSION_READINESS, "Capabilities"))
-                    .doesNotContain("SANITIZER_INSTALLED");
+                CompositeData readiness = readinessSnapshot(server);
+                assertThat(readiness.get(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE))
+                        .isEqualTo("FAILED");
+                assertThat(readiness.get(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE))
+                        .isEqualTo("DEVELOPMENT_VERSION_FORBIDDEN");
+                assertThat((String[]) readiness.get(
+                        GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES))
+                        .doesNotContain("SANITIZER_INSTALLED");
+            } finally {
+                bootstrapOwner.close();
+            }
         } finally {
             sdk.getOpenTelemetrySdk().close();
         }
+    }
+
+    private static CompositeData readinessSnapshot(MBeanServer server) throws Exception {
+        return (CompositeData) server.getAttribute(
+                DomainObjectNames.EXTENSION_READINESS,
+                GeneratedJmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT);
+    }
+
+    private static AutoCloseable bootstrapOwner(ClassLoader isolatedLoader) throws ReflectiveOperationException {
+        Class<?> runtime = isolatedLoader.loadClass(
+                "space.br1440.platform.tracing.otel.javaagent.bootstrap.ExtensionRuntime");
+        Method bootstrap = runtime.getDeclaredMethod("bootstrap");
+        bootstrap.setAccessible(true);
+        return (AutoCloseable) bootstrap.invoke(null);
     }
 }

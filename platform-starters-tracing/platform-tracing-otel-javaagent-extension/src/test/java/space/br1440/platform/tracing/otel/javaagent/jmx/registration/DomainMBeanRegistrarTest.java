@@ -1,18 +1,11 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationTestFixtures.initializingReadinessProjection;
+import static space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxAuthorizationTestFixtures.mutationRegistrationPermit;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-
-import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
-import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
-import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
-
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-import java.lang.management.ManagementFactory;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -20,28 +13,57 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatNoException;
+import javax.management.InstanceAlreadyExistsException;
+import javax.management.InstanceNotFoundException;
+import javax.management.MBeanRegistrationException;
+import javax.management.MBeanServer;
+import javax.management.MBeanServerFactory;
+import javax.management.NotCompliantMBeanException;
+import javax.management.ObjectInstance;
+import javax.management.ObjectName;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
+import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
+import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
 /**
- * Tests for {@link DomainMBeanRegistrar}: batch registration, idempotency, rollback,
- * and concurrent double-call safety.
+ * Проверяет batch-регистрацию, rollback и конкурентную безопасность {@link DomainMBeanRegistrar}.
  */
 class DomainMBeanRegistrarTest {
 
-    private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+    private final List<AutoCloseable> registrations = new ArrayList<>();
+    private MBeanServer server;
+
+    @BeforeEach
+    void setUp() {
+        server = MBeanServerFactory.createMBeanServer();
+    }
 
     @AfterEach
     void cleanup() {
-        DomainMBeanRegistrar cleanup = new DomainMBeanRegistrar();
-        cleanup.unregisterAllMBeans();
+        for (int index = registrations.size() - 1; index >= 0; index--) {
+            try {
+                registrations.get(index).close();
+            } catch (Exception ignored) {
+                // Изолированный MBeanServer освобождается целиком после теста.
+            }
+        }
+        MBeanServerFactory.releaseMBeanServer(server);
     }
 
     @Test
-    void tryRegisterMBeans_registers_all_six_domain_MBeans() throws Exception {
+    void authorizedRuntimeRegistrationRegistersDomainMBeans() throws Exception {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
-        DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+        DomainMBeanRegistrar registrar = registrar();
         wireRequiredComponents(registrar, holder);
 
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
@@ -50,11 +72,13 @@ class DomainMBeanRegistrarTest {
         assertThat(server.isRegistered(DomainObjectNames.EXPORT)).isTrue();
         assertThat(server.isRegistered(DomainObjectNames.PROCESSOR_METRICS)).isTrue();
         assertThat(server.isRegistered(DomainObjectNames.DIAGNOSTICS)).isTrue();
+        assertThat(server.isRegistered(DomainObjectNames.SETTINGS_STATUS)).isTrue();
+        assertThat(server.isRegistered(DomainObjectNames.SETTINGS_MUTATION)).isTrue();
     }
 
     @Test
-    void tryRegisterMBeans_requires_configHolder_before_registration() {
-        DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+    void runtimeMBeansRemainAbsentBeforeAuthorizedRegistration() {
+        DomainMBeanRegistrar registrar = registrar();
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         wireComponentsExceptAcceptedPolicy(registrar, holder);
 
@@ -62,34 +86,39 @@ class DomainMBeanRegistrarTest {
     }
 
     @Test
-    void tryRegisterMBeans_is_idempotent_repeated_call_does_not_duplicate_registration() throws Exception {
+    void activeRuntimeRegistrationRejectsRepeatedAuthorizedCall() throws Exception {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
-        DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+        DomainMBeanRegistrar registrar = registrar();
         wireRequiredComponents(registrar, holder);
 
-        assertThatNoException().isThrownBy(registrar::tryRegisterMBeans);
+        assertThatThrownBy(() -> registrar.registerRuntimeControls(
+                holder,
+                mutationRegistrationPermit()))
+                .isInstanceOf(IllegalStateException.class);
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
     }
 
     @Test
-    void tryRegisterMBeans_second_registrar_applies_REPLACE_EXISTING() throws Exception {
+    void secondRegistrarFailsClosedOnExistingOwnedObjectNames() throws Exception {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
-        DomainMBeanRegistrar first = new DomainMBeanRegistrar();
+        DomainMBeanRegistrar first = registrar();
         wireRequiredComponents(first, holder);
 
-        DomainMBeanRegistrar second = new DomainMBeanRegistrar();
-        assertThatNoException().isThrownBy(() -> wireRequiredComponents(second, holder));
+        DomainMBeanRegistrar second = registrar();
+        assertThatThrownBy(() -> wireRequiredComponents(second, holder))
+                .isInstanceOf(JmxRegistrationException.class)
+                .hasMessageContaining("JMX ObjectName ownership collision");
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
     }
 
     @Test
-    void unregisterAllMBeans_unregisters_all_six() throws Exception {
+    void closingRuntimeRegistrationRemovesCompleteRuntimeBatch() throws Exception {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
-        DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
-        wireRequiredComponents(registrar, holder);
+        DomainMBeanRegistrar registrar = registrar();
+        DomainMBeanRegistrar.RuntimeRegistration runtimeRegistration = wireRequiredComponents(registrar, holder);
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
 
-        registrar.unregisterAllMBeans();
+        runtimeRegistration.close();
 
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isFalse();
         assertThat(server.isRegistered(DomainObjectNames.SCRUBBING)).isFalse();
@@ -97,12 +126,14 @@ class DomainMBeanRegistrarTest {
         assertThat(server.isRegistered(DomainObjectNames.EXPORT)).isFalse();
         assertThat(server.isRegistered(DomainObjectNames.PROCESSOR_METRICS)).isFalse();
         assertThat(server.isRegistered(DomainObjectNames.DIAGNOSTICS)).isFalse();
+        assertThat(server.isRegistered(DomainObjectNames.SETTINGS_STATUS)).isFalse();
+        assertThat(server.isRegistered(DomainObjectNames.SETTINGS_MUTATION)).isFalse();
     }
 
     @Test
-    void concurrentDoubleCall_tryRegisterMBeans_does_not_break_invariants() throws Exception {
+    void concurrentAuthorizedCallsDoNotBreakActiveRegistration() throws Exception {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
-        DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+        DomainMBeanRegistrar registrar = registrar();
         wireRequiredComponents(registrar, holder);
 
         int threads = 8;
@@ -114,9 +145,11 @@ class DomainMBeanRegistrarTest {
             pool.submit(() -> {
                 try {
                     start.await();
-                    registrar.tryRegisterMBeans();
+                    registrar.registerRuntimeControls(holder, mutationRegistrationPermit());
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
+                } catch (IllegalStateException expectedActiveRegistration) {
+                    // Активная generation допускает только одну runtime-регистрацию.
                 } finally {
                     done.countDown();
                 }
@@ -132,14 +165,14 @@ class DomainMBeanRegistrarTest {
     }
 
     @Test
-    void spy_registerMBean_called_exactly_6_times_by_exactly_one_winner_among_parallel_calls() throws Exception {
+    void exactlyOneConcurrentCallerRegistersCompleteRuntimeBatch() throws Exception {
         AtomicInteger registerCallCount = new AtomicInteger();
         MBeanServer countingSpy = new DelegatingMBeanServer(server) {
             @Override
-            public javax.management.ObjectInstance registerMBean(Object object, ObjectName name)
-                    throws javax.management.InstanceAlreadyExistsException,
-                    javax.management.MBeanRegistrationException,
-                    javax.management.NotCompliantMBeanException {
+            public ObjectInstance registerMBean(Object object, ObjectName name)
+                    throws InstanceAlreadyExistsException,
+                    MBeanRegistrationException,
+                    NotCompliantMBeanException {
                 registerCallCount.incrementAndGet();
                 return super.registerMBean(object, name);
             }
@@ -154,18 +187,20 @@ class DomainMBeanRegistrarTest {
         CountDownLatch done = new CountDownLatch(threads);
         ExecutorService pool = Executors.newFixedThreadPool(threads);
         AtomicInteger successCount = new AtomicInteger();
+        AtomicReference<DomainMBeanRegistrar.RuntimeRegistration> successfulRegistration = new AtomicReference<>();
 
         for (int i = 0; i < threads; i++) {
             pool.submit(() -> {
                 try {
                     start.await();
-                    registrar.registerRuntimeControls(holder);
+                    successfulRegistration.set(registrar.registerRuntimeControls(
+                            holder,
+                            mutationRegistrationPermit()));
                     successCount.incrementAndGet();
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (IllegalStateException expectedReBindRejection) {
-                    // "re-bind while active: error" (§9 registration contract) — exactly one
-                    // concurrent caller wins the generation-scoped runtime-controls registration.
+                    // Активную generation может зарегистрировать только один конкурентный вызов.
                 } finally {
                     done.countDown();
                 }
@@ -180,32 +215,35 @@ class DomainMBeanRegistrarTest {
                 .as("ровно один вызов registerRuntimeControls должен выиграть generation-scoped регистрацию")
                 .isEqualTo(1);
         assertThat(registerCallCount.get())
-                .as("readiness (1, до цикла) + 6 доменных MBean (1 победитель) должны регистрироваться ровно один раз суммарно")
-                .isEqualTo(7);
+                .as("readiness и восемь runtime MBeans должны зарегистрироваться ровно один раз")
+                .isEqualTo(9);
+        assertThat(successfulRegistration.get()).isNotNull();
+        trackRegistration(successfulRegistration.get());
     }
 
     @Test
     void rollback_addSuppressed_present_when_rollback_fails() throws Exception {
+        // given
         final int[] registerCallCount = {0};
         MBeanServer faultySpy = new DelegatingMBeanServer(server) {
             @Override
-            public javax.management.ObjectInstance registerMBean(Object object, ObjectName name)
-                    throws javax.management.InstanceAlreadyExistsException,
-                    javax.management.MBeanRegistrationException,
-                    javax.management.NotCompliantMBeanException {
+            public ObjectInstance registerMBean(Object object, ObjectName name)
+                    throws InstanceAlreadyExistsException,
+                    MBeanRegistrationException,
+                    NotCompliantMBeanException {
                 registerCallCount[0]++;
-                if (registerCallCount[0] == 4) {
-                    throw new javax.management.NotCompliantMBeanException("simulated failure at domain 4");
+                if (registerCallCount[0] == 5) {
+                    throw new NotCompliantMBeanException("simulated failure at domain 4");
                 }
                 return super.registerMBean(object, name);
             }
 
             @Override
             public void unregisterMBean(ObjectName name)
-                    throws javax.management.InstanceNotFoundException,
-                    javax.management.MBeanRegistrationException {
+                    throws InstanceNotFoundException,
+                    MBeanRegistrationException {
                 if (DomainObjectNames.SCRUBBING.equals(name)) {
-                    throw new javax.management.InstanceNotFoundException("simulated rollback failure");
+                    throw new InstanceNotFoundException("simulated rollback failure");
                 }
                 super.unregisterMBean(name);
             }
@@ -215,41 +253,87 @@ class DomainMBeanRegistrarTest {
         DomainMBeanRegistrar registrar = new DomainMBeanRegistrar(faultySpy);
         wireComponentsExceptAcceptedPolicy(registrar, holder);
 
+        // when
         try {
-            registrar.registerRuntimeControls(holder);
+            registrar.registerRuntimeControls(holder, mutationRegistrationPermit());
         } catch (JmxRegistrationException ex) {
+            // then
             assertThat(ex.getCause()).isNotNull();
             assertThat(ex.getSuppressed()).isNotEmpty();
+            assertThat(ex.rollbackIncomplete()).isTrue();
             return;
         }
         assertThat(registerCallCount[0]).isGreaterThanOrEqualTo(0);
     }
 
     @Test
-    void legacyControlProtocolMBeanNotRegistered() throws Exception {
+    void fatalRuntimeRegistrationFailureRollsBackBatchAndFailsReadiness() {
+        // given
+        NoClassDefFoundError fatalFailure = new NoClassDefFoundError("simulated runtime MBean linkage failure");
+        MBeanServer failingServer = new DelegatingMBeanServer(server) {
+            @Override
+            public ObjectInstance registerMBean(Object object, ObjectName name)
+                    throws InstanceAlreadyExistsException,
+                    MBeanRegistrationException,
+                    NotCompliantMBeanException {
+                if (DomainObjectNames.VALIDATION.equals(name)) {
+                    throw fatalFailure;
+                }
+                return super.registerMBean(object, name);
+            }
+        };
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
-        DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
-        wireRequiredComponents(registrar, holder);
+        DomainMBeanRegistrar registrar = new DomainMBeanRegistrar(failingServer);
+        wireComponentsExceptAcceptedPolicy(registrar, holder);
 
-        assertThat(server.isRegistered(DomainObjectNames.CONTROL_PROTOCOL)).isFalse();
+        // when
+        assertThatThrownBy(() -> registrar.registerRuntimeControls(
+                holder,
+                mutationRegistrationPermit()))
+                .isSameAs(fatalFailure);
+
+        // then
+        assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isFalse();
+        assertThat(server.isRegistered(DomainObjectNames.SCRUBBING)).isFalse();
+        assertThat(server.isRegistered(DomainObjectNames.VALIDATION)).isFalse();
+        assertThat(server.isRegistered(DomainObjectNames.EXPORT)).isFalse();
+        assertThat(server.isRegistered(DomainObjectNames.PROCESSOR_METRICS)).isFalse();
+        assertThat(server.isRegistered(DomainObjectNames.DIAGNOSTICS)).isFalse();
+        assertThat(server.isRegistered(DomainObjectNames.SETTINGS_STATUS)).isFalse();
+        assertThat(server.isRegistered(DomainObjectNames.SETTINGS_MUTATION)).isFalse();
+        assertThat(registrar.extensionReadiness().lifecycle())
+                .isEqualTo(PlatformExtensionLifecycle.FAILED);
+        assertThat(registrar.extensionReadiness().failureCode())
+                .isEqualTo("JMX_BATCH_REGISTRATION_FAILED");
     }
 
-    private static void wireRequiredComponents(
+    private DomainMBeanRegistrar.RuntimeRegistration wireRequiredComponents(
             DomainMBeanRegistrar registrar,
             TracingSettingsSource acceptedPolicy) {
         wireComponentsExceptAcceptedPolicy(registrar, acceptedPolicy);
-        registrar.registerRuntimeControls(acceptedPolicy);
+        return trackRegistration(registrar.registerRuntimeControls(
+                acceptedPolicy,
+                mutationRegistrationPermit()));
     }
 
-    private static void wireComponentsExceptAcceptedPolicy(
+    private void wireComponentsExceptAcceptedPolicy(
             DomainMBeanRegistrar registrar,
             TracingSettingsSource acceptedPolicy) {
-        registrar.registerDiagnosticReadiness();
+        trackRegistration(registrar.registerDiagnosticReadiness(initializingReadinessProjection()));
         CompositeSampler sampler = new CompositeSampler(
                 acceptedPolicy, CategoryBSamplingAccess.snapshot(List.of(), List.of()));
         ValidatingSpanProcessor validating = new ValidatingSpanProcessor(acceptedPolicy);
 
         registrar.setCompositeSampler(sampler);
         registrar.setValidating(validating);
+    }
+
+    private DomainMBeanRegistrar registrar() {
+        return new DomainMBeanRegistrar(server);
+    }
+
+    private <T extends AutoCloseable> T trackRegistration(T registration) {
+        registrations.add(registration);
+        return registration;
     }
 }

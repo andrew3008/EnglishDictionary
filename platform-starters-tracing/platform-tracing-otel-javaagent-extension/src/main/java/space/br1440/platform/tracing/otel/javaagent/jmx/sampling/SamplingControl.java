@@ -1,55 +1,51 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.sampling;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
-
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenType;
-import javax.management.openmbean.SimpleType;
-import javax.management.openmbean.TabularType;
 
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationSnapshotControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerCapture;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
-public final class SamplingControl implements SamplingControlMBean {
+public final class SamplingControl implements SamplingControlMBean, ObservationSnapshotControl {
 
     private static final String CONFIG_LAST_UPDATED_SOURCE = "accepted-state";
-
-    private static final TabularType ROUTE_RATIOS_TYPE = JmxOpenTypeSupport.stringDoubleMapType(
-            "space.br1440.platform.tracing.SamplingRouteRatios", "SamplingRouteRatioEntry"
-    );
-
-    private static final TabularType DECISION_COUNTS_TYPE = JmxOpenTypeSupport.stringLongMapType(
-            "space.br1440.platform.tracing.SamplerDecisionCounts", "SamplerDecisionCountEntry"
-    );
-
-    private static final JmxOpenTypeSupport.CompositeSchema OBSERVATION_TYPE = buildObservationType();
 
     private final TracingSettingsSource acceptedPolicy;
     private final OwnerRegistrationSlot<CompositeSampler> compositeSamplerSlot;
     private final UUID agentInstanceId;
     private final AtomicLong captureSequence = new AtomicLong();
+    private final AtomicReference<CompositeData> published = new AtomicReference<>();
 
     public SamplingControl(TracingSettingsSource acceptedPolicy,
-                                   OwnerRegistrationSlot<CompositeSampler> compositeSamplerSlot,
-                                   UUID agentInstanceId) {
+                           OwnerRegistrationSlot<CompositeSampler> compositeSamplerSlot,
+                           UUID agentInstanceId) {
         this.acceptedPolicy = Objects.requireNonNull(acceptedPolicy, "acceptedPolicy");
         this.compositeSamplerSlot = Objects.requireNonNull(compositeSamplerSlot, "compositeSamplerSlot");
         this.agentInstanceId = Objects.requireNonNull(agentInstanceId, "agentInstanceId");
+        publishObservationSnapshot();
     }
 
     @Override
     public CompositeData getSamplingObservation() {
+        return published.get();
+    }
+
+    @Override
+    public synchronized void publishObservationSnapshot() {
         long sequence = captureSequence.incrementAndGet();
         long startedAt = Instant.now().toEpochMilli();
 
@@ -66,23 +62,40 @@ public final class SamplingControl implements SamplingControlMBean {
             samplerSnapshot = SamplerOwnerSnapshot.absent();
         }
 
-        long completedAt = Instant.now().toEpochMilli();
-        return JmxOpenTypeSupport.compositeData(
-                OBSERVATION_TYPE,
-                JmxObservationWireContract.SCHEMA_VERSION,
-                sequence,
-                agentInstanceId.toString(),
-                startedAt,
-                completedAt,
-                policySnapshot.samplerEnabled(),
-                policySnapshot.samplingRatio(),
-                JmxOpenTypeSupport.stringDoubleMap(ROUTE_RATIOS_TYPE, policySnapshot.routeRatios()),
-                JmxOpenTypeSupport.stringLongMap(DECISION_COUNTS_TYPE, samplerSnapshot.decisionCounts()),
-                CONFIG_LAST_UPDATED_SOURCE,
-                samplerSnapshot.present(),
-                samplerState.generation(),
-                offsetNanos
-        );
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put(GeneratedJmxWireContract.FIELD_SAMPLING_OBSERVATION_SCHEMA_VERSION,
+                GeneratedJmxWireContract.OBSERVATION_SCHEMA_VERSION);
+        values.put(GeneratedJmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE, sequence);
+        values.put(GeneratedJmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID,
+                agentInstanceId.toString());
+        values.put(GeneratedJmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_STARTED_AT, startedAt);
+        values.put(GeneratedJmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_COMPLETED_AT,
+                Instant.now().toEpochMilli());
+        values.put(GeneratedJmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_ENABLED,
+                policySnapshot.samplerEnabled());
+        values.put(GeneratedJmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO,
+                policySnapshot.samplingRatio());
+        values.put(GeneratedJmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIOS,
+                JmxOpenTypeSupport.stringDoubleMap(
+                        GeneratedJmxOpenTypes.SAMPLING_ROUTE_RATIOS,
+                        GeneratedJmxWireContract.FIELD_SAMPLING_ROUTE_RATIOS_KEY,
+                        GeneratedJmxWireContract.FIELD_SAMPLING_ROUTE_RATIOS_VALUE,
+                        policySnapshot.routeRatios()));
+        values.put(GeneratedJmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_DECISION_COUNTS,
+                JmxOpenTypeSupport.stringLongMap(
+                        GeneratedJmxOpenTypes.SAMPLER_DECISION_COUNTS,
+                        GeneratedJmxWireContract.FIELD_SAMPLER_DECISION_COUNTS_KEY,
+                        GeneratedJmxWireContract.FIELD_SAMPLER_DECISION_COUNTS_VALUE,
+                        samplerSnapshot.decisionCounts()));
+        values.put(GeneratedJmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_CONFIG_LAST_UPDATED_SOURCE,
+                CONFIG_LAST_UPDATED_SOURCE);
+        values.put(GeneratedJmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_PRESENT,
+                samplerSnapshot.present());
+        values.put(GeneratedJmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_GENERATION,
+                samplerState.generation());
+        values.put(GeneratedJmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_CAPTURED_OFFSET_NANOS,
+                offsetNanos);
+        published.set(JmxOpenTypeSupport.compositeData(GeneratedJmxOpenTypes.SAMPLING_OBSERVATION, values));
     }
 
     private record AcceptedSamplingPolicySnapshot(boolean samplerEnabled,
@@ -112,16 +125,4 @@ public final class SamplingControl implements SamplingControlMBean {
         }
     }
 
-    private static JmxOpenTypeSupport.CompositeSchema buildObservationType() {
-        LinkedHashMap<String, OpenType<?>> items = JmxOpenTypeSupport.observationFrameItems();
-        items.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_ENABLED, SimpleType.BOOLEAN);
-        items.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLING_RATIO, SimpleType.DOUBLE);
-        items.put(JmxObservationWireContract.SAMPLING_ITEM_ROUTE_RATIOS, ROUTE_RATIOS_TYPE);
-        items.put(JmxObservationWireContract.SAMPLING_ITEM_DECISION_COUNTS, DECISION_COUNTS_TYPE);
-        items.put(JmxObservationWireContract.SAMPLING_ITEM_CONFIG_LAST_UPDATED_SOURCE, SimpleType.STRING);
-        items.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_OWNER_PRESENT, SimpleType.BOOLEAN);
-        items.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_OWNER_GENERATION, SimpleType.LONG);
-        items.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_OWNER_CAPTURED_OFFSET_NANOS, SimpleType.LONG);
-        return JmxOpenTypeSupport.compositeType(JmxObservationWireContract.SAMPLING_COMPOSITE_TYPE_NAME, items);
-    }
 }

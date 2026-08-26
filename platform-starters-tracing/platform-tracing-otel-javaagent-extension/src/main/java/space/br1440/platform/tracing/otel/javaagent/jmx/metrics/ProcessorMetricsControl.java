@@ -6,13 +6,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenType;
-import javax.management.openmbean.SimpleType;
-import javax.management.openmbean.TabularType;
 
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationSnapshotControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerCapture;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
@@ -20,22 +20,14 @@ import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsP
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
 
-public final class ProcessorMetricsControl implements ProcessorMetricsControlMBean {
-
-    private static final TabularType ERRORS_BY_NAME_TYPE = JmxOpenTypeSupport.stringLongMapType(
-            "space.br1440.platform.tracing.ProcessorErrorsByName", "ProcessorErrorsByNameEntry"
-    );
-
-    private static final JmxOpenTypeSupport.CompositeSchema WATCHDOG_VALUES_SCHEMA = buildWatchdogValuesType();
-    private static final JmxOpenTypeSupport.CompositeSchema COMPOSITE_VALUES_SCHEMA = buildCompositeValuesType();
-    private static final JmxOpenTypeSupport.CompositeSchema METRICS_VALUES_SCHEMA = buildMetricsValuesType();
-    private static final JmxOpenTypeSupport.CompositeSchema OBSERVATION_TYPE = buildObservationType();
+public final class ProcessorMetricsControl implements ProcessorMetricsControlMBean, ObservationSnapshotControl {
 
     private final OwnerRegistrationSlot<SpanWatchdogProcessor> watchdogSlot;
     private final OwnerRegistrationSlot<PlatformCompositeSpanProcessor> compositeSlot;
     private final OwnerRegistrationSlot<SpanLimitsMetricsProcessor> metricsSlot;
     private final UUID agentInstanceId;
     private final AtomicLong captureSequence = new AtomicLong();
+    private final AtomicReference<CompositeData> published = new AtomicReference<>();
 
     public ProcessorMetricsControl(OwnerRegistrationSlot<SpanWatchdogProcessor> watchdogSlot,
                                    OwnerRegistrationSlot<PlatformCompositeSpanProcessor> compositeSlot,
@@ -45,10 +37,16 @@ public final class ProcessorMetricsControl implements ProcessorMetricsControlMBe
         this.compositeSlot = Objects.requireNonNull(compositeSlot, "compositeSlot");
         this.metricsSlot = Objects.requireNonNull(metricsSlot, "metricsSlot");
         this.agentInstanceId = Objects.requireNonNull(agentInstanceId, "agentInstanceId");
+        publishObservationSnapshot();
     }
 
     @Override
     public CompositeData getProcessorMetricsObservation() {
+        return published.get();
+    }
+
+    @Override
+    public synchronized void publishObservationSnapshot() {
         long sequence = captureSequence.incrementAndGet();
         long startedAt = Instant.now().toEpochMilli();
 
@@ -60,41 +58,47 @@ public final class ProcessorMetricsControl implements ProcessorMetricsControlMBe
         CompositeData compositeValues = buildCompositeValues(compositeCapture.state(), compositeCapture.offsetNanos());
         CompositeData metricsValues = buildMetricsValues(metricsCapture.state(), metricsCapture.offsetNanos());
 
-        long completedAt = Instant.now().toEpochMilli();
-        return JmxOpenTypeSupport.compositeData(
-                OBSERVATION_TYPE,
-                JmxObservationWireContract.SCHEMA_VERSION,
-                sequence,
-                agentInstanceId.toString(),
-                startedAt,
-                completedAt,
-                watchdogValues,
-                compositeValues,
-                metricsValues
-        );
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_SCHEMA_VERSION,
+                GeneratedJmxWireContract.OBSERVATION_SCHEMA_VERSION);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_CAPTURE_SEQUENCE, sequence);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_AGENT_INSTANCE_ID,
+                agentInstanceId.toString());
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_CAPTURE_STARTED_AT, startedAt);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_CAPTURE_COMPLETED_AT,
+                Instant.now().toEpochMilli());
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG, watchdogValues);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_COMPOSITE, compositeValues);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_METRICS, metricsValues);
+        published.set(JmxOpenTypeSupport.compositeData(
+                GeneratedJmxOpenTypes.PROCESSOR_METRICS_OBSERVATION,
+                values));
     }
 
     private static CompositeData buildWatchdogValues(OwnerRegistrationState<SpanWatchdogProcessor> state, long offsetNanos) {
         if (state instanceof OwnerRegistrationState.Present<SpanWatchdogProcessor>(
                 SpanWatchdogProcessor owner, long generation
         )) {
-            return JmxOpenTypeSupport.compositeData(
-                    WATCHDOG_VALUES_SCHEMA,
-                    true, generation, offsetNanos,
-                    owner.getForcedSpanCloses(), owner.getForcedTraceCloses(),
-                    owner.getActiveSpanCount(), owner.getActiveTraceCount(),
-                    owner.getTrackedTraceCount(), owner.getTrackedTraceCapacity(),
+            return watchdogValues(
+                    true,
+                    generation,
+                    offsetNanos,
+                    owner.getForcedSpanCloses(),
+                    owner.getForcedTraceCloses(),
+                    owner.getActiveSpanCount(),
+                    owner.getActiveTraceCount(),
+                    owner.getTrackedTraceCount(),
+                    owner.getTrackedTraceCapacity(),
                     owner.getTrackingEvictedTotal(),
-                    owner.getTrackedSpanCapacity(), owner.getTrackedSpanPerTraceCapacity(),
-                    owner.getSpansRejectedPerTraceTotal(), owner.getSpansRejectedGlobalTotal(),
-                    owner.getSpanLedgerInvariantViolationTotal()
-            );
+                    owner.getTrackedSpanCapacity(),
+                    owner.getTrackedSpanPerTraceCapacity(),
+                    owner.getSpansRejectedPerTraceTotal(),
+                    owner.getSpansRejectedGlobalTotal(),
+                    owner.getSpanLedgerInvariantViolationTotal());
         }
 
-        return JmxOpenTypeSupport.compositeData(
-                WATCHDOG_VALUES_SCHEMA,
-                false, state.generation(), offsetNanos, 0L, 0L, 0, 0, 0, 0, 0L, 0, 0, 0L, 0L, 0L
-        );
+        return watchdogValues(false, state.generation(), offsetNanos,
+                0L, 0L, 0, 0, 0, 0, 0L, 0, 0, 0L, 0L, 0L);
     }
 
     private static CompositeData buildCompositeValues(OwnerRegistrationState<PlatformCompositeSpanProcessor> state, long offsetNanos) {
@@ -109,83 +113,105 @@ public final class ProcessorMetricsControl implements ProcessorMetricsControlMBe
                 }
             }
 
-            return JmxOpenTypeSupport.compositeData(
-                    COMPOSITE_VALUES_SCHEMA,
-                    true, generation, offsetNanos,
-                    total, JmxOpenTypeSupport.stringLongMap(ERRORS_BY_NAME_TYPE, errorsByName)
-            );
+            return compositeValues(true, generation, offsetNanos, total, errorsByName);
         }
 
-        return JmxOpenTypeSupport.compositeData(
-                COMPOSITE_VALUES_SCHEMA,
-                false, state.generation(), offsetNanos, 0L,
-                JmxOpenTypeSupport.stringLongMap(ERRORS_BY_NAME_TYPE, Map.of())
-        );
+        return compositeValues(false, state.generation(), offsetNanos, 0L, Map.of());
     }
 
     private static CompositeData buildMetricsValues(OwnerRegistrationState<SpanLimitsMetricsProcessor> state, long offsetNanos) {
         if (state instanceof OwnerRegistrationState.Present<SpanLimitsMetricsProcessor>(
                 SpanLimitsMetricsProcessor owner, long generation
         )) {
-            return JmxOpenTypeSupport.compositeData(
-                    METRICS_VALUES_SCHEMA,
-                    true, generation, offsetNanos,
-                    owner.getDroppedAttributes(), owner.getDroppedEvents(), owner.getDroppedLinks()
-            );
+            return metricsValues(true, generation, offsetNanos,
+                    owner.getDroppedAttributes(), owner.getDroppedEvents(), owner.getDroppedLinks());
         }
 
-        return JmxOpenTypeSupport.compositeData(
-                METRICS_VALUES_SCHEMA,
-                false, state.generation(), offsetNanos, 0L, 0L, 0L
-        );
+        return metricsValues(false, state.generation(), offsetNanos, 0L, 0L, 0L);
     }
 
-    private static JmxOpenTypeSupport.CompositeSchema buildWatchdogValuesType() {
-        LinkedHashMap<String, OpenType<?>> items = new LinkedHashMap<>();
-        items.put(JmxObservationWireContract.ITEM_OWNER_PRESENT, SimpleType.BOOLEAN);
-        items.put(JmxObservationWireContract.ITEM_OWNER_GENERATION, SimpleType.LONG);
-        items.put(JmxObservationWireContract.ITEM_OWNER_CAPTURED_OFFSET_NANOS, SimpleType.LONG);
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_FORCED_SPAN_CLOSES, SimpleType.LONG);
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_FORCED_TRACE_CLOSES, SimpleType.LONG);
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_ACTIVE_SPAN_COUNT, SimpleType.INTEGER);
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_ACTIVE_TRACE_COUNT, SimpleType.INTEGER);
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_TRACE_COUNT, SimpleType.INTEGER);
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_TRACE_CAPACITY, SimpleType.INTEGER);
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKING_EVICTED_TOTAL, SimpleType.LONG);
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_SPAN_CAPACITY, SimpleType.INTEGER);
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_SPAN_PER_TRACE_CAPACITY, SimpleType.INTEGER);
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_SPANS_REJECTED_PER_TRACE_TOTAL, SimpleType.LONG);
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_SPANS_REJECTED_GLOBAL_TOTAL, SimpleType.LONG);
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_SPAN_LEDGER_INVARIANT_VIOLATION_TOTAL, SimpleType.LONG);
-        return JmxOpenTypeSupport.compositeType(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_VALUES_TYPE_NAME, items);
+    private static CompositeData watchdogValues(boolean present,
+                                                long generation,
+                                                long offsetNanos,
+                                                long forcedSpanCloses,
+                                                long forcedTraceCloses,
+                                                int activeSpanCount,
+                                                int activeTraceCount,
+                                                int trackedTraceCount,
+                                                int trackedTraceCapacity,
+                                                long trackingEvictedTotal,
+                                                int trackedSpanCapacity,
+                                                int trackedSpanPerTraceCapacity,
+                                                long spansRejectedPerTraceTotal,
+                                                long spansRejectedGlobalTotal,
+                                                long spanLedgerInvariantViolationTotal) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_PRESENT, present);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_GENERATION, generation);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_CAPTURED_OFFSET_NANOS,
+                offsetNanos);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_FORCED_SPAN_CLOSES,
+                forcedSpanCloses);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_FORCED_TRACE_CLOSES,
+                forcedTraceCloses);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_ACTIVE_SPAN_COUNT, activeSpanCount);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_ACTIVE_TRACE_COUNT, activeTraceCount);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKED_TRACE_COUNT, trackedTraceCount);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKED_TRACE_CAPACITY,
+                trackedTraceCapacity);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKING_EVICTED_TOTAL,
+                trackingEvictedTotal);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKED_SPAN_CAPACITY,
+                trackedSpanCapacity);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKED_SPAN_PER_TRACE_CAPACITY,
+                trackedSpanPerTraceCapacity);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_SPANS_REJECTED_PER_TRACE_TOTAL,
+                spansRejectedPerTraceTotal);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_SPANS_REJECTED_GLOBAL_TOTAL,
+                spansRejectedGlobalTotal);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_SPAN_LEDGER_INVARIANT_VIOLATION_TOTAL,
+                spanLedgerInvariantViolationTotal);
+        return JmxOpenTypeSupport.compositeData(GeneratedJmxOpenTypes.PROCESSOR_WATCHDOG_VALUES, values);
     }
 
-    private static JmxOpenTypeSupport.CompositeSchema buildCompositeValuesType() {
-        LinkedHashMap<String, OpenType<?>> items = new LinkedHashMap<>();
-        items.put(JmxObservationWireContract.ITEM_OWNER_PRESENT, SimpleType.BOOLEAN);
-        items.put(JmxObservationWireContract.ITEM_OWNER_GENERATION, SimpleType.LONG);
-        items.put(JmxObservationWireContract.ITEM_OWNER_CAPTURED_OFFSET_NANOS, SimpleType.LONG);
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_COMPOSITE_ITEM_ERRORS_TOTAL, SimpleType.LONG);
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_COMPOSITE_ITEM_ERRORS_BY_NAME, ERRORS_BY_NAME_TYPE);
-        return JmxOpenTypeSupport.compositeType(JmxObservationWireContract.PROCESSOR_METRICS_COMPOSITE_VALUES_TYPE_NAME, items);
+    private static CompositeData compositeValues(boolean present,
+                                                 long generation,
+                                                 long offsetNanos,
+                                                 long processorErrorsTotal,
+                                                 Map<String, Long> errorsByName) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_PRESENT, present);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_GENERATION, generation);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_CAPTURED_OFFSET_NANOS,
+                offsetNanos);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_PROCESSOR_ERRORS_TOTAL,
+                processorErrorsTotal);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_PROCESSOR_ERRORS_BY_NAME,
+                JmxOpenTypeSupport.stringLongMap(
+                        GeneratedJmxOpenTypes.PROCESSOR_ERRORS_BY_NAME,
+                        GeneratedJmxWireContract.FIELD_PROCESSOR_ERRORS_BY_NAME_KEY,
+                        GeneratedJmxWireContract.FIELD_PROCESSOR_ERRORS_BY_NAME_VALUE,
+                        errorsByName));
+        return JmxOpenTypeSupport.compositeData(GeneratedJmxOpenTypes.PROCESSOR_COMPOSITE_VALUES, values);
     }
 
-    private static JmxOpenTypeSupport.CompositeSchema buildMetricsValuesType() {
-        LinkedHashMap<String, OpenType<?>> items = new LinkedHashMap<>();
-        items.put(JmxObservationWireContract.ITEM_OWNER_PRESENT, SimpleType.BOOLEAN);
-        items.put(JmxObservationWireContract.ITEM_OWNER_GENERATION, SimpleType.LONG);
-        items.put(JmxObservationWireContract.ITEM_OWNER_CAPTURED_OFFSET_NANOS, SimpleType.LONG);
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_METRICS_ITEM_DROPPED_ATTRIBUTES_TOTAL, SimpleType.LONG);
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_METRICS_ITEM_DROPPED_EVENTS_TOTAL, SimpleType.LONG);
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_METRICS_ITEM_DROPPED_LINKS_TOTAL, SimpleType.LONG);
-        return JmxOpenTypeSupport.compositeType(JmxObservationWireContract.PROCESSOR_METRICS_METRICS_VALUES_TYPE_NAME, items);
-    }
-
-    private static JmxOpenTypeSupport.CompositeSchema buildObservationType() {
-        LinkedHashMap<String, OpenType<?>> items = JmxOpenTypeSupport.observationFrameItems();
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_ITEM_WATCHDOG, WATCHDOG_VALUES_SCHEMA.type());
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_ITEM_COMPOSITE, COMPOSITE_VALUES_SCHEMA.type());
-        items.put(JmxObservationWireContract.PROCESSOR_METRICS_ITEM_METRICS, METRICS_VALUES_SCHEMA.type());
-        return JmxOpenTypeSupport.compositeType(JmxObservationWireContract.PROCESSOR_METRICS_COMPOSITE_TYPE_NAME, items);
+    private static CompositeData metricsValues(boolean present,
+                                               long generation,
+                                               long offsetNanos,
+                                               long droppedAttributesTotal,
+                                               long droppedEventsTotal,
+                                               long droppedLinksTotal) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_PRESENT, present);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_GENERATION, generation);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_CAPTURED_OFFSET_NANOS,
+                offsetNanos);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_DROPPED_ATTRIBUTES_TOTAL,
+                droppedAttributesTotal);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_DROPPED_EVENTS_TOTAL,
+                droppedEventsTotal);
+        values.put(GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_DROPPED_LINKS_TOTAL,
+                droppedLinksTotal);
+        return JmxOpenTypeSupport.compositeData(GeneratedJmxOpenTypes.PROCESSOR_METRICS_VALUES, values);
     }
 }
