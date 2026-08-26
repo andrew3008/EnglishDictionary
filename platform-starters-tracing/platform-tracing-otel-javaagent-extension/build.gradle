@@ -9,6 +9,52 @@ platformJavaLibrary {
     bomProjectPath = ':spring-boot-starter-platform-bom'
 }
 
+def jmxContractProject = project(':platform-starters-tracing:platform-tracing-jmx-contract')
+def generatedJmxContractSources = jmxContractProject.layout.buildDirectory.dir(
+        'generated/jmx-wire-contract/extension/java'
+)
+
+sourceSets.main.java.srcDir(generatedJmxContractSources)
+
+tasks.named('compileJava') {
+    dependsOn ':platform-starters-tracing:platform-tracing-jmx-contract:generateJmxWireContract'
+}
+
+tasks.named('processResources', ProcessResources) {
+    dependsOn ':platform-starters-tracing:platform-tracing-jmx-contract:generateJmxWireContract'
+    from(jmxContractProject.layout.buildDirectory.dir(
+            'generated/jmx-wire-contract/extension/resources'
+    ))
+}
+
+def mockitoAgentConfiguration = configurations.create('mockitoAgent') {
+    canBeConsumed = false
+    canBeResolved = true
+}
+
+dependencies {
+    mockitoAgent(platform(project(':spring-boot-starter-platform-bom')))
+    mockitoAgent('org.mockito:mockito-core') {
+        transitive = false
+    }
+}
+
+// Тесты плоскости агента идут с выключенным attach-механизмом: политика удалённой
+// JMX-экспозиции читает это как измеренный факт. Поэтому Mockito подключается
+// -javaagent'ом, а путь к нему разрешается лениво, а не на этапе конфигурации.
+def mockitoAgentPath = mockitoAgentConfiguration.elements
+        .map { elements -> elements.iterator().next().asFile.absolutePath }
+
+tasks.named('test', Test) {
+    jvmArgumentProviders.add({ ["-javaagent:${mockitoAgentPath.get()}".toString()] } as CommandLineArgumentProvider)
+    jvmArgs(
+            '-XX:+DisableAttachMechanism',
+            '-Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED',
+            '-Dplatform.tracing.jmx.remote.listener-confirmed=false',
+            '-Dplatform.tracing.jmx.remote.authorization-forwarder-installed=false'
+    )
+}
+
 dependencies {
     implementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
     implementation project(':platform-starters-tracing:platform-tracing-runtime-policy')

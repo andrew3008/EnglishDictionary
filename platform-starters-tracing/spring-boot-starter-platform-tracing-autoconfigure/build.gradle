@@ -10,6 +10,24 @@ platformJavaLibrary {
     bomProjectPath = ':spring-boot-starter-platform-bom'
 }
 
+def jmxContractProject = project(':platform-starters-tracing:platform-tracing-jmx-contract')
+def generatedJmxContractSources = jmxContractProject.layout.buildDirectory.dir(
+        'generated/jmx-wire-contract/application/java'
+)
+
+sourceSets.main.java.srcDir(generatedJmxContractSources)
+
+tasks.named('compileJava') {
+    dependsOn ':platform-starters-tracing:platform-tracing-jmx-contract:generateJmxWireContract'
+}
+
+tasks.named('processResources', ProcessResources) {
+    dependsOn ':platform-starters-tracing:platform-tracing-jmx-contract:generateJmxWireContract'
+    from(jmxContractProject.layout.buildDirectory.dir(
+            'generated/jmx-wire-contract/application/resources'
+    ))
+}
+
 dependencies {
     api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
     implementation project(':platform-starters-tracing:platform-tracing-runtime-policy')
