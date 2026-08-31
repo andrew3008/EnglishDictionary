@@ -324,17 +324,17 @@ final class JmxControlOpenTypeCodec {
             throw rejected(SettingsRejectionReason.TYPE_MISMATCH, field + " has wrong type");
         }
         if (fieldValue instanceof String text
-                && boundedUtf8Length(text, JmxWireContract.MAX_STRING_UTF8_BYTES)
-                > JmxWireContract.MAX_STRING_UTF8_BYTES) {
+                && boundedUtf8Length(text) > JmxWireContract.MAX_STRING_UTF8_BYTES) {
             throw rejected(SettingsRejectionReason.LIMIT_EXCEEDED, field + " exceeds the UTF-8 size limit");
         }
         return type.cast(fieldValue);
     }
 
-    private static long boundedUtf8Length(String value, int limit) {
-        if (value.length() > limit) {
-            return limit + 1L;
+    private static long boundedUtf8Length(String value) {
+        if (value.length() > JmxWireContract.MAX_STRING_UTF8_BYTES) {
+            return JmxWireContract.MAX_STRING_UTF8_BYTES + 1L;
         }
+
         return JmxWireUtf8Meter.utf8Length(value);
     }
 
@@ -342,10 +342,8 @@ final class JmxControlOpenTypeCodec {
         return value.chars().anyMatch(character -> character == 0 || Character.isISOControl(character));
     }
 
-    private static JmxControlDecodeException rejected(
-            SettingsRejectionReason code,
-            String message
-    ) {
+    private static JmxControlDecodeException rejected(SettingsRejectionReason code,
+                                                      String message) {
         return new JmxControlDecodeException(code, message);
     }
 }

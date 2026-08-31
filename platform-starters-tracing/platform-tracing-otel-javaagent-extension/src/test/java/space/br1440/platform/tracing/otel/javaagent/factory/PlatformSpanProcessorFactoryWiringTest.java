@@ -49,43 +49,46 @@ class PlatformSpanProcessorFactoryWiringTest {
     }
 
     @Test
-    void settingsStatusAndMutationMBeansAreRegisteredAfterActivation() throws Exception {
+    void settingsStatusAndMutationMBeansAreRegisteredAfterActivation() {
         // given
         PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                 registrar, ScrubbingRuntimeTestFixtures.disabled());
-
-        // when
         factory.registerSpanProcessors(
                 SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig(), samplerHolder);
-        registrar.registerRuntimeControls(samplerHolder);
 
-        // then
-        assertThat(server.isRegistered(DomainObjectNames.SETTINGS_STATUS)).isTrue();
-        assertThat(server.isRegistered(DomainObjectNames.SETTINGS_MUTATION)).isTrue();
+        // when
+        try (PlatformTracingMBeanRegistrar.RuntimeRegistration ignored =
+                     registrar.registerRuntimeControls(samplerHolder)) {
+            // then
+            assertThat(server.isRegistered(DomainObjectNames.SETTINGS_STATUS)).isTrue();
+            assertThat(server.isRegistered(DomainObjectNames.SETTINGS_MUTATION)).isTrue();
+        }
     }
 
     @Test
-    void allDomainMBeansRegisteredByFactory() throws Exception {
-        PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
-                registrar, ScrubbingRuntimeTestFixtures.disabled());
+    void allDomainMBeansRegisteredByFactory() {
+        PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar, ScrubbingRuntimeTestFixtures.disabled());
         factory.registerSpanProcessors(
-                SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig(), samplerHolder);
-        // Регистрация MBean отложена до bootstrap activation; factory только связывает evidence.
-        // В тесте разрешённый activation-шаг выполняется явно.
-        registrar.registerRuntimeControls(samplerHolder);
+                SdkTracerProvider.builder(),
+                minimalExtensionConfig(),
+                minimalConfig(),
+                samplerHolder
+        );
 
-        for (javax.management.ObjectName name : List.of(
-                DomainObjectNames.SAMPLING,
-                DomainObjectNames.SCRUBBING,
-                DomainObjectNames.VALIDATION,
-                DomainObjectNames.EXPORT,
-                DomainObjectNames.PROCESSOR_METRICS,
-                DomainObjectNames.DIAGNOSTICS,
-                DomainObjectNames.SETTINGS_STATUS,
-                DomainObjectNames.SETTINGS_MUTATION)) {
-            assertThat(server.isRegistered(name))
-                    .as("Expected MBean to be registered: " + name)
-                    .isTrue();
+        try (PlatformTracingMBeanRegistrar.RuntimeRegistration ignored = registrar.registerRuntimeControls(samplerHolder)) {
+            for (javax.management.ObjectName name : List.of(
+                    DomainObjectNames.SAMPLING,
+                    DomainObjectNames.SCRUBBING,
+                    DomainObjectNames.VALIDATION,
+                    DomainObjectNames.EXPORT,
+                    DomainObjectNames.PROCESSOR_METRICS,
+                    DomainObjectNames.DIAGNOSTICS,
+                    DomainObjectNames.SETTINGS_STATUS,
+                    DomainObjectNames.SETTINGS_MUTATION)) {
+                assertThat(server.isRegistered(name))
+                        .as("Expected MBean to be registered: " + name)
+                        .isTrue();
+            }
         }
     }
 
@@ -95,21 +98,23 @@ class PlatformSpanProcessorFactoryWiringTest {
                 registrar, ScrubbingRuntimeTestFixtures.disabled());
         factory.registerSpanProcessors(
                 SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig(), samplerHolder);
-        registrar.registerRuntimeControls(samplerHolder);
 
-        for (javax.management.ObjectName name : List.of(
-                DomainObjectNames.SAMPLING,
-                DomainObjectNames.SCRUBBING,
-                DomainObjectNames.VALIDATION,
-                DomainObjectNames.EXPORT,
-                DomainObjectNames.PROCESSOR_METRICS,
-                DomainObjectNames.DIAGNOSTICS)) {
-            MBeanInfo info = server.getMBeanInfo(name);
-            assertThat(info.getOperations())
-                    .allMatch(operation -> operation.getImpact() != MBeanOperationInfo.ACTION
-                            && operation.getImpact() != MBeanOperationInfo.ACTION_INFO);
-            assertThat(info.getAttributes())
-                    .allMatch(attribute -> !attribute.isWritable());
+        try (PlatformTracingMBeanRegistrar.RuntimeRegistration ignored =
+                     registrar.registerRuntimeControls(samplerHolder)) {
+            for (javax.management.ObjectName name : List.of(
+                    DomainObjectNames.SAMPLING,
+                    DomainObjectNames.SCRUBBING,
+                    DomainObjectNames.VALIDATION,
+                    DomainObjectNames.EXPORT,
+                    DomainObjectNames.PROCESSOR_METRICS,
+                    DomainObjectNames.DIAGNOSTICS)) {
+                MBeanInfo info = server.getMBeanInfo(name);
+                assertThat(info.getOperations())
+                        .allMatch(operation -> operation.getImpact() != MBeanOperationInfo.ACTION
+                                && operation.getImpact() != MBeanOperationInfo.ACTION_INFO);
+                assertThat(info.getAttributes())
+                        .allMatch(attribute -> !attribute.isWritable());
+            }
         }
     }
 
@@ -119,13 +124,15 @@ class PlatformSpanProcessorFactoryWiringTest {
                 registrar, ScrubbingRuntimeTestFixtures.disabled());
         factory.registerSpanProcessors(
                 SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig(), samplerHolder);
-        registrar.registerRuntimeControls(samplerHolder);
 
-        CompositeData observation = (CompositeData) server.getAttribute(
-                DomainObjectNames.SAMPLING, "SamplingObservation");
-        double ratio = (double) observation.get(
-                JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO);
-        assertThat(ratio).isEqualTo(0.1d);
+        try (PlatformTracingMBeanRegistrar.RuntimeRegistration ignored =
+                     registrar.registerRuntimeControls(samplerHolder)) {
+            CompositeData observation = (CompositeData) server.getAttribute(
+                    DomainObjectNames.SAMPLING, "SamplingObservation");
+            double ratio = (double) observation.get(
+                    JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO);
+            assertThat(ratio).isEqualTo(0.1d);
+        }
     }
 
     private ConfigProperties minimalConfig() {

@@ -317,7 +317,8 @@ class BootstrapCoordinatorTest {
             }
         }, "snapshot-poller");
         poller.start();
-        pollerStarted.await(5, TimeUnit.SECONDS);
+        boolean pollerReady = pollerStarted.await(5, TimeUnit.SECONDS);
+        assertThat(pollerReady).as("snapshot-poller thread failed to start within 5s").isTrue();
 
         try {
             // when

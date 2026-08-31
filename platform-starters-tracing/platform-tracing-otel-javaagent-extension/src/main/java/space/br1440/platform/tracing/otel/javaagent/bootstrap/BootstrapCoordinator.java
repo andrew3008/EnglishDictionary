@@ -136,9 +136,10 @@ final class BootstrapCoordinator implements AutoCloseable {
         }
 
         Throwable cleanupFailure = null;
-        if (transition.resources() != null) {
-            try {
-                transition.resources().close();
+        BootstrapResources resources = transition.resources();
+        if (resources != null) {
+            try (BootstrapResources ignored = resources) {
+                // закрытие происходит автоматически через try-with-resources
             } catch (RuntimeException | Error failure) {
                 cleanupFailure = failure;
             }

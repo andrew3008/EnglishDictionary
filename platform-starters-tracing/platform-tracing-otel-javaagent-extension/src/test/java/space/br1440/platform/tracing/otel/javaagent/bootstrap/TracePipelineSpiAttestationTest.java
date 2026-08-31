@@ -90,7 +90,7 @@ class TracePipelineSpiAttestationTest {
     }
 
     @Test
-    void missingPlatformProviderFails() throws IOException {
+    void missingPlatformProviderFails() {
         String acpServiceName = "META-INF/services/" + AutoConfigurationCustomizerProvider.class.getName();
         ClassLoader hidingRealPlatformRegistration = new ServiceHidingClassLoader(
                 TracePipelineSpiAttestationTest.class.getClassLoader(), acpServiceName);
@@ -134,15 +134,12 @@ class TracePipelineSpiAttestationTest {
     }
 
     static ClassLoader withOverlayAcpProvider(Path overlayDir, Class<?> providerType) throws IOException {
-        return withOverlayProvider(overlayDir, AutoConfigurationCustomizerProvider.class, providerType);
+        return withOverlayProvider(overlayDir, AutoConfigurationCustomizerProvider.class.getName(), providerType);
     }
 
+    @SuppressWarnings("SameParameterValue")
     static ClassLoader withOverlayConfigurer(Path overlayDir, Class<?> configurerType) throws IOException {
         return withOverlayProvider(overlayDir, TracePipelineSpiAttestation.LEGACY_TRACER_PROVIDER_CONFIGURER_SPI, configurerType);
-    }
-
-    private static ClassLoader withOverlayProvider(Path overlayDir, Class<?> spiType, Class<?> providerType) throws IOException {
-        return withOverlayProvider(overlayDir, spiType.getName(), providerType);
     }
 
     private static ClassLoader withOverlayProvider(Path overlayDir, String spiName, Class<?> providerType)
@@ -215,11 +212,6 @@ class TracePipelineSpiAttestationTest {
         static final AtomicBoolean RAW_EXPORTER_ACTIVATED = new AtomicBoolean();
 
         @Override
-        public int order() {
-            return 0;
-        }
-
-        @Override
         public void customize(AutoConfigurationCustomizer customizer) {
             customizer.addPropertiesCustomizer(config -> {
                 customizer.addSpanExporterCustomizer((protectedExporter, ignoredConfig) -> {
@@ -237,11 +229,6 @@ class TracePipelineSpiAttestationTest {
 
         public ConstructorSideEffectProvider() {
             CONSTRUCTED.set(true);
-        }
-
-        @Override
-        public int order() {
-            return 0;
         }
 
         @Override

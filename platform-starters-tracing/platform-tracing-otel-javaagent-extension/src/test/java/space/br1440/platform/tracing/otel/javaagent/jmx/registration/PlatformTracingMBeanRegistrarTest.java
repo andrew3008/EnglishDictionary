@@ -58,7 +58,7 @@ class PlatformTracingMBeanRegistrarTest {
     }
 
     @Test
-    void authorizedRuntimeRegistrationRegistersDomainMBeans() throws Exception {
+    void authorizedRuntimeRegistrationRegistersDomainMBeans() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         PlatformTracingMBeanRegistrar registrar = registrar();
         wireRequiredComponents(registrar, holder);
@@ -98,7 +98,7 @@ class PlatformTracingMBeanRegistrarTest {
     }
 
     @Test
-    void activeRuntimeRegistrationRejectsRepeatedAuthorizedCall() throws Exception {
+    void activeRuntimeRegistrationRejectsRepeatedAuthorizedCall() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         PlatformTracingMBeanRegistrar registrar = registrar();
         wireRequiredComponents(registrar, holder);
@@ -109,7 +109,7 @@ class PlatformTracingMBeanRegistrarTest {
     }
 
     @Test
-    void secondRegistrarFailsClosedOnExistingOwnedObjectNames() throws Exception {
+    void secondRegistrarFailsClosedOnExistingOwnedObjectNames() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         PlatformTracingMBeanRegistrar first = registrar();
         wireRequiredComponents(first, holder);
@@ -122,7 +122,7 @@ class PlatformTracingMBeanRegistrarTest {
     }
 
     @Test
-    void closingRuntimeRegistrationRemovesCompleteRuntimeBatch() throws Exception {
+    void closingRuntimeRegistrationRemovesCompleteRuntimeBatch() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         PlatformTracingMBeanRegistrar registrar = registrar();
         PlatformTracingMBeanRegistrar.RuntimeRegistration runtimeRegistration = wireRequiredComponents(registrar, holder);
@@ -141,7 +141,7 @@ class PlatformTracingMBeanRegistrarTest {
     }
 
     @Test
-    void closingRuntimeRegistrationTwiceIsIdempotentAndReleasesTheGeneration() throws Exception {
+    void closingRuntimeRegistrationTwiceIsIdempotentAndReleasesTheGeneration() {
         // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         PlatformTracingMBeanRegistrar registrar = registrar();
@@ -180,6 +180,7 @@ class PlatformTracingMBeanRegistrarTest {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (IllegalStateException expectedActiveRegistration) {
+                    // Активную generation может зарегистрировать только один конкурентный вызов.
                 } finally {
                     done.countDown();
                 }
@@ -250,7 +251,7 @@ class PlatformTracingMBeanRegistrarTest {
     }
 
     @Test
-    void rollback_addSuppressed_present_when_rollback_fails() throws Exception {
+    void rollback_addSuppressed_present_when_rollback_fails() {
         // given
         final int[] registerCallCount = {0};
         MBeanServer faultySpy = new DelegatingMBeanServer(server) {

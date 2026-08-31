@@ -63,7 +63,7 @@ class JmxObservationCodecOwnerStateTest {
         JmxOwnerState<Long> state = JmxObservationCodec.ownerState(
                 nestedComposite, PRESENT_ITEM, GENERATION_ITEM, () -> {
                     payloadSupplierInvoked.set(true);
-                    return JmxObservationCodec.getString(nestedComposite, PAYLOAD_ITEM).length() + 0L;
+                    return (long) JmxObservationCodec.getString(nestedComposite, PAYLOAD_ITEM).length();
                 });
 
         assertThat(state).isInstanceOf(JmxOwnerState.Absent.class);

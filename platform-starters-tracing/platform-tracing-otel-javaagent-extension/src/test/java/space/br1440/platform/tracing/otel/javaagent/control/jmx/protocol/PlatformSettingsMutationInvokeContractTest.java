@@ -141,8 +141,8 @@ final class PlatformSettingsMutationInvokeContractTest {
         assertThat(request.getOpenType()).isEqualTo(JmxOpenTypes.APPLY_SNAPSHOT_REQUEST);
     }
 
-    private Object invoke(Object[] params, String[] signature) throws Exception {
-        return server.invoke(
+    private void invoke(Object[] params, String[] signature) throws Exception {
+        server.invoke(
                 JmxWireContract.SETTINGS_MUTATION_OBJECT_NAME,
                 JmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT,
                 params,

@@ -52,7 +52,7 @@ final class AllowedUpstreamAcpProviders {
 
     static Set<String> parse(byte[] bytes) {
         String content = decodeUtf8(bytes);
-        if (content.isEmpty() || !content.endsWith("\n")) {
+        if (!content.endsWith("\n")) {
             throw invalid("resource must end with LF");
         }
 

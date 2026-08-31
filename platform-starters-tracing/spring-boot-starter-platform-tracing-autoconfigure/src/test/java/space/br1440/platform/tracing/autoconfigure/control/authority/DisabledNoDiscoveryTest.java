@@ -4,15 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxTracingSettingsClient;
-import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsMutationService;
 import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsControlAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsMutationService;
 
 class DisabledNoDiscoveryTest {
 
@@ -149,6 +148,7 @@ class DisabledNoDiscoveryTest {
                 .run(context -> assertGuardFailure(context, "Tracing disabled is incompatible"));
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static void assertGuardFailure(AssertableApplicationContext context, String messageFragment) {
         assertThat(context).hasFailed();
         Throwable failure = context.getStartupFailure();

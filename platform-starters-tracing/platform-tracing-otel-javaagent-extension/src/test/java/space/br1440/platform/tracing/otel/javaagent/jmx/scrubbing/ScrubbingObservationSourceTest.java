@@ -22,7 +22,7 @@ class ScrubbingObservationSourceTest {
 
     private static ScrubbingRuntime enabledRuntime() {
         return ScrubbingRuntimeTestFixtures.fromBuiltInRules(
-                List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")),
+                List.of(BuiltInSpanAttributeScrubbingRules.EMAIL.create()),
                 MaskedSecret.of("k"),
                 false);
     }

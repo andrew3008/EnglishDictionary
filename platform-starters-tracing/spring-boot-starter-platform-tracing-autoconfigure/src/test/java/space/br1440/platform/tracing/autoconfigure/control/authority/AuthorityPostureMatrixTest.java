@@ -361,6 +361,7 @@ class AuthorityPostureMatrixTest {
         verifyNoInteractions(server);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static void assertGuardFailure(AssertableApplicationContext context, String messageFragment) {
         assertThat(context).hasFailed();
         Throwable failure = context.getStartupFailure();

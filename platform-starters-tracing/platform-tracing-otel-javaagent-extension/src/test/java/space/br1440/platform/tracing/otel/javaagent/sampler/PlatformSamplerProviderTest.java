@@ -21,9 +21,9 @@ import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
-import io.opentelemetry.sdk.trace.data.LinkData;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
 import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
+import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 
 @DisplayName("PlatformSamplerProvider + idempotency-guard")
 class PlatformSamplerProviderTest {
@@ -85,9 +85,9 @@ class PlatformSamplerProviderTest {
                 PlatformTraceContextKeys.TRACE_CONTROL,
                 new DefaultInboundTraceControlExtractor().fromHeaders("on", null, null));
 
-        var result = sampler.shouldSample(
+        SamplingResult result = sampler.shouldSample(
                 forceContext, "00000000000000000000000000000001", "GET", SpanKind.SERVER,
-                Attributes.empty(), List.<LinkData>of());
+                Attributes.empty(), List.of());
 
         assertThat(result.getDecision()).isEqualTo(SamplingDecision.RECORD_AND_SAMPLE);
         assertThat(result.getAttributes().get(io.opentelemetry.api.common.AttributeKey.stringKey(

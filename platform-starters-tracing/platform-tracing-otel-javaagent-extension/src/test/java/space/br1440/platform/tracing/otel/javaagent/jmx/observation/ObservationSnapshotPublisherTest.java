@@ -144,18 +144,15 @@ class ObservationSnapshotPublisherTest {
     void publicationRequestBeforeStartIsIgnored() {
         // given
         AtomicInteger publications = new AtomicInteger();
-        ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(
+        try (ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(
                 List.of(publications::incrementAndGet),
-                Duration.ofHours(1L));
-
-        try {
+                Duration.ofHours(1L))
+        ) {
             // when
             publisher.requestSnapshotPublication();
 
             // then
             assertThat(publications).hasValue(0);
-        } finally {
-            publisher.close();
         }
     }
 
@@ -188,14 +185,12 @@ class ObservationSnapshotPublisherTest {
         // given
         CountDownLatch published = new CountDownLatch(2);
         AtomicReference<Thread> publisherThread = new AtomicReference<>();
-        ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(
+        try (ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(
                 List.of(() -> {
                     publisherThread.compareAndSet(null, Thread.currentThread());
                     published.countDown();
                 }),
-                TEST_REFRESH_INTERVAL);
-
-        try {
+                TEST_REFRESH_INTERVAL)) {
             // when
             publisher.start();
             publisher.start();
@@ -204,8 +199,6 @@ class ObservationSnapshotPublisherTest {
             assertThat(published.await(2L, TimeUnit.SECONDS)).isTrue();
             assertThat(publisherThread.get().getName())
                     .isEqualTo("platform-tracing-jmx-observation-publisher");
-        } finally {
-            publisher.close();
         }
     }
 }

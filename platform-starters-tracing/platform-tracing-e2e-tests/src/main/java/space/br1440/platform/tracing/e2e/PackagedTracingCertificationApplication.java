@@ -15,13 +15,8 @@ public class PackagedTracingCertificationApplication {
         application.setWebApplicationType(WebApplicationType.NONE);
         application.setRegisterShutdownHook(false);
 
-        ConfigurableApplicationContext context = null;
-        try {
-            context = application.run(arguments);
-        } finally {
-            if (context != null) {
-                context.close();
-            }
+        try (ConfigurableApplicationContext ignored = application.run(arguments)) {
+            // контекст нужен только ради жизненного цикла запуска и закрытия
         }
 
         System.out.println(PROCESS_OK_TOKEN);

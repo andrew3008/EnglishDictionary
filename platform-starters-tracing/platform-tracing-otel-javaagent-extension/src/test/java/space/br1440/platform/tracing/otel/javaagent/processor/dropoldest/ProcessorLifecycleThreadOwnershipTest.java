@@ -48,53 +48,53 @@ class ProcessorLifecycleThreadOwnershipTest {
     void firstShutdownOwnsOneDaemonTerminatorWhichEndsWithCleanup() throws InterruptedException {
         // given
         BlockingShutdownExporter exporter = new BlockingShutdownExporter();
-        Set<Thread> preexistingWorkers = threadsNamed(WORKER_THREAD_NAME);
-        PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)
+        Set<Thread> preexistingWorkers = threadsNamed();
+        try (PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)
                 .scheduleDelay(Duration.ofMinutes(1))
                 .shutdownTimeout(Duration.ofSeconds(5))
-                .build();
+                .build()) {
+            Thread worker = awaitOwnWorker(preexistingWorkers);
+            assertThat(worker).isNotNull();
+            assertThat(worker.isDaemon()).isTrue();
+            assertThat(worker.isAlive()).isTrue();
 
-        Thread worker = awaitOwnWorker(preexistingWorkers);
-        assertThat(worker).isNotNull();
-        assertThat(worker.isDaemon()).isTrue();
-        assertThat(worker.isAlive()).isTrue();
+            // when
+            CompletableResultCode first = processor.shutdown();
+            Thread terminator = null;
+            try {
+                assertThat(exporter.awaitShutdownEntered()).isTrue();
+                terminator = exporter.terminatorThread();
+                for (int invocation = 0; invocation < 32; invocation++) {
+                    assertThat(processor.shutdown()).isSameAs(first);
+                }
 
-        // when
-        CompletableResultCode first = processor.shutdown();
-        Thread terminator = null;
-        try {
-            assertThat(exporter.awaitShutdownEntered(AWAIT_TIMEOUT)).isTrue();
-            terminator = exporter.terminatorThread();
-            for (int invocation = 0; invocation < 32; invocation++) {
-                assertThat(processor.shutdown()).isSameAs(first);
+                // then
+                assertThat(exporter.shutdownCalls()).isEqualTo(1);
+                assertThat(terminator).isNotNull();
+                assertThat(terminator.isDaemon()).isTrue();
+                assertThat(terminator.getName()).startsWith(ProcessorLifecycle.TERMINATOR_THREAD_NAME_PREFIX);
+                assertThat(terminator.isAlive()).isTrue();
+                assertThat(worker.isAlive()).isFalse();
+            } finally {
+                exporter.releaseShutdown();
+                first.join(AWAIT_TIMEOUT.toNanos(), TimeUnit.NANOSECONDS);
+                worker.join(AWAIT_TIMEOUT.toMillis());
+                if (terminator != null) {
+                    terminator.join(AWAIT_TIMEOUT.toMillis());
+                }
             }
 
-            // then
-            assertThat(exporter.shutdownCalls()).isEqualTo(1);
+            assertThat(first.isSuccess()).isTrue();
             assertThat(terminator).isNotNull();
-            assertThat(terminator.isDaemon()).isTrue();
-            assertThat(terminator.getName()).startsWith(ProcessorLifecycle.TERMINATOR_THREAD_NAME_PREFIX);
-            assertThat(terminator.isAlive()).isTrue();
-            assertThat(worker.isAlive()).isFalse();
-        } finally {
-            exporter.releaseShutdown();
-            first.join(AWAIT_TIMEOUT.toNanos(), TimeUnit.NANOSECONDS);
-            worker.join(AWAIT_TIMEOUT.toMillis());
-            if (terminator != null) {
-                terminator.join(AWAIT_TIMEOUT.toMillis());
-            }
+            assertThat(terminator.isAlive()).isFalse();
+            assertThat(exporter.shutdownCalls()).isEqualTo(1);
         }
-
-        assertThat(first.isSuccess()).isTrue();
-        assertThat(terminator).isNotNull();
-        assertThat(terminator.isAlive()).isFalse();
-        assertThat(exporter.shutdownCalls()).isEqualTo(1);
     }
 
     private static Thread awaitOwnWorker(Set<Thread> preexisting) throws InterruptedException {
         long deadline = System.nanoTime() + AWAIT_TIMEOUT.toNanos();
         do {
-            for (Thread candidate : threadsNamed(WORKER_THREAD_NAME)) {
+            for (Thread candidate : threadsNamed()) {
                 if (!preexisting.contains(candidate)) {
                     return candidate;
                 }
@@ -106,10 +106,10 @@ class ProcessorLifecycleThreadOwnershipTest {
         return null;
     }
 
-    private static Set<Thread> threadsNamed(String name) {
+    private static Set<Thread> threadsNamed() {
         Set<Thread> matching = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Thread thread : Thread.getAllStackTraces().keySet()) {
-            if (name.equals(thread.getName())) {
+            if (WORKER_THREAD_NAME.equals(thread.getName())) {
                 matching.add(thread);
             }
         }
@@ -152,8 +152,8 @@ class ProcessorLifecycleThreadOwnershipTest {
             return CompletableResultCode.ofSuccess();
         }
 
-        boolean awaitShutdownEntered(Duration timeout) throws InterruptedException {
-            return shutdownEntered.await(timeout.toNanos(), TimeUnit.NANOSECONDS);
+        boolean awaitShutdownEntered() throws InterruptedException {
+            return shutdownEntered.await(AWAIT_TIMEOUT.toNanos(), TimeUnit.NANOSECONDS);
         }
 
         void releaseShutdown() {

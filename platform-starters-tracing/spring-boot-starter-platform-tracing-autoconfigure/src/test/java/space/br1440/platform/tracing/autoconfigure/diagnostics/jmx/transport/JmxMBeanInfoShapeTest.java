@@ -29,8 +29,7 @@ class JmxMBeanInfoShapeTest {
         MBeanInfo info = info(mutationOperation(
                 JmxWireContract.PARAMETER_SETTINGS_MUTATION_APPLY_SNAPSHOT_REQUEST,
                 JmxOpenTypes.APPLY_SNAPSHOT_REQUEST,
-                JmxOpenTypes.APPLY_SNAPSHOT_RESPONSE,
-                MBeanOperationInfo.ACTION));
+                JmxOpenTypes.APPLY_SNAPSHOT_RESPONSE));
 
         // when
         // then
@@ -43,8 +42,7 @@ class JmxMBeanInfoShapeTest {
         MBeanInfo info = info(mutationOperation(
                 JmxWireContract.PARAMETER_SETTINGS_MUTATION_APPLY_SNAPSHOT_REQUEST,
                 JmxOpenTypes.RUNTIME_POLICY,
-                JmxOpenTypes.APPLY_SNAPSHOT_RESPONSE,
-                MBeanOperationInfo.ACTION));
+                JmxOpenTypes.APPLY_SNAPSHOT_RESPONSE));
 
         // when
         // then
@@ -57,8 +55,7 @@ class JmxMBeanInfoShapeTest {
         MBeanInfo info = info(mutationOperation(
                 JmxWireContract.PARAMETER_SETTINGS_MUTATION_APPLY_SNAPSHOT_REQUEST,
                 JmxOpenTypes.APPLY_SNAPSHOT_REQUEST,
-                JmxOpenTypes.RUNTIME_POLICY,
-                MBeanOperationInfo.ACTION));
+                JmxOpenTypes.RUNTIME_POLICY));
 
         // when
         // then
@@ -71,8 +68,7 @@ class JmxMBeanInfoShapeTest {
         MBeanInfo info = info(mutationOperation(
                 "unexpectedRequest",
                 JmxOpenTypes.APPLY_SNAPSHOT_REQUEST,
-                JmxOpenTypes.APPLY_SNAPSHOT_RESPONSE,
-                MBeanOperationInfo.ACTION));
+                JmxOpenTypes.APPLY_SNAPSHOT_RESPONSE));
 
         // when
         // then
@@ -90,8 +86,7 @@ class JmxMBeanInfoShapeTest {
 
     private static OpenMBeanOperationInfo mutationOperation(String parameterName,
                                                             OpenType<?> parameterType,
-                                                            OpenType<?> returnType,
-                                                            int impact) {
+                                                            OpenType<?> returnType) {
         OpenMBeanParameterInfo parameter = new OpenMBeanParameterInfoSupport(
                 parameterName,
                 "request",
@@ -102,7 +97,7 @@ class JmxMBeanInfoShapeTest {
                 "apply",
                 new OpenMBeanParameterInfo[]{parameter},
                 returnType,
-                impact
+                MBeanOperationInfo.ACTION
         );
     }
 

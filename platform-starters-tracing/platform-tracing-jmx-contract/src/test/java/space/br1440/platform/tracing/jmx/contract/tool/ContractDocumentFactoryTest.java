@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.jmx.contract.tool;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -15,7 +16,7 @@ class ContractDocumentFactoryTest {
 
     @Test
     void loadsAndValidatesRealManifest() throws IOException, URISyntaxException {
-        Path manifest = Path.of(ContractDocumentFactoryTest.class.getResource("/jmx-wire-contract.yaml").toURI());
+        Path manifest = classpathManifest();
         ContractDocument contract = ContractDocumentFactory.load(manifest);
         assertThat(contract.schemaId()).isEqualTo("platform-tracing-jmx-wire-contract");
         assertThat(contract.schemaDigest()).hasSize(64);
@@ -89,8 +90,17 @@ class ContractDocumentFactoryTest {
                                 .isEqualTo("JMX_SCHEMA_READINESS_EVIDENCE_INVALID"));
     }
 
+    private static Path classpathManifest() throws URISyntaxException {
+        URL resource = ContractDocumentFactoryTest.class.getResource("/jmx-wire-contract.yaml");
+        if (resource == null) {
+            throw new IllegalStateException("Classpath resource /jmx-wire-contract.yaml is missing");
+        }
+
+        return Path.of(resource.toURI());
+    }
+
     private static Path patchedManifest(Path tempDir, String from, String to) throws IOException, URISyntaxException {
-        Path source = Path.of(ContractDocumentFactoryTest.class.getResource("/jmx-wire-contract.yaml").toURI());
+        Path source = classpathManifest();
         String yaml = Files.readString(source);
         String patched = yaml.replace(from, to);
         if (patched.equals(yaml)) {

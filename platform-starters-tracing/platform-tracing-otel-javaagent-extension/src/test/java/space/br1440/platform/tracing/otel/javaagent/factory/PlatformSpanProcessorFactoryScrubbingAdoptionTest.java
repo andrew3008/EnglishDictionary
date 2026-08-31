@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import jakarta.annotation.Nonnull;
 
 import org.junit.jupiter.api.DisplayName;
@@ -94,8 +95,9 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         });
     }
 
+    /** Владелец JMX-наблюдения scrubbing — сессионный {@link ScrubbingRuntime}, а не процессор. */
     @SuppressWarnings("unchecked")
-    private static <T> T registrarSlotOwner(PlatformTracingMBeanRegistrar reg, String slotAccessorName) throws Exception {
+    private static ScrubbingRuntime getScrubbing(PlatformTracingMBeanRegistrar reg) throws Exception {
         Field runtimePlaneField = PlatformTracingMBeanRegistrar.class.getDeclaredField("runtimePlane");
         runtimePlaneField.setAccessible(true);
         Object runtimePlane = runtimePlaneField.get(reg);
@@ -104,17 +106,12 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         slotsField.setAccessible(true);
         Object slots = slotsField.get(runtimePlane);
 
-        Method slotAccessor = slots.getClass().getDeclaredMethod(slotAccessorName);
+        Method slotAccessor = slots.getClass().getDeclaredMethod("scrubbing");
         slotAccessor.setAccessible(true);
-        OwnerRegistrationSlot<T> slot = (OwnerRegistrationSlot<T>) slotAccessor.invoke(slots);
+        OwnerRegistrationSlot<ScrubbingRuntime> slot = (OwnerRegistrationSlot<ScrubbingRuntime>) slotAccessor.invoke(slots);
 
-        OwnerRegistrationState<T> state = slot.capture();
-        return state instanceof OwnerRegistrationState.Present<T> present ? present.owner() : null;
-    }
-
-    /** Владелец JMX-наблюдения scrubbing — сессионный {@link ScrubbingRuntime}, а не процессор. */
-    private static ScrubbingRuntime getScrubbing(PlatformTracingMBeanRegistrar r) throws Exception {
-        return registrarSlotOwner(r, "scrubbing");
+        OwnerRegistrationState<ScrubbingRuntime> state = slot.capture();
+        return state instanceof OwnerRegistrationState.Present<ScrubbingRuntime> present ? present.owner() : null;
     }
 
     @Nested
@@ -253,7 +250,8 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         void hmacKey_passthrough_when_configured() {
             ExtensionConfig cfg = configWithStringProperty(
                     "platform.tracing.scrubbing.hmac-key", "my-secret-key");
-            assertThat(new String(cfg.scrubbing().hmacKey().copyBytes(), StandardCharsets.UTF_8))
+            byte[] hmacKeyBytes = Objects.requireNonNull(cfg.scrubbing().hmacKey().copyBytes());
+            assertThat(new String(hmacKeyBytes, StandardCharsets.UTF_8))
                     .as("hmacKey passthrough")
                     .isEqualTo("my-secret-key");
         }

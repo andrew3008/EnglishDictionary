@@ -515,6 +515,7 @@ class AgentToSpringWireCodecParityTest {
         }
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static CompositeData compositeData(CompositeType type, Map<String, Object> fields) {
         try {
             return new CompositeDataSupport(type, fields);
@@ -523,6 +524,7 @@ class AgentToSpringWireCodecParityTest {
         }
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static String[] concat(String[] array, String extra) {
         String[] result = new String[array.length + 1];
         System.arraycopy(array, 0, result, 0, array.length);
@@ -530,6 +532,7 @@ class AgentToSpringWireCodecParityTest {
         return result;
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static OpenType<?>[] concat(OpenType<?>[] array, OpenType<?> extra) {
         OpenType<?>[] result = new OpenType<?>[array.length + 1];
         System.arraycopy(array, 0, result, 0, array.length);
@@ -537,6 +540,7 @@ class AgentToSpringWireCodecParityTest {
         return result;
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static Object[] concat(Object[] array, Object extra) {
         Object[] result = new Object[array.length + 1];
         System.arraycopy(array, 0, result, 0, array.length);

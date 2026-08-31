@@ -19,7 +19,7 @@ final class AgentReadinessClassifier {
 
     private static final String BOOTSTRAP_LOADER_LABEL = "bootstrap";
     private static final Pattern SHA256 = Pattern.compile("[0-9a-f]{64}");
-    private static final Pattern LOADER_EVIDENCE = Pattern.compile("(?:bootstrap|.+@[0-9a-f]+)");
+    private static final Pattern LOADER_EVIDENCE = Pattern.compile("bootstrap|.+@[0-9a-f]+");
     private static final Set<String> REQUIRED_CAPABILITIES = Set.copyOf(new LinkedHashSet<>(JmxWireContract.REQUIRED_CAPABILITIES));
 
     record Decision(AgentRuntimeState state, String reasonCode) {
@@ -27,10 +27,6 @@ final class AgentReadinessClassifier {
             Objects.requireNonNull(state, "state");
             reasonCode = (reasonCode == null) ? "" : reasonCode;
         }
-    }
-
-    static AgentRuntimeState classify(AgentReadinessSnapshot snapshot, String applicationVersion) {
-        return decide(snapshot, applicationVersion).state();
     }
 
     static Decision decide(AgentReadinessSnapshot snapshot, String applicationVersion) {
@@ -85,7 +81,7 @@ final class AgentReadinessClassifier {
             return incompatible("EXTENSION_FAILED_WITHOUT_CODE");
         }
 
-        if (!coherentGeneration(snapshot, false)) {
+        if (inconsistentGeneration(snapshot, false)) {
             return incompatible("READINESS_GENERATION_INCONSISTENT");
         }
 
@@ -115,7 +111,7 @@ final class AgentReadinessClassifier {
             return new Decision(AgentRuntimeState.CAPABILITY_MISSING, "REQUIRED_CAPABILITY_MISSING");
         }
 
-        if (!coherentGeneration(snapshot, true)) {
+        if (inconsistentGeneration(snapshot, true)) {
             return incompatible("READINESS_GENERATION_INCONSISTENT");
         }
 
@@ -138,7 +134,7 @@ final class AgentReadinessClassifier {
             return incompatible("DEVELOPMENT_VERSION_FORBIDDEN");
         }
 
-        if (applicationVersion == null || !distributionIdentity.extensionVersion().equals(applicationVersion)) {
+        if (!distributionIdentity.extensionVersion().equals(applicationVersion)) {
             return incompatible("EXTENSION_VERSION_MISMATCH");
         }
 
@@ -170,19 +166,19 @@ final class AgentReadinessClassifier {
         return stableName + "@" + Integer.toHexString(System.identityHashCode(loader));
     }
 
-    private static boolean coherentGeneration(AgentReadinessSnapshot snapshot, boolean requirePublishedBatch) {
+    private static boolean inconsistentGeneration(AgentReadinessSnapshot snapshot, boolean requirePublishedBatch) {
         AgentReadinessSnapshot.AnchorIdentity anchorIdentity = snapshot.anchorIdentity();
         if (requirePublishedBatch) {
-            return !anchorIdentity.runtimeEpoch().isBlank()
-                    && anchorIdentity.evidenceGeneration() > 0L
-                    && !anchorIdentity.batchId().isBlank();
+            return anchorIdentity.runtimeEpoch().isBlank()
+                    || anchorIdentity.evidenceGeneration() <= 0L
+                    || anchorIdentity.batchId().isBlank();
         }
 
         if (anchorIdentity.evidenceGeneration() == 0L) {
-            return anchorIdentity.batchId().isBlank();
+            return !anchorIdentity.batchId().isBlank();
         }
 
-        return !anchorIdentity.runtimeEpoch().isBlank() && !anchorIdentity.batchId().isBlank();
+        return anchorIdentity.runtimeEpoch().isBlank() || anchorIdentity.batchId().isBlank();
     }
 
     private static Set<String> recomputeMissing(Set<String> capabilities) {

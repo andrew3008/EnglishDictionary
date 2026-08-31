@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
 import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
 import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
@@ -32,7 +33,9 @@ class CategoryALeafMissingTest {
     // Shared helpers
     // -------------------------------------------------------------------------
 
-    /** Full valid 8-leaf snapshot used as LKG baseline. */
+    /**
+     * Full valid 8-leaf snapshot used as LKG baseline.
+     */
     private static final CompleteTracingSettings LKG_SNAPSHOT =
             CompleteTracingSettings.builder()
                     .samplingEnabled(true)
@@ -45,11 +48,12 @@ class CategoryALeafMissingTest {
                     .diagnosticsLogLevel("INFO")
                     .build();
 
-    private static final long   LKG_SEQUENCE         = 42L;
+    private static final long LKG_SEQUENCE = 42L;
     private static final String LKG_RUNTIME_INSTANCE = "agent-instance-abc";
-    private static final String LKG_DIGEST           = "sha256:deadbeef";
 
-    /** Constructs an AcceptedSettingsWithSequence representing the LKG state. */
+    /**
+     * Constructs an AcceptedSettingsWithSequence representing the LKG state.
+     */
     private static AcceptedSettingsWithSequence lkgAcceptedState() {
         return new AcceptedSettingsWithSequence(LKG_SEQUENCE, LKG_RUNTIME_INSTANCE, LKG_SNAPSHOT);
     }
@@ -70,7 +74,7 @@ class CategoryALeafMissingTest {
             when(failingBuilder.build())
                     .thenThrow(new TracingSettingsManifestException(
                             "Required Category A policy key missing: "
-                            + "'platform.tracing.policy.sampling.enabled'"));
+                                    + "'platform.tracing.policy.sampling.enabled'"));
 
             TracingSettingsApplier client = mock(TracingSettingsApplier.class);
             CompleteTracingSettingsReader reader = mock(CompleteTracingSettingsReader.class);
@@ -169,7 +173,7 @@ class CategoryALeafMissingTest {
             when(failingBuilder.build())
                     .thenThrow(new TracingSettingsManifestException(
                             "Required Category A policy key missing: "
-                            + "'platform.tracing.policy.exporter.enabled'"));
+                                    + "'platform.tracing.policy.exporter.enabled'"));
 
             TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
                     failingBuilder, trackingClient, trackingReader, Runnable::run);
@@ -202,11 +206,8 @@ class CategoryALeafMissingTest {
             when(failingBuilder.build())
                     .thenThrow(new TracingSettingsManifestException(
                             "Required Category A policy key missing: "
-                            + "'platform.tracing.policy.sampling.ratio'"));
+                                    + "'platform.tracing.policy.sampling.ratio'"));
 
-            // Replace the coalescer with failing builder; coalescer holds no external
-            // sequence state visible through public API — what we can verify is that
-            // applySnapshot was not called again, meaning Agent-side LKG is untouched.
             TracingSettingsRefreshCoalescer failingCoalescer = new TracingSettingsRefreshCoalescer(
                     failingBuilder, trackingClient, trackingReader, Runnable::run);
             int applyCountBefore = trackingClient.applyCallCount();
@@ -216,7 +217,7 @@ class CategoryALeafMissingTest {
             assertThat(trackingClient.applyCallCount())
                     .as("applySnapshot must NOT be called when leaf is missing")
                     .isEqualTo(applyCountBefore);
-            // The last sequence delivered to Agent is still the LKG one
+
             assertThat(trackingClient.lastAppliedSequence())
                     .as("acceptedSequence must remain unchanged")
                     .isEqualTo(sequenceAfterGoodApply);
@@ -230,18 +231,17 @@ class CategoryALeafMissingTest {
             when(failingBuilder.build())
                     .thenThrow(new TracingSettingsManifestException(
                             "Required Category A policy key missing: "
-                            + "'platform.tracing.policy.validation.strict'"));
+                                    + "'platform.tracing.policy.validation.strict'"));
 
             TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
                     failingBuilder, trackingClient, trackingReader, Runnable::run);
 
             coalescer.onRefreshEvent();
 
-            // Verify reader was never asked to refresh (no currentComplete() call during failed apply)
             assertThat(trackingReader.currentCompleteCallCount())
                     .as("reader.currentComplete() must not be called when build() fails")
                     .isZero();
-            // The runtimeInstanceId visible in the LKG reader state is unchanged
+
             assertThat(trackingReader.currentComplete())
                     .isPresent()
                     .map(AcceptedSettingsWithSequence::runtimeInstanceId)
@@ -256,7 +256,7 @@ class CategoryALeafMissingTest {
             when(failingBuilder.build())
                     .thenThrow(new TracingSettingsManifestException(
                             "Required Category A policy key missing: "
-                            + "'platform.tracing.policy.diagnostics.log-level'"));
+                                    + "'platform.tracing.policy.diagnostics.log-level'"));
 
             TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
                     failingBuilder, trackingClient, trackingReader, Runnable::run);
@@ -438,10 +438,21 @@ class CategoryALeafMissingTest {
             return outcome;
         }
 
-        int applyCallCount() { return applyCount.get(); }
-        long lastAppliedSequence() { return lastExpectedBase.get().acceptedSequence(); }
-        CompleteTracingSettings lastAppliedSnapshot() { return lastSnapshot; }
-        TracingSettingsDeliverySource lastAppliedSource() { return lastSource; }
+        int applyCallCount() {
+            return applyCount.get();
+        }
+
+        long lastAppliedSequence() {
+            return lastExpectedBase.get().acceptedSequence();
+        }
+
+        CompleteTracingSettings lastAppliedSnapshot() {
+            return lastSnapshot;
+        }
+
+        TracingSettingsDeliverySource lastAppliedSource() {
+            return lastSource;
+        }
     }
 
     /**
@@ -463,6 +474,8 @@ class CategoryALeafMissingTest {
             return Optional.ofNullable(state.get());
         }
 
-        int currentCompleteCallCount() { return readCount.get(); }
+        int currentCompleteCallCount() {
+            return readCount.get();
+        }
     }
 }

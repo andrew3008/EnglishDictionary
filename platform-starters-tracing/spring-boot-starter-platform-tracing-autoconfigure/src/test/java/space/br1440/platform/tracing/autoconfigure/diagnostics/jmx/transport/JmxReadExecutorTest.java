@@ -329,8 +329,7 @@ final class JmxReadExecutorTest {
         JmxReadExecutor executor = new JmxReadExecutor(server);
         JmxAttribute<Long> attribute = longAttribute("Value", JmxContractPoint.EXPORT_OBSERVATION);
 
-        ExecutorService pool = Executors.newFixedThreadPool(4);
-        try {
+        try (ExecutorService pool = Executors.newFixedThreadPool(4)) {
             List<Future<Optional<Long>>> futures = List.of(
                     pool.submit(() -> executor.read(TEST_OBJECT_NAME, attribute)),
                     pool.submit(() -> executor.read(TEST_OBJECT_NAME, attribute)),
@@ -339,8 +338,6 @@ final class JmxReadExecutorTest {
             for (Future<Optional<Long>> future : futures) {
                 assertThat(future.get(5, TimeUnit.SECONDS)).contains(1L);
             }
-        } finally {
-            pool.shutdown();
         }
 
         assertThat(maxObservedConcurrency.get()).isEqualTo(1);
@@ -563,6 +560,7 @@ final class JmxReadExecutorTest {
                 });
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static JmxAttribute<Long> longAttribute(String name, JmxContractPoint point) {
         return new JmxAttribute<>(name, point, SimpleType.LONG, raw -> {
             if (raw instanceof Long value) {
@@ -582,6 +580,7 @@ final class JmxReadExecutorTest {
         server.registerMBean(new FakeDynamicMBean(attributeName, attributeSupplier, true), TEST_OBJECT_NAME);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private void registerFakeMBean(
             Function<String, Object> attributeSupplier,
             boolean exactMetadata) throws Exception {
@@ -594,6 +593,7 @@ final class JmxReadExecutorTest {
         server.registerMBean(new FakeDynamicMBean("Value", attributeSupplier, info), TEST_OBJECT_NAME);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static MBeanInfo snapshotInfo(OpenType<?> openType) {
         return snapshotInfo(openType, new OpenMBeanConstructorInfo[0], new MBeanNotificationInfo[0]);
     }

@@ -78,12 +78,9 @@ class ActuatorEndpointContractTest {
 
     @Test
     void disabledTracingRegistersReadOnlyStatusEndpoint() {
-        // given
-        ApplicationContextRunner runner = contextRunner;
-
         // when
         // then
-        runner.run(context -> {
+        contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
             assertThat(context).hasSingleBean(TracingStatusEndpoint.class);
             assertThat(context.getBean(TracingStatusEndpoint.class).tracingStatus().tracingEnabled())

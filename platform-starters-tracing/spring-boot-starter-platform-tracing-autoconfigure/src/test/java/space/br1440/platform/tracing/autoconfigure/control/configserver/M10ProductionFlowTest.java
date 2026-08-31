@@ -508,7 +508,6 @@ class M10ProductionFlowTest {
     static final class RecordingSnapshotReader implements CompleteTracingSettingsReader {
 
         private final AtomicReference<AcceptedSettingsWithSequence> state;
-        private final AtomicInteger readCount = new AtomicInteger(0);
 
         RecordingSnapshotReader(AcceptedSettingsWithSequence initial) {
             this.state = new AtomicReference<>(initial);
@@ -516,12 +515,7 @@ class M10ProductionFlowTest {
 
         @Override
         public Optional<AcceptedSettingsWithSequence> currentComplete() {
-            readCount.incrementAndGet();
             return Optional.ofNullable(state.get());
-        }
-
-        int readCount() {
-            return readCount.get();
         }
     }
 }

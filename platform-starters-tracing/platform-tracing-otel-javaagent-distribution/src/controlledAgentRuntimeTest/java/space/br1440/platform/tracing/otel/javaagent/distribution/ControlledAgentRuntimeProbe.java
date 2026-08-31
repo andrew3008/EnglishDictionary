@@ -378,6 +378,7 @@ public final class ControlledAgentRuntimeProbe {
         return value == null ? "null" : value.getClass().getName();
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static String requiredProperty(String name) {
         String value = System.getProperty(name);
         if (value == null || value.isBlank()) {

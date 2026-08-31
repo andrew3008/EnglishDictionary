@@ -75,7 +75,9 @@ class RefreshStormTest {
             if (cycle == 1) {
                 workerStarted.countDown();
                 try {
-                    workerGate.await(3, TimeUnit.SECONDS);
+                    if (!workerGate.await(3, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("workerGate release timed out");
+                    }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -215,7 +217,9 @@ class RefreshStormTest {
                 firstApplyStarted.countDown();
 
                 try {
-                    injectMoreEvents.await(3, TimeUnit.SECONDS);
+                    if (!injectMoreEvents.await(3, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("injectMoreEvents release timed out");
+                    }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -525,9 +529,8 @@ class RefreshStormTest {
             return TracingSettingsDeliveryResult.APPLIED;
         };
 
-        ExecutorService workerPool = Executors.newSingleThreadExecutor();
-        ExecutorService producerPool = Executors.newFixedThreadPool(PRODUCERS);
-        try {
+        try (ExecutorService workerPool = Executors.newSingleThreadExecutor();
+             ExecutorService producerPool = Executors.newFixedThreadPool(PRODUCERS)) {
             TracingSettingsRefreshCoalescer coalescer =
                     new TracingSettingsRefreshCoalescer(builder, client, readerWith(1L), workerPool);
 
@@ -557,9 +560,6 @@ class RefreshStormTest {
             assertThat(applyCount.get())
                     .as("coalescing must reduce " + TOTAL + " events to far fewer applies")
                     .isLessThan(TOTAL / 2);
-        } finally {
-            producerPool.shutdownNow();
-            if (!workerPool.isShutdown()) workerPool.shutdownNow();
         }
     }
 }

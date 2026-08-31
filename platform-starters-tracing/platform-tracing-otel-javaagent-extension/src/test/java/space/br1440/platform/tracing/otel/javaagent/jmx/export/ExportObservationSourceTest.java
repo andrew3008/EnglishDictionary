@@ -7,16 +7,9 @@ import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
-import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
 
-/**
- * Contract tests for {@link ExportObservationSource}: два независимо заменяемых владельца
- * кодируют presence в sub-composite; placeholder'ы при {@code ownerPresent=false} не являются
- * доменными значениями (см. ADR-jmx-absent-owner-encoding).
- */
 class ExportObservationSourceTest {
 
     private static final UUID AGENT_INSTANCE_ID = UUID.randomUUID();
@@ -51,8 +44,8 @@ class ExportObservationSourceTest {
     void getterReturnsPublishedSnapshotAndExplicitPublishAdvancesSequence() {
         // given
         ExportObservationSource source = new ExportObservationSource(
-                new OwnerRegistrationSlot<PlatformDropOldestExportSpanProcessor>(),
-                new OwnerRegistrationSlot<SafeSpanExporter>(),
+                new OwnerRegistrationSlot<>(),
+                new OwnerRegistrationSlot<>(),
                 AGENT_INSTANCE_ID);
 
         // when

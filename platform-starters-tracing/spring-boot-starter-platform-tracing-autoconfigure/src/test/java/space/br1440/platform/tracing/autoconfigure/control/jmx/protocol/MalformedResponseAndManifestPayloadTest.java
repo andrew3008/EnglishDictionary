@@ -692,6 +692,7 @@ class MalformedResponseAndManifestPayloadTest {
         return env;
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static void putAuthoritativeRouteRatio(MockEnvironment env, String route, String value) {
         env.getPropertySources().addFirst(new MapPropertySource(
                 "configserver:test-route-ratios",

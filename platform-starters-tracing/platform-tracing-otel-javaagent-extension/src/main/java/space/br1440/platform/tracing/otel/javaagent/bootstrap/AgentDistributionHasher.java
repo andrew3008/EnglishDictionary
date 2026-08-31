@@ -23,6 +23,7 @@ final class AgentDistributionHasher {
         return SHA256.matcher(candidate).matches();
     }
 
+    @SuppressWarnings("SameParameterValue")
     static String sha256(Path path, AttestationFailureCode failureCode, String failureMessage) {
         try (InputStream input = Files.newInputStream(path)) {
             return sha256(input);

@@ -51,10 +51,7 @@ class DiagnosticsObservationSourceTest {
         assertThat((Long) observation.get(
                 JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_INVALID_CONFIG_COUNT))
                 .isEqualTo(3L);
-        assertThat(stringLongMap(
-                observation,
-                JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_SAFE_WRAPPER_METRICS))
-                .isEqualTo(expectedSafeWrapperMetrics);
+        assertThat(stringLongMap(observation)).isEqualTo(expectedSafeWrapperMetrics);
         assertThat((String) observation.get(
                 JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_PLATFORM_LOG_LEVEL))
                 .isEqualTo(expectedLogLevel);
@@ -91,8 +88,11 @@ class DiagnosticsObservationSourceTest {
                 .isInstanceOf(NullPointerException.class);
     }
 
-    private static Map<String, Long> stringLongMap(CompositeData observation, String itemName) {
-        TabularData table = (TabularData) observation.get(itemName);
+    private static Map<String, Long> stringLongMap(CompositeData observation) {
+        TabularData table = (TabularData) observation.get(
+                JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_SAFE_WRAPPER_METRICS
+        );
+
         Map<String, Long> result = new LinkedHashMap<>(table.size());
         for (Object rowObject : table.values()) {
             CompositeData row = (CompositeData) rowObject;

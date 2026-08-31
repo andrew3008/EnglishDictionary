@@ -24,12 +24,8 @@ import space.br1440.platform.tracing.otel.javaagent.testsupport.BootstrapIsolate
 class PlatformExtensionReadinessIntegrationTest {
 
     @Test
-    void completeUnpackagedPipelineFailsAttestationBeforePublishingReady() throws Exception {
+    void completeUnpackagedPipelineFailsAttestationBeforePublishingReady() {
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
-        // Fresh classloader isolates the shared ExtensionRuntime coordinator for this
-        // build (r5 plan §3 acceptance #9). Outside a real java agent, nothing invokes
-        // AgentListener.afterAgent automatically, so the activation transaction — which now owns
-        // diagnostic/runtime MBean registration (r5 plan §6) — is driven explicitly below.
         ClassLoader isolatedLoader = BootstrapIsolatedClassLoader.freshBootstrapClassLoader();
         AutoConfiguredOpenTelemetrySdk sdk = AutoConfiguredOpenTelemetrySdk.builder()
                 .setServiceClassLoader(isolatedLoader)
@@ -45,9 +41,8 @@ class PlatformExtensionReadinessIntegrationTest {
             Class<?> listenerClass = isolatedLoader.loadClass(
                     "space.br1440.platform.tracing.otel.javaagent.bootstrap.ActivationAgentListener");
             Object listener = listenerClass.getDeclaredConstructor().newInstance();
-            AutoCloseable bootstrapOwner = bootstrapOwner(isolatedLoader);
 
-            try {
+            try (AutoCloseable ignored = bootstrapOwner(isolatedLoader)) {
                 assertThatThrownBy(() -> listenerClass
                         .getMethod("afterAgent", AutoConfiguredOpenTelemetrySdk.class)
                         .invoke(listener, sdk))
@@ -69,8 +64,6 @@ class PlatformExtensionReadinessIntegrationTest {
                                 "PROPAGATION_HOOKS_INSTALLED",
                                 "SAFE_EXPORTER_INSTALLED",
                                 "EXPORT_PATH_PROTECTED");
-            } finally {
-                bootstrapOwner.close();
             }
         } catch (Exception e) {
             throw new AssertionError(e);
@@ -96,9 +89,8 @@ class PlatformExtensionReadinessIntegrationTest {
             Class<?> listenerClass = isolatedLoader.loadClass(
                     "space.br1440.platform.tracing.otel.javaagent.bootstrap.ActivationAgentListener");
             Object listener = listenerClass.getDeclaredConstructor().newInstance();
-            AutoCloseable bootstrapOwner = bootstrapOwner(isolatedLoader);
 
-            try {
+            try (AutoCloseable ignored = bootstrapOwner(isolatedLoader)) {
                 assertThatThrownBy(() -> listenerClass
                         .getMethod("afterAgent", AutoConfiguredOpenTelemetrySdk.class)
                         .invoke(listener, sdk))
@@ -114,8 +106,6 @@ class PlatformExtensionReadinessIntegrationTest {
                 assertThat((String[]) readiness.get(
                         JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES))
                         .doesNotContain("SANITIZER_INSTALLED");
-            } finally {
-                bootstrapOwner.close();
             }
         } finally {
             sdk.getOpenTelemetrySdk().close();

@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Objects;
 
 import org.junit.jupiter.api.Test;
 
@@ -61,7 +62,9 @@ class ClassFileMethodRemoverTest {
 
     private static byte[] readFixtureBytes() throws IOException {
         String resourceName = ClassFileMethodRemoverTest.class.getSimpleName() + "$" + Fixture.class.getSimpleName() + ".class";
-        try (InputStream input = Fixture.class.getResourceAsStream(resourceName)) {
+        try (InputStream input = Objects.requireNonNull(
+                Fixture.class.getResourceAsStream(resourceName),
+                "compiled fixture resource is missing: " + resourceName)) {
             return input.readAllBytes();
         }
     }
@@ -102,7 +105,13 @@ class ClassFileMethodRemoverTest {
     }
 
     static final class Fixture {
+
+        // L и D намеренно не читаются: их единственная цель — заставить компилятор
+        // положить в constant pool записи тегов 5 (long) и 6 (double), которые
+        // parseConstantPool в ClassFileMethodRemover разбирает как двойной по ширине слот.
+        @SuppressWarnings("unused")
         static final long L = 123456789012L;
+        @SuppressWarnings("unused")
         static final double D = 1.5d;
 
         @SuppressWarnings("unused")

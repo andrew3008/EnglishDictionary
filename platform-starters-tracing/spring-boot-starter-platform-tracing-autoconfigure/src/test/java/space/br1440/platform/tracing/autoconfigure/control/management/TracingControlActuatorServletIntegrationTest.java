@@ -35,8 +35,7 @@ class TracingControlActuatorServletIntegrationTest {
             "space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.observation.TracingObservationAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup."
-                    + "TracingStartupContractHealthAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup. TracingStartupContractHealthAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestContextSupplierAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.identity.ServiceNameProviderAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration",
@@ -47,8 +46,7 @@ class TracingControlActuatorServletIntegrationTest {
 
     @Test
     void actuatorExposesAllWriteOperationsOnlyOnManagementPort() throws Exception {
-        try (FakeAgentPlatformJmxPlane agent =
-                     FakeAgentPlatformJmxPlane.compliant("runtime-instance-servlet", 5L);
+        try (FakeAgentPlatformJmxPlane ignored = FakeAgentPlatformJmxPlane.compliant("runtime-instance-servlet", 5L);
              ConfigurableApplicationContext context = boot()) {
             assertThat(context.getBeansOfType(TracingControlEndpoint.class)).hasSize(1);
             assertThat(context.getBean(ActuatorAgentReadinessProbe.class)
@@ -119,11 +117,11 @@ class TracingControlActuatorServletIntegrationTest {
     }
 
     private static int managementPort(ApplicationContext context) {
-        return Integer.parseInt(context.getEnvironment().getProperty("local.management.port"));
+        return Integer.parseInt(context.getEnvironment().getRequiredProperty("local.management.port"));
     }
 
     private static int applicationPort(ApplicationContext context) {
-        return Integer.parseInt(context.getEnvironment().getProperty("local.server.port"));
+        return Integer.parseInt(context.getEnvironment().getRequiredProperty("local.server.port"));
     }
 
     private record RouteCase(String path, Map<String, ?> body, String expectedLeaf) {}

@@ -22,11 +22,10 @@ class AllowedUpstreamAcpProvidersTest {
         Set<String> names = AllowedUpstreamAcpProviders.NAMES;
 
         // when
-        var mutation = assertThatThrownBy(() -> names.add("example.AttackerProvider"));
-
         // then
         assertThat(names).isNotEmpty();
-        mutation.isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> addProviderName(names, "example.AttackerProvider"))
+                .isInstanceOf(UnsupportedOperationException.class);
     }
 
     @ParameterizedTest
@@ -36,10 +35,9 @@ class AllowedUpstreamAcpProvidersTest {
         byte[] bytes = document.getBytes(StandardCharsets.UTF_8);
 
         // when
-        var result = assertThatThrownBy(() -> AllowedUpstreamAcpProviders.parse(bytes));
-
         // then
-        result.isInstanceOf(IllegalStateException.class)
+        assertThatThrownBy(() -> AllowedUpstreamAcpProviders.parse(bytes))
+                .isInstanceOf(IllegalStateException.class)
                 .hasMessageStartingWith("Invalid ACP pin resource:");
     }
 
@@ -49,19 +47,19 @@ class AllowedUpstreamAcpProvidersTest {
         byte[] malformedUtf8 = {(byte) 0xC3, 0x28};
 
         // when
-        var result = assertThatThrownBy(() -> AllowedUpstreamAcpProviders.parse(malformedUtf8));
-
         // then
-        result.isInstanceOf(IllegalStateException.class)
+        assertThatThrownBy(() -> AllowedUpstreamAcpProviders.parse(malformedUtf8))
+                .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("valid UTF-8");
     }
 
     @Test
     void parser_accepts_canonical_document() {
         // given
-        String document = canonicalDocument(
-                "provider.0=example.FirstProvider\n"
-                        + "provider.1=example.SecondProvider\n");
+        String document = canonicalDocument("""
+                provider.0=example.FirstProvider
+                provider.1=example.SecondProvider
+                """);
 
         // when
         Set<String> names = AllowedUpstreamAcpProviders.parse(document.getBytes(StandardCharsets.UTF_8));
@@ -74,16 +72,16 @@ class AllowedUpstreamAcpProvidersTest {
     @Test
     void parser_requires_a_well_formed_reviewed_upstream_digest() {
         // given
-        String document = "format.version=1\n"
-                + "otel.javaagent.sha256=NOT-A-DIGEST\n"
-                + "provider.0=example.Provider\n";
+        String document = """
+                format.version=1
+                otel.javaagent.sha256=NOT-A-DIGEST
+                provider.0=example.Provider
+                """;
 
         // when
-        var result = assertThatThrownBy(
-                () -> AllowedUpstreamAcpProviders.parse(document.getBytes(StandardCharsets.UTF_8)));
-
         // then
-        result.isInstanceOf(IllegalStateException.class)
+        assertThatThrownBy(() -> AllowedUpstreamAcpProviders.parse(document.getBytes(StandardCharsets.UTF_8)))
+                .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("otel.javaagent.sha256");
     }
 
@@ -91,12 +89,14 @@ class AllowedUpstreamAcpProvidersTest {
         return Stream.of(
                 Arguments.of(canonicalDocument("provider.0=example.Provider\r\n")),
                 Arguments.of(canonicalDocument("provider.1=example.Provider\n")),
-                Arguments.of(canonicalDocument(
-                        "provider.0=example.SecondProvider\n"
-                                + "provider.1=example.FirstProvider\n")),
-                Arguments.of(canonicalDocument(
-                        "provider.0=example.Provider\n"
-                                + "provider.1=example.Provider\n")),
+                Arguments.of(canonicalDocument("""
+                        provider.0=example.SecondProvider
+                        provider.1=example.FirstProvider
+                        """)),
+                Arguments.of(canonicalDocument("""
+                        provider.0=example.Provider
+                        provider.1=example.Provider
+                        """)),
                 Arguments.of(canonicalDocument("provider.00=example.Provider\n")),
                 Arguments.of(canonicalDocument("provider.0 =example.Provider\n")),
                 Arguments.of(canonicalDocument("provider.0=example.Provider\nunknown=value\n")),
@@ -108,5 +108,9 @@ class AllowedUpstreamAcpProvidersTest {
         return "format.version=1\n"
                 + "otel.javaagent.sha256=" + SHA256 + "\n"
                 + providerLines;
+    }
+
+    private static void addProviderName(Set<String> names, String providerName) {
+        names.add(providerName);
     }
 }

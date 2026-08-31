@@ -221,17 +221,17 @@ public final class AgentStartupVerifier {
 
     private AgentReadinessProbe.ProbeResult readCoherent() {
         AgentReadinessProbe.ProbeResult first = coherenceGuard.readSnapshot();
-        if (!(first instanceof AgentReadinessProbe.ProbeResult.Present firstPresent)) {
+        if (!(first instanceof AgentReadinessProbe.ProbeResult.Present(AgentReadinessSnapshot firstSnapshot))) {
             return first;
         }
 
         AgentReadinessProbe.ProbeResult second = coherenceGuard.readSnapshot();
-        if (!(second instanceof AgentReadinessProbe.ProbeResult.Present secondPresent)) {
+        if (!(second instanceof AgentReadinessProbe.ProbeResult.Present(AgentReadinessSnapshot secondSnapshot))) {
             return second;
         }
 
-        if (!firstPresent.snapshot().anchorIdentity().equals(secondPresent.snapshot().anchorIdentity())
-                || !firstPresent.snapshot().equals(secondPresent.snapshot())) {
+        if (!firstSnapshot.anchorIdentity().equals(secondSnapshot.anchorIdentity())
+                || !firstSnapshot.equals(secondSnapshot)) {
             return new AgentReadinessProbe.ProbeResult.Rejected(
                     AgentReadinessProbe.ProbeReason.MIXED_GENERATION);
         }

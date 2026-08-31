@@ -5,8 +5,8 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 
-class ApplicationOwnedOpenTelemetryInitializer
-        implements ApplicationContextInitializer<ConfigurableApplicationContext> {
+@SuppressWarnings("unused")
+class ApplicationOwnedOpenTelemetryInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
     @Override
     public void initialize(ConfigurableApplicationContext context) {

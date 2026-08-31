@@ -74,7 +74,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) { return null; }
             @Override public Boolean getBoolean(String name) {
-                return "platform.tracing.metrics.enabled".equals(name) ? true : false;
+                return "platform.tracing.metrics.enabled".equals(name);
             }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }
@@ -89,7 +89,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) { return null; }
             @Override public Boolean getBoolean(String name) {
-                return "platform.tracing.watchdog.enabled".equals(name) ? true : false;
+                return "platform.tracing.watchdog.enabled".equals(name);
             }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }
@@ -104,7 +104,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) { return null; }
             @Override public Boolean getBoolean(String name) {
-                return "platform.tracing.validation.enabled".equals(name) ? true : false;
+                return "platform.tracing.validation.enabled".equals(name);
             }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }
@@ -167,7 +167,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         delegatesField.setAccessible(true);
         List<?> delegates = (List<?>) delegatesField.get(composite);
 
-        Object namedDelegate = delegates.get(0);
+        Object namedDelegate = delegates.getFirst();
         Method delegateAccessor = namedDelegate.getClass().getDeclaredMethod("delegate");
         delegateAccessor.setAccessible(true);
         return delegateAccessor.invoke(namedDelegate);

@@ -51,18 +51,17 @@ class PlatformExportProcessorFactoryBoundaryTest {
         List<SpanData> captured = new ArrayList<>();
         SpanExporter wrapped = factory.captureExporter(capturing(captured), TracingSettingsSource.isolatedDefaults());
 
-        ExtensionConfig upstream = new ExtensionConfig(stringConfig(
-                ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY, "UPSTREAM"));
+        ExtensionConfig upstream = new ExtensionConfig(stringConfig("UPSTREAM"));
         SpanProcessor stock = SimpleSpanProcessor.create(wrapped);
         SpanProcessor result = factory.maybeReplaceExportProcessor(
-                stock, upstream.queue(), stringConfig(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY, "UPSTREAM"));
+                stock, upstream.queue(), stringConfig("UPSTREAM"));
 
         assertThat(result).isSameAs(stock);
         assertThat(registrar.extensionReadiness().has(PlatformExtensionCapability.EXPORT_PATH_PROTECTED)).isTrue();
 
         wrapped.export(List.of(spanWithPasswordEvent()));
         assertThat(captured).hasSize(1);
-        assertThat(captured.get(0).getEvents().get(0).getAttributes().get(AttributeKey.stringKey("db.password")))
+        assertThat(captured.getFirst().getEvents().getFirst().getAttributes().get(AttributeKey.stringKey("db.password")))
                 .isNull();
     }
 
@@ -83,12 +82,11 @@ class PlatformExportProcessorFactoryBoundaryTest {
             @Override public CompletableResultCode shutdown() { return CompletableResultCode.ofSuccess(); }
         }, TracingSettingsSource.isolatedDefaults());
 
-        ExtensionConfig dropOldest = new ExtensionConfig(stringConfig(
-                ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY, "DROP_OLDEST"));
+        ExtensionConfig dropOldest = new ExtensionConfig(stringConfig("DROP_OLDEST"));
         factory.maybeReplaceExportProcessor(
                 SimpleSpanProcessor.create(wrapped),
                 dropOldest.queue(),
-                stringConfig(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY, "DROP_OLDEST"));
+                stringConfig("DROP_OLDEST"));
 
         assertThat(registrar.extensionReadiness().has(PlatformExtensionCapability.EXPORT_PATH_PROTECTED)
                 || registrar.extensionReadiness().has(PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED))
@@ -159,7 +157,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
         secondCapture.export(List.of(spanWithPasswordEvent()));
 
         assertThat(captured).hasSize(1);
-        assertThat(captured.get(0).getEvents().get(0).getAttributes().get(AttributeKey.stringKey("db.password")))
+        assertThat(captured.getFirst().getEvents().getFirst().getAttributes().get(AttributeKey.stringKey("db.password")))
                 .isNull();
         assertThat(session.boundaryMetrics().inputSpans())
                 .as("exactly one boundary pass, not one per re-entry")
@@ -167,7 +165,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
     }
 
     private static ScrubbingRuntime runtimeOfPassword() {
-        SpanAttributeScrubbingRule password = BuiltInSpanAttributeScrubbingRules.resolve("password");
+        SpanAttributeScrubbingRule password = BuiltInSpanAttributeScrubbingRules.PASSWORD_KEY.create();
         return ScrubbingRuntimeTestFixtures.fromBuiltInRules(List.of(password));
     }
 
@@ -196,9 +194,11 @@ class PlatformExportProcessorFactoryBoundaryTest {
                 .build();
     }
 
-    private static ConfigProperties stringConfig(String key, String value) {
+    private static ConfigProperties stringConfig(String value) {
         return new ConfigProperties() {
-            @Override public String getString(String name) { return key.equals(name) ? value : null; }
+            @Override public String getString(String name) {
+                return ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY.equals(name) ? value : null;
+            }
             @Override public Boolean getBoolean(String name) { return null; }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }

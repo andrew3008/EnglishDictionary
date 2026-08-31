@@ -7,8 +7,8 @@ public final class AgentReadinessCoherenceTestSupport {
 
     public static void pinCurrent(AgentReadinessCoherenceGuard guard) {
         AgentReadinessProbe.ProbeResult result = guard.readSnapshot();
-        if (result instanceof AgentReadinessProbe.ProbeResult.Present present) {
-            guard.pin(present.snapshot());
+        if (result instanceof AgentReadinessProbe.ProbeResult.Present(AgentReadinessSnapshot snapshot)) {
+            guard.pin(snapshot);
             return;
         }
 

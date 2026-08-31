@@ -234,7 +234,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     }
 
     @Test
-    void disabling_all_subsystems_does_not_create_MBean_before_sampler_creation() throws Exception {
+    void disabling_all_subsystems_does_not_create_MBean_before_sampler_creation() {
         Recorder recorder = new Recorder();
         newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
 
@@ -253,9 +253,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     }
 
     private static final class Recorder {
-        @SuppressWarnings("unchecked")
         BiFunction<Sampler, ConfigProperties, Sampler> samplerCustomizer;
-        @SuppressWarnings("unchecked")
         BiFunction<SdkTracerProviderBuilder, ConfigProperties, SdkTracerProviderBuilder> tracerProviderCustomizer;
 
         private final List<Function<ConfigProperties, Map<String, String>>> propertiesCustomizers = new ArrayList<>();

@@ -103,8 +103,8 @@ final class PlatformSettingsMutationFailureContractTest {
 
         // when
         MBeanException thrown = catchThrowableOfType(
-                () -> invoke(writer, request),
-                MBeanException.class);
+                MBeanException.class,
+                () -> invoke(writer, request));
 
         // then
         assertNeutralBoundary(
@@ -140,8 +140,8 @@ final class PlatformSettingsMutationFailureContractTest {
 
         // when
         MBeanException thrown = catchThrowableOfType(
-                () -> invoke(writer, request),
-                MBeanException.class);
+                MBeanException.class,
+                () -> invoke(writer, request));
 
         // then
         assertNeutralBoundary(
@@ -179,8 +179,8 @@ final class PlatformSettingsMutationFailureContractTest {
 
         // when
         MBeanException thrown = catchThrowableOfType(
-                () -> invoke(writer, request),
-                MBeanException.class);
+                MBeanException.class,
+                () -> invoke(writer, request));
 
         // then
         assertNeutralBoundary(

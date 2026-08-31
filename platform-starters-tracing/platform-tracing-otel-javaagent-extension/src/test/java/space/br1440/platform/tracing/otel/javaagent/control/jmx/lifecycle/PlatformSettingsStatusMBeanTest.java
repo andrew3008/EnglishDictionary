@@ -68,7 +68,7 @@ class PlatformSettingsStatusMBeanTest {
     }
 
     @Test
-    void captureFailureDoesNotExposeForeignThrowable() throws Exception {
+    void captureFailureDoesNotExposeForeignThrowable() {
         // given
         TracingSettingsUpdater updater = mock(TracingSettingsUpdater.class);
         RuntimeException captureFailure = new ForeignStatusFailure("foreign status failure");
@@ -77,9 +77,9 @@ class PlatformSettingsStatusMBeanTest {
 
         // when
         MBeanException thrown = catchThrowableOfType(
+                MBeanException.class,
                 () -> mBean.getAttribute(
-                        JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT),
-                MBeanException.class);
+                        JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT));
 
         // then
         assertThat(thrown.getTargetException()).isNull();
@@ -164,7 +164,7 @@ class PlatformSettingsStatusMBeanTest {
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS);
         assertThat(routes.getTabularType()).isEqualTo(JmxOpenTypes.ROUTE_RATIOS);
         assertThat(routes.size()).isEqualTo(1);
-        CompositeData route = (CompositeData) routes.get(new Object[]{"/orders"});
+        CompositeData route = routes.get(new Object[]{"/orders"});
         assertThat(route.getCompositeType()).isEqualTo(JmxOpenTypes.ROUTE_RATIO);
         assertThat(route.get(JmxWireContract.FIELD_ROUTE_RATIO_ROUTE_PREFIX))
                 .isEqualTo("/orders");

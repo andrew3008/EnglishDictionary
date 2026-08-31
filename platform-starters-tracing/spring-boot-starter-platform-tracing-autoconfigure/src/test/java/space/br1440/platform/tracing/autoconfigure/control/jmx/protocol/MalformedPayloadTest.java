@@ -401,6 +401,7 @@ class MalformedPayloadTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private CompositeData buildValidWith(long seq, String rid,
                                          boolean sampEn, double sampRatio, TabularData routes,
                                          boolean valEn, boolean valStrict, boolean expEn,

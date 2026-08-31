@@ -37,17 +37,17 @@ class PlatformExtensionReadinessJmxTest {
                     ExtensionReadinessWireSnapshot.initializing(readiness);
 
             // when
-            registrar.registerDiagnosticReadiness(() -> projection);
-
-            // then
-            assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isTrue();
-            assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isFalse();
-            CompositeData wire = (CompositeData) server.getAttribute(
-                    DomainObjectNames.EXTENSION_READINESS, READINESS_ATTRIBUTE);
-            assertThat(wire.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE))
-                    .isEqualTo("INITIALIZING");
-            assertThat((String[]) wire.get(
-                    JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES)).isEmpty();
+            try (AutoCloseable ignored = registrar.registerDiagnosticReadiness(() -> projection)) {
+                // then
+                assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isTrue();
+                assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isFalse();
+                CompositeData wire = (CompositeData) server.getAttribute(
+                        DomainObjectNames.EXTENSION_READINESS, READINESS_ATTRIBUTE);
+                assertThat(wire.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE))
+                        .isEqualTo("INITIALIZING");
+                assertThat((String[]) wire.get(
+                        JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES)).isEmpty();
+            }
         } finally {
             MBeanServerFactory.releaseMBeanServer(server);
         }
@@ -62,26 +62,26 @@ class PlatformExtensionReadinessJmxTest {
             AtomicReference<ExtensionReadinessWireSnapshot> projection =
                     new AtomicReference<>(ExtensionReadinessWireSnapshot.initializing(readiness, "epoch-1"));
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(server, readiness);
-            registrar.registerDiagnosticReadiness(projection::get);
+            try (AutoCloseable ignored = registrar.registerDiagnosticReadiness(projection::get)) {
+                // when
+                readiness.markInstalled(PlatformExtensionCapability.PLATFORM_SAMPLER_INSTALLED);
 
-            // when
-            readiness.markInstalled(PlatformExtensionCapability.PLATFORM_SAMPLER_INSTALLED);
+                // then
+                CompositeData frozen = (CompositeData) server.getAttribute(
+                        DomainObjectNames.EXTENSION_READINESS, READINESS_ATTRIBUTE);
+                assertThat((String[]) frozen.get(
+                        JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES)).isEmpty();
 
-            // then
-            CompositeData frozen = (CompositeData) server.getAttribute(
-                    DomainObjectNames.EXTENSION_READINESS, READINESS_ATTRIBUTE);
-            assertThat((String[]) frozen.get(
-                    JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES)).isEmpty();
+                // when
+                projection.set(ExtensionReadinessWireSnapshot.initializing(readiness, "epoch-1"));
 
-            // when
-            projection.set(ExtensionReadinessWireSnapshot.initializing(readiness, "epoch-1"));
-
-            // then
-            CompositeData published = (CompositeData) server.getAttribute(
-                    DomainObjectNames.EXTENSION_READINESS, READINESS_ATTRIBUTE);
-            String[] capabilities = (String[]) published.get(
-                    JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES);
-            assertThat(Arrays.asList(capabilities)).containsExactly("PLATFORM_SAMPLER_INSTALLED");
+                // then
+                CompositeData published = (CompositeData) server.getAttribute(
+                        DomainObjectNames.EXTENSION_READINESS, READINESS_ATTRIBUTE);
+                String[] capabilities = (String[]) published.get(
+                        JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES);
+                assertThat(Arrays.asList(capabilities)).containsExactly("PLATFORM_SAMPLER_INSTALLED");
+            }
         } finally {
             MBeanServerFactory.releaseMBeanServer(server);
         }
@@ -96,21 +96,21 @@ class PlatformExtensionReadinessJmxTest {
             ExtensionReadinessWireSnapshot projection =
                     ExtensionReadinessWireSnapshot.initializing(readiness);
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(server, readiness);
-            registrar.registerDiagnosticReadiness(() -> projection);
+            try (AutoCloseable ignored = registrar.registerDiagnosticReadiness(() -> projection)) {
+                // when
+                MBeanInfo info = server.getMBeanInfo(DomainObjectNames.EXTENSION_READINESS);
 
-            // when
-            MBeanInfo info = server.getMBeanInfo(DomainObjectNames.EXTENSION_READINESS);
-
-            // then
-            assertThat(info.getAttributes()).hasSize(1);
-            assertThat(info.getAttributes()[0].getName()).isEqualTo(READINESS_ATTRIBUTE);
-            assertThat(info.getAttributes()[0].isReadable()).isTrue();
-            assertThat(info.getAttributes()[0].isWritable()).isFalse();
-            assertThat(info.getAttributes()[0].getType()).isEqualTo(CompositeData.class.getName());
-            assertThat(info.getOperations()).isEmpty();
-            CompositeData wire = (CompositeData) server.getAttribute(
-                    DomainObjectNames.EXTENSION_READINESS, READINESS_ATTRIBUTE);
-            assertThat(wire.getCompositeType()).isEqualTo(JmxOpenTypes.READINESS_SNAPSHOT);
+                // then
+                assertThat(info.getAttributes()).hasSize(1);
+                assertThat(info.getAttributes()[0].getName()).isEqualTo(READINESS_ATTRIBUTE);
+                assertThat(info.getAttributes()[0].isReadable()).isTrue();
+                assertThat(info.getAttributes()[0].isWritable()).isFalse();
+                assertThat(info.getAttributes()[0].getType()).isEqualTo(CompositeData.class.getName());
+                assertThat(info.getOperations()).isEmpty();
+                CompositeData wire = (CompositeData) server.getAttribute(
+                        DomainObjectNames.EXTENSION_READINESS, READINESS_ATTRIBUTE);
+                assertThat(wire.getCompositeType()).isEqualTo(JmxOpenTypes.READINESS_SNAPSHOT);
+            }
         } finally {
             MBeanServerFactory.releaseMBeanServer(server);
         }
@@ -125,21 +125,22 @@ class PlatformExtensionReadinessJmxTest {
             AtomicInteger gets = new AtomicInteger();
             ExtensionReadinessWireSnapshot frozen =
                     ExtensionReadinessWireSnapshot.initializing(readiness, "epoch-1");
-            new PlatformTracingMBeanRegistrar(server, readiness).registerDiagnosticReadiness(() -> {
-                gets.incrementAndGet();
-                return frozen;
-            });
+            try (AutoCloseable ignored = new PlatformTracingMBeanRegistrar(server, readiness)
+                    .registerDiagnosticReadiness(() -> {
+                        gets.incrementAndGet();
+                        return frozen;
+                    })) {
+                // when
+                AttributeList attributes = server.getAttributes(
+                        DomainObjectNames.EXTENSION_READINESS,
+                        new String[] {READINESS_ATTRIBUTE, "UnknownAttribute"});
 
-            // when
-            AttributeList attributes = server.getAttributes(
-                    DomainObjectNames.EXTENSION_READINESS,
-                    new String[] {READINESS_ATTRIBUTE, "UnknownAttribute"});
-
-            // then
-            assertThat(gets.get()).isEqualTo(1);
-            assertThat(attributes.asList()).hasSize(1);
-            assertThat(attributes.asList().get(0).getName()).isEqualTo(READINESS_ATTRIBUTE);
-            assertThat(attributes.asList().get(0).getValue()).isSameAs(frozen.readinessSnapshot());
+                // then
+                assertThat(gets.get()).isEqualTo(1);
+                assertThat(attributes.asList()).hasSize(1);
+                assertThat(attributes.asList().getFirst().getName()).isEqualTo(READINESS_ATTRIBUTE);
+                assertThat(attributes.asList().getFirst().getValue()).isSameAs(frozen.readinessSnapshot());
+            }
         } finally {
             MBeanServerFactory.releaseMBeanServer(server);
         }

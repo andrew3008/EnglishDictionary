@@ -30,8 +30,7 @@ class TracingControlActuatorWebFluxIntegrationTest {
             "space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.observation.TracingObservationAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup."
-                    + "TracingStartupContractHealthAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup. TracingStartupContractHealthAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestContextSupplierAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.identity.ServiceNameProviderAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration",
@@ -95,11 +94,11 @@ class TracingControlActuatorWebFluxIntegrationTest {
     }
 
     private static int managementPort(ApplicationContext context) {
-        return Integer.parseInt(context.getEnvironment().getProperty("local.management.port"));
+        return context.getEnvironment().getRequiredProperty("local.management.port", Integer.class);
     }
 
     private static int applicationPort(ApplicationContext context) {
-        return Integer.parseInt(context.getEnvironment().getProperty("local.server.port"));
+        return context.getEnvironment().getRequiredProperty("local.server.port", Integer.class);
     }
 
     @SpringBootConfiguration
@@ -112,8 +111,7 @@ class TracingControlActuatorWebFluxIntegrationTest {
         }
 
         @Bean
-        TracingDeploymentDiagnostics platformTracingDeploymentDiagnostics(
-                AgentReadinessCoherenceGuard coherenceGuard) {
+        TracingDeploymentDiagnostics platformTracingDeploymentDiagnostics(AgentReadinessCoherenceGuard coherenceGuard) {
             return new AgentStartupVerifier(coherenceGuard, EXTENSION_VERSION)
                     .verify(true, true, false, true);
         }
