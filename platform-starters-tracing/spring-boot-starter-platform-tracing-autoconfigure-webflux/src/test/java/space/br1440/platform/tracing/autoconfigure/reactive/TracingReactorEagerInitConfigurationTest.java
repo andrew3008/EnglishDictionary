@@ -2,6 +2,8 @@ package space.br1440.platform.tracing.autoconfigure.reactive;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.lang.reflect.Method;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.LazyInitializationExcludeFilter;
@@ -69,7 +71,9 @@ class TracingReactorEagerInitConfigurationTest {
                     assertThat(context).hasNotFailed();
                     assertThat(context.getEnvironment().getProperty("spring.reactor.context-propagation"))
                             .isEqualTo("AUTO");
-                    assertThat(Hooks.isAutomaticContextPropagationEnabled()).isTrue();
+                    assertThat(automaticContextPropagationEnabled())
+                            .as("ReactorAutoConfiguration must enable the automatic context-propagation hook")
+                            .isTrue();
                 });
     }
 
@@ -85,5 +89,27 @@ class TracingReactorEagerInitConfigurationTest {
                     assertThat(context.getEnvironment().getProperty("spring.reactor.context-propagation"))
                             .isEqualTo("LIMITED");
                 });
+    }
+
+    private static boolean automaticContextPropagationEnabled() {
+        try {
+            Method query = Hooks.class.getMethod("isAutomaticContextPropagationEnabled");
+            return Boolean.TRUE.equals(query.invoke(null));
+        } catch (NoSuchMethodException ignored) {
+            return contextPropagationSupportFlag();
+        } catch (ReflectiveOperationException failure) {
+            throw new AssertionError("Failed to query automatic context propagation", failure);
+        }
+    }
+
+    private static boolean contextPropagationSupportFlag() {
+        try {
+            Class<?> support = Class.forName("reactor.core.publisher.ContextPropagationSupport");
+            Method query = support.getDeclaredMethod("shouldPropagateContextToThreadLocals");
+            query.setAccessible(true);
+            return Boolean.TRUE.equals(query.invoke(null));
+        } catch (ReflectiveOperationException failure) {
+            throw new AssertionError("reactor ContextPropagationSupport is unavailable", failure);
+        }
     }
 }
