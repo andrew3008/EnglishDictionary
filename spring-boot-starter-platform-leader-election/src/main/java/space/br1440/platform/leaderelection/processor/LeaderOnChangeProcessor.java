@@ -3,6 +3,7 @@ package space.br1440.platform.leaderelection.processor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
@@ -26,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 @Component
+@ConditionalOnBean(LeaderElectionProperties.class)
 public class LeaderOnChangeProcessor implements SmartInitializingSingleton, DisposableBean {
 
     private final ApplicationContext applicationContext;

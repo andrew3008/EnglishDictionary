@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.env.Environment;
@@ -39,6 +40,7 @@ import java.util.function.Consumer;
 
 @Slf4j
 @Component
+@ConditionalOnBean(LeaderElectionProperties.class)
 public class LeaderAwareProcessor implements BeanPostProcessor, ApplicationListener<ApplicationEvent>, DisposableBean {
 
     private static final int SCHEDULER_POOL_SIZE = 4;
@@ -183,10 +185,10 @@ public class LeaderAwareProcessor implements BeanPostProcessor, ApplicationListe
         try {
             Class<?> fieldType = field.getType();
             Class<?> valueType = value.getClass();
-            
+
             boolean isCompatible = fieldType.isAssignableFrom(valueType) ||
                     isPrimitiveWrapperCompatible(fieldType, valueType);
-            
+
             if (!isCompatible) {
                 String message = String.format(
                         "Type mismatch for field %s on bean %s: expected %s, got %s",
@@ -206,12 +208,12 @@ public class LeaderAwareProcessor implements BeanPostProcessor, ApplicationListe
             Class<?> wrapper = ClassUtils.primitiveToWrapper(type1);
             return wrapper != null && wrapper.equals(type2);
         }
-        
+
         if (type2.isPrimitive()) {
             Class<?> wrapper = ClassUtils.primitiveToWrapper(type2);
             return wrapper != null && wrapper.equals(type1);
         }
-        
+
         return false;
     }
 
