@@ -236,10 +236,7 @@ class BootstrapCoordinatorTest {
         this.ownedCoordinator = coordinator;
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
 
-        PlatformTracingMBeanRegistrar.RuntimeRegistration preexistingRuntimeRegistration =
-                session.jmxRegistrar().registerRuntimeControls(session.policy());
-
-        try {
+        try (PlatformTracingMBeanRegistrar.RuntimeRegistration ignored = session.jmxRegistrar().registerRuntimeControls(session.policy())) {
             // when
             assertThatThrownBy(coordinator::activate)
                     .isInstanceOf(BootstrapException.class)
@@ -249,8 +246,6 @@ class BootstrapCoordinatorTest {
             // then
             assertThat(session.readiness().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
             assertThat(session.readiness().failureCode()).isEqualTo("ACTIVATION_FAILED");
-        } finally {
-            preexistingRuntimeRegistration.close();
         }
     }
 
@@ -263,12 +258,12 @@ class BootstrapCoordinatorTest {
                 RuntimeEvidenceTestFixtures.trustedAttestor(),
                 ignored -> RemoteJmxDeploymentTestFixtures.startupEvidenceUnknownPolicy()
         );
-        this.ownedCoordinator = coordinator;
-        AutoconfigureSession session = coordinator.prepare(config(Map.of(
-                RemoteJmxDeploymentDeclaration.MODE_PROPERTY,
-                RemoteJmxDeploymentDeclaration.Mode.UNDECLARED.name())));
 
-        try {
+        try (coordinator) {
+            this.ownedCoordinator = coordinator;
+            AutoconfigureSession session = coordinator.prepare(config(Map.of(
+                    RemoteJmxDeploymentDeclaration.MODE_PROPERTY,
+                    RemoteJmxDeploymentDeclaration.Mode.UNDECLARED.name())));
             // when
             assertThatThrownBy(coordinator::activate)
                     .isInstanceOf(BootstrapException.class)
@@ -282,8 +277,6 @@ class BootstrapCoordinatorTest {
                     .isEqualTo(RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name());
             assertThat(session.readiness().failureCode())
                     .isEqualTo(RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name());
-        } finally {
-            coordinator.close();
         }
     }
 
@@ -387,7 +380,7 @@ class BootstrapCoordinatorTest {
                     .filter(event -> AgentEventCodes.BOOT_INSTALLED.equals(event.eventCode()))
                     .toList();
             assertThat(installed).hasSize(1);
-            assertThat(installed.get(0).fields())
+            assertThat(installed.getFirst().fields())
                     .containsEntry("lifecycle", "READY")
                     .containsEntry("profile", PlatformExtensionReadiness.PROFILE)
                     .containsEntry("protocolVersion", "1")
@@ -606,6 +599,7 @@ class BootstrapCoordinatorTest {
         session.scrubbingRuntime().acknowledgeExportPathProtected();
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static void markAllCapabilitiesExcept(AutoconfigureSession session,
                                                   PlatformExtensionCapability excluded) {
         for (PlatformExtensionCapability capability : PlatformExtensionCapability.values()) {

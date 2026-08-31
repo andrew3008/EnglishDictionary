@@ -49,7 +49,7 @@ final class ControlledAgentLocator {
             );
         }
 
-        return matches.get(0);
+        return matches.getFirst();
     }
 
     private static Path javaAgentPath(String argument) {

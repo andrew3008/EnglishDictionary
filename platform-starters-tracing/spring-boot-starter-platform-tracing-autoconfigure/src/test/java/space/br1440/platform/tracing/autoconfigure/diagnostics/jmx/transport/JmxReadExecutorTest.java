@@ -514,8 +514,6 @@ final class JmxReadExecutorTest {
         assertShapeViolation(executor);
     }
 
-    // -- Вспомогательные типы ----------------------------------------------------------
-
     private static void assertShapeViolation(JmxReadExecutor executor) {
         assertThat(executor.diagnosticSnapshot())
                 .singleElement()
@@ -537,7 +535,12 @@ final class JmxReadExecutorTest {
         Runnable proxy = (Runnable) Proxy.newProxyInstance(
                 JmxReadExecutorTest.class.getClassLoader(),
                 new Class<?>[]{Runnable.class},
-                (ignoredProxy, ignoredMethod, ignoredArguments) -> null);
+                (target, method, arguments) -> switch (method.getName()) {
+                    case "hashCode" -> System.identityHashCode(target);
+                    case "equals" -> target == arguments[0];
+                    case "toString" -> "ProhibitedWireValueProxy";
+                    default -> null;
+                });
         Runnable lambda = () -> {
         };
         return Stream.of(
@@ -598,32 +601,33 @@ final class JmxReadExecutorTest {
         return snapshotInfo(openType, new OpenMBeanConstructorInfo[0], new MBeanNotificationInfo[0]);
     }
 
-    private static MBeanInfo snapshotInfo(
-            OpenType<?> openType,
-            OpenMBeanConstructorInfo[] constructors,
-            MBeanNotificationInfo[] notifications) {
+    private static MBeanInfo snapshotInfo(OpenType<?> openType,
+                                          OpenMBeanConstructorInfo[] constructors,
+                                          MBeanNotificationInfo[] notifications) {
         OpenMBeanAttributeInfo attribute = new OpenMBeanAttributeInfoSupport(
                 "Value",
                 "value",
                 openType,
                 true,
                 false,
-                false);
+                false
+        );
+
         return new OpenMBeanInfoSupport(
                 FakeDynamicMBean.class.getName(),
                 "fake",
                 new OpenMBeanAttributeInfo[]{attribute},
                 constructors,
                 new OpenMBeanOperationInfo[0],
-                notifications);
+                notifications
+        );
     }
 
     private static RuntimeException wrap(Exception checked) {
-        // JUnit lambda не может объявлять checked-исключения; DynamicMBean#getAttribute сам
-        // объявляет MBeanException/ReflectionException — оборачивание нужно только для теста.
         if (checked instanceof RuntimeException runtimeException) {
             return runtimeException;
         }
+
         return new TestCheckedExceptionCarrier(checked);
     }
 
@@ -635,7 +639,6 @@ final class JmxReadExecutorTest {
         }
     }
 
-    /** Простой {@code DynamicMBean} с единственным настраиваемым атрибутом {@code Value/Missing}. */
     private static final class FakeDynamicMBean implements DynamicMBean {
 
         private final String attributeName;
@@ -643,20 +646,18 @@ final class JmxReadExecutorTest {
         private final boolean exactMetadata;
         private final MBeanInfo customInfo;
 
-        FakeDynamicMBean(
-                String attributeName,
-                Function<String, Object> attributeSupplier,
-                boolean exactMetadata) {
+        FakeDynamicMBean(String attributeName,
+                         Function<String, Object> attributeSupplier,
+                         boolean exactMetadata) {
             this.attributeName = attributeName;
             this.attributeSupplier = attributeSupplier;
             this.exactMetadata = exactMetadata;
             this.customInfo = null;
         }
 
-        FakeDynamicMBean(
-                String attributeName,
-                Function<String, Object> attributeSupplier,
-                MBeanInfo customInfo) {
+        FakeDynamicMBean(String attributeName,
+                         Function<String, Object> attributeSupplier,
+                         MBeanInfo customInfo) {
             this.attributeName = attributeName;
             this.attributeSupplier = attributeSupplier;
             this.exactMetadata = true;
@@ -672,12 +673,15 @@ final class JmxReadExecutorTest {
                 if (cause instanceof MBeanException mBeanException) {
                     throw mBeanException;
                 }
+
                 if (cause instanceof ReflectionException reflectionException) {
                     throw reflectionException;
                 }
+
                 if (cause instanceof AttributeNotFoundException attributeNotFoundException) {
                     throw attributeNotFoundException;
                 }
+
                 throw new IllegalStateException(cause);
             }
         }
@@ -694,7 +698,7 @@ final class JmxReadExecutorTest {
 
         @Override
         public AttributeList setAttributes(AttributeList attributes) {
-            return new AttributeList(); // read-only тестовый MBean
+            return new AttributeList();
         }
 
         @Override
@@ -707,6 +711,7 @@ final class JmxReadExecutorTest {
             if (customInfo != null) {
                 return customInfo;
             }
+
             if (exactMetadata) {
                 OpenMBeanAttributeInfo attribute = new OpenMBeanAttributeInfoSupport(
                         attributeName,
@@ -714,7 +719,9 @@ final class JmxReadExecutorTest {
                         SimpleType.LONG,
                         true,
                         false,
-                        false);
+                        false
+                );
+
                 return new OpenMBeanInfoSupport(
                         getClass().getName(),
                         "fake",

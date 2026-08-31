@@ -23,7 +23,7 @@ class ValidationObservationSourceOffsetNanosTest {
 
     @Test
     @Timeout(value = 5, unit = TimeUnit.SECONDS)
-    void offsetNanosReflectsActualCaptureLatency_notTimeBeforeCapture() throws Exception {
+    void offsetNanosReflectsActualCaptureLatency_notTimeBeforeCapture() {
         // given
         UUID agentInstanceId = UUID.randomUUID();
 
@@ -63,7 +63,7 @@ class ValidationObservationSourceOffsetNanosTest {
 
     @Test
     @Timeout(value = 5, unit = TimeUnit.SECONDS)
-    void offsetNanosStaysNearZero_whenCaptureIsInstantaneous() throws Exception {
+    void offsetNanosStaysNearZero_whenCaptureIsInstantaneous() {
         // given
         UUID agentInstanceId = UUID.randomUUID();
 

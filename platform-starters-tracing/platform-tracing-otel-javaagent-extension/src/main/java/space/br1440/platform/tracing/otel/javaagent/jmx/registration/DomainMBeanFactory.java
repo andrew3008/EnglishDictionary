@@ -108,7 +108,7 @@ final class DomainMBeanFactory {
 
         DomainMBeans {
             registrations = List.copyOf(Objects.requireNonNull(registrations, "registrations"));
-            observationPublisher = Objects.requireNonNull(observationPublisher, "observationPublisher");
+            Objects.requireNonNull(observationPublisher, "observationPublisher");
         }
     }
 }

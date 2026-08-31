@@ -110,6 +110,7 @@ class AllowedUpstreamAcpProvidersTest {
                 + providerLines;
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static void addProviderName(Set<String> names, String providerName) {
         names.add(providerName);
     }

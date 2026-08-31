@@ -37,7 +37,7 @@ class PlatformTracingMBeanRegistrarRegistrationTest {
     }
 
     @Test
-    void constructorDoesNotRegisterReadinessMBean() throws Exception {
+    void constructorDoesNotRegisterReadinessMBean() {
         registrar = new PlatformTracingMBeanRegistrar();
         assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isFalse();
     }

@@ -45,11 +45,10 @@ class ObservationSnapshotPublisherTest {
         });
         ValidationObservationSource source = new ValidationObservationSource(slot, UUID.randomUUID());
         CompositeData stable = source.getValidationObservation();
-        ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(
-                List.of(source::publishObservationSnapshot),
-                TEST_REFRESH_INTERVAL);
 
-        try {
+        try (ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(
+                List.of(source::publishObservationSnapshot),
+                TEST_REFRESH_INTERVAL)) {
             // when
             publisher.start();
             assertThat(refreshEntered.await(2L, TimeUnit.SECONDS)).isTrue();
@@ -60,7 +59,6 @@ class ObservationSnapshotPublisherTest {
                     () -> assertThat(source.getValidationObservation()).isSameAs(stable));
         } finally {
             releaseRefresh.countDown();
-            publisher.close();
         }
     }
 
@@ -71,6 +69,20 @@ class ObservationSnapshotPublisherTest {
         CountDownLatch publicationEntered = new CountDownLatch(1);
         CountDownLatch publicationInterrupted = new CountDownLatch(1);
         AtomicReference<Thread> publisherThread = new AtomicReference<>();
+        ObservationSnapshotPublisher publisher = getObservationSnapshotPublisher(publisherThread, publicationEntered, publicationInterrupted);
+        assertThat(publicationEntered.await(2L, TimeUnit.SECONDS)).isTrue();
+        publisher.close();
+
+        // then
+        assertThat(publicationInterrupted.await(100L, TimeUnit.MILLISECONDS)).isTrue();
+        assertThat(publisherThread.get()).isNotNull();
+        assertThat(publisherThread.get().isDaemon()).isTrue();
+        assertThat(publisherThread.get().isAlive()).isFalse();
+    }
+
+    private static ObservationSnapshotPublisher getObservationSnapshotPublisher(AtomicReference<Thread> publisherThread,
+                                                                                CountDownLatch publicationEntered,
+                                                                                CountDownLatch publicationInterrupted) {
         Runnable blockingSource = () -> {
             publisherThread.set(Thread.currentThread());
             publicationEntered.countDown();
@@ -81,20 +93,15 @@ class ObservationSnapshotPublisherTest {
                 Thread.currentThread().interrupt();
             }
         };
+
         ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(
                 List.of(blockingSource),
-                TEST_REFRESH_INTERVAL);
+                TEST_REFRESH_INTERVAL
+        );
 
         // when
         publisher.start();
-        assertThat(publicationEntered.await(2L, TimeUnit.SECONDS)).isTrue();
-        publisher.close();
-
-        // then
-        assertThat(publicationInterrupted.await(100L, TimeUnit.MILLISECONDS)).isTrue();
-        assertThat(publisherThread.get()).isNotNull();
-        assertThat(publisherThread.get().isDaemon()).isTrue();
-        assertThat(publisherThread.get().isAlive()).isFalse();
+        return publisher;
     }
 
     @Test
@@ -117,11 +124,10 @@ class ObservationSnapshotPublisherTest {
             }
             secondPublicationEntered.countDown();
         };
-        ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(
-                List.of(blockingSource),
-                Duration.ofHours(1L));
 
-        try {
+        try (ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(
+                List.of(blockingSource),
+                Duration.ofHours(1L))) {
             // when
             publisher.start();
             publisher.requestSnapshotPublication();
@@ -135,7 +141,6 @@ class ObservationSnapshotPublisherTest {
             assertThat(publications).hasValue(1);
         } finally {
             releaseFirstPublication.countDown();
-            publisher.close();
         }
     }
 

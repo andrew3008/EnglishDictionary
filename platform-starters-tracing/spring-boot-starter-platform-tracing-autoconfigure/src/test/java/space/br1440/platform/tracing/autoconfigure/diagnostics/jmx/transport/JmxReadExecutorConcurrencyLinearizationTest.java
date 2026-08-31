@@ -230,7 +230,7 @@ class JmxReadExecutorConcurrencyLinearizationTest {
         }
 
         @Override
-        public Object getAttribute(String attribute) throws AttributeNotFoundException, MBeanException, ReflectionException {
+        public Object getAttribute(String attribute) {
             return attributeSupplier.apply(attribute);
         }
 

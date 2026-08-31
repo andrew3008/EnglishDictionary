@@ -139,14 +139,10 @@ abstract class PackagedProcessArguments implements CommandLineArgumentProvider {
     @Override
     Iterable<String> asArguments() {
         [
-                '-DplatformTracing.controlledAgentJar='
-                        + controlledAgentJar.get().asFile.absolutePath,
-                '-DplatformTracing.applicationBootJar='
-                        + applicationBootJar.get().asFile.absolutePath,
-                '-DplatformTracing.dualSdkApplicationBootJar='
-                        + dualSdkApplicationBootJar.get().asFile.absolutePath,
-                '-DplatformTracing.collisionAgentJar='
-                        + collisionAgentJar.get().asFile.absolutePath
+                '-DplatformTracing.controlledAgentJar=' + controlledAgentJar.get().asFile.absolutePath,
+                '-DplatformTracing.applicationBootJar=' + applicationBootJar.get().asFile.absolutePath,
+                '-DplatformTracing.dualSdkApplicationBootJar=' + dualSdkApplicationBootJar.get().asFile.absolutePath,
+                '-DplatformTracing.collisionAgentJar=' + collisionAgentJar.get().asFile.absolutePath
         ]
     }
 }

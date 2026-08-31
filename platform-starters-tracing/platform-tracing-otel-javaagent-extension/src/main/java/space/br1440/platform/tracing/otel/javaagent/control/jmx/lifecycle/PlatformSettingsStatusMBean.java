@@ -226,8 +226,8 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
                 failure);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static MBeanException neutralFailure(String code, String message) {
-        // Исходное исключение остаётся в extension-плоскости и не становится target exception JMX.
         return new MBeanException(null, code + ": " + message);
     }
 }

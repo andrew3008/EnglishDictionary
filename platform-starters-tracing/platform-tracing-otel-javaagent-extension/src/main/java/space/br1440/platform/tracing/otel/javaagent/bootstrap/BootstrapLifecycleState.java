@@ -191,6 +191,7 @@ final class BootstrapLifecycleState {
         }
     }
 
+    @SuppressWarnings("SameParameterValue")
     BootstrapException rejectWithoutStateChange(String code, String phase, Throwable cause) {
         synchronized (monitor) {
             BootstrapFailure rejection = new BootstrapFailure(code, phase, cause);

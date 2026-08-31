@@ -202,6 +202,7 @@ class PackagedTracingCertificationTest {
         assertThat(result.combinedOutput()).contains("JMX_BATCH_REGISTRATION_FAILED");
     }
 
+    @SuppressWarnings("SameParameterValue")
     private PackagedProcessLauncher.LaunchRequest tracingEnabledWithoutAgentRequest(String scenario) {
         Map<String, String> properties = new LinkedHashMap<>();
         properties.put("spring.main.banner-mode", "off");
@@ -280,6 +281,7 @@ class PackagedTracingCertificationTest {
         }
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static void assertSuccessful(PackagedProcessLauncher.ProcessResult result,
                                          String scenario) {
         assertThat(result.finished()).as(scenario + " process must terminate").isTrue();

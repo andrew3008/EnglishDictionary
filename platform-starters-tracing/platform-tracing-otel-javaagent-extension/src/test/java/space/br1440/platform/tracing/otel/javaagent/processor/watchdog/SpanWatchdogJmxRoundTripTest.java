@@ -25,34 +25,45 @@ class SpanWatchdogJmxRoundTripTest {
         // given
         AtomicLong clock = new AtomicLong();
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
-                Duration.ofMillis(10), Duration.ofMinutes(1), clock::get, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
+                Duration.ofMillis(10), 
+                Duration.ofMinutes(1), 
+                clock::get, 
+                10_000, 
+                Integer.MAX_VALUE, 
+                Integer.MAX_VALUE
+        );
+        
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(watchdog)
                 .build();
-        Tracer tracer = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build().getTracer("jmx");
-        Span hung = tracer.spanBuilder("hung").startSpan();
-        clock.addAndGet(Duration.ofMillis(11).toNanos());
-        watchdog.scanForTesting();
 
-        OwnerRegistrationSlot<SpanWatchdogProcessor> slot = new OwnerRegistrationSlot<>();
-        slot.replace(watchdog);
-        ProcessorMetricsObservationSource source = new ProcessorMetricsObservationSource(
-                slot,
-                new OwnerRegistrationSlot<>(),
-                new OwnerRegistrationSlot<>(),
-                UUID.randomUUID());
+        try (OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()) {
+            Tracer tracer = sdk.getTracer("jmx");
+            Span hung = tracer.spanBuilder("hung").startSpan();
+            clock.addAndGet(Duration.ofMillis(11).toNanos());
+            watchdog.scanForTesting();
 
-        // when
-        CompositeData observation = source.getProcessorMetricsObservation();
-        CompositeData watchdogValues = (CompositeData) observation.get(
-                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG);
+            OwnerRegistrationSlot<SpanWatchdogProcessor> slot = new OwnerRegistrationSlot<>();
+            slot.replace(watchdog);
+            ProcessorMetricsObservationSource source = new ProcessorMetricsObservationSource(
+                    slot,
+                    new OwnerRegistrationSlot<>(),
+                    new OwnerRegistrationSlot<>(),
+                    UUID.randomUUID()
+                );
 
-        // then
-        assertThat((Boolean) watchdogValues.get(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_PRESENT)).isTrue();
-        assertThat((Long) watchdogValues.get(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_FORCED_SPAN_CLOSES)).isEqualTo(1L);
-        assertThat((Integer) watchdogValues.get(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_ACTIVE_SPAN_COUNT)).isZero();
-        hung.end();
-        watchdog.shutdown();
-        tracerProvider.shutdown();
+            // when
+            CompositeData observation = source.getProcessorMetricsObservation();
+            CompositeData watchdogValues = (CompositeData) observation.get(
+                    JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG
+                );
+
+            // then
+            assertThat((Boolean) watchdogValues.get(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_PRESENT)).isTrue();
+            assertThat((Long) watchdogValues.get(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_FORCED_SPAN_CLOSES)).isEqualTo(1L);
+            assertThat((Integer) watchdogValues.get(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_ACTIVE_SPAN_COUNT)).isZero();
+            hung.end();
+            watchdog.shutdown();
+        }
     }
 }

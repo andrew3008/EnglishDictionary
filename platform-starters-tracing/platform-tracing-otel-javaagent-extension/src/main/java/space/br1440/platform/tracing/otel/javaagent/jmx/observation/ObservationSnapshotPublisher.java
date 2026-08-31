@@ -179,9 +179,10 @@ public final class ObservationSnapshotPublisher implements AutoCloseable {
         }
 
         private PublisherState {
-            if ((phase == Phase.RUNNING) != (scheduler != null)) {
+            if ((phase == Phase.RUNNING) ^ (scheduler != null)) {
                 throw new IllegalStateException("Publisher scheduler is bound to the RUNNING phase only");
             }
+
             if (refreshPending && phase != Phase.RUNNING) {
                 throw new IllegalStateException("Publisher refresh can be pending in the RUNNING phase only");
             }

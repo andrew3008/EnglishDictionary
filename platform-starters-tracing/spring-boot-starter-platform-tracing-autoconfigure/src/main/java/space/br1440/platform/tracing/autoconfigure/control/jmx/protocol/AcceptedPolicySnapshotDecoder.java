@@ -116,7 +116,7 @@ public final class AcceptedPolicySnapshotDecoder {
 
     private static String requireLogLevel(CompositeData response) {
         String logLevel = requireField(response, DIAGNOSTICS_LOG_LEVEL, String.class);
-        if (!CompleteTracingSettings.isRecognizedLogLevel(logLevel)) {
+        if (CompleteTracingSettings.isUnrecognizedLogLevel(logLevel)) {
             throw invalid("%s is not a recognized level: %s".formatted(DIAGNOSTICS_LOG_LEVEL, logLevel));
         }
 

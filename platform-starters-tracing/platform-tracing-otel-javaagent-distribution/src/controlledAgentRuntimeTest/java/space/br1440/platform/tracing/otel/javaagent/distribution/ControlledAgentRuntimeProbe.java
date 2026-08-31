@@ -362,6 +362,7 @@ public final class ControlledAgentRuntimeProbe {
         return stableName + "@" + Integer.toHexString(System.identityHashCode(loader));
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static Number number(CompositeData snapshot, String field) {
         return value(snapshot, field, Number.class);
     }

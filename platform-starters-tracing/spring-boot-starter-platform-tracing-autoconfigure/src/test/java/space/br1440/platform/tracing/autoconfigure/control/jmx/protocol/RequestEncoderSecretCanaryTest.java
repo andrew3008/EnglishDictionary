@@ -217,6 +217,7 @@ final class RequestEncoderSecretCanaryTest {
                 Map.of("platform.tracing.policy.sampling.route-ratios." + route, value)));
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static CompositeData buildAcceptedCompleteWithRoute(String route, double ratio) throws Exception {
         TabularDataSupport routes = new TabularDataSupport(JmxOpenTypes.ROUTE_RATIOS);
         routes.put(new CompositeDataSupport(
