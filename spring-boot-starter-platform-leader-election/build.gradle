@@ -3,7 +3,7 @@ plugins {
     id 'platform.java-library'
     id 'platform.testing'
 }
-
+version='1.3.0'
 platformJavaLibrary {
     bomProjectPath = ':spring-boot-starter-platform-bom'
 }
@@ -13,6 +13,7 @@ dependencies {
 
     implementation 'org.apache.commons:commons-lang3'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
 
     compileOnly 'org.springframework.boot:spring-boot-autoconfigure'
 

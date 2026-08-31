@@ -2,6 +2,7 @@ package space.br1440.platform.leaderelection.leaderelection;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 @Component
+@ConditionalOnBean(LeaderElectionProperties.class)
 public class LeaderElectorInitiator implements SmartLifecycle, DisposableBean {
 
     private final LeaderElector leaderElector;

@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.env.Environment;
@@ -25,6 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 @Component
+@ConditionalOnBean(LeaderElectionProperties.class)
 public class OnLeaderGrantedProcessor implements ApplicationListener<OnLeaderGrantedEvent>, SmartInitializingSingleton, DisposableBean {
 
     private final ApplicationContext applicationContext;
