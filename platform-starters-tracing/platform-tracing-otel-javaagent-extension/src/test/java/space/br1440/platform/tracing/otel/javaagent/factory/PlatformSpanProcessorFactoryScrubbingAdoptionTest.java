@@ -22,7 +22,7 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefau
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
@@ -95,10 +95,14 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T> T registrarSlotOwner(DomainMBeanRegistrar reg, String slotAccessorName) throws Exception {
-        Field slotsField = DomainMBeanRegistrar.class.getDeclaredField("slots");
+    private static <T> T registrarSlotOwner(PlatformTracingMBeanRegistrar reg, String slotAccessorName) throws Exception {
+        Field runtimePlaneField = PlatformTracingMBeanRegistrar.class.getDeclaredField("runtimePlane");
+        runtimePlaneField.setAccessible(true);
+        Object runtimePlane = runtimePlaneField.get(reg);
+
+        Field slotsField = runtimePlane.getClass().getDeclaredField("slots");
         slotsField.setAccessible(true);
-        Object slots = slotsField.get(reg);
+        Object slots = slotsField.get(runtimePlane);
 
         Method slotAccessor = slots.getClass().getDeclaredMethod(slotAccessorName);
         slotAccessor.setAccessible(true);
@@ -109,7 +113,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
     }
 
     /** Владелец JMX-наблюдения scrubbing — сессионный {@link ScrubbingRuntime}, а не процессор. */
-    private static ScrubbingRuntime getScrubbing(DomainMBeanRegistrar r) throws Exception {
+    private static ScrubbingRuntime getScrubbing(PlatformTracingMBeanRegistrar r) throws Exception {
         return registrarSlotOwner(r, "scrubbing");
     }
 
@@ -119,7 +123,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void scrubbing_disabled_ext_config_no_scrubbing_processor() throws Exception {
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -142,7 +146,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void scrubbing_enabled_default_rules_registers_processor() throws Exception {
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             ExtensionConfig extensionConfig = scrubbingEnabledDefaultsExtConfig();
             ConfigProperties config = otelOnlyConfig();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(

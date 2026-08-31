@@ -2,21 +2,18 @@ package space.br1440.platform.tracing.otel.javaagent.control.settings;
 
 import java.util.Objects;
 
+import lombok.experimental.UtilityClass;
+
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedTracingSettingsDigest;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxTracingSettingsDigest;
 
-/**
- * Адаптирует доменную модель настроек к сгенерированному алгоритму wire-digest.
- * Каноническая сериализация и ограничения принадлежат JMX manifest и не дублируются здесь.
- */
+@UtilityClass
 public final class TracingSettingsDigest {
-
-    private TracingSettingsDigest() {
-    }
 
     public static String sha256(TracingSettings policy) {
         Objects.requireNonNull(policy, "policy");
-        return GeneratedTracingSettingsDigest.sha256(
+
+        return JmxTracingSettingsDigest.sha256(
                 policy.samplingEnabled(),
                 policy.samplingRatio(),
                 policy.samplingRouteRatios(),

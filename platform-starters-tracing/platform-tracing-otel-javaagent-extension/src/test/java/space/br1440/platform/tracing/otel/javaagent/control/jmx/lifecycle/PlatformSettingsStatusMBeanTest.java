@@ -31,8 +31,8 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 
 class PlatformSettingsStatusMBeanTest {
 
@@ -57,14 +57,14 @@ class PlatformSettingsStatusMBeanTest {
 
         MBeanAttributeInfo attribute = info.getAttributes()[0];
         assertThat(attribute.getName()).isEqualTo(
-                GeneratedJmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT);
+                JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT);
         assertThat(attribute.isReadable()).isTrue();
         assertThat(attribute.isWritable()).isFalse();
         assertThat(attribute.isIs()).isFalse();
         assertThat(attribute).isInstanceOf(OpenMBeanAttributeInfo.class);
         assertThat(attribute.getType()).isEqualTo(CompositeData.class.getName());
         assertThat(((OpenMBeanAttributeInfo) attribute).getOpenType())
-                .isEqualTo(GeneratedJmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT);
+                .isEqualTo(JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT);
     }
 
     @Test
@@ -78,7 +78,7 @@ class PlatformSettingsStatusMBeanTest {
         // when
         MBeanException thrown = catchThrowableOfType(
                 () -> mBean.getAttribute(
-                        GeneratedJmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT),
+                        JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT),
                 MBeanException.class);
 
         // then
@@ -114,61 +114,61 @@ class PlatformSettingsStatusMBeanTest {
 
         // when
         CompositeData snapshot = (CompositeData) mBean.getAttribute(
-                GeneratedJmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT);
+                JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT);
 
         // then
         assertThat(update.outcome()).isEqualTo(SettingsUpdateStatus.APPLIED);
         assertThat(snapshot.getCompositeType())
-                .isEqualTo(GeneratedJmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT);
+                .isEqualTo(JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT);
         assertThat(snapshot.get(
-                GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_SEQUENCE))
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_SEQUENCE))
                 .isEqualTo(1L);
         assertThat(snapshot.get(
-                GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_RUNTIME_INSTANCE_ID))
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_RUNTIME_INSTANCE_ID))
                 .isEqualTo(runtimeInstanceId);
         assertThat(snapshot.get(
-                GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_POLICY_DIGEST))
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_POLICY_DIGEST))
                 .isEqualTo(TracingSettingsDigest.sha256(candidate));
         assertThat(snapshot.get(
-                GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_APPLY_OUTCOME))
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_APPLY_OUTCOME))
                 .isEqualTo(SettingsUpdateStatus.APPLIED.name());
         assertThat(snapshot.get(
-                GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_ATTEMPT_ID))
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_ATTEMPT_ID))
                 .isEqualTo(attempt.attemptId());
         assertThat(snapshot.get(
-                GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_FAILURE_CODE))
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_FAILURE_CODE))
                 .isEqualTo("");
         assertThat(snapshot.get(
-                GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ENABLED))
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ENABLED))
                 .isEqualTo(true);
         assertThat(snapshot.get(
-                GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO))
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO))
                 .isEqualTo(0.25d);
         assertThat(snapshot.get(
-                GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_ENABLED))
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_ENABLED))
                 .isEqualTo(true);
         assertThat(snapshot.get(
-                GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_STRICT))
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_STRICT))
                 .isEqualTo(false);
         assertThat(snapshot.get(
-                GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_EXPORTER_ENABLED))
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_EXPORTER_ENABLED))
                 .isEqualTo(true);
         assertThat(snapshot.get(
-                GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_TRACE_CONTROL_HEADERS_ENABLED))
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_TRACE_CONTROL_HEADERS_ENABLED))
                 .isEqualTo(true);
         assertThat(snapshot.get(
-                GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_DIAGNOSTICS_LOG_LEVEL))
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_DIAGNOSTICS_LOG_LEVEL))
                 .isEqualTo(TracingLogLevel.INFO.name());
 
         TabularData routes = (TabularData) snapshot.get(
-                GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS);
-        assertThat(routes.getTabularType()).isEqualTo(GeneratedJmxOpenTypes.ROUTE_RATIOS);
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS);
+        assertThat(routes.getTabularType()).isEqualTo(JmxOpenTypes.ROUTE_RATIOS);
         assertThat(routes.size()).isEqualTo(1);
         CompositeData route = (CompositeData) routes.get(new Object[]{"/orders"});
-        assertThat(route.getCompositeType()).isEqualTo(GeneratedJmxOpenTypes.ROUTE_RATIO);
-        assertThat(route.get(GeneratedJmxWireContract.FIELD_ROUTE_RATIO_ROUTE_PREFIX))
+        assertThat(route.getCompositeType()).isEqualTo(JmxOpenTypes.ROUTE_RATIO);
+        assertThat(route.get(JmxWireContract.FIELD_ROUTE_RATIO_ROUTE_PREFIX))
                 .isEqualTo("/orders");
-        assertThat(route.get(GeneratedJmxWireContract.FIELD_ROUTE_RATIO_RATIO))
+        assertThat(route.get(JmxWireContract.FIELD_ROUTE_RATIO_RATIO))
                 .isEqualTo(0.5d);
     }
 

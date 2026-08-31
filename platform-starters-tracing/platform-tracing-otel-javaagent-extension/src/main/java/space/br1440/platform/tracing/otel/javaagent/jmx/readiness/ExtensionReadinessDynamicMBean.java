@@ -17,13 +17,13 @@ import javax.management.openmbean.OpenMBeanConstructorInfo;
 import javax.management.openmbean.OpenMBeanInfoSupport;
 import javax.management.openmbean.OpenMBeanOperationInfo;
 
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 
 public final class ExtensionReadinessDynamicMBean implements DynamicMBean {
 
     private static final String READINESS_ATTRIBUTE =
-            GeneratedJmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT;
+            JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT;
     private static final MBeanInfo INFO = buildMBeanInfo();
 
     private final Supplier<ExtensionReadinessWireSnapshot> projection;
@@ -84,7 +84,7 @@ public final class ExtensionReadinessDynamicMBean implements DynamicMBean {
         OpenMBeanAttributeInfo readiness = new OpenMBeanAttributeInfoSupport(
                 READINESS_ATTRIBUTE,
                 "Coherent platform extension readiness snapshot",
-                GeneratedJmxOpenTypes.READINESS_SNAPSHOT,
+                JmxOpenTypes.READINESS_SNAPSHOT,
                 true,
                 false,
                 false

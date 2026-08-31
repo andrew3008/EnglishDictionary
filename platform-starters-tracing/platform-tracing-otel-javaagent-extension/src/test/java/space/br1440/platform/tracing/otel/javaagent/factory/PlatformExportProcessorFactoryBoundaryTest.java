@@ -18,7 +18,7 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfi
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
@@ -46,7 +46,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
     @DisplayName("captureExporter wraps every exporter; UPSTREAM keeps the wrapped path")
     void upstreamModeExportsThroughTheBoundaryWrap() {
         ScrubbingRuntime runtime = runtimeOfPassword();
-        DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(registrar, runtime);
         List<SpanData> captured = new ArrayList<>();
         SpanExporter wrapped = factory.captureExporter(capturing(captured), TracingSettingsSource.isolatedDefaults());
@@ -70,7 +70,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
     @DisplayName("DROP_OLDEST still acknowledges export mode after a single wrapped exporter")
     void dropOldestResolvesExportModeThroughTheSameWrap() {
         ScrubbingRuntime runtime = runtimeOfPassword();
-        DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(registrar, runtime);
         AtomicInteger delegateCalls = new AtomicInteger();
         SpanExporter wrapped = factory.captureExporter(new SpanExporter() {
@@ -106,7 +106,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
         assertThat(foreign.isProtectedBy(session)).isFalse();
 
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
-                new DomainMBeanRegistrar(), session);
+                new PlatformTracingMBeanRegistrar(), session);
 
         Throwable failure = catchThrowable(
                 () -> factory.captureExporter(foreign, TracingSettingsSource.isolatedDefaults()));
@@ -132,7 +132,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
                 .isTrue();
 
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
-                new DomainMBeanRegistrar(), session);
+                new PlatformTracingMBeanRegistrar(), session);
 
         Throwable failure = catchThrowable(
                 () -> factory.captureExporter(lookalike, TracingSettingsSource.isolatedDefaults()));
@@ -150,7 +150,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
         ScrubbingRuntime session = runtimeOfPassword();
         List<SpanData> captured = new ArrayList<>();
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
-                new DomainMBeanRegistrar(), session);
+                new PlatformTracingMBeanRegistrar(), session);
 
         SpanExporter firstCapture = factory.captureExporter(capturing(captured), TracingSettingsSource.isolatedDefaults());
         SpanExporter secondCapture = factory.captureExporter(firstCapture, TracingSettingsSource.isolatedDefaults());

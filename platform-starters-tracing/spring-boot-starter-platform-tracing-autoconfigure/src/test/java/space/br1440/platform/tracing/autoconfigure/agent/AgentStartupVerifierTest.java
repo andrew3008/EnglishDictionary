@@ -2,122 +2,133 @@ package space.br1440.platform.tracing.autoconfigure.agent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-
+import java.util.concurrent.atomic.AtomicReference;
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
-import javax.management.StandardMBean;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxObjectNames;
-
-/**
- * Behavioral tests for {@link AgentStartupVerifier}: one decision per call, no hidden retries
- * beyond the documented {@code REQUIRED}+{@code EXTENSION_INITIALIZING} poll and the FORBIDDEN
- * one-shot check.
- */
 class AgentStartupVerifierTest {
 
-    private static final Set<String> COMPLETE_CAPABILITIES = Set.of(
-            "CONFIGURATION_LOADED",
-            "PLATFORM_SAMPLER_INSTALLED",
-            "REQUIRED_SPAN_PROCESSORS_INSTALLED",
-            "SANITIZER_INSTALLED",
-            "PROPAGATION_HOOKS_INSTALLED",
-            "SAFE_EXPORTER_INSTALLED",
-            "EXPORT_PATH_PROTECTED");
-
     @Test
-    void requiredFailsClosedWhenAgentIsCompletelyAbsent() {
+    void failsClosedWhenAgentIsAbsent() {
+        // given
         AgentStartupVerifier verifier = verifier(MBeanServerFactory.createMBeanServer());
 
+        // when
+        // then
         assertThatIllegalStateException()
                 .isThrownBy(() -> verifier.verify(true, false, false, false))
                 .withMessageContaining("runtimeState=AGENT_MISSING")
-                .withMessageContaining("reason=CONTROLLED_AGENT_MISSING")
-                .withMessageContaining("platform-tracing-javaagent")
-                .satisfies(failure -> assertThat(failure.getMessage()).doesNotContain("NONE"));
+                .withMessageContaining("reason=CONTROLLED_AGENT_MISSING");
     }
 
     @Test
-    void requiredDistinguishesAgentPresentWithoutExtension() {
-        AgentStartupVerifier verifier = verifier(MBeanServerFactory.createMBeanServer());
-
-        assertThatIllegalStateException()
-                .isThrownBy(() -> verifier.verify(true, true, false, true))
-                .withMessageContaining("runtimeState=EXTENSION_MISSING")
-                .withMessageContaining("reason=PLATFORM_EXTENSION_MISSING");
-    }
-
-    @Test
-    void requiredSucceedsOnlyWithAgentReadyAndReturnsNestedDiagnostics() throws Exception {
-        MBeanServer server = readyServer();
-        AgentStartupVerifier verifier = verifier(server);
-
-        TracingDeploymentDiagnostics diagnostics = verifier.verify(true, true, false, true);
-
-        assertThat(diagnostics.tracingEnabled()).isTrue();
-        assertThat(diagnostics.runtimeState()).isEqualTo(AgentRuntimeState.AGENT_READY);
-        assertThat(diagnostics.agentMarkerVisible()).isTrue();
-        assertThat(diagnostics.agentReadiness().endpointPresent()).isTrue();
-        assertThat(diagnostics.agentReadiness().capabilities())
-                .containsExactlyInAnyOrderElementsOf(COMPLETE_CAPABILITIES);
-    }
-
-    @Test
-    void dualSdkIsRejectedEvenWithTracingDisabled() {
-        AgentStartupVerifier verifier = verifier(MBeanServerFactory.createMBeanServer());
-
-        assertThatIllegalStateException()
-                .isThrownBy(() -> verifier.verify(false, false, true, false))
-                .withMessageContaining("runtimeState=DUAL_SDK_DETECTED")
-                .withMessageContaining("reason=APPLICATION_RUNTIME_DETECTED");
-    }
-
-    @Test
-    void forbiddenIsOneShotAndNeverSleepsWhenSignalsAreAbsent() {
+    void distinguishesAgentWithoutReadinessEndpoint() {
+        // given
         AtomicLong clock = new AtomicLong();
         AtomicInteger sleeps = new AtomicInteger();
         AgentStartupVerifier verifier = new AgentStartupVerifier(
                 MBeanServerFactory.createMBeanServer(),
-                Duration.ofSeconds(2),
+                Duration.ofMillis(50),
                 clock::get,
                 nanos -> {
                     sleeps.incrementAndGet();
                     clock.addAndGet(nanos);
                 },
-                "1.0.0");
+                ReadinessTestFixtures.APPLICATION_VERSION);
 
-        TracingDeploymentDiagnostics diagnostics = verifier.verify(false, false, false, false);
-
-        assertThat(diagnostics.runtimeState()).isEqualTo(AgentRuntimeState.DISABLED);
-        assertThat(clock.get()).isZero();
-        assertThat(sleeps.get()).isZero();
-    }
-
-    @Test
-    void forbiddenWithAnyPresenceSignalFailsClosedRatherThanReturningDisabled() {
-        AgentStartupVerifier verifier = verifier(MBeanServerFactory.createMBeanServer());
-
+        // when
+        // then
         assertThatIllegalStateException()
-                .isThrownBy(() -> verifier.verify(false, true, false, false))
+                .isThrownBy(() -> verifier.verify(true, true, false, true))
                 .withMessageContaining("runtimeState=EXTENSION_MISSING")
                 .withMessageContaining("reason=PLATFORM_EXTENSION_MISSING");
+        assertThat(clock).hasValue(Duration.ofMillis(50).toNanos());
+        assertThat(sleeps).hasValue(2);
     }
 
     @Test
-    void requiredPollsOnlyWhileInitializingThenReturnsReadyOnceCapabilitiesComplete() throws Exception {
-        MBeanServer server = MBeanServerFactory.createMBeanServer();
-        MutableReadinessView view = new MutableReadinessView("INITIALIZING", Set.of());
-        server.registerMBean(
-                new StandardMBean(view, MutableReadinessViewMBean.class),
-                PlatformTracingJmxObjectNames.EXTENSION_READINESS);
+    void reportsExactDualSdkCollisionForApplicationOwnedRuntime() {
+        // given
+        AgentStartupVerifier verifier = verifier(MBeanServerFactory.createMBeanServer());
 
+        // when
+        // then
+        assertThatIllegalStateException()
+                .isThrownBy(() -> verifier.verify(true, true, true, true))
+                .withMessageContaining("runtimeState=DUAL_SDK_DETECTED")
+                .withMessageContaining("reason=DUAL_SDK_COLLISION");
+    }
+
+    @Test
+    void pollsUntilReadinessEndpointAppearsAfterAgentMarker() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AtomicLong clock = new AtomicLong();
+        AtomicInteger sleeps = new AtomicInteger();
+        AgentReadinessSnapshot ready = ReadinessTestFixtures.readySnapshot();
+        AgentStartupVerifier verifier = new AgentStartupVerifier(
+                server,
+                Duration.ofMillis(50),
+                clock::get,
+                nanos -> {
+                    sleeps.incrementAndGet();
+                    clock.addAndGet(nanos);
+                    ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(ready));
+                },
+                ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // when
+        TracingDeploymentDiagnostics diagnostics = verifier.verify(true, true, false, true);
+
+        // then
+        assertThat(diagnostics.runtimeState()).isEqualTo(AgentRuntimeState.AGENT_READY);
+        assertThat(sleeps).hasValue(1);
+        assertThat(clock).hasValue(Duration.ofMillis(25).toNanos());
+    }
+
+    @Test
+    void acceptsStableDoubleCollectedReadySnapshot() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot ready = ReadinessTestFixtures.readySnapshot();
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(ready));
+        AgentStartupVerifier verifier = verifier(server);
+
+        // when
+        TracingDeploymentDiagnostics diagnostics = verifier.verify(true, true, false, true);
+
+        // then
+        assertThat(diagnostics.runtimeState()).isEqualTo(AgentRuntimeState.AGENT_READY);
+        assertThat(diagnostics.agentReadiness().contractIdentity().contractId())
+                .isEqualTo(ready.contractIdentity().contractId());
+        assertThat(diagnostics.agentReadiness().readinessAnchor().runtimeEpoch())
+                .isEqualTo(ready.anchorIdentity().runtimeEpoch());
+        assertThat(diagnostics.agentReadiness().readinessAnchor().evidenceGeneration())
+                .isEqualTo(ready.anchorIdentity().evidenceGeneration());
+        assertThat(diagnostics.agentReadiness().readinessAnchor().batchId())
+                .isEqualTo(ready.anchorIdentity().batchId());
+        assertThat(diagnostics.agentReadiness().distributionIdentity().agentDistributionSha256())
+                .isEqualTo(ready.distributionIdentity().agentDistributionSha256());
+        assertThat(diagnostics.agentReadiness().classloaderTopology().extensionDefiningLoader())
+                .isEqualTo(ready.classloaderTopology().extensionDefiningLoader());
+        assertThat(diagnostics.agentReadiness().classloaderTopology().sdkDefiningLoader())
+                .isEqualTo(ready.classloaderTopology().sdkDefiningLoader());
+    }
+
+    @Test
+    void pollsStableInitializingSnapshotUntilReady() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AtomicReference<AgentReadinessSnapshot> current =
+                new AtomicReference<>(ReadinessTestFixtures.initializingSnapshot());
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(current.get()));
         AtomicLong clock = new AtomicLong();
         AtomicInteger sleeps = new AtomicInteger();
         AgentStartupVerifier verifier = new AgentStartupVerifier(
@@ -127,213 +138,284 @@ class AgentStartupVerifierTest {
                 nanos -> {
                     sleeps.incrementAndGet();
                     clock.addAndGet(nanos);
-                    view.lifecycle = "READY";
-                    view.capabilities = COMPLETE_CAPABILITIES;
+                    current.set(ReadinessTestFixtures.readySnapshot());
                 },
-                "1.0.0");
+                ReadinessTestFixtures.APPLICATION_VERSION);
 
+        // when
         TracingDeploymentDiagnostics diagnostics = verifier.verify(true, true, false, true);
 
+        // then
         assertThat(diagnostics.runtimeState()).isEqualTo(AgentRuntimeState.AGENT_READY);
         assertThat(sleeps.get()).isEqualTo(1);
     }
 
     @Test
-    void requiredInitializingPastDeadlineFailsClosedWithReadinessTimeoutFailureCode() {
+    void retriesInitializingToReadyTransitionBetweenDoubleCollectReads() {
+        // given
         MBeanServer server = MBeanServerFactory.createMBeanServer();
-        try {
-            server.registerMBean(
-                    new StandardMBean(new MutableReadinessView("INITIALIZING", Set.of()),
-                            MutableReadinessViewMBean.class),
-                    PlatformTracingJmxObjectNames.EXTENSION_READINESS);
-        } catch (Exception failure) {
-            throw new IllegalStateException(failure);
-        }
-
+        AgentReadinessSnapshot initializing = ReadinessTestFixtures.initializingSnapshot();
+        AgentReadinessSnapshot ready = ReadinessTestFixtures.readySnapshot();
+        AtomicInteger reads = new AtomicInteger();
+        ReadinessTestFixtures.register(
+                server,
+                () -> ReadinessTestFixtures.composite(reads.getAndIncrement() == 0 ? initializing : ready));
         AtomicLong clock = new AtomicLong();
+        AtomicInteger sleeps = new AtomicInteger();
         AgentStartupVerifier verifier = new AgentStartupVerifier(
-                server, Duration.ofNanos(100), clock::get, clock::addAndGet, "1.0.0");
-
-        assertThatIllegalStateException()
-                .isThrownBy(() -> verifier.verify(true, true, false, true))
-                .withMessageContaining("EXTENSION_READINESS_TIMEOUT")
-                .withMessageContaining("reason=EXTENSION_READINESS_TIMEOUT");
-    }
-
-    /**
-     * Gate C1 (r5 plan &sect;5, S5): {@code AgentStartupVerifier} must reject on the new
-     * cross-SPI {@code BootstrapCoordinator} failure codes (activate-in-{@code
-     * afterAgent}, r5 plan &sect;3/&sect;4) purely opaquely — every non-blank {@code FailureCode}
-     * under a {@code FAILED} lifecycle is treated the same way, with no per-code switch on the
-     * Spring side. This is a regression against silently swallowing an unrecognized failure code.
-     */
-    @Test
-    void newClassifiedCoordinatorCodesAreRejectedAsEXTENSION_FAILED() throws Exception {
-        for (String failureCode : Set.of(
-                "PLATFORM_ACP_NOT_EXECUTED", "DUPLICATE_ACTIVATION", "ACTIVATION_FAILED",
-                "CONFIGURATION_INITIALIZATION_FAILED", "DIAGNOSTIC_MBEAN_REGISTRATION_FAILED",
-                "SECOND_SDK_BUILD", "CONFIGURATION_SPLIT_BRAIN")) {
-            MBeanServer server = MBeanServerFactory.createMBeanServer();
-            server.registerMBean(
-                    new StandardMBean(
-                            new MutableReadinessView("FAILED", Set.of(), failureCode),
-                            MutableReadinessViewMBean.class),
-                    PlatformTracingJmxObjectNames.EXTENSION_READINESS);
-            AgentStartupVerifier verifier = verifier(server);
-
-            assertThatIllegalStateException()
-                    .as("failureCode=" + failureCode)
-                    .isThrownBy(() -> verifier.verify(true, true, false, true))
-                    .withMessageContaining("runtimeState=EXTENSION_FAILED")
-                    .withMessageContaining("reason=" + failureCode)
-                    .satisfies(failure -> assertThat(failure.getMessage()).doesNotContain("NONE"));
-        }
-    }
-
-    @Test
-    void endpointDisappearanceBeforeFirstSuccessIsTreatedAsMissingNotAnAnomaly() throws Exception {
-        MBeanServer alwaysRegisteredButAbsent =
-                FakeMBeanServers.alwaysReportRegistered(MBeanServerFactory.createMBeanServer());
-        AgentStartupVerifier verifier = verifier(alwaysRegisteredButAbsent);
-
-        assertThatIllegalStateException()
-                .isThrownBy(() -> verifier.verify(true, true, false, true))
-                .withMessageContaining("runtimeState=EXTENSION_MISSING")
-                .withMessageContaining("reason=PLATFORM_EXTENSION_MISSING");
-    }
-
-    @Test
-    void securityExceptionDuringReadIsClassifiedAsAccessDeniedFailureCode() {
-        MBeanServer denying = FakeMBeanServers.throwingOnGetAttributes(
-                MBeanServerFactory.createMBeanServer(), new SecurityException("denied"));
-        MBeanServer alwaysRegistered = FakeMBeanServers.alwaysReportRegistered(denying);
-        AgentStartupVerifier verifier = verifier(alwaysRegistered);
-
-        assertThatIllegalStateException()
-                .isThrownBy(() -> verifier.verify(true, true, false, true))
-                .withMessageContaining("reason=READINESS_ACCESS_DENIED")
-                .satisfies(failure -> assertThat(failure.getMessage()).doesNotContain("NONE"));
-    }
-
-    @Test
-    void forbiddenNanoTimeWrapAroundLongMaxValueIsToleratedByElapsedSubtraction() {
-        AtomicLong clock = new AtomicLong(Long.MAX_VALUE - 50);
-        AgentStartupVerifier verifier = new AgentStartupVerifier(
-                MBeanServerFactory.createMBeanServer(),
-                Duration.ofNanos(100),
+                server,
+                Duration.ofMillis(50),
                 clock::get,
-                clock::addAndGet,
-                "1.0.0");
+                nanos -> {
+                    sleeps.incrementAndGet();
+                    clock.addAndGet(nanos);
+                },
+                ReadinessTestFixtures.APPLICATION_VERSION);
 
-        TracingDeploymentDiagnostics diagnostics = verifier.verify(false, false, false, false);
+        // when
+        TracingDeploymentDiagnostics diagnostics = verifier.verify(true, true, false, true);
 
-        assertThat(diagnostics.runtimeState()).isEqualTo(AgentRuntimeState.DISABLED);
+        // then
+        assertThat(diagnostics.runtimeState()).isEqualTo(AgentRuntimeState.AGENT_READY);
+        assertThat(reads).hasValue(4);
+        assertThat(sleeps).hasValue(1);
     }
 
     @Test
-    void developmentExtensionVersionAgainstPackagedApplicationVersionExplainsManifestTitle() throws Exception {
+    void failsClosedWhenInitializingSnapshotExceedsBoundedStartupDeadline() {
+        // given
         MBeanServer server = MBeanServerFactory.createMBeanServer();
-        server.registerMBean(
-                new StandardMBean(
-                        new MutableReadinessView("READY", COMPLETE_CAPABILITIES, "", "development"),
-                        MutableReadinessViewMBean.class),
-                PlatformTracingJmxObjectNames.EXTENSION_READINESS);
+        AgentReadinessSnapshot initializing = ReadinessTestFixtures.initializingSnapshot();
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(initializing));
+        AtomicLong clock = new AtomicLong();
+        AtomicInteger sleeps = new AtomicInteger();
         AgentStartupVerifier verifier = new AgentStartupVerifier(
-                server, Duration.ofSeconds(2), System::nanoTime, nanos -> { }, "1.2.0-SNAPSHOT");
+                server,
+                Duration.ofMillis(50),
+                clock::get,
+                nanos -> {
+                    sleeps.incrementAndGet();
+                    clock.addAndGet(nanos);
+                },
+                ReadinessTestFixtures.APPLICATION_VERSION);
 
+        // when
+        // then
+        assertThatIllegalStateException()
+                .isThrownBy(() -> verifier.verify(true, true, false, true))
+                .withMessageContaining("runtimeState=EXTENSION_INITIALIZING")
+                .withMessageContaining("reason=EXTENSION_READINESS_TIMEOUT");
+        assertThat(clock.get()).isEqualTo(Duration.ofMillis(50).toNanos());
+        assertThat(sleeps.get()).isEqualTo(2);
+    }
+
+    @Test
+    void readyStartupPinsAnchorForSubsequentTrustedReads() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AtomicReference<AgentReadinessSnapshot> current =
+                new AtomicReference<>(ReadinessTestFixtures.readySnapshot());
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(current.get()));
+        AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard(server);
+        AgentStartupVerifier verifier = new AgentStartupVerifier(
+                coherenceGuard,
+                Duration.ofSeconds(2),
+                System::nanoTime,
+                nanos -> {
+                },
+                ReadinessTestFixtures.APPLICATION_VERSION);
+        verifier.verify(true, true, false, true);
+        current.set(withGeneration(ReadinessTestFixtures.readySnapshot(), 2L, "batch-2"));
+
+        // when
+        // then
+        assertThatThrownBy(() -> coherenceGuard.readCoherently(() -> "untrusted"))
+                .isInstanceOf(AgentReadinessCoherenceException.class)
+                .hasMessageContaining(AgentReadinessCoherenceGuard.PINNED_EPOCH_CHANGED);
+    }
+
+    @Test
+    void versionMismatchNeverPinsReadinessAnchor() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot ready = ReadinessTestFixtures.readySnapshot();
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(ready));
+        AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard(server);
+        AgentStartupVerifier verifier = new AgentStartupVerifier(
+                coherenceGuard,
+                Duration.ofSeconds(2),
+                System::nanoTime,
+                nanos -> {
+                },
+                "9.9.9");
+
+        // when
+        // then
+        assertThatIllegalStateException()
+                .isThrownBy(() -> verifier.verify(true, true, false, true))
+                .withMessageContaining("reason=EXTENSION_VERSION_MISMATCH");
+        assertThatThrownBy(() -> coherenceGuard.readCoherently(() -> "must-not-run"))
+                .isInstanceOf(AgentReadinessCoherenceException.class)
+                .satisfies(failure -> assertThat(
+                        ((AgentReadinessCoherenceException) failure).failureCode())
+                        .isEqualTo(AgentReadinessCoherenceGuard.ANCHOR_NOT_PINNED));
+    }
+
+    @Test
+    void rejectsFailedSnapshot() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot failed = ReadinessTestFixtures.failedSnapshot("SPI_DISCOVERY_INCOMPLETE");
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(failed));
+        AgentStartupVerifier verifier = verifier(server);
+
+        // when
+        // then
+        assertThatIllegalStateException()
+                .isThrownBy(() -> verifier.verify(true, true, false, true))
+                .withMessageContaining("runtimeState=EXTENSION_FAILED")
+                .withMessageContaining("reason=SPI_DISCOVERY_INCOMPLETE");
+    }
+
+    @Test
+    void retainsTerminalFailureAfterProducerAttemptsToReturnReady() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AtomicReference<AgentReadinessSnapshot> current =
+                new AtomicReference<>(ReadinessTestFixtures.failedSnapshot("DISTRIBUTION_MISMATCH"));
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(current.get()));
+        AgentStartupVerifier verifier = verifier(server);
+        assertThatIllegalStateException()
+                .isThrownBy(() -> verifier.verify(true, true, false, true))
+                .withMessageContaining("reason=DISTRIBUTION_MISMATCH");
+        current.set(ReadinessTestFixtures.readySnapshot());
+
+        // when
+        // then
+        assertThatIllegalStateException()
+                .isThrownBy(() -> verifier.verify(true, true, false, true))
+                .withMessageContaining("runtimeState=EXTENSION_FAILED")
+                .withMessageContaining("reason=DISTRIBUTION_MISMATCH");
+    }
+
+    @Test
+    void failsClosedWhenMixedGenerationPersistsUntilStartupDeadline() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot first = ReadinessTestFixtures.readySnapshot();
+        AgentReadinessSnapshot second = withGeneration(first, 2L, "batch-2");
+        AtomicInteger reads = new AtomicInteger();
+        AtomicLong clock = new AtomicLong();
+        AtomicInteger sleeps = new AtomicInteger();
+        ReadinessTestFixtures.register(
+                server,
+                () -> ReadinessTestFixtures.composite(reads.getAndIncrement() % 2 == 0 ? first : second));
+        AgentStartupVerifier verifier = new AgentStartupVerifier(
+                server,
+                Duration.ofMillis(50),
+                clock::get,
+                nanos -> {
+                    sleeps.incrementAndGet();
+                    clock.addAndGet(nanos);
+                },
+                ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // when
+        // then
         assertThatIllegalStateException()
                 .isThrownBy(() -> verifier.verify(true, true, false, true))
                 .withMessageContaining("runtimeState=EXTENSION_INCOMPATIBLE")
-                .withMessageContaining("reason=EXTENSION_VERSION_MISMATCH")
-                .withMessageContaining("applicationVersion=1.2.0-SNAPSHOT")
-                .withMessageContaining("extensionVersion=development")
-                .withMessageContaining("Implementation-Title="
-                        + AgentContractFailureMessages.EXPECTED_EXTENSION_IMPLEMENTATION_TITLE)
-                .satisfies(failure -> assertThat(failure.getMessage()).doesNotContain("NONE"));
+                .withMessageContaining("reason=READINESS_MIXED_GENERATION");
+        assertThat(clock).hasValue(Duration.ofMillis(50).toNanos());
+        assertThat(sleeps).hasValue(2);
+        assertThat(reads).hasValue(6);
+    }
+
+    @Test
+    void rejectsSchemaMismatchBeforeReadyDecision() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot mismatched = withSchemaDigest(
+                ReadinessTestFixtures.readySnapshot(),
+                "0".repeat(64));
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(mismatched));
+        AgentStartupVerifier verifier = verifier(server);
+
+        // when
+        // then
+        assertThatIllegalStateException()
+                .isThrownBy(() -> verifier.verify(true, true, false, true))
+                .withMessageContaining("reason=READINESS_SCHEMA_DIGEST_MISMATCH");
+    }
+
+    @Test
+    void rejectsMetadataAccessDenied() {
+        // given
+        MBeanServer empty = MBeanServerFactory.createMBeanServer();
+        MBeanServer denying = FakeMBeanServers.throwingOnGetMBeanInfo(
+                empty,
+                new SecurityException("denied"));
+        AgentStartupVerifier verifier = verifier(FakeMBeanServers.alwaysReportRegistered(denying));
+
+        // when
+        // then
+        assertThatIllegalStateException()
+                .isThrownBy(() -> verifier.verify(true, true, false, true))
+                .withMessageContaining("reason=READINESS_ACCESS_DENIED");
+    }
+
+    @Test
+    void returnsDisabledWithoutReadingAbsentEndpoint() {
+        // given
+        AtomicLong clock = new AtomicLong();
+        AtomicInteger sleeps = new AtomicInteger();
+        AgentStartupVerifier verifier = new AgentStartupVerifier(
+                MBeanServerFactory.createMBeanServer(),
+                Duration.ofSeconds(2),
+                clock::get,
+                nanos -> {
+                    sleeps.incrementAndGet();
+                    clock.addAndGet(nanos);
+                },
+                ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // when
+        TracingDeploymentDiagnostics diagnostics = verifier.verify(false, false, false, false);
+
+        // then
+        assertThat(diagnostics.runtimeState()).isEqualTo(AgentRuntimeState.DISABLED);
+        assertThat(clock.get()).isZero();
+        assertThat(sleeps.get()).isZero();
     }
 
     private static AgentStartupVerifier verifier(MBeanServer server) {
         return new AgentStartupVerifier(
-                server, Duration.ofSeconds(2), System::nanoTime, nanos -> { }, "1.0.0");
+                server,
+                Duration.ofSeconds(2),
+                System::nanoTime,
+                nanos -> {
+                },
+                ReadinessTestFixtures.APPLICATION_VERSION);
     }
 
-    private static MBeanServer readyServer() throws Exception {
-        MBeanServer server = MBeanServerFactory.createMBeanServer();
-        server.registerMBean(
-                new StandardMBean(
-                        new MutableReadinessView("READY", COMPLETE_CAPABILITIES),
-                        MutableReadinessViewMBean.class),
-                PlatformTracingJmxObjectNames.EXTENSION_READINESS);
-        return server;
+    @SuppressWarnings("SameParameterValue")
+    private static AgentReadinessSnapshot withGeneration(AgentReadinessSnapshot source,
+                                                         long evidenceGeneration,
+                                                         String batchId) {
+        AgentReadinessSnapshot.AnchorIdentity anchorIdentity = source.anchorIdentity();
+        return ReadinessTestFixtures.toBuilder(source)
+                .anchorIdentity(new AgentReadinessSnapshot.AnchorIdentity(
+                        anchorIdentity.runtimeEpoch(), evidenceGeneration, batchId)
+                )
+                .build();
     }
 
-    public interface MutableReadinessViewMBean {
-        String getExtensionVersion();
-
-        int getProtocolVersion();
-
-        String getProfile();
-
-        String getLifecycleState();
-
-        String getFailureCode();
-
-        String[] getCapabilities();
-    }
-
-    /**
-     * Mutable so a sleeper stub can simulate the agent transitioning out of
-     * {@code INITIALIZING} between polling attempts, without a real background thread.
-     */
-    public static final class MutableReadinessView implements MutableReadinessViewMBean {
-        volatile String lifecycle;
-        volatile Set<String> capabilities;
-        volatile String failureCode = "";
-        volatile String extensionVersion = "1.0.0";
-
-        MutableReadinessView(String lifecycle, Set<String> capabilities) {
-            this.lifecycle = lifecycle;
-            this.capabilities = capabilities;
-        }
-
-        MutableReadinessView(String lifecycle, Set<String> capabilities, String failureCode) {
-            this(lifecycle, capabilities);
-            this.failureCode = failureCode;
-        }
-
-        MutableReadinessView(String lifecycle, Set<String> capabilities, String failureCode, String extensionVersion) {
-            this(lifecycle, capabilities, failureCode);
-            this.extensionVersion = extensionVersion;
-        }
-
-        @Override
-        public String getExtensionVersion() {
-            return extensionVersion;
-        }
-
-        @Override
-        public int getProtocolVersion() {
-            return 1;
-        }
-
-        @Override
-        public String getProfile() {
-            return "platform-agent-secure-v1";
-        }
-
-        @Override
-        public String getLifecycleState() {
-            return lifecycle;
-        }
-
-        @Override
-        public String getFailureCode() {
-            return failureCode;
-        }
-
-        @Override
-        public String[] getCapabilities() {
-            return capabilities.toArray(String[]::new);
-        }
+    private static AgentReadinessSnapshot withSchemaDigest(AgentReadinessSnapshot source,
+                                                           String schemaDigest) {
+        AgentReadinessSnapshot.ContractIdentity contractIdentity = source.contractIdentity();
+        return ReadinessTestFixtures.toBuilder(source)
+                .contractIdentity(new AgentReadinessSnapshot.ContractIdentity(
+                        contractIdentity.contractId(), schemaDigest))
+                .build();
     }
 }

@@ -23,8 +23,8 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsValidationConstraints;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 
 final class PlatformSettingsMutationInvokeContractTest {
 
@@ -41,7 +41,7 @@ final class PlatformSettingsMutationInvokeContractTest {
         server = MBeanServerFactory.createMBeanServer();
         server.registerMBean(
                 new PlatformSettingsMutationMBean(updater),
-                GeneratedJmxWireContract.SETTINGS_MUTATION_OBJECT_NAME);
+                JmxWireContract.SETTINGS_MUTATION_OBJECT_NAME);
     }
 
     @AfterEach
@@ -56,8 +56,8 @@ final class PlatformSettingsMutationInvokeContractTest {
 
         // when
         Object result = server.invoke(
-                GeneratedJmxWireContract.SETTINGS_MUTATION_OBJECT_NAME,
-                GeneratedJmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT,
+                JmxWireContract.SETTINGS_MUTATION_OBJECT_NAME,
+                JmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT,
                 new Object[]{request},
                 new String[]{CompositeData.class.getName()});
 
@@ -100,7 +100,7 @@ final class PlatformSettingsMutationInvokeContractTest {
         // when
         // then
         assertThatThrownBy(() -> server.invoke(
-                GeneratedJmxWireContract.SETTINGS_MUTATION_OBJECT_NAME,
+                JmxWireContract.SETTINGS_MUTATION_OBJECT_NAME,
                 untrustedOperation,
                 new Object[0],
                 new String[0]))
@@ -114,7 +114,7 @@ final class PlatformSettingsMutationInvokeContractTest {
     void mBeanInfoPublishesOneExactOpenMutationOperation() throws Exception {
         // given
         MBeanInfo info = server.getMBeanInfo(
-                GeneratedJmxWireContract.SETTINGS_MUTATION_OBJECT_NAME);
+                JmxWireContract.SETTINGS_MUTATION_OBJECT_NAME);
 
         // when
         MBeanOperationInfo operation = info.getOperations()[0];
@@ -127,24 +127,24 @@ final class PlatformSettingsMutationInvokeContractTest {
         assertThat(info.getNotifications()).isEmpty();
         assertThat(info.getOperations()).hasSize(1);
         assertThat(operation.getName())
-                .isEqualTo(GeneratedJmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT);
+                .isEqualTo(JmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT);
         assertThat(operation.getImpact()).isEqualTo(MBeanOperationInfo.ACTION);
         assertThat(operation).isInstanceOf(OpenMBeanOperationInfo.class);
         OpenMBeanOperationInfo openOperation = (OpenMBeanOperationInfo) operation;
         assertThat(openOperation.getReturnOpenType())
-                .isEqualTo(GeneratedJmxOpenTypes.APPLY_SNAPSHOT_RESPONSE);
+                .isEqualTo(JmxOpenTypes.APPLY_SNAPSHOT_RESPONSE);
         assertThat(operation.getSignature()).singleElement()
                 .isInstanceOf(OpenMBeanParameterInfo.class);
         OpenMBeanParameterInfo request = (OpenMBeanParameterInfo) operation.getSignature()[0];
         assertThat(operation.getSignature()[0].getName()).isEqualTo(
-                GeneratedJmxWireContract.PARAMETER_SETTINGS_MUTATION_APPLY_SNAPSHOT_REQUEST);
-        assertThat(request.getOpenType()).isEqualTo(GeneratedJmxOpenTypes.APPLY_SNAPSHOT_REQUEST);
+                JmxWireContract.PARAMETER_SETTINGS_MUTATION_APPLY_SNAPSHOT_REQUEST);
+        assertThat(request.getOpenType()).isEqualTo(JmxOpenTypes.APPLY_SNAPSHOT_REQUEST);
     }
 
     private Object invoke(Object[] params, String[] signature) throws Exception {
         return server.invoke(
-                GeneratedJmxWireContract.SETTINGS_MUTATION_OBJECT_NAME,
-                GeneratedJmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT,
+                JmxWireContract.SETTINGS_MUTATION_OBJECT_NAME,
+                JmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT,
                 params,
                 signature);
     }

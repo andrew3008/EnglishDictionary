@@ -8,13 +8,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 
-import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.testsupport.BootstrapIsolatedClassLoader;
@@ -36,12 +34,6 @@ class TracePipelineSpiAttestationIntegrationTest {
     @BeforeEach
     void resetProbe() {
         TracePipelineAttackProbe.reset();
-    }
-
-    @AfterEach
-    void resetAttestationIsolation() {
-        System.clearProperty(ExtensionPropertyNames.SPI_ATTESTATION_MODE);
-        TracePipelineSpiAttestation.resetEvidenceMarkerForTests();
     }
 
     @Test

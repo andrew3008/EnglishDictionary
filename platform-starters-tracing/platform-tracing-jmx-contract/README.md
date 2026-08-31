@@ -7,7 +7,7 @@ runtime API: extension и Spring application получают разные Java-
 Основные задачи:
 
 - `generateJmxWireContract` — генерирует обе плоскости;
-- `validateJmxWireContract` — проверяет manifest и positive/negative golden-векторы;
+- `validateJmxWireContract` — проверяет manifest;
 - `verifyJmxWireContract` — проверяет воспроизводимость, schema identity и parity;
 - `compileGeneratedJmxWireContract` — компилирует оба независимых дерева generated sources;
 - `verifyNoManualJmxWireLiterals` — отвергает рукописные wire-литералы в production-исходниках
@@ -23,20 +23,9 @@ Generated output:
 - `build/generated/jmx-wire-contract/application/java`;
 - `build/generated/jmx-wire-contract/application/resources`.
 
+Каждая плоскость получает `JmxWireContract`, `JmxOpenTypes`, `JmxTracingSettingsDigest`
+и `JmxWireUtf8Meter`. Измерение UTF-8 живёт рядом с лимитами бюджета, а не двумя
+рукописными копиями.
+
 Runtime-модули должны зависеть от задачи генерации и подключать только собственную
 плоскость. Подключать JAR этого модуля к runtime classpath запрещено.
-
-## Границы модуля
-
-Это одноразовый станок на один манифест, а не фреймворк генерации схем. Запрещено:
-
-- обобщать генератор «на любые схемы», добавлять plugin SPI или registry;
-- добавлять второй манифест в этот модуль;
-- публиковать модуль или включать его в BOM;
-- выносить SnakeYAML на runtime classpath агента или стартера.
-
-## Что манифест не описывает
-
-В контракт не входят поля, которые сравниваются с константой сборки: такое поле пересекает
-границу классов, чтобы быть сравненным само с собой, и ничего не проверяет. Секция
-`readinessEvidence` перечисляет только измеряемые в рантайме факты.

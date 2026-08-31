@@ -95,9 +95,9 @@ class AgentPlaneIsolationArchTest {
     void onlyBootstrapOwnerCreatesExtensionConfiguration() {
         // given
         ArchRule rule = noClasses()
-                .that().doNotHaveSimpleName("BootstrapCoordinator")
+                .that().doNotHaveSimpleName("AutoconfigureSessionFactory")
                 .should().callConstructor(ExtensionConfig.class, ConfigProperties.class)
-                .because("BootstrapCoordinator owns the extension configuration snapshot");
+                .because("AutoconfigureSessionFactory owns the extension configuration snapshot");
 
         // when
         // then

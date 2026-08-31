@@ -8,28 +8,18 @@ import java.util.Set;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
-/**
- * Декларация deployment-слоя о владении удалённым JMX-коннектором.
- *
- * <p>Декларация не выводится из {@code com.sun.management.jmxremote}: встроенный management agent
- * не считается автоматически защищённым платформенным forwarder-ом. Значения из
- * {@link ConfigProperties} также не являются аттестацией: приложение может управлять этим
- * источником. Проверяемым внутри JVM источником считается только неизменяемый после старта список
- * JVM-аргументов; он не заменяет внешний admission/supply-chain trust anchor.</p>
- */
 public final class RemoteJmxDeploymentDeclaration {
 
     public static final String MODE_PROPERTY = "platform.tracing.jmx.remote.mode";
-    public static final String LISTENER_CONFIRMED_PROPERTY =
-            "platform.tracing.jmx.remote.listener-confirmed";
-    public static final String AUTHORIZATION_FORWARDER_INSTALLED_PROPERTY =
-            "platform.tracing.jmx.remote.authorization-forwarder-installed";
+    public static final String LISTENER_CONFIRMED_PROPERTY = "platform.tracing.jmx.remote.listener-confirmed";
+    public static final String AUTHORIZATION_FORWARDER_INSTALLED_PROPERTY = "platform.tracing.jmx.remote.authorization-forwarder-installed";
 
     private static final String DECLARATION_PROPERTY_PREFIX = "platform.tracing.jmx.remote.";
     private static final Set<String> DECLARATION_PROPERTIES = Set.of(
             MODE_PROPERTY,
             LISTENER_CONFIRMED_PROPERTY,
-            AUTHORIZATION_FORWARDER_INSTALLED_PROPERTY);
+            AUTHORIZATION_FORWARDER_INSTALLED_PROPERTY
+    );
 
     public enum Mode {
         REMOTE_PROHIBITED,
@@ -52,61 +42,29 @@ public final class RemoteJmxDeploymentDeclaration {
     private final boolean dynamicConnectorProhibited;
     private final AttestationSource attestationSource;
 
-    private RemoteJmxDeploymentDeclaration(
-            Mode mode,
-            boolean listenerConfirmed,
-            boolean authorizationForwarderInstalled,
-            boolean dynamicConnectorProhibited,
-            AttestationSource attestationSource) {
+    private RemoteJmxDeploymentDeclaration(Mode mode,
+                                           boolean listenerConfirmed,
+                                           boolean authorizationForwarderInstalled,
+                                           boolean dynamicConnectorProhibited,
+                                           AttestationSource attestationSource) {
         this.mode = Objects.requireNonNull(mode, "Deployment JMX mode must not be null");
         this.listenerConfirmed = listenerConfirmed;
         this.authorizationForwarderInstalled = authorizationForwarderInstalled;
         this.dynamicConnectorProhibited = dynamicConnectorProhibited;
         this.attestationSource = Objects.requireNonNull(
                 attestationSource,
-                "Deployment JMX attestation source must not be null");
+                "Deployment JMX attestation source must not be null"
+        );
     }
 
-    /**
-     * Создаёт программную декларацию запрета remote JMX.
-     *
-     * <p>Этот factory не выдаёт внешнюю аттестацию и сам по себе не разрешает READY.</p>
-     */
     public static RemoteJmxDeploymentDeclaration remoteProhibited() {
         return new RemoteJmxDeploymentDeclaration(
                 Mode.REMOTE_PROHIBITED,
                 false,
                 false,
                 true,
-                AttestationSource.PROGRAMMATIC_DECLARATION_UNVERIFIED);
-    }
-
-    /**
-     * Создаёт программную декларацию платформенного коннектора.
-     *
-     * <p>Флаги listener/forwarder остаются неподтверждёнными до внешней аттестации.</p>
-     */
-    public static RemoteJmxDeploymentDeclaration platformOwnedCertifiedConnector(
-            boolean listenerConfirmed,
-            boolean authorizationForwarderInstalled) {
-        return new RemoteJmxDeploymentDeclaration(
-                Mode.PLATFORM_OWNED_CERTIFIED_CONNECTOR,
-                listenerConfirmed,
-                authorizationForwarderInstalled,
-                false,
-                AttestationSource.PROGRAMMATIC_DECLARATION_UNVERIFIED);
-    }
-
-    /**
-     * Декларирует коннектор, которым платформа не владеет и не может гарантированно обернуть.
-     */
-    public static RemoteJmxDeploymentDeclaration externalOrBuiltInConnector(boolean listenerConfirmed) {
-        return new RemoteJmxDeploymentDeclaration(
-                Mode.EXTERNAL_OR_BUILT_IN_CONNECTOR,
-                listenerConfirmed,
-                false,
-                false,
-                AttestationSource.PROGRAMMATIC_DECLARATION_UNVERIFIED);
+                AttestationSource.PROGRAMMATIC_DECLARATION_UNVERIFIED
+        );
     }
 
     public static RemoteJmxDeploymentDeclaration undeclared() {
@@ -127,14 +85,9 @@ public final class RemoteJmxDeploymentDeclaration {
                 AttestationSource.UNAVAILABLE);
     }
 
-    /**
-     * Строит неподтверждённую декларацию из точных deployment-свойств extension-конфигурации.
-     * Отсутствующий mode означает {@link Mode#UNDECLARED}; неизвестное или противоречивое значение
-     * переводится в {@link Mode#UNKNOWN} без permissive fallback. Ни один результат этого метода
-     * не получает {@link AttestationSource#STARTUP_ARGUMENTS_VERIFIED}.
-     */
     public static RemoteJmxDeploymentDeclaration from(ConfigProperties config) {
         Objects.requireNonNull(config, "ConfigProperties must not be null");
+
         try {
             String rawMode = config.getString(MODE_PROPERTY);
             if (rawMode == null || rawMode.isBlank()) {
@@ -148,39 +101,44 @@ public final class RemoteJmxDeploymentDeclaration {
                 return configurationUnknown();
             }
 
-            ParsedBoolean listener = parsedBoolean(config.getString(LISTENER_CONFIRMED_PROPERTY));
-            ParsedBoolean forwarder = parsedBoolean(config.getString(AUTHORIZATION_FORWARDER_INSTALLED_PROPERTY));
-            if (!listener.valid() || !forwarder.valid()) {
+            DeclaredFlag listener = declaredFlag(config.getString(LISTENER_CONFIRMED_PROPERTY));
+            DeclaredFlag forwarder = declaredFlag(
+                    config.getString(AUTHORIZATION_FORWARDER_INSTALLED_PROPERTY));
+            if (listener == DeclaredFlag.INVALID || forwarder == DeclaredFlag.INVALID) {
                 return configurationUnknown();
             }
 
             return switch (parsedMode) {
-                case REMOTE_PROHIBITED -> listener.value() || forwarder.value()
+                case REMOTE_PROHIBITED -> listener.set() || forwarder.set()
                         ? configurationUnknown()
                         : configurationDeclaration(
-                                Mode.REMOTE_PROHIBITED,
-                                false,
-                                false,
-                                true);
+                        Mode.REMOTE_PROHIBITED,
+                        false,
+                        false,
+                        true);
+
                 case PLATFORM_OWNED_CERTIFIED_CONNECTOR -> configurationDeclaration(
                         Mode.PLATFORM_OWNED_CERTIFIED_CONNECTOR,
-                        listener.value(),
-                        forwarder.value(),
+                        listener.set(),
+                        forwarder.set(),
                         false);
-                case EXTERNAL_OR_BUILT_IN_CONNECTOR -> forwarder.value()
+
+                case EXTERNAL_OR_BUILT_IN_CONNECTOR -> forwarder.set()
                         ? configurationUnknown()
                         : configurationDeclaration(
-                                Mode.EXTERNAL_OR_BUILT_IN_CONNECTOR,
-                                listener.value(),
-                                false,
-                                false);
-                case UNDECLARED -> listener.value() || forwarder.value()
+                        Mode.EXTERNAL_OR_BUILT_IN_CONNECTOR,
+                        listener.set(),
+                        false,
+                        false);
+
+                case UNDECLARED -> listener.set() || forwarder.set()
                         ? configurationUnknown()
                         : configurationDeclaration(
-                                Mode.UNDECLARED,
-                                false,
-                                false,
-                                false);
+                        Mode.UNDECLARED,
+                        false,
+                        false,
+                        false);
+
                 case UNKNOWN -> configurationUnknown();
             };
         } catch (RuntimeException exception) {
@@ -188,16 +146,9 @@ public final class RemoteJmxDeploymentDeclaration {
         }
     }
 
-    /**
-     * Разбирает точные deployment-аргументы, снятые через
-     * {@code RuntimeMXBean.getInputArguments()}.
-     *
-     * <p>Метод package-private, чтобы доверенный production call site сам снимал JVM-аргументы.
-     * Все три свойства обязательны; дубликат, неизвестное свойство, пропуск или противоречие
-     * переводят декларацию в {@link Mode#UNKNOWN}.</p>
-     */
     static RemoteJmxDeploymentDeclaration fromStartupArguments(List<String> arguments) {
         Objects.requireNonNull(arguments, "JVM startup arguments must not be null");
+
         Map<String, String> values = new LinkedHashMap<>();
         boolean invalid = false;
         for (String argument : arguments) {
@@ -205,6 +156,7 @@ public final class RemoteJmxDeploymentDeclaration {
                 invalid = true;
                 continue;
             }
+
             String prefix = "-D" + DECLARATION_PROPERTY_PREFIX;
             if (!argument.startsWith(prefix)) {
                 continue;
@@ -215,6 +167,7 @@ public final class RemoteJmxDeploymentDeclaration {
                 invalid = true;
                 continue;
             }
+
             String name = argument.substring(2, equals);
             String value = argument.substring(equals + 1);
             if (!DECLARATION_PROPERTIES.contains(name)
@@ -233,32 +186,36 @@ public final class RemoteJmxDeploymentDeclaration {
         } catch (IllegalArgumentException exception) {
             return startupArgumentsUnknown();
         }
-        ParsedBoolean listener = parsedExactBoolean(values.get(LISTENER_CONFIRMED_PROPERTY));
-        ParsedBoolean forwarder = parsedExactBoolean(
-                values.get(AUTHORIZATION_FORWARDER_INSTALLED_PROPERTY));
-        if (!listener.valid() || !forwarder.valid()) {
+
+        DeclaredFlag listener = exactDeclaredFlag(values.get(LISTENER_CONFIRMED_PROPERTY));
+        DeclaredFlag forwarder = exactDeclaredFlag(values.get(AUTHORIZATION_FORWARDER_INSTALLED_PROPERTY));
+        if (listener == DeclaredFlag.INVALID || forwarder == DeclaredFlag.INVALID) {
             return startupArgumentsUnknown();
         }
 
         return switch (mode) {
-            case REMOTE_PROHIBITED -> listener.value() || forwarder.value()
+            case REMOTE_PROHIBITED -> listener.set() || forwarder.set()
                     ? startupArgumentsUnknown()
                     : startupArgumentsDeclaration(mode, false, false, true);
+
             case PLATFORM_OWNED_CERTIFIED_CONNECTOR -> startupArgumentsDeclaration(
                     mode,
-                    listener.value(),
-                    forwarder.value(),
+                    listener.set(),
+                    forwarder.set(),
                     false);
-            case EXTERNAL_OR_BUILT_IN_CONNECTOR -> forwarder.value()
+
+            case EXTERNAL_OR_BUILT_IN_CONNECTOR -> forwarder.set()
                     ? startupArgumentsUnknown()
                     : startupArgumentsDeclaration(
-                            mode,
-                            listener.value(),
-                            false,
-                            false);
-            case UNDECLARED -> listener.value() || forwarder.value()
+                    mode,
+                    listener.set(),
+                    false,
+                    false);
+
+            case UNDECLARED -> listener.set() || forwarder.set()
                     ? startupArgumentsUnknown()
                     : startupArgumentsDeclaration(mode, false, false, false);
+
             case UNKNOWN -> startupArgumentsUnknown();
         };
     }
@@ -287,17 +244,17 @@ public final class RemoteJmxDeploymentDeclaration {
         return attestationSource == AttestationSource.STARTUP_ARGUMENTS_VERIFIED;
     }
 
-    private static RemoteJmxDeploymentDeclaration configurationDeclaration(
-            Mode mode,
-            boolean listenerConfirmed,
-            boolean authorizationForwarderInstalled,
-            boolean dynamicConnectorProhibited) {
+    private static RemoteJmxDeploymentDeclaration configurationDeclaration(Mode mode,
+                                                                           boolean listenerConfirmed,
+                                                                           boolean authorizationForwarderInstalled,
+                                                                           boolean dynamicConnectorProhibited) {
         return new RemoteJmxDeploymentDeclaration(
                 mode,
                 listenerConfirmed,
                 authorizationForwarderInstalled,
                 dynamicConnectorProhibited,
-                AttestationSource.CONFIG_PROPERTIES_UNVERIFIED);
+                AttestationSource.CONFIG_PROPERTIES_UNVERIFIED
+        );
     }
 
     private static RemoteJmxDeploymentDeclaration configurationUnknown() {
@@ -314,36 +271,49 @@ public final class RemoteJmxDeploymentDeclaration {
                 listenerConfirmed,
                 authorizationForwarderInstalled,
                 dynamicConnectorProhibited,
-                AttestationSource.STARTUP_ARGUMENTS_VERIFIED);
+                AttestationSource.STARTUP_ARGUMENTS_VERIFIED
+        );
     }
 
     private static RemoteJmxDeploymentDeclaration startupArgumentsUnknown() {
         return startupArgumentsDeclaration(Mode.UNKNOWN, false, false, false);
     }
 
-    private static ParsedBoolean parsedBoolean(String rawValue) {
+    private static DeclaredFlag declaredFlag(String rawValue) {
         if (rawValue == null || rawValue.isBlank()) {
-            return new ParsedBoolean(true, false);
+            return DeclaredFlag.FALSE;
         }
+
         if (rawValue.equalsIgnoreCase("true")) {
-            return new ParsedBoolean(true, true);
+            return DeclaredFlag.TRUE;
         }
+
         if (rawValue.equalsIgnoreCase("false")) {
-            return new ParsedBoolean(true, false);
+            return DeclaredFlag.FALSE;
         }
-        return new ParsedBoolean(false, false);
+
+        return DeclaredFlag.INVALID;
     }
 
-    private static ParsedBoolean parsedExactBoolean(String rawValue) {
+    private static DeclaredFlag exactDeclaredFlag(String rawValue) {
         if ("true".equals(rawValue)) {
-            return new ParsedBoolean(true, true);
+            return DeclaredFlag.TRUE;
         }
+
         if ("false".equals(rawValue)) {
-            return new ParsedBoolean(true, false);
+            return DeclaredFlag.FALSE;
         }
-        return new ParsedBoolean(false, false);
+
+        return DeclaredFlag.INVALID;
     }
 
-    private record ParsedBoolean(boolean valid, boolean value) {
+    private enum DeclaredFlag {
+        TRUE,
+        FALSE,
+        INVALID;
+
+        boolean set() {
+            return (this == TRUE);
+        }
     }
 }

@@ -22,15 +22,16 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.Jmx
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+import space.br1440.platform.tracing.autoconfigure.support.DomainSnapshotEndpoints;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
-import space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.DiagnosticsControl;
-import space.br1440.platform.tracing.otel.javaagent.jmx.export.ExportControl;
-import space.br1440.platform.tracing.otel.javaagent.jmx.metrics.ProcessorMetricsControl;
+import space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.DiagnosticsObservationSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.export.ExportObservationSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.metrics.ProcessorMetricsObservationSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
-import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.SamplingControl;
-import space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.ScrubbingControl;
-import space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationControl;
+import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.SamplingObservationSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.ScrubbingObservationSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationObservationSource;
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
@@ -129,8 +130,9 @@ class DomainAbsentOwnerEncodingRoundTripTest {
                 TracingSettingsSource.isolatedValidation(true, false, false));
         slot.replace(processor);
         processor.onEnding(mock(ReadWriteSpan.class));
+        ValidationObservationSource validation = new ValidationObservationSource(slot, agentInstanceId);
         server.registerMBean(
-                new ValidationControl(slot, agentInstanceId),
+                DomainSnapshotEndpoints.validation(validation::getValidationObservation),
                 DomainObjectNames.VALIDATION);
 
         ValidationObservation observation = client.validation().observation().orElseThrow();
@@ -145,30 +147,39 @@ class DomainAbsentOwnerEncodingRoundTripTest {
     private void registerAllDomainsWithEmptyOwnerSlots() throws Exception {
         TracingSettingsSource acceptedPolicy = TracingSettingsSource.isolatedSampling(
                 true, Collections.emptyMap(), 0.5d);
+        SamplingObservationSource sampling = new SamplingObservationSource(
+                acceptedPolicy, new OwnerRegistrationSlot<CompositeSampler>(), agentInstanceId);
+        ScrubbingObservationSource scrubbing = new ScrubbingObservationSource(new OwnerRegistrationSlot<>(), agentInstanceId);
+        ValidationObservationSource validation = new ValidationObservationSource(
+                new OwnerRegistrationSlot<ValidatingSpanProcessor>(), agentInstanceId);
+        ExportObservationSource export = new ExportObservationSource(
+                new OwnerRegistrationSlot<PlatformDropOldestExportSpanProcessor>(),
+                new OwnerRegistrationSlot<SafeSpanExporter>(),
+                agentInstanceId);
+        ProcessorMetricsObservationSource processorMetrics = new ProcessorMetricsObservationSource(
+                new OwnerRegistrationSlot<SpanWatchdogProcessor>(),
+                new OwnerRegistrationSlot<PlatformCompositeSpanProcessor>(),
+                new OwnerRegistrationSlot<SpanLimitsMetricsProcessor>(),
+                agentInstanceId);
+        DiagnosticsObservationSource diagnostics = new DiagnosticsObservationSource(new LongAdder(), agentInstanceId);
+
         server.registerMBean(
-                new SamplingControl(acceptedPolicy, new OwnerRegistrationSlot<CompositeSampler>(), agentInstanceId),
+                DomainSnapshotEndpoints.sampling(sampling::getSamplingObservation),
                 DomainObjectNames.SAMPLING);
         server.registerMBean(
-                new ScrubbingControl(new OwnerRegistrationSlot<>(), agentInstanceId),
+                DomainSnapshotEndpoints.scrubbing(scrubbing::getScrubbingObservation),
                 DomainObjectNames.SCRUBBING);
         server.registerMBean(
-                new ValidationControl(new OwnerRegistrationSlot<ValidatingSpanProcessor>(), agentInstanceId),
+                DomainSnapshotEndpoints.validation(validation::getValidationObservation),
                 DomainObjectNames.VALIDATION);
         server.registerMBean(
-                new ExportControl(
-                        new OwnerRegistrationSlot<PlatformDropOldestExportSpanProcessor>(),
-                        new OwnerRegistrationSlot<SafeSpanExporter>(),
-                        agentInstanceId),
+                DomainSnapshotEndpoints.export(export::getExportObservation),
                 DomainObjectNames.EXPORT);
         server.registerMBean(
-                new ProcessorMetricsControl(
-                        new OwnerRegistrationSlot<SpanWatchdogProcessor>(),
-                        new OwnerRegistrationSlot<PlatformCompositeSpanProcessor>(),
-                        new OwnerRegistrationSlot<SpanLimitsMetricsProcessor>(),
-                        agentInstanceId),
+                DomainSnapshotEndpoints.processorMetrics(processorMetrics::getProcessorMetricsObservation),
                 DomainObjectNames.PROCESSOR_METRICS);
         server.registerMBean(
-                new DiagnosticsControl(new LongAdder(), agentInstanceId),
+                DomainSnapshotEndpoints.diagnostics(diagnostics::getDiagnosticsObservation),
                 DomainObjectNames.DIAGNOSTICS);
     }
 }

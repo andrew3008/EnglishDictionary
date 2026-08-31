@@ -8,7 +8,7 @@ import java.util.Optional;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.processor.BaggageSpanProcessor;
@@ -30,10 +30,10 @@ public final class PlatformSpanProcessorFactory {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(PlatformSpanProcessorFactory.class);
 
-    private final DomainMBeanRegistrar jmxRegistrar;
+    private final PlatformTracingMBeanRegistrar jmxRegistrar;
     private final ScrubbingRuntime scrubbingRuntime;
 
-    public PlatformSpanProcessorFactory(DomainMBeanRegistrar jmxRegistrar, ScrubbingRuntime scrubbingRuntime) {
+    public PlatformSpanProcessorFactory(PlatformTracingMBeanRegistrar jmxRegistrar, ScrubbingRuntime scrubbingRuntime) {
         this.jmxRegistrar = Objects.requireNonNull(jmxRegistrar, "jmxRegistrar must not be null");
         this.scrubbingRuntime = Objects.requireNonNull(scrubbingRuntime, "scrubbingRuntime must not be null");
     }

@@ -26,12 +26,10 @@ class BootstrapResourcesOrderTest {
             assertThat(readiness.get()).isEqualTo("FAILED");
             closeOrder.add("runtime");
         }, "runtime-batch");
-        ReadinessShutdownTransition transition = new ReadinessShutdownTransition(() -> {
+        resources.push(() -> {
             readiness.set("FAILED");
             closeOrder.add("transition");
-        });
-        resources.push(transition, "readiness-transition");
-        assertThat(transition.arm()).isTrue();
+        }, "readiness-transition");
         resources.installShutdownHook("test-shutdown", cleanupFailure -> {
             assertThat(cleanupFailure).isNull();
             assertThat(closeOrder).containsExactly("transition", "runtime");
@@ -43,22 +41,6 @@ class BootstrapResourcesOrderTest {
 
         // then
         assertThat(closeOrder).containsExactly("transition", "runtime", "anchor");
-    }
-
-    @Test
-    void unarmedTransitionIsNoOpDuringActivationRollback() {
-        // given
-        AtomicReference<String> readiness = new AtomicReference<>("INITIALIZING");
-        ReadinessShutdownTransition transition = new ReadinessShutdownTransition(
-                () -> readiness.set("FAILED")
-        );
-
-        // when
-        transition.close();
-
-        // then
-        assertThat(readiness.get()).isEqualTo("INITIALIZING");
-        assertThat(transition.arm()).isFalse();
     }
 
     @Test

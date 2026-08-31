@@ -9,8 +9,8 @@ import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
-import space.br1440.platform.tracing.otel.javaagent.jmx.metrics.ProcessorMetricsControl;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.metrics.ProcessorMetricsObservationSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 
 import io.opentelemetry.api.trace.Span;
@@ -36,26 +36,21 @@ class SpanWatchdogJmxRoundTripTest {
 
         OwnerRegistrationSlot<SpanWatchdogProcessor> slot = new OwnerRegistrationSlot<>();
         slot.replace(watchdog);
-        ProcessorMetricsControl control = new ProcessorMetricsControl(
+        ProcessorMetricsObservationSource source = new ProcessorMetricsObservationSource(
                 slot,
                 new OwnerRegistrationSlot<>(),
                 new OwnerRegistrationSlot<>(),
                 UUID.randomUUID());
 
         // when
-        CompositeData observation = control.getProcessorMetricsObservation();
+        CompositeData observation = source.getProcessorMetricsObservation();
         CompositeData watchdogValues = (CompositeData) observation.get(
-                GeneratedJmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG);
+                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG);
 
         // then
-        assertThat((Boolean) watchdogValues.get(
-                GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_PRESENT)).isTrue();
-        assertThat((Long) watchdogValues.get(
-                GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_FORCED_SPAN_CLOSES)
-        ).isEqualTo(1L);
-        assertThat((Integer) watchdogValues.get(
-                GeneratedJmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_ACTIVE_SPAN_COUNT)
-        ).isZero();
+        assertThat((Boolean) watchdogValues.get(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_PRESENT)).isTrue();
+        assertThat((Long) watchdogValues.get(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_FORCED_SPAN_CLOSES)).isEqualTo(1L);
+        assertThat((Integer) watchdogValues.get(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_ACTIVE_SPAN_COUNT)).isZero();
         hung.end();
         watchdog.shutdown();
         tracerProvider.shutdown();

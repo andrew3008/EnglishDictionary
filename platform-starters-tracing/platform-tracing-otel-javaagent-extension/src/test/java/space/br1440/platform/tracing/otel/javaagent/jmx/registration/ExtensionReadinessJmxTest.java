@@ -15,8 +15,8 @@ import javax.management.openmbean.CompositeData;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
@@ -24,7 +24,7 @@ import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionR
 class PlatformExtensionReadinessJmxTest {
 
     private static final String READINESS_ATTRIBUTE =
-            GeneratedJmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT;
+            JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT;
 
     @Test
     void readinessIsPublishedBeforeDomainMBeansAndDoesNotClaimReady() throws Exception {
@@ -32,7 +32,7 @@ class PlatformExtensionReadinessJmxTest {
         MBeanServer server = MBeanServerFactory.createMBeanServer();
         try {
             PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar(server, readiness);
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(server, readiness);
             ExtensionReadinessWireSnapshot projection =
                     ExtensionReadinessWireSnapshot.initializing(readiness);
 
@@ -44,10 +44,10 @@ class PlatformExtensionReadinessJmxTest {
             assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isFalse();
             CompositeData wire = (CompositeData) server.getAttribute(
                     DomainObjectNames.EXTENSION_READINESS, READINESS_ATTRIBUTE);
-            assertThat(wire.get(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE))
+            assertThat(wire.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE))
                     .isEqualTo("INITIALIZING");
             assertThat((String[]) wire.get(
-                    GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES)).isEmpty();
+                    JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES)).isEmpty();
         } finally {
             MBeanServerFactory.releaseMBeanServer(server);
         }
@@ -61,7 +61,7 @@ class PlatformExtensionReadinessJmxTest {
             PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
             AtomicReference<ExtensionReadinessWireSnapshot> projection =
                     new AtomicReference<>(ExtensionReadinessWireSnapshot.initializing(readiness, "epoch-1"));
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar(server, readiness);
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(server, readiness);
             registrar.registerDiagnosticReadiness(projection::get);
 
             // when
@@ -71,7 +71,7 @@ class PlatformExtensionReadinessJmxTest {
             CompositeData frozen = (CompositeData) server.getAttribute(
                     DomainObjectNames.EXTENSION_READINESS, READINESS_ATTRIBUTE);
             assertThat((String[]) frozen.get(
-                    GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES)).isEmpty();
+                    JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES)).isEmpty();
 
             // when
             projection.set(ExtensionReadinessWireSnapshot.initializing(readiness, "epoch-1"));
@@ -80,7 +80,7 @@ class PlatformExtensionReadinessJmxTest {
             CompositeData published = (CompositeData) server.getAttribute(
                     DomainObjectNames.EXTENSION_READINESS, READINESS_ATTRIBUTE);
             String[] capabilities = (String[]) published.get(
-                    GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES);
+                    JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES);
             assertThat(Arrays.asList(capabilities)).containsExactly("PLATFORM_SAMPLER_INSTALLED");
         } finally {
             MBeanServerFactory.releaseMBeanServer(server);
@@ -95,7 +95,7 @@ class PlatformExtensionReadinessJmxTest {
             PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
             ExtensionReadinessWireSnapshot projection =
                     ExtensionReadinessWireSnapshot.initializing(readiness);
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar(server, readiness);
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(server, readiness);
             registrar.registerDiagnosticReadiness(() -> projection);
 
             // when
@@ -110,7 +110,7 @@ class PlatformExtensionReadinessJmxTest {
             assertThat(info.getOperations()).isEmpty();
             CompositeData wire = (CompositeData) server.getAttribute(
                     DomainObjectNames.EXTENSION_READINESS, READINESS_ATTRIBUTE);
-            assertThat(wire.getCompositeType()).isEqualTo(GeneratedJmxOpenTypes.READINESS_SNAPSHOT);
+            assertThat(wire.getCompositeType()).isEqualTo(JmxOpenTypes.READINESS_SNAPSHOT);
         } finally {
             MBeanServerFactory.releaseMBeanServer(server);
         }
@@ -125,7 +125,7 @@ class PlatformExtensionReadinessJmxTest {
             AtomicInteger gets = new AtomicInteger();
             ExtensionReadinessWireSnapshot frozen =
                     ExtensionReadinessWireSnapshot.initializing(readiness, "epoch-1");
-            new DomainMBeanRegistrar(server, readiness).registerDiagnosticReadiness(() -> {
+            new PlatformTracingMBeanRegistrar(server, readiness).registerDiagnosticReadiness(() -> {
                 gets.incrementAndGet();
                 return frozen;
             });

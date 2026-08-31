@@ -297,7 +297,7 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
         assertThat(session.readiness().failureCode())
                 .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER);
         assertThat(session.readiness().has(PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED)).isFalse();
-        assertThat(bootstrap.currentSnapshot().wire().lifecycle()).isEqualTo("FAILED");
+        assertThat(bootstrap.currentWire().lifecycle()).isEqualTo("FAILED");
     }
 
     @Test
@@ -324,7 +324,7 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
         assertThat(failure).isInstanceOf(ConfigurationException.class);
         assertThat(bootstrap.session().readiness().lifecycle())
                 .isNotEqualTo(PlatformExtensionLifecycle.READY);
-        assertThat(bootstrap.currentSnapshot().wire().lifecycle()).isNotEqualTo("READY");
+        assertThat(bootstrap.currentWire().lifecycle()).isNotEqualTo("READY");
     }
 
     // ---------------------------------------------------------------------------------------------

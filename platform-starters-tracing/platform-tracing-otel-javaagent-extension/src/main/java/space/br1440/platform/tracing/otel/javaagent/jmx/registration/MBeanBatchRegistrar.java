@@ -2,9 +2,12 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import javax.management.DynamicMBean;
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanServer;
@@ -62,6 +65,8 @@ final class MBeanBatchRegistrar {
 
     private final MBeanServer server;
 
+    private final Queue<OwnedDynamicMBean> unreclaimed = new ConcurrentLinkedQueue<>();
+
     private static final String CLEANUP_FAILURE_MESSAGE = "MBean batch cleanup failed";
 
     MBeanBatchRegistrar(MBeanServer server) {
@@ -78,8 +83,6 @@ final class MBeanBatchRegistrar {
                     registration.mbean(), registration.name(), batchId, UUID.randomUUID()
             );
             try {
-                // registerMBean атомарно реализует FAIL_ON_EXISTING. Предварительная
-                // проверка isRegistered здесь намеренно запрещена из-за TOCTOU.
                 server.registerMBean(owned, registration.name());
                 journal.add(owned);
             } catch (InstanceAlreadyExistsException collision) {
@@ -130,7 +133,11 @@ final class MBeanBatchRegistrar {
                 String.valueOf(journal.size())
         );
 
-        unregisterOwnedInReverse(journal).forEach(primary::addSuppressed);
+        List<Throwable> cleanupFailures = unregisterOwnedInReverse(journal);
+        if (!cleanupFailures.isEmpty()) {
+            primary.addSuppressed(rollbackIncompleteFailure(cleanupFailures));
+        }
+
         throw primary;
     }
 
@@ -140,13 +147,17 @@ final class MBeanBatchRegistrar {
             return;
         }
 
+        throw rollbackIncompleteFailure(failures);
+    }
+
+    private static JmxRegistrationException rollbackIncompleteFailure(List<Throwable> cleanupFailures) {
         JmxRegistrationException aggregate = new JmxRegistrationException(
                 CLEANUP_FAILURE_MESSAGE,
-                failures.getFirst()
+                cleanupFailures.getFirst()
         );
-        failures.stream().skip(1).forEach(aggregate::addSuppressed);
+        cleanupFailures.stream().skip(1).forEach(aggregate::addSuppressed);
         aggregate.markRollbackIncomplete();
-        throw aggregate;
+        return aggregate;
     }
 
     private List<Throwable> unregisterOwnedInReverse(List<OwnedDynamicMBean> journal) {
@@ -160,10 +171,31 @@ final class MBeanBatchRegistrar {
         for (OwnedDynamicMBean registration : reverse) {
             try {
                 registration.unregisterOwned(server);
+                unreclaimed.remove(registration);
+            } catch (Exception | Error cleanupFailure) {
+                unreclaimed.add(registration);
+                failures.add(cleanupFailure);
+            }
+        }
+        return failures;
+    }
+
+    List<Throwable> reclaimUnreclaimed() {
+        if (unreclaimed.isEmpty()) {
+            return List.of();
+        }
+
+        List<Throwable> failures = new ArrayList<>();
+        for (Iterator<OwnedDynamicMBean> pending = unreclaimed.iterator(); pending.hasNext(); ) {
+            OwnedDynamicMBean registration = pending.next();
+            try {
+                registration.unregisterOwned(server);
+                pending.remove();
             } catch (Exception | Error cleanupFailure) {
                 failures.add(cleanupFailure);
             }
         }
+
         return failures;
     }
 }

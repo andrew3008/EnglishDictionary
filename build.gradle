@@ -12,6 +12,7 @@ def nonPublishedProjects = [
         ':platform-starters-tracing:platform-tracing-testkit',
         ':platform-starters-tracing:platform-tracing-otel-javaagent-extension',
         ':platform-starters-tracing:platform-tracing-jmx-contract',
+        ':platform-starters-tracing:platform-tracing-e2e-tests',
         ':platform-starters-error-handling',
         ':platform-starters-common',
 ] as Set

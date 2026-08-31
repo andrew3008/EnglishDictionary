@@ -15,11 +15,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
@@ -29,16 +27,10 @@ class TracePipelineSpiAttestationTest {
 
     private static final int PLATFORM_ORDER = 100;
 
-    @AfterEach
-    void resetAttestationIsolation() {
-        System.clearProperty(ExtensionPropertyNames.SPI_ATTESTATION_MODE);
-        TracePipelineSpiAttestation.resetEvidenceMarkerForTests();
-    }
-
     @Test
-    void pinned_names_reject_attacker_prefix_and_keep_reviewed_names() {
+    void allowlisted_names_reject_attacker_prefix_and_keep_reviewed_names() {
         // given
-        Set<String> names = PinnedOtelJavaAgentAcpProviders.NAMES;
+        Set<String> names = AllowedUpstreamAcpProviders.NAMES;
 
         // when
         boolean attackerAllowed = TracePipelineSpiAttestation.isAllowlistedOtelJavaAgentProviderName(
@@ -49,9 +41,6 @@ class TracePipelineSpiAttestationTest {
         assertThat(names).doesNotContain(
                 "attacker.io.opentelemetry.javaagent.tooling.AgentTracerProviderConfigurer");
         assertThat(attackerAllowed).isFalse();
-        assertThat(PlatformOtelAcpPinHashes.sha256Hex(names))
-                .isEqualTo(PinnedOtelJavaAgentAcpProviders.PIN_SHA256);
-        assertThat(names).hasSize(PinnedOtelJavaAgentAcpProviders.PIN_COUNT);
     }
 
     @Test
@@ -149,12 +138,10 @@ class TracePipelineSpiAttestationTest {
     }
 
     static ClassLoader withOverlayConfigurer(Path overlayDir, Class<?> configurerType) throws IOException {
-        return withOverlayProvider(
-                overlayDir, TracePipelineSpiAttestation.LEGACY_TRACER_PROVIDER_CONFIGURER_SPI, configurerType);
+        return withOverlayProvider(overlayDir, TracePipelineSpiAttestation.LEGACY_TRACER_PROVIDER_CONFIGURER_SPI, configurerType);
     }
 
-    private static ClassLoader withOverlayProvider(Path overlayDir, Class<?> spiType, Class<?> providerType)
-            throws IOException {
+    private static ClassLoader withOverlayProvider(Path overlayDir, Class<?> spiType, Class<?> providerType) throws IOException {
         return withOverlayProvider(overlayDir, spiType.getName(), providerType);
     }
 

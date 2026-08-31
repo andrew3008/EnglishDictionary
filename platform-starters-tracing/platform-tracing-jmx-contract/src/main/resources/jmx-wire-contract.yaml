@@ -1,0 +1,494 @@
+schema:
+  id: platform-tracing-jmx-wire-contract
+  canonicalization:
+    format: canonical-tree
+    unicodeNormalization: NFC
+    mapKeyOrdering: unicode-code-point
+    sequenceOrdering: declaration-order
+    lineEnding: LF
+  compatibility:
+    unknownFieldPolicy: reject
+    mismatchLifecycle: sticky-failed
+
+planes:
+  extension:
+    packageName: space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated
+  application:
+    packageName: space.br1440.platform.tracing.autoconfigure.jmx.contract.generated
+
+objectNames:
+  settingsMutation: "space.br1440.platform.tracing:type=Control,name=PlatformSettingsMutation,role=Mutation"
+  settingsStatus: "space.br1440.platform.tracing:type=Control,name=PlatformSettingsStatus,role=Observation"
+  extensionReadiness: "space.br1440.platform.tracing:type=Readiness,name=PlatformExtension"
+  samplingObservation: "space.br1440.platform.tracing:type=Sampling,name=PlatformSamplingControl"
+  scrubbingObservation: "space.br1440.platform.tracing:type=Scrubbing,name=PlatformScrubbingControl"
+  validationObservation: "space.br1440.platform.tracing:type=Validation,name=PlatformValidationControl"
+  exportObservation: "space.br1440.platform.tracing:type=Export,name=PlatformExportControl"
+  processorMetricsObservation: "space.br1440.platform.tracing:type=Metrics,name=PlatformProcessorMetricsControl"
+  diagnosticsObservation: "space.br1440.platform.tracing:type=Diagnostics,name=PlatformDiagnosticsControl"
+
+endpoints:
+  settingsMutation:
+    objectName: settingsMutation
+    role: mutation
+    attributes: []
+    operations:
+      - name: applySnapshot
+        impact: ACTION
+        returnJavaType: javax.management.openmbean.CompositeData
+        returnOpenType: applySnapshotResponse
+        parameters:
+          - name: request
+            javaType: javax.management.openmbean.CompositeData
+            openType: applySnapshotRequest
+            required: true
+            nullable: false
+  settingsStatus:
+    objectName: settingsStatus
+    role: observation
+    attributes:
+      - name: AcceptedPolicySnapshot
+        javaType: javax.management.openmbean.CompositeData
+        openType: acceptedPolicySnapshot
+        readable: true
+        writable: false
+        required: true
+        nullable: false
+    operations: []
+  extensionReadiness:
+    objectName: extensionReadiness
+    role: readiness-anchor
+    attributes:
+      - name: ReadinessSnapshot
+        javaType: javax.management.openmbean.CompositeData
+        openType: readinessSnapshot
+        readable: true
+        writable: false
+        required: true
+        nullable: false
+    operations: []
+  samplingObservation:
+    objectName: samplingObservation
+    role: observation
+    attributes:
+      - name: SamplingObservation
+        javaType: javax.management.openmbean.CompositeData
+        openType: samplingObservation
+        readable: true
+        writable: false
+        required: true
+        nullable: false
+    operations: []
+  scrubbingObservation:
+    objectName: scrubbingObservation
+    role: observation
+    attributes:
+      - name: ScrubbingObservation
+        javaType: javax.management.openmbean.CompositeData
+        openType: scrubbingObservation
+        readable: true
+        writable: false
+        required: true
+        nullable: false
+    operations: []
+  validationObservation:
+    objectName: validationObservation
+    role: observation
+    attributes:
+      - name: ValidationObservation
+        javaType: javax.management.openmbean.CompositeData
+        openType: validationObservation
+        readable: true
+        writable: false
+        required: true
+        nullable: false
+    operations: []
+  exportObservation:
+    objectName: exportObservation
+    role: observation
+    attributes:
+      - name: ExportObservation
+        javaType: javax.management.openmbean.CompositeData
+        openType: exportObservation
+        readable: true
+        writable: false
+        required: true
+        nullable: false
+    operations: []
+  processorMetricsObservation:
+    objectName: processorMetricsObservation
+    role: observation
+    attributes:
+      - name: ProcessorMetricsObservation
+        javaType: javax.management.openmbean.CompositeData
+        openType: processorMetricsObservation
+        readable: true
+        writable: false
+        required: true
+        nullable: false
+    operations: []
+  diagnosticsObservation:
+    objectName: diagnosticsObservation
+    role: observation
+    attributes:
+      - name: DiagnosticsObservation
+        javaType: javax.management.openmbean.CompositeData
+        openType: diagnosticsObservation
+        readable: true
+        writable: false
+        required: true
+        nullable: false
+    operations: []
+
+openTypes:
+  routeRatio:
+    kind: composite
+    typeName: space.br1440.platform.tracing.control.RouteRatio.v1
+    fields:
+      - { name: ratio, type: double, required: true, nullable: false }
+      - { name: routePrefix, type: string, required: true, nullable: false }
+  routeRatios:
+    kind: tabular
+    typeName: space.br1440.platform.tracing.control.RouteRatios.v1
+    rowType: routeRatio
+    indexFields: [routePrefix]
+  runtimePolicy:
+    kind: composite
+    typeName: space.br1440.platform.tracing.control.RuntimePolicy.v1
+    fields:
+      - { name: diagnosticsLogLevel, type: string, required: true, nullable: false }
+      - { name: exporterEnabled, type: boolean, required: true, nullable: false }
+      - { name: samplingEnabled, type: boolean, required: true, nullable: false }
+      - { name: samplingRatio, type: double, required: true, nullable: false }
+      - { name: samplingRouteRatios, type: "tabular:routeRatios", required: true, nullable: false }
+      - { name: traceControlHeadersEnabled, type: boolean, required: true, nullable: false }
+      - { name: validationEnabled, type: boolean, required: true, nullable: false }
+      - { name: validationStrict, type: boolean, required: true, nullable: false }
+  applySnapshotRequest:
+    kind: composite
+    typeName: space.br1440.platform.tracing.control.ApplySnapshotRequest.v1
+    fields:
+      - { name: applyTrigger, type: string, required: true, nullable: false }
+      - { name: attemptId, type: string, required: true, nullable: false }
+      - { name: candidateDigest, type: string, required: true, nullable: false }
+      - { name: expectedAcceptedSequence, type: long, required: true, nullable: false }
+      - { name: expectedRuntimeInstanceId, type: string, required: true, nullable: false }
+      - { name: runtimePolicy, type: "composite:runtimePolicy", required: true, nullable: false }
+      - { name: sourceAuthority, type: string, required: true, nullable: false }
+      - { name: sourceRevision, type: string, required: true, nullable: false }
+  applySnapshotResponse:
+    kind: composite
+    typeName: space.br1440.platform.tracing.control.ApplySnapshotResponse.v1
+    fields:
+      - { name: acceptedSequence, type: long, required: true, nullable: false }
+      - { name: attemptId, type: string, required: true, nullable: false }
+      - { name: messageCode, type: string, required: true, nullable: false }
+      - { name: outcome, type: string, required: true, nullable: false }
+      - { name: payloadDigest, type: string, required: true, nullable: false }
+      - { name: runtimeInstanceId, type: string, required: true, nullable: false }
+      - { name: violationCodes, type: stringArray, required: true, nullable: false }
+  acceptedPolicySnapshot:
+    kind: composite
+    typeName: AcceptedCompleteSnapshot/v1
+    fields:
+      - { name: acceptedSequence, type: long, required: true, nullable: false }
+      - { name: runtimeInstanceId, type: string, required: true, nullable: false }
+      - { name: acceptedPolicyDigest, type: string, required: true, nullable: false }
+      - { name: lastApplyOutcome, type: string, required: true, nullable: false }
+      - { name: lastAttemptId, type: string, required: true, nullable: false }
+      - { name: failureCode, type: string, required: true, nullable: false }
+      - { name: samplingEnabled, type: boolean, required: true, nullable: false }
+      - { name: samplingRatio, type: double, required: true, nullable: false }
+      - { name: samplingRouteRatios, type: "tabular:routeRatios", required: true, nullable: false }
+      - { name: validationEnabled, type: boolean, required: true, nullable: false }
+      - { name: validationStrict, type: boolean, required: true, nullable: false }
+      - { name: exporterEnabled, type: boolean, required: true, nullable: false }
+      - { name: traceControlHeadersEnabled, type: boolean, required: true, nullable: false }
+      - { name: diagnosticsLogLevel, type: string, required: true, nullable: false }
+  readinessSnapshot:
+    kind: composite
+    typeName: space.br1440.platform.tracing.ReadinessSnapshot.v1
+    fields:
+      - { name: contractId, type: string, required: true, nullable: false }
+      - { name: schemaDigest, type: string, required: true, nullable: false }
+      - { name: runtimeEpoch, type: string, required: true, nullable: false }
+      - { name: evidenceGeneration, type: long, required: true, nullable: false }
+      - { name: batchId, type: string, required: true, nullable: false }
+      - { name: lifecycle, type: string, required: true, nullable: false }
+      - { name: capabilities, type: stringArray, required: true, nullable: false }
+      - { name: missingRequired, type: stringArray, required: true, nullable: false }
+      - { name: failureCode, type: string, required: true, nullable: false }
+      - { name: agentDistributionSha256, type: string, required: true, nullable: false }
+      - { name: upstreamAgentVersion, type: string, required: true, nullable: false }
+      - { name: extensionVersion, type: string, required: true, nullable: false }
+      - { name: extensionDefiningLoader, type: string, required: true, nullable: false }
+      - { name: sdkDefiningLoader, type: string, required: true, nullable: false }
+  samplingRouteRatios:
+    kind: map
+    typeName: space.br1440.platform.tracing.SamplingRouteRatios
+    rowTypeName: SamplingRouteRatioEntry
+    keyField: key
+    keyType: string
+    valueField: value
+    valueType: double
+    indexFields: [key]
+  samplerDecisionCounts:
+    kind: map
+    typeName: space.br1440.platform.tracing.SamplerDecisionCounts
+    rowTypeName: SamplerDecisionCountEntry
+    keyField: key
+    keyType: string
+    valueField: value
+    valueType: long
+    indexFields: [key]
+  samplingObservation:
+    kind: composite
+    typeName: space.br1440.platform.tracing.SamplingObservation
+    fields:
+      - { name: captureSequence, type: long, required: true, nullable: false }
+      - { name: agentInstanceId, type: string, required: true, nullable: false }
+      - { name: captureStartedAt, type: long, required: true, nullable: false }
+      - { name: captureCompletedAt, type: long, required: true, nullable: false }
+      - { name: samplerEnabled, type: boolean, required: true, nullable: false }
+      - { name: samplingRatio, type: double, required: true, nullable: false }
+      - { name: routeRatios, type: "tabular:samplingRouteRatios", required: true, nullable: false }
+      - { name: samplerDecisionCounts, type: "tabular:samplerDecisionCounts", required: true, nullable: false }
+      - { name: samplingConfigLastUpdatedSource, type: string, required: true, nullable: false }
+      - { name: samplerOwnerPresent, type: boolean, required: true, nullable: false }
+      - { name: samplerOwnerGeneration, type: long, required: true, nullable: false }
+      - { name: samplerOwnerCapturedOffsetNanos, type: long, required: true, nullable: false }
+  scrubbingMetrics:
+    kind: map
+    typeName: space.br1440.platform.tracing.ScrubbingMetrics
+    rowTypeName: ScrubbingMetricsEntry
+    keyField: key
+    keyType: string
+    valueField: value
+    valueType: long
+    indexFields: [key]
+  scrubbingObservation:
+    kind: composite
+    typeName: space.br1440.platform.tracing.ScrubbingObservation
+    fields:
+      - { name: captureSequence, type: long, required: true, nullable: false }
+      - { name: agentInstanceId, type: string, required: true, nullable: false }
+      - { name: captureStartedAt, type: long, required: true, nullable: false }
+      - { name: captureCompletedAt, type: long, required: true, nullable: false }
+      - { name: ownerPresent, type: boolean, required: true, nullable: false }
+      - { name: ownerGeneration, type: long, required: true, nullable: false }
+      - { name: ownerCapturedOffsetNanos, type: long, required: true, nullable: false }
+      - { name: scrubbingEnabled, type: boolean, required: true, nullable: false }
+      - { name: policyVersion, type: long, required: true, nullable: false }
+      - { name: rulesLoaded, type: long, required: true, nullable: false }
+      - { name: circuitBreakersOpen, type: long, required: true, nullable: false }
+      - { name: scrubbingMetrics, type: "tabular:scrubbingMetrics", required: true, nullable: false }
+  validationObservation:
+    kind: composite
+    typeName: space.br1440.platform.tracing.ValidationObservation
+    fields:
+      - { name: captureSequence, type: long, required: true, nullable: false }
+      - { name: agentInstanceId, type: string, required: true, nullable: false }
+      - { name: captureStartedAt, type: long, required: true, nullable: false }
+      - { name: captureCompletedAt, type: long, required: true, nullable: false }
+      - { name: ownerPresent, type: boolean, required: true, nullable: false }
+      - { name: ownerGeneration, type: long, required: true, nullable: false }
+      - { name: ownerCapturedOffsetNanos, type: long, required: true, nullable: false }
+      - { name: validationEnabled, type: boolean, required: true, nullable: false }
+      - { name: validationStrict, type: boolean, required: true, nullable: false }
+      - { name: validationStrictRuntimeAllowed, type: boolean, required: true, nullable: false }
+      - { name: validationViolationsTotal, type: long, required: true, nullable: false }
+      - { name: validationConfigVersion, type: long, required: true, nullable: false }
+      - { name: validationConfigLastUpdatedSource, type: string, required: true, nullable: false }
+  safeExporterMetrics:
+    kind: map
+    typeName: space.br1440.platform.tracing.SafeExporterMetrics
+    rowTypeName: SafeExporterMetricsEntry
+    keyField: key
+    keyType: string
+    valueField: value
+    valueType: long
+    indexFields: [key]
+  exportProcessorValues:
+    kind: composite
+    typeName: space.br1440.platform.tracing.ExportProcessorValues
+    fields:
+      - { name: ownerPresent, type: boolean, required: true, nullable: false }
+      - { name: ownerGeneration, type: long, required: true, nullable: false }
+      - { name: ownerCapturedOffsetNanos, type: long, required: true, nullable: false }
+      - { name: queueCapacity, type: int, required: true, nullable: false }
+      - { name: queueSize, type: int, required: true, nullable: false }
+      - { name: droppedOverflowTotal, type: long, required: true, nullable: false }
+      - { name: droppedAfterShutdownTotal, type: long, required: true, nullable: false }
+      - { name: failuresTotal, type: long, required: true, nullable: false }
+      - { name: timeoutsTotal, type: long, required: true, nullable: false }
+      - { name: lifecycleState, type: string, required: true, nullable: false }
+      - { name: shutdownFailuresTotal, type: long, required: true, nullable: false }
+      - { name: droppedAfterFailureTotal, type: long, required: true, nullable: false }
+      - { name: discardedQueuedTotal, type: long, required: true, nullable: false }
+  safeExporterValues:
+    kind: composite
+    typeName: space.br1440.platform.tracing.SafeExporterValues
+    fields:
+      - { name: ownerPresent, type: boolean, required: true, nullable: false }
+      - { name: ownerGeneration, type: long, required: true, nullable: false }
+      - { name: ownerCapturedOffsetNanos, type: long, required: true, nullable: false }
+      - { name: exportEnabled, type: boolean, required: true, nullable: false }
+      - { name: lastExportDurationNanos, type: long, required: true, nullable: false }
+      - { name: safeExporterMetrics, type: "tabular:safeExporterMetrics", required: true, nullable: false }
+  exportObservation:
+    kind: composite
+    typeName: space.br1440.platform.tracing.ExportObservation
+    fields:
+      - { name: captureSequence, type: long, required: true, nullable: false }
+      - { name: agentInstanceId, type: string, required: true, nullable: false }
+      - { name: captureStartedAt, type: long, required: true, nullable: false }
+      - { name: captureCompletedAt, type: long, required: true, nullable: false }
+      - { name: processor, type: "composite:exportProcessorValues", required: true, nullable: false }
+      - { name: exporter, type: "composite:safeExporterValues", required: true, nullable: false }
+  processorErrorsByName:
+    kind: map
+    typeName: space.br1440.platform.tracing.ProcessorErrorsByName
+    rowTypeName: ProcessorErrorsByNameEntry
+    keyField: key
+    keyType: string
+    valueField: value
+    valueType: long
+    indexFields: [key]
+  processorWatchdogValues:
+    kind: composite
+    typeName: space.br1440.platform.tracing.ProcessorWatchdogValues
+    fields:
+      - { name: ownerPresent, type: boolean, required: true, nullable: false }
+      - { name: ownerGeneration, type: long, required: true, nullable: false }
+      - { name: ownerCapturedOffsetNanos, type: long, required: true, nullable: false }
+      - { name: forcedSpanCloses, type: long, required: true, nullable: false }
+      - { name: forcedTraceCloses, type: long, required: true, nullable: false }
+      - { name: activeSpanCount, type: int, required: true, nullable: false }
+      - { name: activeTraceCount, type: int, required: true, nullable: false }
+      - { name: trackedTraceCount, type: int, required: true, nullable: false }
+      - { name: trackedTraceCapacity, type: int, required: true, nullable: false }
+      - { name: trackingEvictedTotal, type: long, required: true, nullable: false }
+      - { name: trackedSpanCapacity, type: int, required: true, nullable: false }
+      - { name: trackedSpanPerTraceCapacity, type: int, required: true, nullable: false }
+      - { name: spansRejectedPerTraceTotal, type: long, required: true, nullable: false }
+      - { name: spansRejectedGlobalTotal, type: long, required: true, nullable: false }
+      - { name: spanLedgerInvariantViolationTotal, type: long, required: true, nullable: false }
+  processorCompositeValues:
+    kind: composite
+    typeName: space.br1440.platform.tracing.ProcessorCompositeValues
+    fields:
+      - { name: ownerPresent, type: boolean, required: true, nullable: false }
+      - { name: ownerGeneration, type: long, required: true, nullable: false }
+      - { name: ownerCapturedOffsetNanos, type: long, required: true, nullable: false }
+      - { name: processorErrorsTotal, type: long, required: true, nullable: false }
+      - { name: processorErrorsByName, type: "tabular:processorErrorsByName", required: true, nullable: false }
+  processorMetricsValues:
+    kind: composite
+    typeName: space.br1440.platform.tracing.ProcessorMetricsValues
+    fields:
+      - { name: ownerPresent, type: boolean, required: true, nullable: false }
+      - { name: ownerGeneration, type: long, required: true, nullable: false }
+      - { name: ownerCapturedOffsetNanos, type: long, required: true, nullable: false }
+      - { name: droppedAttributesTotal, type: long, required: true, nullable: false }
+      - { name: droppedEventsTotal, type: long, required: true, nullable: false }
+      - { name: droppedLinksTotal, type: long, required: true, nullable: false }
+  processorMetricsObservation:
+    kind: composite
+    typeName: space.br1440.platform.tracing.ProcessorMetricsObservation
+    fields:
+      - { name: captureSequence, type: long, required: true, nullable: false }
+      - { name: agentInstanceId, type: string, required: true, nullable: false }
+      - { name: captureStartedAt, type: long, required: true, nullable: false }
+      - { name: captureCompletedAt, type: long, required: true, nullable: false }
+      - { name: watchdog, type: "composite:processorWatchdogValues", required: true, nullable: false }
+      - { name: composite, type: "composite:processorCompositeValues", required: true, nullable: false }
+      - { name: metrics, type: "composite:processorMetricsValues", required: true, nullable: false }
+  safeWrapperMetrics:
+    kind: map
+    typeName: space.br1440.platform.tracing.SafeWrapperMetrics
+    rowTypeName: SafeWrapperMetricsEntry
+    keyField: key
+    keyType: string
+    valueField: value
+    valueType: long
+    indexFields: [key]
+  diagnosticsObservation:
+    kind: composite
+    typeName: space.br1440.platform.tracing.DiagnosticsObservation
+    fields:
+      - { name: captureSequence, type: long, required: true, nullable: false }
+      - { name: agentInstanceId, type: string, required: true, nullable: false }
+      - { name: captureStartedAt, type: long, required: true, nullable: false }
+      - { name: captureCompletedAt, type: long, required: true, nullable: false }
+      - { name: invalidConfigCount, type: long, required: true, nullable: false }
+      - { name: safeWrapperMetrics, type: "tabular:safeWrapperMetrics", required: true, nullable: false }
+      - { name: platformLogLevel, type: string, required: true, nullable: false }
+      - { name: propagationEnabled, type: boolean, required: true, nullable: false }
+
+capabilities:
+  required:
+    - CONFIGURATION_LOADED
+    - PLATFORM_SAMPLER_INSTALLED
+    - REQUIRED_SPAN_PROCESSORS_INSTALLED
+    - SANITIZER_INSTALLED
+    - PROPAGATION_HOOKS_INSTALLED
+    - SAFE_EXPORTER_INSTALLED
+    - EXPORT_PATH_PROTECTED
+
+readinessEvidence:
+  distributionFields:
+    - agentDistributionSha256
+    - upstreamAgentVersion
+    - extensionVersion
+  topologyFields:
+    - extensionDefiningLoader
+    - sdkDefiningLoader
+
+wireGraph:
+  maxDepth: 16
+  maxElements: 4096
+  maxLogicalBytes: 32768
+  maxStringUtf8Bytes: 4096
+  maxRouteEntries: 100
+  maxRoutePrefixUtf8Bytes: 255
+  maxCapabilityEntries: 64
+  allowedNeutralTypes:
+    - java.lang.Boolean
+    - java.lang.Byte
+    - java.lang.Character
+    - java.lang.Double
+    - java.lang.Float
+    - java.lang.Integer
+    - java.lang.Long
+    - java.lang.Short
+    - java.lang.String
+    - javax.management.ObjectName
+    - javax.management.openmbean.CompositeData
+    - javax.management.openmbean.TabularData
+  allowedArrayComponents:
+    - boolean
+    - byte
+    - char
+    - double
+    - float
+    - int
+    - java.lang.String
+    - long
+    - short
+
+policyDigest:
+  algorithmId: SHA-256
+  algorithmVersion: 1
+  encodingVersion: 0
+  domainSeparator: platform-tracing-policy-v1
+  routeOrdering: unsigned-utf8-lexicographic
+  validLogLevels: ['OFF', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE']
+  fields:
+    - { id: 1, name: samplingEnabled, type: boolean }
+    - { id: 2, name: samplingRatio, type: double }
+    - { id: 3, name: samplingRouteRatios, type: sortedUtf8DoubleMap }
+    - { id: 4, name: validationEnabled, type: boolean }
+    - { id: 5, name: validationStrict, type: boolean }
+    - { id: 6, name: exporterEnabled, type: boolean }
+    - { id: 7, name: traceControlHeadersEnabled, type: boolean }
+    - { id: 8, name: diagnosticsLogLevel, type: asciiToken }

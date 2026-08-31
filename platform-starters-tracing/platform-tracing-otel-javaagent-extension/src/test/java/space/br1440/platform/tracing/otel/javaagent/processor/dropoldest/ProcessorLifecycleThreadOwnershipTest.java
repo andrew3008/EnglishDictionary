@@ -6,6 +6,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -21,6 +24,7 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 class ProcessorLifecycleThreadOwnershipTest {
 
     private static final Duration AWAIT_TIMEOUT = Duration.ofSeconds(2);
+    private static final String WORKER_THREAD_NAME = "platform-tracing-drop-oldest-exporter";
 
     @Test
     void lifecycleDeclaresNoProcessWideExecutor() {
@@ -44,11 +48,13 @@ class ProcessorLifecycleThreadOwnershipTest {
     void firstShutdownOwnsOneDaemonTerminatorWhichEndsWithCleanup() throws InterruptedException {
         // given
         BlockingShutdownExporter exporter = new BlockingShutdownExporter();
+        Set<Thread> preexistingWorkers = threadsNamed(WORKER_THREAD_NAME);
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)
                 .scheduleDelay(Duration.ofMinutes(1))
                 .shutdownTimeout(Duration.ofSeconds(5))
                 .build();
-        Thread worker = threadNamed("platform-tracing-drop-oldest-exporter");
+
+        Thread worker = awaitOwnWorker(preexistingWorkers);
         assertThat(worker).isNotNull();
         assertThat(worker.isDaemon()).isTrue();
         assertThat(worker.isAlive()).isTrue();
@@ -85,13 +91,30 @@ class ProcessorLifecycleThreadOwnershipTest {
         assertThat(exporter.shutdownCalls()).isEqualTo(1);
     }
 
-    private static Thread threadNamed(String name) {
+    private static Thread awaitOwnWorker(Set<Thread> preexisting) throws InterruptedException {
+        long deadline = System.nanoTime() + AWAIT_TIMEOUT.toNanos();
+        do {
+            for (Thread candidate : threadsNamed(WORKER_THREAD_NAME)) {
+                if (!preexisting.contains(candidate)) {
+                    return candidate;
+                }
+            }
+
+            TimeUnit.MILLISECONDS.sleep(10L);
+        } while (System.nanoTime() < deadline);
+
+        return null;
+    }
+
+    private static Set<Thread> threadsNamed(String name) {
+        Set<Thread> matching = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Thread thread : Thread.getAllStackTraces().keySet()) {
             if (name.equals(thread.getName())) {
-                return thread;
+                matching.add(thread);
             }
         }
-        return null;
+
+        return matching;
     }
 
     private static final class BlockingShutdownExporter implements SpanExporter {
@@ -116,6 +139,7 @@ class ProcessorLifecycleThreadOwnershipTest {
             shutdownCalls.incrementAndGet();
             terminatorThread.compareAndSet(null, Thread.currentThread());
             shutdownEntered.countDown();
+
             try {
                 if (!shutdownRelease.await(AWAIT_TIMEOUT.toNanos(), TimeUnit.NANOSECONDS)) {
                     return CompletableResultCode.ofFailure();
@@ -124,6 +148,7 @@ class ProcessorLifecycleThreadOwnershipTest {
                 Thread.currentThread().interrupt();
                 return CompletableResultCode.ofFailure();
             }
+
             return CompletableResultCode.ofSuccess();
         }
 

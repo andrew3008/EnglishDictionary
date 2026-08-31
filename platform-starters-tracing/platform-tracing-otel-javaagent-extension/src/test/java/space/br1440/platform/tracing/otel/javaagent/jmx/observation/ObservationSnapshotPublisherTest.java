@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.observation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -17,7 +18,7 @@ import javax.management.openmbean.CompositeData;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
-import space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationControl;
+import space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationObservationSource;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 
 class ObservationSnapshotPublisherTest {
@@ -42,10 +43,10 @@ class ObservationSnapshotPublisherTest {
             releaseRefresh.await();
             return absent;
         });
-        ValidationControl control = new ValidationControl(slot, UUID.randomUUID());
-        CompositeData stable = control.getValidationObservation();
+        ValidationObservationSource source = new ValidationObservationSource(slot, UUID.randomUUID());
+        CompositeData stable = source.getValidationObservation();
         ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(
-                List.of(control),
+                List.of(source::publishObservationSnapshot),
                 TEST_REFRESH_INTERVAL);
 
         try {
@@ -56,7 +57,7 @@ class ObservationSnapshotPublisherTest {
             // then
             assertTimeoutPreemptively(
                     Duration.ofMillis(100L),
-                    () -> assertThat(control.getValidationObservation()).isSameAs(stable));
+                    () -> assertThat(source.getValidationObservation()).isSameAs(stable));
         } finally {
             releaseRefresh.countDown();
             publisher.close();
@@ -70,7 +71,7 @@ class ObservationSnapshotPublisherTest {
         CountDownLatch publicationEntered = new CountDownLatch(1);
         CountDownLatch publicationInterrupted = new CountDownLatch(1);
         AtomicReference<Thread> publisherThread = new AtomicReference<>();
-        ObservationSnapshotControl blockingControl = () -> {
+        Runnable blockingSource = () -> {
             publisherThread.set(Thread.currentThread());
             publicationEntered.countDown();
             try {
@@ -81,7 +82,7 @@ class ObservationSnapshotPublisherTest {
             }
         };
         ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(
-                List.of(blockingControl),
+                List.of(blockingSource),
                 TEST_REFRESH_INTERVAL);
 
         // when
@@ -104,7 +105,7 @@ class ObservationSnapshotPublisherTest {
         CountDownLatch releaseFirstPublication = new CountDownLatch(1);
         CountDownLatch secondPublicationEntered = new CountDownLatch(1);
         AtomicInteger publications = new AtomicInteger();
-        ObservationSnapshotControl blockingControl = () -> {
+        Runnable blockingSource = () -> {
             if (publications.incrementAndGet() == 1) {
                 firstPublicationEntered.countDown();
                 try {
@@ -117,16 +118,16 @@ class ObservationSnapshotPublisherTest {
             secondPublicationEntered.countDown();
         };
         ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(
-                List.of(blockingControl),
+                List.of(blockingSource),
                 Duration.ofHours(1L));
 
         try {
             // when
             publisher.start();
-            publisher.requestPublish();
+            publisher.requestSnapshotPublication();
             assertThat(firstPublicationEntered.await(2L, TimeUnit.SECONDS)).isTrue();
-            publisher.requestPublish();
-            publisher.requestPublish();
+            publisher.requestSnapshotPublication();
+            publisher.requestSnapshotPublication();
             releaseFirstPublication.countDown();
 
             // then
@@ -134,6 +135,76 @@ class ObservationSnapshotPublisherTest {
             assertThat(publications).hasValue(1);
         } finally {
             releaseFirstPublication.countDown();
+            publisher.close();
+        }
+    }
+
+    @Test
+    @Timeout(value = 5L, unit = TimeUnit.SECONDS)
+    void publicationRequestBeforeStartIsIgnored() {
+        // given
+        AtomicInteger publications = new AtomicInteger();
+        ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(
+                List.of(publications::incrementAndGet),
+                Duration.ofHours(1L));
+
+        try {
+            // when
+            publisher.requestSnapshotPublication();
+
+            // then
+            assertThat(publications).hasValue(0);
+        } finally {
+            publisher.close();
+        }
+    }
+
+    @Test
+    @Timeout(value = 5L, unit = TimeUnit.SECONDS)
+    void closedPublisherRejectsStartAndIgnoresPublication() {
+        // given
+        AtomicInteger publications = new AtomicInteger();
+        ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(
+                List.of(publications::incrementAndGet),
+                Duration.ofHours(1L));
+        publisher.start();
+        publisher.close();
+
+        // when
+        publisher.close();
+        publisher.requestSnapshotPublication();
+        publisher.publishSnapshot();
+
+        // then
+        assertThatThrownBy(publisher::start)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Observation snapshot publisher is closed");
+        assertThat(publications).hasValue(0);
+    }
+
+    @Test
+    @Timeout(value = 5L, unit = TimeUnit.SECONDS)
+    void repeatedStartKeepsTheSinglePublisherThread() throws Exception {
+        // given
+        CountDownLatch published = new CountDownLatch(2);
+        AtomicReference<Thread> publisherThread = new AtomicReference<>();
+        ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(
+                List.of(() -> {
+                    publisherThread.compareAndSet(null, Thread.currentThread());
+                    published.countDown();
+                }),
+                TEST_REFRESH_INTERVAL);
+
+        try {
+            // when
+            publisher.start();
+            publisher.start();
+
+            // then
+            assertThat(published.await(2L, TimeUnit.SECONDS)).isTrue();
+            assertThat(publisherThread.get().getName())
+                    .isEqualTo("platform-tracing-jmx-observation-publisher");
+        } finally {
             publisher.close();
         }
     }

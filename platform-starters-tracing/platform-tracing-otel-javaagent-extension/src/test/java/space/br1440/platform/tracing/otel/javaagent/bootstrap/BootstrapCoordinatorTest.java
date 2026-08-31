@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxAuthorizationTestFixtures.mutationRegistrationPermit;
 
 import java.lang.reflect.Field;
 import java.time.Duration;
@@ -15,7 +14,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-
 import jakarta.annotation.Nonnull;
 
 import org.junit.jupiter.api.AfterEach;
@@ -26,22 +24,22 @@ import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxDenialReason;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxDeploymentDeclaration;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxDeploymentTestFixtures;
-import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxExposurePolicy;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
+import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
-/**
- * Проверяет state machine {@link BootstrapCoordinator} и стабильные failure codes readiness MBean
- * без зависимости от реальной сборки {@code AutoConfiguredOpenTelemetrySdk}.
- */
 @ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 class BootstrapCoordinatorTest {
 
@@ -89,11 +87,11 @@ class BootstrapCoordinatorTest {
                 .isEqualTo("DUPLICATE_ACTIVATION");
 
         // then
-        assertThat(coordinator.currentSnapshot().lifecycle()).isEqualTo("ACTIVE");
-        assertThat(coordinator.currentSnapshot().wire().lifecycle()).isEqualTo("READY");
+        assertThat(coordinator.state()).isEqualTo(BootstrapState.ACTIVE);
+        assertThat(coordinator.currentWire().lifecycle()).isEqualTo("READY");
         hooks.runHook();
-        assertThat(coordinator.currentSnapshot().wire().lifecycle()).isEqualTo("FAILED");
-        assertThat(coordinator.currentSnapshot().wire().failureCode()).isEqualTo("JMX_TRANSPORT_STALE");
+        assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
+        assertThat(coordinator.currentWire().failureCode()).isEqualTo("JMX_TRANSPORT_STALE");
     }
 
     @Test
@@ -118,13 +116,13 @@ class BootstrapCoordinatorTest {
                     .hasMessage("simulated runtime evidence linkage failure");
 
             // then
-            assertThat(coordinator.currentSnapshot().lifecycle()).isEqualTo("FAILED");
-            assertThat(coordinator.currentSnapshot().wire().lifecycle()).isEqualTo("FAILED");
-            assertThat(coordinator.currentSnapshot().wire().failureCode())
-                    .isEqualTo(ControlledAgentRuntimeAttestor.EXTENSION_LINKAGE_ERROR);
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+            assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
+            assertThat(coordinator.currentWire().failureCode())
+                    .isEqualTo(AttestationFailureCode.EXTENSION_LINKAGE_ERROR.name());
             assertThat(session.readiness().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
             assertThat(session.readiness().failureCode())
-                    .isEqualTo(ControlledAgentRuntimeAttestor.EXTENSION_LINKAGE_ERROR);
+                    .isEqualTo(AttestationFailureCode.EXTENSION_LINKAGE_ERROR.name());
         } finally {
             coordinator.closeDiagnosticHandle();
         }
@@ -161,8 +159,8 @@ class BootstrapCoordinatorTest {
                     });
 
             // then
-            assertThat(coordinator.currentSnapshot().lifecycle()).isEqualTo("FAILED");
-            assertThat(coordinator.currentSnapshot().wire().failureCode())
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+            assertThat(coordinator.currentWire().failureCode())
                     .isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
             assertThat(session.readiness().failureCode())
                     .isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
@@ -183,31 +181,29 @@ class BootstrapCoordinatorTest {
                         .startupVerifiedRemoteProhibitedPolicy()
         );
         this.ownedCoordinator = coordinator;
+
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
         satisfyReadinessBarrier(session);
         coordinator.activate();
-        IllegalStateException diagnosticFailure =
-                new IllegalStateException("simulated diagnostic readiness cleanup failure");
-        AutoCloseable originalDiagnosticHandle = replaceDiagnosticHandle(
+
+        IllegalStateException diagnosticFailure = new IllegalStateException("simulated diagnostic readiness cleanup failure");
+
+        try (AutoCloseable ignored = replaceDiagnosticHandle(
                 coordinator,
                 () -> {
                     throw diagnosticFailure;
                 }
-        );
-
-        try {
+        )) {
             // when
             hooks.runHook();
 
             // then
-            assertThat(coordinator.currentSnapshot().lifecycle()).isEqualTo("FAILED");
-            assertThat(coordinator.currentSnapshot().wire().failureCode())
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+            assertThat(coordinator.currentWire().failureCode())
                     .isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
-            assertThat(coordinator.currentSnapshot().wire().evidenceGeneration()).isEqualTo(3L);
+            assertThat(coordinator.currentWire().evidenceGeneration()).isEqualTo(3L);
             assertThat(session.readiness().failureCode())
                     .isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
-        } finally {
-            originalDiagnosticHandle.close();
         }
     }
 
@@ -239,13 +235,9 @@ class BootstrapCoordinatorTest {
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
         this.ownedCoordinator = coordinator;
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
-        // Пре-отравление runtime-generation: сама activate() внутри вызовет registerRuntimeControls()
-        // повторно и получит естественный IllegalStateException — без mock'ов и без изменения
-        // production-кода ради тестируемости.
-        DomainMBeanRegistrar.RuntimeRegistration preexistingRuntimeRegistration =
-                session.jmxRegistrar().registerRuntimeControls(
-                session.policy(),
-                mutationRegistrationPermit());
+
+        PlatformTracingMBeanRegistrar.RuntimeRegistration preexistingRuntimeRegistration =
+                session.jmxRegistrar().registerRuntimeControls(session.policy());
 
         try {
             // when
@@ -281,15 +273,15 @@ class BootstrapCoordinatorTest {
             assertThatThrownBy(coordinator::activate)
                     .isInstanceOf(BootstrapException.class)
                     .extracting(failure -> ((BootstrapException) failure).failure().code())
-                    .isEqualTo(RemoteJmxExposurePolicy.FAILURE_EVIDENCE_UNKNOWN);
+                    .isEqualTo(RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name());
 
             // then
-            assertThat(coordinator.currentSnapshot().wire().lifecycle()).isEqualTo("FAILED");
-            assertThat(coordinator.currentSnapshot().wire().batchId()).isEmpty();
-            assertThat(coordinator.currentSnapshot().wire().failureCode())
-                    .isEqualTo(RemoteJmxExposurePolicy.FAILURE_EVIDENCE_UNKNOWN);
+            assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
+            assertThat(coordinator.currentWire().batchId()).isEmpty();
+            assertThat(coordinator.currentWire().failureCode())
+                    .isEqualTo(RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name());
             assertThat(session.readiness().failureCode())
-                    .isEqualTo(RemoteJmxExposurePolicy.FAILURE_EVIDENCE_UNKNOWN);
+                    .isEqualTo(RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name());
         } finally {
             coordinator.close();
         }
@@ -306,12 +298,8 @@ class BootstrapCoordinatorTest {
                 .isEqualTo("PLATFORM_ACP_NOT_EXECUTED");
     }
 
-    /**
-     * Не допускает повторного разделения {@code snapshot}/{@code wire} на независимо публикуемые
-     * значения и наблюдения разорванной пары lifecycle-состояний.
-     */
     @Test
-    void currentSnapshot_never_visible_to_reader_in_inconsistent_combination_during_activate() throws InterruptedException {
+    void state_and_wire_never_visible_to_reader_in_inconsistent_combination_during_activate() throws InterruptedException {
         // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
         this.ownedCoordinator = coordinator;
@@ -325,8 +313,7 @@ class BootstrapCoordinatorTest {
         Thread poller = new Thread(() -> {
             pollerStarted.countDown();
             while (pollerRunning.get()) {
-                BootstrapSnapshot snapshot = coordinator.currentSnapshot();
-                observedPairs.add(snapshot.lifecycle() + "/" + snapshot.wire().lifecycle());
+                observedPairs.add(coordinator.state().name() + "/" + coordinator.currentWire().lifecycle());
             }
         }, "snapshot-poller");
         poller.start();
@@ -337,10 +324,15 @@ class BootstrapCoordinatorTest {
             coordinator.activate();
 
             // then
-            Set<String> validPairs = Set.of("NEW/INITIALIZING", "ACTIVATING/INITIALIZING", "ACTIVE/READY");
+            Set<String> validPairs = Set.of(
+                    "PREPARED/INITIALIZING",
+                    "ACTIVATING/INITIALIZING",
+                    "ACTIVATING/READY",
+                    "ACTIVE/READY"
+            );
             assertThat(observedPairs).isSubsetOf(validPairs);
-            assertThat(coordinator.currentSnapshot().lifecycle()).isEqualTo("ACTIVE");
-            assertThat(coordinator.currentSnapshot().wire().lifecycle()).isEqualTo("READY");
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.ACTIVE);
+            assertThat(coordinator.currentWire().lifecycle()).isEqualTo("READY");
         } finally {
             pollerRunning.set(false);
             poller.join(5_000);
@@ -362,15 +354,68 @@ class BootstrapCoordinatorTest {
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
         satisfyReadinessBarrier(session);
         coordinator.activate();
-        assertThat(coordinator.currentSnapshot().wire().lifecycle()).isEqualTo("READY");
+        assertThat(coordinator.currentWire().lifecycle()).isEqualTo("READY");
 
         // when
         hooks.runHook();
 
         // then
-        assertThat(coordinator.currentSnapshot().wire().lifecycle()).isEqualTo("FAILED");
-        assertThat(coordinator.currentSnapshot().wire().failureCode()).isEqualTo("JMX_TRANSPORT_STALE");
-        assertThat(coordinator.currentSnapshot().wire().evidenceGeneration()).isEqualTo(2L);
+        assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
+        assertThat(coordinator.currentWire().failureCode()).isEqualTo("JMX_TRANSPORT_STALE");
+        assertThat(coordinator.currentWire().evidenceGeneration()).isEqualTo(2L);
+    }
+
+    @Test
+    void successfulActivationEmitsExactlyOneInstalledMarker() {
+        // given
+        AgentLogCapture logs = new AgentLogCapture();
+        logs.install();
+        BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
+        this.ownedCoordinator = coordinator;
+        AutoconfigureSession session = coordinator.prepare(config(Map.of()));
+        satisfyReadinessBarrier(session);
+
+        try {
+            // when
+            coordinator.activate();
+            assertThatThrownBy(coordinator::activate).isInstanceOf(BootstrapException.class);
+
+            // then
+            List<AgentLogEvent> installed = logs.events()
+                    .stream()
+                    .filter(event -> AgentEventCodes.BOOT_INSTALLED.equals(event.eventCode()))
+                    .toList();
+            assertThat(installed).hasSize(1);
+            assertThat(installed.get(0).fields())
+                    .containsEntry("lifecycle", "READY")
+                    .containsEntry("profile", PlatformExtensionReadiness.PROFILE)
+                    .containsEntry("protocolVersion", "1")
+                    .containsEntry("extensionVersion", session.readiness().extensionVersion());
+        } finally {
+            logs.restore();
+        }
+    }
+
+    @Test
+    void failedActivationDoesNotEmitInstalledMarker() {
+        // given
+        AgentLogCapture logs = new AgentLogCapture();
+        logs.install();
+        BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
+        this.ownedCoordinator = coordinator;
+        AutoconfigureSession session = coordinator.prepare(config(Map.of()));
+        markAllCapabilitiesExcept(session, PlatformExtensionCapability.SANITIZER_INSTALLED);
+
+        try {
+            // when
+            assertThatThrownBy(coordinator::activate).isInstanceOf(BootstrapException.class);
+
+            // then
+            assertThat(logs.events())
+                    .noneMatch(event -> AgentEventCodes.BOOT_INSTALLED.equals(event.eventCode()));
+        } finally {
+            logs.restore();
+        }
     }
 
     @Test
@@ -390,8 +435,8 @@ class BootstrapCoordinatorTest {
 
         assertThat(session.readiness().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
         assertThat(session.readiness().has(PlatformExtensionCapability.SANITIZER_INSTALLED)).isFalse();
-        assertThat(coordinator.currentSnapshot().wire().lifecycle()).isEqualTo("FAILED");
-        assertThat(coordinator.currentSnapshot().lifecycle()).isNotEqualTo("ACTIVE");
+        assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
+        assertThat(coordinator.state()).isNotEqualTo(BootstrapState.ACTIVE);
     }
 
     @Test
@@ -409,7 +454,7 @@ class BootstrapCoordinatorTest {
                 .extracting(failure -> ((BootstrapException) failure).failure().code())
                 .isEqualTo("ACTIVATION_FAILED");
 
-        assertThat(coordinator.currentSnapshot().wire().lifecycle()).isEqualTo("FAILED");
+        assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
         assertThat(session.readiness().has(PlatformExtensionCapability.SANITIZER_INSTALLED)).isFalse();
     }
 
@@ -428,7 +473,7 @@ class BootstrapCoordinatorTest {
                 .extracting(failure -> ((BootstrapException) failure).failure().code())
                 .isEqualTo("ACTIVATION_FAILED");
 
-        assertThat(coordinator.currentSnapshot().wire().lifecycle()).isEqualTo("FAILED");
+        assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
     }
 
     @Test
@@ -452,17 +497,16 @@ class BootstrapCoordinatorTest {
                 .extracting(failure -> ((BootstrapException) failure).failure().code())
                 .isEqualTo("ACTIVATION_FAILED");
 
-        assertThat(coordinator.currentSnapshot().wire().lifecycle()).isEqualTo("FAILED");
+        assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
         assertThat(session.readiness().has(PlatformExtensionCapability.SANITIZER_INSTALLED)).isTrue();
         assertThat(session.readiness().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
     }
 
     @Test
     void empty_built_in_rule_set_preserves_SANITIZER_RULE_SET_EMPTY() {
-        // На test classpath AutoService регистрирует ExampleMerchantAccountRule;
-        // пустой SPI-источник нужен, чтобы prepare() увидел пустой effective rule set.
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator(
-                ScrubbingRuntimeTestFixtures.factory(List::of));
+                ScrubbingRuntimeTestFixtures.factory(List::of)
+        );
 
         assertThatThrownBy(() -> coordinator.prepare(emptyBuiltInRulesConfig()))
                 .isInstanceOf(BootstrapException.class)
@@ -547,17 +591,14 @@ class BootstrapCoordinatorTest {
         assertThat(session.readiness().failureCode())
                 .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER);
         assertThat(session.readiness().has(PlatformExtensionCapability.SANITIZER_INSTALLED)).isFalse();
-        assertThat(coordinator.currentSnapshot().wire().lifecycle()).isEqualTo("FAILED");
+        assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
     }
 
-    /**
-     * Имитирует customizer chain реальной сборки {@code AutoConfiguredOpenTelemetrySdk}, чтобы
-     * выполнить installation barrier без зависимости от SDK build.
-     */
     private static void satisfyReadinessBarrier(AutoconfigureSession session) {
         for (PlatformExtensionCapability capability : PlatformExtensionCapability.values()) {
             session.readiness().markInstalled(capability);
         }
+
         session.scrubbingRuntime().acknowledgeProcessorInstalled();
         session.scrubbingRuntime().acknowledgeExportModeResolved();
         session.scrubbingRuntime().acknowledgeExporterWrapped();
@@ -582,9 +623,8 @@ class BootstrapCoordinatorTest {
         try {
             Field field = BootstrapCoordinator.class.getDeclaredField("diagnosticHandle");
             field.setAccessible(true);
-            AutoCloseable original = (AutoCloseable) field.get(coordinator);
-            field.set(coordinator, replacement);
-            return original;
+            DiagnosticReadinessHandle handle = (DiagnosticReadinessHandle) field.get(coordinator);
+            return handle.replace(replacement);
         } catch (ReflectiveOperationException failure) {
             throw new AssertionError("Cannot replace diagnostic readiness handle for test", failure);
         }
@@ -666,6 +706,7 @@ class BootstrapCoordinatorTest {
             if (!action.compareAndSet(null, registeredAction)) {
                 throw new IllegalStateException("Shutdown hook is already registered");
             }
+
             return () -> {
             };
         }
@@ -675,6 +716,7 @@ class BootstrapCoordinatorTest {
             if (registeredAction == null) {
                 throw new IllegalStateException("Shutdown hook is not registered");
             }
+
             registeredAction.run();
         }
     }

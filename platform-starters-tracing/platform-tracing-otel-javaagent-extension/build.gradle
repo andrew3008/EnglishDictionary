@@ -10,21 +10,23 @@ platformJavaLibrary {
 }
 
 def jmxContractProject = project(':platform-starters-tracing:platform-tracing-jmx-contract')
-def generatedJmxContractSources = jmxContractProject.layout.buildDirectory.dir(
+def generateJmxWireContract = ':platform-starters-tracing:platform-tracing-jmx-contract:generateJmxWireContract'
+def generatedJmxContractSources = files(jmxContractProject.layout.buildDirectory.dir(
         'generated/jmx-wire-contract/extension/java'
-)
+)).builtBy(generateJmxWireContract)
+def generatedJmxContractResources = files(jmxContractProject.layout.buildDirectory.dir(
+        'generated/jmx-wire-contract/extension/resources'
+)).builtBy(generateJmxWireContract)
 
 sourceSets.main.java.srcDir(generatedJmxContractSources)
 
 tasks.named('compileJava') {
-    dependsOn ':platform-starters-tracing:platform-tracing-jmx-contract:generateJmxWireContract'
+    dependsOn generateJmxWireContract
 }
 
 tasks.named('processResources', ProcessResources) {
-    dependsOn ':platform-starters-tracing:platform-tracing-jmx-contract:generateJmxWireContract'
-    from(jmxContractProject.layout.buildDirectory.dir(
-            'generated/jmx-wire-contract/extension/resources'
-    ))
+    dependsOn generateJmxWireContract
+    from(generatedJmxContractResources)
 }
 
 def mockitoAgentConfiguration = configurations.create('mockitoAgent') {

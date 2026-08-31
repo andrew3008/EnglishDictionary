@@ -13,6 +13,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -20,10 +21,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPrivateControlPlane;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPlatformJmxPlane;
 
 class TracingControlActuatorServletIntegrationTest {
 
+    private static final String EXTENSION_VERSION = "1.2.3";
     private static final String[] EXCLUDED_UNRELATED_AUTOCONFIGURATIONS = {
             "space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.semantic.SemanticLayerAutoConfiguration",
@@ -42,11 +47,11 @@ class TracingControlActuatorServletIntegrationTest {
 
     @Test
     void actuatorExposesAllWriteOperationsOnlyOnManagementPort() throws Exception {
-        try (FakeAgentPrivateControlPlane agent =
-                     FakeAgentPrivateControlPlane.compliant("runtime-instance-servlet", 5L);
+        try (FakeAgentPlatformJmxPlane agent =
+                     FakeAgentPlatformJmxPlane.compliant("runtime-instance-servlet", 5L);
              ConfigurableApplicationContext context = boot()) {
             assertThat(context.getBeansOfType(TracingControlEndpoint.class)).hasSize(1);
-            assertThat(context.getBean(TracingSettingsControlAutoConfiguration.ActuatorAgentReadinessProbe.class)
+            assertThat(context.getBean(ActuatorAgentReadinessProbe.class)
                     .isRunning()).isTrue();
 
             int managementPort = managementPort(context);
@@ -88,8 +93,7 @@ class TracingControlActuatorServletIntegrationTest {
 
     @Test
     void incompatibleAgentBlocksActuatorControlStartup() throws Exception {
-        try (FakeAgentPrivateControlPlane agent =
-                     FakeAgentPrivateControlPlane.missingReadAcceptedComplete("runtime-instance-incompatible")) {
+        try (FakeAgentPlatformJmxPlane ignored = FakeAgentPlatformJmxPlane.missingAcceptedPolicySnapshot("runtime-instance-incompatible")) {
             assertThatThrownBy(TracingControlActuatorServletIntegrationTest::boot)
                     .isInstanceOf(Exception.class);
         }
@@ -127,5 +131,17 @@ class TracingControlActuatorServletIntegrationTest {
     @SpringBootConfiguration
     @EnableAutoConfiguration
     static class EmptyApp {
+
+        @Bean
+        AgentReadinessCoherenceGuard agentReadinessCoherenceGuard() {
+            return new AgentReadinessCoherenceGuard();
+        }
+
+        @Bean
+        TracingDeploymentDiagnostics platformTracingDeploymentDiagnostics(
+                AgentReadinessCoherenceGuard coherenceGuard) {
+            return new AgentStartupVerifier(coherenceGuard, EXTENSION_VERSION)
+                    .verify(true, true, false, true);
+        }
     }
 }

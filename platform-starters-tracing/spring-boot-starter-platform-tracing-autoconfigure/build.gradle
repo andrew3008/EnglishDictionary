@@ -11,21 +11,31 @@ platformJavaLibrary {
 }
 
 def jmxContractProject = project(':platform-starters-tracing:platform-tracing-jmx-contract')
-def generatedJmxContractSources = jmxContractProject.layout.buildDirectory.dir(
+def generateJmxWireContract = ':platform-starters-tracing:platform-tracing-jmx-contract:generateJmxWireContract'
+def generatedJmxContractSources = files(jmxContractProject.layout.buildDirectory.dir(
         'generated/jmx-wire-contract/application/java'
-)
+)).builtBy(generateJmxWireContract)
+def generatedJmxContractResources = files(jmxContractProject.layout.buildDirectory.dir(
+        'generated/jmx-wire-contract/application/resources'
+)).builtBy(generateJmxWireContract)
 
 sourceSets.main.java.srcDir(generatedJmxContractSources)
 
 tasks.named('compileJava') {
-    dependsOn ':platform-starters-tracing:platform-tracing-jmx-contract:generateJmxWireContract'
+    dependsOn generateJmxWireContract
 }
 
 tasks.named('processResources', ProcessResources) {
-    dependsOn ':platform-starters-tracing:platform-tracing-jmx-contract:generateJmxWireContract'
-    from(jmxContractProject.layout.buildDirectory.dir(
-            'generated/jmx-wire-contract/application/resources'
-    ))
+    dependsOn generateJmxWireContract
+    from(generatedJmxContractResources)
+}
+
+tasks.named('sourcesJar', Jar) {
+    dependsOn generateJmxWireContract
+}
+
+tasks.named('javadoc', Javadoc) {
+    dependsOn generateJmxWireContract
 }
 
 dependencies {

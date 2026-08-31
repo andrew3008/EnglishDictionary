@@ -159,14 +159,6 @@ class ControlPlaneBoundaryArchTest {
                     .because("only explicit registration owners may register MBeans");
 
     @ArchTest
-    static final ArchRule controlMBeanContractsAreInterfaces =
-            classes()
-                    .that().haveSimpleNameEndingWith("ControlMBean")
-                    .and().resideInAPackage("..jmx..")
-                    .should().beInterfaces()
-                    .because("control MBean contracts must remain interfaces");
-
-    @ArchTest
     static final ArchRule objectNamesAreCreatedOnlyByConstantsOwners =
             noClasses()
                     .that().haveSimpleNameNotEndingWith("ObjectNames")

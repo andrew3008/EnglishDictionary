@@ -1,7 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.factory;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxAuthorizationTestFixtures.mutationRegistrationPermit;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -20,8 +19,8 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
@@ -30,7 +29,7 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 class PlatformSpanProcessorFactoryWiringTest {
 
     private MBeanServer server;
-    private DomainMBeanRegistrar registrar;
+    private PlatformTracingMBeanRegistrar registrar;
     private TracingSettingsSource samplerHolder;
 
     @BeforeEach
@@ -41,8 +40,7 @@ class PlatformSpanProcessorFactoryWiringTest {
         samplerHolder = TracingSettingsSource.isolatedSampling(
                 true, Collections.emptyMap(), 0.1d);
 
-        registrar = new DomainMBeanRegistrar(server);
-        registrar.setAcceptedPolicy(samplerHolder);
+        registrar = new PlatformTracingMBeanRegistrar(server);
     }
 
     @AfterEach
@@ -59,7 +57,7 @@ class PlatformSpanProcessorFactoryWiringTest {
         // when
         factory.registerSpanProcessors(
                 SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig(), samplerHolder);
-        registrar.registerRuntimeControls(samplerHolder, mutationRegistrationPermit());
+        registrar.registerRuntimeControls(samplerHolder);
 
         // then
         assertThat(server.isRegistered(DomainObjectNames.SETTINGS_STATUS)).isTrue();
@@ -74,7 +72,7 @@ class PlatformSpanProcessorFactoryWiringTest {
                 SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig(), samplerHolder);
         // Регистрация MBean отложена до bootstrap activation; factory только связывает evidence.
         // В тесте разрешённый activation-шаг выполняется явно.
-        registrar.registerRuntimeControls(samplerHolder, mutationRegistrationPermit());
+        registrar.registerRuntimeControls(samplerHolder);
 
         for (javax.management.ObjectName name : List.of(
                 DomainObjectNames.SAMPLING,
@@ -97,7 +95,7 @@ class PlatformSpanProcessorFactoryWiringTest {
                 registrar, ScrubbingRuntimeTestFixtures.disabled());
         factory.registerSpanProcessors(
                 SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig(), samplerHolder);
-        registrar.registerRuntimeControls(samplerHolder, mutationRegistrationPermit());
+        registrar.registerRuntimeControls(samplerHolder);
 
         for (javax.management.ObjectName name : List.of(
                 DomainObjectNames.SAMPLING,
@@ -121,12 +119,12 @@ class PlatformSpanProcessorFactoryWiringTest {
                 registrar, ScrubbingRuntimeTestFixtures.disabled());
         factory.registerSpanProcessors(
                 SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig(), samplerHolder);
-        registrar.registerRuntimeControls(samplerHolder, mutationRegistrationPermit());
+        registrar.registerRuntimeControls(samplerHolder);
 
         CompositeData observation = (CompositeData) server.getAttribute(
                 DomainObjectNames.SAMPLING, "SamplingObservation");
         double ratio = (double) observation.get(
-                GeneratedJmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO);
+                JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO);
         assertThat(ratio).isEqualTo(0.1d);
     }
 

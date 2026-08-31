@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 
 class EffectiveTracingPolicyTest {
 
@@ -78,7 +78,7 @@ class EffectiveTracingPolicyTest {
     @Test
     void enforcesRouteCollectionAndKeyBounds() {
         Map<String, Double> tooMany = new LinkedHashMap<>();
-        for (int index = 0; index <= GeneratedJmxWireContract.MAX_ROUTE_ENTRIES; index++) {
+        for (int index = 0; index <= JmxWireContract.MAX_ROUTE_ENTRIES; index++) {
             tooMany.put("/route/" + index, 0.5d);
         }
 

@@ -2,11 +2,14 @@ package space.br1440.platform.tracing.otel.javaagent.control.jmx.protocol;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.function.Consumer;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.CompositeType;
@@ -18,45 +21,22 @@ import javax.management.openmbean.TabularType;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.AcceptedCompleteSnapshotDecoder;
+import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.AcceptedPolicySnapshotDecoder;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.PlatformSettingsStatusMBean;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsStatusSnapshot;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 
-/**
- * Real cross-module Agent-to-Spring wire codec parity test (P4 audit checklist item #2,
- * remaining-blocker closure item #1).
- * <p>
- * Deliberately declared in the Agent-internal package name {@code control.jmx.protocol} (a
- * package-local test bridge, option 2 of the preferred list) so this test-scope-only class
- * can call the real, package-private Agent encoder
- * {@code PrivateControlOpenTypeCodec.encodeAcceptedComplete(TracingSettingsRevision)} directly —
- * no Agent production API is widened, no wire schema is hand-duplicated for the positive
- * path. This relies on the existing
- * {@code testImplementation project(':platform-starters-tracing:platform-tracing-otel-javaagent-extension')}
- * dependency declared in this module's build.gradle (same technique as
- * {@link CandidateDigestAgentParityTest}).
- * <p>
- * Flow under test for every positive scenario:
- * <pre>
- *   TracingSettingsRevision (Agent accepted view)
- *   -&gt; Agent PrivateControlOpenTypeCodec.encodeAcceptedComplete()   [REAL Agent encoder]
- *   -&gt; javax.management.openmbean.CompositeData                    [wire]
- *   -&gt; Spring AcceptedCompleteSnapshotDecoder.decode()              [REAL Spring decoder]
- *   -&gt; semantic field-by-field equality
- * </pre>
- * Negative scenarios construct malformed {@code CompositeData} directly (there is no "Agent
- * encoder" for a contract violation — the point is to prove the Spring decoder independently
- * rejects payloads it must not trust, since it sits on a cross-process, cross-classloader
- * boundary and cannot assume the sender was a well-behaved Agent).
- */
 class AgentToSpringWireCodecParityTest {
 
-    private static final PrivateControlOpenTypeCodec AGENT_CODEC = new PrivateControlOpenTypeCodec();
-
-    // ── positive scenarios ──────────────────────────────────────────────────────
+    // ── Позитивные сценарии ─────────────────────────────────────────────────────
 
     @Test
     void defaultPolicyRoundTrips() {
@@ -131,9 +111,6 @@ class AgentToSpringWireCodecParityTest {
 
     @Test
     void routeMappingIsDeterministic() {
-        // NavigableMap (TreeMap) natural ordering on the Agent side must produce the same
-        // logical map regardless of insertion order — proven by comparing two envelopes
-        // built with reversed insertion order.
         Map<String, Double> insertedAscending = new LinkedHashMap<>();
         insertedAscending.put("/a", 0.1);
         insertedAscending.put("/m", 0.5);
@@ -152,7 +129,7 @@ class AgentToSpringWireCodecParityTest {
                 .isEqualTo(second.snapshot().samplingRouteRatios());
     }
 
-    // ── one-hot boolean coverage through the REAL Agent encoder ───────────────────
+    // ── Покрытие одиночных булевых значений через реальный кодировщик агента ──────
 
     @Test
     void samplingEnabledOneHotRoundTripsThroughRealAgentEncoder() {
@@ -194,7 +171,7 @@ class AgentToSpringWireCodecParityTest {
         assertThat(snapshot.traceControlHeadersEnabled()).isEqualTo(traceControlHeadersEnabled);
     }
 
-    // ── negative scenarios: Spring decoder must independently reject malformed wire payloads ──
+    // ── Негативные сценарии: Spring-декодер отклоняет некорректную нагрузку ────────
 
     @Test
     void rejectsWrongRootCompositeTypeName() {
@@ -208,7 +185,7 @@ class AgentToSpringWireCodecParityTest {
         String[] keys = {"acceptedSequence", "runtimeInstanceId", "samplingEnabled",
                 "samplingRatio", "samplingRouteRatios", "validationEnabled",
                 "validationStrict", "exporterEnabled", "traceControlHeadersEnabled"};
-        // diagnosticsLogLevel omitted entirely
+        // Поле diagnosticsLogLevel полностью отсутствует.
         OpenType<?>[] types = {SimpleType.LONG, SimpleType.STRING, SimpleType.BOOLEAN,
                 SimpleType.DOUBLE, routeTableType(), SimpleType.BOOLEAN,
                 SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.BOOLEAN};
@@ -228,7 +205,7 @@ class AgentToSpringWireCodecParityTest {
 
     @Test
     void rejectsWrongScalarOpenType() {
-        // samplingRatio declared as STRING instead of DOUBLE
+        // Поле samplingRatio объявлено как STRING вместо DOUBLE.
         String[] keys = validCompleteKeys();
         OpenType<?>[] types = validCompleteOpenTypes().clone();
         types[3] = SimpleType.STRING;
@@ -267,72 +244,96 @@ class AgentToSpringWireCodecParityTest {
         OpenType<?>[] types = validCompleteOpenTypes();
         CompositeType type = composite("AcceptedCompleteSnapshot/v1", keys, types);
         Object[] values = validCompleteValues(routeTable(Map.of()));
-        values[1] = null; // runtimeInstanceId
+        values[1] = null; // идентификатор процесса
         assertRejected(compositeData(type, keys, values));
     }
 
     @Test
     void rejectsNegativeAcceptedSequence() {
-        assertRejected(validCompositeDataWith(v -> v[0] = -1L));
+        assertRejected(validCompositeDataWith(fields -> fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_SEQUENCE,
+                -1L)));
     }
 
     @Test
     void rejectsBlankRuntimeInstanceId() {
-        assertRejected(validCompositeDataWith(v -> v[1] = "   "));
+        assertRejected(validCompositeDataWith(fields -> fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_RUNTIME_INSTANCE_ID,
+                "   ")));
     }
 
     @Test
     void rejectsNaNSamplingRatio() {
-        assertRejected(validCompositeDataWith(v -> v[3] = Double.NaN));
+        assertRejected(validCompositeDataWith(fields -> fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO,
+                Double.NaN)));
     }
 
     @Test
     void rejectsInfiniteSamplingRatio() {
-        assertRejected(validCompositeDataWith(v -> v[3] = Double.POSITIVE_INFINITY));
+        assertRejected(validCompositeDataWith(fields -> fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO,
+                Double.POSITIVE_INFINITY)));
     }
 
     @Test
     void rejectsSamplingRatioAboveOne() {
-        assertRejected(validCompositeDataWith(v -> v[3] = 1.1));
+        assertRejected(validCompositeDataWith(fields -> fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO,
+                1.1)));
     }
 
     @Test
     void rejectsSamplingRatioBelowZero() {
-        assertRejected(validCompositeDataWith(v -> v[3] = -0.1));
+        assertRejected(validCompositeDataWith(fields -> fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO,
+                -0.1)));
     }
 
     @Test
     void rejectsRouteRatioOutsideBounds() {
-        assertRejected(validCompositeDataWith(v -> v[4] = routeTable(Map.of("/bad", 1.5))));
+        assertRejected(validCompositeDataWith(fields -> fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS,
+                contractRouteTable(Map.of("/bad", 1.5)))));
     }
 
     @Test
     void rejectsRouteCountAboveMaximum() {
         Map<String, Double> tooMany = new TreeMap<>();
         for (int i = 0; i < 101; i++) tooMany.put("/route" + i, 0.1);
-        assertRejected(validCompositeDataWith(v -> v[4] = routeTable(tooMany)));
+        assertRejected(validCompositeDataWith(fields -> fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS,
+                contractRouteTable(tooMany))));
     }
 
     @Test
     void rejectsRouteKeyAboveExactConfiguredLimit() {
         String tooLong = "a".repeat(256);
-        assertRejected(validCompositeDataWith(v -> v[4] = routeTable(Map.of(tooLong, 0.5))));
+        assertRejected(validCompositeDataWith(fields -> fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS,
+                contractRouteTable(Map.of(tooLong, 0.5)))));
     }
 
     @Test
     void acceptsRouteKeyAtExactConfiguredLimit() {
         String exact = "a".repeat(255);
         AcceptedSettingsWithSequence decoded =
-                AcceptedCompleteSnapshotDecoder.decode(validCompositeDataWith(v -> v[4] = routeTable(Map.of(exact, 0.5))));
+                AcceptedPolicySnapshotDecoder.decode(
+                        validCompositeDataWith(fields -> fields.put(
+                                JmxWireContract
+                                        .FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS,
+                                contractRouteTable(Map.of(exact, 0.5)))));
         assertThat(decoded.snapshot().samplingRouteRatios()).containsEntry(exact, 0.5);
     }
 
     @Test
     void rejectsInvalidDiagnosticsLogLevel() {
-        assertRejected(validCompositeDataWith(v -> v[9] = "VERBOSE"));
+        assertRejected(validCompositeDataWith(fields -> fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_DIAGNOSTICS_LOG_LEVEL,
+                "VERBOSE")));
     }
 
-    // ── helpers ──────────────────────────────────────────────────────────────────
+    // ── Вспомогательные методы ──────────────────────────────────────────────────
 
     private static void assertRoundTrip(TracingSettingsRevision envelope) {
         AcceptedSettingsWithSequence decoded = roundTrip(envelope);
@@ -351,8 +352,18 @@ class AgentToSpringWireCodecParityTest {
     }
 
     private static AcceptedSettingsWithSequence roundTrip(TracingSettingsRevision envelope) {
-        CompositeData wire = AGENT_CODEC.encodeAcceptedComplete(envelope); // REAL Agent encoder
-        return AcceptedCompleteSnapshotDecoder.decode(wire);             // REAL Spring decoder
+        TracingSettingsUpdater updater = mock(TracingSettingsUpdater.class);
+        when(updater.captureStatus()).thenReturn(new SettingsStatusSnapshot(
+                envelope,
+                new LastSettingsUpdate().snapshot()));
+        PlatformSettingsStatusMBean status = new PlatformSettingsStatusMBean(updater);
+        try {
+            CompositeData wire = (CompositeData) status.getAttribute(
+                    JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT);
+            return AcceptedPolicySnapshotDecoder.decode(wire);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Cannot read encoded accepted-policy snapshot", exception);
+        }
     }
 
     private static TracingSettingsRevision envelope(long sequence, String runtimeInstanceId, TracingSettings policy) {
@@ -364,15 +375,56 @@ class AgentToSpringWireCodecParityTest {
     }
 
     private static void assertRejected(CompositeData malformed) {
-        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(malformed))
+        assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(malformed))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
-    private static CompositeData validCompositeDataWith(java.util.function.Consumer<Object[]> mutator) {
-        Object[] values = validCompleteValues(routeTable(Map.of()));
-        mutator.accept(values);
-        return compositeData(composite("AcceptedCompleteSnapshot/v1", validCompleteKeys(), validCompleteOpenTypes()),
-                validCompleteKeys(), values);
+    private static CompositeData validCompositeDataWith(Consumer<Map<String, Object>> override) {
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_SEQUENCE,
+                0L);
+        fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_RUNTIME_INSTANCE_ID,
+                uuid());
+        fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_POLICY_DIGEST,
+                "a".repeat(64));
+        fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_APPLY_OUTCOME,
+                "");
+        fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_ATTEMPT_ID,
+                "");
+        fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_FAILURE_CODE,
+                "");
+        fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ENABLED,
+                true);
+        fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO,
+                0.5);
+        fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS,
+                contractRouteTable(Map.of()));
+        fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_ENABLED,
+                true);
+        fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_STRICT,
+                false);
+        fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_EXPORTER_ENABLED,
+                true);
+        fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_TRACE_CONTROL_HEADERS_ENABLED,
+                true);
+        fields.put(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_DIAGNOSTICS_LOG_LEVEL,
+                "INFO");
+        override.accept(fields);
+        return compositeData(JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT, fields);
     }
 
     private static String[] validCompleteKeys() {
@@ -428,6 +480,25 @@ class AgentToSpringWireCodecParityTest {
         }
     }
 
+    private static TabularData contractRouteTable(Map<String, Double> ratios) {
+        try {
+            TabularDataSupport table = new TabularDataSupport(JmxOpenTypes.ROUTE_RATIOS);
+            for (Map.Entry<String, Double> entry : ratios.entrySet()) {
+                table.put(new CompositeDataSupport(
+                        JmxOpenTypes.ROUTE_RATIO,
+                        new String[]{
+                                JmxWireContract.FIELD_ROUTE_RATIO_RATIO,
+                                JmxWireContract.FIELD_ROUTE_RATIO_ROUTE_PREFIX
+                        },
+                        new Object[]{entry.getValue(), entry.getKey()}));
+            }
+
+            return table;
+        } catch (Exception exception) {
+            throw new IllegalStateException("Cannot create contract route ratio table", exception);
+        }
+    }
+
     private static CompositeType composite(String name, String[] keys, OpenType<?>[] types) {
         try {
             return new CompositeType(name, name, keys, keys, types);
@@ -441,6 +512,14 @@ class AgentToSpringWireCodecParityTest {
             return new CompositeDataSupport(type, keys, values);
         } catch (Exception e) {
             throw new IllegalStateException(e);
+        }
+    }
+
+    private static CompositeData compositeData(CompositeType type, Map<String, Object> fields) {
+        try {
+            return new CompositeDataSupport(type, fields);
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
         }
     }
 

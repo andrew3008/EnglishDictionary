@@ -1,16 +1,15 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport;
 
-import lombok.experimental.UtilityClass;
-
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxObservationWireContract;
-
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.TabularData;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.TabularData;
+
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+
+import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public final class JmxObservationCodec {
@@ -23,27 +22,11 @@ public final class JmxObservationCodec {
         return composite;
     }
 
-    public static void requireSchemaVersion(CompositeData composite) {
-        int version = getInt(composite, JmxObservationWireContract.ITEM_SCHEMA_VERSION);
-        if (version != JmxObservationWireContract.SCHEMA_VERSION) {
-            throw new JmxContractViolationException(JmxDiagnosticKind.SCHEMA_VERSION_MISMATCH);
-        }
-    }
-
     public static void requireCompositeTypeName(CompositeData composite, String expectedTypeName) {
         String actualTypeName = composite.getCompositeType().getTypeName();
         if (!expectedTypeName.equals(actualTypeName)) {
             throw new JmxContractViolationException(JmxDiagnosticKind.COMPOSITE_TYPE_NAME_MISMATCH);
         }
-    }
-
-    public static <T> JmxOwnerState<T> ownerState(CompositeData composite, Supplier<T> valuesWhenPresent) {
-        return ownerState(
-                composite,
-                JmxObservationWireContract.ITEM_OWNER_PRESENT,
-                JmxObservationWireContract.ITEM_OWNER_GENERATION,
-                valuesWhenPresent
-        );
     }
 
     public static <T> JmxOwnerState<T> ownerState(CompositeData composite, String presentItem, String generationItem, Supplier<T> valuesWhenPresent) {
@@ -104,7 +87,12 @@ public final class JmxObservationCodec {
         return require(composite, item, TabularData.class).size();
     }
 
-    public static Map<String, Long> getStringLongMap(CompositeData composite, String item) {
+    public static Map<String, Long> getStringLongMap(
+            CompositeData composite,
+            String item,
+            String keyItem,
+            String valueItem
+    ) {
         TabularData table = require(composite, item, TabularData.class);
         if (table.isEmpty()) {
             return Map.of();
@@ -113,8 +101,8 @@ public final class JmxObservationCodec {
         Map<String, Long> result = new LinkedHashMap<>(table.size());
         for (Object rowObject : table.values()) {
             CompositeData row = (CompositeData) rowObject;
-            Object keyRaw = row.get("key");
-            Object valueRaw = row.get("value");
+            Object keyRaw = row.get(keyItem);
+            Object valueRaw = row.get(valueItem);
 
             if (!(keyRaw instanceof String key)) {
                 throw new JmxContractViolationException(JmxDiagnosticKind.MAP_KEY_TYPE_MISMATCH);

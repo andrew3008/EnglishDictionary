@@ -1,20 +1,22 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
+import java.util.Objects;
+
 final class RuntimeEvidenceAttestationException extends IllegalStateException {
 
-    private final String code;
+    private final AttestationFailureCode code;
 
-    RuntimeEvidenceAttestationException(String code, String message) {
+    RuntimeEvidenceAttestationException(AttestationFailureCode code, String message) {
         super(message);
-        this.code = code;
+        this.code = Objects.requireNonNull(code, "code");
     }
 
-    RuntimeEvidenceAttestationException(String code, String message, Throwable cause) {
+    RuntimeEvidenceAttestationException(AttestationFailureCode code, String message, Throwable cause) {
         super(message, cause);
-        this.code = code;
+        this.code = Objects.requireNonNull(code, "code");
     }
 
-    String code() {
+    AttestationFailureCode code() {
         return code;
     }
 }

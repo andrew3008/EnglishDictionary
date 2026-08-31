@@ -11,31 +11,37 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
-final class JmxWireLiteralSourceGate {
+import lombok.experimental.UtilityClass;
 
-    private JmxWireLiteralSourceGate() {
-    }
+@UtilityClass
+final class JmxWireLiteralSourceGate {
 
     static void verify(ContractDocument contract, List<Path> sourceRoots) throws IOException {
         Set<String> forbiddenLiterals = criticalWireLiterals(contract);
+
         List<String> violations = new ArrayList<>();
         for (Path sourceRoot : sourceRoots) {
             if (!Files.isDirectory(sourceRoot)) {
                 throw new IllegalStateException("JMX source-gate directory is absent: " + sourceRoot);
             }
+
             try (Stream<Path> paths = Files.walk(sourceRoot)) {
-                for (Path path : paths.filter(Files::isRegularFile)
+                List<Path> filteredPaths = paths.filter(Files::isRegularFile)
                         .filter(candidate -> candidate.getFileName().toString().endsWith(".java"))
                         .sorted()
-                        .toList()) {
+                        .toList();
+
+                for (Path path : filteredPaths) {
                     inspect(path, forbiddenLiterals, violations);
                 }
             }
         }
+
         if (!violations.isEmpty()) {
             throw new IllegalStateException(
                     "Manual JMX wire literals are forbidden outside generated sources: "
-                            + String.join(", ", violations));
+                            + String.join(", ", violations)
+            );
         }
     }
 
@@ -46,50 +52,41 @@ final class JmxWireLiteralSourceGate {
         }
 
         for (Map.Entry<String, Object> endpointEntry : contract.section("endpoints").entrySet()) {
-            Map<String, Object> endpoint = ContractSupport.map(
-                    endpointEntry.getValue(), "endpoints." + endpointEntry.getKey());
-            for (Object rawAttribute : ContractSupport.list(
-                    endpoint.get("attributes"), "endpoint.attributes")) {
-                result.add((String) ContractSupport.map(rawAttribute, "endpoint.attribute").get("name"));
+            String path = "endpoints." + endpointEntry.getKey();
+            Map<String, Object> endpoint = ContractValues.map(endpointEntry.getValue(), path);
+            for (Object rawAttribute : ContractValues.list(endpoint.get("attributes"), "endpoint.attributes")) {
+                result.add((String) ContractValues.map(rawAttribute, "endpoint.attribute").get("name"));
             }
-            for (Object rawOperation : ContractSupport.list(
-                    endpoint.get("operations"), "endpoint.operations")) {
-                Map<String, Object> operation = ContractSupport.map(rawOperation, "endpoint.operation");
+
+            for (Object rawOperation : ContractValues.list(endpoint.get("operations"), "endpoint.operations")) {
+                Map<String, Object> operation = ContractValues.map(rawOperation, "endpoint.operation");
                 result.add((String) operation.get("name"));
-                for (Object rawParameter : ContractSupport.list(
-                        operation.get("parameters"), "endpoint.operation.parameters")) {
-                    result.add((String) ContractSupport.map(
-                            rawParameter, "endpoint.operation.parameter").get("name"));
+                for (Object rawParameter : ContractValues.list(operation.get("parameters"), "endpoint.operation.parameters")) {
+                    result.add((String) ContractValues.map(rawParameter, "endpoint.operation.parameter").get("name"));
                 }
             }
         }
 
         for (Map.Entry<String, Object> typeEntry : contract.section("openTypes").entrySet()) {
-            Map<String, Object> descriptor = ContractSupport.map(
-                    typeEntry.getValue(), "openTypes." + typeEntry.getKey());
+            Map<String, Object> descriptor = ContractValues.map(typeEntry.getValue(), "openTypes." + typeEntry.getKey());
             result.add((String) descriptor.get("typeName"));
+
             if (descriptor.containsKey("rowTypeName")) {
                 result.add((String) descriptor.get("rowTypeName"));
             }
+
             if ("map".equals(descriptor.get("kind"))) {
                 result.add((String) descriptor.get("keyField"));
                 result.add((String) descriptor.get("valueField"));
             }
         }
+
         return Set.copyOf(result);
     }
 
-    /**
-     * Сравнивает извлечённые строковые литералы целиком, а не подстрокой. Подстроковый поиск
-     * срабатывал на комментариях и на литералах, лишь содержащих запрещённое значение,
-     * поэтому короткие имена полей вида {@code key} давали ложные нарушения.
-     */
-    private static void inspect(
-            Path path,
-            Set<String> forbiddenLiterals,
-            List<String> violations
-    ) throws IOException {
+    private static void inspect(Path path, Set<String> forbiddenLiterals, List<String> violations) throws IOException {
         List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
+
         boolean insideBlockComment = false;
         for (int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
             LineScan scan = scanLine(lines.get(lineIndex), insideBlockComment);
@@ -102,13 +99,10 @@ final class JmxWireLiteralSourceGate {
         }
     }
 
-    /**
-     * Однопроходный разбор строки Java-исходника: пропускает комментарии и собирает
-     * содержимое строковых литералов с раскрытием escape-последовательностей.
-     */
     private static LineScan scanLine(String line, boolean startsInsideBlockComment) {
         List<String> literals = new ArrayList<>();
         boolean insideBlockComment = startsInsideBlockComment;
+
         int index = 0;
         while (index < line.length()) {
             if (insideBlockComment) {
@@ -116,16 +110,19 @@ final class JmxWireLiteralSourceGate {
                 if (end < 0) {
                     return new LineScan(literals, true);
                 }
+
                 insideBlockComment = false;
-                index = end + 2;
+                index = (end + 2);
                 continue;
             }
+
             char character = line.charAt(index);
             if (character == '/' && index + 1 < line.length()) {
                 char next = line.charAt(index + 1);
                 if (next == '/') {
                     break;
                 }
+
                 if (next == '*') {
                     insideBlockComment = true;
                     index += 2;
@@ -136,19 +133,22 @@ final class JmxWireLiteralSourceGate {
                 index = skipCharacterLiteral(line, index);
                 continue;
             }
+
             if (character == '"') {
                 StringBuilder value = new StringBuilder();
                 index = readStringLiteral(line, index, value);
                 literals.add(value.toString());
                 continue;
             }
+
             index++;
         }
+
         return new LineScan(literals, insideBlockComment);
     }
 
     private static int readStringLiteral(String line, int openingQuote, StringBuilder value) {
-        int index = openingQuote + 1;
+        int index = (openingQuote + 1);
         while (index < line.length()) {
             char character = line.charAt(index);
             if (character == '\\' && index + 1 < line.length()) {
@@ -156,28 +156,34 @@ final class JmxWireLiteralSourceGate {
                 index += 2;
                 continue;
             }
+
             if (character == '"') {
-                return index + 1;
+                return (index + 1);
             }
+
             value.append(character);
             index++;
         }
+
         return index;
     }
 
     private static int skipCharacterLiteral(String line, int openingQuote) {
-        int index = openingQuote + 1;
+        int index = (openingQuote + 1);
         while (index < line.length()) {
             char character = line.charAt(index);
             if (character == '\\') {
                 index += 2;
                 continue;
             }
+
             if (character == '\'') {
                 return index + 1;
             }
+
             index++;
         }
+
         return index;
     }
 

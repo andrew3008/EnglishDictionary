@@ -12,7 +12,7 @@ import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.factory.PlatformSamplerFactory;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.runtime.propagation.control.DefaultInboundTraceControlExtractor;
 import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
 
@@ -60,7 +60,7 @@ class PlatformSamplerProviderTest {
     @Test
     @DisplayName("inline-customizer идемпотентен: existing уже платформенный → нет повторной обёртки")
     void inline_customizer_idempotent_when_existing_is_platform() {
-        DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
         PlatformSamplerFactory factory = new PlatformSamplerFactory(registrar);
 
         Sampler platform = new PlatformSamplerProvider().createSampler(config(Map.of()));
@@ -97,7 +97,7 @@ class PlatformSamplerProviderTest {
     @Test
     @DisplayName("регресс: повторная autoconfigure-сборка в одном JVM снова поднимает платформенный sampler")
     void idempotent_double_build_does_not_skip() {
-        DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
         PlatformSamplerFactory factory = new PlatformSamplerFactory(registrar);
 
         // Дважды строим поверх не-платформенного existing — защита против статического флага «уже применён».

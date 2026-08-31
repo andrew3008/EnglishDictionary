@@ -1,11 +1,12 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx;
 
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxDiagnosticSnapshot;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxReadExecutor;
-
-import javax.management.MBeanServer;
 import java.lang.management.ManagementFactory;
 import java.util.List;
+import javax.management.MBeanServer;
+
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxDiagnosticSnapshot;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxReadExecutor;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 public final class PlatformTracingJmxClient {
 
@@ -23,12 +24,24 @@ public final class PlatformTracingJmxClient {
 
     public PlatformTracingJmxClient(MBeanServer server) {
         this.executor = new JmxReadExecutor(server);
-        this.sampling = new SamplingJmxView(executor, PlatformTracingJmxObjectNames.SAMPLING);
-        this.scrubbing = new ScrubbingJmxView(executor, PlatformTracingJmxObjectNames.SCRUBBING);
-        this.validation = new ValidationJmxView(executor, PlatformTracingJmxObjectNames.VALIDATION);
-        this.export = new ExportJmxView(executor, PlatformTracingJmxObjectNames.EXPORT);
-        this.processorMetrics = new ProcessorMetricsJmxView(executor, PlatformTracingJmxObjectNames.PROCESSOR_METRICS);
-        this.diagnostics = new DiagnosticsJmxView(executor, PlatformTracingJmxObjectNames.DIAGNOSTICS);
+        this.sampling = new SamplingJmxView(
+                executor,
+                JmxWireContract.SAMPLING_OBSERVATION_OBJECT_NAME);
+        this.scrubbing = new ScrubbingJmxView(
+                executor,
+                JmxWireContract.SCRUBBING_OBSERVATION_OBJECT_NAME);
+        this.validation = new ValidationJmxView(
+                executor,
+                JmxWireContract.VALIDATION_OBSERVATION_OBJECT_NAME);
+        this.export = new ExportJmxView(
+                executor,
+                JmxWireContract.EXPORT_OBSERVATION_OBJECT_NAME);
+        this.processorMetrics = new ProcessorMetricsJmxView(
+                executor,
+                JmxWireContract.PROCESSOR_METRICS_OBSERVATION_OBJECT_NAME);
+        this.diagnostics = new DiagnosticsJmxView(
+                executor,
+                JmxWireContract.DIAGNOSTICS_OBSERVATION_OBJECT_NAME);
     }
 
     public SamplingJmxView sampling() {

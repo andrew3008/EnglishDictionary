@@ -14,13 +14,17 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.Jmx
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxMBeanRegistrationState;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxObservationCodec;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxReadExecutor;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxObservationWireContract;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 public final class ProcessorMetricsJmxView {
 
     private static final JmxAttribute<ProcessorMetricsObservation> OBSERVATION = new JmxAttribute<>(
-            "ProcessorMetricsObservation", JmxContractPoint.PROCESSOR_METRICS_OBSERVATION, ProcessorMetricsJmxView::decode
+            JmxWireContract.ATTRIBUTE_PROCESSOR_METRICS_OBSERVATION_PROCESSOR_METRICS_OBSERVATION,
+            JmxContractPoint.PROCESSOR_METRICS_OBSERVATION,
+            JmxOpenTypes.PROCESSOR_METRICS_OBSERVATION,
+            ProcessorMetricsJmxView::decode
     );
 
     private final JmxReadExecutor executor;
@@ -45,39 +49,72 @@ public final class ProcessorMetricsJmxView {
 
     private static ProcessorMetricsObservation decode(Object raw) {
         CompositeData composite = JmxObservationCodec.asComposite(raw);
-        JmxObservationCodec.requireCompositeTypeName(composite, JmxObservationWireContract.PROCESSOR_METRICS_COMPOSITE_TYPE_NAME);
-        JmxObservationCodec.requireSchemaVersion(composite);
-        String agentInstanceId = JmxObservationCodec.getString(composite, JmxObservationWireContract.ITEM_AGENT_INSTANCE_ID);
+        JmxObservationCodec.requireCompositeTypeName(composite, JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_OBSERVATION_TYPE_NAME);
+        String agentInstanceId = JmxObservationCodec.getString(
+                composite, JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_AGENT_INSTANCE_ID);
 
-        CompositeData watchdogComposite = JmxObservationCodec.getComposite(composite, JmxObservationWireContract.PROCESSOR_METRICS_ITEM_WATCHDOG);
-        JmxObservationCodec.requireCompositeTypeName(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_VALUES_TYPE_NAME);
-        CompositeData compositeValuesComposite = JmxObservationCodec.getComposite(composite, JmxObservationWireContract.PROCESSOR_METRICS_ITEM_COMPOSITE);
-        JmxObservationCodec.requireCompositeTypeName(compositeValuesComposite, JmxObservationWireContract.PROCESSOR_METRICS_COMPOSITE_VALUES_TYPE_NAME);
-        CompositeData metricsComposite = JmxObservationCodec.getComposite(composite, JmxObservationWireContract.PROCESSOR_METRICS_ITEM_METRICS);
-        JmxObservationCodec.requireCompositeTypeName(metricsComposite, JmxObservationWireContract.PROCESSOR_METRICS_METRICS_VALUES_TYPE_NAME);
+        CompositeData watchdogComposite = JmxObservationCodec.getComposite(composite, JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG);
+        JmxObservationCodec.requireCompositeTypeName(watchdogComposite, JmxWireContract.OPEN_TYPE_PROCESSOR_WATCHDOG_VALUES_TYPE_NAME);
+        CompositeData compositeValuesComposite = JmxObservationCodec.getComposite(composite, JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_COMPOSITE);
+        JmxObservationCodec.requireCompositeTypeName(compositeValuesComposite, JmxWireContract.OPEN_TYPE_PROCESSOR_COMPOSITE_VALUES_TYPE_NAME);
+        CompositeData metricsComposite = JmxObservationCodec.getComposite(composite, JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_METRICS);
+        JmxObservationCodec.requireCompositeTypeName(metricsComposite, JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_VALUES_TYPE_NAME);
 
-        JmxOwnerState<ProcessorWatchdogValues> watchdogState = JmxObservationCodec.ownerState(watchdogComposite, () -> new ProcessorWatchdogValues(
-                JmxObservationCodec.getLong(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_FORCED_SPAN_CLOSES),
-                JmxObservationCodec.getLong(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_FORCED_TRACE_CLOSES),
-                JmxObservationCodec.getInt(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_ACTIVE_SPAN_COUNT),
-                JmxObservationCodec.getInt(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_ACTIVE_TRACE_COUNT),
-                JmxObservationCodec.getInt(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_TRACE_COUNT),
-                JmxObservationCodec.getInt(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_TRACE_CAPACITY),
-                JmxObservationCodec.getLong(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKING_EVICTED_TOTAL),
-                JmxObservationCodec.getInt(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_SPAN_CAPACITY),
-                JmxObservationCodec.getInt(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_SPAN_PER_TRACE_CAPACITY),
-                JmxObservationCodec.getLong(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_SPANS_REJECTED_PER_TRACE_TOTAL),
-                JmxObservationCodec.getLong(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_SPANS_REJECTED_GLOBAL_TOTAL),
-                JmxObservationCodec.getLong(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_SPAN_LEDGER_INVARIANT_VIOLATION_TOTAL)));
+        JmxOwnerState<ProcessorWatchdogValues> watchdogState = JmxObservationCodec.ownerState(
+                watchdogComposite,
+                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_PRESENT,
+                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_GENERATION,
+                () -> new ProcessorWatchdogValues(
+                        JmxObservationCodec.getLong(watchdogComposite,
+                                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_FORCED_SPAN_CLOSES),
+                        JmxObservationCodec.getLong(watchdogComposite,
+                                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_FORCED_TRACE_CLOSES),
+                        JmxObservationCodec.getInt(watchdogComposite,
+                                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_ACTIVE_SPAN_COUNT),
+                        JmxObservationCodec.getInt(watchdogComposite,
+                                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_ACTIVE_TRACE_COUNT),
+                        JmxObservationCodec.getInt(watchdogComposite,
+                                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKED_TRACE_COUNT),
+                        JmxObservationCodec.getInt(watchdogComposite,
+                                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKED_TRACE_CAPACITY),
+                        JmxObservationCodec.getLong(watchdogComposite,
+                                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKING_EVICTED_TOTAL),
+                        JmxObservationCodec.getInt(watchdogComposite,
+                                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKED_SPAN_CAPACITY),
+                        JmxObservationCodec.getInt(watchdogComposite,
+                                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKED_SPAN_PER_TRACE_CAPACITY),
+                        JmxObservationCodec.getLong(watchdogComposite,
+                                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_SPANS_REJECTED_PER_TRACE_TOTAL),
+                        JmxObservationCodec.getLong(watchdogComposite,
+                                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_SPANS_REJECTED_GLOBAL_TOTAL),
+                        JmxObservationCodec.getLong(watchdogComposite,
+                                JmxWireContract
+                                        .FIELD_PROCESSOR_WATCHDOG_VALUES_SPAN_LEDGER_INVARIANT_VIOLATION_TOTAL)));
 
-        JmxOwnerState<ProcessorCompositeValues> compositeState = JmxObservationCodec.ownerState(compositeValuesComposite, () -> new ProcessorCompositeValues(
-                JmxObservationCodec.getLong(compositeValuesComposite, JmxObservationWireContract.PROCESSOR_METRICS_COMPOSITE_ITEM_ERRORS_TOTAL),
-                JmxObservationCodec.getStringLongMap(compositeValuesComposite, JmxObservationWireContract.PROCESSOR_METRICS_COMPOSITE_ITEM_ERRORS_BY_NAME)));
+        JmxOwnerState<ProcessorCompositeValues> compositeState = JmxObservationCodec.ownerState(
+                compositeValuesComposite,
+                JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_PRESENT,
+                JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_GENERATION,
+                () -> new ProcessorCompositeValues(
+                        JmxObservationCodec.getLong(compositeValuesComposite,
+                                JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_PROCESSOR_ERRORS_TOTAL),
+                        JmxObservationCodec.getStringLongMap(compositeValuesComposite,
+                                JmxWireContract
+                                        .FIELD_PROCESSOR_COMPOSITE_VALUES_PROCESSOR_ERRORS_BY_NAME,
+                                JmxWireContract.FIELD_PROCESSOR_ERRORS_BY_NAME_KEY,
+                                JmxWireContract.FIELD_PROCESSOR_ERRORS_BY_NAME_VALUE)));
 
-        JmxOwnerState<ProcessorMetricsValues> metricsState = JmxObservationCodec.ownerState(metricsComposite, () -> new ProcessorMetricsValues(
-                JmxObservationCodec.getLong(metricsComposite, JmxObservationWireContract.PROCESSOR_METRICS_METRICS_ITEM_DROPPED_ATTRIBUTES_TOTAL),
-                JmxObservationCodec.getLong(metricsComposite, JmxObservationWireContract.PROCESSOR_METRICS_METRICS_ITEM_DROPPED_EVENTS_TOTAL),
-                JmxObservationCodec.getLong(metricsComposite, JmxObservationWireContract.PROCESSOR_METRICS_METRICS_ITEM_DROPPED_LINKS_TOTAL)));
+        JmxOwnerState<ProcessorMetricsValues> metricsState = JmxObservationCodec.ownerState(
+                metricsComposite,
+                JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_PRESENT,
+                JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_GENERATION,
+                () -> new ProcessorMetricsValues(
+                        JmxObservationCodec.getLong(metricsComposite,
+                                JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_DROPPED_ATTRIBUTES_TOTAL),
+                        JmxObservationCodec.getLong(metricsComposite,
+                                JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_DROPPED_EVENTS_TOTAL),
+                        JmxObservationCodec.getLong(metricsComposite,
+                                JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_DROPPED_LINKS_TOTAL)));
 
         return new ProcessorMetricsObservation(agentInstanceId, watchdogState, compositeState, metricsState);
     }

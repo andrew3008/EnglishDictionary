@@ -7,14 +7,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
-/**
- * Один lifecycle-owned publisher для динамических JMX observation-снимков.
- */
 public final class ObservationSnapshotPublisher implements AutoCloseable {
 
     static final Duration DEFAULT_REFRESH_INTERVAL = Duration.ofSeconds(1L);
@@ -22,24 +19,20 @@ public final class ObservationSnapshotPublisher implements AutoCloseable {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(ObservationSnapshotPublisher.class);
 
-    private final List<ObservationSnapshotControl> controls;
+    private final List<Runnable> publications;
     private final long refreshIntervalNanos;
-    private final AtomicBoolean closed = new AtomicBoolean();
-    private final AtomicBoolean refreshRequested = new AtomicBoolean();
-    private final Object lifecycleLock = new Object();
+    private final AtomicReference<PublisherState> state = new AtomicReference<>(PublisherState.created());
 
-    private ScheduledExecutorService scheduler;
-
-    public ObservationSnapshotPublisher(List<ObservationSnapshotControl> controls) {
-        this(controls, DEFAULT_REFRESH_INTERVAL);
+    public ObservationSnapshotPublisher(List<Runnable> publications) {
+        this(publications, DEFAULT_REFRESH_INTERVAL);
     }
 
-    ObservationSnapshotPublisher(List<ObservationSnapshotControl> controls, Duration refreshInterval) {
-        this.controls = List.copyOf(Objects.requireNonNull(controls, "controls"));
-        if (this.controls.isEmpty()) {
-            throw new IllegalArgumentException("At least one observation control is required");
+    ObservationSnapshotPublisher(List<Runnable> publications, Duration refreshInterval) {
+        this.publications = List.copyOf(Objects.requireNonNull(publications, "publications"));
+        if (this.publications.isEmpty()) {
+            throw new IllegalArgumentException("At least one observation snapshot publication is required");
         }
-        this.controls.forEach(control -> Objects.requireNonNull(control, "control"));
+        this.publications.forEach(publication -> Objects.requireNonNull(publication, "publication"));
 
         Duration interval = Objects.requireNonNull(refreshInterval, "refreshInterval");
         if (interval.isZero() || interval.isNegative()) {
@@ -49,70 +42,76 @@ public final class ObservationSnapshotPublisher implements AutoCloseable {
     }
 
     public void start() {
-        synchronized (lifecycleLock) {
-            if (closed.get()) {
-                throw new IllegalStateException("Observation snapshot publisher is closed");
-            }
-            if (scheduler != null) {
-                return;
-            }
-
-            scheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
-                Thread thread = new Thread(runnable, "platform-tracing-jmx-observation-publisher");
-                thread.setDaemon(true);
-                return thread;
-            });
-            scheduler.scheduleWithFixedDelay(
-                    this::publishNow,
-                    refreshIntervalNanos,
-                    refreshIntervalNanos,
-                    TimeUnit.NANOSECONDS);
-        }
-    }
-
-    public void publishNow() {
-        if (closed.get()) {
+        PublisherState current = state.get();
+        requireOperable(current);
+        if (current.running()) {
             return;
         }
 
-        for (ObservationSnapshotControl control : controls) {
+        ScheduledExecutorService candidate = newScheduler();
+        if (!state.compareAndSet(current, current.started(candidate))) {
+            candidate.shutdownNow();
+            requireOperable(state.get());
+            return;
+        }
+
+        try {
+            candidate.scheduleWithFixedDelay(
+                    this::publishSnapshot,
+                    refreshIntervalNanos,
+                    refreshIntervalNanos,
+                    TimeUnit.NANOSECONDS
+            );
+        } catch (RejectedExecutionException rejected) {
+            if (!state.get().closed()) {
+                throw rejected;
+            }
+        }
+    }
+
+    public void publishSnapshot() {
+        if (state.get().closed()) {
+            return;
+        }
+
+        for (Runnable publication : publications) {
             try {
-                control.publishObservationSnapshot();
+                publication.run();
             } catch (RuntimeException failure) {
                 log.warn(
                         AgentEventCodes.CTRL_PLANE,
                         "JMX observation snapshot publication failed",
                         failure,
-                        "control", control.getClass().getName());
+                        "source", publication.getClass().getName());
             }
         }
     }
 
-    public void requestPublish() {
-        if (closed.get() || !refreshRequested.compareAndSet(false, true)) {
-            return;
-        }
+    public void requestSnapshotPublication() {
+        PublisherState current = state.get();
+        while (current.running() && !current.refreshPending()) {
+            PublisherState requested = current.refreshRequested();
+            if (state.compareAndSet(current, requested)) {
+                submitRequestedPublication(requested.scheduler());
+                return;
+            }
 
-        ScheduledExecutorService activeScheduler;
-        synchronized (lifecycleLock) {
-            activeScheduler = scheduler;
+            current = state.get();
         }
-        if (activeScheduler == null) {
-            refreshRequested.set(false);
-            return;
-        }
+    }
 
+    private void submitRequestedPublication(ScheduledExecutorService scheduler) {
         try {
-            activeScheduler.execute(() -> {
+            scheduler.execute(() -> {
                 try {
-                    publishNow();
+                    publishSnapshot();
                 } finally {
-                    refreshRequested.set(false);
+                    clearRefreshPending();
                 }
             });
         } catch (RejectedExecutionException rejected) {
-            refreshRequested.set(false);
-            if (!closed.get()) {
+            clearRefreshPending();
+            if (!state.get().closed()) {
                 log.warn(
                         AgentEventCodes.CTRL_PLANE,
                         "JMX observation snapshot publication request was rejected",
@@ -123,26 +122,41 @@ public final class ObservationSnapshotPublisher implements AutoCloseable {
 
     @Override
     public void close() {
-        ScheduledExecutorService schedulerToClose;
-        synchronized (lifecycleLock) {
-            if (!closed.compareAndSet(false, true)) {
-                return;
-            }
-
-            schedulerToClose = scheduler;
-            scheduler = null;
-            refreshRequested.set(false);
-            if (schedulerToClose != null) {
-                schedulerToClose.shutdownNow();
-            }
-        }
-
-        if (schedulerToClose == null) {
+        PublisherState previous = state.getAndSet(PublisherState.closedState());
+        if (previous.closed()) {
             return;
         }
 
+        ScheduledExecutorService scheduler = previous.scheduler();
+        if (scheduler == null) {
+            return;
+        }
+
+        scheduler.shutdownNow();
+        awaitTermination(scheduler);
+    }
+
+    private void clearRefreshPending() {
+        state.updateAndGet(current -> current.refreshPending() ? current.refreshCompleted() : current);
+    }
+
+    private static void requireOperable(PublisherState current) {
+        if (current.closed()) {
+            throw new IllegalStateException("Observation snapshot publisher is closed");
+        }
+    }
+
+    private static ScheduledExecutorService newScheduler() {
+        return Executors.newSingleThreadScheduledExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "platform-tracing-jmx-observation-publisher");
+            thread.setDaemon(true);
+            return thread;
+        });
+    }
+
+    private static void awaitTermination(ScheduledExecutorService scheduler) {
         try {
-            if (!schedulerToClose.awaitTermination(SHUTDOWN_TIMEOUT.toNanos(), TimeUnit.NANOSECONDS)) {
+            if (!scheduler.awaitTermination(SHUTDOWN_TIMEOUT.toNanos(), TimeUnit.NANOSECONDS)) {
                 log.warn(
                         AgentEventCodes.CTRL_PLANE,
                         "JMX observation snapshot publisher did not stop within the shutdown timeout");
@@ -153,6 +167,52 @@ public final class ObservationSnapshotPublisher implements AutoCloseable {
                     AgentEventCodes.CTRL_PLANE,
                     "Interrupted while stopping JMX observation snapshot publisher",
                     interruption);
+        }
+    }
+
+    private record PublisherState(Phase phase, ScheduledExecutorService scheduler, boolean refreshPending) {
+
+        private enum Phase {
+            CREATED,
+            RUNNING,
+            CLOSED
+        }
+
+        private PublisherState {
+            if ((phase == Phase.RUNNING) != (scheduler != null)) {
+                throw new IllegalStateException("Publisher scheduler is bound to the RUNNING phase only");
+            }
+            if (refreshPending && phase != Phase.RUNNING) {
+                throw new IllegalStateException("Publisher refresh can be pending in the RUNNING phase only");
+            }
+        }
+
+        static PublisherState created() {
+            return new PublisherState(Phase.CREATED, null, false);
+        }
+
+        static PublisherState closedState() {
+            return new PublisherState(Phase.CLOSED, null, false);
+        }
+
+        boolean running() {
+            return phase == Phase.RUNNING;
+        }
+
+        boolean closed() {
+            return phase == Phase.CLOSED;
+        }
+
+        PublisherState started(ScheduledExecutorService startedScheduler) {
+            return new PublisherState(Phase.RUNNING, startedScheduler, false);
+        }
+
+        PublisherState refreshRequested() {
+            return new PublisherState(Phase.RUNNING, scheduler, true);
+        }
+
+        PublisherState refreshCompleted() {
+            return new PublisherState(Phase.RUNNING, scheduler, false);
         }
     }
 }

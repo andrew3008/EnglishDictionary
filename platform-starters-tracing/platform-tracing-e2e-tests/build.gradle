@@ -1,0 +1,177 @@
+import org.springframework.boot.gradle.tasks.bundling.BootJar
+
+plugins {
+    id 'platform.java-library'
+    id 'platform.testing'
+    id 'org.springframework.boot' version '3.5.16'
+}
+
+def springBootPluginVersion = '3.5.16'
+
+group = 'space.br1440.platform.starters.tracing'
+
+platformJavaLibrary {
+    bomProjectPath = ':spring-boot-starter-platform-bom'
+}
+
+def distributionProjectPath =
+        ':platform-starters-tracing:platform-tracing-otel-javaagent-distribution'
+
+configurations {
+    controlledAgentUnderTest {
+        canBeConsumed = false
+        canBeResolved = true
+        attributes {
+            attribute Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_RUNTIME)
+            attribute Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.LIBRARY)
+            attribute LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
+                    objects.named(LibraryElements, LibraryElements.JAR)
+            attribute Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.SHADOWED)
+        }
+    }
+}
+
+sourceSets {
+    collisionAgent {
+        java.srcDir 'src/collisionAgent/java'
+    }
+    dualSdk {
+        java.srcDir 'src/dualSdk/java'
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath
+    }
+}
+
+configurations.named('dualSdkImplementation') {
+    extendsFrom configurations.implementation
+}
+
+dependencies {
+    controlledAgentUnderTest project(
+            path: distributionProjectPath,
+            configuration: 'controlledAgentElements')
+
+    implementation project(
+            ':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure')
+    implementation 'org.springframework.boot:spring-boot-starter'
+
+    dualSdkImplementation 'io.opentelemetry:opentelemetry-sdk'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('jar', Jar) {
+    enabled = false
+}
+
+def verifySpringBootPluginVersion = tasks.register('verifySpringBootPluginVersion') {
+    group = 'verification'
+    description = 'Fails when the Spring Boot Gradle plugin version diverges from the BOM'
+
+    def pluginVersion = springBootPluginVersion
+    def runtimeVersions = configurations.runtimeClasspath.incoming.artifacts.resolvedArtifacts
+            .map { artifacts ->
+                artifacts.collect { it.id.componentIdentifier }
+                        .findAll { it instanceof ModuleComponentIdentifier }
+                        .findAll {
+                            it.group == 'org.springframework.boot' && it.module == 'spring-boot'
+                        }
+                        .collect { it.version }
+                        .toSet()
+            }
+
+    inputs.property('pluginVersion', pluginVersion)
+    inputs.property('runtimeVersions', runtimeVersions)
+
+    doLast {
+        Set<String> resolved = runtimeVersions.get()
+        if (resolved != [pluginVersion].toSet()) {
+            throw new GradleException(
+                    "Spring Boot Gradle plugin version ${pluginVersion} does not match the "
+                            + "spring-boot runtime version resolved from the platform BOM "
+                            + "${resolved}; align the plugin version in this build script"
+            )
+        }
+    }
+}
+
+tasks.named('bootJar', BootJar) {
+    archiveFileName = 'platform-tracing-packaged-certification.jar'
+    mainClass = 'space.br1440.platform.tracing.e2e.PackagedTracingCertificationApplication'
+}
+
+def dualSdkBootJar = tasks.register('dualSdkBootJar', BootJar) {
+    group = 'verification'
+    archiveFileName = 'platform-tracing-packaged-certification-dual-sdk.jar'
+    mainClass = 'space.br1440.platform.tracing.e2e.PackagedTracingCertificationApplication'
+    targetJavaVersion = JavaVersion.VERSION_17
+    classpath = sourceSets.dualSdk.runtimeClasspath
+}
+
+def collisionAgentJar = tasks.register('collisionAgentJar', Jar) {
+    group = 'verification'
+    archiveFileName = 'platform-tracing-jmx-collision-agent.jar'
+    from sourceSets.collisionAgent.output
+    manifest {
+        attributes 'Premain-Class':
+                'space.br1440.platform.tracing.e2e.collision.JmxCollisionPremainAgent'
+    }
+}
+
+abstract class PackagedProcessArguments implements CommandLineArgumentProvider {
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getControlledAgentJar()
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getApplicationBootJar()
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getDualSdkApplicationBootJar()
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getCollisionAgentJar()
+
+    @Override
+    Iterable<String> asArguments() {
+        [
+                '-DplatformTracing.controlledAgentJar='
+                        + controlledAgentJar.get().asFile.absolutePath,
+                '-DplatformTracing.applicationBootJar='
+                        + applicationBootJar.get().asFile.absolutePath,
+                '-DplatformTracing.dualSdkApplicationBootJar='
+                        + dualSdkApplicationBootJar.get().asFile.absolutePath,
+                '-DplatformTracing.collisionAgentJar='
+                        + collisionAgentJar.get().asFile.absolutePath
+        ]
+    }
+}
+
+tasks.named('test', Test) {
+    dependsOn configurations.controlledAgentUnderTest
+    dependsOn tasks.named('bootJar')
+    dependsOn dualSdkBootJar
+    dependsOn collisionAgentJar
+
+    def arguments = objects.newInstance(PackagedProcessArguments)
+    arguments.controlledAgentJar.set(layout.file(providers.provider {
+        configurations.controlledAgentUnderTest.singleFile
+    }))
+    arguments.applicationBootJar.set(tasks.named('bootJar', BootJar).flatMap { it.archiveFile })
+    arguments.dualSdkApplicationBootJar.set(dualSdkBootJar.flatMap { it.archiveFile })
+    arguments.collisionAgentJar.set(collisionAgentJar.flatMap { it.archiveFile })
+    jvmArgumentProviders.add(arguments)
+
+    def evidenceDirectory = layout.buildDirectory.dir('reports/packaged-certification')
+    systemProperty 'platformTracing.evidenceDirectory', evidenceDirectory.get().asFile.absolutePath
+    outputs.dir(evidenceDirectory)
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('test')
+    dependsOn verifySpringBootPluginVersion
+}

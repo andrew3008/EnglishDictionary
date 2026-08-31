@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.otel.javaagent.jmx;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationTestFixtures.initializingReadinessProjection;
-import static space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxAuthorizationTestFixtures.mutationRegistrationPermit;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -24,7 +23,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
@@ -45,7 +44,7 @@ class DomainMBeanJmxComplianceTest {
 
     private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
     private final List<AutoCloseable> registrations = new ArrayList<>();
-    private DomainMBeanRegistrar registrar;
+    private PlatformTracingMBeanRegistrar registrar;
 
     @AfterEach
     void cleanup() {
@@ -60,7 +59,7 @@ class DomainMBeanJmxComplianceTest {
 
     @Test
     void liveManagementContractMatchesCommittedBaseline() throws Exception {
-        registrar = new DomainMBeanRegistrar();
+        registrar = new PlatformTracingMBeanRegistrar();
         wireRequiredComponents(registrar, holderWith(0.5));
 
         JmxManagementContractSnapshot.Snapshot snapshot =
@@ -90,7 +89,7 @@ class DomainMBeanJmxComplianceTest {
 
     @Test
     void platformDomainMBeansExposeNoMutatingOperations() throws Exception {
-        registrar = new DomainMBeanRegistrar();
+        registrar = new PlatformTracingMBeanRegistrar();
         wireRequiredComponents(registrar, holderWith(0.5));
 
         for (ObjectName name : List.of(
@@ -110,7 +109,7 @@ class DomainMBeanJmxComplianceTest {
     }
 
     private void wireRequiredComponents(
-            DomainMBeanRegistrar registrar,
+            PlatformTracingMBeanRegistrar registrar,
             TracingSettingsSource acceptedPolicy) {
         CompositeSampler sampler = new CompositeSampler(
                 acceptedPolicy, CategoryBSamplingAccess.snapshot(Collections.emptyList(), Collections.emptyList()));
@@ -119,9 +118,7 @@ class DomainMBeanJmxComplianceTest {
         trackRegistration(registrar.registerDiagnosticReadiness(initializingReadinessProjection()));
         registrar.setCompositeSampler(sampler);
         registrar.setValidating(validating);
-        trackRegistration(registrar.registerRuntimeControls(
-                acceptedPolicy,
-                mutationRegistrationPermit()));
+        trackRegistration(registrar.registerRuntimeControls(acceptedPolicy));
     }
 
     private <T extends AutoCloseable> T trackRegistration(T registration) {

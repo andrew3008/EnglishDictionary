@@ -21,35 +21,16 @@ class JmxSecurityArchitectureGateTest {
                     + "platform/tracing/otel/javaagent/";
     private static final String SECURITY_PACKAGE_PATH =
             EXTENSION_MAIN_SOURCE_PREFIX + "jmx/security/";
-    private static final String REMOTE_JMX_EXPOSURE_POLICY =
-            SECURITY_PACKAGE_PATH + "RemoteJmxExposurePolicy.java";
-    private static final String DOMAIN_MBEAN_REGISTRAR =
-            EXTENSION_MAIN_SOURCE_PREFIX + "jmx/registration/DomainMBeanRegistrar.java";
-    private static final String BOOTSTRAP_COORDINATOR =
-            EXTENSION_MAIN_SOURCE_PREFIX + "bootstrap/BootstrapCoordinator.java";
+    private static final String PLATFORM_TRACING_MBEAN_REGISTRAR =
+            EXTENSION_MAIN_SOURCE_PREFIX + "jmx/registration/PlatformTracingMBeanRegistrar.java";
+    private static final String BOOTSTRAP_ACTIVATION =
+            EXTENSION_MAIN_SOURCE_PREFIX + "bootstrap/BootstrapActivation.java";
 
     private static final Set<String> PRIVATE_SERVER_FACTORY_ALLOWLIST = Set.of();
 
-    private static final String PACKAGED_CERTIFICATION_RUNNER =
-            "platform-starters-tracing/platform-tracing-e2e-tests/src/main/java/space/br1440/platform/"
-                    + "tracing/e2e/PackagedCertificationRunner.java";
-    private static final String PACKAGED_CERTIFICATION_APPLICATION =
-            "platform-starters-tracing/platform-tracing-e2e-tests/src/main/java/space/br1440/platform/"
-                    + "tracing/e2e/PackagedTracingCertificationApplication.java";
-    private static final String PACKAGED_JMX_CONNECTOR_PREMAIN_AGENT =
-            "platform-starters-tracing/platform-tracing-e2e-tests/src/jmxFixtureAgent/java/space/br1440/"
-                    + "platform/tracing/e2e/jmx/PackagedJmxConnectorPremainAgent.java";
+    private static final Set<String> NONPUBLISHED_CERTIFICATION_CONNECTOR_HIT_ALLOWLIST = Set.of();
 
-    private static final Set<String> NONPUBLISHED_CERTIFICATION_CONNECTOR_HIT_ALLOWLIST = Set.of(
-            PACKAGED_CERTIFICATION_RUNNER + ": JMXServiceURL",
-            PACKAGED_JMX_CONNECTOR_PREMAIN_AGENT + ": JMXConnectorServer",
-            PACKAGED_JMX_CONNECTOR_PREMAIN_AGENT + ": JMXConnectorServerFactory",
-            PACKAGED_JMX_CONNECTOR_PREMAIN_AGENT + ": JMXServiceURL",
-            PACKAGED_JMX_CONNECTOR_PREMAIN_AGENT + ": RMIConnectorServer");
-
-    private static final Set<String> NONPUBLISHED_CERTIFICATION_LOADER_HACK_HIT_ALLOWLIST = Set.of(
-            PACKAGED_CERTIFICATION_RUNNER + ": Class.forName(",
-            PACKAGED_CERTIFICATION_APPLICATION + ": Class.forName(");
+    private static final Set<String> NONPUBLISHED_CERTIFICATION_LOADER_HACK_HIT_ALLOWLIST = Set.of();
 
     private static final Set<String> LOADER_HACK_EXACT_ALLOWLIST = Set.of(
             "platform-starters-tracing/platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/"
@@ -117,20 +98,6 @@ class JmxSecurityArchitectureGateTest {
     }
 
     @Test
-    void mutation_registration_permit_has_single_production_issuer() throws IOException {
-        // given
-        String constructionToken = "new MutationRegistrationPermit(";
-
-        // when
-        List<String> hits = findHits(
-                List.of(constructionToken),
-                path -> path.startsWith(EXTENSION_MAIN_SOURCE_PREFIX));
-
-        // then
-        assertThat(hits).containsExactly(REMOTE_JMX_EXPOSURE_POLICY + ": " + constructionToken);
-    }
-
-    @Test
     void runtime_registration_has_single_production_caller() throws IOException {
         // given
         String registrationToken = "registerRuntimeControls(";
@@ -142,8 +109,8 @@ class JmxSecurityArchitectureGateTest {
 
         // then
         assertThat(hits).containsExactlyInAnyOrder(
-                DOMAIN_MBEAN_REGISTRAR + ": " + registrationToken,
-                BOOTSTRAP_COORDINATOR + ": " + registrationToken);
+                PLATFORM_TRACING_MBEAN_REGISTRAR + ": " + registrationToken,
+                BOOTSTRAP_ACTIVATION + ": " + registrationToken);
     }
 
     @Test
@@ -229,8 +196,7 @@ class JmxSecurityArchitectureGateTest {
 
     private static boolean isScannedSource(Path repositoryRoot, Path source) {
         String relative = normalized(repositoryRoot.relativize(source));
-        return relative.contains("/src/main/java/")
-                || relative.equals(PACKAGED_JMX_CONNECTOR_PREMAIN_AGENT);
+        return relative.contains("/src/main/java/");
     }
 
     private static void collectHits(

@@ -11,6 +11,7 @@ import org.springframework.boot.actuate.endpoint.web.annotation.WebEndpoint;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.PlatformEnvironmentPosture;
@@ -34,6 +35,7 @@ class ActuatorEndpointContractTest {
                     TracingConfigurationAuthority.HELM,
                     PlatformEnvironmentPosture.LOCAL))
             .withBean(PlatformTracingJmxClient.class, PlatformTracingJmxClient::new)
+            .withBean(AgentReadinessCoherenceGuard.class, AgentReadinessCoherenceGuard::new)
             .withBean(TracingDeploymentDiagnostics.class, () -> TracingDeploymentDiagnostics.withoutAgentData(
                     false,
                     false,

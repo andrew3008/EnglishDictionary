@@ -132,7 +132,6 @@ def allowedExtensionCoordinates = [
 
 def packagePlatformExtension = tasks.named('shadowJar') {
     group = 'build'
-    description = 'Package the platform extension and allowlisted runtime dependencies'
     archiveFileName = packagedExtensionJarName
     destinationDirectory.set(layout.buildDirectory.dir('controlled-agent/staging'))
     configurations = [agentExtension]
@@ -220,7 +219,6 @@ def validateControlledAgentInputs = tasks.register('validateControlledAgentInput
 
 def syncControlledAgentStaging = tasks.register('syncControlledAgentStaging', Sync) {
     group = 'build'
-    description = 'Stage the OTel agent payload plus the packaged extension and identity'
     dependsOn validateControlledAgentInputs
     def extensionJarName = packagedExtensionJarName
 
@@ -244,8 +242,8 @@ def syncControlledAgentStaging = tasks.register('syncControlledAgentStaging', Sy
 
 def assembleControlledJavaAgentJar = tasks.register('assembleControlledJavaAgentJar', Jar) {
     group = 'build'
-    description = 'Repackage the staged tree with the official OTel Jar recipe'
     dependsOn syncControlledAgentStaging
+
     archiveFileName = 'platform-tracing-javaagent-' + project.version + '.jar'
     destinationDirectory.set(layout.buildDirectory.dir('controlled-agent/staging'))
 
@@ -265,7 +263,6 @@ def assembleControlledJavaAgentJar = tasks.register('assembleControlledJavaAgent
 
 def publishControlledJavaAgent = tasks.register('publishControlledJavaAgent') {
     group = 'build'
-    description = 'Atomically publish the staged agent and packaged extension'
     dependsOn assembleControlledJavaAgentJar, packagePlatformExtension
 
     inputs.file(stagingAgentJarFile)
@@ -317,6 +314,26 @@ testing {
             suite.dependencies.implementation.add(assertjCoordinate)
         }
     }
+}
+
+def jmxContractProject = project(':platform-starters-tracing:platform-tracing-jmx-contract')
+def generateJmxWireContract = ':platform-starters-tracing:platform-tracing-jmx-contract:generateJmxWireContract'
+def generatedApplicationContractCopy = layout.buildDirectory.dir('generated/jmx-wire-contract/application/java')
+
+def syncGeneratedApplicationContract = tasks.register('syncGeneratedApplicationContract', Sync) {
+    group = 'build'
+    dependsOn generateJmxWireContract
+
+    from(jmxContractProject.layout.buildDirectory.dir('generated/jmx-wire-contract/application/java'))
+    into(generatedApplicationContractCopy)
+}
+
+sourceSets.named('controlledAgentRuntimeTest') {
+    java.srcDir(files(generatedApplicationContractCopy).builtBy(syncGeneratedApplicationContract))
+}
+
+tasks.named('compileControlledAgentRuntimeTestJava') {
+    dependsOn syncGeneratedApplicationContract
 }
 
 abstract class ControlledAgentTestArguments implements CommandLineArgumentProvider {
@@ -476,8 +493,8 @@ static String sha256Hex(File file) {
 
 static void writeIdentityFile(File identity,
                               String version,
-                              String otelJavaAgentCoordinate,
-                              String otelJavaAgentSha256,
+                              String upstreamCoordinate,
+                              String upstreamSha256,
                               String extensionSha256,
                               String extensionPath) {
     TreeMap<String, String> values = new TreeMap<>()
@@ -485,8 +502,8 @@ static void writeIdentityFile(File identity,
     values.put('distribution.group', 'space.br1440.platform.starters.tracing')
     values.put('distribution.artifact', 'platform-tracing-javaagent')
     values.put('distribution.version', version)
-    values.put('otel.javaagent.coordinate', otelJavaAgentCoordinate)
-    values.put('otel.javaagent.sha256', otelJavaAgentSha256)
+    values.put('upstream.coordinate', upstreamCoordinate)
+    values.put('upstream.sha256', upstreamSha256)
     values.put('extension.path', extensionPath)
     values.put('extension.sha256', extensionSha256)
     values.put('minimum.java', '21')

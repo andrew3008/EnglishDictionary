@@ -10,10 +10,10 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.jar.Manifest;
 
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
+import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
-import space.br1440.platform.common.util.StringUtils;
 
 public final class PlatformExtensionReadiness {
 
@@ -26,8 +26,7 @@ public final class PlatformExtensionReadiness {
     private static final int FAILURE_MESSAGE_MAX_LENGTH = 512;
     private static final String DEFAULT_FAILURE_CODE = "EXTENSION_INITIALIZATION_FAILED";
     private static final String DEFAULT_FAILURE_MESSAGE = "Extension initialization failed without a diagnostic cause";
-    private static final Set<PlatformExtensionCapability> REQUIRED_CAPABILITIES =
-            generatedRequiredCapabilities();
+    private static final Set<PlatformExtensionCapability> REQUIRED_CAPABILITIES = generatedRequiredCapabilities();
 
     private final String extensionVersion;
     private final Set<PlatformExtensionCapability> installedCapabilities = EnumSet.noneOf(PlatformExtensionCapability.class);
@@ -63,10 +62,6 @@ public final class PlatformExtensionReadiness {
         failureMessage = boundedMessage(failure);
     }
 
-    /**
-     * Фиксирует окончательный отказ очистки поверх предварительного состояния жизненного цикла.
-     * Исходный инцидент должен быть сохранён вызывающим кодом в cause или suppressed-цепочке.
-     */
     public synchronized void failTerminalCleanup(String code, Throwable failure) {
         lifecycle = PlatformExtensionLifecycle.FAILED;
         failureCode = orDefault(code, DEFAULT_FAILURE_CODE);
@@ -79,13 +74,13 @@ public final class PlatformExtensionReadiness {
 
     public synchronized void requireReady() {
         if (lifecycle != PlatformExtensionLifecycle.READY) {
-            Set<PlatformExtensionCapability> missing =
-                    EnumSet.noneOf(PlatformExtensionCapability.class);
+            Set<PlatformExtensionCapability> missing = EnumSet.noneOf(PlatformExtensionCapability.class);
             missing.addAll(REQUIRED_CAPABILITIES);
             missing.removeAll(installedCapabilities);
             throw new IllegalStateException(
                     "Platform extension readiness is not READY: lifecycle=" + lifecycle
-                            + ", missingCapabilities=" + missing);
+                            + ", missingCapabilities=" + missing
+            );
         }
     }
 
@@ -172,9 +167,8 @@ public final class PlatformExtensionReadiness {
     }
 
     private static Set<PlatformExtensionCapability> generatedRequiredCapabilities() {
-        EnumSet<PlatformExtensionCapability> required =
-                EnumSet.noneOf(PlatformExtensionCapability.class);
-        for (String capabilityName : GeneratedJmxWireContract.REQUIRED_CAPABILITIES) {
+        EnumSet<PlatformExtensionCapability> required = EnumSet.noneOf(PlatformExtensionCapability.class);
+        for (String capabilityName : JmxWireContract.REQUIRED_CAPABILITIES) {
             PlatformExtensionCapability capability;
             try {
                 capability = PlatformExtensionCapability.valueOf(capabilityName);
@@ -184,10 +178,10 @@ public final class PlatformExtensionReadiness {
                         exception);
             }
             if (!required.add(capability)) {
-                throw new IllegalStateException(
-                        "Generated JMX contract contains a duplicate required capability");
+                throw new IllegalStateException("Generated JMX contract contains a duplicate required capability");
             }
         }
+
         return Collections.unmodifiableSet(required);
     }
 

@@ -37,7 +37,7 @@ class ControlledAgentArtifactTest {
     private static final String LOG_EVENT_SCHEMA_RESOURCE = "platform-log-event.schema.json";
     private static final String ACP_PIN_PROVIDERS_CLASS =
             "space/br1440/platform/tracing/otel/javaagent/bootstrap/"
-                    + "PinnedOtelJavaAgentAcpProviders.class";
+                    + "AllowedUpstreamAcpProviders.class";
 
     private static final String EXTENSION_IMPLEMENTATION_TITLE = "platform-tracing-otel-javaagent-extension";
     private static final String OTEL_JAVAAGENT_COORDINATE = "io.opentelemetry.javaagent:opentelemetry-javaagent:2.30.0";
@@ -189,8 +189,8 @@ class ControlledAgentArtifactTest {
                 extension.sha256=%s
                 format.version=1
                 minimum.java=21
-                otel.javaagent.coordinate=%s
-                otel.javaagent.sha256=%s
+                upstream.coordinate=%s
+                upstream.sha256=%s
                 """.formatted(
                         version, EXTENSION_ENTRY, extensionSha256,
                         OTEL_JAVAAGENT_COORDINATE, otelSha256

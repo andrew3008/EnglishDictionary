@@ -117,7 +117,7 @@ public final class TracingSettingsRefreshCoalescer {
             if (base == null) {
                 throw new TracingConfigurationGuardException(
                         "Initial Config Server delivery: no authoritative expected base "
-                                + "available from Agent (readAcceptedComplete returned empty)");
+                                + "available from Agent (AcceptedPolicySnapshot is absent)");
             }
 
             TracingSettingsDeliveryResult result = snapshotClient.applySnapshot(base, snapshot, TracingSettingsDeliverySource.CONFIG_SERVER);

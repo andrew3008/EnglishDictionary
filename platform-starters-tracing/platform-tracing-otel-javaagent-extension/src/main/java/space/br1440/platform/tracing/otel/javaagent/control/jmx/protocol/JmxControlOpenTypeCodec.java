@@ -1,6 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.control.jmx.protocol;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -20,44 +19,44 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Traci
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsRejectionReason;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireUtf8Meter;
 
 final class JmxControlOpenTypeCodec {
 
     DecodedSettingsUpdate decode(CompositeData request) {
         requireValidRequestShape(request);
-        verifyProtocolVersion(request);
 
         String runtimeId = value(
                 request,
-                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_RUNTIME_INSTANCE_ID,
+                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_RUNTIME_INSTANCE_ID,
                 String.class);
         long sequence = value(
                 request,
-                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_ACCEPTED_SEQUENCE,
+                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_ACCEPTED_SEQUENCE,
                 Long.class);
         String attemptId = value(
                 request,
-                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID,
+                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID,
                 String.class);
         String authority = token(
                 request,
-                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_SOURCE_AUTHORITY);
+                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_SOURCE_AUTHORITY);
         String trigger = token(
                 request,
-                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_APPLY_TRIGGER);
+                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_APPLY_TRIGGER);
         String sourceRevision = value(
                 request,
-                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_SOURCE_REVISION,
+                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_SOURCE_REVISION,
                 String.class);
         String candidateDigest = value(
                 request,
-                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_CANDIDATE_DIGEST,
+                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_CANDIDATE_DIGEST,
                 String.class);
         CompositeData policyData = value(
                 request,
-                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_RUNTIME_POLICY,
+                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_RUNTIME_POLICY,
                 CompositeData.class);
 
         requireNonNegativeSequence(sequence);
@@ -93,29 +92,26 @@ final class JmxControlOpenTypeCodec {
 
             Map<String, Object> fields = new LinkedHashMap<>();
             fields.put(
-                    GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_ACCEPTED_SEQUENCE,
+                    JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_ACCEPTED_SEQUENCE,
                     result.accepted().acceptedSequence());
-            fields.put(GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_ATTEMPT_ID, attemptId);
+            fields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_ATTEMPT_ID, attemptId);
             fields.put(
-                    GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_MESSAGE_CODE,
+                    JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_MESSAGE_CODE,
                     result.messageCode().name());
             fields.put(
-                    GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_OUTCOME,
+                    JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_OUTCOME,
                     result.outcome().name());
             fields.put(
-                    GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_PAYLOAD_DIGEST,
+                    JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_PAYLOAD_DIGEST,
                     result.payloadDigest());
             fields.put(
-                    GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_PROTOCOL_VERSION,
-                    GeneratedJmxWireContract.SCHEMA_MAJOR);
-            fields.put(
-                    GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_RUNTIME_INSTANCE_ID,
+                    JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_RUNTIME_INSTANCE_ID,
                     result.accepted().runtimeInstanceId());
             fields.put(
-                    GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_VIOLATION_CODES,
+                    JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_VIOLATION_CODES,
                     violations);
 
-            return new CompositeDataSupport(GeneratedJmxOpenTypes.APPLY_SNAPSHOT_RESPONSE, fields);
+            return new CompositeDataSupport(JmxOpenTypes.APPLY_SNAPSHOT_RESPONSE, fields);
         } catch (OpenDataException exception) {
             throw new IllegalStateException("Cannot encode JMX settings mutation response", exception);
         }
@@ -130,20 +126,8 @@ final class JmxControlOpenTypeCodec {
                     SettingsRejectionReason.TYPE_MISMATCH,
                     "Request must use a bootstrap-defined CompositeData implementation");
         }
-        if (!GeneratedJmxOpenTypes.APPLY_SNAPSHOT_REQUEST.equals(request.getCompositeType())) {
+        if (!JmxOpenTypes.APPLY_SNAPSHOT_REQUEST.equals(request.getCompositeType())) {
             throw rejected(SettingsRejectionReason.TYPE_MISMATCH, "Unexpected request CompositeType");
-        }
-    }
-
-    private static void verifyProtocolVersion(CompositeData request) {
-        int version = value(
-                request,
-                GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_PROTOCOL_VERSION,
-                Integer.class);
-        if (version != GeneratedJmxWireContract.SCHEMA_MAJOR) {
-            throw rejected(
-                    SettingsRejectionReason.PROTOCOL_VERSION_MISMATCH,
-                    "Unsupported protocol version");
         }
     }
 
@@ -167,7 +151,7 @@ final class JmxControlOpenTypeCodec {
                     SettingsRejectionReason.TYPE_MISMATCH,
                     "runtimePolicy must use a bootstrap-defined CompositeData implementation");
         }
-        if (!GeneratedJmxOpenTypes.RUNTIME_POLICY.equals(policyData.getCompositeType())) {
+        if (!JmxOpenTypes.RUNTIME_POLICY.equals(policyData.getCompositeType())) {
             throw rejected(SettingsRejectionReason.TYPE_MISMATCH, "Unexpected runtimePolicy CompositeType");
         }
     }
@@ -175,8 +159,6 @@ final class JmxControlOpenTypeCodec {
     private static TracingSettings decodePolicySafely(CompositeData policyData) {
         try {
             return decodePolicy(policyData);
-        } catch (JmxControlDecodeException exception) {
-            throw exception;
         } catch (IllegalArgumentException | NullPointerException exception) {
             throw rejected(SettingsRejectionReason.INVALID_VALUE, "Runtime policy is invalid");
         }
@@ -185,19 +167,19 @@ final class JmxControlOpenTypeCodec {
     private static TracingSettings decodePolicy(CompositeData data) {
         TabularData routes = value(
                 data,
-                GeneratedJmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_ROUTE_RATIOS,
+                JmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_ROUTE_RATIOS,
                 TabularData.class);
         if (routes.getClass().getClassLoader() != null) {
             throw rejected(
                     SettingsRejectionReason.TYPE_MISMATCH,
                     "samplingRouteRatios must use a bootstrap-defined TabularData implementation");
         }
-        if (!GeneratedJmxOpenTypes.ROUTE_RATIOS.equals(routes.getTabularType())) {
+        if (!JmxOpenTypes.ROUTE_RATIOS.equals(routes.getTabularType())) {
             throw rejected(
                     SettingsRejectionReason.TYPE_MISMATCH,
                     "Unexpected samplingRouteRatios TabularType");
         }
-        if (routes.size() > GeneratedJmxWireContract.MAX_ROUTE_ENTRIES) {
+        if (routes.size() > JmxWireContract.MAX_ROUTE_ENTRIES) {
             throw rejected(SettingsRejectionReason.LIMIT_EXCEEDED, "Too many route ratios");
         }
 
@@ -205,16 +187,16 @@ final class JmxControlOpenTypeCodec {
         for (Object rawRow : routes.values()) {
             if (!(rawRow instanceof CompositeData row)
                     || row.getClass().getClassLoader() != null
-                    || !GeneratedJmxOpenTypes.ROUTE_RATIO.equals(row.getCompositeType())) {
+                    || !JmxOpenTypes.ROUTE_RATIO.equals(row.getCompositeType())) {
                 throw rejected(SettingsRejectionReason.TYPE_MISMATCH, "Unexpected route-ratio row type");
             }
             String prefix = value(
                     row,
-                    GeneratedJmxWireContract.FIELD_ROUTE_RATIO_ROUTE_PREFIX,
+                    JmxWireContract.FIELD_ROUTE_RATIO_ROUTE_PREFIX,
                     String.class);
             Double ratio = value(
                     row,
-                    GeneratedJmxWireContract.FIELD_ROUTE_RATIO_RATIO,
+                    JmxWireContract.FIELD_ROUTE_RATIO_RATIO,
                     Double.class);
             requireValidRoutePrefix(prefix);
             if (decodedRoutes.put(prefix, ratio) != null) {
@@ -225,32 +207,32 @@ final class JmxControlOpenTypeCodec {
         return TracingSettings.of(
                 value(
                         data,
-                        GeneratedJmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_ENABLED,
+                        JmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_ENABLED,
                         Boolean.class),
                 value(
                         data,
-                        GeneratedJmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_RATIO,
+                        JmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_RATIO,
                         Double.class),
                 decodedRoutes,
                 value(
                         data,
-                        GeneratedJmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_ENABLED,
+                        JmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_ENABLED,
                         Boolean.class),
                 value(
                         data,
-                        GeneratedJmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_STRICT,
+                        JmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_STRICT,
                         Boolean.class),
                 value(
                         data,
-                        GeneratedJmxWireContract.FIELD_RUNTIME_POLICY_EXPORTER_ENABLED,
+                        JmxWireContract.FIELD_RUNTIME_POLICY_EXPORTER_ENABLED,
                         Boolean.class),
                 value(
                         data,
-                        GeneratedJmxWireContract.FIELD_RUNTIME_POLICY_TRACE_CONTROL_HEADERS_ENABLED,
+                        JmxWireContract.FIELD_RUNTIME_POLICY_TRACE_CONTROL_HEADERS_ENABLED,
                         Boolean.class),
                 TracingLogLevel.valueOf(token(
                         data,
-                        GeneratedJmxWireContract.FIELD_RUNTIME_POLICY_DIAGNOSTICS_LOG_LEVEL)));
+                        JmxWireContract.FIELD_RUNTIME_POLICY_DIAGNOSTICS_LOG_LEVEL)));
     }
 
     private static void requireWithinLogicalRequestBudget(
@@ -263,22 +245,22 @@ final class JmxControlOpenTypeCodec {
             TracingSettings settings
     ) {
         long logicalBytes = Integer.BYTES + Long.BYTES + Double.BYTES + 5L;
-        logicalBytes += utf8Length(runtimeId);
-        logicalBytes += utf8Length(attemptId);
-        logicalBytes += utf8Length(authority);
-        logicalBytes += utf8Length(trigger);
-        logicalBytes += utf8Length(sourceRevision);
-        logicalBytes += utf8Length(candidateDigest);
-        logicalBytes += utf8Length(settings.diagnosticsLogLevel().name());
+        logicalBytes += JmxWireUtf8Meter.utf8Length(runtimeId);
+        logicalBytes += JmxWireUtf8Meter.utf8Length(attemptId);
+        logicalBytes += JmxWireUtf8Meter.utf8Length(authority);
+        logicalBytes += JmxWireUtf8Meter.utf8Length(trigger);
+        logicalBytes += JmxWireUtf8Meter.utf8Length(sourceRevision);
+        logicalBytes += JmxWireUtf8Meter.utf8Length(candidateDigest);
+        logicalBytes += JmxWireUtf8Meter.utf8Length(settings.diagnosticsLogLevel().name());
         for (String routePrefix : settings.samplingRouteRatios().keySet()) {
-            logicalBytes += utf8Length(routePrefix) + Double.BYTES;
+            logicalBytes += JmxWireUtf8Meter.utf8Length(routePrefix) + Double.BYTES;
         }
 
-        if (logicalBytes > GeneratedJmxWireContract.MAX_LOGICAL_BYTES) {
+        if (logicalBytes > JmxWireContract.MAX_LOGICAL_BYTES) {
             throw rejected(
                     SettingsRejectionReason.LIMIT_EXCEEDED,
                     "Logical request exceeds %d bytes"
-                            .formatted(GeneratedJmxWireContract.MAX_LOGICAL_BYTES));
+                            .formatted(JmxWireContract.MAX_LOGICAL_BYTES));
         }
     }
 
@@ -315,11 +297,11 @@ final class JmxControlOpenTypeCodec {
     }
 
     private static void requireValidRoutePrefix(String prefix) {
-        int utf8Bytes = prefix.length() > GeneratedJmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES
-                ? GeneratedJmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES + 1
-                : utf8Length(prefix);
+        long utf8Bytes = prefix.length() > JmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES
+                ? JmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES + 1L
+                : JmxWireUtf8Meter.utf8Length(prefix);
         if (prefix.isBlank()
-                || utf8Bytes > GeneratedJmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES
+                || utf8Bytes > JmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES
                 || containsControl(prefix)) {
             throw rejected(SettingsRejectionReason.INVALID_VALUE, "Invalid route prefix");
         }
@@ -342,22 +324,18 @@ final class JmxControlOpenTypeCodec {
             throw rejected(SettingsRejectionReason.TYPE_MISMATCH, field + " has wrong type");
         }
         if (fieldValue instanceof String text
-                && boundedUtf8Length(text, GeneratedJmxWireContract.MAX_STRING_UTF8_BYTES)
-                > GeneratedJmxWireContract.MAX_STRING_UTF8_BYTES) {
+                && boundedUtf8Length(text, JmxWireContract.MAX_STRING_UTF8_BYTES)
+                > JmxWireContract.MAX_STRING_UTF8_BYTES) {
             throw rejected(SettingsRejectionReason.LIMIT_EXCEEDED, field + " exceeds the UTF-8 size limit");
         }
         return type.cast(fieldValue);
     }
 
-    private static int boundedUtf8Length(String value, int limit) {
+    private static long boundedUtf8Length(String value, int limit) {
         if (value.length() > limit) {
-            return limit + 1;
+            return limit + 1L;
         }
-        return utf8Length(value);
-    }
-
-    private static int utf8Length(String value) {
-        return value.getBytes(StandardCharsets.UTF_8).length;
+        return JmxWireUtf8Meter.utf8Length(value);
     }
 
     private static boolean containsControl(String value) {

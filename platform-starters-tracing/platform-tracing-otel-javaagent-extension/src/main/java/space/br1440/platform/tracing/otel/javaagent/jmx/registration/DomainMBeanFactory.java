@@ -9,16 +9,15 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.PlatformSettingsStatusMBean;
 import space.br1440.platform.tracing.otel.javaagent.control.jmx.protocol.PlatformSettingsMutationMBean;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
-import space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.DiagnosticsControl;
-import space.br1440.platform.tracing.otel.javaagent.jmx.export.ExportControl;
-import space.br1440.platform.tracing.otel.javaagent.jmx.metrics.ProcessorMetricsControl;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationSnapshotControl;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.DiagnosticsObservationSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.export.ExportObservationSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.metrics.ProcessorMetricsObservationSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationSnapshotPublisher;
-import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.SamplingControl;
-import space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.ScrubbingControl;
-import space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationControl;
+import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.SamplingObservationSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.ScrubbingObservationSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationObservationSource;
 
 import lombok.experimental.UtilityClass;
 
@@ -29,13 +28,13 @@ final class DomainMBeanFactory {
                               TracingSettingsSource acceptedPolicy,
                               LongAdder sharedInvalidConfigCounter,
                               UUID agentInstanceId) {
-        SamplingControl sampling = new SamplingControl(acceptedPolicy, slots.compositeSampler(), agentInstanceId);
-        ScrubbingControl scrubbing = new ScrubbingControl(slots.scrubbing(), agentInstanceId);
-        ValidationControl validation = new ValidationControl(slots.validating(), agentInstanceId);
-        ExportControl export = new ExportControl(slots.exportProcessor(), slots.safeExporter(), agentInstanceId);
-        ProcessorMetricsControl processorMetrics = new ProcessorMetricsControl(
+        SamplingObservationSource sampling = new SamplingObservationSource(acceptedPolicy, slots.compositeSampler(), agentInstanceId);
+        ScrubbingObservationSource scrubbing = new ScrubbingObservationSource(slots.scrubbing(), agentInstanceId);
+        ValidationObservationSource validation = new ValidationObservationSource(slots.validating(), agentInstanceId);
+        ExportObservationSource export = new ExportObservationSource(slots.exportProcessor(), slots.safeExporter(), agentInstanceId);
+        ProcessorMetricsObservationSource processorMetrics = new ProcessorMetricsObservationSource(
                 slots.watchdog(), slots.composite(), slots.metrics(), agentInstanceId);
-        DiagnosticsControl diagnostics = new DiagnosticsControl(sharedInvalidConfigCounter, agentInstanceId);
+        DiagnosticsObservationSource diagnostics = new DiagnosticsObservationSource(sharedInvalidConfigCounter, agentInstanceId);
 
         List<MBeanBatchRegistrar.Registration> registrations = List.of(
                 MBeanBatchRegistrar.Registration.dynamic(DomainObjectNames.SETTINGS_STATUS,
@@ -44,48 +43,48 @@ final class DomainMBeanFactory {
 
                 MBeanBatchRegistrar.Registration.dynamic(DomainObjectNames.SAMPLING,
                         new ReadOnlyCompositeDataDynamicMBean(
-                                GeneratedJmxWireContract
+                                JmxWireContract
                                         .ATTRIBUTE_SAMPLING_OBSERVATION_SAMPLING_OBSERVATION,
-                                GeneratedJmxOpenTypes.SAMPLING_OBSERVATION,
+                                JmxOpenTypes.SAMPLING_OBSERVATION,
                                 sampling::getSamplingObservation)
                 ),
 
                 MBeanBatchRegistrar.Registration.dynamic(DomainObjectNames.SCRUBBING,
                         new ReadOnlyCompositeDataDynamicMBean(
-                                GeneratedJmxWireContract
+                                JmxWireContract
                                         .ATTRIBUTE_SCRUBBING_OBSERVATION_SCRUBBING_OBSERVATION,
-                                GeneratedJmxOpenTypes.SCRUBBING_OBSERVATION,
+                                JmxOpenTypes.SCRUBBING_OBSERVATION,
                                 scrubbing::getScrubbingObservation)
                 ),
 
                 MBeanBatchRegistrar.Registration.dynamic(DomainObjectNames.VALIDATION,
                         new ReadOnlyCompositeDataDynamicMBean(
-                                GeneratedJmxWireContract
+                                JmxWireContract
                                         .ATTRIBUTE_VALIDATION_OBSERVATION_VALIDATION_OBSERVATION,
-                                GeneratedJmxOpenTypes.VALIDATION_OBSERVATION,
+                                JmxOpenTypes.VALIDATION_OBSERVATION,
                                 validation::getValidationObservation)
                 ),
 
                 MBeanBatchRegistrar.Registration.dynamic(DomainObjectNames.EXPORT,
                         new ReadOnlyCompositeDataDynamicMBean(
-                                GeneratedJmxWireContract.ATTRIBUTE_EXPORT_OBSERVATION_EXPORT_OBSERVATION,
-                                GeneratedJmxOpenTypes.EXPORT_OBSERVATION,
+                                JmxWireContract.ATTRIBUTE_EXPORT_OBSERVATION_EXPORT_OBSERVATION,
+                                JmxOpenTypes.EXPORT_OBSERVATION,
                                 export::getExportObservation)
                 ),
 
                 MBeanBatchRegistrar.Registration.dynamic(DomainObjectNames.PROCESSOR_METRICS,
                         new ReadOnlyCompositeDataDynamicMBean(
-                                GeneratedJmxWireContract
+                                JmxWireContract
                                         .ATTRIBUTE_PROCESSOR_METRICS_OBSERVATION_PROCESSOR_METRICS_OBSERVATION,
-                                GeneratedJmxOpenTypes.PROCESSOR_METRICS_OBSERVATION,
+                                JmxOpenTypes.PROCESSOR_METRICS_OBSERVATION,
                                 processorMetrics::getProcessorMetricsObservation)
                 ),
 
                 MBeanBatchRegistrar.Registration.dynamic(DomainObjectNames.DIAGNOSTICS,
                         new ReadOnlyCompositeDataDynamicMBean(
-                                GeneratedJmxWireContract
+                                JmxWireContract
                                         .ATTRIBUTE_DIAGNOSTICS_OBSERVATION_DIAGNOSTICS_OBSERVATION,
-                                GeneratedJmxOpenTypes.DIAGNOSTICS_OBSERVATION,
+                                JmxOpenTypes.DIAGNOSTICS_OBSERVATION,
                                 diagnostics::getDiagnosticsObservation)
                 ),
 
@@ -93,14 +92,15 @@ final class DomainMBeanFactory {
                         new PlatformSettingsMutationMBean(acceptedPolicy.updater())
                 )
         );
-        List<ObservationSnapshotControl> observations = List.of(
-                sampling,
-                scrubbing,
-                validation,
-                export,
-                processorMetrics,
-                diagnostics);
-        return new DomainMBeans(registrations, new ObservationSnapshotPublisher(observations));
+        return new DomainMBeans(
+                registrations,
+                new ObservationSnapshotPublisher(List.of(
+                        sampling::publishObservationSnapshot,
+                        scrubbing::publishObservationSnapshot,
+                        validation::publishObservationSnapshot,
+                        export::publishObservationSnapshot,
+                        processorMetrics::publishObservationSnapshot,
+                        diagnostics::publishObservationSnapshot)));
     }
 
     record DomainMBeans(List<MBeanBatchRegistrar.Registration> registrations,

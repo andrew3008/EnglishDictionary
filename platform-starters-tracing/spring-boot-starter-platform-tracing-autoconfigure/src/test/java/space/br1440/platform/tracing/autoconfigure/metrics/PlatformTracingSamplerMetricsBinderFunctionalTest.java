@@ -1,41 +1,45 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.DiagnosticsObservation;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxObjectNames;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxObservationWireContract;
-
-import javax.management.Attribute;
-import javax.management.AttributeList;
-import javax.management.AttributeNotFoundException;
-import javax.management.DynamicMBean;
-import javax.management.InvalidAttributeValueException;
-import javax.management.MBeanAttributeInfo;
-import javax.management.MBeanInfo;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.CompositeDataSupport;
-import javax.management.openmbean.CompositeType;
-import javax.management.openmbean.OpenDataException;
-import javax.management.openmbean.OpenType;
-import javax.management.openmbean.SimpleType;
-import javax.management.openmbean.TabularData;
-import javax.management.openmbean.TabularDataSupport;
-import javax.management.openmbean.TabularType;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.management.ManagementFactory;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import javax.management.Attribute;
+import javax.management.AttributeList;
+import javax.management.AttributeNotFoundException;
+import javax.management.DynamicMBean;
+import javax.management.InvalidAttributeValueException;
+import javax.management.MBeanInfo;
+import javax.management.MBeanNotificationInfo;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.CompositeDataSupport;
+import javax.management.openmbean.CompositeType;
+import javax.management.openmbean.OpenDataException;
+import javax.management.openmbean.OpenMBeanAttributeInfo;
+import javax.management.openmbean.OpenMBeanAttributeInfoSupport;
+import javax.management.openmbean.OpenMBeanConstructorInfo;
+import javax.management.openmbean.OpenMBeanInfoSupport;
+import javax.management.openmbean.OpenMBeanOperationInfo;
+import javax.management.openmbean.OpenType;
+import javax.management.openmbean.SimpleType;
+import javax.management.openmbean.TabularData;
+import javax.management.openmbean.TabularDataSupport;
+import javax.management.openmbean.TabularType;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.DiagnosticsObservation;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class PlatformTracingSamplerMetricsBinderFunctionalTest {
 
@@ -117,7 +121,7 @@ class PlatformTracingSamplerMetricsBinderFunctionalTest {
 
     private void registerSamplingMBean(Map<String, Long> decisionCounts, boolean ownerPresent, long generation)
             throws Exception {
-        registeredName = PlatformTracingJmxObjectNames.SAMPLING;
+        registeredName = JmxWireContract.SAMPLING_OBSERVATION_OBJECT_NAME;
         server.registerMBean(new FakeSamplingMBean(decisionCounts, ownerPresent, generation), registeredName);
     }
 
@@ -149,41 +153,39 @@ class PlatformTracingSamplerMetricsBinderFunctionalTest {
                 TabularType stringDoubleMapType = stringDoubleMapType("space.br1440.platform.tracing.SamplingRouteRatios", "SamplingRouteRatioEntry");
 
                 Map<String, OpenType<?>> itemTypes = new LinkedHashMap<>();
-                itemTypes.put(JmxObservationWireContract.ITEM_SCHEMA_VERSION, SimpleType.INTEGER);
-                itemTypes.put(JmxObservationWireContract.ITEM_CAPTURE_SEQUENCE, SimpleType.LONG);
-                itemTypes.put(JmxObservationWireContract.ITEM_AGENT_INSTANCE_ID, SimpleType.STRING);
-                itemTypes.put(JmxObservationWireContract.ITEM_CAPTURE_STARTED_AT, SimpleType.LONG);
-                itemTypes.put(JmxObservationWireContract.ITEM_CAPTURE_COMPLETED_AT, SimpleType.LONG);
-                itemTypes.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_ENABLED, SimpleType.BOOLEAN);
-                itemTypes.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLING_RATIO, SimpleType.DOUBLE);
-                itemTypes.put(JmxObservationWireContract.SAMPLING_ITEM_ROUTE_RATIOS, stringDoubleMapType);
-                itemTypes.put(JmxObservationWireContract.SAMPLING_ITEM_DECISION_COUNTS, stringLongMapType);
-                itemTypes.put(JmxObservationWireContract.SAMPLING_ITEM_CONFIG_LAST_UPDATED_SOURCE, SimpleType.STRING);
-                itemTypes.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_OWNER_PRESENT, SimpleType.BOOLEAN);
-                itemTypes.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_OWNER_GENERATION, SimpleType.LONG);
-                itemTypes.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_OWNER_CAPTURED_OFFSET_NANOS, SimpleType.LONG);
+                itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE, SimpleType.LONG);
+                itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID, SimpleType.STRING);
+                itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_STARTED_AT, SimpleType.LONG);
+                itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_COMPLETED_AT, SimpleType.LONG);
+                itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_ENABLED, SimpleType.BOOLEAN);
+                itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO, SimpleType.DOUBLE);
+                itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIOS, stringDoubleMapType);
+                itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_DECISION_COUNTS, stringLongMapType);
+                itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_CONFIG_LAST_UPDATED_SOURCE, SimpleType.STRING);
+                itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_PRESENT, SimpleType.BOOLEAN);
+                itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_GENERATION, SimpleType.LONG);
+                itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_CAPTURED_OFFSET_NANOS, SimpleType.LONG);
 
                 CompositeType type = new CompositeType(
-                        JmxObservationWireContract.SAMPLING_COMPOSITE_TYPE_NAME,
+                        JmxWireContract.OPEN_TYPE_SAMPLING_OBSERVATION_TYPE_NAME,
                         "Синтетический SamplingObservation для функционального теста binder'а",
                         itemTypes.keySet().toArray(new String[0]),
                         itemTypes.keySet().toArray(new String[0]),
                         itemTypes.values().toArray(new OpenType<?>[0]));
 
                 Map<String, Object> values = new LinkedHashMap<>();
-                values.put(JmxObservationWireContract.ITEM_SCHEMA_VERSION, JmxObservationWireContract.SCHEMA_VERSION);
-                values.put(JmxObservationWireContract.ITEM_CAPTURE_SEQUENCE, 1L);
-                values.put(JmxObservationWireContract.ITEM_AGENT_INSTANCE_ID, "agent-functional-test");
-                values.put(JmxObservationWireContract.ITEM_CAPTURE_STARTED_AT, 0L);
-                values.put(JmxObservationWireContract.ITEM_CAPTURE_COMPLETED_AT, 0L);
-                values.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_ENABLED, true);
-                values.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLING_RATIO, 1.0);
-                values.put(JmxObservationWireContract.SAMPLING_ITEM_ROUTE_RATIOS, stringDoubleMap(stringDoubleMapType, Map.of()));
-                values.put(JmxObservationWireContract.SAMPLING_ITEM_DECISION_COUNTS, stringLongMap(stringLongMapType, decisionCounts));
-                values.put(JmxObservationWireContract.SAMPLING_ITEM_CONFIG_LAST_UPDATED_SOURCE, "test");
-                values.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_OWNER_PRESENT, ownerPresent);
-                values.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_OWNER_GENERATION, generation);
-                values.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_OWNER_CAPTURED_OFFSET_NANOS, 0L);
+                values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE, 1L);
+                values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID, "agent-functional-test");
+                values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_STARTED_AT, 0L);
+                values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_COMPLETED_AT, 0L);
+                values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_ENABLED, true);
+                values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO, 1.0);
+                values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIOS, stringDoubleMap(stringDoubleMapType, Map.of()));
+                values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_DECISION_COUNTS, stringLongMap(stringLongMapType, decisionCounts));
+                values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_CONFIG_LAST_UPDATED_SOURCE, "test");
+                values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_PRESENT, ownerPresent);
+                values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_GENERATION, generation);
+                values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_CAPTURED_OFFSET_NANOS, 0L);
 
                 return new CompositeDataSupport(type, values);
             } catch (OpenDataException e) {
@@ -245,9 +247,20 @@ class PlatformTracingSamplerMetricsBinderFunctionalTest {
 
         @Override
         public MBeanInfo getMBeanInfo() {
-            return new MBeanInfo(getClass().getName(), "fake", new MBeanAttributeInfo[]{
-                    new MBeanAttributeInfo(ATTRIBUTE, "javax.management.openmbean.CompositeData", "fake", true, false, false)
-            }, null, null, null);
+            OpenMBeanAttributeInfo attribute = new OpenMBeanAttributeInfoSupport(
+                    ATTRIBUTE,
+                    "fake",
+                    JmxOpenTypes.SAMPLING_OBSERVATION,
+                    true,
+                    false,
+                    false);
+            return new OpenMBeanInfoSupport(
+                    getClass().getName(),
+                    "fake",
+                    new OpenMBeanAttributeInfo[]{attribute},
+                    new OpenMBeanConstructorInfo[0],
+                    new OpenMBeanOperationInfo[0],
+                    new MBeanNotificationInfo[0]);
         }
     }
 }

@@ -35,7 +35,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogEvent;
@@ -198,7 +198,7 @@ final class PlatformSettingsMutationFailureContractTest {
             CompositeData request
     ) throws Exception {
         return writer.invoke(
-                GeneratedJmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT,
+                JmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT,
                 new Object[]{request},
                 new String[]{CompositeData.class.getName()});
     }
@@ -228,12 +228,12 @@ final class PlatformSettingsMutationFailureContractTest {
         CompositeType type = new CompositeType(
                 "TestApplySnapshotRequest",
                 "Test applySnapshot request",
-                new String[]{GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID},
-                new String[]{GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID},
+                new String[]{JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID},
+                new String[]{JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID},
                 new OpenType<?>[]{SimpleType.STRING});
         return new CompositeDataSupport(
                 type,
-                new String[]{GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID},
+                new String[]{JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID},
                 new Object[]{attemptId});
     }
 

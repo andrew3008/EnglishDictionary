@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.readiness;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -10,8 +11,8 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.OpenDataException;
 
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
 
@@ -28,8 +29,8 @@ public final class ExtensionReadinessWireSnapshot {
     private final long evidenceGeneration;
     private final String batchId;
     private final String lifecycle;
-    private final String[] capabilities;
-    private final String[] missingRequired;
+    private final List<String> capabilities;
+    private final List<String> missingRequired;
     private final String failureCode;
     private final ExtensionRuntimeEvidence evidence;
     private final CompositeData readinessSnapshot;
@@ -46,8 +47,8 @@ public final class ExtensionReadinessWireSnapshot {
         this.evidenceGeneration = evidenceGeneration;
         this.batchId = Objects.requireNonNull(batchId, "batchId");
         this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
-        this.capabilities = Objects.requireNonNull(capabilities, "capabilities").clone();
-        this.missingRequired = Objects.requireNonNull(missingRequired, "missingRequired").clone();
+        this.capabilities = List.of(Objects.requireNonNull(capabilities, "capabilities"));
+        this.missingRequired = List.of(Objects.requireNonNull(missingRequired, "missingRequired"));
         this.failureCode = Objects.requireNonNull(failureCode, "failureCode");
         this.evidence = Objects.requireNonNull(evidence, "evidence");
         if (evidenceGeneration < 0L) {
@@ -174,12 +175,12 @@ public final class ExtensionReadinessWireSnapshot {
         return lifecycle;
     }
 
-    public String[] capabilities() {
-        return capabilities.clone();
+    public List<String> capabilities() {
+        return capabilities;
     }
 
-    public String[] missingRequired() {
-        return missingRequired.clone();
+    public List<String> missingRequired() {
+        return missingRequired;
     }
 
     public String failureCode() {
@@ -192,35 +193,32 @@ public final class ExtensionReadinessWireSnapshot {
 
     private CompositeData buildCompositeData() {
         Map<String, Object> values = new LinkedHashMap<>();
-        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_CONTRACT_ID,
-                GeneratedJmxWireContract.SCHEMA_ID);
-        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_MAJOR,
-                GeneratedJmxWireContract.SCHEMA_MAJOR);
-        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_MINOR,
-                GeneratedJmxWireContract.SCHEMA_MINOR);
-        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_DIGEST,
-                GeneratedJmxWireContract.SCHEMA_DIGEST_SHA256);
-        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_RUNTIME_EPOCH, runtimeEpoch);
-        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION,
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_CONTRACT_ID,
+                JmxWireContract.SCHEMA_ID);
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_DIGEST,
+                JmxWireContract.SCHEMA_DIGEST_SHA256);
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_RUNTIME_EPOCH, runtimeEpoch);
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION,
                 evidenceGeneration);
-        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID, batchId);
-        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE, lifecycle);
-        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES, capabilities.clone());
-        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_MISSING_REQUIRED,
-                missingRequired.clone());
-        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE, failureCode);
-        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_DISTRIBUTION_SHA256,
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID, batchId);
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE, lifecycle);
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES,
+                capabilities.toArray(String[]::new));
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_MISSING_REQUIRED,
+                missingRequired.toArray(String[]::new));
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE, failureCode);
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_DISTRIBUTION_SHA256,
                 evidence.agentDistributionSha256());
-        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_UPSTREAM_AGENT_VERSION,
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_UPSTREAM_AGENT_VERSION,
                 evidence.upstreamAgentVersion());
-        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_VERSION,
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_VERSION,
                 evidence.extensionVersion());
-        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_DEFINING_LOADER,
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_DEFINING_LOADER,
                 evidence.extensionDefiningLoader());
-        values.put(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_SDK_DEFINING_LOADER,
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_SDK_DEFINING_LOADER,
                 evidence.sdkDefiningLoader());
         try {
-            return new CompositeDataSupport(GeneratedJmxOpenTypes.READINESS_SNAPSHOT, values);
+            return new CompositeDataSupport(JmxOpenTypes.READINESS_SNAPSHOT, values);
         } catch (OpenDataException exception) {
             throw new IllegalStateException("Unable to construct the readiness OpenData snapshot", exception);
         }
@@ -228,14 +226,14 @@ public final class ExtensionReadinessWireSnapshot {
 
     private static String[] missingRequired(PlatformExtensionReadiness readiness) {
         Set<String> installed = Set.of(readiness.capabilities());
-        return GeneratedJmxWireContract.REQUIRED_CAPABILITIES.stream()
+        return JmxWireContract.REQUIRED_CAPABILITIES.stream()
                 .filter(capability -> !installed.contains(capability))
                 .sorted()
                 .toArray(String[]::new);
     }
 
     private static String[] requiredCapabilities() {
-        return GeneratedJmxWireContract.REQUIRED_CAPABILITIES.stream()
+        return JmxWireContract.REQUIRED_CAPABILITIES.stream()
                 .sorted()
                 .toArray(String[]::new);
     }

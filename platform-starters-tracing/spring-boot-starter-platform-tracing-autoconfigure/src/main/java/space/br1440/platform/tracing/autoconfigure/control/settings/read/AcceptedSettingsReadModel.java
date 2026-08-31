@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.control.settings.read;
 
-public record AcceptedSettingsReadModel(AgentReadinessSnapshot agentReadiness,
-                                       AcceptedSettingsLeaves leaves) {
+import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
+
+public record AcceptedSettingsReadModel(ExpectedSettingsRevision acceptedRevision,
+                                        AcceptedPolicySummary summary) {
 }

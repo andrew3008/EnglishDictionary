@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.factory;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 import space.br1440.platform.tracing.otel.javaagent.sampler.PlatformManagedSamplers;
 import space.br1440.platform.tracing.otel.javaagent.sampler.PlatformSamplerBuilder;
@@ -11,9 +11,9 @@ import io.opentelemetry.sdk.trace.samplers.Sampler;
 
 public final class PlatformSamplerFactory {
 
-    private final DomainMBeanRegistrar jmxRegistrar;
+    private final PlatformTracingMBeanRegistrar jmxRegistrar;
 
-    public PlatformSamplerFactory(DomainMBeanRegistrar jmxRegistrar) {
+    public PlatformSamplerFactory(PlatformTracingMBeanRegistrar jmxRegistrar) {
         this.jmxRegistrar = jmxRegistrar;
     }
 
@@ -42,7 +42,6 @@ public final class PlatformSamplerFactory {
     }
 
     private void registerForJmx(CompositeSampler composite) {
-        jmxRegistrar.setAcceptedPolicy(composite.acceptedPolicy());
         jmxRegistrar.setCompositeSampler(composite);
     }
 }

@@ -16,13 +16,13 @@ class ObservationSnapshotGetterGateTest {
             + "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/"
             + "javaagent/jmx/";
 
-    private static final Map<String, String> CONTROL_GETTERS = Map.of(
-            "sampling/SamplingControl.java", "getSamplingObservation",
-            "scrubbing/ScrubbingControl.java", "getScrubbingObservation",
-            "validation/ValidationControl.java", "getValidationObservation",
-            "export/ExportControl.java", "getExportObservation",
-            "metrics/ProcessorMetricsControl.java", "getProcessorMetricsObservation",
-            "diagnostics/DiagnosticsControl.java", "getDiagnosticsObservation");
+    private static final Map<String, String> OBSERVATION_SOURCE_GETTERS = Map.of(
+            "sampling/SamplingObservationSource.java", "getSamplingObservation",
+            "scrubbing/ScrubbingObservationSource.java", "getScrubbingObservation",
+            "validation/ValidationObservationSource.java", "getValidationObservation",
+            "export/ExportObservationSource.java", "getExportObservation",
+            "metrics/ProcessorMetricsObservationSource.java", "getProcessorMetricsObservation",
+            "diagnostics/DiagnosticsObservationSource.java", "getDiagnosticsObservation");
 
     @Test
     void observationGettersUsePrecomputedGeneratedContractSnapshots() throws IOException {
@@ -30,17 +30,17 @@ class ObservationSnapshotGetterGateTest {
         Path repositoryRoot = repositoryRoot();
 
         // when
-        for (Map.Entry<String, String> entry : CONTROL_GETTERS.entrySet()) {
+        for (Map.Entry<String, String> entry : OBSERVATION_SOURCE_GETTERS.entrySet()) {
             String source = Files.readString(
                     repositoryRoot.resolve(SOURCE_ROOT + entry.getKey()),
                     StandardCharsets.UTF_8).replace("\r\n", "\n");
             String expectedGetter = "public CompositeData " + entry.getValue()
-                    + "() {\n        return published.get();\n    }";
+                    + "() {\n        return snapshotStore.current();\n    }";
 
             // then
             assertThat(source).contains(expectedGetter);
-            assertThat(source).contains("GeneratedJmxOpenTypes");
-            assertThat(source).contains("GeneratedJmxWireContract");
+            assertThat(source).contains("JmxOpenTypes");
+            assertThat(source).contains("JmxWireContract");
             assertThat(source).doesNotContain("JmxObservationWireContract");
             assertThat(source).doesNotContain("buildObservationType(");
             assertThat(source).doesNotContain("stringLongMapType(");

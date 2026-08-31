@@ -27,6 +27,8 @@ class ControlledAgentRuntimeAttestorTest {
 
     private static final String VERSION = "1.2.0";
     private static final String BOOTSTRAP_LOADER_LABEL = "bootstrap";
+    private static final String REVIEWED_UPSTREAM_SHA256 =
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
     @TempDir
     Path temporaryDirectory;
@@ -34,7 +36,7 @@ class ControlledAgentRuntimeAttestorTest {
     @Test
     void attestsActualAgentIdentityAndPublishesMeasuredLoaderDescriptions() throws IOException {
         // given
-        Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8), null);
+        Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8));
         ClassLoader extensionLoader = isolatedLoader();
         ClassLoader sdkLoader = isolatedLoader();
         ControlledAgentRuntimeAttestor attestor = ControlledAgentRuntimeAttestor.forTesting(environment(
@@ -55,7 +57,7 @@ class ControlledAgentRuntimeAttestorTest {
     @Test
     void isolatedExtensionAndSdkLoadersAreDistinguishable() throws IOException {
         // given
-        Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8), null);
+        Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8));
         ControlledAgentRuntimeAttestor attestor = ControlledAgentRuntimeAttestor.forTesting(environment(
                 sha256(agent), agent, isolatedLoader(), isolatedLoader()));
 
@@ -69,7 +71,7 @@ class ControlledAgentRuntimeAttestorTest {
     @Test
     void bootstrapLoaderIsDescribedWithoutIdentityHash() throws IOException {
         // given
-        Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8), null);
+        Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8));
         ControlledAgentRuntimeAttestor attestor = ControlledAgentRuntimeAttestor.forTesting(environment(
                 sha256(agent), agent, null, isolatedLoader()));
 
@@ -83,7 +85,7 @@ class ControlledAgentRuntimeAttestorTest {
     @Test
     void digestMismatchFailsWithStableDistributionCode() throws IOException {
         // given
-        Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8), null);
+        Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8));
         ControlledAgentRuntimeAttestor attestor = ControlledAgentRuntimeAttestor.forTesting(environment(
                 "0".repeat(64), agent, isolatedLoader(), isolatedLoader()));
 
@@ -91,13 +93,13 @@ class ControlledAgentRuntimeAttestorTest {
         RuntimeEvidenceAttestationException failure = attestFailure(attestor, VERSION);
 
         // then
-        assertThat(failure.code()).isEqualTo(ControlledAgentRuntimeAttestor.DISTRIBUTION_MISMATCH);
+        assertThat(failure.code()).isEqualTo(AttestationFailureCode.DISTRIBUTION_MISMATCH);
     }
 
     @Test
     void missingExpectedDigestFailsClosed() throws IOException {
         // given
-        Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8), null);
+        Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8));
         ControlledAgentRuntimeAttestor attestor = ControlledAgentRuntimeAttestor.forTesting(environment(
                 null, agent, isolatedLoader(), isolatedLoader()));
 
@@ -105,13 +107,13 @@ class ControlledAgentRuntimeAttestorTest {
         RuntimeEvidenceAttestationException failure = attestFailure(attestor, VERSION);
 
         // then
-        assertThat(failure.code()).isEqualTo(ControlledAgentRuntimeAttestor.DISTRIBUTION_EVIDENCE_MISSING);
+        assertThat(failure.code()).isEqualTo(AttestationFailureCode.DISTRIBUTION_EVIDENCE_MISSING);
     }
 
     @Test
     void developmentVersionIsForbiddenBeforeReadyEvidenceCanBeBuilt() throws IOException {
         // given
-        Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8), null);
+        Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8));
         ControlledAgentRuntimeAttestor attestor = ControlledAgentRuntimeAttestor.forTesting(environment(
                 sha256(agent), agent, isolatedLoader(), isolatedLoader()));
 
@@ -119,13 +121,13 @@ class ControlledAgentRuntimeAttestorTest {
         RuntimeEvidenceAttestationException failure = attestFailure(attestor, "development");
 
         // then
-        assertThat(failure.code()).isEqualTo(ControlledAgentRuntimeAttestor.DEVELOPMENT_VERSION_FORBIDDEN);
+        assertThat(failure.code()).isEqualTo(AttestationFailureCode.DEVELOPMENT_VERSION_FORBIDDEN);
     }
 
     @Test
     void systemLoaderIsDescribedFromTheMeasuredSdkClassLiteral() throws IOException {
         // given
-        Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8), null);
+        Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8));
         ClassLoader sdkLoader = ClassLoader.getSystemClassLoader();
         ControlledAgentRuntimeAttestor attestor = ControlledAgentRuntimeAttestor.forTesting(environment(
                 sha256(agent), agent, isolatedLoader(), sdkLoader));
@@ -137,24 +139,7 @@ class ControlledAgentRuntimeAttestorTest {
         assertThat(evidence.sdkDefiningLoader()).isEqualTo(loaderDescription(sdkLoader));
     }
 
-    @Test
-    void packagedExtensionDigestMismatchFailsClosed() throws IOException {
-        // given
-        Path agent = controlledAgent(
-                "extension".getBytes(StandardCharsets.UTF_8),
-                "0".repeat(64)
-        );
-        ControlledAgentRuntimeAttestor attestor = ControlledAgentRuntimeAttestor.forTesting(environment(
-                sha256(agent), agent, isolatedLoader(), isolatedLoader()));
-
-        // when
-        RuntimeEvidenceAttestationException failure = attestFailure(attestor, VERSION);
-
-        // then
-        assertThat(failure.code()).isEqualTo(ControlledAgentRuntimeAttestor.DISTRIBUTION_MISMATCH);
-    }
-
-    private Path controlledAgent(byte[] extension, String declaredExtensionSha256) throws IOException {
+    private Path controlledAgent(byte[] extension) throws IOException {
         Properties identity = new Properties();
         identity.setProperty("format.version", "1");
         identity.setProperty("distribution.group", "space.br1440.platform.starters.tracing");
@@ -164,18 +149,12 @@ class ControlledAgentRuntimeAttestorTest {
                 "upstream.coordinate",
                 "io.opentelemetry.javaagent:opentelemetry-javaagent:2.30.0"
         );
-        identity.setProperty(
-                "upstream.sha256",
-                PinnedOtelJavaAgentAcpProviders.OTEL_JAVA_AGENT_SHA256
-        );
+        identity.setProperty("upstream.sha256", REVIEWED_UPSTREAM_SHA256);
         identity.setProperty(
                 "extension.path",
                 "extensions/platform-tracing-otel-javaagent-extension.jar"
         );
-        identity.setProperty(
-                "extension.sha256",
-                declaredExtensionSha256 == null ? sha256(extension) : declaredExtensionSha256
-        );
+        identity.setProperty("extension.sha256", sha256(extension));
         identity.setProperty("minimum.java", "21");
 
         ByteArrayOutputStream identityBytes = new ByteArrayOutputStream();

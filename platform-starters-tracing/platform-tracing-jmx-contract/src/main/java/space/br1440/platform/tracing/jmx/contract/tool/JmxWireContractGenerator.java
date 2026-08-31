@@ -15,26 +15,16 @@ import java.util.Properties;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-/**
- * Узкий build-time генератор JMX-контракта. Класс намеренно не является runtime API.
- */
-public final class JmxWireContractGenerator {
+import lombok.experimental.UtilityClass;
 
-    private JmxWireContractGenerator() {
-    }
+@UtilityClass
+public final class JmxWireContractGenerator {
 
     public static void main(String[] arguments) throws Exception {
         Map<String, String> options = parseOptions(arguments);
         String mode = requiredOption(options, "mode");
         Path manifestPath = Path.of(requiredOption(options, "manifest"));
-        ContractDocument contract = ContractSupport.loadContract(manifestPath);
-
-        // Скан рукописных литералов не зависит от golden-векторов: ему нужны только имена
-        // из манифеста, поэтому полная golden-проверка в этом режиме не запускается.
-        if (!"source-gate".equals(mode)) {
-            GoldenDocument golden = ContractSupport.loadGolden(Path.of(requiredOption(options, "golden")));
-            ContractSupport.verifyGolden(contract, golden);
-        }
+        ContractDocument contract = ContractDocumentFactory.load(manifestPath);
 
         switch (mode) {
             case "validate" -> System.out.println("JMX wire contract is valid: " + contract.schemaDigest());
@@ -43,11 +33,13 @@ public final class JmxWireContractGenerator {
                     contract,
                     sourceRoots(requiredOption(options, "source-roots"))
             );
+
             case "verify" -> verify(
                     contract,
                     Path.of(requiredOption(options, "output")),
                     Path.of(requiredOption(options, "report"))
             );
+
             default -> throw new IllegalArgumentException("Unsupported generator mode: " + mode);
         }
     }
@@ -60,6 +52,7 @@ public final class JmxWireContractGenerator {
         } finally {
             deleteDirectoryIfExists(temporaryRoot);
         }
+
         System.out.println("Generated JMX wire contract: " + outputRoot);
     }
 
@@ -77,6 +70,7 @@ public final class JmxWireContractGenerator {
             deleteDirectoryIfExists(first);
             deleteDirectoryIfExists(second);
         }
+
         System.out.println("Verified JMX wire contract: " + contract.schemaDigest());
     }
 
@@ -98,12 +92,12 @@ public final class JmxWireContractGenerator {
                             String relative = planeRoot.relativize(path).toString().replace('\\', '/');
                             String key = relative.substring(relative.lastIndexOf('/') + 1);
                             String content = Files.readString(path, StandardCharsets.UTF_8)
-                                    .replaceFirst("(?m)^package [^;]+;\\n", "")
-                                    .replaceFirst("(?m)^plane=(extension|application)$", "plane=<plane>")
+                                    .replaceFirst("(?m)^package [^;]+;\n", "")
+                                    .replaceFirst("(?m)^plane=(extension|application)$", "plane=")
                                     .replaceAll(
                                             "space\\.br1440\\.platform\\.tracing\\.(otel\\.javaagent|autoconfigure)"
                                                     + "\\.jmx\\.contract\\.generated",
-                                            "<plane-package>"
+                                            ""
                                     );
                             result.put(key, content);
                         } catch (IOException exception) {
@@ -113,6 +107,7 @@ public final class JmxWireContractGenerator {
         } catch (ContractIoRuntimeException exception) {
             throw exception.ioException();
         }
+
         return result;
     }
 
@@ -120,13 +115,8 @@ public final class JmxWireContractGenerator {
         Files.createDirectories(reportPath.getParent());
         Properties properties = new Properties();
         properties.setProperty("schema.id", contract.schemaId());
-        properties.setProperty("schema.version", contract.schemaMajor() + "." + contract.schemaMinor());
         properties.setProperty("schema.sha256", contract.schemaDigest());
         properties.setProperty("descriptors.sha256", contract.descriptorDigest());
-        properties.setProperty(
-                "observation.schema.version",
-                Integer.toString(contract.observationSchemaVersion())
-        );
         properties.setProperty("policyDigest.algorithm", contract.policyDigestAlgorithm());
         properties.setProperty("policyDigest.version", Integer.toString(contract.policyDigestVersion()));
         properties.setProperty("deterministic", "true");
@@ -134,10 +124,12 @@ public final class JmxWireContractGenerator {
 
         List<String> names = new ArrayList<>(properties.stringPropertyNames());
         names.sort(Comparator.naturalOrder());
+
         StringBuilder output = new StringBuilder();
         for (String name : names) {
             output.append(name).append('=').append(properties.getProperty(name)).append('\n');
         }
+
         writeUtf8(reportPath, output.toString());
     }
 
@@ -147,6 +139,7 @@ public final class JmxWireContractGenerator {
         if (!expectedFiles.keySet().equals(actualFiles.keySet())) {
             throw new IllegalStateException(message + ": file sets differ");
         }
+
         for (String relative : expectedFiles.keySet()) {
             if (!java.util.Arrays.equals(expectedFiles.get(relative), actualFiles.get(relative))) {
                 throw new IllegalStateException(message + ": " + relative);
@@ -158,6 +151,7 @@ public final class JmxWireContractGenerator {
         if (!Files.isDirectory(root)) {
             throw new IllegalStateException("Generated JMX contract directory is absent: " + root);
         }
+
         Map<String, byte[]> result = new HashMap<>();
         try (Stream<Path> files = Files.walk(root)) {
             files.filter(Files::isRegularFile)
@@ -172,6 +166,7 @@ public final class JmxWireContractGenerator {
         } catch (ContractIoRuntimeException exception) {
             throw exception.ioException();
         }
+
         return result;
     }
 
@@ -180,6 +175,7 @@ public final class JmxWireContractGenerator {
         if (parent == null) {
             throw new IllegalArgumentException("Output directory must have a parent: " + outputRoot);
         }
+
         Files.createDirectories(parent);
         return Files.createTempDirectory(parent, ".jmx-contract-" + suffix + '-');
     }
@@ -197,6 +193,7 @@ public final class JmxWireContractGenerator {
         if (!Files.exists(root)) {
             return;
         }
+
         try (Stream<Path> paths = Files.walk(root)) {
             List<Path> ordered = paths.sorted(Comparator.reverseOrder()).toList();
             for (Path path : ordered) {
@@ -216,6 +213,7 @@ public final class JmxWireContractGenerator {
             if (!argument.startsWith("--") || !argument.contains("=")) {
                 throw new IllegalArgumentException("Invalid generator argument: " + argument);
             }
+
             int separator = argument.indexOf('=');
             String name = argument.substring(2, separator);
             String value = argument.substring(separator + 1);
@@ -223,6 +221,7 @@ public final class JmxWireContractGenerator {
                 throw new IllegalArgumentException("Duplicate generator argument: " + name);
             }
         }
+
         return result;
     }
 
@@ -233,9 +232,11 @@ public final class JmxWireContractGenerator {
                 result.add(Path.of(encodedRoot));
             }
         }
+
         if (result.isEmpty()) {
             throw new IllegalArgumentException("JMX source-gate directories must not be empty");
         }
+
         return List.copyOf(result);
     }
 
@@ -244,6 +245,7 @@ public final class JmxWireContractGenerator {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("Missing generator argument: " + name);
         }
+
         return value;
     }
 

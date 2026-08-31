@@ -9,8 +9,8 @@ import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
 
@@ -111,7 +111,7 @@ class ExtensionReadinessWireSnapshotTest {
         assertThat(snapshot.lifecycle()).isEqualTo("FAILED");
         assertThat(snapshot.failureCode()).isEqualTo(failureCode);
         assertThat(snapshot.readinessSnapshot().get(
-                GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE))
+                JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE))
                 .isEqualTo(failureCode);
     }
 
@@ -123,14 +123,14 @@ class ExtensionReadinessWireSnapshotTest {
                 ExtensionReadinessWireSnapshot.initializing(readiness);
 
         // when
-        for (String capabilityName : GeneratedJmxWireContract.REQUIRED_CAPABILITIES) {
+        for (String capabilityName : JmxWireContract.REQUIRED_CAPABILITIES) {
             readiness.markInstalled(PlatformExtensionCapability.valueOf(capabilityName));
         }
 
         // then
         assertThat(initial.missingRequired())
                 .containsExactlyInAnyOrderElementsOf(
-                        GeneratedJmxWireContract.REQUIRED_CAPABILITIES);
+                        JmxWireContract.REQUIRED_CAPABILITIES);
         assertThat(readiness.lifecycle().name()).isEqualTo("READY");
     }
 
@@ -152,18 +152,18 @@ class ExtensionReadinessWireSnapshotTest {
         // then
         assertThat(snapshot.lifecycle()).isEqualTo("READY");
         assertThat(snapshot.missingRequired()).isEmpty();
-        assertThat(wire.getCompositeType()).isEqualTo(GeneratedJmxOpenTypes.READINESS_SNAPSHOT);
-        assertThat(wire.get(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_CONTRACT_ID))
-                .isEqualTo(GeneratedJmxWireContract.SCHEMA_ID);
-        assertThat(wire.get(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_DIGEST))
-                .isEqualTo(GeneratedJmxWireContract.SCHEMA_DIGEST_SHA256);
-        assertThat(wire.get(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_RUNTIME_EPOCH))
+        assertThat(wire.getCompositeType()).isEqualTo(JmxOpenTypes.READINESS_SNAPSHOT);
+        assertThat(wire.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_CONTRACT_ID))
+                .isEqualTo(JmxWireContract.SCHEMA_ID);
+        assertThat(wire.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_DIGEST))
+                .isEqualTo(JmxWireContract.SCHEMA_DIGEST_SHA256);
+        assertThat(wire.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_RUNTIME_EPOCH))
                 .isEqualTo("epoch-1");
-        assertThat(wire.get(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION))
+        assertThat(wire.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION))
                 .isEqualTo(1L);
-        assertThat(wire.get(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID))
+        assertThat(wire.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID))
                 .isEqualTo("batch-1");
-        assertThat((String[]) wire.get(GeneratedJmxWireContract.FIELD_READINESS_SNAPSHOT_MISSING_REQUIRED))
+        assertThat((String[]) wire.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_MISSING_REQUIRED))
                 .isEmpty();
     }
 

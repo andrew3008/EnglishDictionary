@@ -30,8 +30,8 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
@@ -39,8 +39,7 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(PlatformSettingsStatusMBean.class);
 
-    private static final String SNAPSHOT_ATTRIBUTE =
-            GeneratedJmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT;
+    private static final String SNAPSHOT_ATTRIBUTE = JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT;
     private static final MBeanInfo INFO = buildMBeanInfo();
 
     private final TracingSettingsUpdater updater;
@@ -54,13 +53,16 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
         if (!SNAPSHOT_ATTRIBUTE.equals(attribute)) {
             throw new AttributeNotFoundException("Unknown JMX settings status attribute");
         }
+
         try {
             return snapshot();
         } catch (RuntimeException failure) {
             logCaptureFailure(failure);
+
             throw neutralFailure(
                     "JMX_SETTINGS_STATUS_CAPTURE_FAILED",
-                    "Settings status capture failed");
+                    "Settings status capture failed"
+            );
         }
     }
 
@@ -124,62 +126,62 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
         try {
             Map<String, Object> fields = new LinkedHashMap<>();
             fields.put(
-                    GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_SEQUENCE,
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_SEQUENCE,
                     accepted.acceptedSequence());
             fields.put(
-                    GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_RUNTIME_INSTANCE_ID,
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_RUNTIME_INSTANCE_ID,
                     accepted.runtimeInstanceId());
             fields.put(
-                    GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_POLICY_DIGEST,
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_POLICY_DIGEST,
                     TracingSettingsDigest.sha256(accepted.policy()));
             fields.put(
-                    GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_APPLY_OUTCOME,
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_APPLY_OUTCOME,
                     token(update.latestOutcome()));
             fields.put(
-                    GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_ATTEMPT_ID,
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_ATTEMPT_ID,
                     lastAttemptId(update));
             fields.put(
-                    GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_FAILURE_CODE,
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_FAILURE_CODE,
                     failureCode(update));
             fields.put(
-                    GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ENABLED,
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ENABLED,
                     accepted.samplingEnabled());
             fields.put(
-                    GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO,
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO,
                     accepted.samplingRatio());
             fields.put(
-                    GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS,
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS,
                     routeRatios(accepted));
             fields.put(
-                    GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_ENABLED,
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_ENABLED,
                     accepted.validationEnabled());
             fields.put(
-                    GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_STRICT,
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_STRICT,
                     accepted.validationStrict());
             fields.put(
-                    GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_EXPORTER_ENABLED,
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_EXPORTER_ENABLED,
                     accepted.exporterEnabled());
             fields.put(
-                    GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_TRACE_CONTROL_HEADERS_ENABLED,
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_TRACE_CONTROL_HEADERS_ENABLED,
                     accepted.traceControlHeadersEnabled());
             fields.put(
-                    GeneratedJmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_DIAGNOSTICS_LOG_LEVEL,
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_DIAGNOSTICS_LOG_LEVEL,
                     accepted.diagnosticsLogLevel());
-            return new CompositeDataSupport(GeneratedJmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT, fields);
+            return new CompositeDataSupport(JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT, fields);
         } catch (OpenDataException exception) {
             throw new IllegalStateException("Cannot encode accepted-policy snapshot", exception);
         }
     }
 
     private static TabularData routeRatios(TracingSettingsRevision accepted) throws OpenDataException {
-        TabularDataSupport table = new TabularDataSupport(GeneratedJmxOpenTypes.ROUTE_RATIOS);
+        TabularDataSupport table = new TabularDataSupport(JmxOpenTypes.ROUTE_RATIOS);
         for (Map.Entry<String, Double> entry : accepted.samplingRouteRatios().entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .toList()) {
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put(GeneratedJmxWireContract.FIELD_ROUTE_RATIO_ROUTE_PREFIX, entry.getKey());
-            row.put(GeneratedJmxWireContract.FIELD_ROUTE_RATIO_RATIO, entry.getValue());
-            table.put(new CompositeDataSupport(GeneratedJmxOpenTypes.ROUTE_RATIO, row));
+            row.put(JmxWireContract.FIELD_ROUTE_RATIO_ROUTE_PREFIX, entry.getKey());
+            row.put(JmxWireContract.FIELD_ROUTE_RATIO_RATIO, entry.getValue());
+            table.put(new CompositeDataSupport(JmxOpenTypes.ROUTE_RATIO, row));
         }
         return table;
     }
@@ -204,7 +206,7 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
         OpenMBeanAttributeInfo snapshot = new OpenMBeanAttributeInfoSupport(
                 SNAPSHOT_ATTRIBUTE,
                 "Immutable accepted-policy and last-apply snapshot",
-                GeneratedJmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT,
+                JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT,
                 true,
                 false,
                 false);

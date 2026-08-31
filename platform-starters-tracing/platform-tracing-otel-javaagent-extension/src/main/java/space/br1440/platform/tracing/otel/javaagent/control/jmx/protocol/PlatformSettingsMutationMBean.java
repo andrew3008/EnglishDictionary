@@ -25,8 +25,8 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxOpenTypes;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.GeneratedJmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
@@ -35,7 +35,7 @@ public final class PlatformSettingsMutationMBean implements DynamicMBean {
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(PlatformSettingsMutationMBean.class);
 
     private static final String OP_APPLY =
-            GeneratedJmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT;
+            JmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT;
     private static final String FALLBACK_ATTEMPT_ID = "";
     private static final MBeanInfo INFO = buildMBeanInfo();
 
@@ -151,7 +151,7 @@ public final class PlatformSettingsMutationMBean implements DynamicMBean {
     }
 
     private static String extractAttemptId(CompositeData request) {
-        String key = GeneratedJmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID;
+        String key = JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID;
         if (request == null || !request.containsKey(key)) {
             return FALLBACK_ATTEMPT_ID;
         }
@@ -183,14 +183,14 @@ public final class PlatformSettingsMutationMBean implements DynamicMBean {
 
     private static MBeanInfo buildMBeanInfo() {
         OpenMBeanParameterInfo request = new OpenMBeanParameterInfoSupport(
-                GeneratedJmxWireContract.PARAMETER_SETTINGS_MUTATION_APPLY_SNAPSHOT_REQUEST,
+                JmxWireContract.PARAMETER_SETTINGS_MUTATION_APPLY_SNAPSHOT_REQUEST,
                 "Complete tracing settings snapshot",
-                GeneratedJmxOpenTypes.APPLY_SNAPSHOT_REQUEST);
+                JmxOpenTypes.APPLY_SNAPSHOT_REQUEST);
         OpenMBeanOperationInfo apply = new OpenMBeanOperationInfoSupport(
                 OP_APPLY,
                 "Applies one complete tracing settings snapshot",
                 new OpenMBeanParameterInfo[]{request},
-                GeneratedJmxOpenTypes.APPLY_SNAPSHOT_RESPONSE,
+                JmxOpenTypes.APPLY_SNAPSHOT_RESPONSE,
                 MBeanOperationInfo.ACTION);
         return new OpenMBeanInfoSupport(
                 PlatformSettingsMutationMBean.class.getName(),

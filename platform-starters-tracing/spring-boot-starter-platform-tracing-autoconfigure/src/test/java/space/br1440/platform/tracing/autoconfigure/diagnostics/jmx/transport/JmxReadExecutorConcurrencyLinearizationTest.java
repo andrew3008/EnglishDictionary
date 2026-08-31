@@ -1,20 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import javax.management.Attribute;
-import javax.management.AttributeList;
-import javax.management.AttributeNotFoundException;
-import javax.management.DynamicMBean;
-import javax.management.InvalidAttributeValueException;
-import javax.management.MBeanAttributeInfo;
-import javax.management.MBeanException;
-import javax.management.MBeanInfo;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-import javax.management.ReflectionException;
-import javax.management.RuntimeMBeanException;
 import java.lang.management.ManagementFactory;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
@@ -25,8 +12,27 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.management.Attribute;
+import javax.management.AttributeList;
+import javax.management.AttributeNotFoundException;
+import javax.management.DynamicMBean;
+import javax.management.InvalidAttributeValueException;
+import javax.management.MBeanException;
+import javax.management.MBeanInfo;
+import javax.management.MBeanNotificationInfo;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+import javax.management.ReflectionException;
+import javax.management.RuntimeMBeanException;
+import javax.management.openmbean.OpenMBeanAttributeInfo;
+import javax.management.openmbean.OpenMBeanAttributeInfoSupport;
+import javax.management.openmbean.OpenMBeanConstructorInfo;
+import javax.management.openmbean.OpenMBeanInfoSupport;
+import javax.management.openmbean.OpenMBeanOperationInfo;
+import javax.management.openmbean.SimpleType;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Линеаризация конкурентных attempts: per-domain transport-лок, decode вне лока,
@@ -97,11 +103,15 @@ class JmxReadExecutorConcurrencyLinearizationTest {
         registerFakeMBean(SAMPLING_NAME, name -> 20L);
 
         JmxReadExecutor executor = new JmxReadExecutor(server);
-        JmxAttribute<Long> slowDecode = new JmxAttribute<>("Value", JmxContractPoint.EXPORT_OBSERVATION, raw -> {
-            decodeEntered.countDown();
-            await(releaseDecode);
-            return (Long) raw;
-        });
+        JmxAttribute<Long> slowDecode = new JmxAttribute<>(
+                "Value",
+                JmxContractPoint.EXPORT_OBSERVATION,
+                SimpleType.LONG,
+                raw -> {
+                    decodeEntered.countDown();
+                    await(releaseDecode);
+                    return (Long) raw;
+                });
         JmxAttribute<Long> fastOther = longAttribute("Value", JmxContractPoint.SAMPLING_OBSERVATION);
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
@@ -183,7 +193,7 @@ class JmxReadExecutorConcurrencyLinearizationTest {
     }
 
     private static JmxAttribute<Long> longAttribute(String name, JmxContractPoint point) {
-        return new JmxAttribute<>(name, point, raw -> {
+        return new JmxAttribute<>(name, point, SimpleType.LONG, raw -> {
             if (raw instanceof Long value) {
                 return value;
             }
@@ -251,9 +261,20 @@ class JmxReadExecutorConcurrencyLinearizationTest {
 
         @Override
         public MBeanInfo getMBeanInfo() {
-            return new MBeanInfo(getClass().getName(), "fake", new MBeanAttributeInfo[]{
-                    new MBeanAttributeInfo("Value", "long", "value", true, false, false)
-            }, null, null, null);
+            OpenMBeanAttributeInfo attribute = new OpenMBeanAttributeInfoSupport(
+                    "Value",
+                    "value",
+                    SimpleType.LONG,
+                    true,
+                    false,
+                    false);
+            return new OpenMBeanInfoSupport(
+                    getClass().getName(),
+                    "fake",
+                    new OpenMBeanAttributeInfo[]{attribute},
+                    new OpenMBeanConstructorInfo[0],
+                    new OpenMBeanOperationInfo[0],
+                    new MBeanNotificationInfo[0]);
         }
     }
 }

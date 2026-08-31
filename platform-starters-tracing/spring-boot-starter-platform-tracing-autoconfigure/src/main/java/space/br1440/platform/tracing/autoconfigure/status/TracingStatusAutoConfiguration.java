@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
@@ -36,14 +37,16 @@ public class TracingStatusAutoConfiguration {
                                                          TracingBootstrapSettings bootstrapSettings,
                                                          PlatformTracingJmxClient jmxClient,
                                                          ObjectProvider<AcceptedTracingSettingsReader> acceptedPolicyReader,
-                                                         TracingDeploymentDiagnostics diagnostics) {
+                                                         TracingDeploymentDiagnostics diagnostics,
+                                                         AgentReadinessCoherenceGuard coherenceGuard) {
         return new TracingStatusAssembler(
                 traceOperations,
                 tracingRuntime,
                 bootstrapSettings,
                 jmxClient,
                 acceptedPolicyReader.getIfAvailable(),
-                diagnostics
+                diagnostics,
+                coherenceGuard
         );
     }
 

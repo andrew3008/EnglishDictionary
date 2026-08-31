@@ -13,7 +13,6 @@ public final class AgentEventCodes {
     public static final String BOOT_FORBIDDEN_SPI = "PTA-BOOT-007";
     public static final String BOOT_PROCESSOR_REGISTRATION = "PTA-BOOT-008";
     public static final String BOOT_UPSTREAM_SERVICE = "PTA-BOOT-009";
-    public static final String BOOT_SPI_ATTESTATION_EVIDENCE = "PTA-BOOT-010";
 
     public static final String VALID_UNRECOGNIZED_MODE = "PTA-VALID-001";
     public static final String VALID_POLICY = "PTA-VALID-002";
@@ -66,7 +65,6 @@ public final class AgentEventCodes {
             BOOT_FORBIDDEN_SPI,
             BOOT_PROCESSOR_REGISTRATION,
             BOOT_UPSTREAM_SERVICE,
-            BOOT_SPI_ATTESTATION_EVIDENCE,
             VALID_UNRECOGNIZED_MODE,
             VALID_POLICY,
             VALID_MISSING_ATTRIBUTES,
