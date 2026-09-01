@@ -54,7 +54,7 @@ dependencies {
         // ============================================================
         // Логи, метрики и проверки состояния
         // ============================================================
-        api "space.br1440.platform.starters:spring-boot-starter-platform-logging:${rootProject.version}"
+        api "space.br1440.platform.starters:spring-boot-starter-platform-logging:1.3.0"
         api "space.br1440.platform.starters:spring-boot-starter-platform-metrics:${rootProject.version}"
         api "space.br1440.platform.starters:spring-boot-starter-platform-health-checks:${rootProject.version}"
 
