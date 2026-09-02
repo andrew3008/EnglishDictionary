@@ -15,7 +15,6 @@ public final class ResourceValidationDiagnostics {
 
     private static final AttributeKey<String> SERVICE_NAME = AttributeKey.stringKey(PlatformAttributes.SERVICE_NAME);
     private static final AttributeKey<String> ENVIRONMENT = AttributeKey.stringKey(PlatformAttributes.PLATFORM_ENVIRONMENT);
-    private static final AttributeKey<String> C_GROUP = AttributeKey.stringKey(PlatformAttributes.PLATFORM_C_GROUP);
 
     public record ValidationResult(boolean passed, List<String> missingKeys, ResourceValidationMode mode) {
     }
@@ -37,10 +36,6 @@ public final class ResourceValidationDiagnostics {
 
         if (isUnknownOrBlank(ENVIRONMENT, resolved, otelEnv, existing)) {
             missing.add(PlatformAttributes.PLATFORM_ENVIRONMENT);
-        }
-
-        if (isUnknownOrBlank(C_GROUP, resolved, otelEnv, existing)) {
-            missing.add(PlatformAttributes.PLATFORM_C_GROUP);
         }
 
         return new ValidationResult(missing.isEmpty(), List.copyOf(missing), mode);

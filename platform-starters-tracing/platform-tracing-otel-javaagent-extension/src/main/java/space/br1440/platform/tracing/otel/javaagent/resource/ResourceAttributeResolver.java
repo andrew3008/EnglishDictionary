@@ -21,7 +21,6 @@ public final class ResourceAttributeResolver {
     private static final AttributeKey<String> SERVICE_NAME = AttributeKey.stringKey(PlatformAttributes.SERVICE_NAME);
     private static final AttributeKey<String> SERVICE_VERSION = AttributeKey.stringKey(PlatformAttributes.SERVICE_VERSION);
     private static final AttributeKey<String> ENVIRONMENT = AttributeKey.stringKey(PlatformAttributes.PLATFORM_ENVIRONMENT);
-    private static final AttributeKey<String> C_GROUP = AttributeKey.stringKey(PlatformAttributes.PLATFORM_C_GROUP);
     private static final AttributeKey<String> PLATFORM_ID = AttributeKey.stringKey(PlatformAttributes.PLATFORM_ID);
 
     private static final String PROP_SPRING_APPLICATION_NAME = "spring.application.name";
@@ -54,10 +53,6 @@ public final class ResourceAttributeResolver {
 
         resolveEnvironment(config, existing, otelEnv, normalize)
                 .ifPresent(v -> builder.put(ENVIRONMENT, v));
-
-        if (existing.getAttribute(C_GROUP) == null) {
-            builder.put(C_GROUP, resolveCGroup(config).orElse(EnvironmentNormalizer.UNKNOWN));
-        }
 
         if (existing.getAttribute(PLATFORM_ID) == null) {
             builder.put(PLATFORM_ID, resolvePlatformId(config).orElse(EnvironmentNormalizer.UNKNOWN));
@@ -124,11 +119,6 @@ public final class ResourceAttributeResolver {
 
         String platform = config.getString(PlatformResourceCustomizer.PROP_ENVIRONMENT);
         return Optional.of(EnvironmentNormalizer.normalize(platform, normalize));
-    }
-
-    Optional<String> resolveCGroup(ConfigProperties config) {
-        String value = config.getString(PlatformResourceCustomizer.PROP_C_GROUP);
-        return StringUtils.hasText(value) ? Optional.of(value.trim()) : Optional.empty();
     }
 
     Optional<String> resolvePlatformId(ConfigProperties config) {

@@ -135,15 +135,13 @@ class ControlledAgentRuntimeTest {
         command.add("-Dplatform.tracing.service.name=controlled-agent-runtime-test");
         command.add("-Dplatform.tracing.service.version=1.0.0");
         command.add("-Dplatform.tracing.service.environment=test");
-        command.add("-Dplatform.tracing.service.c-group=controlled-agent-tests");
         command.add("-Dplatform.tracing.resource.validation-mode=STRICT");
         // Декларация remote JMX проверяется по неизменяемым JVM-аргументам, поэтому все три
         // свойства обязаны присутствовать: иначе декларация становится UNKNOWN и READY не наступит.
         command.add("-Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED");
         command.add("-Dplatform.tracing.jmx.remote.listener-confirmed=false");
         command.add("-Dplatform.tracing.jmx.remote.authorization-forwarder-installed=false");
-        command.add("-Dplatform.tracing.controlled-agent.expected-sha256="
-                + fixture.expectedControlledAgentSha());
+        command.add("-Dplatform.tracing.controlled-agent.expected-sha256=" + fixture.expectedControlledAgentSha());
         command.add("-javaagent:" + fixture.controlledAgent());
         command.add("-cp");
         command.add(probeClassPath.toString());

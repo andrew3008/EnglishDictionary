@@ -26,7 +26,6 @@ public final class PlatformResourceCustomizer {
     public static final String PROP_SERVICE_NAME = "platform.tracing.service.name";
     public static final String PROP_SERVICE_VERSION = "platform.tracing.service.version";
     public static final String PROP_ENVIRONMENT = "platform.tracing.service.environment";
-    public static final String PROP_C_GROUP = "platform.tracing.service.c-group";
     public static final String PROP_ID = "platform.tracing.service.id";
     public static final String PROP_HOST = "platform.tracing.service.host";
     public static final String PROP_CONTAINER_ID = "platform.tracing.service.container-id";

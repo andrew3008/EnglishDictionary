@@ -18,9 +18,8 @@ public final class ResourceStartupDiagnostics {
     private static final AttributeKey<String> SERVICE_NAME = AttributeKey.stringKey(PlatformAttributes.SERVICE_NAME);
     private static final AttributeKey<String> SERVICE_VERSION = AttributeKey.stringKey(PlatformAttributes.SERVICE_VERSION);
     private static final AttributeKey<String> ENVIRONMENT = AttributeKey.stringKey(PlatformAttributes.PLATFORM_ENVIRONMENT);
-    private static final AttributeKey<String> C_GROUP = AttributeKey.stringKey(PlatformAttributes.PLATFORM_C_GROUP);
 
-    public record Summary(String serviceName, String serviceVersion, String environment, String cGroup,
+    public record Summary(String serviceName, String serviceVersion, String environment,
                           ResourceValidationMode mode, int missingCount) {
     }
 
@@ -29,7 +28,6 @@ public final class ResourceStartupDiagnostics {
                 resolved.get(SERVICE_NAME),
                 resolved.get(SERVICE_VERSION),
                 resolved.get(ENVIRONMENT),
-                resolved.get(C_GROUP),
                 mode,
                 missingCount
         );
@@ -40,7 +38,6 @@ public final class ResourceStartupDiagnostics {
                 "service", orAbsent(summary.serviceName()),
                 "environment", orAbsent(summary.environment()),
                 "version", orAbsent(summary.serviceVersion()),
-                "cGroup", orAbsent(summary.cGroup()),
                 "kind", String.valueOf(summary.mode()),
                 "count", String.valueOf(summary.missingCount()));
     }

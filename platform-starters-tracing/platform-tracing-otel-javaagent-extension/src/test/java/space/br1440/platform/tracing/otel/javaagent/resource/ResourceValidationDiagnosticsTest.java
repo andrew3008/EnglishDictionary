@@ -21,29 +21,33 @@ class ResourceValidationDiagnosticsTest {
         return Attributes.builder()
                 .put(key(PlatformAttributes.SERVICE_NAME), "demo")
                 .put(key(PlatformAttributes.PLATFORM_ENVIRONMENT), "production")
-                .put(key(PlatformAttributes.PLATFORM_C_GROUP), "billing")
                 .build();
     }
 
     @Test
     void passed_when_all_required_present() {
+        // given
+        // when
         ResourceValidationDiagnostics.ValidationResult result = diagnostics.validate(
                 fullIdentity(), Resource.empty(), Resource.empty(), ResourceValidationMode.STRICT);
 
+        // then
         assertThat(result.passed()).isTrue();
         assertThat(result.missingKeys()).isEmpty();
     }
 
     @Test
     void strict_throw_when_service_name_absent() {
+        // given
         Attributes resolved = Attributes.builder()
                 .put(key(PlatformAttributes.PLATFORM_ENVIRONMENT), "production")
-                .put(key(PlatformAttributes.PLATFORM_C_GROUP), "billing")
                 .build();
 
+        // when
         ResourceValidationDiagnostics.ValidationResult result = diagnostics.validate(
                 resolved, Resource.empty(), Resource.empty(), ResourceValidationMode.STRICT);
 
+        // then
         assertThat(result.passed()).isFalse();
         assertThat(result.missingKeys()).contains(PlatformAttributes.SERVICE_NAME);
         assertThatThrownBy(() -> diagnostics.applyOrThrow(result))
@@ -52,40 +56,46 @@ class ResourceValidationDiagnosticsTest {
 
     @Test
     void effective_view_otelEnv_covers_service_name() {
-        // resolved без service.name, но otelEnv содержит (OTEL_SERVICE_NAME) → не missing
+        // given
         Attributes resolved = Attributes.builder()
                 .put(key(PlatformAttributes.PLATFORM_ENVIRONMENT), "production")
-                .put(key(PlatformAttributes.PLATFORM_C_GROUP), "billing")
                 .build();
         Resource otelEnv = Resource.create(Attributes.of(key(PlatformAttributes.SERVICE_NAME), "otel-svc"));
 
+        // when
         ResourceValidationDiagnostics.ValidationResult result = diagnostics.validate(
                 resolved, otelEnv, Resource.empty(), ResourceValidationMode.STRICT);
 
+        // then
         assertThat(result.passed()).isTrue();
     }
 
     @Test
     void unknown_service_treated_as_absence() {
+        // given
         Attributes resolved = Attributes.builder()
                 .put(key(PlatformAttributes.SERVICE_NAME), "unknown_service:java")
                 .put(key(PlatformAttributes.PLATFORM_ENVIRONMENT), "production")
-                .put(key(PlatformAttributes.PLATFORM_C_GROUP), "billing")
                 .build();
 
+        // when
         ResourceValidationDiagnostics.ValidationResult result = diagnostics.validate(
                 resolved, Resource.empty(), Resource.empty(), ResourceValidationMode.STRICT);
 
+        // then
         assertThat(result.passed()).isFalse();
         assertThat(result.missingKeys()).contains(PlatformAttributes.SERVICE_NAME);
     }
 
     @Test
     void lenient_does_not_throw() {
+        // given
+        // when
         ResourceValidationDiagnostics.ValidationResult result = diagnostics.validate(
                 Attributes.empty(), Resource.empty(), Resource.empty(), ResourceValidationMode.LENIENT);
 
+        // then
         assertThat(result.passed()).isFalse();
-        diagnostics.applyOrThrow(result); // no throw
+        diagnostics.applyOrThrow(result);
     }
 }

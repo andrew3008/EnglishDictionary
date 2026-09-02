@@ -26,7 +26,8 @@ class ResourceAttributeResolverTest {
     void otel_service_name_omit() {
         Attributes attrs = resolve(Map.of(
                 "otel.service.name", "otel-svc",
-                PlatformResourceCustomizer.PROP_SERVICE_NAME, "platform-svc"));
+                PlatformResourceCustomizer.PROP_SERVICE_NAME, "platform-svc")
+        );
 
         assertThat(attrs.get(key(PlatformAttributes.SERVICE_NAME))).isNull();
     }
@@ -67,11 +68,15 @@ class ResourceAttributeResolverTest {
     }
 
     @Test
-    void all_empty_writes_unknown_for_group_and_id() {
-        Attributes attrs = resolve(Map.of());
+    void all_empty_writes_unknown_for_id() {
+        // given
+        Map<String, String> config = Map.of();
 
+        // when
+        Attributes attrs = resolve(config);
+
+        // then
         assertThat(attrs.get(key(PlatformAttributes.SERVICE_NAME))).isNull();
-        assertThat(attrs.get(key(PlatformAttributes.PLATFORM_C_GROUP))).isEqualTo(EnvironmentNormalizer.UNKNOWN);
         assertThat(attrs.get(key(PlatformAttributes.PLATFORM_ID))).isEqualTo(EnvironmentNormalizer.UNKNOWN);
     }
 
