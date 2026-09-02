@@ -85,7 +85,9 @@ public final class PlatformTracingJavaAgentPlugin implements Plugin<Project> {
                     task.setDescription("Copies the controlled Java agent into the build directory.");
                     task.from(controlledAgent);
                     task.into(agentArtifact.directory());
-                    task.rename(name -> agentArtifact.fileName());
+
+                    String fileName = agentArtifact.fileName();
+                    task.rename(sourceName -> fileName);
                 });
     }
 
