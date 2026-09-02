@@ -1,5 +1,7 @@
 package space.br1440.platform.errorhandling.core.strategy.cause.enterprise;
 
+import com.fasterxml.jackson.core.JsonParseException;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
@@ -186,6 +188,8 @@ public class FileIoExceptionStrategy extends AbstractRootCauseExceptionStrategy 
             // порядок между ними не критичен
             case CharConversionException ignored -> IoErrorType.INVALID_ENCODING;
             case UnsupportedEncodingException ignored -> IoErrorType.CONFIG_ERROR;
+
+            case JsonParseException ignored -> IoErrorType.INVALID_ENCODING;
 
             // java.net — подтип InterruptedIOException, должен быть первым
             case SocketTimeoutException ignored -> IoErrorType.SOCKET_TIMEOUT;
