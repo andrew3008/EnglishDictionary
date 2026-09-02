@@ -149,6 +149,7 @@ class AgentReadinessProbeTest {
     }
 
     public interface LegacyReadinessMBean {
+        @SuppressWarnings("unused")
         CompositeData getReadinessSnapshot();
     }
 
