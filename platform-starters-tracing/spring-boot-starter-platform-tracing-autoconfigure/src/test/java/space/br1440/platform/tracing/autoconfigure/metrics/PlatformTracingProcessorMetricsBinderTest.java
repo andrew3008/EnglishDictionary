@@ -16,6 +16,7 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.Pro
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorMetricsValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorWatchdogValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.ObservationCapture;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
@@ -59,7 +60,7 @@ class PlatformTracingProcessorMetricsBinderTest {
         ProcessorWatchdogValues values = new ProcessorWatchdogValues(
                 1L, 2L, 3, 4, 5, 10_000, 6L, 60_000, 1_024, 0L, 0L, 0L);
         when(client.processorMetrics().observation()).thenReturn(Optional.of(new ProcessorMetricsObservation(
-                "agent-1",
+                new ObservationCapture("agent-1", 1L, 1_000L, 1_001L),
                 new JmxOwnerState.Present<>(values, 1L),
                 new JmxOwnerState.Absent<>(0L),
                 new JmxOwnerState.Absent<>(0L)
@@ -87,7 +88,7 @@ class PlatformTracingProcessorMetricsBinderTest {
         // given
         PlatformTracingJmxClient client = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
         when(client.processorMetrics().observation()).thenReturn(Optional.of(new ProcessorMetricsObservation(
-                "agent-1",
+                new ObservationCapture("agent-1", 1L, 1_000L, 1_001L),
                 new JmxOwnerState.Absent<>(1L),
                 new JmxOwnerState.Absent<>(0L),
                 new JmxOwnerState.Absent<>(0L)

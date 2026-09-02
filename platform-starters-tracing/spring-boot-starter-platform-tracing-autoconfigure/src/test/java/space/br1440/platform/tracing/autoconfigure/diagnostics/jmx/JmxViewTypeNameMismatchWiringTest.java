@@ -174,8 +174,6 @@ class JmxViewTypeNameMismatchWiringTest {
         assertViolation(executor, JmxContractPoint.PROCESSOR_METRICS_OBSERVATION);
     }
 
-    // -- Утверждение --------------------------------------------------------------------
-
     private static void assertViolation(JmxReadExecutor executor, JmxContractPoint point) {
         List<JmxDiagnosticSnapshot> snapshot = executor.diagnosticSnapshot();
         assertThat(snapshot)
@@ -186,8 +184,6 @@ class JmxViewTypeNameMismatchWiringTest {
                     assertThat(entry.kind()).isEqualTo(JmxDiagnosticKind.COMPOSITE_TYPE_NAME_MISMATCH);
                 });
     }
-
-    // -- Синтетические composite-заполнители --------------------------------------------
 
     private static CompositeData wrongTypeComposite() {
         return compositeNamed("space.br1440.platform.tracing.NotTheExpectedType");
@@ -217,23 +213,29 @@ class JmxViewTypeNameMismatchWiringTest {
                 JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_METRICS, metrics));
     }
 
-    /** Верхнеуровневый frame с корректным именем и минимальным набором frame-item'ов + nested-владельцами. */
     private static CompositeData frameOf(String typeName, Map<String, CompositeData> nestedItems) {
         try {
             Map<String, OpenType<?>> itemTypes = new LinkedHashMap<>();
             itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID, SimpleType.STRING);
+            itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE, SimpleType.LONG);
+            itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_STARTED_AT, SimpleType.LONG);
+            itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_COMPLETED_AT, SimpleType.LONG);
             for (Map.Entry<String, CompositeData> entry : nestedItems.entrySet()) {
                 itemTypes.put(entry.getKey(), entry.getValue().getCompositeType());
             }
 
             CompositeType type = new CompositeType(
-                    typeName, "Синтетический верхнеуровневый frame",
+                    typeName, "Synthetic top-level frame",
                     itemTypes.keySet().toArray(new String[0]),
                     itemTypes.keySet().toArray(new String[0]),
-                    itemTypes.values().toArray(new OpenType<?>[0]));
+                    itemTypes.values().toArray(new OpenType<?>[0])
+            );
 
             Map<String, Object> values = new LinkedHashMap<>();
             values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID, "agent-wiring-test");
+            values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE, 1L);
+            values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_STARTED_AT, 1_700_000_000_000L);
+            values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_COMPLETED_AT, 1_700_000_000_001L);
             values.putAll(nestedItems);
 
             return new CompositeDataSupport(type, values);
@@ -242,15 +244,12 @@ class JmxViewTypeNameMismatchWiringTest {
         }
     }
 
-    // -- Регистрация fake MBean, аналогично JmxReadExecutorTest --------------------------
-
     private void registerFakeMBean(String attributeName, java.util.function.Function<String, Object> supplier) throws Exception {
-        registeredName = ObjectName.getInstance(
-                "space.br1440.platform.tracing.test:type=JmxViewTypeNameMismatchWiringTest,attribute=" + attributeName);
+        String attributePath = "space.br1440.platform.tracing.test:type=JmxViewTypeNameMismatchWiringTest,attribute=" + attributeName;
+        registeredName = ObjectName.getInstance(attributePath);
         server.registerMBean(new FakeDynamicMBean(attributeName, supplier), registeredName);
     }
 
-    /** Простой {@code DynamicMBean} с единственным настраиваемым атрибутом. */
     private static final class FakeDynamicMBean implements DynamicMBean {
 
         private final String attributeName;
@@ -299,14 +298,17 @@ class JmxViewTypeNameMismatchWiringTest {
                     openType,
                     true,
                     false,
-                    false);
+                    false
+            );
+
             return new OpenMBeanInfoSupport(
                     getClass().getName(),
                     "fake",
                     new OpenMBeanAttributeInfo[]{attribute},
                     new OpenMBeanConstructorInfo[0],
                     new OpenMBeanOperationInfo[0],
-                    new MBeanNotificationInfo[0]);
+                    new MBeanNotificationInfo[0]
+            );
         }
 
         private static OpenType<?> openType(String attributeName) {

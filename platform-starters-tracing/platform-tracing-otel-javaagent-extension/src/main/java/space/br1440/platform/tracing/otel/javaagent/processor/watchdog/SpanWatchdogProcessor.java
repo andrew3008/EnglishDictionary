@@ -44,12 +44,6 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
 
     private static final String DIAGNOSTIC_ID = "watchdog";
     private static final Runnable NO_BEFORE_COMPUTE_HOOK = () -> { };
-
-    /**
-     * Ограничение ожидания остановки сканера в {@link #shutdown()}. Без него результат
-     * завершения сообщал бы об успехе, пока сканирование ещё работает с индексом,
-     * который тут же дренируется.
-     */
     private static final long SHUTDOWN_TIMEOUT_MILLIS = 2_000L;
 
     private final ScheduledExecutorService scheduler;
@@ -190,11 +184,6 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
         return scannerStopped ? CompletableResultCode.ofSuccess() : CompletableResultCode.ofFailure();
     }
 
-    /**
-     * Останавливает сканер и дожидается завершения текущего прохода. Дренаж индекса
-     * выполняется только после этого, иначе сканирование и дренаж работали бы
-     * с одним состоянием одновременно.
-     */
     private boolean stopScanner() {
         if (scheduler == null) {
             return true;

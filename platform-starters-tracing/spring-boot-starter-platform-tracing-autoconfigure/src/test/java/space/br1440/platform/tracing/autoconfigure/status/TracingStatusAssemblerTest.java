@@ -29,6 +29,7 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.Pro
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.ObservationCapture;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.autoconfigure.support.ReadinessJmxTestFixtures;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
@@ -144,11 +145,14 @@ class TracingStatusAssemblerTest {
         PlatformTracingJmxClient jmxClient = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
         ProcessorWatchdogValues values = new ProcessorWatchdogValues(11L, 4L, 3, 1, 7, 10_000, 9L, 60_000, 1_024, 5L, 2L, 0L);
         when(jmxClient.processorMetrics().observation()).thenReturn(Optional.of(
-                new ProcessorMetricsObservation(
-                        "agent-instance",
-                        new JmxOwnerState.Present<>(values, 2L),
-                        new JmxOwnerState.Absent<>(0L),
-                        new JmxOwnerState.Absent<>(0L))));
+                        new ProcessorMetricsObservation(
+                                new ObservationCapture("agent-instance", 17L, 1_700_000_000_000L, 1_700_000_000_005L),
+                                new JmxOwnerState.Present<>(values, 2L),
+                                new JmxOwnerState.Absent<>(0L),
+                                new JmxOwnerState.Absent<>(0L)
+                        )
+                )
+        );
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 true,
                 TracingConfigurationAuthority.HELM,
@@ -183,6 +187,70 @@ class TracingStatusAssemblerTest {
                 .containsEntry("spansRejectedPerTraceTotal", 5L)
                 .containsEntry("spansRejectedGlobalTotal", 2L)
                 .containsEntry("spanLedgerInvariantViolationTotal", 0L);
+        assertThat(captureOf(watchdog))
+                .containsEntry("agentInstanceId", "agent-instance")
+                .containsEntry("sequence", 17L)
+                .containsEntry("startedAt", 1_700_000_000_000L)
+                .containsEntry("completedAt", 1_700_000_000_005L);
+    }
+
+    @Test
+    void watchdogCaptureIsPublishedWhenOwnerIsAbsentAndBlankWhenObservationIsUnreadable() {
+        // given
+        PlatformTracingJmxClient absentOwner = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
+        when(absentOwner.processorMetrics().observation()).thenReturn(Optional.of(
+                new ProcessorMetricsObservation(
+                        new ObservationCapture("agent-instance", 5L, 1_700_000_000_000L, 1_700_000_000_002L),
+                        new JmxOwnerState.Absent<>(0L),
+                        new JmxOwnerState.Absent<>(0L),
+                        new JmxOwnerState.Absent<>(0L))));
+
+        PlatformTracingJmxClient unreadable = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
+        when(unreadable.processorMetrics().observation()).thenReturn(Optional.empty());
+
+        // when
+        Map<String, Object> absentOwnerWatchdog = watchdogSectionOf(absentOwner);
+        Map<String, Object> unreadableWatchdog = watchdogSectionOf(unreadable);
+
+        // then
+        assertThat(absentOwnerWatchdog).containsEntry("present", false);
+        assertThat(captureOf(absentOwnerWatchdog))
+                .containsEntry("agentInstanceId", "agent-instance")
+                .containsEntry("sequence", 5L)
+                .containsEntry("startedAt", 1_700_000_000_000L)
+                .containsEntry("completedAt", 1_700_000_000_002L);
+
+        assertThat(unreadableWatchdog).containsEntry("present", false);
+        assertThat(captureOf(unreadableWatchdog))
+                .containsEntry("agentInstanceId", null)
+                .containsEntry("sequence", null)
+                .containsEntry("startedAt", null)
+                .containsEntry("completedAt", null);
+    }
+
+    private static Map<String, Object> watchdogSectionOf(PlatformTracingJmxClient jmxClient) {
+        TracingBootstrapSettings settings = new TracingBootstrapSettings(
+                true,
+                TracingConfigurationAuthority.HELM,
+                PlatformEnvironmentPosture.LOCAL);
+        TracingStatusAssembler assembler = new TracingStatusAssembler(
+                NoopTraceOperations.INSTANCE,
+                NoOpTracingRuntime.noop(),
+                settings,
+                jmxClient,
+                Optional::empty,
+                diagnostics(AgentRuntimeState.AGENT_READY),
+                stableCoherenceGuard());
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> watchdog = (Map<String, Object>) assembler.assemble().runtime().get("watchdog");
+        return watchdog;
+    }
+
+    private static Map<String, Object> captureOf(Map<String, Object> watchdogSection) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> capture = (Map<String, Object>) watchdogSection.get("capture");
+        return capture;
     }
 
     @Test
@@ -292,25 +360,35 @@ class TracingStatusAssemblerTest {
                 state,
                 new TracingDeploymentDiagnostics.AgentReadiness(
                         state == AgentRuntimeState.AGENT_READY,
+
                         new TracingDeploymentDiagnostics.ContractIdentity(
                                 "platform-tracing-jmx-wire-contract",
-                                "schema-digest"),
+                                "schema-digest"
+                        ),
+
                         new TracingDeploymentDiagnostics.ReadinessAnchor(
                                 "runtime-epoch-1",
                                 1L,
-                                "batch-1"),
+                                "batch-1"
+                        ),
+
                         new TracingDeploymentDiagnostics.LifecycleState(
                                 state == AgentRuntimeState.AGENT_READY ? "READY" : "FAILED",
                                 state == AgentRuntimeState.AGENT_READY ? "" : "TEST_FAILURE",
                                 Set.of(),
-                                Set.of()),
+                                Set.of()
+                        ),
+
                         new TracingDeploymentDiagnostics.DistributionIdentity(
                                 "a".repeat(64),
                                 "2.30.0",
-                                "1.2.3"),
+                                "1.2.3"
+                        ),
+
                         new TracingDeploymentDiagnostics.ClassloaderTopology(
                                 "agent-loader@1",
-                                "sdk-loader@2")
+                                "sdk-loader@2"
+                        )
                 )
         );
     }

@@ -23,12 +23,14 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTraci
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.ExportProcessorValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.SafeExporterValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorCompositeValues;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorMetricsObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorWatchdogValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.sampling.SamplingObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.scrubbing.ScrubbingValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxDiagnosticSnapshot;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.ObservationCapture;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 
 public final class TracingStatusAssembler {
@@ -237,10 +239,13 @@ public final class TracingStatusAssembler {
     }
 
     private Map<String, Object> watchdogSection() {
-        Optional<ProcessorWatchdogValues> values = jmxClient.processorMetrics().observation()
-                .flatMap(observation -> presentValues(observation.watchdog()));
+        Optional<ProcessorMetricsObservation> observation = jmxClient.processorMetrics().observation();
+        Optional<ProcessorWatchdogValues> values = observation
+                .flatMap(processorMetrics -> presentValues(processorMetrics.watchdog()));
 
         Map<String, Object> watchdog = new LinkedHashMap<>();
+        // Возраст снимка идёт первым: без него счётчики ниже нельзя интерпретировать.
+        watchdog.put("capture", captureSection(observation.map(ProcessorMetricsObservation::capture)));
         watchdog.put("present", values.isPresent());
         watchdog.put("forcedSpanCloses", values.map(ProcessorWatchdogValues::forcedSpanCloses).orElse(null));
         watchdog.put("forcedTraceCloses", values.map(ProcessorWatchdogValues::forcedTraceCloses).orElse(null));
@@ -255,6 +260,15 @@ public final class TracingStatusAssembler {
         watchdog.put("spansRejectedGlobalTotal", values.map(ProcessorWatchdogValues::spansRejectedGlobalTotal).orElse(null));
         watchdog.put("spanLedgerInvariantViolationTotal", values.map(ProcessorWatchdogValues::spanLedgerInvariantViolationTotal).orElse(null));
         return watchdog;
+    }
+
+    private static Map<String, Object> captureSection(Optional<ObservationCapture> capture) {
+        Map<String, Object> section = new LinkedHashMap<>();
+        section.put("agentInstanceId", capture.map(ObservationCapture::agentInstanceId).orElse(null));
+        section.put("sequence", capture.map(ObservationCapture::sequence).orElse(null));
+        section.put("startedAt", capture.map(ObservationCapture::startedAtEpochMilli).orElse(null));
+        section.put("completedAt", capture.map(ObservationCapture::completedAtEpochMilli).orElse(null));
+        return Collections.unmodifiableMap(section);
     }
 
     private Optional<Long> processorErrorsTotal() {

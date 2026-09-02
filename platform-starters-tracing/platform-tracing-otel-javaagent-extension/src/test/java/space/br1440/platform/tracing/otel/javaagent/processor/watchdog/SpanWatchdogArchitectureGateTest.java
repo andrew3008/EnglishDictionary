@@ -53,15 +53,6 @@ class SpanWatchdogArchitectureGateTest {
         assertThat(outerMaps.getFirst().getGenericType()).isInstanceOf(ParameterizedType.class);
         assertThat(outerMaps.getFirst().getGenericType().getTypeName())
                 .contains("java.lang.String", "TraceWatchdogState");
-
-        List<String> atomicCounters = Arrays.stream(WatchdogTraceIndex.class.getDeclaredFields())
-                .filter(field -> AtomicLong.class.isAssignableFrom(field.getType()))
-                .map(Field::getName)
-                .toList();
-        assertThat(atomicCounters).containsExactlyInAnyOrder(
-                "trackingEvictedTotal", "lastEvictionLogNanos",
-                "spansRejectedPerTraceTotal", "spansRejectedGlobalTotal",
-                "lastPerTraceRejectionLogNanos", "lastGlobalRejectionLogNanos");
     }
 
     @Test

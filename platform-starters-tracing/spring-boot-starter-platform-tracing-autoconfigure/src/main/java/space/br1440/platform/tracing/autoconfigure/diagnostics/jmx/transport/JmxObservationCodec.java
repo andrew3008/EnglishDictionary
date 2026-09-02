@@ -51,6 +51,15 @@ public final class JmxObservationCodec {
         return require(composite, item, Long.class);
     }
 
+    public static long getPositiveLong(CompositeData composite, String item) {
+        long value = getLong(composite, item);
+        if (value <= 0L) {
+            throw new JmxContractViolationException(JmxDiagnosticKind.VALUE_SEMANTICS_VIOLATION);
+        }
+
+        return value;
+    }
+
     public static int getInt(CompositeData composite, String item) {
         return require(composite, item, Integer.class);
     }
@@ -119,6 +128,13 @@ public final class JmxObservationCodec {
     }
 
     private static <T> T require(CompositeData composite, String item, Class<T> type) {
+        // CompositeData.get на неизвестном имени бросает InvalidKeyException мимо таксономии
+        // диагностик, и сырое JMX-исключение доходит до вызывающего. Отсутствующий item — это
+        // нарушение контракта, а не сбой транспорта.
+        if (!composite.containsKey(item)) {
+            throw new JmxContractViolationException(JmxDiagnosticKind.MISSING_OBSERVATION_ITEM);
+        }
+
         Object raw = composite.get(item);
         if (raw == null) {
             throw new JmxContractViolationException(JmxDiagnosticKind.MISSING_OBSERVATION_ITEM);

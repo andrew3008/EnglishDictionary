@@ -100,7 +100,11 @@ class DomainAbsentOwnerEncodingRoundTripTest {
         assertThat(processor.watchdog()).isInstanceOf(JmxOwnerState.Absent.class);
         assertThat(processor.composite()).isInstanceOf(JmxOwnerState.Absent.class);
         assertThat(processor.metrics()).isInstanceOf(JmxOwnerState.Absent.class);
-        assertThat(processor.agentInstanceId()).isEqualTo(expectedAgentInstanceId);
+        assertThat(processor.capture().agentInstanceId()).isEqualTo(expectedAgentInstanceId);
+        assertThat(processor.capture().sequence()).isPositive();
+        assertThat(processor.capture().startedAtEpochMilli()).isPositive();
+        assertThat(processor.capture().completedAtEpochMilli())
+                .isGreaterThanOrEqualTo(processor.capture().startedAtEpochMilli());
 
         assertThat(client.diagnostics().observation()).isPresent();
         assertThat(client.diagnostics().observation().orElseThrow().agentInstanceId()).isEqualTo(expectedAgentInstanceId);
@@ -133,40 +137,51 @@ class DomainAbsentOwnerEncodingRoundTripTest {
 
     private void registerAllDomainsWithEmptyOwnerSlots() throws Exception {
         TracingSettingsSource acceptedPolicy = TracingSettingsSource.isolatedSampling(
-                true, Collections.emptyMap(), 0.5d);
+                true, Collections.emptyMap(), 0.5d
+        );
         SamplingObservationSource sampling = new SamplingObservationSource(
-                acceptedPolicy, new OwnerRegistrationSlot<>(), agentInstanceId);
+                acceptedPolicy, new OwnerRegistrationSlot<>(), agentInstanceId
+        );
         ScrubbingObservationSource scrubbing = new ScrubbingObservationSource(new OwnerRegistrationSlot<>(), agentInstanceId);
         ValidationObservationSource validation = new ValidationObservationSource(
-                new OwnerRegistrationSlot<>(), agentInstanceId);
+                new OwnerRegistrationSlot<>(), agentInstanceId
+        );
         ExportObservationSource export = new ExportObservationSource(
                 new OwnerRegistrationSlot<>(),
                 new OwnerRegistrationSlot<>(),
-                agentInstanceId);
+                agentInstanceId
+        );
         ProcessorMetricsObservationSource processorMetrics = new ProcessorMetricsObservationSource(
                 new OwnerRegistrationSlot<>(),
                 new OwnerRegistrationSlot<>(),
                 new OwnerRegistrationSlot<>(),
-                agentInstanceId);
+                agentInstanceId
+        );
         DiagnosticsObservationSource diagnostics = new DiagnosticsObservationSource(new LongAdder(), agentInstanceId);
 
         server.registerMBean(
                 DomainSnapshotEndpoints.sampling(sampling::getSamplingObservation),
-                DomainObjectNames.SAMPLING);
+                DomainObjectNames.SAMPLING
+        );
         server.registerMBean(
                 DomainSnapshotEndpoints.scrubbing(scrubbing::getScrubbingObservation),
-                DomainObjectNames.SCRUBBING);
+                DomainObjectNames.SCRUBBING
+        );
         server.registerMBean(
                 DomainSnapshotEndpoints.validation(validation::getValidationObservation),
-                DomainObjectNames.VALIDATION);
+                DomainObjectNames.VALIDATION
+        );
         server.registerMBean(
                 DomainSnapshotEndpoints.export(export::getExportObservation),
-                DomainObjectNames.EXPORT);
+                DomainObjectNames.EXPORT
+        );
         server.registerMBean(
                 DomainSnapshotEndpoints.processorMetrics(processorMetrics::getProcessorMetricsObservation),
-                DomainObjectNames.PROCESSOR_METRICS);
+                DomainObjectNames.PROCESSOR_METRICS
+        );
         server.registerMBean(
                 DomainSnapshotEndpoints.diagnostics(diagnostics::getDiagnosticsObservation),
-                DomainObjectNames.DIAGNOSTICS);
+                DomainObjectNames.DIAGNOSTICS
+        );
     }
 }
