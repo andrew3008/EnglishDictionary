@@ -1,9 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
-final class BootstrapCleanupFailures {
+import lombok.experimental.UtilityClass;
 
-    private BootstrapCleanupFailures() {
-    }
+@UtilityClass
+final class BootstrapCleanupFailures {
 
     static Throwable rollback(BootstrapResources resources, Throwable primary) {
         try {

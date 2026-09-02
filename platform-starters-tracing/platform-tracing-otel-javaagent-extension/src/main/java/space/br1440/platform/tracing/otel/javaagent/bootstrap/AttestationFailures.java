@@ -1,9 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
-final class AttestationFailures {
+import lombok.experimental.UtilityClass;
 
-    private AttestationFailures() {
-    }
+@UtilityClass
+final class AttestationFailures {
 
     static RuntimeEvidenceAttestationException failure(AttestationFailureCode code, String message) {
         return new RuntimeEvidenceAttestationException(code, message);

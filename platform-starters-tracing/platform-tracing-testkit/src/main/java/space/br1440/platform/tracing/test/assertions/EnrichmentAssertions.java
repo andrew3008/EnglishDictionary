@@ -4,15 +4,12 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 
+import lombok.experimental.UtilityClass;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Утверждения для characterization enrichment-тестов.
- */
+@UtilityClass
 public final class EnrichmentAssertions {
-
-    private EnrichmentAssertions() {
-    }
 
     public static void assertPlatformType(SpanData span, String expected) {
         assertThat(span.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TYPE)))

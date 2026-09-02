@@ -7,10 +7,10 @@ import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
 
-public final class SpanContextMdcProjection {
+import lombok.experimental.UtilityClass;
 
-    private SpanContextMdcProjection() {
-    }
+@UtilityClass
+public final class SpanContextMdcProjection {
 
     public static Snapshot installCurrent() {
         Snapshot previous = Snapshot.capture();

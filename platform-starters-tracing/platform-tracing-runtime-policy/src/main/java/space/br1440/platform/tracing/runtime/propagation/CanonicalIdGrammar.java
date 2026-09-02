@@ -4,12 +4,12 @@ import jakarta.annotation.Nullable;
 
 import space.br1440.platform.common.util.StringUtils;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class CanonicalIdGrammar {
 
     static final int MAX_LENGTH = 128;
-
-    private CanonicalIdGrammar() {
-    }
 
     static boolean isCanonical(@Nullable String value) {
         if (StringUtils.isNullOrEmpty(value) || value.length() > MAX_LENGTH) {

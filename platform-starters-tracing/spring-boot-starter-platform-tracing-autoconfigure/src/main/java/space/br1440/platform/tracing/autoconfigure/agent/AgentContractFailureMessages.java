@@ -2,12 +2,12 @@ package space.br1440.platform.tracing.autoconfigure.agent;
 
 import space.br1440.platform.common.util.StringUtils;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class AgentContractFailureMessages {
 
     static final String EXPECTED_EXTENSION_IMPLEMENTATION_TITLE = "platform-tracing-otel-javaagent-extension";
-
-    private AgentContractFailureMessages() {
-    }
 
     static String reject(boolean tracingEnabled,
                          TracingDeploymentDiagnostics diagnostics,

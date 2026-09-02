@@ -7,6 +7,9 @@ import java.util.regex.Pattern;
 
 import space.br1440.platform.common.util.StringUtils;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class AgentLogFieldNamePolicy {
 
     static final int MAX_FIELDS = 16;
@@ -56,9 +59,6 @@ final class AgentLogFieldNamePolicy {
     );
 
     private static final Set<String> CANONICAL_SENSITIVE_KEYS = canonicalizeSensitiveKeys();
-
-    private AgentLogFieldNamePolicy() {
-    }
 
     static int maxFields() {
         return MAX_FIELDS;

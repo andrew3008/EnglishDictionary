@@ -10,10 +10,10 @@ import javax.management.openmbean.OpenMBeanOperationInfo;
 import javax.management.openmbean.OpenMBeanParameterInfo;
 import javax.management.openmbean.OpenType;
 
-public final class JmxMBeanInfoShape {
+import lombok.experimental.UtilityClass;
 
-    private JmxMBeanInfoShape() {
-    }
+@UtilityClass
+public final class JmxMBeanInfoShape {
 
     public static void requireReadOnlySnapshot(MBeanInfo info,
                                                String attributeName,

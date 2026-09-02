@@ -4,18 +4,14 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 
+import lombok.experimental.UtilityClass;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Утверждения для characterization validation-тестов.
- */
+@UtilityClass
 public final class ValidationAssertions {
 
-    private static final AttributeKey<String> MISSING_KEY =
-            AttributeKey.stringKey("platform.validation.missing");
-
-    private ValidationAssertions() {
-    }
+    private static final AttributeKey<String> MISSING_KEY = AttributeKey.stringKey("platform.validation.missing");
 
     public static void assertMissingRecorded(SpanData span, String... expectedKeys) {
         String missing = span.getAttributes().get(MISSING_KEY);

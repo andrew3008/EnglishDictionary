@@ -3,15 +3,12 @@ package space.br1440.platform.tracing.test.assertions;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.sdk.trace.data.SpanData;
 
+import lombok.experimental.UtilityClass;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Утверждения для characterization scrubbing-тестов.
- */
+@UtilityClass
 public final class ScrubbingAssertions {
-
-    private ScrubbingAssertions() {
-    }
 
     public static void assertStringAttribute(SpanData span, String key, String expected) {
         assertThat(span.getAttributes().get(AttributeKey.stringKey(key))).isEqualTo(expected);

@@ -15,6 +15,9 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class AllowedUpstreamAcpProviders {
 
     private static final String RESOURCE_PATH = "/META-INF/platform-tracing/otel-javaagent-acp-pin.properties";
@@ -29,9 +32,6 @@ final class AllowedUpstreamAcpProviders {
     );
 
     static final Set<String> NAMES = load();
-
-    private AllowedUpstreamAcpProviders() {
-    }
 
     private static Set<String> load() {
         try (InputStream input = AllowedUpstreamAcpProviders.class.getResourceAsStream(RESOURCE_PATH)) {

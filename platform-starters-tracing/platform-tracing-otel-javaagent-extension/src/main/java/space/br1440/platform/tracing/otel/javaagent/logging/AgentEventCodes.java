@@ -2,6 +2,9 @@ package space.br1440.platform.tracing.otel.javaagent.logging;
 
 import java.util.Set;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class AgentEventCodes {
 
     public static final String BOOT_INSTALLED = "PTA-BOOT-001";
@@ -102,9 +105,6 @@ public final class AgentEventCodes {
             RATE_RECOVERY,
             ENCODE_FALLBACK
     );
-
-    private AgentEventCodes() {
-    }
 
     static boolean isKnown(String eventCode) {
         return (eventCode != null) && KNOWN_CODES.contains(eventCode);
