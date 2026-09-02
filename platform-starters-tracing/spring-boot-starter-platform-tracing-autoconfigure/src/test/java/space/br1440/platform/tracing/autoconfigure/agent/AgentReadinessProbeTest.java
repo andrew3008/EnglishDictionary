@@ -154,6 +154,7 @@ class AgentReadinessProbeTest {
 
     public static final class LegacyReadiness implements LegacyReadinessMBean {
         @Override
+        @SuppressWarnings("unused")
         public CompositeData getReadinessSnapshot() {
             return ReadinessTestFixtures.composite(ReadinessTestFixtures.readySnapshot());
         }

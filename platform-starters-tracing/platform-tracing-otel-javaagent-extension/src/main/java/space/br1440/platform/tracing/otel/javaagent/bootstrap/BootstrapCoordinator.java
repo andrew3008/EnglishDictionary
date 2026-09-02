@@ -129,6 +129,7 @@ final class BootstrapCoordinator implements AutoCloseable {
     }
 
     @Override
+    @SuppressWarnings("EmptyTryBlock")
     public void close() {
         BootstrapLifecycleState.CloseTransition transition = lifecycle.beginClose();
         if (!transition.started()) {
@@ -139,7 +140,7 @@ final class BootstrapCoordinator implements AutoCloseable {
         BootstrapResources resources = transition.resources();
         if (resources != null) {
             try (BootstrapResources ignored = resources) {
-                // закрытие происходит автоматически через try-with-resources
+                // закрытие через try-with-resources
             } catch (RuntimeException | Error failure) {
                 cleanupFailure = failure;
             }

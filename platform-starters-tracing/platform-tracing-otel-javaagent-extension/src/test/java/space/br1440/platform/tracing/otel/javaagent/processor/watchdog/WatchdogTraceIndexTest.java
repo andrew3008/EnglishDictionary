@@ -22,37 +22,47 @@ import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogEvent;
 
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 
-/**
- * Прямая характеризация {@link WatchdogTraceIndex}: admission, scan/purge и eviction без
- * прохода через фасад или реальный OTel SDK. Минимальная матрица из ревью декомпозиции —
- * admission (duplicate/per-trace/global/dual saturation/ghost trace/permit round-trip), scan
- * (span/trace timeout, tombstone, hasEnded-purge) и eviction (batch formula, identity-safe
- * eviction, released permits, soft trace cap).
- */
 class WatchdogTraceIndexTest {
 
     private static final long HOUR_NANOS = Duration.ofHours(1).toNanos();
 
-    private static WatchdogTraceIndex index(int maxTrackedTraces, int maxTrackedSpansPerTrace,
-                                             SpanPermitLedger ledger, AtomicLong clock) {
-        return new WatchdogTraceIndex(HOUR_NANOS, HOUR_NANOS, maxTrackedTraces, maxTrackedSpansPerTrace,
-                clock::get, ledger);
+    private static WatchdogTraceIndex index(int maxTrackedTraces,
+                                            int maxTrackedSpansPerTrace,
+                                            SpanPermitLedger ledger,
+                                            AtomicLong clock) {
+        return new WatchdogTraceIndex(
+                HOUR_NANOS, HOUR_NANOS,
+                maxTrackedTraces, maxTrackedSpansPerTrace,
+                clock::get, ledger
+        );
     }
 
-    private static WatchdogTraceIndex index(int maxTrackedTraces, SpanPermitLedger ledger, AtomicLong clock,
-                                             Runnable afterFirstEvictionPlan) {
-        return new WatchdogTraceIndex(HOUR_NANOS, HOUR_NANOS, maxTrackedTraces, 10, clock::get, ledger,
-                afterFirstEvictionPlan);
+    private static WatchdogTraceIndex index(int maxTrackedTraces,
+                                            SpanPermitLedger ledger,
+                                            AtomicLong clock,
+                                            Runnable afterFirstEvictionPlan) {
+        return new WatchdogTraceIndex(
+                HOUR_NANOS, HOUR_NANOS,
+                maxTrackedTraces, 10,
+                clock::get, ledger,
+                afterFirstEvictionPlan
+        );
     }
 
-    private static WatchdogTraceIndex index(long spanTimeoutNanos, long traceTimeoutNanos, int maxTrackedTraces,
-                                             SpanPermitLedger ledger, AtomicLong clock,
-                                             Runnable afterFirstEvictionPlan) {
-        return new WatchdogTraceIndex(spanTimeoutNanos, traceTimeoutNanos, maxTrackedTraces, 10, clock::get, ledger,
-                afterFirstEvictionPlan);
+    @SuppressWarnings("SameParameterValue")
+    private static WatchdogTraceIndex index(long spanTimeoutNanos,
+                                            long traceTimeoutNanos,
+                                            int maxTrackedTraces,
+                                            SpanPermitLedger ledger,
+                                            AtomicLong clock,
+                                            Runnable afterFirstEvictionPlan) {
+        return new WatchdogTraceIndex(
+                spanTimeoutNanos, traceTimeoutNanos,
+                maxTrackedTraces, 10,
+                clock::get, ledger,
+                afterFirstEvictionPlan
+        );
     }
-
-    // ---------------------------------------------------------------- admission
 
     @Test
     void duplicateSpanIdIsNoOpAndDoesNotConsumeAnExtraPermit() {
@@ -91,32 +101,32 @@ class WatchdogTraceIndexTest {
 
     @Test
     void globalSaturationOnABrandNewTraceLeavesNoGhostEntry() {
-        // given: ledger has exactly one permit, already consumed by trace "t1"
+        // given
         SpanPermitLedger ledger = new SpanPermitLedger(1);
         AtomicLong clock = new AtomicLong();
         WatchdogTraceIndex index = index(100, 100, ledger, clock);
         index.admit("t1", "s1", WatchdogTestSpans.span(1, 1), clock.get(), () -> true);
 
-        // when: a span on a never-seen trace is rejected by the global budget
+        // when
         index.admit("t2", "s1", WatchdogTestSpans.span(2, 1), clock.get(), () -> true);
 
-        // then: no ghost entry is left behind for the rejected new trace
+        // then
         assertThat(index.rejectedGlobalTotal()).isEqualTo(1);
         assertThat(index.size()).isEqualTo(1);
     }
 
     @Test
     void globalSaturationOnAnExistingTraceKeepsItsPriorStateIntact() {
-        // given: per-trace cap is generous, but the global ledger only ever grants one permit
+        // given
         SpanPermitLedger ledger = new SpanPermitLedger(1);
         AtomicLong clock = new AtomicLong();
         WatchdogTraceIndex index = index(100, 5, ledger, clock);
         index.admit("t1", "s1", WatchdogTestSpans.span(1, 1), clock.get(), () -> true);
 
-        // when: a second span on the SAME trace is rejected by the global budget
+        // when
         index.admit("t1", "s2", WatchdogTestSpans.span(1, 2), clock.get(), () -> true);
 
-        // then: trace "t1" is not dropped, its first span is still tracked
+        // then
         assertThat(index.rejectedGlobalTotal()).isEqualTo(1);
         assertThat(index.size()).isEqualTo(1);
         assertThat(index.trackedSpanCount()).isEqualTo(1);
@@ -124,13 +134,13 @@ class WatchdogTraceIndexTest {
 
     @Test
     void dualSaturationIncrementsOnlyThePerTraceCounterNotTheGlobalOne() {
-        // given: per-trace cap and global ledger are both exhausted by the same first span
+        // given
         SpanPermitLedger ledger = new SpanPermitLedger(1);
         AtomicLong clock = new AtomicLong();
         WatchdogTraceIndex index = index(100, 1, ledger, clock);
         index.admit("t1", "s1", WatchdogTestSpans.span(1, 1), clock.get(), () -> true);
 
-        // when: a second span on the same trace hits per-trace capacity before the ledger is even asked
+        // when
         index.admit("t1", "s2", WatchdogTestSpans.span(1, 2), clock.get(), () -> true);
 
         // then
@@ -163,17 +173,15 @@ class WatchdogTraceIndexTest {
         AtomicLong clock = new AtomicLong();
         WatchdogTraceIndex index = index(100, 100, ledger, clock);
 
-        // when: authoritative admissionOpen check happens inside compute() and rejects silently
+        // when
         index.admit("t1", "s1", WatchdogTestSpans.span(1, 1), clock.get(), () -> false);
 
-        // then: not counted as a capacity rejection, and no state/permit leak
+        // then
         assertThat(index.size()).isZero();
         assertThat(index.trackedSpanCount()).isZero();
         assertThat(index.rejectedPerTraceTotal()).isZero();
         assertThat(index.rejectedGlobalTotal()).isZero();
     }
-
-    // ---------------------------------------------------------------- scan / purge
 
     @Test
     void collectExpiredPrefersSpanReasonOverTraceReasonWhenBothExpireTogether() {
@@ -181,7 +189,10 @@ class WatchdogTraceIndexTest {
         AtomicLong clock = new AtomicLong();
         SpanPermitLedger ledger = new SpanPermitLedger(10);
         WatchdogTraceIndex index = new WatchdogTraceIndex(
-                Duration.ofMillis(10).toNanos(), Duration.ofMillis(10).toNanos(), 10, 10, clock::get, ledger);
+                Duration.ofMillis(10).toNanos(), Duration.ofMillis(10).toNanos(),
+                10, 10,
+                clock::get, ledger
+        );
         index.admit("t1", "s1", WatchdogTestSpans.span(1, 1), clock.get(), () -> true);
         clock.set(Duration.ofMillis(10).toNanos() + 1);
 
@@ -195,25 +206,28 @@ class WatchdogTraceIndexTest {
 
     @Test
     void collectExpiredUsesTraceReasonWhenOnlyTraceTimeoutIsExceeded() {
-        // given: spanTimeout is generous, traceTimeout is tight
+        // given
         AtomicLong clock = new AtomicLong();
         SpanPermitLedger ledger = new SpanPermitLedger(10);
         WatchdogTraceIndex index = new WatchdogTraceIndex(
-                Duration.ofHours(1).toNanos(), Duration.ofMillis(10).toNanos(), 10, 10, clock::get, ledger);
+                Duration.ofHours(1).toNanos(), Duration.ofMillis(10).toNanos(),
+                10, 10,
+                clock::get, ledger
+        );
         index.admit("t1", "s1", WatchdogTestSpans.span(1, 1), clock.get(), () -> true);
         clock.set(Duration.ofMillis(10).toNanos() + 1);
 
         // when
         List<WatchdogTraceIndex.ExpiredSpan> expired = index.collectExpired(clock.get());
 
-        // then: the span itself is nowhere near its own (huge) timeout, only the trace epoch is
+        // then
         assertThat(expired).hasSize(1);
         assertThat(expired.getFirst().reason()).isEqualTo(WatchdogTraceIndex.TimeoutReason.TRACE);
     }
 
     @Test
     void tombstoneSurvivesScanUntilItsOwnTraceEpochExpires() {
-        // given: span times out on its own (short spanTimeout), trace epoch (long traceTimeout) has not
+        // given
         AtomicLong clock = new AtomicLong();
         SpanPermitLedger ledger = new SpanPermitLedger(10);
         long spanTimeout = Duration.ofMillis(10).toNanos();
@@ -222,27 +236,26 @@ class WatchdogTraceIndexTest {
         index.admit("t1", "s1", WatchdogTestSpans.span(1, 1), clock.get(), () -> true);
         clock.set(spanTimeout + 1);
 
-        // when: the single span is force-closed, but the trace epoch is still young
+        // when
         List<WatchdogTraceIndex.ExpiredSpan> firstScan = index.collectExpired(clock.get());
 
-        // then: the now-empty trace stays as a tombstone (single authoritative owner, no drop)
+        // then
         assertThat(firstScan).hasSize(1);
         assertThat(index.size()).isEqualTo(1);
         assertThat(index.nonEmptyTraceCount()).isZero();
 
-        // when: the trace epoch itself finally expires
+        // when
         clock.set(traceTimeout + 1);
         List<WatchdogTraceIndex.ExpiredSpan> secondScan = index.collectExpired(clock.get());
 
-        // then: the tombstone is removed, without a second force-close
+        // then
         assertThat(secondScan).isEmpty();
         assertThat(index.size()).isZero();
     }
 
     @Test
     void hasEndedSpanIsPurgedByScanWithoutForceCloseOrLostPermit() {
-        // given: a span that ended through some path OTHER than this index's own onEnd() -
-        // e.g. a race window - must still be purged deterministically by hasEnded(), not GC.
+        // given
         AtomicLong clock = new AtomicLong();
         SpanPermitLedger ledger = new SpanPermitLedger(10);
         WatchdogTraceIndex index = index(10, 10, ledger, clock);
@@ -250,26 +263,28 @@ class WatchdogTraceIndexTest {
         index.admit("t1", "s1", span, clock.get(), () -> true);
         assertThat(index.trackedSpanCount()).isEqualTo(1);
 
-        // stub hasEnded() AFTER admission, and never call index.onEnd(): this is exactly the
-        // branch `span == null || span.hasEnded()` inside collectTimedOutSpans.
         when(span.hasEnded()).thenReturn(true);
 
         // when
         List<WatchdogTraceIndex.ExpiredSpan> expired = index.collectExpired(clock.get());
 
-        // then: purged silently, no force-close side effect and the permit is returned
+        // then
         assertThat(expired).isEmpty();
         assertThat(index.trackedSpanCount()).isZero();
         assertThat(index.nonEmptyTraceCount()).isZero();
     }
 
     @Test
+    @SuppressWarnings("resource")
     void concurrentScanAndOnEndNeverDoubleReleaseTheSamePermit() throws Exception {
         // given
         AtomicLong clock = new AtomicLong();
         SpanPermitLedger ledger = new SpanPermitLedger(10);
         WatchdogTraceIndex index = new WatchdogTraceIndex(
-                Duration.ofNanos(1).toNanos(), Duration.ofHours(1).toNanos(), 10, 10, clock::get, ledger);
+                Duration.ofNanos(1).toNanos(), Duration.ofHours(1).toNanos(),
+                10, 10,
+                clock::get, ledger
+        );
         ReadWriteSpan span = WatchdogTestSpans.span(1, 1);
         CountDownLatch scannerEnteredHasEnded = new CountDownLatch(1);
         CountDownLatch releaseScanner = new CountDownLatch(1);
@@ -282,7 +297,7 @@ class WatchdogTraceIndexTest {
         clock.set(2L);
         ExecutorService executor = Executors.newFixedThreadPool(2);
 
-        // when: scan and onEnd race over removing the very same tracked record
+        // when
         try {
             Future<?> scan = executor.submit(() -> index.collectExpired(clock.get()));
             assertThat(scannerEnteredHasEnded.await(5, TimeUnit.SECONDS)).isTrue();
@@ -294,17 +309,14 @@ class WatchdogTraceIndexTest {
             executor.shutdownNow();
         }
 
-        // then: exactly one of scan/onEnd wins the compute-serialized removal; the permit is
-        // released exactly once, never twice
+        // then
         assertThat(index.trackedSpanCount()).isZero();
         assertThat(index.ledgerInvariantViolationTotal()).isZero();
     }
 
-    // ---------------------------------------------------------------- eviction
-
     @Test
     void evictOldestIfNeededEvictsTheComputedBatchAndReleasesTheirPermits() {
-        // given: 5 traces, one span each, over a capacity of 3
+        // given
         SpanPermitLedger ledger = new SpanPermitLedger(100);
         AtomicLong clock = new AtomicLong();
         WatchdogTraceIndex index = index(3, 10, ledger, clock);
@@ -314,7 +326,7 @@ class WatchdogTraceIndexTest {
         }
         assertThat(index.trackedSpanCount()).isEqualTo(5);
 
-        // when: overflow = 2, batch = max(overflow, max(1, capacity/10=0)) = 2
+        // when
         index.evictOldestIfNeeded();
 
         // then
@@ -322,7 +334,6 @@ class WatchdogTraceIndexTest {
         assertThat(index.trackingEvictedTotal()).isEqualTo(2);
         assertThat(index.trackedSpanCount()).isEqualTo(3);
 
-        // and the released permits are usable again
         index.admit("new-trace", "s1", WatchdogTestSpans.span(99, 1), clock.get(), () -> true);
         assertThat(index.trackedSpanCount()).isEqualTo(4);
     }
@@ -333,13 +344,16 @@ class WatchdogTraceIndexTest {
         SpanPermitLedger ledger = new SpanPermitLedger(100);
         AtomicLong clock = new AtomicLong();
         WatchdogTraceIndex index = index(3, 10, ledger, clock);
+
         ReadWriteSpan liveSpan = WatchdogTestSpans.span(1, 1);
         clock.set(1);
         index.admit("t-live", "s1", liveSpan, clock.get(), () -> true);
+
         ReadWriteSpan emptyFirst = WatchdogTestSpans.span(2, 1);
         clock.set(2);
         index.admit("t-empty-1", "s1", emptyFirst, clock.get(), () -> true);
         index.onEnd("t-empty-1", "s1", emptyFirst);
+
         ReadWriteSpan emptySecond = WatchdogTestSpans.span(3, 1);
         clock.set(3);
         index.admit("t-empty-2", "s1", emptySecond, clock.get(), () -> true);
@@ -350,8 +364,6 @@ class WatchdogTraceIndexTest {
         index.admit("t-new-2", "s1", WatchdogTestSpans.span(5, 1), clock.get(), () -> true);
         assertThat(index.size()).isEqualTo(5);
 
-        // when: overflow = 2, batch = max(overflow, max(1, capacity/10=0)) = 2, exactly the
-        // number of empty traces above - a live trace must survive despite being the oldest
         index.evictOldestIfNeeded();
 
         // then
@@ -385,25 +397,24 @@ class WatchdogTraceIndexTest {
 
     @Test
     void admissionStaysFailOpenAboveTraceCapacityUntilEvictionActuallyRuns() {
-        // given: soft cap of 1 trace
+        // given
         SpanPermitLedger ledger = new SpanPermitLedger(100);
         AtomicLong clock = new AtomicLong();
         WatchdogTraceIndex index = index(1, 10, ledger, clock);
 
-        // when: two distinct traces are admitted without ever calling evictOldestIfNeeded()
+        // when
         index.admit("t1", "s1", WatchdogTestSpans.span(1, 1), clock.get(), () -> true);
         index.admit("t2", "s1", WatchdogTestSpans.span(2, 1), clock.get(), () -> true);
 
-        // then: cardinality is a soft, eviction-backed cap - not a hard admission gate
+        // then
         assertThat(index.size()).isEqualTo(2);
         assertThat(index.trackedSpanCount()).isEqualTo(2);
     }
 
     @Test
+    @SuppressWarnings("resource")
     void identitySafeEvictionNeverCorruptsTheLedgerUnderConcurrentTraceChurn() throws Exception {
-        // given: a small pool of shared traceIds under constant admit+onEnd churn, and a
-        // dedicated evictor thread hammering evictOldestIfNeeded() over the same pool -
-        // this is exactly the window the identity-safe EvictionCandidate check protects.
+        // given
         SpanPermitLedger ledger = new SpanPermitLedger(10_000);
         AtomicLong clock = new AtomicLong();
         WatchdogTraceIndex index = index(2, 100, ledger, clock);
@@ -438,8 +449,7 @@ class WatchdogTraceIndexTest {
                         start.await();
                         for (int iteration = 0; iteration < iterationsPerThread; iteration++) {
                             String traceId = sharedTraceIds[(capturedThreadIndex + iteration) % sharedTraceIds.length];
-                            String spanId = WatchdogTestSpans.hex(
-                                    capturedThreadIndex * iterationsPerThread + iteration + 1, 16);
+                            String spanId = WatchdogTestSpans.hex(capturedThreadIndex * iterationsPerThread + iteration + 1, 16);
                             ReadWriteSpan span = WatchdogTestSpans.span(traceId, spanId);
                             index.admit(traceId, spanId, span, clock.incrementAndGet(), () -> true);
                             index.onEnd(traceId, spanId, span);
@@ -460,20 +470,20 @@ class WatchdogTraceIndexTest {
             executor.shutdownNow();
         }
 
-        // then: the CAS ledger never observes a release beyond what it actually granted
+        // then
         assertThat(index.ledgerInvariantViolationTotal()).isZero();
     }
 
     @Test
     void evictionSkipsAnEmptyCandidateRevivedBetweenPlanningAndCommit() {
-        // given: two tombstones and 19 live traces over a capacity of 20 - the plan picks both
-        // tombstones, and one of them is revived in the window between planning and commit
+        // given
         SpanPermitLedger ledger = new SpanPermitLedger(100);
         AtomicLong clock = new AtomicLong();
         WatchdogTraceIndex[] holder = new WatchdogTraceIndex[1];
         ReadWriteSpan revivedSpan = WatchdogTestSpans.span(1, 2);
         WatchdogTraceIndex index = index(20, ledger, clock,
-                () -> holder[0].admit("t-empty-a", "s-revived", revivedSpan, clock.get(), () -> true));
+                () -> holder[0].admit("t-empty-a", "s-revived", revivedSpan, clock.get(), () -> true)
+        );
         holder[0] = index;
         clock.set(1);
         ReadWriteSpan firstEmpty = WatchdogTestSpans.span(1, 1);
@@ -493,7 +503,7 @@ class WatchdogTraceIndexTest {
         // when
         index.evictOldestIfNeeded();
 
-        // then: the revived tombstone keeps its span, only the still-empty one is evicted
+        // then
         assertThat(index.size()).isEqualTo(20);
         assertThat(index.trackingEvictedTotal()).isEqualTo(1);
         assertThat(index.liveTracesEvictedTotal()).isZero();
@@ -503,8 +513,7 @@ class WatchdogTraceIndexTest {
 
     @Test
     void boundedReplanCoversResidualOverflowWithoutInflatingLiveEvictionToTheHysteresisFloor() {
-        // given: capacity 100 gives a min empty batch of 10, but only two tombstones
-        // exist and the real overflow is 3 - the floor must never become the live budget
+        // given
         SpanPermitLedger ledger = new SpanPermitLedger(1_000);
         AtomicLong clock = new AtomicLong();
         WatchdogTraceIndex[] holder = new WatchdogTraceIndex[1];
@@ -528,10 +537,10 @@ class WatchdogTraceIndexTest {
         assertThat(index.size()).isEqualTo(103);
         assertThat(index.trackedSpanCount()).isEqualTo(101);
 
-        // when: pass one skips the revived tombstone, pass two closes the residual overflow
+        // when
         index.evictOldestIfNeeded();
 
-        // then: one tombstone plus exactly two live traces, never the floor of ten
+        // then
         assertThat(index.size()).isEqualTo(100);
         assertThat(index.trackingEvictedTotal()).isEqualTo(3);
         assertThat(index.liveTracesEvictedTotal()).isEqualTo(2);
@@ -540,8 +549,7 @@ class WatchdogTraceIndexTest {
 
     @Test
     void evictionSkipsAStaleCandidateWhoseStateWasReplacedBetweenPlanningAndCommit() {
-        // given: trace epoch 100ns and span timeout 1000ns, so the scan that runs between
-        // planning and commit drops only the t=0 tombstone and leaves the spare one alone
+        // given
         SpanPermitLedger ledger = new SpanPermitLedger(100);
         AtomicLong clock = new AtomicLong();
         WatchdogTraceIndex[] holder = new WatchdogTraceIndex[1];
@@ -566,7 +574,7 @@ class WatchdogTraceIndexTest {
         // when
         index.evictOldestIfNeeded();
 
-        // then: the stale candidate never drains the replacement, the spare tombstone pays for capacity
+        // then
         assertThat(index.size()).isEqualTo(20);
         assertThat(index.trackingEvictedTotal()).isEqualTo(1);
         assertThat(index.liveTracesEvictedTotal()).isZero();
@@ -576,28 +584,31 @@ class WatchdogTraceIndexTest {
 
     @Test
     void evictingATombstoneStartsANewTraceEpochForTheSameTraceId() {
-        // given: trace epoch 100ns; the tombstone of "t1" is evicted under capacity pressure,
-        // which is the accepted best-effort cost of empty-first eviction
+        // given
         SpanPermitLedger ledger = new SpanPermitLedger(100);
         AtomicLong clock = new AtomicLong();
         WatchdogTraceIndex index = index(1_000L, 100L, 1, ledger, clock, () -> {
         });
+
         ReadWriteSpan first = WatchdogTestSpans.span(1, 1);
         index.admit("t1", "s1", first, 0, () -> true);
         index.onEnd("t1", "s1", first);
+
         ReadWriteSpan other = WatchdogTestSpans.span(2, 1);
         index.admit("t2", "s1", other, 1, () -> true);
         index.evictOldestIfNeeded();
+
         assertThat(index.trackingEvictedTotal() - index.liveTracesEvictedTotal()).isEqualTo(1);
         index.onEnd("t2", "s1", other);
 
-        // when: the same traceId resumes after its original epoch deadline of t=100
+        // when
         ReadWriteSpan resumed = WatchdogTestSpans.span(1, 2);
         index.admit("t1", "s-resumed", resumed, 50, () -> true);
 
-        // then: the original deadline is gone and the new epoch expires only after t=150
+        // then
         assertThat(index.collectExpired(150)).isEmpty();
         assertThat(index.trackedSpanCount()).isEqualTo(1);
+
         List<WatchdogTraceIndex.ExpiredSpan> expired = index.collectExpired(151);
         assertThat(expired).hasSize(1);
         assertThat(expired.getFirst().traceId()).isEqualTo("t1");
@@ -606,8 +617,7 @@ class WatchdogTraceIndexTest {
 
     @Test
     void tombstoneEvictionLogDoesNotSuppressTheLiveEvictionLogInTheSameRateLimitWindow() {
-        // given: both eviction runs happen at the same clock value, so a shared rate limiter
-        // would swallow the second event entirely
+        // given
         SpanPermitLedger ledger = new SpanPermitLedger(100);
         AtomicLong clock = new AtomicLong();
         WatchdogTraceIndex index = index(1, 10, ledger, clock);
@@ -619,12 +629,12 @@ class WatchdogTraceIndexTest {
             index.onEnd("t1", "s1", tombstoned);
             index.admit("t2", "s1", WatchdogTestSpans.span(2, 1), 0, () -> true);
 
-            // when: run one evicts only a tombstone, run two evicts a trace that still has spans
+            // when
             index.evictOldestIfNeeded();
             index.admit("t3", "s1", WatchdogTestSpans.span(3, 1), 0, () -> true);
             index.evictOldestIfNeeded();
 
-            // then: the housekeeping event is rate-limited away, the live-loss event still fires
+            // then
             assertThat(logs.events()).extracting(AgentLogEvent::eventCode)
                     .containsExactly(AgentEventCodes.EXPORT_WATCHDOG,
                             AgentEventCodes.EXPORT_WATCHDOG_LIVE_EVICTION);

@@ -32,6 +32,7 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWi
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
+@SuppressWarnings("resource")
 class PlatformTracingMBeanRegistrarIntegrationTest {
 
     private final List<AutoCloseable> registrations = new ArrayList<>();
@@ -107,28 +108,40 @@ class PlatformTracingMBeanRegistrarIntegrationTest {
                 DomainObjectNames.SAMPLING,
                 new ObservationContract(
                         JmxWireContract.ATTRIBUTE_SAMPLING_OBSERVATION_SAMPLING_OBSERVATION,
-                        JmxOpenTypes.SAMPLING_OBSERVATION),
+                        JmxOpenTypes.SAMPLING_OBSERVATION
+                ),
+
                 DomainObjectNames.SCRUBBING,
                 new ObservationContract(
                         JmxWireContract.ATTRIBUTE_SCRUBBING_OBSERVATION_SCRUBBING_OBSERVATION,
-                        JmxOpenTypes.SCRUBBING_OBSERVATION),
+                        JmxOpenTypes.SCRUBBING_OBSERVATION
+                ),
+
                 DomainObjectNames.VALIDATION,
                 new ObservationContract(
                         JmxWireContract.ATTRIBUTE_VALIDATION_OBSERVATION_VALIDATION_OBSERVATION,
-                        JmxOpenTypes.VALIDATION_OBSERVATION),
+                        JmxOpenTypes.VALIDATION_OBSERVATION
+                ),
+
                 DomainObjectNames.EXPORT,
                 new ObservationContract(
                         JmxWireContract.ATTRIBUTE_EXPORT_OBSERVATION_EXPORT_OBSERVATION,
-                        JmxOpenTypes.EXPORT_OBSERVATION),
+                        JmxOpenTypes.EXPORT_OBSERVATION
+                ),
+
                 DomainObjectNames.PROCESSOR_METRICS,
                 new ObservationContract(
                         JmxWireContract
                                 .ATTRIBUTE_PROCESSOR_METRICS_OBSERVATION_PROCESSOR_METRICS_OBSERVATION,
-                        JmxOpenTypes.PROCESSOR_METRICS_OBSERVATION),
+                        JmxOpenTypes.PROCESSOR_METRICS_OBSERVATION
+                ),
+
                 DomainObjectNames.DIAGNOSTICS,
                 new ObservationContract(
                         JmxWireContract.ATTRIBUTE_DIAGNOSTICS_OBSERVATION_DIAGNOSTICS_OBSERVATION,
-                        JmxOpenTypes.DIAGNOSTICS_OBSERVATION));
+                        JmxOpenTypes.DIAGNOSTICS_OBSERVATION
+                )
+        );
 
         // when
         Map<ObjectName, MBeanInfo> metadata = new LinkedHashMap<>();
@@ -140,8 +153,7 @@ class PlatformTracingMBeanRegistrarIntegrationTest {
         for (Map.Entry<ObjectName, ObservationContract> entry : contracts.entrySet()) {
             MBeanInfo info = metadata.get(entry.getKey());
             assertThat(info).isExactlyInstanceOf(OpenMBeanInfoSupport.class);
-            assertThat(info.getClassName())
-                    .isEqualTo("space.br1440.platform.tracing.jmx.GeneratedReadOnlyEndpoint");
+            assertThat(info.getClassName()).isEqualTo("space.br1440.platform.tracing.jmx.GeneratedReadOnlyEndpoint");
             assertThat(info.getConstructors()).isEmpty();
             assertThat(info.getOperations()).isEmpty();
             assertThat(info.getNotifications()).isEmpty();
@@ -164,9 +176,13 @@ class PlatformTracingMBeanRegistrarIntegrationTest {
         wireMinimal();
 
         CompositeData observation = (CompositeData) server.getAttribute(
-                DomainObjectNames.SAMPLING, "SamplingObservation");
+                DomainObjectNames.SAMPLING, "SamplingObservation"
+        );
+
         double ratio = (double) observation.get(
-                JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO);
+                JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO
+        );
+
         assertThat(ratio).isEqualTo(0.2d);
     }
 

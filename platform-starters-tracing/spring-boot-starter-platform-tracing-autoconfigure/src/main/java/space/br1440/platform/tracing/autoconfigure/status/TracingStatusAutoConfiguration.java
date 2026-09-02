@@ -27,6 +27,7 @@ import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
         TracingSettingsControlAutoConfiguration.class
 })
 @ConditionalOnClass(Endpoint.class)
+@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 public class TracingStatusAutoConfiguration {
 
     @Bean

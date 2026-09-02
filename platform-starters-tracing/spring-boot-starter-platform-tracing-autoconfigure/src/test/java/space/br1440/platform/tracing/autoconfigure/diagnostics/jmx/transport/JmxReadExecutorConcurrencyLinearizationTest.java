@@ -13,15 +13,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.management.Attribute;
 import javax.management.AttributeList;
-import javax.management.AttributeNotFoundException;
 import javax.management.DynamicMBean;
 import javax.management.InvalidAttributeValueException;
-import javax.management.MBeanException;
 import javax.management.MBeanInfo;
 import javax.management.MBeanNotificationInfo;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
-import javax.management.ReflectionException;
 import javax.management.RuntimeMBeanException;
 import javax.management.openmbean.OpenMBeanAttributeInfo;
 import javax.management.openmbean.OpenMBeanAttributeInfoSupport;
@@ -33,11 +30,6 @@ import javax.management.openmbean.SimpleType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-/**
- * Линеаризация конкурентных attempts: per-domain transport-лок, decode вне лока,
- * независимость доменов и детерминированное упорядочение Present ↔ ExecutionFailure
- * единой шкалой observationSequence (наблюдаемой через registry outcome).
- */
 class JmxReadExecutorConcurrencyLinearizationTest {
 
     private static final ObjectName EXPORT_NAME = objectName("export");
@@ -87,8 +79,6 @@ class JmxReadExecutorConcurrencyLinearizationTest {
                 releaseExport.countDown();
                 assertThat(exportFuture.get(5, TimeUnit.SECONDS)).contains(1L);
             } finally {
-                // Гарантируем разблокировку exportEntered-воркера до pool.close():
-                // иначе close() будет ждать штатного завершения задачи вместо принудительного shutdownNow.
                 releaseExport.countDown();
                 pool.shutdownNow();
             }
@@ -132,8 +122,6 @@ class JmxReadExecutorConcurrencyLinearizationTest {
                 releaseDecode.countDown();
                 assertThat(slow.get(5, TimeUnit.SECONDS)).contains(10L);
             } finally {
-                // Гарантируем разблокировку decodeEntered-воркера до pool.close():
-                // иначе close() будет ждать штатного завершения задачи вместо принудительного shutdownNow.
                 releaseDecode.countDown();
                 pool.shutdownNow();
             }
@@ -154,9 +142,6 @@ class JmxReadExecutorConcurrencyLinearizationTest {
             throw new RuntimeMBeanException(new IllegalStateException("boom"));
         });
 
-        // Второй MBean на том же домене невозможен с одним ObjectName — чередуем режимы
-        // через счётчик: два конкурентных чтения одного атрибута сериализуются локом,
-        // поэтому исходы строго упорядочены; registry отражает последнее применение.
         JmxReadExecutor executor = new JmxReadExecutor(server);
         JmxAttribute<Long> attribute = longAttribute(JmxContractPoint.EXPORT_OBSERVATION);
 
@@ -176,12 +161,9 @@ class JmxReadExecutorConcurrencyLinearizationTest {
 
             Optional<Long> first = a.get(5, TimeUnit.SECONDS);
             Optional<Long> second = b.get(5, TimeUnit.SECONDS);
-            // Ровно один успех и один отказ — порядок transport-вызовов линеаризован локом.
             assertThat(first.isPresent() ^ second.isPresent()).isTrue();
             assertThat(transportInvocations.get()).isEqualTo(2);
 
-            // Ровно одна из двух линеаризованных попыток — invocation==1 — всегда успешна,
-            // поэтому freshness/diagnostics доступны без исключения независимо от порядка.
             assertThat(executor.lastSuccessAge(JmxContractPoint.EXPORT_OBSERVATION)).isPresent();
             assertThat(executor.diagnosticSnapshot()).isNotEmpty();
         }
@@ -192,12 +174,12 @@ class JmxReadExecutorConcurrencyLinearizationTest {
             if (raw instanceof Long value) {
                 return value;
             }
+
             throw new JmxContractViolationException(JmxDiagnosticKind.VALUE_TYPE_MISMATCH);
         });
     }
 
-    private void registerFakeMBean(ObjectName objectName, java.util.function.Function<String, Object> supplier)
-            throws Exception {
+    private void registerFakeMBean(ObjectName objectName, java.util.function.Function<String, Object> supplier) throws Exception {
         server.registerMBean(new FakeDynamicMBean(supplier), objectName);
     }
 
@@ -215,7 +197,8 @@ class JmxReadExecutorConcurrencyLinearizationTest {
     private static ObjectName objectName(String suffix) {
         try {
             return ObjectName.getInstance(
-                    "space.br1440.platform.tracing.test:type=JmxReadExecutorConcurrencyLinearizationTest,name=" + suffix);
+                    "space.br1440.platform.tracing.test:type=JmxReadExecutorConcurrencyLinearizationTest,name=" + suffix
+            );
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
@@ -262,14 +245,17 @@ class JmxReadExecutorConcurrencyLinearizationTest {
                     SimpleType.LONG,
                     true,
                     false,
-                    false);
+                    false
+            );
+
             return new OpenMBeanInfoSupport(
                     getClass().getName(),
                     "fake",
                     new OpenMBeanAttributeInfo[]{attribute},
                     new OpenMBeanConstructorInfo[0],
                     new OpenMBeanOperationInfo[0],
-                    new MBeanNotificationInfo[0]);
+                    new MBeanNotificationInfo[0]
+            );
         }
     }
 }

@@ -10,13 +10,14 @@ public class PackagedTracingCertificationApplication {
 
     static final String PROCESS_OK_TOKEN = "PACKAGED_PROCESS_OK";
 
+    @SuppressWarnings("EmptyTryBlock")
     public static void main(String[] arguments) {
         SpringApplication application = new SpringApplication(PackagedTracingCertificationApplication.class);
         application.setWebApplicationType(WebApplicationType.NONE);
         application.setRegisterShutdownHook(false);
 
         try (ConfigurableApplicationContext ignored = application.run(arguments)) {
-            // контекст нужен только ради жизненного цикла запуска и закрытия
+            // контекст нужен только для жизненного цикла запуска и закрытия
         }
 
         System.out.println(PROCESS_OK_TOKEN);

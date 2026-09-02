@@ -41,6 +41,7 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTe
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
 @ExtendWith(AutoConfiguredSdkIsolationExtension.class)
+@SuppressWarnings("resource")
 class BootstrapCoordinatorTest {
 
     private BootstrapCoordinator ownedCoordinator;
@@ -56,7 +57,8 @@ class BootstrapCoordinatorTest {
     void activate_without_prior_prepare_classified_as_PLATFORM_ACP_NOT_EXECUTED() {
         BootstrapCoordinator coordinator = BootstrapCoordinator.create(
                 new PlatformScrubberFactory(),
-                RuntimeEvidenceTestFixtures.trustedAttestor());
+                RuntimeEvidenceTestFixtures.trustedAttestor()
+        );
 
         assertThatThrownBy(coordinator::activate)
                 .isInstanceOf(BootstrapException.class)

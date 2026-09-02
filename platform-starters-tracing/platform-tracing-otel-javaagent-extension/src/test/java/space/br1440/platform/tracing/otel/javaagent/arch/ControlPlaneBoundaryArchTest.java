@@ -26,6 +26,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Trac
         packages = "space.br1440.platform.tracing.otel.javaagent",
         importOptions = ImportOption.DoNotIncludeTests.class
 )
+@SuppressWarnings("unused")
 class ControlPlaneBoundaryArchTest {
 
     private static final String CONTROL = "space.br1440.platform.tracing.otel.javaagent.control";

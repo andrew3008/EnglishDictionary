@@ -244,8 +244,7 @@ public final class TracingStatusAssembler {
                 .flatMap(processorMetrics -> presentValues(processorMetrics.watchdog()));
 
         Map<String, Object> watchdog = new LinkedHashMap<>();
-        // Возраст снимка идёт первым: без него счётчики ниже нельзя интерпретировать.
-        watchdog.put("capture", captureSection(observation.map(ProcessorMetricsObservation::capture)));
+        watchdog.put("capture", captureSection(observation.map(ProcessorMetricsObservation::capture).orElse(null)));
         watchdog.put("present", values.isPresent());
         watchdog.put("forcedSpanCloses", values.map(ProcessorWatchdogValues::forcedSpanCloses).orElse(null));
         watchdog.put("forcedTraceCloses", values.map(ProcessorWatchdogValues::forcedTraceCloses).orElse(null));
@@ -262,12 +261,14 @@ public final class TracingStatusAssembler {
         return watchdog;
     }
 
-    private static Map<String, Object> captureSection(Optional<ObservationCapture> capture) {
+    private static Map<String, Object> captureSection(ObservationCapture capture) {
+        Optional<ObservationCapture> present = Optional.ofNullable(capture);
+
         Map<String, Object> section = new LinkedHashMap<>();
-        section.put("agentInstanceId", capture.map(ObservationCapture::agentInstanceId).orElse(null));
-        section.put("sequence", capture.map(ObservationCapture::sequence).orElse(null));
-        section.put("startedAt", capture.map(ObservationCapture::startedAtEpochMilli).orElse(null));
-        section.put("completedAt", capture.map(ObservationCapture::completedAtEpochMilli).orElse(null));
+        section.put("agentInstanceId", present.map(ObservationCapture::agentInstanceId).orElse(null));
+        section.put("sequence", present.map(ObservationCapture::sequence).orElse(null));
+        section.put("startedAt", present.map(ObservationCapture::startedAtEpochMilli).orElse(null));
+        section.put("completedAt", present.map(ObservationCapture::completedAtEpochMilli).orElse(null));
         return Collections.unmodifiableMap(section);
     }
 

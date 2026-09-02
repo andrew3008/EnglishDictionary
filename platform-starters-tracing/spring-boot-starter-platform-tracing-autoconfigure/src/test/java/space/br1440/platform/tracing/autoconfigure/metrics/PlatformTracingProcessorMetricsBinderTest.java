@@ -20,6 +20,7 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.Observat
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
+@SuppressWarnings("DataFlowIssue")
 class PlatformTracingProcessorMetricsBinderTest {
 
     @Test

@@ -35,6 +35,7 @@ import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProc
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
+@SuppressWarnings("resource")
 class PlatformTracingMBeanRegistrarTest {
 
     private final List<AutoCloseable> registrations = new ArrayList<>();

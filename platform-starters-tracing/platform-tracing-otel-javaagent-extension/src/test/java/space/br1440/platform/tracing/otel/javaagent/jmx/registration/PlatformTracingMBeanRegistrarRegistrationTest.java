@@ -20,6 +20,7 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
+@SuppressWarnings("resource")
 class PlatformTracingMBeanRegistrarRegistrationTest {
 
     private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();

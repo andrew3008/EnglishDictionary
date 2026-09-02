@@ -279,14 +279,16 @@ public final class RemoteJmxMutationRegistrationGate {
         if (!argument.startsWith(prefix + RemoteJmxExposureEvidence.JMX_REMOTE_PREFIX)) {
             return null;
         }
+
         String assignment = argument.substring(prefix.length());
         int equals = assignment.indexOf('=');
-        String name = equals < 0 ? assignment : assignment.substring(0, equals);
-        if (!isRemoteProperty(name)) {
-            return null;
+        String name = (equals < 0) ? assignment : assignment.substring(0, equals);
+        if (isRemoteProperty(name)) {
+            String value = (equals < 0) ? "" : assignment.substring(equals + 1);
+            return new ParsedArgument(name, value);
         }
-        String value = equals < 0 ? "" : assignment.substring(equals + 1);
-        return new ParsedArgument(name, value);
+
+        return null;
     }
 
     private static boolean isRemoteProperty(String name) {

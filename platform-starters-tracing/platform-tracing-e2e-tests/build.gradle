@@ -14,19 +14,22 @@ platformJavaLibrary {
     bomProjectPath = ':spring-boot-starter-platform-bom'
 }
 
-def distributionProjectPath =
-        ':platform-starters-tracing:platform-tracing-otel-javaagent-distribution'
+def distributionProjectPath = ':platform-starters-tracing:platform-tracing-otel-javaagent-distribution'
 
 configurations {
     controlledAgentUnderTest {
         canBeConsumed = false
         canBeResolved = true
         attributes {
-            attribute Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_RUNTIME)
-            attribute Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.LIBRARY)
-            attribute LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
-                    objects.named(LibraryElements, LibraryElements.JAR)
-            attribute Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.SHADOWED)
+            Usage javaRuntime = objects.named(Usage, Usage.JAVA_RUNTIME)
+            Category library = objects.named(Category, Category.LIBRARY)
+            LibraryElements jar = objects.named(LibraryElements, LibraryElements.JAR)
+            Bundling shadowed = objects.named(Bundling, Bundling.SHADOWED)
+
+            attribute Usage.USAGE_ATTRIBUTE, javaRuntime
+            attribute Category.CATEGORY_ATTRIBUTE, library
+            attribute LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, jar
+            attribute Bundling.BUNDLING_ATTRIBUTE, shadowed
         }
     }
 }
@@ -35,6 +38,7 @@ sourceSets {
     collisionAgent {
         java.srcDir 'src/collisionAgent/java'
     }
+
     dualSdk {
         java.srcDir 'src/dualSdk/java'
         compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
@@ -49,10 +53,10 @@ configurations.named('dualSdkImplementation') {
 dependencies {
     controlledAgentUnderTest project(
             path: distributionProjectPath,
-            configuration: 'controlledAgentElements')
+            configuration: 'controlledAgentElements'
+    )
 
-    implementation project(
-            ':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure')
+    implementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure')
     implementation 'org.springframework.boot:spring-boot-starter'
 
     dualSdkImplementation 'io.opentelemetry:opentelemetry-sdk'
@@ -85,7 +89,7 @@ def verifySpringBootPluginVersion = tasks.register('verifySpringBootPluginVersio
     inputs.property('runtimeVersions', runtimeVersions)
 
     doLast {
-        Set<String> resolved = runtimeVersions.get()
+        def resolved = runtimeVersions.get()
         if (resolved != [pluginVersion].toSet()) {
             throw new GradleException(
                     "Spring Boot Gradle plugin version ${pluginVersion} does not match the "
@@ -114,8 +118,7 @@ def collisionAgentJar = tasks.register('collisionAgentJar', Jar) {
     archiveFileName = 'platform-tracing-jmx-collision-agent.jar'
     from sourceSets.collisionAgent.output
     manifest {
-        attributes 'Premain-Class':
-                'space.br1440.platform.tracing.e2e.collision.JmxCollisionPremainAgent'
+        attributes 'Premain-Class': 'space.br1440.platform.tracing.e2e.collision.JmxCollisionPremainAgent'
     }
 }
 
