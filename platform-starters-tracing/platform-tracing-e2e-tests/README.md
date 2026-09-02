@@ -1,4 +1,4 @@
-# Packaged Spring Boot certification
+# End-to-End тесты для платформенного решения по трейсингу
 
 Модуль проверяет не отдельные классы, а фактически поставляемую связку:
 исполняемый Spring Boot JAR, controlled Java agent и упакованное расширение.
@@ -6,7 +6,6 @@
 машиночитаемые evidence в `build/reports/packaged-certification`.
 
 Проверяются:
-
 - идентичность controlled agent и встроенного extension JAR;
 - generated JMX schema, OpenType и метаданные MBean;
 - состояние readiness и аттестация classloader boundary;
@@ -26,8 +25,7 @@
 - пятисекундный зависший JMX getter на refresh-потоке и отдельные raw/budget
   значения latency in-process request/span probe;
 - отсутствие частичной регистрации runtime MBeans при коллизии владельца;
-- сравнительные показатели старта, loaded classes и metaspace относительно
-  packaged baseline без Java agent.
+- сравнительные показатели старта, loaded classes и metaspace относительно packaged baseline без Java agent.
 
 Remote connector создаётся только отдельным test-only Java agent внутри forked packaged JVM и
 владеет loopback listener. Этот fixture не добавляет connector в production extension и не
