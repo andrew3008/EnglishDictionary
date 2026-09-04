@@ -1,8 +1,9 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor;
 
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.ObservationCapture;
 
-public record ProcessorMetricsObservation(String agentInstanceId,
+public record ProcessorMetricsObservation(ObservationCapture capture,
                                           JmxOwnerState<ProcessorWatchdogValues> watchdog,
                                           JmxOwnerState<ProcessorCompositeValues> composite,
                                           JmxOwnerState<ProcessorMetricsValues> metrics) {

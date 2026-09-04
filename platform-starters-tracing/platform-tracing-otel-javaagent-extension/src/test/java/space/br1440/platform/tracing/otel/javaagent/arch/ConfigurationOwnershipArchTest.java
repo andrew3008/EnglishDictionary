@@ -33,44 +33,22 @@ class ConfigurationOwnershipArchTest {
                     .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                     .importPackages(ROOT);
 
-    /**
-     * Keys declared in {@link ExtensionPropertyNames} may be referenced only by:
-     * <ul>
-     *   <li>the {@code configuration} package (domain facades, reader, defaults provider, paths);</li>
-     *   <li>the {@code resource} package (SPI-local resource key owner);</li>
-     *   <li>{@code BootstrapCoordinator} — fail-closed scrubbing message text only,
-     *       not a second domain reader;</li>
-     *   <li>{@code ConfigurationFingerprint} — deterministic content hash of the same
-     *       key set, not a domain consumer.</li>
-     * </ul>
-     * Factories, processors, samplers, control, propagation and scrubbing must not become
-     * second readers of these keys.
-     */
     @Test
     void extensionPropertyNames_referenced_only_by_documented_owners() {
         ArchRule rule = noClasses()
                 .that().resideOutsideOfPackages(CONFIGURATION, RESOURCE)
-                .and().doNotHaveSimpleName("BootstrapCoordinator")
+                .and().doNotHaveSimpleName("AutoconfigureSessionFactory")
                 .and().doNotHaveSimpleName("ConfigurationFingerprint")
                 .should().dependOnClassesThat().haveFullyQualifiedName(EXTENSION_PROPERTY_NAMES)
                 .because("ExtensionPropertyNames keys have a single reader per owner "
                         + "(configuration facades / resource SPI / paths helper); "
-                        + "bootstrap coordinator/fingerprint may reference keys for fail-closed "
+                        + "autoconfigure session factory/fingerprint may reference keys for fail-closed "
                         + "messages and content hashing only; other packages must not become "
                         + "second readers (S7 G-S7-1 / r5 S6 rename)");
 
         rule.check(EXTENSION_PRODUCTION_CLASSES);
     }
 
-    // -----------------------------------------------------------------------------------------
-    // G-S7-2 — single default owner
-    // -----------------------------------------------------------------------------------------
-
-    /**
-     * {@link PlatformTracingDefaultsProvider#supply()} may inject {@code otel.*} SDK defaults and
-     * env-present platform bridges, but must never unconditionally write a key owned by
-     * {@link ExtensionPropertyNames} / {@code ExtensionDefaults}.
-     */
     @Test
     void supply_without_env_does_not_write_extension_property_names_platform_keys() throws Exception {
         Map<String, String> supplied = new PlatformTracingDefaultsProvider(name -> null).supply();
@@ -79,15 +57,15 @@ class ConfigurationOwnershipArchTest {
             if (!Modifier.isStatic(field.getModifiers()) || field.getType() != String.class) {
                 continue;
             }
+
             String key = (String) field.get(null);
             if (key.startsWith("otel.")) {
-                // otel.javaagent.extensions is a name constant, not a platform default owned by
-                // ExtensionDefaults; supply() must not invent a value for it either.
                 assertThat(supplied)
                         .as("supply() must not invent a value for %s", key)
                         .doesNotContainKey(key);
                 continue;
             }
+
             assertThat(supplied)
                     .as("platform key %s is owned by ExtensionDefaults / domain facade; "
                             + "supply() may write it only via env fallback (S7 G-S7-2)", key)
@@ -95,14 +73,8 @@ class ConfigurationOwnershipArchTest {
         }
     }
 
-    // -----------------------------------------------------------------------------------------
-    // G-S7-4 — secret-shaped fields are not raw String
-    // -----------------------------------------------------------------------------------------
-
     @Test
     void secret_shaped_fields_are_not_raw_string() {
-        // Instance fields only: static String constants like ExtensionPropertyNames.SCRUBBING_HMAC_KEY
-        // are property *names*, not secret material.
         ArchRule rule = noFields()
                 .that().haveNameMatching("(?i).*(hmac|secret|password|token|credential).*")
                 .and().areNotStatic()
@@ -126,10 +98,6 @@ class ConfigurationOwnershipArchTest {
         rule.check(EXTENSION_PRODUCTION_CLASSES);
     }
 
-    // -----------------------------------------------------------------------------------------
-    // G-S7-5 — no ConfigProperties in long-lived runtime state
-    // -----------------------------------------------------------------------------------------
-
     @Test
     void long_lived_runtime_types_do_not_hold_config_properties() {
         ArchRule rule = noFields()
@@ -152,15 +120,6 @@ class ConfigurationOwnershipArchTest {
         rule.check(EXTENSION_PRODUCTION_CLASSES);
     }
 
-    // -----------------------------------------------------------------------------------------
-    // G-S7-6 — startup / runtime boundary
-    // -----------------------------------------------------------------------------------------
-
-    /**
-     * After {@code TracingSettingsSource.fromStartup}, the control plane owns accepted settings.
-     * Nested control packages must not reach back into startup configuration types.
-     * The sole bootstrap bridge is {@code TracingSettingsSource} in the control root package.
-     */
     @Test
     void control_nested_packages_do_not_depend_on_configuration() {
         ArchRule rule = noClasses()

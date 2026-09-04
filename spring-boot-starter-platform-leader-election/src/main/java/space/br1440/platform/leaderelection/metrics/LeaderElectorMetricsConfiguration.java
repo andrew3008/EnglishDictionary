@@ -1,21 +1,22 @@
 package space.br1440.platform.leaderelection.metrics;
 
-import io.micrometer.core.instrument.Meter;
-import io.micrometer.core.instrument.config.MeterFilter;
-import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
-import org.jetbrains.annotations.NotNull;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import static space.br1440.platform.leaderelection.metrics.LeaderElectionMetrics.METRIC_PREFIX;
 
 import java.time.Duration;
 
-import static space.br1440.platform.leaderelection.metrics.LeaderElectionMetrics.METRIC_PREFIX;
+import org.jetbrains.annotations.NotNull;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
 
-@Configuration
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.config.MeterFilter;
+import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
+
+@AutoConfiguration
 @ConditionalOnClass(name = "io.micrometer.core.instrument.MeterRegistry")
-@ConditionalOnProperty(prefix = "platform.leader-election.metrics", name = "enabled", havingValue = "true", matchIfMissing = false)
+@ConditionalOnProperty(prefix = "platform.leader-election.metrics", name = "enabled", havingValue = "true")
 public class LeaderElectorMetricsConfiguration {
 
     @Bean
@@ -46,5 +47,4 @@ public class LeaderElectorMetricsConfiguration {
             }
         };
     }
-
 }

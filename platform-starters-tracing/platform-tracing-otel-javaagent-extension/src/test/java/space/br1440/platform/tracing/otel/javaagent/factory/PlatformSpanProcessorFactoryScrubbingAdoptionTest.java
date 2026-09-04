@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import jakarta.annotation.Nonnull;
 
 import org.junit.jupiter.api.DisplayName;
@@ -22,7 +23,7 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefau
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
@@ -94,23 +95,23 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         });
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T> T registrarSlotOwner(DomainMBeanRegistrar reg, String slotAccessorName) throws Exception {
-        Field slotsField = DomainMBeanRegistrar.class.getDeclaredField("slots");
-        slotsField.setAccessible(true);
-        Object slots = slotsField.get(reg);
-
-        Method slotAccessor = slots.getClass().getDeclaredMethod(slotAccessorName);
-        slotAccessor.setAccessible(true);
-        OwnerRegistrationSlot<T> slot = (OwnerRegistrationSlot<T>) slotAccessor.invoke(slots);
-
-        OwnerRegistrationState<T> state = slot.capture();
-        return state instanceof OwnerRegistrationState.Present<T> present ? present.owner() : null;
-    }
-
     /** Владелец JMX-наблюдения scrubbing — сессионный {@link ScrubbingRuntime}, а не процессор. */
-    private static ScrubbingRuntime getScrubbing(DomainMBeanRegistrar r) throws Exception {
-        return registrarSlotOwner(r, "scrubbing");
+    @SuppressWarnings("unchecked")
+    private static ScrubbingRuntime getScrubbing(PlatformTracingMBeanRegistrar reg) throws Exception {
+        Field runtimePlaneField = PlatformTracingMBeanRegistrar.class.getDeclaredField("runtimePlane");
+        runtimePlaneField.setAccessible(true);
+        Object runtimePlane = runtimePlaneField.get(reg);
+
+        Field slotsField = runtimePlane.getClass().getDeclaredField("slots");
+        slotsField.setAccessible(true);
+        Object slots = slotsField.get(runtimePlane);
+
+        Method slotAccessor = slots.getClass().getDeclaredMethod("scrubbing");
+        slotAccessor.setAccessible(true);
+        OwnerRegistrationSlot<ScrubbingRuntime> slot = (OwnerRegistrationSlot<ScrubbingRuntime>) slotAccessor.invoke(slots);
+
+        OwnerRegistrationState<ScrubbingRuntime> state = slot.capture();
+        return state instanceof OwnerRegistrationState.Present<ScrubbingRuntime> present ? present.owner() : null;
     }
 
     @Nested
@@ -119,7 +120,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void scrubbing_disabled_ext_config_no_scrubbing_processor() throws Exception {
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -142,7 +143,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void scrubbing_enabled_default_rules_registers_processor() throws Exception {
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             ExtensionConfig extensionConfig = scrubbingEnabledDefaultsExtConfig();
             ConfigProperties config = otelOnlyConfig();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
@@ -249,7 +250,8 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         void hmacKey_passthrough_when_configured() {
             ExtensionConfig cfg = configWithStringProperty(
                     "platform.tracing.scrubbing.hmac-key", "my-secret-key");
-            assertThat(new String(cfg.scrubbing().hmacKey().copyBytes(), StandardCharsets.UTF_8))
+            byte[] hmacKeyBytes = Objects.requireNonNull(cfg.scrubbing().hmacKey().copyBytes());
+            assertThat(new String(hmacKeyBytes, StandardCharsets.UTF_8))
                     .as("hmacKey passthrough")
                     .isEqualTo("my-secret-key");
         }

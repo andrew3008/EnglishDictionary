@@ -1,5 +1,32 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.lang.management.ManagementFactory;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import javax.management.Attribute;
+import javax.management.AttributeList;
+import javax.management.AttributeNotFoundException;
+import javax.management.DynamicMBean;
+import javax.management.InvalidAttributeValueException;
+import javax.management.MBeanInfo;
+import javax.management.MBeanNotificationInfo;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.CompositeDataSupport;
+import javax.management.openmbean.CompositeType;
+import javax.management.openmbean.OpenDataException;
+import javax.management.openmbean.OpenMBeanAttributeInfo;
+import javax.management.openmbean.OpenMBeanAttributeInfoSupport;
+import javax.management.openmbean.OpenMBeanConstructorInfo;
+import javax.management.openmbean.OpenMBeanInfoSupport;
+import javax.management.openmbean.OpenMBeanOperationInfo;
+import javax.management.openmbean.OpenType;
+import javax.management.openmbean.SimpleType;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -8,29 +35,8 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.Jmx
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxDiagnosticKind;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxDiagnosticSnapshot;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxReadExecutor;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxObservationWireContract;
-
-import javax.management.Attribute;
-import javax.management.AttributeList;
-import javax.management.AttributeNotFoundException;
-import javax.management.DynamicMBean;
-import javax.management.InvalidAttributeValueException;
-import javax.management.MBeanAttributeInfo;
-import javax.management.MBeanInfo;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.CompositeDataSupport;
-import javax.management.openmbean.CompositeType;
-import javax.management.openmbean.OpenDataException;
-import javax.management.openmbean.OpenType;
-import javax.management.openmbean.SimpleType;
-import java.lang.management.ManagementFactory;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 class JmxViewTypeNameMismatchWiringTest {
 
@@ -98,7 +104,7 @@ class JmxViewTypeNameMismatchWiringTest {
     @Test
     void exportProcessorNestedMismatchIsContractViolation() throws Exception {
         CompositeData processor = compositeNamed("space.br1440.platform.tracing.NotExportProcessorValues");
-        CompositeData exporter = compositeNamed(JmxObservationWireContract.EXPORT_EXPORTER_VALUES_TYPE_NAME);
+        CompositeData exporter = compositeNamed(JmxWireContract.OPEN_TYPE_SAFE_EXPORTER_VALUES_TYPE_NAME);
         registerFakeMBean("ExportObservation", name -> exportFrame(processor, exporter));
         JmxReadExecutor executor = new JmxReadExecutor(server);
         ExportJmxView view = new ExportJmxView(executor, registeredName);
@@ -109,7 +115,7 @@ class JmxViewTypeNameMismatchWiringTest {
 
     @Test
     void exportExporterNestedMismatchIsContractViolation() throws Exception {
-        CompositeData processor = compositeNamed(JmxObservationWireContract.EXPORT_PROCESSOR_VALUES_TYPE_NAME);
+        CompositeData processor = compositeNamed(JmxWireContract.OPEN_TYPE_EXPORT_PROCESSOR_VALUES_TYPE_NAME);
         CompositeData exporter = compositeNamed("space.br1440.platform.tracing.NotSafeExporterValues");
         registerFakeMBean("ExportObservation", name -> exportFrame(processor, exporter));
         JmxReadExecutor executor = new JmxReadExecutor(server);
@@ -132,8 +138,8 @@ class JmxViewTypeNameMismatchWiringTest {
     @Test
     void processorMetricsWatchdogNestedMismatchIsContractViolation() throws Exception {
         CompositeData watchdog = compositeNamed("space.br1440.platform.tracing.NotProcessorWatchdogValues");
-        CompositeData compositeValues = compositeNamed(JmxObservationWireContract.PROCESSOR_METRICS_COMPOSITE_VALUES_TYPE_NAME);
-        CompositeData metrics = compositeNamed(JmxObservationWireContract.PROCESSOR_METRICS_METRICS_VALUES_TYPE_NAME);
+        CompositeData compositeValues = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_COMPOSITE_VALUES_TYPE_NAME);
+        CompositeData metrics = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_VALUES_TYPE_NAME);
         registerFakeMBean("ProcessorMetricsObservation", name -> processorMetricsFrame(watchdog, compositeValues, metrics));
         JmxReadExecutor executor = new JmxReadExecutor(server);
         ProcessorMetricsJmxView view = new ProcessorMetricsJmxView(executor, registeredName);
@@ -144,9 +150,9 @@ class JmxViewTypeNameMismatchWiringTest {
 
     @Test
     void processorMetricsCompositeNestedMismatchIsContractViolation() throws Exception {
-        CompositeData watchdog = compositeNamed(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_VALUES_TYPE_NAME);
+        CompositeData watchdog = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_WATCHDOG_VALUES_TYPE_NAME);
         CompositeData compositeValues = compositeNamed("space.br1440.platform.tracing.NotProcessorCompositeValues");
-        CompositeData metrics = compositeNamed(JmxObservationWireContract.PROCESSOR_METRICS_METRICS_VALUES_TYPE_NAME);
+        CompositeData metrics = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_VALUES_TYPE_NAME);
         registerFakeMBean("ProcessorMetricsObservation", name -> processorMetricsFrame(watchdog, compositeValues, metrics));
         JmxReadExecutor executor = new JmxReadExecutor(server);
         ProcessorMetricsJmxView view = new ProcessorMetricsJmxView(executor, registeredName);
@@ -157,8 +163,8 @@ class JmxViewTypeNameMismatchWiringTest {
 
     @Test
     void processorMetricsMetricsNestedMismatchIsContractViolation() throws Exception {
-        CompositeData watchdog = compositeNamed(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_VALUES_TYPE_NAME);
-        CompositeData compositeValues = compositeNamed(JmxObservationWireContract.PROCESSOR_METRICS_COMPOSITE_VALUES_TYPE_NAME);
+        CompositeData watchdog = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_WATCHDOG_VALUES_TYPE_NAME);
+        CompositeData compositeValues = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_COMPOSITE_VALUES_TYPE_NAME);
         CompositeData metrics = compositeNamed("space.br1440.platform.tracing.NotProcessorMetricsValues");
         registerFakeMBean("ProcessorMetricsObservation", name -> processorMetricsFrame(watchdog, compositeValues, metrics));
         JmxReadExecutor executor = new JmxReadExecutor(server);
@@ -167,8 +173,6 @@ class JmxViewTypeNameMismatchWiringTest {
         assertThat(view.observation()).isEmpty();
         assertViolation(executor, JmxContractPoint.PROCESSOR_METRICS_OBSERVATION);
     }
-
-    // -- Утверждение --------------------------------------------------------------------
 
     private static void assertViolation(JmxReadExecutor executor, JmxContractPoint point) {
         List<JmxDiagnosticSnapshot> snapshot = executor.diagnosticSnapshot();
@@ -180,8 +184,6 @@ class JmxViewTypeNameMismatchWiringTest {
                     assertThat(entry.kind()).isEqualTo(JmxDiagnosticKind.COMPOSITE_TYPE_NAME_MISMATCH);
                 });
     }
-
-    // -- Синтетические composite-заполнители --------------------------------------------
 
     private static CompositeData wrongTypeComposite() {
         return compositeNamed("space.br1440.platform.tracing.NotTheExpectedType");
@@ -199,37 +201,41 @@ class JmxViewTypeNameMismatchWiringTest {
     }
 
     private static CompositeData exportFrame(CompositeData processor, CompositeData exporter) {
-        return frameOf(JmxObservationWireContract.EXPORT_COMPOSITE_TYPE_NAME, Map.of(
-                JmxObservationWireContract.EXPORT_ITEM_PROCESSOR, processor,
-                JmxObservationWireContract.EXPORT_ITEM_EXPORTER, exporter));
+        return frameOf(JmxWireContract.OPEN_TYPE_EXPORT_OBSERVATION_TYPE_NAME, Map.of(
+                JmxWireContract.FIELD_EXPORT_OBSERVATION_PROCESSOR, processor,
+                JmxWireContract.FIELD_EXPORT_OBSERVATION_EXPORTER, exporter));
     }
 
     private static CompositeData processorMetricsFrame(CompositeData watchdog, CompositeData compositeValues, CompositeData metrics) {
-        return frameOf(JmxObservationWireContract.PROCESSOR_METRICS_COMPOSITE_TYPE_NAME, Map.of(
-                JmxObservationWireContract.PROCESSOR_METRICS_ITEM_WATCHDOG, watchdog,
-                JmxObservationWireContract.PROCESSOR_METRICS_ITEM_COMPOSITE, compositeValues,
-                JmxObservationWireContract.PROCESSOR_METRICS_ITEM_METRICS, metrics));
+        return frameOf(JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_OBSERVATION_TYPE_NAME, Map.of(
+                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG, watchdog,
+                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_COMPOSITE, compositeValues,
+                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_METRICS, metrics));
     }
 
-    /** Верхнеуровневый frame с корректным именем и минимальным набором frame-item'ов + nested-владельцами. */
     private static CompositeData frameOf(String typeName, Map<String, CompositeData> nestedItems) {
         try {
             Map<String, OpenType<?>> itemTypes = new LinkedHashMap<>();
-            itemTypes.put(JmxObservationWireContract.ITEM_SCHEMA_VERSION, SimpleType.INTEGER);
-            itemTypes.put(JmxObservationWireContract.ITEM_AGENT_INSTANCE_ID, SimpleType.STRING);
+            itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID, SimpleType.STRING);
+            itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE, SimpleType.LONG);
+            itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_STARTED_AT, SimpleType.LONG);
+            itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_COMPLETED_AT, SimpleType.LONG);
             for (Map.Entry<String, CompositeData> entry : nestedItems.entrySet()) {
                 itemTypes.put(entry.getKey(), entry.getValue().getCompositeType());
             }
 
             CompositeType type = new CompositeType(
-                    typeName, "Синтетический верхнеуровневый frame",
+                    typeName, "Synthetic top-level frame",
                     itemTypes.keySet().toArray(new String[0]),
                     itemTypes.keySet().toArray(new String[0]),
-                    itemTypes.values().toArray(new OpenType<?>[0]));
+                    itemTypes.values().toArray(new OpenType<?>[0])
+            );
 
             Map<String, Object> values = new LinkedHashMap<>();
-            values.put(JmxObservationWireContract.ITEM_SCHEMA_VERSION, JmxObservationWireContract.SCHEMA_VERSION);
-            values.put(JmxObservationWireContract.ITEM_AGENT_INSTANCE_ID, "agent-wiring-test");
+            values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID, "agent-wiring-test");
+            values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE, 1L);
+            values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_STARTED_AT, 1_700_000_000_000L);
+            values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_COMPLETED_AT, 1_700_000_000_001L);
             values.putAll(nestedItems);
 
             return new CompositeDataSupport(type, values);
@@ -238,22 +244,21 @@ class JmxViewTypeNameMismatchWiringTest {
         }
     }
 
-    // -- Регистрация fake MBean, аналогично JmxReadExecutorTest --------------------------
-
     private void registerFakeMBean(String attributeName, java.util.function.Function<String, Object> supplier) throws Exception {
-        registeredName = ObjectName.getInstance(
-                "space.br1440.platform.tracing.test:type=JmxViewTypeNameMismatchWiringTest,attribute=" + attributeName);
+        String attributePath = "space.br1440.platform.tracing.test:type=JmxViewTypeNameMismatchWiringTest,attribute=" + attributeName;
+        registeredName = ObjectName.getInstance(attributePath);
         server.registerMBean(new FakeDynamicMBean(attributeName, supplier), registeredName);
     }
 
-    /** Простой {@code DynamicMBean} с единственным настраиваемым атрибутом. */
     private static final class FakeDynamicMBean implements DynamicMBean {
 
         private final String attributeName;
+        private final OpenType<?> openType;
         private final java.util.function.Function<String, Object> supplier;
 
         FakeDynamicMBean(String attributeName, java.util.function.Function<String, Object> supplier) {
             this.attributeName = attributeName;
+            this.openType = openType(attributeName);
             this.supplier = supplier;
         }
 
@@ -287,9 +292,35 @@ class JmxViewTypeNameMismatchWiringTest {
 
         @Override
         public MBeanInfo getMBeanInfo() {
-            return new MBeanInfo(getClass().getName(), "fake", new MBeanAttributeInfo[]{
-                    new MBeanAttributeInfo(attributeName, "javax.management.openmbean.CompositeData", "fake", true, false, false)
-            }, null, null, null);
+            OpenMBeanAttributeInfo attribute = new OpenMBeanAttributeInfoSupport(
+                    attributeName,
+                    "fake",
+                    openType,
+                    true,
+                    false,
+                    false
+            );
+
+            return new OpenMBeanInfoSupport(
+                    getClass().getName(),
+                    "fake",
+                    new OpenMBeanAttributeInfo[]{attribute},
+                    new OpenMBeanConstructorInfo[0],
+                    new OpenMBeanOperationInfo[0],
+                    new MBeanNotificationInfo[0]
+            );
+        }
+
+        private static OpenType<?> openType(String attributeName) {
+            return switch (attributeName) {
+                case "SamplingObservation" -> JmxOpenTypes.SAMPLING_OBSERVATION;
+                case "ScrubbingObservation" -> JmxOpenTypes.SCRUBBING_OBSERVATION;
+                case "ValidationObservation" -> JmxOpenTypes.VALIDATION_OBSERVATION;
+                case "ExportObservation" -> JmxOpenTypes.EXPORT_OBSERVATION;
+                case "ProcessorMetricsObservation" -> JmxOpenTypes.PROCESSOR_METRICS_OBSERVATION;
+                case "DiagnosticsObservation" -> JmxOpenTypes.DIAGNOSTICS_OBSERVATION;
+                default -> throw new IllegalArgumentException("Unknown observation attribute: " + attributeName);
+            };
         }
     }
 }

@@ -5,8 +5,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsLeaves;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AgentReadinessSnapshot;
+import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
+import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedPolicySummary;
 
 public record TracingStatusSnapshot(int schemaVersion,
                                     boolean tracingEnabled,
@@ -16,7 +16,7 @@ public record TracingStatusSnapshot(int schemaVersion,
                                     SettingsStatus settings,
                                     List<Map<String, Object>> jmxContractDiagnostics) {
 
-    public static final int CURRENT_SCHEMA_VERSION = 5;
+    public static final int CURRENT_SCHEMA_VERSION = 1;
 
     public TracingStatusSnapshot {
         agent = immutableCopy(agent);
@@ -29,13 +29,13 @@ public record TracingStatusSnapshot(int schemaVersion,
     }
 
     public record SettingsStatus(boolean available,
-                               SettingsAbsenceReason reason,
-                               AgentReadinessSnapshot readiness,
-                               AcceptedSettingsLeaves accepted) {
+                                 SettingsAbsenceReason reason,
+                                 ExpectedSettingsRevision acceptedRevision,
+                                 AcceptedPolicySummary accepted) {
 
-        public static SettingsStatus available(AgentReadinessSnapshot readiness,
-                                             AcceptedSettingsLeaves accepted) {
-            return new SettingsStatus(true, null, readiness, accepted);
+        public static SettingsStatus available(ExpectedSettingsRevision acceptedRevision,
+                                               AcceptedPolicySummary accepted) {
+            return new SettingsStatus(true, null, acceptedRevision, accepted);
         }
 
         public static SettingsStatus absent(SettingsAbsenceReason reason) {

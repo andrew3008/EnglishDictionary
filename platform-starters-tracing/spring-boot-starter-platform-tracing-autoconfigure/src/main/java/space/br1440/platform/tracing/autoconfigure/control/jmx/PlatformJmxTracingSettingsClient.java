@@ -1,0 +1,181 @@
+package space.br1440.platform.tracing.autoconfigure.control.jmx;
+
+import java.lang.management.ManagementFactory;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.management.InstanceNotFoundException;
+import javax.management.MBeanServer;
+
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
+import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationGuardException;
+import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
+import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
+import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsContractViolationException;
+import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;
+import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliverySource;
+import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsReadModel;
+import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
+import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedTracingSettingsReader;
+import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxMBeanInfoShapeViolationException;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxWireGraphValidator;
+
+public final class PlatformJmxTracingSettingsClient implements TracingSettingsApplier, CompleteTracingSettingsReader, AcceptedTracingSettingsReader {
+
+    private final AgentReadinessCoherenceGuard coherenceGuard;
+    private final AtomicBoolean metadataGatePassed = new AtomicBoolean();
+    private final JmxSettingsMetadataGate metadataGate;
+    private final JmxSettingsMutationTransport mutationTransport;
+    private final JmxAcceptedPolicySnapshotReader acceptedPolicyReader;
+
+    PlatformJmxTracingSettingsClient(AgentReadinessCoherenceGuard coherenceGuard) {
+        this(ManagementFactory.getPlatformMBeanServer(), coherenceGuard);
+    }
+
+    public PlatformJmxTracingSettingsClient(MBeanServer platformMBeanServer,
+                                            AgentReadinessCoherenceGuard coherenceGuard) {
+        Objects.requireNonNull(platformMBeanServer, "platformMBeanServer");
+        this.coherenceGuard = Objects.requireNonNull(coherenceGuard, "coherenceGuard");
+
+        JmxWireGraphValidator wireValidator = new JmxWireGraphValidator();
+        this.metadataGate = new JmxSettingsMetadataGate(platformMBeanServer, coherenceGuard);
+        this.mutationTransport = new JmxSettingsMutationTransport(
+                platformMBeanServer,
+                coherenceGuard,
+                wireValidator,
+                this
+        );
+
+        this.acceptedPolicyReader = new JmxAcceptedPolicySnapshotReader(
+                platformMBeanServer,
+                coherenceGuard,
+                wireValidator,
+                this
+        );
+    }
+
+    public void initialize() {
+        requireTrusted();
+        metadataGatePassed.set(false);
+
+        try {
+            metadataGate.verifyContractMetadata();
+            metadataGatePassed.set(true);
+        } catch (AgentReadinessCoherenceException coherenceFailure) {
+            throw foreignGuardFailure(
+                    coherenceFailure.failureCode(),
+                    "Platform tracing MBean metadata was read outside the pinned readiness generation",
+                    coherenceFailure
+            );
+        } catch (JmxMBeanInfoShapeViolationException incompatibleMetadata) {
+            throw terminalGuardFailure(
+                    JmxClientFailureCode.METADATA_GATE_FAILED,
+                    "Platform tracing MBean metadata is incompatible",
+                    incompatibleMetadata
+            );
+        } catch (InstanceNotFoundException disappearedEndpoint) {
+            throw terminalGuardFailure(
+                    JmxClientFailureCode.METADATA_ENDPOINT_DISAPPEARED,
+                    "Platform tracing MBean metadata endpoint disappeared after readiness was pinned",
+                    disappearedEndpoint
+            );
+        } catch (SecurityException securityFailure) {
+            throw terminalGuardFailure(
+                    JmxClientFailureCode.METADATA_TRANSPORT_SECURITY_FAILED,
+                    "Platform tracing MBean metadata access was denied",
+                    securityFailure
+            );
+        } catch (Exception unavailableEndpoint) {
+            throw terminalGuardFailure(
+                    JmxClientFailureCode.METADATA_GATE_FAILED,
+                    "Platform tracing MBean metadata is unavailable",
+                    unavailableEndpoint
+            );
+        }
+    }
+
+    @Override
+    public TracingSettingsDeliveryResult applySnapshot(ExpectedSettingsRevision expectedBase,
+                                                       CompleteTracingSettings snapshot,
+                                                       TracingSettingsDeliverySource source) {
+        requireTrusted();
+        if (!metadataGatePassed.get()) {
+            return TracingSettingsDeliveryResult.FAILED;
+        }
+
+        return mutationTransport.applySnapshot(expectedBase, snapshot, source);
+    }
+
+    @Override
+    public Optional<AcceptedSettingsWithSequence> currentComplete() {
+        requireTrusted();
+        if (!metadataGatePassed.get()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(acceptedPolicyReader.readAcceptedPolicy());
+    }
+
+    @Override
+    public Optional<AcceptedSettingsReadModel> currentReadModel() {
+        return currentComplete().map(AcceptedSettingsReadModelMapper::toReadModel);
+    }
+
+    void requireTrusted() {
+        String failureCode = coherenceGuard.terminalFailureCode();
+        if (failureCode != null) {
+            String message = "Platform tracing client trust was terminally invalidated by " + failureCode;
+            throw new TracingConfigurationGuardException(
+                    JmxClientFailureCode.TERMINALLY_INVALIDATED.message(message)
+            );
+        }
+    }
+
+    void publishTerminalFailure(String failureCode, Throwable primaryFailure) {
+        Objects.requireNonNull(failureCode, "failureCode");
+        Objects.requireNonNull(primaryFailure, "primaryFailure");
+
+        try {
+            coherenceGuard.recordTrustFailure(failureCode);
+        } catch (RuntimeException latchFailure) {
+            primaryFailure.addSuppressed(latchFailure);
+        }
+    }
+
+    TracingSettingsContractViolationException terminalContractViolation(JmxClientFailureCode failureCode,
+                                                                        String detail,
+                                                                        Throwable cause) {
+        String message = failureCode.message(detail);
+        TracingSettingsContractViolationException failure = new TracingSettingsContractViolationException(message, cause);
+        invalidateAndNotify(failureCode, failure);
+        return failure;
+    }
+
+    TracingConfigurationGuardException terminalGuardFailure(JmxClientFailureCode failureCode,
+                                                            String detail,
+                                                            Throwable cause) {
+        String message = failureCode.message(detail);
+        TracingConfigurationGuardException failure = new TracingConfigurationGuardException(message, cause);
+        invalidateAndNotify(failureCode, failure);
+        return failure;
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    TracingConfigurationGuardException foreignGuardFailure(String foreignFailureCode,
+                                                           String detail,
+                                                           Throwable cause) {
+        String message = foreignFailureCode + ": " + detail;
+        TracingConfigurationGuardException failure = new TracingConfigurationGuardException(message, cause);
+        publishTerminalFailure(foreignFailureCode, failure);
+        return failure;
+    }
+
+    void invalidateAndNotify(JmxClientFailureCode failureCode,
+                             Throwable primaryFailure) {
+        String failureToken = Objects.requireNonNull(failureCode, "failureCode").token();
+        publishTerminalFailure(failureToken, primaryFailure);
+    }
+}

@@ -12,21 +12,25 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPrivateControlPlane;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPlatformJmxPlane;
 
 class TracingControlActuatorWebFluxIntegrationTest {
 
+    private static final String EXTENSION_VERSION = "1.2.3";
     private static final String[] EXCLUDED_UNRELATED_AUTOCONFIGURATIONS = {
             "space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.semantic.SemanticLayerAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.observation.TracingObservationAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup."
-                    + "TracingStartupContractHealthAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup. TracingStartupContractHealthAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestContextSupplierAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.identity.ServiceNameProviderAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration",
@@ -39,8 +43,7 @@ class TracingControlActuatorWebFluxIntegrationTest {
 
     @Test
     void actuatorWriteOperationIsStackNeutral() throws Exception {
-        try (FakeAgentPrivateControlPlane agent =
-                     FakeAgentPrivateControlPlane.compliant("runtime-instance-webflux", 5L);
+        try (FakeAgentPlatformJmxPlane ignored = FakeAgentPlatformJmxPlane.compliant("runtime-instance-webflux", 5L);
              ConfigurableApplicationContext context = boot()) {
             assertThat(context.getBeansOfType(TracingControlEndpoint.class)).hasSize(1);
 
@@ -82,8 +85,7 @@ class TracingControlActuatorWebFluxIntegrationTest {
                         "management.endpoints.web.base-path=/management",
                         "management.endpoints.web.exposure.include=tracingControl",
                         "server.port=0",
-                        "spring.autoconfigure.exclude="
-                                + String.join(",", EXCLUDED_UNRELATED_AUTOCONFIGURATIONS))
+                        "spring.autoconfigure.exclude=" + String.join(",", EXCLUDED_UNRELATED_AUTOCONFIGURATIONS))
                 .run();
     }
 
@@ -92,15 +94,26 @@ class TracingControlActuatorWebFluxIntegrationTest {
     }
 
     private static int managementPort(ApplicationContext context) {
-        return Integer.parseInt(context.getEnvironment().getProperty("local.management.port"));
+        return context.getEnvironment().getRequiredProperty("local.management.port", Integer.class);
     }
 
     private static int applicationPort(ApplicationContext context) {
-        return Integer.parseInt(context.getEnvironment().getProperty("local.server.port"));
+        return context.getEnvironment().getRequiredProperty("local.server.port", Integer.class);
     }
 
     @SpringBootConfiguration
     @EnableAutoConfiguration
     static class EmptyApp {
+
+        @Bean
+        AgentReadinessCoherenceGuard agentReadinessCoherenceGuard() {
+            return new AgentReadinessCoherenceGuard();
+        }
+
+        @Bean
+        TracingDeploymentDiagnostics platformTracingDeploymentDiagnostics(AgentReadinessCoherenceGuard coherenceGuard) {
+            return new AgentStartupVerifier(coherenceGuard, EXTENSION_VERSION)
+                    .verify(true, true, false, true);
+        }
     }
 }

@@ -17,7 +17,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
@@ -42,10 +42,10 @@ public final class PlatformExportProcessorFactory {
             Collections.newSetFromMap(new IdentityHashMap<>())
     );
 
-    private final DomainMBeanRegistrar jmxRegistrar;
+    private final PlatformTracingMBeanRegistrar jmxRegistrar;
     private final ScrubbingRuntime scrubbingRuntime;
 
-    public PlatformExportProcessorFactory(DomainMBeanRegistrar jmxRegistrar, ScrubbingRuntime scrubbingRuntime) {
+    public PlatformExportProcessorFactory(PlatformTracingMBeanRegistrar jmxRegistrar, ScrubbingRuntime scrubbingRuntime) {
         this.jmxRegistrar = jmxRegistrar;
         this.scrubbingRuntime = Objects.requireNonNull(scrubbingRuntime, "scrubbingRuntime");
     }

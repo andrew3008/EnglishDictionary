@@ -1,1 +1,3 @@
 platform-starters-tracing/platform-tracing-otel-javaagent-extension/src/main/resources/META-INF/platform-tracing/otel-javaagent-acp-pin.properties text eol=lf
+platform-starters-tracing/platform-tracing-otel-javaagent-extension/src/main/resources/platform-log-event.schema.json text eol=lf
+platform-starters-tracing/platform-tracing-jmx-contract/src/main/resources/jmx-wire-contract.yaml text eol=lf

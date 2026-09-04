@@ -244,7 +244,7 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
 
         // then
         assertThat(project.resolve("build/boot-run-args.txt"))
-                .hasContent("-javaagent:" + agentJarIn(project).toAbsolutePath());
+                .hasContent("-javaagent:" + agentJarIn(project).toRealPath());
     }
 
     private String javaConsumer() {

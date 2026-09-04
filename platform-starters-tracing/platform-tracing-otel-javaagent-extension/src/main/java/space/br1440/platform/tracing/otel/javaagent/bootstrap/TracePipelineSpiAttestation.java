@@ -13,10 +13,8 @@ import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
-import space.br1440.platform.tracing.otel.javaagent.logging.EmitResult;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
@@ -28,7 +26,6 @@ import lombok.experimental.UtilityClass;
 final class TracePipelineSpiAttestation {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(TracePipelineSpiAttestation.class);
-    private static final AtomicBoolean EVIDENCE_EMITTED = new AtomicBoolean();
 
     static final String LEGACY_TRACER_PROVIDER_CONFIGURER_SPI =
             "io.opentelemetry.sdk.autoconfigure.spi.traces.SdkTracerProviderConfigurer";
@@ -38,24 +35,18 @@ final class TracePipelineSpiAttestation {
     }
 
     static void attest(int platformOrder, Class<?> platformProviderType, ClassLoader classLoader) {
-        Set<String> otelJavaAgentNames = attestAutoConfigurationProviders(platformOrder, platformProviderType, classLoader);
+        attestAutoConfigurationProviders(platformOrder, platformProviderType, classLoader);
         attestNoLegacyTracerProviderConfigurers(classLoader);
-        maybePublishEvidence(otelJavaAgentNames);
     }
 
-    static void resetEvidenceMarkerForTests() {
-        EVIDENCE_EMITTED.set(false);
-    }
-
-    private static Set<String> attestAutoConfigurationProviders(int platformOrder,
-                                                                Class<?> platformProviderType,
-                                                                ClassLoader classLoader) {
+    private static void attestAutoConfigurationProviders(int platformOrder,
+                                                         Class<?> platformProviderType,
+                                                         ClassLoader classLoader) {
         List<ServiceLoader.Provider<AutoConfigurationCustomizerProvider>> providers =
                 discover(AutoConfigurationCustomizerProvider.class, classLoader);
 
         int platformOccurrences = 0;
         Set<String> seenNames = new HashSet<>();
-        TreeSet<String> otelJavaAgentNames = new TreeSet<>(PlatformOtelAcpPinHashes.NAME_ORDER);
         for (ServiceLoader.Provider<AutoConfigurationCustomizerProvider> provider : providers) {
             Class<? extends AutoConfigurationCustomizerProvider> type = providerType(provider);
             String binaryName = type.getName();
@@ -75,25 +66,22 @@ final class TracePipelineSpiAttestation {
             }
 
             if (isAllowlistedOtelJavaAgentProviderName(binaryName)) {
-                otelJavaAgentNames.add(binaryName);
                 continue;
             }
 
             log.error(AgentEventCodes.BOOT_FORBIDDEN_SPI,
-                    "Unknown AutoConfigurationCustomizerProvider is not in the pinned OTel Java Agent set",
+                    "Unknown AutoConfigurationCustomizerProvider is not in the allowed upstream set",
                     "name", binaryName);
 
             fail("Unknown AutoConfigurationCustomizerProvider " + binaryName
-                    + " is not in the pinned OTel Java Agent AutoConfigurationCustomizerProvider set; "
-                    + "the final exporter chain cannot be attested");
+                    + " is not in the allowed upstream OTel Java Agent "
+                    + "AutoConfigurationCustomizerProvider set; the final exporter chain cannot be attested");
         }
 
         if (platformOccurrences != 1) {
             fail("Platform AutoConfigurationCustomizerProvider " + platformProviderType.getName()
                     + " must be classloader-visible exactly once, found " + platformOccurrences);
         }
-
-        return Set.copyOf(otelJavaAgentNames);
     }
 
     private static void attestNoLegacyTracerProviderConfigurers(ClassLoader classLoader) {
@@ -108,60 +96,6 @@ final class TracePipelineSpiAttestation {
                 "name", providerNames.toString());
 
         fail("SdkTracerProviderConfigurer is forbidden in the secure Controlled Agent profile: " + providerNames);
-    }
-
-    private static void maybePublishEvidence(Set<String> otelJavaAgentNames) {
-        SpiAttestationMode mode = SpiAttestationMode.fromSystemProperty();
-        if (mode == SpiAttestationMode.PRODUCTION) {
-            return;
-        }
-
-        if (mode == SpiAttestationMode.EXACT_EVIDENCE) {
-            if (!otelJavaAgentNames.equals(PinnedOtelJavaAgentAcpProviders.NAMES)) {
-                fail("Runtime-visible OTel Java Agent AutoConfigurationCustomizerProvider set does not "
-                        + "equal the generated pin");
-            }
-        }
-
-        publishEvidence(mode, otelJavaAgentNames);
-    }
-
-    private static void publishEvidence(SpiAttestationMode mode, Set<String> otelJavaAgentNames) {
-        if (!EVIDENCE_EMITTED.compareAndSet(false, true)) {
-            fail("SPI attestation evidence marker already emitted");
-        }
-
-        String setSha256 = PlatformOtelAcpPinHashes.sha256Hex(otelJavaAgentNames);
-        String pinSha256 = (mode == SpiAttestationMode.EXACT_EVIDENCE)
-                ? PinnedOtelJavaAgentAcpProviders.PIN_SHA256
-                : setSha256;
-        String pinCount = (mode == SpiAttestationMode.EXACT_EVIDENCE)
-                ? String.valueOf(PinnedOtelJavaAgentAcpProviders.PIN_COUNT)
-                : String.valueOf(otelJavaAgentNames.size());
-
-        List<String> fields = new ArrayList<>();
-        fields.add("pin_format_version");
-        fields.add(String.valueOf(PlatformOtelAcpPinHashes.FORMAT_VERSION));
-        fields.add("pin_count");
-        fields.add(pinCount);
-        fields.add("pin_sha256");
-        fields.add(pinSha256);
-        fields.add("set_sha256");
-        fields.add(setSha256);
-        if (mode == SpiAttestationMode.EXACT_EVIDENCE) {
-            fields.add("otel_javaagent_sha256");
-            fields.add(PinnedOtelJavaAgentAcpProviders.OTEL_JAVA_AGENT_SHA256);
-        }
-
-        EmitResult result = log.error(
-                AgentEventCodes.BOOT_SPI_ATTESTATION_EVIDENCE,
-                "Trace pipeline SPI attestation evidence",
-                fields.toArray()
-        );
-
-        if (result != EmitResult.EMITTED) {
-            fail("SPI attestation evidence marker was not emitted: " + result);
-        }
     }
 
     private static <T> Class<? extends T> providerType(ServiceLoader.Provider<T> provider) {
@@ -207,7 +141,7 @@ final class TracePipelineSpiAttestation {
     }
 
     static boolean isAllowlistedOtelJavaAgentProviderName(String providerName) {
-        return PinnedOtelJavaAgentAcpProviders.NAMES.contains(providerName);
+        return AllowedUpstreamAcpProviders.NAMES.contains(providerName);
     }
 
     @SuppressWarnings("SameParameterValue")

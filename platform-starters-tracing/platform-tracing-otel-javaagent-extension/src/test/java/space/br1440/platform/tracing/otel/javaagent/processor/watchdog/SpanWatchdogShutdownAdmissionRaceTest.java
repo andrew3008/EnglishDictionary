@@ -21,10 +21,13 @@ class SpanWatchdogShutdownAdmissionRaceTest {
         // given
         CountDownLatch passedFastPath = new CountDownLatch(1);
         CountDownLatch releaseCompute = new CountDownLatch(1);
-        SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+        ReadWriteSpan span = WatchdogTestSpans.span(1, 1);
+
+        try (SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
                 Duration.ofHours(1), Duration.ofHours(1), System::nanoTime, 10, 10, 10,
                 () -> {
                     passedFastPath.countDown();
+
                     try {
                         assertThat(releaseCompute.await(5, TimeUnit.SECONDS)).isTrue();
                     } catch (InterruptedException exception) {
@@ -32,21 +35,20 @@ class SpanWatchdogShutdownAdmissionRaceTest {
                         throw new IllegalStateException(exception);
                     }
                 });
-        ReadWriteSpan span = WatchdogTestSpans.span(1, 1);
-        ExecutorService executor = Executors.newSingleThreadExecutor();
+             ExecutorService executor = Executors.newSingleThreadExecutor()) {
 
-        // when
-        Future<?> start = executor.submit(() -> watchdog.onStart(Context.root(), span));
-        assertThat(passedFastPath.await(5, TimeUnit.SECONDS)).isTrue();
-        watchdog.shutdown();
-        releaseCompute.countDown();
-        start.get(5, TimeUnit.SECONDS);
+            // when
+            Future<?> start = executor.submit(() -> watchdog.onStart(Context.root(), span));
+            assertThat(passedFastPath.await(5, TimeUnit.SECONDS)).isTrue();
+            watchdog.shutdown();
+            releaseCompute.countDown();
+            start.get(5, TimeUnit.SECONDS);
 
-        // then
-        assertThat(watchdog.getActiveSpanCount()).isZero();
-        assertThat(watchdog.getTrackedTraceCount()).isZero();
-        assertThat(watchdog.getSpansRejectedGlobalTotal()).isZero();
-        assertThat(watchdog.getSpanLedgerInvariantViolationTotal()).isZero();
-        executor.shutdownNow();
+            // then
+            assertThat(watchdog.getActiveSpanCount()).isZero();
+            assertThat(watchdog.getTrackedTraceCount()).isZero();
+            assertThat(watchdog.getSpansRejectedGlobalTotal()).isZero();
+            assertThat(watchdog.getSpanPermitInvariantViolationTotal()).isZero();
+        }
     }
 }

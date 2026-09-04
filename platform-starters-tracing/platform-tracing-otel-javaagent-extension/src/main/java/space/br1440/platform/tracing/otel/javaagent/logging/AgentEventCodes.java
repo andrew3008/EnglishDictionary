@@ -2,6 +2,9 @@ package space.br1440.platform.tracing.otel.javaagent.logging;
 
 import java.util.Set;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class AgentEventCodes {
 
     public static final String BOOT_INSTALLED = "PTA-BOOT-001";
@@ -13,7 +16,6 @@ public final class AgentEventCodes {
     public static final String BOOT_FORBIDDEN_SPI = "PTA-BOOT-007";
     public static final String BOOT_PROCESSOR_REGISTRATION = "PTA-BOOT-008";
     public static final String BOOT_UPSTREAM_SERVICE = "PTA-BOOT-009";
-    public static final String BOOT_SPI_ATTESTATION_EVIDENCE = "PTA-BOOT-010";
 
     public static final String VALID_UNRECOGNIZED_MODE = "PTA-VALID-001";
     public static final String VALID_POLICY = "PTA-VALID-002";
@@ -42,7 +44,8 @@ public final class AgentEventCodes {
     public static final String EXPORT_COMPOSITE_LIFECYCLE = "PTA-EXPORT-007";
     public static final String EXPORT_WATCHDOG = "PTA-EXPORT-008";
     public static final String EXPORT_FACTORY = "PTA-EXPORT-009";
-    public static final String EXPORT_LEDGER_VIOLATION = "PTA-EXPORT-010";
+    public static final String WATCHDOG_SPAN_PERMIT_INVARIANT_VIOLATION = "PTA-EXPORT-010";
+    public static final String EXPORT_WATCHDOG_LIVE_EVICTION = "PTA-EXPORT-011";
 
     public static final String SAMPLE_FALLBACK = "PTA-SAMPLE-001";
 
@@ -66,7 +69,6 @@ public final class AgentEventCodes {
             BOOT_FORBIDDEN_SPI,
             BOOT_PROCESSOR_REGISTRATION,
             BOOT_UPSTREAM_SERVICE,
-            BOOT_SPI_ATTESTATION_EVIDENCE,
             VALID_UNRECOGNIZED_MODE,
             VALID_POLICY,
             VALID_MISSING_ATTRIBUTES,
@@ -92,7 +94,8 @@ public final class AgentEventCodes {
             EXPORT_COMPOSITE_LIFECYCLE,
             EXPORT_WATCHDOG,
             EXPORT_FACTORY,
-            EXPORT_LEDGER_VIOLATION,
+            WATCHDOG_SPAN_PERMIT_INVARIANT_VIOLATION,
+            EXPORT_WATCHDOG_LIVE_EVICTION,
             SAMPLE_FALLBACK,
             CTRL_PLANE,
             CTRL_WRITER,
@@ -102,9 +105,6 @@ public final class AgentEventCodes {
             RATE_RECOVERY,
             ENCODE_FALLBACK
     );
-
-    private AgentEventCodes() {
-    }
 
     static boolean isKnown(String eventCode) {
         return (eventCode != null) && KNOWN_CODES.contains(eventCode);

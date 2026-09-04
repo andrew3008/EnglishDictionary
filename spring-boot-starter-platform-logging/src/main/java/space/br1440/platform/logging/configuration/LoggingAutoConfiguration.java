@@ -1,25 +1,37 @@
 package space.br1440.platform.logging.configuration;
 
-import io.grpc.ServerInterceptor;
+import java.util.List;
+import jakarta.servlet.Filter;
+
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
-import org.springframework.grpc.server.GlobalServerInterceptor;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.zalando.logbook.*;
+import org.zalando.logbook.BodyFilter;
+import org.zalando.logbook.HeaderFilter;
+import org.zalando.logbook.HttpLogFormatter;
+import org.zalando.logbook.HttpLogWriter;
+import org.zalando.logbook.Logbook;
+import org.zalando.logbook.QueryFilter;
+import org.zalando.logbook.RequestFilter;
+import org.zalando.logbook.ResponseFilter;
+import org.zalando.logbook.Sink;
 import org.zalando.logbook.core.DefaultSink;
 import org.zalando.logbook.servlet.LogbookFilter;
+
 import space.br1440.platform.logging.SpringContext;
 import space.br1440.platform.logging.UserService;
 import space.br1440.platform.logging.aspect.MDCLoggingAspect;
-import space.br1440.platform.logging.logback.grpc.GrpcLoggingServerInterceptor;
-import space.br1440.platform.logging.logbook.filter.*;
+import space.br1440.platform.logging.logbook.filter.BodySensitiveDataFilter;
+import space.br1440.platform.logging.logbook.filter.HeaderSensitiveDataFilter;
+import space.br1440.platform.logging.logbook.filter.HttpRequestFilter;
+import space.br1440.platform.logging.logbook.filter.HttpResponseFilter;
+import space.br1440.platform.logging.logbook.filter.QuerySensitiveDataFilter;
 import space.br1440.platform.logging.logbook.formatter.ExcludedHeadersHttpLogFormatter;
 import space.br1440.platform.logging.logbook.formatter.Rfc7230TruncatedBodyHttpLogFormatter;
 import space.br1440.platform.logging.logbook.writer.PlatformHttpLogWriter;
@@ -28,10 +40,7 @@ import space.br1440.platform.logging.masking.PlatformSensitiveDataMasker;
 import space.br1440.platform.logging.masking.SensitiveDataMasker;
 import space.br1440.platform.logging.masking.SensitiveDataRulesLoader;
 
-import java.util.List;
-
-@Configuration
-//@ComponentScan({"space.br1440.platform.logging"})
+@AutoConfiguration
 @ConditionalOnProperty(value = "platform.http-logging.enable", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(LoggingProperties.class)
 public class LoggingAutoConfiguration {
@@ -113,8 +122,8 @@ public class LoggingAutoConfiguration {
 
     @Bean
     @ConditionalOnProperty(value = "platform.http-logging.servlet-filter.enabled", havingValue = "true", matchIfMissing = true)
-    public FilterRegistrationBean<LogbookFilter> platformLogbookFilterRegistration(Logbook logbook) {
-        FilterRegistrationBean<LogbookFilter> registration = new FilterRegistrationBean<>();
+    public FilterRegistrationBean<Filter> platformLogbookFilterRegistration(Logbook logbook) {
+        FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>();
         registration.setFilter(new LogbookFilter(logbook));
         registration.addUrlPatterns("/api/*");
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
@@ -137,6 +146,4 @@ public class LoggingAutoConfiguration {
     public UserService userService() {
         return new UserService();
     }
-
-
 }

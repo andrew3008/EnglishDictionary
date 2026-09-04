@@ -5,16 +5,13 @@ import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
 import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 
-/**
- * Утверждения для characterization sampling-тестов.
- */
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class SamplingAssertions {
 
     private static final AttributeKey<String> SAMPLING_REASON =
             AttributeKey.stringKey(PlatformAttributes.PLATFORM_SAMPLING_REASON);
-
-    private SamplingAssertions() {
-    }
 
     public static void assertDecision(SamplingResult result, SamplingDecision expected) {
         SamplerDecisionAssert.assertThat(result);

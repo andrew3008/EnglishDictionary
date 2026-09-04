@@ -12,13 +12,17 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.Jmx
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxReadExecutor;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationValues;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxObservationWireContract;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 public final class ValidationJmxView {
 
     private static final JmxAttribute<ValidationObservation> OBSERVATION = new JmxAttribute<>(
-            "ValidationObservation", JmxContractPoint.VALIDATION_OBSERVATION, ValidationJmxView::decode
+            JmxWireContract.ATTRIBUTE_VALIDATION_OBSERVATION_VALIDATION_OBSERVATION,
+            JmxContractPoint.VALIDATION_OBSERVATION,
+            JmxOpenTypes.VALIDATION_OBSERVATION,
+            ValidationJmxView::decode
     );
 
     private final JmxReadExecutor executor;
@@ -43,21 +47,46 @@ public final class ValidationJmxView {
 
     private static ValidationObservation decode(Object raw) {
         CompositeData composite = JmxObservationCodec.asComposite(raw);
-        JmxObservationCodec.requireCompositeTypeName(composite, JmxObservationWireContract.VALIDATION_COMPOSITE_TYPE_NAME);
-        JmxObservationCodec.requireSchemaVersion(composite);
-        String agentInstanceId = JmxObservationCodec.getString(composite, JmxObservationWireContract.ITEM_AGENT_INSTANCE_ID);
+        JmxObservationCodec.requireCompositeTypeName(composite, JmxWireContract.OPEN_TYPE_VALIDATION_OBSERVATION_TYPE_NAME);
 
-        JmxOwnerState<ValidationValues> values = JmxObservationCodec.ownerState(composite, () -> {
-            boolean enabled = JmxObservationCodec.getBoolean(composite, JmxObservationWireContract.VALIDATION_ITEM_ENABLED);
-            boolean strict = JmxObservationCodec.getBoolean(composite, JmxObservationWireContract.VALIDATION_ITEM_STRICT);
-            boolean strictRuntimeAllowed = JmxObservationCodec.getBoolean(composite, JmxObservationWireContract.VALIDATION_ITEM_STRICT_RUNTIME_ALLOWED);
-            long violationsTotal = JmxObservationCodec.getLong(composite, JmxObservationWireContract.VALIDATION_ITEM_VIOLATIONS_TOTAL);
-            long configVersion = JmxObservationCodec.getLong(composite, JmxObservationWireContract.VALIDATION_ITEM_CONFIG_VERSION);
-            String configSource = JmxObservationCodec.getString(composite, JmxObservationWireContract.VALIDATION_ITEM_CONFIG_LAST_UPDATED_SOURCE);
+        JmxOwnerState<ValidationValues> values = JmxObservationCodec.ownerState(
+                composite,
+                JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT,
+                JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_GENERATION,
+                () -> decodeValues(composite)
+        );
 
-            return new ValidationValues(enabled, strict, strictRuntimeAllowed, violationsTotal, configVersion, configSource);
-        });
-
+        String agentInstanceId = JmxObservationCodec.getString(composite, JmxWireContract.FIELD_VALIDATION_OBSERVATION_AGENT_INSTANCE_ID);
         return new ValidationObservation(agentInstanceId, values);
+    }
+
+    private static ValidationValues decodeValues(CompositeData composite) {
+        boolean enabled = JmxObservationCodec.getBoolean(
+                composite, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_ENABLED
+        );
+
+        boolean strict = JmxObservationCodec.getBoolean(
+                composite, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT
+        );
+
+        boolean strictRuntimeAllowed = JmxObservationCodec.getBoolean(
+                composite, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT_RUNTIME_ALLOWED
+        );
+
+        long violationsTotal = JmxObservationCodec.getLong(
+                composite, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_VIOLATIONS_TOTAL
+        );
+
+        long configVersion = JmxObservationCodec.getLong(
+                composite, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_VERSION
+        );
+
+        String configSource = JmxObservationCodec.getString(
+                composite, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_LAST_UPDATED_SOURCE
+        );
+
+        return new ValidationValues(
+                enabled, strict, strictRuntimeAllowed, violationsTotal, configVersion, configSource
+        );
     }
 }

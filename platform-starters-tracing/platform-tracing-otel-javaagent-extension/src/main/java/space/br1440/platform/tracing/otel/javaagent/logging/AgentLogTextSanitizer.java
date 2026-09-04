@@ -1,9 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.logging;
 
-final class AgentLogTextSanitizer {
+import lombok.experimental.UtilityClass;
 
-    private AgentLogTextSanitizer() {
-    }
+@UtilityClass
+final class AgentLogTextSanitizer {
 
     static String normalizeBounded(String raw, int maxChars) {
         if (raw == null) {

@@ -1,13 +1,12 @@
 package space.br1440.platform.leaderelection.aspect;
 
-import lombok.extern.slf4j.Slf4j;
+import java.lang.reflect.Method;
+
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.stereotype.Component;
-import space.br1440.platform.leaderelection.configuration.LeaderElectionProperties;
+
 import space.br1440.platform.leaderelection.execution.LockingTaskExecutor;
 import space.br1440.platform.leaderelection.execution.keepalive.KeepAliveLockFactory;
 import space.br1440.platform.leaderelection.lock.DistributedLockRegistry;
@@ -15,12 +14,10 @@ import space.br1440.platform.leaderelection.processor.LockConfigurationValidatio
 import space.br1440.platform.leaderelection.processor.LockHookProcessor;
 import space.br1440.platform.leaderelection.schedulerlocking.configuration.LockConfigurationExtractor;
 
-import java.lang.reflect.Method;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Aspect
-@Component
-@ConditionalOnBean(LeaderElectionProperties.class)
 public class DistributedLockAspect {
 
     private final DistributedLockRegistry lockRegistry;

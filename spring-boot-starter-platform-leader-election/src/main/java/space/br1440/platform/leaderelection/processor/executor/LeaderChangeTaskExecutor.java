@@ -1,17 +1,17 @@
 package space.br1440.platform.leaderelection.processor.executor;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.stereotype.Component;
-import space.br1440.platform.leaderelection.util.ThreadUtils;
-
 import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+import space.br1440.platform.leaderelection.util.ThreadUtils;
+
+import lombok.extern.slf4j.Slf4j;
+
 @Slf4j
-@Component
 public class LeaderChangeTaskExecutor implements DisposableBean {
 
     private final ExecutorService leaderChangeAsyncExecutor;
@@ -25,6 +25,7 @@ public class LeaderChangeTaskExecutor implements DisposableBean {
         if (shutdown) {
             throw new IllegalStateException("LeaderChangeTaskExecutor is shutdown");
         }
+
         return leaderChangeAsyncExecutor;
     }
 
@@ -33,8 +34,8 @@ public class LeaderChangeTaskExecutor implements DisposableBean {
         if (shutdown) {
             return;
         }
-        shutdown = true;
 
+        shutdown = true;
         ThreadUtils.shutdownExecutor(leaderChangeAsyncExecutor, Duration.ofSeconds(30));
     }
 
@@ -50,6 +51,7 @@ public class LeaderChangeTaskExecutor implements DisposableBean {
         executor.setAllowCoreThreadTimeOut(true);
         executor.setKeepAliveSeconds(60);
         executor.initialize();
+
         return executor.getThreadPoolExecutor();
     }
 

@@ -11,7 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.AutoConfiguredSdkPrivateControlIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 
 import java.util.Collection;
 import java.util.List;
@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * экспортирован ровно 1 раз (по {@code spanId}). Любая утечка стокового BSP с тем же
  * exporter'ом дала бы 2× экспорт.</p>
  */
-@ExtendWith(AutoConfiguredSdkPrivateControlIsolationExtension.class)
+@ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 class BspDropOldestNoDoubleExportTest {
 
     @Test

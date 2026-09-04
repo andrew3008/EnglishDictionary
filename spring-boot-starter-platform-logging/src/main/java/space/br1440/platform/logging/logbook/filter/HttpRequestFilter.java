@@ -1,5 +1,6 @@
 package space.br1440.platform.logging.logbook.filter;
 
+import org.jspecify.annotations.NullMarked;
 import org.slf4j.MDC;
 import org.zalando.logbook.HttpRequest;
 import org.zalando.logbook.RequestFilter;
@@ -7,6 +8,7 @@ import space.br1440.platform.logging.mdc.MDCLogKey;
 
 import java.util.UUID;
 
+@NullMarked
 public class HttpRequestFilter implements RequestFilter {
 
     @Override

@@ -1,48 +1,50 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.DiagnosticsObservation;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxObjectNames;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxObservationWireContract;
-
-import javax.management.Attribute;
-import javax.management.AttributeList;
-import javax.management.AttributeNotFoundException;
-import javax.management.DynamicMBean;
-import javax.management.InvalidAttributeValueException;
-import javax.management.MBeanAttributeInfo;
-import javax.management.MBeanInfo;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.CompositeDataSupport;
-import javax.management.openmbean.CompositeType;
-import javax.management.openmbean.OpenDataException;
-import javax.management.openmbean.OpenType;
-import javax.management.openmbean.SimpleType;
-import javax.management.openmbean.TabularData;
-import javax.management.openmbean.TabularDataSupport;
-import javax.management.openmbean.TabularType;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.management.ManagementFactory;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import javax.management.Attribute;
+import javax.management.AttributeList;
+import javax.management.AttributeNotFoundException;
+import javax.management.DynamicMBean;
+import javax.management.InvalidAttributeValueException;
+import javax.management.MBeanInfo;
+import javax.management.MBeanNotificationInfo;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.CompositeDataSupport;
+import javax.management.openmbean.CompositeType;
+import javax.management.openmbean.OpenDataException;
+import javax.management.openmbean.OpenMBeanAttributeInfo;
+import javax.management.openmbean.OpenMBeanAttributeInfoSupport;
+import javax.management.openmbean.OpenMBeanConstructorInfo;
+import javax.management.openmbean.OpenMBeanInfoSupport;
+import javax.management.openmbean.OpenMBeanOperationInfo;
+import javax.management.openmbean.OpenType;
+import javax.management.openmbean.SimpleType;
+import javax.management.openmbean.TabularData;
+import javax.management.openmbean.TabularDataSupport;
+import javax.management.openmbean.TabularType;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.DiagnosticsObservation;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class PlatformTracingSamplerMetricsBinderFunctionalTest {
 
     private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
     private ObjectName registeredName;
-    private PlatformTracingSamplerMetricsBinder binder;
-    private PlatformTracingJmxClient client;
 
     @AfterEach
     void cleanup() throws Exception {
@@ -105,149 +107,155 @@ class PlatformTracingSamplerMetricsBinderFunctionalTest {
     }
 
     private SimpleMeterRegistry bindBinder() {
-        client = new PlatformTracingJmxClient(server);
+        PlatformTracingJmxClient client = new PlatformTracingJmxClient(server);
         AtomicLong nanoTime = new AtomicLong(0);
         CoalescingJmxObservationSource<DiagnosticsObservation> diagnosticsSource =
                 new CoalescingJmxObservationSource<>(Optional::empty, nanoTime::get, 0L);
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
-        binder = new PlatformTracingSamplerMetricsBinder(client, diagnosticsSource, nanoTime::get);
+        PlatformTracingSamplerMetricsBinder binder =
+                new PlatformTracingSamplerMetricsBinder(client, diagnosticsSource, nanoTime::get);
         binder.bindTo(registry);
         return registry;
     }
 
     private void registerSamplingMBean(Map<String, Long> decisionCounts, boolean ownerPresent, long generation)
             throws Exception {
-        registeredName = PlatformTracingJmxObjectNames.SAMPLING;
+        registeredName = JmxWireContract.SAMPLING_OBSERVATION_OBJECT_NAME;
         server.registerMBean(new FakeSamplingMBean(decisionCounts, ownerPresent, generation), registeredName);
     }
 
-    private static final class FakeSamplingMBean implements DynamicMBean {
+    private record FakeSamplingMBean(Map<String, Long> decisionCounts,
+                                     boolean ownerPresent,
+                                     long generation) implements DynamicMBean {
 
-        private static final String ATTRIBUTE = "SamplingObservation";
-
-        private final Map<String, Long> decisionCounts;
-        private final boolean ownerPresent;
-        private final long generation;
-
-        FakeSamplingMBean(Map<String, Long> decisionCounts, boolean ownerPresent, long generation) {
-            this.decisionCounts = decisionCounts;
-            this.ownerPresent = ownerPresent;
-            this.generation = generation;
-        }
+            private static final String ATTRIBUTE = "SamplingObservation";
 
         @Override
-        public Object getAttribute(String attribute) throws AttributeNotFoundException {
-            if (!ATTRIBUTE.equals(attribute)) {
-                throw new AttributeNotFoundException(attribute);
+            public Object getAttribute(String attribute) throws AttributeNotFoundException {
+                if (!ATTRIBUTE.equals(attribute)) {
+                    throw new AttributeNotFoundException(attribute);
+                }
+
+                return buildComposite();
             }
-            return buildComposite();
-        }
 
-        private CompositeData buildComposite() {
-            try {
-                TabularType stringLongMapType = stringLongMapType("space.br1440.platform.tracing.SamplerDecisionCounts", "SamplerDecisionCountEntry");
-                TabularType stringDoubleMapType = stringDoubleMapType("space.br1440.platform.tracing.SamplingRouteRatios", "SamplingRouteRatioEntry");
+            private CompositeData buildComposite() {
+                try {
+                    TabularType stringLongMapType = stringLongMapType();
+                    TabularType stringDoubleMapType = stringDoubleMapType();
 
-                Map<String, OpenType<?>> itemTypes = new LinkedHashMap<>();
-                itemTypes.put(JmxObservationWireContract.ITEM_SCHEMA_VERSION, SimpleType.INTEGER);
-                itemTypes.put(JmxObservationWireContract.ITEM_CAPTURE_SEQUENCE, SimpleType.LONG);
-                itemTypes.put(JmxObservationWireContract.ITEM_AGENT_INSTANCE_ID, SimpleType.STRING);
-                itemTypes.put(JmxObservationWireContract.ITEM_CAPTURE_STARTED_AT, SimpleType.LONG);
-                itemTypes.put(JmxObservationWireContract.ITEM_CAPTURE_COMPLETED_AT, SimpleType.LONG);
-                itemTypes.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_ENABLED, SimpleType.BOOLEAN);
-                itemTypes.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLING_RATIO, SimpleType.DOUBLE);
-                itemTypes.put(JmxObservationWireContract.SAMPLING_ITEM_ROUTE_RATIOS, stringDoubleMapType);
-                itemTypes.put(JmxObservationWireContract.SAMPLING_ITEM_DECISION_COUNTS, stringLongMapType);
-                itemTypes.put(JmxObservationWireContract.SAMPLING_ITEM_CONFIG_LAST_UPDATED_SOURCE, SimpleType.STRING);
-                itemTypes.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_OWNER_PRESENT, SimpleType.BOOLEAN);
-                itemTypes.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_OWNER_GENERATION, SimpleType.LONG);
-                itemTypes.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_OWNER_CAPTURED_OFFSET_NANOS, SimpleType.LONG);
+                    Map<String, OpenType<?>> itemTypes = new LinkedHashMap<>();
+                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE, SimpleType.LONG);
+                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID, SimpleType.STRING);
+                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_STARTED_AT, SimpleType.LONG);
+                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_COMPLETED_AT, SimpleType.LONG);
+                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_ENABLED, SimpleType.BOOLEAN);
+                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO, SimpleType.DOUBLE);
+                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIOS, stringDoubleMapType);
+                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_DECISION_COUNTS, stringLongMapType);
+                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_CONFIG_LAST_UPDATED_SOURCE, SimpleType.STRING);
+                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_PRESENT, SimpleType.BOOLEAN);
+                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_GENERATION, SimpleType.LONG);
+                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_CAPTURED_OFFSET_NANOS, SimpleType.LONG);
 
-                CompositeType type = new CompositeType(
-                        JmxObservationWireContract.SAMPLING_COMPOSITE_TYPE_NAME,
-                        "Синтетический SamplingObservation для функционального теста binder'а",
-                        itemTypes.keySet().toArray(new String[0]),
-                        itemTypes.keySet().toArray(new String[0]),
-                        itemTypes.values().toArray(new OpenType<?>[0]));
+                    CompositeType type = new CompositeType(
+                            JmxWireContract.OPEN_TYPE_SAMPLING_OBSERVATION_TYPE_NAME,
+                            "Синтетический SamplingObservation для функционального теста binder'а",
+                            itemTypes.keySet().toArray(new String[0]),
+                            itemTypes.keySet().toArray(new String[0]),
+                            itemTypes.values().toArray(new OpenType<?>[0])
+                    );
 
-                Map<String, Object> values = new LinkedHashMap<>();
-                values.put(JmxObservationWireContract.ITEM_SCHEMA_VERSION, JmxObservationWireContract.SCHEMA_VERSION);
-                values.put(JmxObservationWireContract.ITEM_CAPTURE_SEQUENCE, 1L);
-                values.put(JmxObservationWireContract.ITEM_AGENT_INSTANCE_ID, "agent-functional-test");
-                values.put(JmxObservationWireContract.ITEM_CAPTURE_STARTED_AT, 0L);
-                values.put(JmxObservationWireContract.ITEM_CAPTURE_COMPLETED_AT, 0L);
-                values.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_ENABLED, true);
-                values.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLING_RATIO, 1.0);
-                values.put(JmxObservationWireContract.SAMPLING_ITEM_ROUTE_RATIOS, stringDoubleMap(stringDoubleMapType, Map.of()));
-                values.put(JmxObservationWireContract.SAMPLING_ITEM_DECISION_COUNTS, stringLongMap(stringLongMapType, decisionCounts));
-                values.put(JmxObservationWireContract.SAMPLING_ITEM_CONFIG_LAST_UPDATED_SOURCE, "test");
-                values.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_OWNER_PRESENT, ownerPresent);
-                values.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_OWNER_GENERATION, generation);
-                values.put(JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_OWNER_CAPTURED_OFFSET_NANOS, 0L);
+                    Map<String, Object> values = new LinkedHashMap<>();
+                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE, 1L);
+                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID, "agent-functional-test");
+                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_STARTED_AT, 0L);
+                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_COMPLETED_AT, 0L);
+                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_ENABLED, true);
+                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO, 1.0);
+                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIOS, stringDoubleMap(stringDoubleMapType, Map.of()));
+                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_DECISION_COUNTS, stringLongMap(stringLongMapType, decisionCounts));
+                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_CONFIG_LAST_UPDATED_SOURCE, "test");
+                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_PRESENT, ownerPresent);
+                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_GENERATION, generation);
+                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_CAPTURED_OFFSET_NANOS, 0L);
 
-                return new CompositeDataSupport(type, values);
-            } catch (OpenDataException e) {
-                throw new IllegalStateException(e);
+                    return new CompositeDataSupport(type, values);
+                } catch (OpenDataException e) {
+                    throw new IllegalStateException(e);
+                }
+            }
+
+            private static TabularType stringLongMapType() throws OpenDataException {
+                CompositeType rowType = new CompositeType("SamplerDecisionCountEntry", "row",
+                        new String[]{"key", "value"}, new String[]{"key", "value"},
+                        new OpenType<?>[]{SimpleType.STRING, SimpleType.LONG});
+                return new TabularType(
+                        "space.br1440.platform.tracing.SamplerDecisionCounts", "table", rowType, new String[]{"key"});
+            }
+
+            private static TabularType stringDoubleMapType() throws OpenDataException {
+                CompositeType rowType = new CompositeType("SamplingRouteRatioEntry", "row",
+                        new String[]{"key", "value"}, new String[]{"key", "value"},
+                        new OpenType<?>[]{SimpleType.STRING, SimpleType.DOUBLE});
+                return new TabularType(
+                        "space.br1440.platform.tracing.SamplingRouteRatios", "table", rowType, new String[]{"key"});
+            }
+
+            private static TabularData stringLongMap(TabularType type, Map<String, Long> values) throws OpenDataException {
+                TabularDataSupport table = new TabularDataSupport(type);
+                for (Map.Entry<String, Long> entry : values.entrySet()) {
+                    table.put(new CompositeDataSupport(type.getRowType(),
+                            new String[]{"key", "value"}, new Object[]{entry.getKey(), entry.getValue()}));
+                }
+                return table;
+            }
+
+            private static TabularData stringDoubleMap(TabularType type, Map<String, Double> values) throws OpenDataException {
+                TabularDataSupport table = new TabularDataSupport(type);
+                for (Map.Entry<String, Double> entry : values.entrySet()) {
+                    table.put(new CompositeDataSupport(type.getRowType(),
+                            new String[]{"key", "value"}, new Object[]{entry.getKey(), entry.getValue()}));
+                }
+                return table;
+            }
+
+            @Override
+            public void setAttribute(Attribute attribute) throws InvalidAttributeValueException {
+                throw new InvalidAttributeValueException("read-only");
+            }
+
+            @Override
+            public AttributeList getAttributes(String[] attributes) {
+                return new AttributeList();
+            }
+
+            @Override
+            public AttributeList setAttributes(AttributeList attributes) {
+                return new AttributeList();
+            }
+
+            @Override
+            public Object invoke(String actionName, Object[] params, String[] signature) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public MBeanInfo getMBeanInfo() {
+                OpenMBeanAttributeInfo attribute = new OpenMBeanAttributeInfoSupport(
+                        ATTRIBUTE,
+                        "fake",
+                        JmxOpenTypes.SAMPLING_OBSERVATION,
+                        true,
+                        false,
+                        false);
+                return new OpenMBeanInfoSupport(
+                        getClass().getName(),
+                        "fake",
+                        new OpenMBeanAttributeInfo[]{attribute},
+                        new OpenMBeanConstructorInfo[0],
+                        new OpenMBeanOperationInfo[0],
+                        new MBeanNotificationInfo[0]);
             }
         }
-
-        private static TabularType stringLongMapType(String typeName, String rowTypeName) throws OpenDataException {
-            CompositeType rowType = new CompositeType(rowTypeName, "row",
-                    new String[]{"key", "value"}, new String[]{"key", "value"},
-                    new OpenType<?>[]{SimpleType.STRING, SimpleType.LONG});
-            return new TabularType(typeName, "table", rowType, new String[]{"key"});
-        }
-
-        private static TabularType stringDoubleMapType(String typeName, String rowTypeName) throws OpenDataException {
-            CompositeType rowType = new CompositeType(rowTypeName, "row",
-                    new String[]{"key", "value"}, new String[]{"key", "value"},
-                    new OpenType<?>[]{SimpleType.STRING, SimpleType.DOUBLE});
-            return new TabularType(typeName, "table", rowType, new String[]{"key"});
-        }
-
-        private static TabularData stringLongMap(TabularType type, Map<String, Long> values) throws OpenDataException {
-            TabularDataSupport table = new TabularDataSupport(type);
-            for (Map.Entry<String, Long> entry : values.entrySet()) {
-                table.put(new CompositeDataSupport(type.getRowType(),
-                        new String[]{"key", "value"}, new Object[]{entry.getKey(), entry.getValue()}));
-            }
-            return table;
-        }
-
-        private static TabularData stringDoubleMap(TabularType type, Map<String, Double> values) throws OpenDataException {
-            TabularDataSupport table = new TabularDataSupport(type);
-            for (Map.Entry<String, Double> entry : values.entrySet()) {
-                table.put(new CompositeDataSupport(type.getRowType(),
-                        new String[]{"key", "value"}, new Object[]{entry.getKey(), entry.getValue()}));
-            }
-            return table;
-        }
-
-        @Override
-        public void setAttribute(Attribute attribute) throws InvalidAttributeValueException {
-            throw new InvalidAttributeValueException("read-only");
-        }
-
-        @Override
-        public AttributeList getAttributes(String[] attributes) {
-            return new AttributeList();
-        }
-
-        @Override
-        public AttributeList setAttributes(AttributeList attributes) {
-            return new AttributeList();
-        }
-
-        @Override
-        public Object invoke(String actionName, Object[] params, String[] signature) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public MBeanInfo getMBeanInfo() {
-            return new MBeanInfo(getClass().getName(), "fake", new MBeanAttributeInfo[]{
-                    new MBeanAttributeInfo(ATTRIBUTE, "javax.management.openmbean.CompositeData", "fake", true, false, false)
-            }, null, null, null);
-        }
-    }
 }

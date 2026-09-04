@@ -9,12 +9,12 @@ import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.ContextKey;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class IdentityMdcProjection {
 
     private static final ContextKey<Identity> IDENTITY_KEY = ContextKey.named("platform-tracing-identity");
-
-    private IdentityMdcProjection() {
-    }
 
     public static Context withIdentity(Context context, String requestId, String correlationId) {
         return context.with(IDENTITY_KEY, new Identity(requestId, correlationId));

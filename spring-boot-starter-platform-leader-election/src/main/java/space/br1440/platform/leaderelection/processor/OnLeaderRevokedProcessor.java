@@ -4,11 +4,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.SmartInitializingSingleton;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.env.Environment;
-import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 import space.br1440.platform.leaderelection.annotation.leadership.OnLeaderRevoked;
 import space.br1440.platform.leaderelection.configuration.LeaderElectionProperties;
@@ -24,8 +22,6 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
-@Component
-@ConditionalOnBean(LeaderElectionProperties.class)
 public class OnLeaderRevokedProcessor implements ApplicationListener<OnLeaderRevokedEvent>, SmartInitializingSingleton, DisposableBean {
 
     private final ApplicationContext applicationContext;

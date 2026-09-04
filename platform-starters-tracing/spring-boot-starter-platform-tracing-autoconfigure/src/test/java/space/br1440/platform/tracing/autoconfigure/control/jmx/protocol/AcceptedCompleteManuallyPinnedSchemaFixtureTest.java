@@ -1,7 +1,9 @@
 package space.br1440.platform.tracing.autoconfigure.control.jmx.protocol;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Map;
+import java.util.UUID;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.CompositeType;
@@ -11,29 +13,14 @@ import javax.management.openmbean.SimpleType;
 import javax.management.openmbean.TabularDataSupport;
 import javax.management.openmbean.TabularType;
 
-import java.util.Map;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 /**
- * Независимый manually pinned schema fixture (Commit 3, §9.3 из плана {@code wire-field-descriptors}).
- * <p>
- * До переименования этот класс назывался {@code P54AgentSpringWireParityTest} и его Javadoc
- * заявлял проверку «real Agent-side encoding» — фактически неверно: {@code CompositeData} здесь
- * строится вручную литеральными строками ({@code "acceptedSequence"}, {@code "runtimeInstanceId"}
- * и т.д.), а не вызовом реального {@code PrivateControlOpenTypeCodec.encodeAcceptedComplete()}.
- * Настоящий real-encoder-to-real-decoder round trip покрывает
- * {@link space.br1440.platform.tracing.otel.javaagent.control.jmx.AgentToSpringWireCodecParityTest}.
- * <p>
- * Ценность этого класса — независимость от {@code WireField}: имена полей и структура схемы
- * зашиты здесь как литералы, а не выведены из production-дескрипторов, поэтому он способен
- * обнаружить регресс, который случайно совпадающим образом задел бы и производственную схему,
- * и её единственный источник истины одновременно.
+ * Независимый тестовый стенд с вручную закреплённой JMX-схемой.
  */
 class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
 
-    // ── §1 full round-trip with non-empty route table ─────────────────────────
+    // ── §1 полный цикл с непустой таблицей маршрутов ──────────────────────────
 
     @Test
     void fullRoundTripAllEightLeavesNonEmptyRoutes() throws OpenDataException {
@@ -47,7 +34,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         CompositeData wire = buildPinnedPayload(seq, rid, true, 0.75d, routes,
                 true, true, false, true, "WARN");
 
-        var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
+        var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
 
         assertThat(decoded.acceptedSequence()).isEqualTo(seq);
         assertThat(decoded.runtimeInstanceId()).isEqualTo(rid);
@@ -66,7 +53,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         assertThat(snap.diagnosticsLogLevel()).isEqualTo("WARN");
     }
 
-    // ── §2 full round-trip with empty route table ─────────────────────────────
+    // ── §2 полный цикл с пустой таблицей маршрутов ────────────────────────────
 
     @Test
     void fullRoundTripEmptyRouteTable() throws OpenDataException {
@@ -74,7 +61,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         CompositeData wire = buildPinnedPayload(0L, rid, false, 0.0d, Map.of(),
                 false, false, true, false, "ERROR");
 
-        var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
+        var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
 
         assertThat(decoded.acceptedSequence()).isEqualTo(0L);
         assertThat(decoded.runtimeInstanceId()).isEqualTo(rid);
@@ -89,7 +76,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         assertThat(snap.diagnosticsLogLevel()).isEqualTo("ERROR");
     }
 
-    // ── §3 sequence monotonicity is preserved ─────────────────────────────────
+    // ── §3 монотонность последовательности сохраняется ────────────────────────
 
     @Test
     void sequenceIsPreservedExactly() throws OpenDataException {
@@ -98,14 +85,14 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
             CompositeData wire = buildPinnedPayload(seq, "rid-seq-" + seq,
                     true, 0.5d, Map.of(),
                     true, false, true, true, "INFO");
-            var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
+            var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
             assertThat(decoded.acceptedSequence())
                     .as("sequence %d must be preserved", seq)
                     .isEqualTo(seq);
         }
     }
 
-    // ── §4 runtimeInstanceId is opaque and preserved verbatim ─────────────────
+    // ── §4 runtimeInstanceId непрозрачен и сохраняется без изменений ──────────
 
     @Test
     void runtimeInstanceIdPreservedVerbatim() throws OpenDataException {
@@ -119,14 +106,14 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
             CompositeData wire = buildPinnedPayload(1L, rid,
                     true, 0.5d, Map.of(),
                     true, false, true, true, "INFO");
-            var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
+            var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
             assertThat(decoded.runtimeInstanceId())
                     .as("runtimeInstanceId must be preserved verbatim for: %s", rid)
                     .isEqualTo(rid);
         }
     }
 
-    // ── §5 sampling ratio boundary values (0.0 and 1.0 are valid) ─────────────
+    // ── §5 граничные значения коэффициента выборки 0.0 и 1.0 допустимы ────────
 
     @Test
     void samplingRatioBoundaryValuesAreValid() throws OpenDataException {
@@ -134,14 +121,14 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
             CompositeData wire = buildPinnedPayload(1L, "rid-boundary",
                     true, ratio, Map.of(),
                     true, false, true, true, "INFO");
-            var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
+            var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
             assertThat(decoded.snapshot().samplingRatio())
                     .as("ratio %s is a valid boundary", ratio)
                     .isEqualTo(ratio);
         }
     }
 
-    // ── §6 all valid diagnosticsLogLevel enum values ───────────────────────────
+    // ── §6 все допустимые значения перечисления diagnosticsLogLevel ───────────
 
     @Test
     void allValidDiagnosticsLogLevelsAccepted() throws OpenDataException {
@@ -149,14 +136,14 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
             CompositeData wire = buildPinnedPayload(1L, "rid-level-" + level,
                     true, 0.5d, Map.of(),
                     true, false, true, true, level);
-            var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
+            var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
             assertThat(decoded.snapshot().diagnosticsLogLevel())
                     .as("log level %s must round-trip", level)
                     .isEqualTo(level);
         }
     }
 
-    // ── §7 route key/value are not transposed ─────────────────────────────────
+    // ── §7 ключ и значение маршрута не переставлены местами ───────────────────
 
     @Test
     void routeKeyValueNotTransposed() throws OpenDataException {
@@ -165,7 +152,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
                 true, 0.5d, routes,
                 true, false, true, true, "INFO");
 
-        var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
+        var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
 
         assertThat(decoded.snapshot().samplingRouteRatios())
                 .containsKey("/distinct-prefix")
@@ -174,7 +161,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
                 .doesNotContainKey("0.123");
     }
 
-    // ── §8 all boolean leaves independently verified (one-hot) ────────────────
+    // ── §8 все булевы листья проверены независимо ─────────────────────────────
 
     @Test
     void booleanLeavesAreIndependent() throws OpenDataException {
@@ -193,7 +180,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
             CompositeData wire = buildPinnedPayload(1L, "rid-bool",
                     c.sampEn(), 0.5d, Map.of(),
                     c.valEn(), c.valStrict(), c.expEn(), c.tcHeaders(), "INFO");
-            var snap = AcceptedCompleteSnapshotDecoder.decode(wire).snapshot();
+            var snap = AcceptedPolicySnapshotDecoder.decode(wire).snapshot();
             assertThat(snap.samplingEnabled()).isEqualTo(c.sampEn());
             assertThat(snap.validationEnabled()).isEqualTo(c.valEn());
             assertThat(snap.validationStrict()).isEqualTo(c.valStrict());
@@ -202,17 +189,17 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         }
     }
 
-    // ── §9 production DTO schema invariant: exactly 8 leaves ──────────────────
+    // ── §9 инвариант производственной DTO-схемы: ровно восемь листьев ─────────
 
     @Test
     void decodedSchemaFieldCountIsExactlyEight() throws OpenDataException {
         CompositeData wire = buildPinnedPayload(1L, "rid-schema",
                 true, 0.5d, Map.of(),
                 true, false, true, true, "INFO");
-        var snap = AcceptedCompleteSnapshotDecoder.decode(wire).snapshot();
+        var snap = AcceptedPolicySnapshotDecoder.decode(wire).snapshot();
 
-        // Enumerate all 8 leaves explicitly to guard against new fields
-        // being silently added without a contract review.
+        // Все восемь листьев перечислены явно, чтобы новые поля нельзя было
+        // незаметно добавить без пересмотра контракта.
         assertThat(java.util.List.of(
                 snap.samplingEnabled(),
                 snap.samplingRatio(),
@@ -225,13 +212,12 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         )).hasSize(8);
     }
 
-    // ── helper: build a manually pinned CompositeData, independent of WireField ──
+    // ── вспомогательная сборка CompositeData без сгенерированных констант полей ──
 
     /**
-     * Constructs {@code CompositeData} for {@code "AcceptedCompleteSnapshot/v1"} using literal
-     * field names, not {@code PrivateControlWireTypes.WireField}. This is deliberate: the point
-     * of this fixture is to detect drift even if a future edit changed
-     * {@code WireField} and every place derived from it in lockstep.
+     * Собирает {@code CompositeData} для {@code "AcceptedCompleteSnapshot/v1"} по независимо
+     * закреплённым литералам, чтобы обнаруживать синхронное расхождение сгенерированного кода
+     * и потребителя.
      */
     private static CompositeData buildPinnedPayload(
             long acceptedSequence,
@@ -264,13 +250,15 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         }
 
         String[] keys = {
-                "acceptedSequence", "runtimeInstanceId", "samplingEnabled",
+                "acceptedSequence", "runtimeInstanceId", "acceptedPolicyDigest",
+                "lastApplyOutcome", "lastAttemptId", "failureCode", "samplingEnabled",
                 "samplingRatio", "samplingRouteRatios", "validationEnabled",
                 "validationStrict", "exporterEnabled", "traceControlHeadersEnabled",
                 "diagnosticsLogLevel"
         };
         OpenType<?>[] types = {
-                SimpleType.LONG, SimpleType.STRING, SimpleType.BOOLEAN,
+                SimpleType.LONG, SimpleType.STRING, SimpleType.STRING,
+                SimpleType.STRING, SimpleType.STRING, SimpleType.STRING, SimpleType.BOOLEAN,
                 SimpleType.DOUBLE, routesType, SimpleType.BOOLEAN,
                 SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.BOOLEAN,
                 SimpleType.STRING
@@ -279,7 +267,8 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
                 "AcceptedCompleteSnapshot/v1", "AcceptedCompleteSnapshot/v1",
                 keys, keys, types);
         return new CompositeDataSupport(ct, keys, new Object[]{
-                acceptedSequence, runtimeInstanceId, samplingEnabled,
+                acceptedSequence, runtimeInstanceId, "accepted-policy-digest",
+                "APPLIED", "attempt-id", "", samplingEnabled,
                 samplingRatio, routeTable, validationEnabled,
                 validationStrict, exporterEnabled, traceControlHeadersEnabled,
                 diagnosticsLogLevel

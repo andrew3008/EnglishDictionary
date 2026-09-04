@@ -20,6 +20,8 @@ import static org.awaitility.Awaitility.await;
         webEnvironment = SpringBootTest.WebEnvironment.NONE
 )
 @ActiveProfiles("test")
+@Tag("integration")
+@Tag("redis")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Интеграционные тесты распределенных блокировок с ShedLock API")
 class SchedulerLockSpringBootTest {
@@ -100,7 +102,10 @@ class SchedulerLockSpringBootTest {
         await("Lock should be held")
                 .atMost(5, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
-                    assertLockIsHeld("fastTask");
+                    Boolean exists = redisTemplate.hasKey("test:fastTask");
+                    assertThat(exists)
+                            .as("Lock 'fastTask' should be held in Redis")
+                            .isTrue();
                 });
 
         // And: Проверяем, что блокировка освобождается после lockAtLeastFor duration
@@ -178,13 +183,6 @@ class SchedulerLockSpringBootTest {
         boolean isHealthy = embeddedRedis.isRedisHealthy(redisTemplate);
         assertThat(isHealthy)
                 .as("Redis should be available and functioning correctly")
-                .isTrue();
-    }
-
-    private void assertLockIsHeld(String lockName) {
-        Boolean exists = redisTemplate.hasKey("test:" + lockName);
-        assertThat(exists)
-                .as("Lock '" + lockName + "' should be held in Redis")
                 .isTrue();
     }
 

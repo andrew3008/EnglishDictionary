@@ -1,14 +1,9 @@
 package space.br1440.platform.tracing.autoconfigure.control.configserver;
 
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationGuardException;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
-import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliveryResult;
-import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsManifestException;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;
-import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPrivateControlPlane;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.Map;
 import java.util.Optional;
@@ -16,10 +11,16 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
+import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsContractViolationException;
+import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsManifestException;
+import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;
+import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
+import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
+import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPlatformJmxPlane;
 
 class TracingSettingsRefreshCoalescerTest {
 
@@ -80,7 +81,7 @@ class TracingSettingsRefreshCoalescerTest {
                 builder, rejectingClient, readerReturning(1L), Runnable::run);
         coalescer.onRefreshEvent();
 
-        assertThat(applyCount.get()).isEqualTo(1); // no retry on REJECTED
+        assertThat(applyCount.get()).isEqualTo(1);
     }
 
     @Test
@@ -98,7 +99,7 @@ class TracingSettingsRefreshCoalescerTest {
                 builder, staleClient, readerReturning(1L), Runnable::run);
         coalescer.onRefreshEvent();
 
-        assertThat(applyCount.get()).isEqualTo(2); // initial + one bounded retry
+        assertThat(applyCount.get()).isEqualTo(2);
     }
 
     @Test
@@ -175,8 +176,7 @@ class TracingSettingsRefreshCoalescerTest {
 
     @Test
     void initialDeliveryWithRealClient_authoritativeReadThenApply_roundTrips() throws Exception {
-        try (FakeAgentPrivateControlPlane agent =
-                     FakeAgentPrivateControlPlane.compliant("instance-real-1", 5L)) {
+        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.compliant("instance-real-1", 5L)) {
             var client = agent.client();
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
             when(builder.build()).thenReturn(sampleSnapshot());
@@ -195,8 +195,7 @@ class TracingSettingsRefreshCoalescerTest {
 
     @Test
     void initialDeliveryWithRealClient_unchangedDelivery_reportsUnchanged() throws Exception {
-        try (FakeAgentPrivateControlPlane agent =
-                     FakeAgentPrivateControlPlane.compliant("instance-real-2", 9L)) {
+        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.compliant("instance-real-2", 9L)) {
             agent.setNextApplyOutcome("UNCHANGED");
             var client = agent.client();
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -211,7 +210,7 @@ class TracingSettingsRefreshCoalescerTest {
 
     @Test
     void initialDeliveryWithRealClient_readFailure_blocksWithoutFallback() throws Exception {
-        try (FakeAgentPrivateControlPlane agent = FakeAgentPrivateControlPlane.missingReadAcceptedComplete("instance-real-3")) {
+        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.readFailingAcceptedPolicySnapshot("instance-real-3")) {
             var client = agent.client();
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
             when(builder.build()).thenReturn(sampleSnapshot());
@@ -222,13 +221,13 @@ class TracingSettingsRefreshCoalescerTest {
             assertThatThrownBy(coalescer::deliverInitial)
                     .as("a read failure must block delivery, not fall back to a default/unconditional apply")
                     .isInstanceOf(RuntimeException.class);
+            assertThat(agent.applyInvocationCount()).isZero();
         }
     }
 
     @Test
     void initialDeliveryWithRealClient_malformedResponse_neverSendsUnwarmedSequence() throws Exception {
-        try (FakeAgentPrivateControlPlane agent =
-                     FakeAgentPrivateControlPlane.malformedReadAcceptedComplete("instance-real-4")) {
+        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.malformedAcceptedPolicySnapshot("instance-real-4")) {
             var client = agent.client();
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
             when(builder.build()).thenReturn(sampleSnapshot());
@@ -239,15 +238,15 @@ class TracingSettingsRefreshCoalescerTest {
             assertThatThrownBy(coalescer::deliverInitial)
                     .as("an unwarmed expected base must never reach applySnapshot; the coalescer "
                             + "must fail closed instead")
-                    .isInstanceOf(TracingConfigurationGuardException.class)
-                    .hasMessageContaining("no authoritative expected base");
+                    .isInstanceOf(TracingSettingsContractViolationException.class)
+                    .hasMessageContaining("JMX_CLIENT_STATUS_RESPONSE_DECODE_FAILED");
+            assertThat(agent.applyInvocationCount()).isZero();
         }
     }
 
     @Test
     void realClient_agentRestartWithNewInstanceAndResetSequence_recoversOnNextRead() throws Exception {
-        try (FakeAgentPrivateControlPlane agent =
-                     FakeAgentPrivateControlPlane.compliant("instance-before-restart", 3L)) {
+        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.compliant("instance-before-restart", 3L)) {
             var client = agent.client();
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
             when(builder.build()).thenReturn(sampleSnapshot());

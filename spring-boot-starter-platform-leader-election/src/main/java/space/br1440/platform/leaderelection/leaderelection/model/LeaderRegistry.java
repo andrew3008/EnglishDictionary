@@ -1,13 +1,10 @@
 package space.br1440.platform.leaderelection.leaderelection.model;
 
-import org.springframework.stereotype.Component;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
-@Component
 public class LeaderRegistry {
 
     private static final int SCHEDULER_POOL_SIZE = 4;

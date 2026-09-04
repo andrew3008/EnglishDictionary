@@ -31,7 +31,8 @@ public interface TraceOperations {
     @Nonnull
     CorrelationScope openCorrelationScope(@Nonnull String correlationId);
 
-    void withCorrelationId(@Nonnull String correlationId, @Nonnull Runnable action);
+    void withCorrelationId(@Nonnull String correlationId,
+                           @Nonnull Runnable action);
 
     <T> T withCorrelationId(@Nonnull String correlationId,
                             @Nonnull ThrowingSupplier<T> action) throws Exception;

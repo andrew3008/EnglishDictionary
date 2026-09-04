@@ -1,9 +1,12 @@
 package space.br1440.platform.logging.logbook.filter;
 
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.zalando.logbook.BodyFilter;
 import org.zalando.logbook.ContentType;
 import space.br1440.platform.logging.masking.SensitiveDataMasker;
 
+@NullMarked
 public class BodySensitiveDataFilter implements BodyFilter {
 
     private final SensitiveDataMasker masker;
@@ -13,7 +16,7 @@ public class BodySensitiveDataFilter implements BodyFilter {
     }
 
     @Override
-    public String filter(String contentType, String body) {
+    public String filter(@Nullable String contentType, String body) {
         if (body.isEmpty()) {
             return body;
         }

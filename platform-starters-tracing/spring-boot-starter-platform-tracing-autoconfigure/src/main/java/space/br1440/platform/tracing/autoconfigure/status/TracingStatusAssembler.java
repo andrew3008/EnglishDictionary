@@ -5,10 +5,13 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 
 import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
@@ -20,12 +23,14 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTraci
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.ExportProcessorValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.SafeExporterValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorCompositeValues;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorMetricsObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorWatchdogValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.sampling.SamplingObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.scrubbing.ScrubbingValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxDiagnosticSnapshot;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.ObservationCapture;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 
 public final class TracingStatusAssembler {
@@ -36,19 +41,22 @@ public final class TracingStatusAssembler {
     private final PlatformTracingJmxClient jmxClient;
     private final AcceptedTracingSettingsReader acceptedSettingsReader;
     private final Supplier<TracingDeploymentDiagnostics> agentDiagnosticsSupplier;
+    private final AgentReadinessCoherenceGuard coherenceGuard;
 
     public TracingStatusAssembler(TraceOperations traceOperations,
                                   TracingRuntime tracingRuntime,
                                   TracingBootstrapSettings bootstrapSettings,
                                   PlatformTracingJmxClient jmxClient,
                                   AcceptedTracingSettingsReader acceptedSettingsReader,
-                                  TracingDeploymentDiagnostics startupDiagnostics) {
+                                  TracingDeploymentDiagnostics startupDiagnostics,
+                                  AgentReadinessCoherenceGuard coherenceGuard) {
         this(traceOperations,
                 tracingRuntime,
                 bootstrapSettings,
                 jmxClient,
                 acceptedSettingsReader,
-                () -> startupDiagnostics);
+                () -> startupDiagnostics,
+                coherenceGuard);
     }
 
     TracingStatusAssembler(TraceOperations traceOperations,
@@ -56,17 +64,31 @@ public final class TracingStatusAssembler {
                            TracingBootstrapSettings bootstrapSettings,
                            PlatformTracingJmxClient jmxClient,
                            AcceptedTracingSettingsReader acceptedSettingsReader,
-                           Supplier<TracingDeploymentDiagnostics> agentDiagnosticsSupplier) {
+                           Supplier<TracingDeploymentDiagnostics> agentDiagnosticsSupplier,
+                           AgentReadinessCoherenceGuard coherenceGuard) {
         this.traceOperations = traceOperations;
         this.tracingRuntime = tracingRuntime;
         this.bootstrapSettings = bootstrapSettings;
         this.jmxClient = jmxClient;
         this.acceptedSettingsReader = acceptedSettingsReader;
         this.agentDiagnosticsSupplier = agentDiagnosticsSupplier;
+        this.coherenceGuard = Objects.requireNonNull(coherenceGuard, "coherenceGuard");
     }
 
     public TracingStatusSnapshot assemble() {
         TracingDeploymentDiagnostics diagnostics = agentDiagnosticsSupplier.get();
+        if (diagnostics.runtimeState() != AgentRuntimeState.AGENT_READY) {
+            return assembleTrusted(diagnostics);
+        }
+
+        try {
+            return coherenceGuard.readCoherently(() -> assembleTrusted(diagnostics));
+        } catch (AgentReadinessCoherenceException coherenceFailure) {
+            return incoherentSnapshot(diagnostics, coherenceFailure.failureCode());
+        }
+    }
+
+    private TracingStatusSnapshot assembleTrusted(TracingDeploymentDiagnostics diagnostics) {
         return new TracingStatusSnapshot(
                 TracingStatusSnapshot.CURRENT_SCHEMA_VERSION,
                 bootstrapSettings.tracingEnabled(),
@@ -78,17 +100,56 @@ public final class TracingStatusAssembler {
         );
     }
 
+    private TracingStatusSnapshot incoherentSnapshot(TracingDeploymentDiagnostics diagnostics,
+                                                      String failureCode) {
+        return new TracingStatusSnapshot(
+                TracingStatusSnapshot.CURRENT_SCHEMA_VERSION,
+                bootstrapSettings.tracingEnabled(),
+                bootstrapSettings.authority().name(),
+                agentSection(diagnostics, AgentRuntimeState.EXTENSION_INCOMPATIBLE, failureCode),
+                Map.of(),
+                TracingStatusSnapshot.SettingsStatus.absent(SettingsAbsenceReason.AGENT_UNAVAILABLE),
+                List.of()
+        );
+    }
+
     private Map<String, Object> agentSection(TracingDeploymentDiagnostics diagnostics) {
+        return agentSection(
+                diagnostics,
+                diagnostics.runtimeState(),
+                diagnostics.agentReadiness().lifecycleState().failureCode()
+        );
+    }
+
+    private Map<String, Object> agentSection(TracingDeploymentDiagnostics diagnostics,
+                                             AgentRuntimeState runtimeState,
+                                             String failureCode) {
         TracingDeploymentDiagnostics.AgentReadiness readiness = diagnostics.agentReadiness();
+        TracingDeploymentDiagnostics.ContractIdentity contractIdentity = readiness.contractIdentity();
+        TracingDeploymentDiagnostics.ReadinessAnchor readinessAnchor = readiness.readinessAnchor();
+        TracingDeploymentDiagnostics.LifecycleState lifecycleState = readiness.lifecycleState();
+        TracingDeploymentDiagnostics.DistributionIdentity distributionIdentity =
+                readiness.distributionIdentity();
+        TracingDeploymentDiagnostics.ClassloaderTopology classloaderTopology =
+                readiness.classloaderTopology();
         Map<String, Object> agent = new LinkedHashMap<>();
-        agent.put("state", diagnostics.runtimeState().name());
+        agent.put("state", runtimeState.name());
         agent.put("markerVisible", diagnostics.agentMarkerVisible());
         agent.put("readinessEndpointPresent", readiness.endpointPresent());
-        agent.put("extensionVersion", readiness.extensionVersion());
-        agent.put("protocolVersion", readiness.protocolVersion());
-        agent.put("lifecycle", readiness.lifecycle());
-        agent.put("failureCode", readiness.failureCode());
-        agent.put("capabilities", readiness.capabilities());
+        agent.put("contractId", contractIdentity.contractId());
+        agent.put("schemaDigest", contractIdentity.schemaDigest());
+        agent.put("runtimeEpoch", readinessAnchor.runtimeEpoch());
+        agent.put("evidenceGeneration", readinessAnchor.evidenceGeneration());
+        agent.put("batchId", readinessAnchor.batchId());
+        agent.put("lifecycle", lifecycleState.lifecycle());
+        agent.put("failureCode", failureCode);
+        agent.put("capabilities", lifecycleState.capabilities());
+        agent.put("missingRequired", lifecycleState.missingRequired());
+        agent.put("agentDistributionSha256", distributionIdentity.agentDistributionSha256());
+        agent.put("upstreamAgentVersion", distributionIdentity.upstreamAgentVersion());
+        agent.put("extensionVersion", distributionIdentity.extensionVersion());
+        agent.put("extensionDefiningLoader", classloaderTopology.extensionDefiningLoader());
+        agent.put("sdkDefiningLoader", classloaderTopology.sdkDefiningLoader());
         return agent;
     }
 
@@ -178,10 +239,12 @@ public final class TracingStatusAssembler {
     }
 
     private Map<String, Object> watchdogSection() {
-        Optional<ProcessorWatchdogValues> values = jmxClient.processorMetrics().observation()
-                .flatMap(observation -> presentValues(observation.watchdog()));
+        Optional<ProcessorMetricsObservation> observation = jmxClient.processorMetrics().observation();
+        Optional<ProcessorWatchdogValues> values = observation
+                .flatMap(processorMetrics -> presentValues(processorMetrics.watchdog()));
 
         Map<String, Object> watchdog = new LinkedHashMap<>();
+        watchdog.put("capture", captureSection(observation.map(ProcessorMetricsObservation::capture).orElse(null)));
         watchdog.put("present", values.isPresent());
         watchdog.put("forcedSpanCloses", values.map(ProcessorWatchdogValues::forcedSpanCloses).orElse(null));
         watchdog.put("forcedTraceCloses", values.map(ProcessorWatchdogValues::forcedTraceCloses).orElse(null));
@@ -196,6 +259,17 @@ public final class TracingStatusAssembler {
         watchdog.put("spansRejectedGlobalTotal", values.map(ProcessorWatchdogValues::spansRejectedGlobalTotal).orElse(null));
         watchdog.put("spanLedgerInvariantViolationTotal", values.map(ProcessorWatchdogValues::spanLedgerInvariantViolationTotal).orElse(null));
         return watchdog;
+    }
+
+    private static Map<String, Object> captureSection(ObservationCapture capture) {
+        Optional<ObservationCapture> present = Optional.ofNullable(capture);
+
+        Map<String, Object> section = new LinkedHashMap<>();
+        section.put("agentInstanceId", present.map(ObservationCapture::agentInstanceId).orElse(null));
+        section.put("sequence", present.map(ObservationCapture::sequence).orElse(null));
+        section.put("startedAt", present.map(ObservationCapture::startedAtEpochMilli).orElse(null));
+        section.put("completedAt", present.map(ObservationCapture::completedAtEpochMilli).orElse(null));
+        return Collections.unmodifiableMap(section);
     }
 
     private Optional<Long> processorErrorsTotal() {
@@ -249,7 +323,7 @@ public final class TracingStatusAssembler {
                 ? Optional.empty()
                 : acceptedSettingsReader.currentReadModel();
         return readModel
-                .map(value -> TracingStatusSnapshot.SettingsStatus.available(value.agentReadiness(), value.leaves()))
+                .map(value -> TracingStatusSnapshot.SettingsStatus.available(value.acceptedRevision(), value.summary()))
                 .orElseGet(() -> TracingStatusSnapshot.SettingsStatus.absent(SettingsAbsenceReason.SETTINGS_NOT_ACCEPTED));
     }
 

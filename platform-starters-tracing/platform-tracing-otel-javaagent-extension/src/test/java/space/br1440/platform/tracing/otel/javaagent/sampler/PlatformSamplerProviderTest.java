@@ -2,13 +2,9 @@ package space.br1440.platform.tracing.otel.javaagent.sampler;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.management.ManagementFactory;
 import java.util.List;
 import java.util.Map;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -16,8 +12,7 @@ import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.factory.PlatformSamplerFactory;
-import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.runtime.propagation.control.DefaultInboundTraceControlExtractor;
 import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
 
@@ -26,30 +21,12 @@ import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
-import io.opentelemetry.sdk.trace.data.LinkData;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
 import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
+import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 
 @DisplayName("PlatformSamplerProvider + idempotency-guard")
 class PlatformSamplerProviderTest {
-
-    private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
-
-    @AfterEach
-    void cleanupMBean() throws Exception {
-        for (ObjectName name : new ObjectName[]{
-                DomainObjectNames.SAMPLING,
-                DomainObjectNames.SCRUBBING,
-                DomainObjectNames.VALIDATION,
-                DomainObjectNames.EXPORT,
-                DomainObjectNames.PROCESSOR_METRICS,
-                DomainObjectNames.DIAGNOSTICS
-        }) {
-            if (server.isRegistered(name)) {
-                server.unregisterMBean(name);
-            }
-        }
-    }
 
     private static ConfigProperties config(Map<String, String> map) {
         return DefaultConfigProperties.createFromMap(map);
@@ -83,7 +60,7 @@ class PlatformSamplerProviderTest {
     @Test
     @DisplayName("inline-customizer идемпотентен: existing уже платформенный → нет повторной обёртки")
     void inline_customizer_idempotent_when_existing_is_platform() {
-        DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
         PlatformSamplerFactory factory = new PlatformSamplerFactory(registrar);
 
         Sampler platform = new PlatformSamplerProvider().createSampler(config(Map.of()));
@@ -108,9 +85,9 @@ class PlatformSamplerProviderTest {
                 PlatformTraceContextKeys.TRACE_CONTROL,
                 new DefaultInboundTraceControlExtractor().fromHeaders("on", null, null));
 
-        var result = sampler.shouldSample(
+        SamplingResult result = sampler.shouldSample(
                 forceContext, "00000000000000000000000000000001", "GET", SpanKind.SERVER,
-                Attributes.empty(), List.<LinkData>of());
+                Attributes.empty(), List.of());
 
         assertThat(result.getDecision()).isEqualTo(SamplingDecision.RECORD_AND_SAMPLE);
         assertThat(result.getAttributes().get(io.opentelemetry.api.common.AttributeKey.stringKey(
@@ -120,7 +97,7 @@ class PlatformSamplerProviderTest {
     @Test
     @DisplayName("регресс: повторная autoconfigure-сборка в одном JVM снова поднимает платформенный sampler")
     void idempotent_double_build_does_not_skip() {
-        DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
         PlatformSamplerFactory factory = new PlatformSamplerFactory(registrar);
 
         // Дважды строим поверх не-платформенного existing — защита против статического флага «уже применён».

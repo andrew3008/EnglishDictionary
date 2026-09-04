@@ -48,12 +48,20 @@ def agentExtension = configurations.create('agentExtension') {
     canBeConsumed = false
     canBeResolved = true
     transitive = true
-    attributes {
-        attribute Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_RUNTIME)
-        attribute Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.LIBRARY)
-        attribute LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.JAR)
-        attribute Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL)
-    }
+
+    AttributeContainer attrs = attributes
+
+    Usage javaRuntimeUsage = objects.<Usage>named(Usage, Usage.JAVA_RUNTIME)
+    attrs.attribute(Usage.USAGE_ATTRIBUTE as Attribute<Object>, javaRuntimeUsage)
+
+    Category libraryCategory = objects.<Category>named(Category, Category.LIBRARY)
+    attrs.attribute(Category.CATEGORY_ATTRIBUTE as Attribute<Object>, libraryCategory)
+
+    LibraryElements jarLibraryElements = objects.<LibraryElements>named(LibraryElements, LibraryElements.JAR)
+    attrs.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE as Attribute<Object>, jarLibraryElements)
+
+    Bundling externalBundling = objects.<Bundling>named(Bundling, Bundling.EXTERNAL)
+    attrs.attribute(Bundling.BUNDLING_ATTRIBUTE as Attribute<Object>, externalBundling)
 }
 
 dependencies {
@@ -69,7 +77,7 @@ Provider<File> otelJavaAgentFile = otelJavaAgent.incoming.files.elements.map {
                     + files.size() + ': ' + files)
         }
         files.first()
-}
+} as Provider<File>
 
 Provider<File> agentExtensionFile = agentExtension.incoming.artifacts.resolvedArtifacts.map {
     Set<ResolvedArtifactResult> artifacts ->
@@ -85,7 +93,7 @@ Provider<File> agentExtensionFile = agentExtension.incoming.artifacts.resolvedAr
         }
 
         extensionArtifacts.first().file
-}
+} as Provider<File>
 
 Provider<Map<String, String>> agentExtensionArtifactCoordinates =
         agentExtension.incoming.artifacts.resolvedArtifacts.map {
@@ -107,17 +115,17 @@ Provider<Map<String, String>> agentExtensionArtifactCoordinates =
                     coordinates.put(artifact.file.name, coordinate)
                 }
                 coordinates
-        }
+        } as Provider<Map<String, String>>
 
 Provider<Map<String, String>> extensionSchemaIdentity = agentExtensionFile.map { File library ->
     readExtensionSchemaIdentity(library)
 }
 
-Provider<RegularFile> controlledAgentJarFile = layout.buildDirectory.file('libs/platform-tracing-javaagent-' + project.version + '.jar')
-Provider<RegularFile> packagedExtensionJarFile = layout.buildDirectory.file('controlled-agent/platform-tracing-otel-javaagent-extension.jar')
-Provider<RegularFile> stagingExtensionJarFile = layout.buildDirectory.file('controlled-agent/staging/platform-tracing-otel-javaagent-extension.jar')
-Provider<RegularFile> stagingAgentJarFile = layout.buildDirectory.file('controlled-agent/staging/platform-tracing-javaagent-' + project.version + '.jar')
-Provider<RegularFile> identityFile = layout.buildDirectory.file('controlled-agent/staging/javaagent-distribution.properties')
+Provider<RegularFile> controlledAgentJarFile = layout.buildDirectory.file('libs/platform-tracing-javaagent-' + project.version + '.jar') as Provider<RegularFile>
+Provider<RegularFile> packagedExtensionJarFile = layout.buildDirectory.file('controlled-agent/platform-tracing-otel-javaagent-extension.jar') as Provider<RegularFile>
+Provider<RegularFile> stagingExtensionJarFile = layout.buildDirectory.file('controlled-agent/staging/platform-tracing-otel-javaagent-extension.jar') as Provider<RegularFile>
+Provider<RegularFile> stagingAgentJarFile = layout.buildDirectory.file('controlled-agent/staging/platform-tracing-javaagent-' + project.version + '.jar') as Provider<RegularFile>
+Provider<RegularFile> identityFile = layout.buildDirectory.file('controlled-agent/staging/javaagent-distribution.properties') as Provider<RegularFile>
 def stagingTreeDir = layout.buildDirectory.dir('controlled-agent/staging-tree')
 def allowedExtensionCoordinates = [
         'project:' + extensionProjectPath,
@@ -132,7 +140,6 @@ def allowedExtensionCoordinates = [
 
 def packagePlatformExtension = tasks.named('shadowJar') {
     group = 'build'
-    description = 'Package the platform extension and allowlisted runtime dependencies'
     archiveFileName = packagedExtensionJarName
     destinationDirectory.set(layout.buildDirectory.dir('controlled-agent/staging'))
     configurations = [agentExtension]
@@ -188,6 +195,8 @@ def validateControlledAgentInputs = tasks.register('validateControlledAgentInput
     def allowedCoordinates = allowedExtensionCoordinates
     def reservedEntries = [extensionEntryPath, identityEntryPath] as Set
     def publishedExtensionPath = extensionEntryPath
+    def resolvedDistributionVersion = project.version.toString()
+
     doLast {
         validateExtensionAllowlist(agentExtensionArtifactCoordinates.get(), allowedCoordinates)
 
@@ -210,7 +219,7 @@ def validateControlledAgentInputs = tasks.register('validateControlledAgentInput
         rejectReservedOtelEntries(agent, reservedEntries)
         writeIdentityFile(
                 identityFile.get().asFile,
-                project.version.toString(),
+                resolvedDistributionVersion,
                 resolvedOtelJavaAgentCoordinate,
                 actual,
                 sha256Hex(packaged),
@@ -220,7 +229,6 @@ def validateControlledAgentInputs = tasks.register('validateControlledAgentInput
 
 def syncControlledAgentStaging = tasks.register('syncControlledAgentStaging', Sync) {
     group = 'build'
-    description = 'Stage the OTel agent payload plus the packaged extension and identity'
     dependsOn validateControlledAgentInputs
     def extensionJarName = packagedExtensionJarName
 
@@ -244,10 +252,10 @@ def syncControlledAgentStaging = tasks.register('syncControlledAgentStaging', Sy
 
 def assembleControlledJavaAgentJar = tasks.register('assembleControlledJavaAgentJar', Jar) {
     group = 'build'
-    description = 'Repackage the staged tree with the official OTel Jar recipe'
     dependsOn syncControlledAgentStaging
+
     archiveFileName = 'platform-tracing-javaagent-' + project.version + '.jar'
-    destinationDirectory.set(layout.buildDirectory.dir('controlled-agent/staging'))
+    destinationDirectory.set(layout.buildDirectory.dir('controlled-agent/staging') as Provider<? extends Directory>)
 
     from(stagingTreeDir) {
         exclude 'META-INF/MANIFEST.MF'
@@ -265,7 +273,6 @@ def assembleControlledJavaAgentJar = tasks.register('assembleControlledJavaAgent
 
 def publishControlledJavaAgent = tasks.register('publishControlledJavaAgent') {
     group = 'build'
-    description = 'Atomically publish the staged agent and packaged extension'
     dependsOn assembleControlledJavaAgentJar, packagePlatformExtension
 
     inputs.file(stagingAgentJarFile)
@@ -317,6 +324,26 @@ testing {
             suite.dependencies.implementation.add(assertjCoordinate)
         }
     }
+}
+
+def jmxContractProject = project(':platform-starters-tracing:platform-tracing-jmx-contract')
+def generateJmxWireContract = ':platform-starters-tracing:platform-tracing-jmx-contract:generateJmxWireContract'
+def generatedApplicationContractCopy = layout.buildDirectory.dir('generated/jmx-wire-contract/application/java')
+
+def syncGeneratedApplicationContract = tasks.register('syncGeneratedApplicationContract', Sync) {
+    group = 'build'
+    dependsOn generateJmxWireContract
+
+    from(jmxContractProject.layout.buildDirectory.dir('generated/jmx-wire-contract/application/java'))
+    into(generatedApplicationContractCopy)
+}
+
+sourceSets.named('controlledAgentRuntimeTest') {
+    java.srcDir(files(generatedApplicationContractCopy).builtBy(syncGeneratedApplicationContract))
+}
+
+tasks.named('compileControlledAgentRuntimeTestJava') {
+    dependsOn syncGeneratedApplicationContract
 }
 
 abstract class ControlledAgentTestArguments implements CommandLineArgumentProvider {
@@ -476,8 +503,8 @@ static String sha256Hex(File file) {
 
 static void writeIdentityFile(File identity,
                               String version,
-                              String otelJavaAgentCoordinate,
-                              String otelJavaAgentSha256,
+                              String upstreamCoordinate,
+                              String upstreamSha256,
                               String extensionSha256,
                               String extensionPath) {
     TreeMap<String, String> values = new TreeMap<>()
@@ -485,8 +512,8 @@ static void writeIdentityFile(File identity,
     values.put('distribution.group', 'space.br1440.platform.starters.tracing')
     values.put('distribution.artifact', 'platform-tracing-javaagent')
     values.put('distribution.version', version)
-    values.put('otel.javaagent.coordinate', otelJavaAgentCoordinate)
-    values.put('otel.javaagent.sha256', otelJavaAgentSha256)
+    values.put('upstream.coordinate', upstreamCoordinate)
+    values.put('upstream.sha256', upstreamSha256)
     values.put('extension.path', extensionPath)
     values.put('extension.sha256', extensionSha256)
     values.put('minimum.java', '21')

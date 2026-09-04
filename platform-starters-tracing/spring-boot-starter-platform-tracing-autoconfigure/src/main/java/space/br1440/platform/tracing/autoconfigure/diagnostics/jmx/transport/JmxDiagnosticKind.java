@@ -25,9 +25,6 @@ public enum JmxDiagnosticKind {
     /** Ожидаемая операция отсутствует или сигнатура отличается от заявленной. */
     OPERATION_SIGNATURE_DRIFT,
 
-    /** {@code schemaVersion} наблюдения не совпадает с ожидаемым декодером. */
-    SCHEMA_VERSION_MISMATCH,
-
     /** Имя полученного {@code CompositeType} не совпадает с нормативным. */
     COMPOSITE_TYPE_NAME_MISMATCH,
 
@@ -36,6 +33,12 @@ public enum JmxDiagnosticKind {
 
     /** {@code ownerGeneration = 0} при {@code ownerPresent = true} — нарушение схемы. */
     OWNER_GENERATION_INVALID,
+
+    /** Полученная JMX-нагрузка не является ограниченным графом, нейтральным к загрузчикам. */
+    JMX_WIRE_TYPE_VIOLATION,
+
+    /** Метаданные MBean не совпадают с точной формой сгенерированного OpenType-контракта. */
+    MBEAN_INFO_SHAPE_VIOLATION,
 
 
     // -- ExecutionFailure -----------------------------------------------------
@@ -59,6 +62,9 @@ public enum JmxDiagnosticKind {
     OPERATIONS_EXCEPTION_UNCLASSIFIED,
 
     /** Проверка {@code isRegistered} завершилась отказом transport (не самим MBean). */
-    REGISTRATION_CHECK_FAILED
+    REGISTRATION_CHECK_FAILED,
+
+    /** Получение {@code MBeanInfo} завершилось ошибкой introspection на стороне provider. */
+    METADATA_RETRIEVAL_FAILURE
 
 }

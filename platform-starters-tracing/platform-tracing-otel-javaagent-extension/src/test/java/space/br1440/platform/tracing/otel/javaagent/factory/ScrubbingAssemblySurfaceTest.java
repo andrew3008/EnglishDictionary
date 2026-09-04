@@ -6,17 +6,11 @@ import java.lang.reflect.Modifier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Публичная поверхность сборки pipeline'а: фабрики можно собрать снаружи только вместе с
- * session-scoped {@link ScrubbingRuntime}. ArchUnit проверяет вызовы внутри модуля, а этот тест —
- * саму объявленную видимость, то есть то, что доступно стороннему customizer'у в другом пакете
- * (ADR-scrubbing-hybrid-processor-export-boundary.md, §9).
- */
 class ScrubbingAssemblySurfaceTest {
 
     @Test
@@ -40,7 +34,7 @@ class ScrubbingAssemblySurfaceTest {
             assertThat(constructor.getParameterTypes())
                     .as("публичный конструктор %s обязан требовать session-scoped ScrubbingRuntime",
                             factory.getSimpleName())
-                    .containsExactly(DomainMBeanRegistrar.class, ScrubbingRuntime.class);
+                    .containsExactly(PlatformTracingMBeanRegistrar.class, ScrubbingRuntime.class);
         }
 
         assertThat(factory.getConstructors())

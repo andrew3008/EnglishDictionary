@@ -1,0 +1,127 @@
+plugins {
+    id 'platform.java-library'
+    id 'platform.testing'
+}
+
+group = 'space.br1440.platform.starters.tracing'
+
+platformJavaLibrary {
+    bomProjectPath = ':spring-boot-starter-platform-bom'
+}
+
+dependencies {
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    implementation 'org.yaml:snakeyaml'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+def contractManifest = layout.projectDirectory.file('src/main/resources/jmx-wire-contract.yaml')
+def generatedRoot = layout.buildDirectory.dir('generated/jmx-wire-contract')
+def guardedSourceRoots = files(
+        project(':platform-starters-tracing:platform-tracing-otel-javaagent-extension')
+                .layout.projectDirectory.dir('src/main/java/space/br1440/platform/tracing/otel/javaagent/control/jmx'),
+
+        project(':platform-starters-tracing:platform-tracing-otel-javaagent-extension')
+                .layout.projectDirectory.dir('src/main/java/space/br1440/platform/tracing/otel/javaagent/jmx'),
+
+        project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure')
+                .layout.projectDirectory.dir('src/main/java/space/br1440/platform/tracing/autoconfigure/agent'),
+
+        project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure')
+                .layout.projectDirectory.dir('src/main/java/space/br1440/platform/tracing/autoconfigure/control/jmx'),
+
+        project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure')
+                .layout.projectDirectory.dir('src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx')
+)
+
+tasks.register('validateJmxWireContract', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.named('classes')
+
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'space.br1440.platform.tracing.jmx.contract.tool.JmxWireContractGenerator'
+    args '--mode=validate',
+            "--manifest=${contractManifest.asFile.absolutePath}"
+
+    inputs.file(contractManifest)
+}
+
+tasks.register('generateJmxWireContract', JavaExec) {
+    group = 'build'
+    dependsOn tasks.named('classes')
+
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'space.br1440.platform.tracing.jmx.contract.tool.JmxWireContractGenerator'
+    args '--mode=generate',
+            "--manifest=${contractManifest.asFile.absolutePath}",
+            "--output=${generatedRoot.get().asFile.absolutePath}"
+
+    inputs.file(contractManifest)
+    inputs.files(sourceSets.main.output.classesDirs)
+    outputs.dir(generatedRoot)
+}
+
+tasks.register('verifyJmxWireContract', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.named('generateJmxWireContract')
+
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'space.br1440.platform.tracing.jmx.contract.tool.JmxWireContractGenerator'
+    args '--mode=verify',
+            "--manifest=${contractManifest.asFile.absolutePath}",
+            "--output=${generatedRoot.get().asFile.absolutePath}",
+            "--report=${layout.buildDirectory.file('reports/jmx-wire-contract/verification.properties').get().asFile.absolutePath}"
+
+    inputs.file(contractManifest)
+    inputs.dir(generatedRoot)
+    outputs.file(layout.buildDirectory.file('reports/jmx-wire-contract/verification.properties'))
+}
+
+tasks.register('verifyNoManualJmxWireLiterals', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.named('classes')
+
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'space.br1440.platform.tracing.jmx.contract.tool.JmxWireContractGenerator'
+    args '--mode=source-gate',
+            "--manifest=${contractManifest.asFile.absolutePath}",
+            "--source-roots=${guardedSourceRoots.files*.absolutePath.join(File.pathSeparator)}"
+
+    inputs.file(contractManifest)
+    inputs.files(guardedSourceRoots)
+    outputs.file(layout.buildDirectory.file('reports/jmx-wire-contract/source-gate.txt'))
+
+    doLast {
+        File marker = layout.buildDirectory
+                .file('reports/jmx-wire-contract/source-gate.txt')
+                .get().asFile
+        marker.parentFile.mkdirs()
+        marker.text = "manual-wire-literals=none\n"
+    }
+}
+
+tasks.register('compileGeneratedJmxWireContract', JavaCompile) {
+    group = 'verification'
+    dependsOn tasks.named('generateJmxWireContract')
+
+    source(generatedRoot.map { it.dir('extension/java') })
+    source(generatedRoot.map { it.dir('application/java') })
+
+    classpath = files()
+    destinationDirectory.set(layout.buildDirectory.get().dir('classes/generated-jmx-wire-contract'))
+    options.release = 21
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('verifyJmxWireContract')
+    dependsOn tasks.named('compileGeneratedJmxWireContract')
+    dependsOn tasks.named('verifyNoManualJmxWireLiterals')
+}
+
+tasks.named('jar') {
+    enabled = false
+}

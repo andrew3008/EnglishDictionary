@@ -198,13 +198,17 @@ public final class CompleteTracingSettings {
         return routePrefix;
     }
 
+    public static boolean isUnrecognizedLogLevel(String diagnosticsLogLevel) {
+        return !VALID_LOG_LEVELS.contains(diagnosticsLogLevel);
+    }
+
     private static String canonicalizeLogLevel(String diagnosticsLogLevel) {
         if (diagnosticsLogLevel == null) {
             throw new IllegalArgumentException("diagnosticsLogLevel must not be null");
         }
 
         String canonical = diagnosticsLogLevel.toUpperCase(Locale.ROOT);
-        if (!VALID_LOG_LEVELS.contains(canonical)) {
+        if (isUnrecognizedLogLevel(canonical)) {
             throw new IllegalArgumentException("diagnosticsLogLevel is not a recognized level");
         }
 

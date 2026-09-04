@@ -144,7 +144,9 @@ class AgentLogFieldNamePolicyTest {
                 Arguments.of("e-mail"),
                 Arguments.of("email"),
                 Arguments.of("set-cookie"),
-                Arguments.of("set_cookie")
+                Arguments.of("set_cookie"),
+                Arguments.of("x-auth-header"),
+                Arguments.of("x_auth_header")
         );
     }
 }

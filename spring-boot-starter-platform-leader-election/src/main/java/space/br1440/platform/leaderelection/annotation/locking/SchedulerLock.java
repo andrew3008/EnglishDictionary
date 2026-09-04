@@ -29,7 +29,7 @@ public @interface SchedulerLock {
      * Если выполнение метода превысит это время, блокировка будет автоматически освобождена.
      * Формат: ISO-8601 Duration (например, "30m" для 30 минут).
      * Поддерживает SpEL-выражения и внешние параметры (например, "${lock.max:30m}" или "#{@code @configService.getLockTimeout()}").
-     * Если не указано, используется значение по умолчанию из настройки {@link space.br1440.platform.leaderelection.configuration.LeaderElectionProperties.LockSettings#getDefaultLockAtMostFor()}.
+     * Если не указано, используется значение по умолчанию из настройки {@code space.br1440.platform.leaderelection.configuration.LeaderElectionProperties.LockSettings#getDefaultLockAtMostFor()}.
      */
     String lockAtMostFor() default "";
 
@@ -38,7 +38,7 @@ public @interface SchedulerLock {
      * Блокировка будет удерживаться как минимум указанное время, даже если метод завершился раньше.
      * Формат: ISO-8601 Duration (например, "1m" для 1 минуты).
      * Поддерживает SpEL-выражения и внешние параметры (например, "${lock.min:1m}" или "#{@code @configService.getMinLockTime()}").
-     * Если не указано, используется значение по умолчанию из настройки {@link space.br1440.platform.leaderelection.configuration.LeaderElectionProperties.LockSettings#getDefaultLockAtLeastFor()}.
+     * Если не указано, используется значение по умолчанию из настройки {@code space.br1440.platform.leaderelection.configuration.LeaderElectionProperties.LockSettings#getDefaultLockAtLeastFor()}.
      */
     String lockAtLeastFor() default "";
 

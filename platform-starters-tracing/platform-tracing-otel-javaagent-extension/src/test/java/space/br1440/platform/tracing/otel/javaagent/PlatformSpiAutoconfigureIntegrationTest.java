@@ -3,17 +3,11 @@ package space.br1440.platform.tracing.otel.javaagent;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdkBuilder;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.AutoConfiguredSdkPrivateControlIsolationExtension;
-import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.testsupport.BootstrapIsolatedClassLoader;
 
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-import java.lang.management.ManagementFactory;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,26 +21,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * как это делает Java Agent в проде.
  */
 @DisplayName("Phase 15 SPI: named sampler/propagator через реальный autoconfigure")
-@ExtendWith(AutoConfiguredSdkPrivateControlIsolationExtension.class)
+@ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 class PlatformSpiAutoconfigureIntegrationTest {
-
-    private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
-
-    @AfterEach
-    void cleanupMBean() throws Exception {
-        for (ObjectName name : new ObjectName[]{
-                DomainObjectNames.SAMPLING,
-                DomainObjectNames.SCRUBBING,
-                DomainObjectNames.VALIDATION,
-                DomainObjectNames.EXPORT,
-                DomainObjectNames.PROCESSOR_METRICS,
-                DomainObjectNames.DIAGNOSTICS
-        }) {
-            if (server.isRegistered(name)) {
-                server.unregisterMBean(name);
-            }
-        }
-    }
 
     private static AutoConfiguredOpenTelemetrySdkBuilder baseBuilder() {
         return AutoConfiguredOpenTelemetrySdk.builder()

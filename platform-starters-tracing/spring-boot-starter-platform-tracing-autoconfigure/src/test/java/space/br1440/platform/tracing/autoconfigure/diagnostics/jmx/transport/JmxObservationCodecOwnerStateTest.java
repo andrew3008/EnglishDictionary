@@ -1,21 +1,22 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
-
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 /**
  * Discriminator-first decode для {@link JmxObservationCodec#ownerState}: payload владельца
@@ -40,7 +41,11 @@ class JmxObservationCodecOwnerStateTest {
         JmxOwnerState<Map<String, Long>> state = JmxObservationCodec.ownerState(
                 composite, PRESENT_ITEM, GENERATION_ITEM, () -> {
                     payloadSupplierInvoked.set(true);
-                    return JmxObservationCodec.getStringLongMap(composite, PAYLOAD_ITEM);
+                    return JmxObservationCodec.getStringLongMap(
+                            composite,
+                            PAYLOAD_ITEM,
+                            JmxWireContract.FIELD_SAMPLER_DECISION_COUNTS_KEY,
+                            JmxWireContract.FIELD_SAMPLER_DECISION_COUNTS_VALUE);
                 });
 
         assertThat(state).isInstanceOf(JmxOwnerState.Absent.class);
@@ -58,7 +63,7 @@ class JmxObservationCodecOwnerStateTest {
         JmxOwnerState<Long> state = JmxObservationCodec.ownerState(
                 nestedComposite, PRESENT_ITEM, GENERATION_ITEM, () -> {
                     payloadSupplierInvoked.set(true);
-                    return JmxObservationCodec.getString(nestedComposite, PAYLOAD_ITEM).length() + 0L;
+                    return (long) JmxObservationCodec.getString(nestedComposite, PAYLOAD_ITEM).length();
                 });
 
         assertThat(state).isInstanceOf(JmxOwnerState.Absent.class);

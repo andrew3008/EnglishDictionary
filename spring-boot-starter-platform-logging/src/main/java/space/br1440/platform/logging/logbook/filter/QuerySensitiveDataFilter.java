@@ -1,13 +1,14 @@
 package space.br1440.platform.logging.logbook.filter;
 
+import org.jspecify.annotations.NullMarked;
 import org.zalando.logbook.QueryFilter;
 import space.br1440.platform.logging.masking.SensitiveDataMasker;
 
-import javax.annotation.ParametersAreNonnullByDefault;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
+@NullMarked
 public class QuerySensitiveDataFilter implements QueryFilter {
 
     private final SensitiveDataMasker masker;
@@ -17,7 +18,6 @@ public class QuerySensitiveDataFilter implements QueryFilter {
     }
 
     @Override
-    @ParametersAreNonnullByDefault
     public String filter(final String query) {
         if (query.isEmpty()) {
             return query;

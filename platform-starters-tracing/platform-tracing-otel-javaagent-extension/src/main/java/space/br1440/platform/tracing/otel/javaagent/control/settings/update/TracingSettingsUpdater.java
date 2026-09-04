@@ -20,6 +20,7 @@ public final class TracingSettingsUpdater {
     private final TracingSettingsStore store;
     private final SettingsValidationConstraints validationConstraints;
     private final LastSettingsUpdate diagnostics;
+    private final Object updateMonitor = new Object();
 
     public TracingSettingsUpdater(TracingSettingsStore store,
                                   SettingsValidationConstraints validationConstraints,
@@ -35,6 +36,21 @@ public final class TracingSettingsUpdater {
         Objects.requireNonNull(attempt, "attempt");
         Objects.requireNonNull(expectedBase, "expectedBase");
         Objects.requireNonNull(candidate, "candidate");
+
+        synchronized (updateMonitor) {
+            return applyUnderLock(attempt, expectedBase, candidate);
+        }
+    }
+
+    public SettingsStatusSnapshot captureStatus() {
+        synchronized (updateMonitor) {
+            return new SettingsStatusSnapshot(store.current(), diagnostics.snapshot());
+        }
+    }
+
+    private SettingsUpdateResult applyUnderLock(SettingsUpdateAttempt attempt,
+                                                ExpectedSettingsRevision expectedBase,
+                                                TracingSettings candidate) {
 
         SettingsUpdateResult result;
         try {
@@ -61,7 +77,9 @@ public final class TracingSettingsUpdater {
             throw new IllegalArgumentException("rejectBeforeApply requires a non-NONE rejection reason");
         }
 
-        return recordPreApplyTerminal(wireAttemptId, SettingsUpdateStatus.REJECTED, reason);
+        synchronized (updateMonitor) {
+            return recordPreApplyTerminal(wireAttemptId, SettingsUpdateStatus.REJECTED, reason);
+        }
     }
 
     public SettingsUpdateResult failBeforeApply(String wireAttemptId, SettingsRejectionReason reason) {
@@ -71,7 +89,9 @@ public final class TracingSettingsUpdater {
             throw new IllegalArgumentException("failBeforeApply requires a non-NONE rejection reason");
         }
 
-        return recordPreApplyTerminal(wireAttemptId, SettingsUpdateStatus.FAILED, reason);
+        synchronized (updateMonitor) {
+            return recordPreApplyTerminal(wireAttemptId, SettingsUpdateStatus.FAILED, reason);
+        }
     }
 
     private SettingsUpdateResult recordPreApplyTerminal(String wireAttemptId,

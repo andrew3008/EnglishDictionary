@@ -12,13 +12,17 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.Jmx
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxMBeanRegistrationState;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxObservationCodec;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxReadExecutor;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxObservationWireContract;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 public final class SamplingJmxView {
 
     private static final JmxAttribute<SamplingObservation> OBSERVATION = new JmxAttribute<>(
-            "SamplingObservation", JmxContractPoint.SAMPLING_OBSERVATION, SamplingJmxView::decode
+            JmxWireContract.ATTRIBUTE_SAMPLING_OBSERVATION_SAMPLING_OBSERVATION,
+            JmxContractPoint.SAMPLING_OBSERVATION,
+            JmxOpenTypes.SAMPLING_OBSERVATION,
+            SamplingJmxView::decode
     );
 
     private final JmxReadExecutor executor;
@@ -43,20 +47,24 @@ public final class SamplingJmxView {
 
     private static SamplingObservation decode(Object raw) {
         CompositeData composite = JmxObservationCodec.asComposite(raw);
-        JmxObservationCodec.requireCompositeTypeName(composite, JmxObservationWireContract.SAMPLING_COMPOSITE_TYPE_NAME);
-        JmxObservationCodec.requireSchemaVersion(composite);
-        String agentInstanceId = JmxObservationCodec.getString(composite, JmxObservationWireContract.ITEM_AGENT_INSTANCE_ID);
+        JmxObservationCodec.requireCompositeTypeName(composite, JmxWireContract.OPEN_TYPE_SAMPLING_OBSERVATION_TYPE_NAME);
+        String agentInstanceId = JmxObservationCodec.getString(composite, JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID);
 
-        boolean samplerEnabled = JmxObservationCodec.getBoolean(composite, JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_ENABLED);
-        double samplingRatio = JmxObservationCodec.getDouble(composite, JmxObservationWireContract.SAMPLING_ITEM_SAMPLING_RATIO);
-        int liveRouteRatioCount = JmxObservationCodec.getTabularSize(composite, JmxObservationWireContract.SAMPLING_ITEM_ROUTE_RATIOS);
-        String configLastUpdatedSource = JmxObservationCodec.getString(composite, JmxObservationWireContract.SAMPLING_ITEM_CONFIG_LAST_UPDATED_SOURCE);
+        boolean samplerEnabled = JmxObservationCodec.getBoolean(composite, JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_ENABLED);
+        double samplingRatio = JmxObservationCodec.getDouble(composite, JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO);
+        int liveRouteRatioCount = JmxObservationCodec.getTabularSize(composite, JmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIOS);
+        String configLastUpdatedSource = JmxObservationCodec.getString(composite, JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_CONFIG_LAST_UPDATED_SOURCE);
 
         JmxOwnerState<Map<String, Long>> samplerOwnerState = JmxObservationCodec.ownerState(
                 composite,
-                JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_OWNER_PRESENT,
-                JmxObservationWireContract.SAMPLING_ITEM_SAMPLER_OWNER_GENERATION,
-                () -> JmxObservationCodec.getStringLongMap(composite, JmxObservationWireContract.SAMPLING_ITEM_DECISION_COUNTS)
+                JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_PRESENT,
+                JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_GENERATION,
+                () -> JmxObservationCodec.getStringLongMap(
+                        composite,
+                        JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_DECISION_COUNTS,
+                        JmxWireContract.FIELD_SAMPLER_DECISION_COUNTS_KEY,
+                        JmxWireContract.FIELD_SAMPLER_DECISION_COUNTS_VALUE
+                )
         );
 
         return new SamplingObservation(agentInstanceId, samplerEnabled, samplingRatio, liveRouteRatioCount, configLastUpdatedSource, samplerOwnerState);

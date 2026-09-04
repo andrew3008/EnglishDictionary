@@ -12,6 +12,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 
 import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.agent.OtelJavaAgentMarkerDetector;
@@ -68,8 +69,14 @@ public class TracingRuntimeAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public AgentStartupVerifier agentStartupVerifier() {
-        return new AgentStartupVerifier();
+    public AgentReadinessCoherenceGuard agentReadinessCoherenceGuard() {
+        return new AgentReadinessCoherenceGuard();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public AgentStartupVerifier agentStartupVerifier(AgentReadinessCoherenceGuard coherenceGuard) {
+        return new AgentStartupVerifier(coherenceGuard);
     }
 
     @Bean

@@ -13,13 +13,17 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.Jmx
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxMBeanRegistrationState;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxObservationCodec;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxReadExecutor;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxObservationWireContract;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 public final class ScrubbingJmxView {
 
     private static final JmxAttribute<ScrubbingObservation> OBSERVATION = new JmxAttribute<>(
-            "ScrubbingObservation", JmxContractPoint.SCRUBBING_OBSERVATION, ScrubbingJmxView::decode
+            JmxWireContract.ATTRIBUTE_SCRUBBING_OBSERVATION_SCRUBBING_OBSERVATION,
+            JmxContractPoint.SCRUBBING_OBSERVATION,
+            JmxOpenTypes.SCRUBBING_OBSERVATION,
+            ScrubbingJmxView::decode
     );
 
     private final JmxReadExecutor executor;
@@ -44,19 +48,32 @@ public final class ScrubbingJmxView {
 
     private static ScrubbingObservation decode(Object raw) {
         CompositeData composite = JmxObservationCodec.asComposite(raw);
-        JmxObservationCodec.requireCompositeTypeName(composite, JmxObservationWireContract.SCRUBBING_COMPOSITE_TYPE_NAME);
-        JmxObservationCodec.requireSchemaVersion(composite);
-        String agentInstanceId = JmxObservationCodec.getString(composite, JmxObservationWireContract.ITEM_AGENT_INSTANCE_ID);
+        JmxObservationCodec.requireCompositeTypeName(composite, JmxWireContract.OPEN_TYPE_SCRUBBING_OBSERVATION_TYPE_NAME);
+        String agentInstanceId = JmxObservationCodec.getString(
+                composite, JmxWireContract.FIELD_SCRUBBING_OBSERVATION_AGENT_INSTANCE_ID);
 
-        JmxOwnerState<ScrubbingValues> values = JmxObservationCodec.ownerState(composite, () -> {
-            boolean enabled = JmxObservationCodec.getBoolean(composite, JmxObservationWireContract.SCRUBBING_ITEM_ENABLED);
-            long policyVersion = JmxObservationCodec.getLong(composite, JmxObservationWireContract.SCRUBBING_ITEM_POLICY_VERSION);
-            long rulesLoaded = JmxObservationCodec.getLong(composite, JmxObservationWireContract.SCRUBBING_ITEM_RULES_LOADED);
-            long circuitBreakersOpen = JmxObservationCodec.getLong(composite, JmxObservationWireContract.SCRUBBING_ITEM_CIRCUIT_BREAKERS_OPEN);
-            Map<String, Long> metrics = JmxObservationCodec.getStringLongMap(composite, JmxObservationWireContract.SCRUBBING_ITEM_METRICS);
+        JmxOwnerState<ScrubbingValues> values = JmxObservationCodec.ownerState(
+                composite,
+                JmxWireContract.FIELD_SCRUBBING_OBSERVATION_OWNER_PRESENT,
+                JmxWireContract.FIELD_SCRUBBING_OBSERVATION_OWNER_GENERATION,
+                () -> {
+                    boolean enabled = JmxObservationCodec.getBoolean(
+                            composite, JmxWireContract.FIELD_SCRUBBING_OBSERVATION_SCRUBBING_ENABLED);
+                    long policyVersion = JmxObservationCodec.getLong(
+                            composite, JmxWireContract.FIELD_SCRUBBING_OBSERVATION_POLICY_VERSION);
+                    long rulesLoaded = JmxObservationCodec.getLong(
+                            composite, JmxWireContract.FIELD_SCRUBBING_OBSERVATION_RULES_LOADED);
+                    long circuitBreakersOpen = JmxObservationCodec.getLong(
+                            composite, JmxWireContract.FIELD_SCRUBBING_OBSERVATION_CIRCUIT_BREAKERS_OPEN);
+                    Map<String, Long> metrics = JmxObservationCodec.getStringLongMap(
+                            composite,
+                            JmxWireContract.FIELD_SCRUBBING_OBSERVATION_SCRUBBING_METRICS,
+                            JmxWireContract.FIELD_SCRUBBING_METRICS_KEY,
+                            JmxWireContract.FIELD_SCRUBBING_METRICS_VALUE);
 
-            return new ScrubbingValues(enabled, policyVersion, rulesLoaded, circuitBreakersOpen, metrics);
-        });
+                    return new ScrubbingValues(
+                            enabled, policyVersion, rulesLoaded, circuitBreakersOpen, metrics);
+                });
 
         return new ScrubbingObservation(agentInstanceId, values);
     }
