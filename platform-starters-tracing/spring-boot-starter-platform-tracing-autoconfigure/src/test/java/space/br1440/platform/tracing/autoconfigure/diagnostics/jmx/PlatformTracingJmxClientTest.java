@@ -10,9 +10,10 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.sampling.Samp
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxDiagnosticSnapshot;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxMBeanRegistrationState;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+import space.br1440.platform.tracing.autoconfigure.support.DomainSnapshotEndpoints;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
-import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.SamplingControl;
+import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.SamplingObservationSource;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
 import javax.management.MBeanServer;
@@ -119,7 +120,9 @@ class PlatformTracingJmxClientTest {
         );
 
         OwnerRegistrationSlot<CompositeSampler> slot = new OwnerRegistrationSlot<>();
-        SamplingControl impl = new SamplingControl(acceptedPolicy, slot, UUID.randomUUID());
-        server.registerMBean(impl, DomainObjectNames.SAMPLING);
+        SamplingObservationSource impl = new SamplingObservationSource(acceptedPolicy, slot, UUID.randomUUID());
+        server.registerMBean(
+                DomainSnapshotEndpoints.sampling(impl::getSamplingObservation),
+                DomainObjectNames.SAMPLING);
     }
 }

@@ -1,17 +1,17 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.runtime.sampling.engine.SamplingPolicyEngine;
 import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyDecision;
 import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyRequest;
@@ -69,7 +69,7 @@ public final class CompositeSampler implements Sampler, PlatformManagedSampler {
 
     @Override
     public String getDescription() {
-        return String.format("PlatformRuleBasedSampler{version=%d, defaultRatio=%.2f}",
+        return String.format(Locale.ROOT, "PlatformRuleBasedSampler{version=%d, defaultRatio=%.2f}",
                 acceptedPolicy.get().current().acceptedSequence(),
                 acceptedPolicy.get().current().samplingRatio()
         );

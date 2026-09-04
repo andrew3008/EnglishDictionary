@@ -1,8 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.processor.dropoldest;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -16,9 +13,9 @@ final class ProcessorLifecycle {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(ProcessorLifecycle.class);
 
-    private static final int TERMINATOR_POOL_SIZE = 2;
+    static final String TERMINATOR_THREAD_NAME_PREFIX = "platform-tracing-drop-oldest-shutdown-";
+
     private static final AtomicInteger TERMINATOR_SEQUENCE = new AtomicInteger();
-    private static final Executor TERMINATOR_EXECUTOR = Executors.newFixedThreadPool(TERMINATOR_POOL_SIZE, terminatorThreadFactory());
 
     private final ExportBuffer buffer;
     private final ExportWorker worker;
@@ -40,8 +37,15 @@ final class ProcessorLifecycle {
         }
 
         buffer.beginShutdown();
-        TERMINATOR_EXECUTOR.execute(this::terminate);
+        startTerminator();
         return shutdownResult;
+    }
+
+    private void startTerminator() {
+        String name = TERMINATOR_THREAD_NAME_PREFIX + TERMINATOR_SEQUENCE.incrementAndGet();
+        Thread terminator = new Thread(this::terminate, name);
+        terminator.setDaemon(true);
+        terminator.start();
     }
 
     private void terminate() {
@@ -63,15 +67,5 @@ final class ProcessorLifecycle {
         } else {
             shutdownResult.fail();
         }
-    }
-
-    private static ThreadFactory terminatorThreadFactory() {
-        return runnable -> {
-            String name = "platform-tracing-drop-oldest-shutdown-" + TERMINATOR_SEQUENCE.incrementAndGet();
-
-            Thread thread = new Thread(runnable, name);
-            thread.setDaemon(true);
-            return thread;
-        };
     }
 }

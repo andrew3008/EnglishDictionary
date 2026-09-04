@@ -1,20 +1,20 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport;
 
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxObservationWireContract;
-
+import java.util.Map;
+import java.util.stream.Stream;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.SimpleType;
-import java.util.Map;
-import java.util.stream.Stream;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 class JmxObservationCodecTypeNameTest {
 
@@ -39,17 +39,17 @@ class JmxObservationCodecTypeNameTest {
 
     private static Stream<String> normativeTypeNames() {
         return Stream.of(
-                JmxObservationWireContract.SAMPLING_COMPOSITE_TYPE_NAME,
-                JmxObservationWireContract.SCRUBBING_COMPOSITE_TYPE_NAME,
-                JmxObservationWireContract.VALIDATION_COMPOSITE_TYPE_NAME,
-                JmxObservationWireContract.EXPORT_COMPOSITE_TYPE_NAME,
-                JmxObservationWireContract.EXPORT_PROCESSOR_VALUES_TYPE_NAME,
-                JmxObservationWireContract.EXPORT_EXPORTER_VALUES_TYPE_NAME,
-                JmxObservationWireContract.PROCESSOR_METRICS_COMPOSITE_TYPE_NAME,
-                JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_VALUES_TYPE_NAME,
-                JmxObservationWireContract.PROCESSOR_METRICS_COMPOSITE_VALUES_TYPE_NAME,
-                JmxObservationWireContract.PROCESSOR_METRICS_METRICS_VALUES_TYPE_NAME,
-                JmxObservationWireContract.DIAGNOSTICS_COMPOSITE_TYPE_NAME);
+                JmxWireContract.OPEN_TYPE_SAMPLING_OBSERVATION_TYPE_NAME,
+                JmxWireContract.OPEN_TYPE_SCRUBBING_OBSERVATION_TYPE_NAME,
+                JmxWireContract.OPEN_TYPE_VALIDATION_OBSERVATION_TYPE_NAME,
+                JmxWireContract.OPEN_TYPE_EXPORT_OBSERVATION_TYPE_NAME,
+                JmxWireContract.OPEN_TYPE_EXPORT_PROCESSOR_VALUES_TYPE_NAME,
+                JmxWireContract.OPEN_TYPE_SAFE_EXPORTER_VALUES_TYPE_NAME,
+                JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_OBSERVATION_TYPE_NAME,
+                JmxWireContract.OPEN_TYPE_PROCESSOR_WATCHDOG_VALUES_TYPE_NAME,
+                JmxWireContract.OPEN_TYPE_PROCESSOR_COMPOSITE_VALUES_TYPE_NAME,
+                JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_VALUES_TYPE_NAME,
+                JmxWireContract.OPEN_TYPE_DIAGNOSTICS_OBSERVATION_TYPE_NAME);
     }
 
     private static CompositeData compositeOf(String typeName) throws OpenDataException {

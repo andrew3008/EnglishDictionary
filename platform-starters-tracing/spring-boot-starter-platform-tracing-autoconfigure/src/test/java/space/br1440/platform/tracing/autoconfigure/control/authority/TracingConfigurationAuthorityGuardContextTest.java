@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.control.authority;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -7,18 +9,11 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateJmxTracingSettingsClient;
-import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsMutationService;
+
+import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxTracingSettingsClient;
 import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsControlAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateControlLocator;
+import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsMutationService;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * Real Spring context proof that {@link TracingConfigurationAuthorityGuard} is wired into
- * production auto-configuration and enforces the full mode/authority/posture fail-fast matrix
- * before Actuator private-control beans can activate.
- */
 class TracingConfigurationAuthorityGuardContextTest {
 
     private final ApplicationContextRunner guardRunner = new ApplicationContextRunner()
@@ -143,40 +138,33 @@ class TracingConfigurationAuthorityGuardContextTest {
     }
 
     @Test
-    void helmDoesNotActivateActuatorPrivateControlBeans() {
+    void helmDoesNotActivateActuatorJmxControlBeans() {
         actuatorStackRunner
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=HELM",
                         "platform.environment=LOCAL")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
-                    assertThat(context).doesNotHaveBean(PrivateControlLocator.class);
-                    assertThat(context).doesNotHaveBean(PrivateJmxTracingSettingsClient.class);
+                    assertThat(context).doesNotHaveBean(PlatformJmxTracingSettingsClient.class);
                     assertThat(context).doesNotHaveBean(TracingSettingsMutationService.class);
                 });
     }
 
     @Test
     void configServerDoesNotActivateActuatorWriteAdapterFromActuatorAutoConfig() {
-        // Private JMX for CONFIG_SERVER is owned by PrivateJmxControlAutoConfiguration +
-        // ConfigServerTracingSettingsAutoConfiguration. The ACTUATOR auto-config alone must not
-        // register an Actuator write adapter (or private-control beans) under CONFIG_SERVER.
         actuatorStackRunner
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=CONFIG_SERVER",
                         "platform.environment=LOCAL")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
-                    assertThat(context).doesNotHaveBean(PrivateControlLocator.class);
-                    assertThat(context).doesNotHaveBean(PrivateJmxTracingSettingsClient.class);
+                    assertThat(context).doesNotHaveBean(PlatformJmxTracingSettingsClient.class);
                     assertThat(context).doesNotHaveBean(TracingSettingsMutationService.class);
                 });
     }
 
     @Test
-    void actuatorSharedFailsBeforePrivateControlBeans() {
-        // Full ACTUATOR auto-config stack still fail-closes at the authority BFPP —
-        // before PrivateControlLocator / readiness / adapter beans can be created.
+    void actuatorSharedFailsBeforeJmxControlBeans() {
         actuatorStackRunner
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=ACTUATOR",

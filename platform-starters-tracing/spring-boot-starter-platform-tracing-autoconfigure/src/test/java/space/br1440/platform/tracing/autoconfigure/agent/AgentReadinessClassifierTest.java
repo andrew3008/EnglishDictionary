@@ -2,221 +2,255 @@ package space.br1440.platform.tracing.autoconfigure.agent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Pure classifier tests: no JMX, no clock, application version supplied explicitly by the caller.
- */
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
+
 class AgentReadinessClassifierTest {
 
-    private static final String APPLICATION_VERSION = "1.2.3";
-
-    private static final Set<String> COMPLETE_CAPABILITIES = Set.of(
-            "CONFIGURATION_LOADED",
-            "PLATFORM_SAMPLER_INSTALLED",
-            "REQUIRED_SPAN_PROCESSORS_INSTALLED",
-            "SANITIZER_INSTALLED",
-            "PROPAGATION_HOOKS_INSTALLED",
-            "SAFE_EXPORTER_INSTALLED",
-            "EXPORT_PATH_PROTECTED");
-
     @Test
-    void readyRequiresCompleteConsistentSecureProfileAndExactVersionEquality() {
-        AgentRuntimeState state = classify(snapshot(
-                APPLICATION_VERSION, 1, "platform-agent-secure-v1", "READY", "",
-                COMPLETE_CAPABILITIES),
-                APPLICATION_VERSION);
+    void acceptsReadySnapshotWithCompleteGeneratedEvidence() {
+        // given
+        AgentReadinessSnapshot snapshot = ReadinessTestFixtures.readySnapshot();
 
-        assertThat(state).isEqualTo(AgentRuntimeState.AGENT_READY);
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(decision, AgentRuntimeState.AGENT_READY, "");
     }
 
     @Test
-    void developmentUnitSeamIsAcceptedOnlyWhenBothSidesAreExplicitlyDevelopment() {
-        AgentRuntimeState state = classify(snapshot(
-                "development", 1, "platform-agent-secure-v1", "READY", "",
-                COMPLETE_CAPABILITIES),
-                "development");
+    void acceptsCoherentInitializingSnapshot() {
+        // given
+        AgentReadinessSnapshot snapshot = ReadinessTestFixtures.initializingSnapshot();
 
-        assertThat(state).isEqualTo(AgentRuntimeState.AGENT_READY);
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(decision, AgentRuntimeState.EXTENSION_INITIALIZING, "");
     }
 
     @Test
-    void missingApplicationVersionIsFailClosedEvenWhenExtensionReportsDevelopment() {
-        // No one-sided wildcard: a null application version rejects a "development" extension.
-        AgentRuntimeState state = classify(snapshot(
-                "development", 1, "platform-agent-secure-v1", "READY", "",
-                COMPLETE_CAPABILITIES),
-                null);
+    void preservesFailedLifecycleCodeAsStickyFailure() {
+        // given
+        AgentReadinessSnapshot snapshot = ReadinessTestFixtures.failedSnapshot("DISTRIBUTION_MISMATCH");
 
-        assertThat(state).isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(decision, AgentRuntimeState.EXTENSION_FAILED, "DISTRIBUTION_MISMATCH");
+        assertThat(AgentReadinessClassifier.sticky(decision)).isTrue();
     }
 
     @Test
-    void mismatchedNonDevelopmentVersionsAreRejected() {
-        AgentReadinessClassifier.Decision decision = decide(snapshot(
-                "9.9.9-not-matching", 1, "platform-agent-secure-v1", "READY", "",
-                COMPLETE_CAPABILITIES),
-                APPLICATION_VERSION);
+    void rejectsSchemaDigestMismatch() {
+        // given
+        AgentReadinessSnapshot snapshot = builder()
+                .contractIdentity(new AgentReadinessSnapshot.ContractIdentity(
+                        JmxWireContract.SCHEMA_ID, "0".repeat(64)))
+                .build();
 
-        assertThat(decision.state()).isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
-        assertThat(decision.reasonCode()).isEqualTo("EXTENSION_VERSION_MISMATCH");
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "READINESS_SCHEMA_DIGEST_MISMATCH");
     }
 
     @Test
-    void developmentExtensionAgainstPackagedApplicationVersionIsVersionMismatch() {
-        AgentReadinessClassifier.Decision decision = decide(snapshot(
-                "development", 1, "platform-agent-secure-v1", "READY", "",
-                COMPLETE_CAPABILITIES),
-                "1.2.0-SNAPSHOT");
+    void rejectsProducerMissingRequiredThatDiffersFromIndependentRecomputation() {
+        // given
+        AgentReadinessSnapshot snapshot = builder()
+                .lifecycleState(new AgentReadinessSnapshot.LifecycleState(
+                        "READY", "", ReadinessTestFixtures.COMPLETE_CAPABILITIES, Set.of("SAFE_EXPORTER_INSTALLED")))
+                .build();
 
-        assertThat(decision.state()).isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
-        assertThat(decision.reasonCode()).isEqualTo("EXTENSION_VERSION_MISMATCH");
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "READINESS_MISSING_REQUIRED_MISMATCH");
     }
 
     @Test
-    void unsupportedProtocolVersionIsIncompatible() {
-        AgentRuntimeState state = classify(snapshot(
-                APPLICATION_VERSION, 999, "platform-agent-secure-v1", "READY", "",
-                COMPLETE_CAPABILITIES),
-                APPLICATION_VERSION);
+    void reportsMissingGeneratedCapability() {
+        // given
+        Set<String> capabilities = new LinkedHashSet<>(ReadinessTestFixtures.COMPLETE_CAPABILITIES);
+        capabilities.remove("SAFE_EXPORTER_INSTALLED");
+        AgentReadinessSnapshot snapshot = builder()
+                .lifecycleState(new AgentReadinessSnapshot.LifecycleState(
+                        "READY", "", capabilities, Set.of("SAFE_EXPORTER_INSTALLED")))
+                .build();
 
-        assertThat(state).isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(decision, AgentRuntimeState.CAPABILITY_MISSING, "REQUIRED_CAPABILITY_MISSING");
     }
 
     @Test
-    void unsupportedProfileIsIncompatible() {
-        AgentRuntimeState state = classify(snapshot(
-                APPLICATION_VERSION, 1, "unknown-profile", "READY", "",
-                COMPLETE_CAPABILITIES),
-                APPLICATION_VERSION);
+    void rejectsReadySnapshotWithMixedGenerationIdentity() {
+        // given
+        AgentReadinessSnapshot snapshot = builder()
+                .anchorIdentity(new AgentReadinessSnapshot.AnchorIdentity("", 0L, ""))
+                .build();
 
-        assertThat(state).isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "READINESS_GENERATION_INCONSISTENT");
     }
 
     @Test
-    void initializingWithoutFailureCodeAndIncompleteCapabilitiesIsInitializing() {
-        AgentRuntimeState state = classify(snapshot(
-                APPLICATION_VERSION, 1, "platform-agent-secure-v1", "INITIALIZING", "",
-                Set.of()),
-                APPLICATION_VERSION);
+    void rejectsMalformedDistributionSha() {
+        // given
+        AgentReadinessSnapshot snapshot = builder()
+                .distributionIdentity(new AgentReadinessSnapshot.DistributionIdentity(
+                        "not-a-sha", "2.30.0", ReadinessTestFixtures.APPLICATION_VERSION))
+                .build();
 
-        assertThat(state).isEqualTo(AgentRuntimeState.EXTENSION_INITIALIZING);
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "DISTRIBUTION_EVIDENCE_INVALID");
     }
 
     @Test
-    void initializingWithCompleteCapabilitiesIsIncompatibleRatherThanStuckInitializing() {
-        AgentRuntimeState state = classify(snapshot(
-                APPLICATION_VERSION, 1, "platform-agent-secure-v1", "INITIALIZING", "",
-                COMPLETE_CAPABILITIES),
-                APPLICATION_VERSION);
+    void rejectsSdkDefinedByTheRealApplicationLoader() {
+        // given
+        AgentReadinessSnapshot snapshot = builder()
+                .classloaderTopology(new AgentReadinessSnapshot.ClassloaderTopology(
+                        "agent-loader@1", loaderDescription(AgentReadinessClassifier.class.getClassLoader())))
+                .build();
 
-        assertThat(state).isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(decision, AgentRuntimeState.DUAL_SDK_DETECTED, "DUAL_SDK_COLLISION");
     }
 
     @Test
-    void failedWithFailureCodeIsExtensionFailed() {
-        AgentRuntimeState state = classify(snapshot(
-                APPLICATION_VERSION, 1, "platform-agent-secure-v1", "FAILED", "SANITIZER_FAILED",
-                Set.of()),
-                APPLICATION_VERSION);
+    void rejectsExtensionDefinedByTheRealApplicationLoader() {
+        // given
+        AgentReadinessSnapshot snapshot = builder()
+                .classloaderTopology(new AgentReadinessSnapshot.ClassloaderTopology(
+                        loaderDescription(AgentReadinessClassifier.class.getClassLoader()), "sdk-loader@2"))
+                .build();
 
-        assertThat(state).isEqualTo(AgentRuntimeState.EXTENSION_FAILED);
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(decision, AgentRuntimeState.EXTENSION_INCOMPATIBLE, "EXTENSION_LINKAGE_ERROR");
     }
 
     @Test
-    void failedWithoutFailureCodeIsIncompatible() {
-        AgentReadinessClassifier.Decision decision = decide(snapshot(
-                APPLICATION_VERSION, 1, "platform-agent-secure-v1", "FAILED", "",
-                Set.of()),
-                APPLICATION_VERSION);
+    void rejectsLoaderDescriptionThatDoesNotFollowTheWireShape() {
+        // given
+        AgentReadinessSnapshot snapshot = builder()
+                .classloaderTopology(new AgentReadinessSnapshot.ClassloaderTopology(
+                        "agent-loader@1", "sdk-loader-without-identity"))
+                .build();
 
-        assertThat(decision.state()).isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
-        assertThat(decision.reasonCode()).isEqualTo("EXTENSION_FAILED_WITHOUT_CODE");
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "CLASSLOADER_TOPOLOGY_INVALID");
     }
 
     @Test
-    void readyWithMismatchedCapabilitiesIsCapabilityMissing() {
-        AgentReadinessClassifier.Decision decision = decide(snapshot(
-                APPLICATION_VERSION, 1, "platform-agent-secure-v1", "READY", "",
-                Set.of("CONFIGURATION_LOADED")),
-                APPLICATION_VERSION);
+    void rejectsDevelopmentExtensionVersion() {
+        // given
+        AgentReadinessSnapshot snapshot = builder()
+                .distributionIdentity(new AgentReadinessSnapshot.DistributionIdentity(
+                        ReadinessTestFixtures.SHA256, "2.30.0", "development"))
+                .build();
 
-        assertThat(decision.state()).isEqualTo(AgentRuntimeState.CAPABILITY_MISSING);
-        assertThat(decision.reasonCode()).isEqualTo("CAPABILITY_SET_MISMATCH");
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, "development");
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "DEVELOPMENT_VERSION_FORBIDDEN");
     }
 
     @Test
-    void readyWithoutSafeExporterCapabilityIsCapabilityMissing() {
-        AgentRuntimeState state = classify(snapshot(
-                APPLICATION_VERSION, 1, "platform-agent-secure-v1", "READY", "",
-                Set.of(
-                        "CONFIGURATION_LOADED",
-                        "PLATFORM_SAMPLER_INSTALLED",
-                        "REQUIRED_SPAN_PROCESSORS_INSTALLED",
-                        "SANITIZER_INSTALLED",
-                        "PROPAGATION_HOOKS_INSTALLED",
-                        "EXPORT_PATH_PROTECTED")),
-                APPLICATION_VERSION);
+    void rejectsUnknownLifecycle() {
+        // given
+        AgentReadinessSnapshot snapshot = builder()
+                .lifecycleState(new AgentReadinessSnapshot.LifecycleState(
+                        "UNKNOWN", "", ReadinessTestFixtures.COMPLETE_CAPABILITIES, Set.of()))
+                .build();
 
-        assertThat(state).isEqualTo(AgentRuntimeState.CAPABILITY_MISSING);
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "EXTENSION_LIFECYCLE_UNEXPECTED");
     }
 
-    @Test
-    void readyWithSupersetOfCapabilitiesIsCapabilityMissingUnderExactEqualityRule() {
-        // Slice 3 tightens containsAll -> exact set equality; a superset no longer satisfies READY.
-        Set<String> superset = Set.of(
-                "CONFIGURATION_LOADED", "PLATFORM_SAMPLER_INSTALLED", "REQUIRED_SPAN_PROCESSORS_INSTALLED",
-                "SANITIZER_INSTALLED", "PROPAGATION_HOOKS_INSTALLED", "SAFE_EXPORTER_INSTALLED",
-                "EXPORT_PATH_PROTECTED", "UNEXPECTED_EXTRA_CAPABILITY");
-        AgentRuntimeState state = classify(snapshot(
-                APPLICATION_VERSION, 1, "platform-agent-secure-v1", "READY", "",
-                superset),
-                APPLICATION_VERSION);
-
-        assertThat(state).isEqualTo(AgentRuntimeState.CAPABILITY_MISSING);
+    private static ReadinessTestFixtures.Builder builder() {
+        return ReadinessTestFixtures.toBuilder(ReadinessTestFixtures.readySnapshot());
     }
 
-    @Test
-    void readyWithNonBlankFailureCodeIsIncompatible() {
-        AgentRuntimeState state = classify(snapshot(
-                APPLICATION_VERSION, 1, "platform-agent-secure-v1", "READY", "UNEXPECTED",
-                COMPLETE_CAPABILITIES),
-                APPLICATION_VERSION);
-
-        assertThat(state).isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
+    private static void assertDecision(AgentReadinessClassifier.Decision decision,
+                                       AgentRuntimeState state,
+                                       String reasonCode) {
+        assertThat(decision.state()).isEqualTo(state);
+        assertThat(decision.reasonCode()).isEqualTo(reasonCode);
     }
 
-    @Test
-    void unknownLifecycleIsIncompatible() {
-        AgentReadinessClassifier.Decision decision = decide(snapshot(
-                APPLICATION_VERSION, 1, "platform-agent-secure-v1", "UNKNOWN", "",
-                COMPLETE_CAPABILITIES),
-                APPLICATION_VERSION);
+    private static String loaderDescription(ClassLoader loader) {
+        if (loader == null) {
+            return "bootstrap";
+        }
 
-        assertThat(decision.state()).isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
-        assertThat(decision.reasonCode()).isEqualTo("EXTENSION_LIFECYCLE_UNEXPECTED");
-    }
-
-    private static AgentRuntimeState classify(AgentReadinessSnapshot snapshot, String applicationVersion) {
-        return AgentReadinessClassifier.classify(snapshot, applicationVersion);
-    }
-
-    private static AgentReadinessClassifier.Decision decide(AgentReadinessSnapshot snapshot, String applicationVersion) {
-        return AgentReadinessClassifier.decide(snapshot, applicationVersion);
-    }
-
-    private static AgentReadinessSnapshot snapshot(
-            String extensionVersion,
-            int protocolVersion,
-            String profile,
-            String lifecycle,
-            String failureCode,
-            Set<String> capabilities) {
-        return new AgentReadinessSnapshot(
-                new AgentReadinessSnapshot.Protocol(extensionVersion, protocolVersion, profile),
-                new AgentReadinessSnapshot.Status(lifecycle, failureCode),
-                capabilities);
+        String name = loader.getName();
+        String stableName = (name == null || name.isBlank()) ? loader.getClass().getName() : name;
+        return stableName + "@" + Integer.toHexString(System.identityHashCode(loader));
     }
 }

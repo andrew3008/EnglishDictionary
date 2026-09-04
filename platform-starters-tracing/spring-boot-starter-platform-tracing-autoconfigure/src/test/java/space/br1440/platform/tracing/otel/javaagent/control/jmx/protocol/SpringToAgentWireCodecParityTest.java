@@ -9,7 +9,8 @@ import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlRequestEncoder;
+import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.ApplySnapshotRequestParameters;
+import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PlatformJmxRequestEncoder;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
@@ -18,30 +19,27 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Traci
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 
 /**
- * Real cross-module Spring-to-Agent wire codec parity test (Commit 3, §9.2 из плана
- * {@code wire-field-descriptors}).
+ * Проверяет межмодульный паритет транспортного кодека от Spring к агенту.
  * <p>
- * Deliberately declared в Agent-internal package {@code control.jmx.protocol} (тот же test bridge
- * приём, что и у {@link AgentToSpringWireCodecParityTest} и {@link CandidateDigestAgentParityTest}),
- * чтобы вызвать реальный, package-private Agent decoder
- * {@code PrivateControlOpenTypeCodec.decode(CompositeData)} напрямую — без расширения Agent
- * production API и без ручного дублирования wire-схемы.
+ * Класс намеренно объявлен во внутреннем пакете агента {@code control.jmx.protocol}, как и
+ * {@link AgentToSpringWireCodecParityTest} с
+ * {@link TracingSettingsDigestAgentParityTest}. Это позволяет напрямую вызвать
+ * пакетный декодер {@code JmxControlOpenTypeCodec.decode(CompositeData)} без расширения
+ * производственного API агента и ручного дублирования транспортной схемы.
  * <p>
- * Flow под тестом для каждого позитивного сценария:
+ * Проверяемый поток данных для каждого позитивного сценария:
  * <pre>
- *   Spring PrivateControlRequestEncoder.encodeApplyRequest()   [REAL Spring encoder]
- *   -&gt; javax.management.openmbean.CompositeData                [wire]
- *   -&gt; Agent PrivateControlOpenTypeCodec.decode()               [REAL Agent decoder]
- *   -&gt; semantic field-by-field equality
+ *   Spring PlatformJmxRequestEncoder.encodeApplyRequest()   [реальный кодировщик Spring]
+ *   -&gt; javax.management.openmbean.CompositeData             [транспорт]
+ *   -&gt; Agent JmxControlOpenTypeCodec.decode()               [реальный декодер агента]
+ *   -&gt; семантическое равенство каждого поля
  * </pre>
- * Это направление — обратное {@link AgentToSpringWireCodecParityTest}: там реальный Agent
- * encoder проверяется против реального Spring decoder, здесь — реальный Spring encoder против
- * реального Agent decoder. Оба направления необходимы, поскольку encoder и decoder на каждой
- * стороне независимы и оба переведены на дескрипторы в этом рефакторинге.
+ * Это направление обратно {@link AgentToSpringWireCodecParityTest}: тот тест сопоставляет
+ * кодировщик агента с декодером Spring, а этот — кодировщик Spring с декодером агента.
  */
 class SpringToAgentWireCodecParityTest {
 
-    private static final PrivateControlOpenTypeCodec AGENT_CODEC = new PrivateControlOpenTypeCodec();
+    private static final JmxControlOpenTypeCodec AGENT_CODEC = new JmxControlOpenTypeCodec();
 
     @Test
     void expectedBaseAttemptMetadataDigestAndPolicyRoundTripThroughRealAgentDecoder() {
@@ -90,8 +88,6 @@ class SpringToAgentWireCodecParityTest {
         assertThat(decoded.expectedBase().runtimeInstanceId()).isEqualTo(runtimeId);
     }
 
-    // ── one-hot boolean coverage through the REAL Spring encoder ──────────────────
-
     @Test
     void samplingEnabledOneHotRoundTripsThroughRealSpringEncoder() {
         assertBooleanOneHot(true, false, false, false, false);
@@ -118,7 +114,7 @@ class SpringToAgentWireCodecParityTest {
     }
 
     private static void assertBooleanOneHot(boolean samplingEnabled, boolean validationEnabled,
-            boolean validationStrict, boolean exporterEnabled, boolean traceControlHeadersEnabled) {
+                                            boolean validationStrict, boolean exporterEnabled, boolean traceControlHeadersEnabled) {
         DecodedSettingsUpdate decoded = roundTrip(
                 UUID.randomUUID().toString(), 1L,
                 UUID.randomUUID().toString(), "CONFIG_SERVER", "REFRESH", "rev",
@@ -133,22 +129,28 @@ class SpringToAgentWireCodecParityTest {
         assertThat(settings.traceControlHeadersEnabled()).isEqualTo(traceControlHeadersEnabled);
     }
 
-    // ── helpers ─────────────────────────────────────────────────────────────────────
-
     private static DecodedSettingsUpdate roundTrip(String runtimeInstanceId, long acceptedSequence,
-            String attemptId, String sourceAuthority, String applyTrigger, String sourceRevision,
-            CompleteTracingSettings settings) {
+                                                   String attemptId, String sourceAuthority, String applyTrigger, String sourceRevision,
+                                                   CompleteTracingSettings settings) {
         ExpectedSettingsRevision expectedBase = new ExpectedSettingsRevision(runtimeInstanceId, acceptedSequence);
 
-        CompositeData wire = PrivateControlRequestEncoder.encodeApplyRequest( // REAL Spring encoder
-                expectedBase, attemptId, sourceAuthority, applyTrigger, sourceRevision, settings);
+        CompositeData wire = PlatformJmxRequestEncoder.encodeApplyRequest(
+                ApplySnapshotRequestParameters.builder()
+                        .expectedBase(expectedBase)
+                        .attemptId(attemptId)
+                        .sourceAuthority(sourceAuthority)
+                        .applyTrigger(applyTrigger)
+                        .sourceRevision(sourceRevision)
+                        .policy(settings)
+                        .build()
+        );
 
-        return AGENT_CODEC.decode(wire); // REAL Agent decoder
+        return AGENT_CODEC.decode(wire);
     }
 
     private static CompleteTracingSettings settings(boolean samplingEnabled, double samplingRatio,
-            Map<String, Double> samplingRouteRatios, boolean validationEnabled, boolean validationStrict,
-            boolean exporterEnabled, boolean traceControlHeadersEnabled, String diagnosticsLogLevel) {
+                                                    Map<String, Double> samplingRouteRatios, boolean validationEnabled, boolean validationStrict,
+                                                    boolean exporterEnabled, boolean traceControlHeadersEnabled, String diagnosticsLogLevel) {
         return CompleteTracingSettings.builder()
                 .samplingEnabled(samplingEnabled)
                 .samplingRatio(samplingRatio)

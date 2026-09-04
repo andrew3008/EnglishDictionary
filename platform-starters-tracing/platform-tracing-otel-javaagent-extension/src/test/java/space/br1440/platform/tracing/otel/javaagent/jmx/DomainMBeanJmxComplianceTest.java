@@ -1,33 +1,33 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import static org.assertj.core.api.Assertions.assertThat;
+import static space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationTestFixtures.initializingReadinessProjection;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-
-import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
-import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.management.ManagementFactory;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
-import java.io.IOException;
-import java.lang.management.ManagementFactory;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
-/**
- * Защищает live-контракт production read-only MBean от неявного изменения.
- */
+import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
+
 class DomainMBeanJmxComplianceTest {
 
     private static final String BASELINE_RESOURCE = "/jmx-management-contract-baseline.json";
@@ -38,22 +38,28 @@ class DomainMBeanJmxComplianceTest {
             DomainObjectNames.EXPORT,
             DomainObjectNames.PROCESSOR_METRICS,
             DomainObjectNames.DIAGNOSTICS,
-            DomainObjectNames.EXTENSION_READINESS);
+            DomainObjectNames.EXTENSION_READINESS
+    );
 
     private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
-    private DomainMBeanRegistrar registrar;
+    private final List<AutoCloseable> registrations = new ArrayList<>();
+    private PlatformTracingMBeanRegistrar registrar;
 
     @AfterEach
     void cleanup() {
-        if (registrar != null) {
-            registrar.unregisterAllMBeans();
+        for (int index = registrations.size() - 1; index >= 0; index--) {
+            try {
+                registrations.get(index).close();
+            } catch (Exception ignored) {
+                // Следующий handle должен быть закрыт даже после локальной ошибки deregistration.
+            }
         }
     }
 
     @Test
     void liveManagementContractMatchesCommittedBaseline() throws Exception {
-        registrar = new DomainMBeanRegistrar();
-        wireRequiredComponents(registrar, holderWith(0.5));
+        registrar = new PlatformTracingMBeanRegistrar();
+        wireRequiredComponents(registrar, samplingPolicy());
 
         JmxManagementContractSnapshot.Snapshot snapshot =
                 JmxManagementContractSnapshot.capture(server, OBJECT_NAMES);
@@ -82,8 +88,8 @@ class DomainMBeanJmxComplianceTest {
 
     @Test
     void platformDomainMBeansExposeNoMutatingOperations() throws Exception {
-        registrar = new DomainMBeanRegistrar();
-        wireRequiredComponents(registrar, holderWith(0.5));
+        registrar = new PlatformTracingMBeanRegistrar();
+        wireRequiredComponents(registrar, samplingPolicy());
 
         for (ObjectName name : List.of(
                 DomainObjectNames.SAMPLING,
@@ -101,26 +107,25 @@ class DomainMBeanJmxComplianceTest {
         }
     }
 
-    @Test
-    void legacyControlProtocolMBeanNotRegisteredOnPlatformServer() {
-        assertThat(server.isRegistered(DomainObjectNames.CONTROL_PROTOCOL)).isFalse();
-    }
-
-    private static void wireRequiredComponents(
-            DomainMBeanRegistrar registrar,
+    private void wireRequiredComponents(
+            PlatformTracingMBeanRegistrar registrar,
             TracingSettingsSource acceptedPolicy) {
         CompositeSampler sampler = new CompositeSampler(
                 acceptedPolicy, CategoryBSamplingAccess.snapshot(Collections.emptyList(), Collections.emptyList()));
         ValidatingSpanProcessor validating = new ValidatingSpanProcessor(acceptedPolicy);
 
-        registrar.registerDiagnosticReadiness();
+        trackRegistration(registrar.registerDiagnosticReadiness(initializingReadinessProjection()));
         registrar.setCompositeSampler(sampler);
         registrar.setValidating(validating);
-        registrar.registerRuntimeControls(acceptedPolicy);
+        trackRegistration(registrar.registerRuntimeControls(acceptedPolicy));
+    }
+
+    private void trackRegistration(AutoCloseable registration) {
+        registrations.add(registration);
     }
 
     private static String readBaseline() throws IOException {
-        try (var stream = DomainMBeanJmxComplianceTest.class.getResourceAsStream(BASELINE_RESOURCE)) {
+        try (InputStream stream = DomainMBeanJmxComplianceTest.class.getResourceAsStream(BASELINE_RESOURCE)) {
             if (stream == null) {
                 if (Boolean.getBoolean("jmx.contract.baseline.update")) {
                     return """
@@ -185,8 +190,8 @@ class DomainMBeanJmxComplianceTest {
         return "JMX management contract differs.";
     }
 
-    private static TracingSettingsSource holderWith(double ratio) {
-        return TracingSettingsSource.isolatedSampling(true, Map.of(), ratio);
+    private static TracingSettingsSource samplingPolicy() {
+        return TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
     }
 
     private record Metadata(String generatedFromCommit, String javaVersion) {

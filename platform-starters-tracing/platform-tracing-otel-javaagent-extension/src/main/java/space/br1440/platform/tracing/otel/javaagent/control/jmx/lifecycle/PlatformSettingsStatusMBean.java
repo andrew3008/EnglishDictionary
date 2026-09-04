@@ -1,58 +1,96 @@
 package space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
+
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.AttributeNotFoundException;
 import javax.management.DynamicMBean;
-import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanException;
 import javax.management.MBeanInfo;
+import javax.management.MBeanNotificationInfo;
 import javax.management.ReflectionException;
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.CompositeDataSupport;
+import javax.management.openmbean.OpenDataException;
+import javax.management.openmbean.OpenMBeanAttributeInfo;
+import javax.management.openmbean.OpenMBeanAttributeInfoSupport;
+import javax.management.openmbean.OpenMBeanConstructorInfo;
+import javax.management.openmbean.OpenMBeanInfoSupport;
+import javax.management.openmbean.OpenMBeanOperationInfo;
+import javax.management.openmbean.TabularData;
+import javax.management.openmbean.TabularDataSupport;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdateSnapshot;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsStatusSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
-final class PlatformSettingsStatusMBean implements DynamicMBean {
+public final class PlatformSettingsStatusMBean implements DynamicMBean {
 
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(PlatformSettingsStatusMBean.class);
+
+    private static final String SNAPSHOT_ATTRIBUTE = JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT;
     private static final MBeanInfo INFO = buildMBeanInfo();
 
-    private final TracingSettingsStore store;
-    private final LastSettingsUpdate diagnostics;
+    private final TracingSettingsUpdater updater;
 
-    PlatformSettingsStatusMBean(TracingSettingsStore store, LastSettingsUpdate diagnostics) {
-        this.store = Objects.requireNonNull(store, "store");
-        this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
+    public PlatformSettingsStatusMBean(TracingSettingsUpdater updater) {
+        this.updater = Objects.requireNonNull(updater, "updater");
     }
 
     @Override
-    public Object getAttribute(String attribute) throws AttributeNotFoundException {
-        return attributeValue(attribute, store.current(), diagnostics.snapshot());
+    public Object getAttribute(String attribute) throws AttributeNotFoundException, MBeanException {
+        if (!SNAPSHOT_ATTRIBUTE.equals(attribute)) {
+            throw new AttributeNotFoundException("Unknown JMX settings status attribute");
+        }
+
+        try {
+            return snapshot();
+        } catch (RuntimeException failure) {
+            logCaptureFailure(failure);
+
+            throw neutralFailure(
+                    "JMX_SETTINGS_STATUS_CAPTURE_FAILED",
+                    "Settings status capture failed"
+            );
+        }
     }
 
     @Override
-    public void setAttribute(Attribute attribute) throws MBeanException {
-        throw new MBeanException(new UnsupportedOperationException("Control status is read-only"));
+    public void setAttribute(Attribute attribute) throws AttributeNotFoundException {
+        throw new AttributeNotFoundException("JMX settings status is read-only");
     }
 
     @Override
     public AttributeList getAttributes(String[] attributes) {
-        TracingSettingsRevision accepted = store.current();
-        LastSettingsUpdateSnapshot snapshot = diagnostics.snapshot();
-
         AttributeList result = new AttributeList();
-        for (String attribute : attributes) {
-            try {
-                result.add(new Attribute(attribute, attributeValue(attribute, accepted, snapshot)));
-            } catch (AttributeNotFoundException ignored) {
-            }
+        if (attributes == null) {
+            return result;
         }
 
+        CompositeData captured;
+        try {
+            captured = snapshot();
+        } catch (RuntimeException failure) {
+            logCaptureFailure(failure);
+            return result;
+        }
+
+        for (String attribute : attributes) {
+            if (SNAPSHOT_ATTRIBUTE.equals(attribute)) {
+                result.add(new Attribute(attribute, captured));
+            }
+        }
         return result;
     }
 
@@ -62,8 +100,13 @@ final class PlatformSettingsStatusMBean implements DynamicMBean {
     }
 
     @Override
-    public Object invoke(String actionName, Object[] params, String[] signature) throws ReflectionException {
-        throw new ReflectionException(new NoSuchMethodException(actionName));
+    public Object invoke(
+            String actionName,
+            Object[] params,
+            String[] signature
+    ) throws ReflectionException {
+        throw new ReflectionException(
+                new NoSuchMethodException("JMX settings status endpoint has no operations"));
     }
 
     @Override
@@ -71,62 +114,120 @@ final class PlatformSettingsStatusMBean implements DynamicMBean {
         return INFO;
     }
 
-    private Object attributeValue(String attribute, TracingSettingsRevision accepted, LastSettingsUpdateSnapshot snapshot) throws AttributeNotFoundException {
-        return switch (attribute) {
-            case "RuntimeInstanceId" -> accepted.runtimeInstanceId();
-            case "AcceptedSequence" -> accepted.acceptedSequence();
-            case "AcceptedPolicyDigest" -> TracingSettingsDigest.sha256(accepted.policy());
-            case "LastApplyOutcome" -> token(snapshot.latestOutcome());
-            case "LastAttemptId" -> lastAttemptId(snapshot);
-            case "LastFailureCode" -> failureCode(snapshot);
-            default -> throw new AttributeNotFoundException("Unknown Control attribute: " + attribute);
-        };
+    private CompositeData snapshot() {
+        SettingsStatusSnapshot status = updater.captureStatus();
+        return encode(status.accepted(), status.update());
+    }
+
+    private static CompositeData encode(
+            TracingSettingsRevision accepted,
+            LastSettingsUpdateSnapshot update
+    ) {
+        try {
+            Map<String, Object> fields = new LinkedHashMap<>();
+            fields.put(
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_SEQUENCE,
+                    accepted.acceptedSequence());
+            fields.put(
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_RUNTIME_INSTANCE_ID,
+                    accepted.runtimeInstanceId());
+            fields.put(
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_POLICY_DIGEST,
+                    TracingSettingsDigest.sha256(accepted.policy()));
+            fields.put(
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_APPLY_OUTCOME,
+                    token(update.latestOutcome()));
+            fields.put(
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_ATTEMPT_ID,
+                    lastAttemptId(update));
+            fields.put(
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_FAILURE_CODE,
+                    failureCode(update));
+            fields.put(
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ENABLED,
+                    accepted.samplingEnabled());
+            fields.put(
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO,
+                    accepted.samplingRatio());
+            fields.put(
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS,
+                    routeRatios(accepted));
+            fields.put(
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_ENABLED,
+                    accepted.validationEnabled());
+            fields.put(
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_STRICT,
+                    accepted.validationStrict());
+            fields.put(
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_EXPORTER_ENABLED,
+                    accepted.exporterEnabled());
+            fields.put(
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_TRACE_CONTROL_HEADERS_ENABLED,
+                    accepted.traceControlHeadersEnabled());
+            fields.put(
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_DIAGNOSTICS_LOG_LEVEL,
+                    accepted.diagnosticsLogLevel());
+            return new CompositeDataSupport(JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT, fields);
+        } catch (OpenDataException exception) {
+            throw new IllegalStateException("Cannot encode accepted-policy snapshot", exception);
+        }
+    }
+
+    private static TabularData routeRatios(TracingSettingsRevision accepted) throws OpenDataException {
+        TabularDataSupport table = new TabularDataSupport(JmxOpenTypes.ROUTE_RATIOS);
+        for (Map.Entry<String, Double> entry : accepted.samplingRouteRatios().entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .toList()) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put(JmxWireContract.FIELD_ROUTE_RATIO_ROUTE_PREFIX, entry.getKey());
+            row.put(JmxWireContract.FIELD_ROUTE_RATIO_RATIO, entry.getValue());
+            table.put(new CompositeDataSupport(JmxOpenTypes.ROUTE_RATIO, row));
+        }
+        return table;
     }
 
     private static String lastAttemptId(LastSettingsUpdateSnapshot snapshot) {
         SettingsUpdateAttempt attempt = snapshot.latestAttempt();
-        return (attempt == null) ? "" : attempt.attemptId();
+        return attempt == null ? "" : attempt.attemptId();
     }
 
     private static String failureCode(LastSettingsUpdateSnapshot snapshot) {
         SettingsUpdateStatus outcome = snapshot.latestOutcome();
-        return (outcome != null && !outcome.isSuccessful()) ? token(snapshot.latestMessageCode()) : "";
+        return outcome != null && !outcome.isSuccessful()
+                ? token(snapshot.latestMessageCode())
+                : "";
     }
 
     private static String token(Enum<?> value) {
-        return (value == null) ? "" : value.name();
+        return value == null ? "" : value.name();
     }
 
     private static MBeanInfo buildMBeanInfo() {
-        return new MBeanInfo(
-                PlatformSettingsStatusMBean.class.getName(),
-                "Accepted runtime settings diagnostics",
-                buildAttributeMetaData(),
-                new javax.management.MBeanConstructorInfo[0],
-                new javax.management.MBeanOperationInfo[0],
-                new javax.management.MBeanNotificationInfo[0]
-        );
-    }
-
-    private static MBeanAttributeInfo[] buildAttributeMetaData() {
-        return new MBeanAttributeInfo[]{
-                attribute("RuntimeInstanceId", String.class, "Unique identifier for the current runtime instance"),
-                attribute("AcceptedSequence", Long.TYPE, "The sequence number of the currently accepted policy"),
-                attribute("AcceptedPolicyDigest", String.class, "SHA-256 digest of the currently accepted policy"),
-                attribute("LastApplyOutcome", String.class, "Status outcome of the most recent apply attempt"),
-                attribute("LastAttemptId", String.class, "The identifier of the last update attempt"),
-                attribute("LastFailureCode", String.class, "Failure code of the last attempt, if applicable")
-        };
-    }
-
-    private static MBeanAttributeInfo attribute(String name, Class<?> type, String description) {
-        return new MBeanAttributeInfo(
-                name,
-                type.getName(),
-                description,
+        OpenMBeanAttributeInfo snapshot = new OpenMBeanAttributeInfoSupport(
+                SNAPSHOT_ATTRIBUTE,
+                "Immutable accepted-policy and last-apply snapshot",
+                JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT,
                 true,
                 false,
-                false
-        );
+                false);
+        return new OpenMBeanInfoSupport(
+                PlatformSettingsStatusMBean.class.getName(),
+                "Accepted runtime settings status",
+                new OpenMBeanAttributeInfo[]{snapshot},
+                new OpenMBeanConstructorInfo[0],
+                new OpenMBeanOperationInfo[0],
+                new MBeanNotificationInfo[0]);
+    }
+
+    private static void logCaptureFailure(RuntimeException failure) {
+        log.warn(
+                AgentEventCodes.CTRL_PLANE,
+                "JMX settings status capture failed",
+                failure);
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    private static MBeanException neutralFailure(String code, String message) {
+        return new MBeanException(null, code + ": " + message);
     }
 }

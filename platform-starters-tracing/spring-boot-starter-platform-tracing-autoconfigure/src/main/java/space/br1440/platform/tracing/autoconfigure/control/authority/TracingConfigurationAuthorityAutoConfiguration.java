@@ -16,13 +16,13 @@ import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSet
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsRegistrar;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsResolver;
 import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerTracingSettingsAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateJmxControlAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsControlAutoConfiguration;
 
 @AutoConfiguration
 @AutoConfigureBefore({
         TracingRuntimeAutoConfiguration.class,
-        PrivateJmxControlAutoConfiguration.class,
+        PlatformJmxControlAutoConfiguration.class,
         TracingSettingsControlAutoConfiguration.class,
         ConfigServerTracingSettingsAutoConfiguration.class
 })

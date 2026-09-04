@@ -93,7 +93,7 @@
 errorHandlingModel = "1.1.0"
 
 # Версия внешнего артефакта space.br1440.platform:platform-bom (общий BOM; Spring Boot + часть общих constraints)
-platformBom = "1.0.0"
+platformBom = "1.3.0"
 
 # ---------------------------------------------------------------------------
 # BOM-версии: сторонние зависимости, публикуемые в constraints платформенного BOM.
@@ -126,8 +126,7 @@ jedis                    = "7.0.0"
 
 [libraries]
 archunit-junit5             = { module = "com.tngtech.archunit:archunit-junit5",      version.ref = "archunit" }
-assertj-core                = { module = "org.assertj:assertj-core",                  version.ref = "assertj" }
-jsonschema-validator        = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
+jsonschema-validator        = { module = "com.networknt:json-schema-validator",       version.ref = "json-schema-validator" }
 testcontainers-core         = { module = "org.testcontainers:testcontainers",         version.ref = "testcontainers" }
 testcontainers-junit        = { module = "org.testcontainers:junit-jupiter",          version.ref = "testcontainers" }
 testcontainers-postgresql   = { module = "org.testcontainers:postgresql",             version.ref = "testcontainers" }

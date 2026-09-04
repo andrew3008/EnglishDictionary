@@ -7,9 +7,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
+import space.br1440.platform.tracing.autoconfigure.support.DomainSnapshotEndpoints;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
-import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.SamplingControl;
+import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.SamplingObservationSource;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
 import javax.management.MBeanServer;
@@ -53,45 +54,47 @@ class PlatformTracingJmxDomainHealthMetricsBinderTest {
 
     @Test
     void domain_gauges_report_honest_zero_when_MBean_unregistered() {
-        assertThat(gauge(REGISTERED_METRIC, "sampling")).isEqualTo(0.0);
-        assertThat(gauge(READABLE_METRIC, "sampling")).isEqualTo(0.0);
-        assertThat(gauge(FRESHNESS_METRIC, "sampling")).isNaN();
+        assertThat(gauge(REGISTERED_METRIC)).isEqualTo(0.0);
+        assertThat(gauge(READABLE_METRIC)).isEqualTo(0.0);
+        assertThat(gauge(FRESHNESS_METRIC)).isNaN();
     }
 
     @Test
     void owner_present_NaN_until_domain_read_succeeds() {
-        assertThat(ownerGauge("sampling", "sampler")).isNaN();
+        assertThat(ownerGauge()).isNaN();
     }
 
     @Test
     void domain_gauges_become_1_after_registration_and_successful_read() throws Exception {
         registerSamplingMBean();
 
-        assertThat(gauge(REGISTERED_METRIC, "sampling")).isEqualTo(1.0);
-        assertThat(gauge(READABLE_METRIC, "sampling")).isEqualTo(1.0);
-        assertThat(gauge(FRESHNESS_METRIC, "sampling")).isGreaterThanOrEqualTo(0.0);
+        assertThat(gauge(REGISTERED_METRIC)).isEqualTo(1.0);
+        assertThat(gauge(READABLE_METRIC)).isEqualTo(1.0);
+        assertThat(gauge(FRESHNESS_METRIC)).isGreaterThanOrEqualTo(0.0);
     }
 
     @Test
     void owner_present_0_when_domain_readable_but_owner_absent() throws Exception {
         registerSamplingMBean();
 
-        assertThat(ownerGauge("sampling", "sampler")).isEqualTo(0.0);
+        assertThat(ownerGauge()).isEqualTo(0.0);
     }
 
-    private double gauge(String name, String domain) {
-        return registry.get(name).tag("domain", domain).gauge().value();
+    private double gauge(String name) {
+        return registry.get(name).tag("domain", "sampling").gauge().value();
     }
 
-    private double ownerGauge(String domain, String owner) {
-        return registry.get(OWNER_PRESENT_METRIC).tags("domain", domain, "owner", owner).gauge().value();
+    private double ownerGauge() {
+        return registry.get(OWNER_PRESENT_METRIC).tags("domain", "sampling", "owner", "sampler").gauge().value();
     }
 
     private void registerSamplingMBean() throws Exception {
         TracingSettingsSource acceptedPolicy = TracingSettingsSource.isolatedSampling(
                 true, Collections.emptyMap(), 0.42d);
         OwnerRegistrationSlot<CompositeSampler> slot = new OwnerRegistrationSlot<>();
-        SamplingControl impl = new SamplingControl(acceptedPolicy, slot, UUID.randomUUID());
-        server.registerMBean(impl, DomainObjectNames.SAMPLING);
+        SamplingObservationSource impl = new SamplingObservationSource(acceptedPolicy, slot, UUID.randomUUID());
+        server.registerMBean(
+                DomainSnapshotEndpoints.sampling(impl::getSamplingObservation),
+                DomainObjectNames.SAMPLING);
     }
 }

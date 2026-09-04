@@ -19,23 +19,22 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
+
 class ControlledAgentRuntimeTest {
 
     private static final Duration WAIT_TIMEOUT = Duration.ofSeconds(45);
     private static final Duration KILL_TIMEOUT = Duration.ofSeconds(10);
 
-    private static final String EXPECTED_PROBE_PROFILE = "platform-agent-secure-v1";
     private static final String EXPECTED_PROBE_CAPABILITIES = "7";
     private static final String PROBE_OK_PREFIX = "CONTROLLED_AGENT_PROBE_OK";
-    private static final String BOOT_EVIDENCE_EVENT_CODE = "\"event_code\":\"PTA-BOOT-010\"";
     private static final String ANY_PTA_EVENT_CODE = "\"event_code\":\"PTA-";
-    private static final String PIN_FORMAT_VERSION_ONE = "\"pin_format_version\":\"1\"";
 
     @TempDir
     Path temporaryDirectory;
 
     @Test
-    void controlled_agent_starts_with_exact_attestation_and_ready_extension() throws IOException, InterruptedException, URISyntaxException {
+    void controlled_agent_starts_with_attested_identity_and_ready_extension() throws IOException, InterruptedException, URISyntaxException {
         // given
         AgentTestFixture fixture = AgentTestFixture.load();
 
@@ -46,7 +45,6 @@ class ControlledAgentRuntimeTest {
         assertProcessCompletedSuccessfully(result);
         assertProbeReportedExpectedIdentity(result, fixture.distributionVersion());
         assertNoBootstrapAttestationLeakedToStdout(result);
-        assertExactlyOneBootAttestationEvidenceEmitted(result, fixture.expectedOtelJavaAgentSha());
         assertStderrIsFreeOfLoggingAndExtensionFailures(result);
     }
 
@@ -86,7 +84,7 @@ class ControlledAgentRuntimeTest {
     private void assertProbeReportedExpectedIdentity(ChildProcessResult result, String distributionVersion) {
         String expectedLine = PROBE_OK_PREFIX
                 + " version=" + distributionVersion
-                + " profile=" + EXPECTED_PROBE_PROFILE
+                + " schema=" + JmxWireContract.SCHEMA_ID
                 + " capabilities=" + EXPECTED_PROBE_CAPABILITIES;
 
         assertThat(result.stdout()
@@ -97,19 +95,6 @@ class ControlledAgentRuntimeTest {
 
     private void assertNoBootstrapAttestationLeakedToStdout(ChildProcessResult result) {
         assertThat(result.stdout()).doesNotContain(ANY_PTA_EVENT_CODE);
-    }
-
-    private void assertExactlyOneBootAttestationEvidenceEmitted(ChildProcessResult result,
-                                                                String expectedOtelJavaAgentSha) {
-        List<String> evidenceMarkers = result.stderr()
-                .lines()
-                .filter(line -> line.contains(BOOT_EVIDENCE_EVENT_CODE))
-                .toList();
-
-        assertThat(evidenceMarkers).hasSize(1);
-        assertThat(evidenceMarkers.getFirst())
-                .contains("\"otel_javaagent_sha256\":\"" + expectedOtelJavaAgentSha + "\"")
-                .contains(PIN_FORMAT_VERSION_ONE);
     }
 
     private void assertStderrIsFreeOfLoggingAndExtensionFailures(ChildProcessResult result) {
@@ -139,6 +124,7 @@ class ControlledAgentRuntimeTest {
                                              AgentTestFixture fixture) {
         List<String> command = new ArrayList<>();
         command.add(javaExecutable.toString());
+        command.add("-XX:+DisableAttachMechanism");
         command.add("-Dfile.encoding=UTF-8");
         command.add("-Dsun.stdout.encoding=UTF-8");
         command.add("-Dsun.stderr.encoding=UTF-8");
@@ -146,12 +132,16 @@ class ControlledAgentRuntimeTest {
         command.add("-Dotel.metrics.exporter=none");
         command.add("-Dotel.logs.exporter=none");
         command.add("-Dplatform.environment=dev");
-        command.add("-Dplatform.tracing.spi-attestation.mode=EXACT_EVIDENCE");
         command.add("-Dplatform.tracing.service.name=controlled-agent-runtime-test");
         command.add("-Dplatform.tracing.service.version=1.0.0");
         command.add("-Dplatform.tracing.service.environment=test");
-        command.add("-Dplatform.tracing.service.c-group=controlled-agent-tests");
         command.add("-Dplatform.tracing.resource.validation-mode=STRICT");
+        // Декларация remote JMX проверяется по неизменяемым JVM-аргументам, поэтому все три
+        // свойства обязаны присутствовать: иначе декларация становится UNKNOWN и READY не наступит.
+        command.add("-Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED");
+        command.add("-Dplatform.tracing.jmx.remote.listener-confirmed=false");
+        command.add("-Dplatform.tracing.jmx.remote.authorization-forwarder-installed=false");
+        command.add("-Dplatform.tracing.controlled-agent.expected-sha256=" + fixture.expectedControlledAgentSha());
         command.add("-javaagent:" + fixture.controlledAgent());
         command.add("-cp");
         command.add(probeClassPath.toString());
@@ -217,7 +207,8 @@ class ControlledAgentRuntimeTest {
                                     Path extension,
                                     String distributionVersion,
                                     String expectedOtelJavaAgentSha,
-                                    String expectedExtensionSha) {
+                                    String expectedExtensionSha,
+                                    String expectedControlledAgentSha) {
 
         static AgentTestFixture load() throws IOException {
             Path controlledAgent = requiredPath("platformTracing.controlledAgentJar");
@@ -225,9 +216,10 @@ class ControlledAgentRuntimeTest {
             String distributionVersion = requiredProperty("platformTracing.distributionVersion");
             String expectedOtelJavaAgentSha = sha256Hex(Files.readAllBytes(requiredPath("platformTracing.otelJavaAgentJar")));
             String expectedExtensionSha = sha256Hex(Files.readAllBytes(extension));
+            String expectedControlledAgentSha = sha256Hex(Files.readAllBytes(controlledAgent));
             return new AgentTestFixture(
                     controlledAgent, extension, distributionVersion,
-                    expectedOtelJavaAgentSha, expectedExtensionSha
+                    expectedOtelJavaAgentSha, expectedExtensionSha, expectedControlledAgentSha
             );
         }
     }

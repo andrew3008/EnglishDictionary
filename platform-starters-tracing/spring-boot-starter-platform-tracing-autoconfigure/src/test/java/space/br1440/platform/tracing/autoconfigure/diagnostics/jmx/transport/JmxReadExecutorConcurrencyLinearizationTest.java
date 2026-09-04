@@ -1,20 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import javax.management.Attribute;
-import javax.management.AttributeList;
-import javax.management.AttributeNotFoundException;
-import javax.management.DynamicMBean;
-import javax.management.InvalidAttributeValueException;
-import javax.management.MBeanAttributeInfo;
-import javax.management.MBeanException;
-import javax.management.MBeanInfo;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-import javax.management.ReflectionException;
-import javax.management.RuntimeMBeanException;
 import java.lang.management.ManagementFactory;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
@@ -24,15 +11,25 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
+import javax.management.Attribute;
+import javax.management.AttributeList;
+import javax.management.DynamicMBean;
+import javax.management.InvalidAttributeValueException;
+import javax.management.MBeanInfo;
+import javax.management.MBeanNotificationInfo;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+import javax.management.RuntimeMBeanException;
+import javax.management.openmbean.OpenMBeanAttributeInfo;
+import javax.management.openmbean.OpenMBeanAttributeInfoSupport;
+import javax.management.openmbean.OpenMBeanConstructorInfo;
+import javax.management.openmbean.OpenMBeanInfoSupport;
+import javax.management.openmbean.OpenMBeanOperationInfo;
+import javax.management.openmbean.SimpleType;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
-/**
- * Линеаризация конкурентных attempts: per-domain transport-лок, decode вне лока,
- * независимость доменов и детерминированное упорядочение Present ↔ ExecutionFailure
- * единой шкалой observationSequence (наблюдаемой через registry outcome).
- */
 class JmxReadExecutorConcurrencyLinearizationTest {
 
     private static final ObjectName EXPORT_NAME = objectName("export");
@@ -63,27 +60,28 @@ class JmxReadExecutorConcurrencyLinearizationTest {
         registerFakeMBean(SAMPLING_NAME, name -> 2L);
 
         JmxReadExecutor executor = new JmxReadExecutor(server);
-        JmxAttribute<Long> exportAttr = longAttribute("Value", JmxContractPoint.EXPORT_OBSERVATION);
-        JmxAttribute<Long> samplingAttr = longAttribute("Value", JmxContractPoint.SAMPLING_OBSERVATION);
+        JmxAttribute<Long> exportAttr = longAttribute(JmxContractPoint.EXPORT_OBSERVATION);
+        JmxAttribute<Long> samplingAttr = longAttribute(JmxContractPoint.SAMPLING_OBSERVATION);
 
-        ExecutorService pool = Executors.newFixedThreadPool(2);
-        try {
-            Future<Optional<Long>> exportFuture = pool.submit(() -> executor.read(EXPORT_NAME, exportAttr));
-            assertThat(exportEntered.await(5, TimeUnit.SECONDS)).isTrue();
+        try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
+            try {
+                Future<Optional<Long>> exportFuture = pool.submit(() -> executor.read(EXPORT_NAME, exportAttr));
+                assertThat(exportEntered.await(5, TimeUnit.SECONDS)).isTrue();
 
-            Future<Optional<Long>> samplingFuture = pool.submit(() -> {
-                Optional<Long> result = executor.read(SAMPLING_NAME, samplingAttr);
-                samplingCompletedWhileExportHeld.set(true);
-                return result;
-            });
+                Future<Optional<Long>> samplingFuture = pool.submit(() -> {
+                    Optional<Long> result = executor.read(SAMPLING_NAME, samplingAttr);
+                    samplingCompletedWhileExportHeld.set(true);
+                    return result;
+                });
 
-            assertThat(samplingFuture.get(5, TimeUnit.SECONDS)).contains(2L);
-            assertThat(samplingCompletedWhileExportHeld).isTrue();
-            releaseExport.countDown();
-            assertThat(exportFuture.get(5, TimeUnit.SECONDS)).contains(1L);
-        } finally {
-            releaseExport.countDown();
-            pool.shutdownNow();
+                assertThat(samplingFuture.get(5, TimeUnit.SECONDS)).contains(2L);
+                assertThat(samplingCompletedWhileExportHeld).isTrue();
+                releaseExport.countDown();
+                assertThat(exportFuture.get(5, TimeUnit.SECONDS)).contains(1L);
+            } finally {
+                releaseExport.countDown();
+                pool.shutdownNow();
+            }
         }
     }
 
@@ -97,31 +95,36 @@ class JmxReadExecutorConcurrencyLinearizationTest {
         registerFakeMBean(SAMPLING_NAME, name -> 20L);
 
         JmxReadExecutor executor = new JmxReadExecutor(server);
-        JmxAttribute<Long> slowDecode = new JmxAttribute<>("Value", JmxContractPoint.EXPORT_OBSERVATION, raw -> {
-            decodeEntered.countDown();
-            await(releaseDecode);
-            return (Long) raw;
-        });
-        JmxAttribute<Long> fastOther = longAttribute("Value", JmxContractPoint.SAMPLING_OBSERVATION);
+        JmxAttribute<Long> slowDecode = new JmxAttribute<>(
+                "Value",
+                JmxContractPoint.EXPORT_OBSERVATION,
+                SimpleType.LONG,
+                raw -> {
+                    decodeEntered.countDown();
+                    await(releaseDecode);
+                    return (Long) raw;
+                });
+        JmxAttribute<Long> fastOther = longAttribute(JmxContractPoint.SAMPLING_OBSERVATION);
 
-        ExecutorService pool = Executors.newFixedThreadPool(2);
-        try {
-            Future<Optional<Long>> slow = pool.submit(() -> executor.read(EXPORT_NAME, slowDecode));
-            assertThat(decodeEntered.await(5, TimeUnit.SECONDS)).isTrue();
+        try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
+            try {
+                Future<Optional<Long>> slow = pool.submit(() -> executor.read(EXPORT_NAME, slowDecode));
+                assertThat(decodeEntered.await(5, TimeUnit.SECONDS)).isTrue();
 
-            Future<Optional<Long>> other = pool.submit(() -> {
-                Optional<Long> result = executor.read(SAMPLING_NAME, fastOther);
-                otherDomainFinishedDuringDecode.set(true);
-                return result;
-            });
+                Future<Optional<Long>> other = pool.submit(() -> {
+                    Optional<Long> result = executor.read(SAMPLING_NAME, fastOther);
+                    otherDomainFinishedDuringDecode.set(true);
+                    return result;
+                });
 
-            assertThat(other.get(5, TimeUnit.SECONDS)).contains(20L);
-            assertThat(otherDomainFinishedDuringDecode).isTrue();
-            releaseDecode.countDown();
-            assertThat(slow.get(5, TimeUnit.SECONDS)).contains(10L);
-        } finally {
-            releaseDecode.countDown();
-            pool.shutdownNow();
+                assertThat(other.get(5, TimeUnit.SECONDS)).contains(20L);
+                assertThat(otherDomainFinishedDuringDecode).isTrue();
+                releaseDecode.countDown();
+                assertThat(slow.get(5, TimeUnit.SECONDS)).contains(10L);
+            } finally {
+                releaseDecode.countDown();
+                pool.shutdownNow();
+            }
         }
     }
 
@@ -130,26 +133,19 @@ class JmxReadExecutorConcurrencyLinearizationTest {
         CountDownLatch bothReady = new CountDownLatch(2);
         CountDownLatch go = new CountDownLatch(1);
         AtomicInteger transportInvocations = new AtomicInteger();
-        AtomicReference<String> firstMode = new AtomicReference<>();
 
         registerFakeMBean(EXPORT_NAME, name -> {
             int invocation = transportInvocations.incrementAndGet();
             if (invocation == 1) {
-                firstMode.set("success");
                 return 42L;
             }
-            firstMode.set("failure-second");
             throw new RuntimeMBeanException(new IllegalStateException("boom"));
         });
 
-        // Второй MBean на том же домене невозможен с одним ObjectName — чередуем режимы
-        // через счётчик: два конкурентных чтения одного атрибута сериализуются локом,
-        // поэтому исходы строго упорядочены; registry отражает последнее применение.
         JmxReadExecutor executor = new JmxReadExecutor(server);
-        JmxAttribute<Long> attribute = longAttribute("Value", JmxContractPoint.EXPORT_OBSERVATION);
+        JmxAttribute<Long> attribute = longAttribute(JmxContractPoint.EXPORT_OBSERVATION);
 
-        ExecutorService pool = Executors.newFixedThreadPool(2);
-        try {
+        try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
             Future<Optional<Long>> a = pool.submit(() -> {
                 bothReady.countDown();
                 await(go);
@@ -165,34 +161,25 @@ class JmxReadExecutorConcurrencyLinearizationTest {
 
             Optional<Long> first = a.get(5, TimeUnit.SECONDS);
             Optional<Long> second = b.get(5, TimeUnit.SECONDS);
-            // Ровно один успех и один отказ — порядок transport-вызовов линеаризован локом.
             assertThat(first.isPresent() ^ second.isPresent()).isTrue();
             assertThat(transportInvocations.get()).isEqualTo(2);
 
-            boolean lastWasSuccess = first.isPresent() && second.isEmpty()
-                    ? firstMode.get().equals("success") && second.isEmpty()
-                    : second.isPresent();
-            // После двух линеаризованных attempts freshness/diagnostics доступны без исключения.
-            if (lastWasSuccess || first.isPresent() || second.isPresent()) {
-                assertThat(executor.lastSuccessAge(JmxContractPoint.EXPORT_OBSERVATION)).isPresent();
-            }
+            assertThat(executor.lastSuccessAge(JmxContractPoint.EXPORT_OBSERVATION)).isPresent();
             assertThat(executor.diagnosticSnapshot()).isNotEmpty();
-        } finally {
-            pool.shutdownNow();
         }
     }
 
-    private static JmxAttribute<Long> longAttribute(String name, JmxContractPoint point) {
-        return new JmxAttribute<>(name, point, raw -> {
+    private static JmxAttribute<Long> longAttribute(JmxContractPoint point) {
+        return new JmxAttribute<>("Value", point, SimpleType.LONG, raw -> {
             if (raw instanceof Long value) {
                 return value;
             }
+
             throw new JmxContractViolationException(JmxDiagnosticKind.VALUE_TYPE_MISMATCH);
         });
     }
 
-    private void registerFakeMBean(ObjectName objectName, java.util.function.Function<String, Object> supplier)
-            throws Exception {
+    private void registerFakeMBean(ObjectName objectName, java.util.function.Function<String, Object> supplier) throws Exception {
         server.registerMBean(new FakeDynamicMBean(supplier), objectName);
     }
 
@@ -210,7 +197,8 @@ class JmxReadExecutorConcurrencyLinearizationTest {
     private static ObjectName objectName(String suffix) {
         try {
             return ObjectName.getInstance(
-                    "space.br1440.platform.tracing.test:type=JmxReadExecutorConcurrencyLinearizationTest,name=" + suffix);
+                    "space.br1440.platform.tracing.test:type=JmxReadExecutorConcurrencyLinearizationTest,name=" + suffix
+            );
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
@@ -225,7 +213,7 @@ class JmxReadExecutorConcurrencyLinearizationTest {
         }
 
         @Override
-        public Object getAttribute(String attribute) throws AttributeNotFoundException, MBeanException, ReflectionException {
+        public Object getAttribute(String attribute) {
             return attributeSupplier.apply(attribute);
         }
 
@@ -251,9 +239,23 @@ class JmxReadExecutorConcurrencyLinearizationTest {
 
         @Override
         public MBeanInfo getMBeanInfo() {
-            return new MBeanInfo(getClass().getName(), "fake", new MBeanAttributeInfo[]{
-                    new MBeanAttributeInfo("Value", "long", "value", true, false, false)
-            }, null, null, null);
+            OpenMBeanAttributeInfo attribute = new OpenMBeanAttributeInfoSupport(
+                    "Value",
+                    "value",
+                    SimpleType.LONG,
+                    true,
+                    false,
+                    false
+            );
+
+            return new OpenMBeanInfoSupport(
+                    getClass().getName(),
+                    "fake",
+                    new OpenMBeanAttributeInfo[]{attribute},
+                    new OpenMBeanConstructorInfo[0],
+                    new OpenMBeanOperationInfo[0],
+                    new MBeanNotificationInfo[0]
+            );
         }
     }
 }

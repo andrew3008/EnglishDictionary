@@ -2,87 +2,53 @@ package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-
-import javax.management.openmbean.OpenType;
-
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
-/**
- * Verifies that {@link PlatformTracingJmxObjectNames} (autoconfigure / App CL side) and
- * {@link DomainObjectNames} (otel-extension / Agent CL side) declare identical
- * ObjectName strings for every name duplicated on the Spring side.
- * <p>
- * This test catches drift between the two constant sets that would break JMX routing
- * at runtime (they cannot share a class due to classloader isolation but must be identical).
- */
-class ObjectNameConstantsConsistencyTest {
+final class ObjectNameConstantsConsistencyTest {
 
     @Test
-    void springDuplicatesExactlyMatchCanonicalAgentNames() throws Exception {
-        Map<String, String> canonical = stringConstants(DomainObjectNames.class);
-        Map<String, String> duplicated = stringConstants(PlatformTracingJmxObjectNames.class);
-        Set<String> missing = new java.util.TreeSet<>(canonical.keySet());
-        missing.removeAll(duplicated.keySet());
-        Set<String> extra = new java.util.TreeSet<>(duplicated.keySet());
-        extra.removeAll(canonical.keySet());
-        Map<String, String> expectedDuplicated = new LinkedHashMap<>(canonical);
-        missing.forEach(expectedDuplicated::remove);
+    void generatedSchemasHaveIdenticalIdentity() {
+        assertThat(JmxWireContract.SCHEMA_ID)
+                .isEqualTo(space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated
+                        .JmxWireContract.SCHEMA_ID);
 
-        assertThat(duplicated)
-                .as("Spring ObjectName duplicates; missing and extra keys are shown in the map diff")
-                .isEqualTo(expectedDuplicated);
-        assertThat(missing)
-                .as("Намеренно не продублированные Agent ObjectName")
-                .containsExactly("CONTROL_PROTOCOL_OBJECT_NAME_STR");
-        assertThat(extra)
-                .as("Spring не должен объявлять неизвестные Agent стороне ObjectName")
-                .isEmpty();
+        assertThat(JmxWireContract.SCHEMA_DIGEST_SHA256)
+                .isEqualTo(space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated
+                        .JmxWireContract.SCHEMA_DIGEST_SHA256);
+
+        assertThat(JmxWireContract.DESCRIPTOR_DIGEST_SHA256)
+                .isEqualTo(space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated
+                        .JmxWireContract.DESCRIPTOR_DIGEST_SHA256);
     }
 
     @Test
-    void springOpenTypesExactlyMatchCanonicalAgentSchema() throws Exception {
-        Class<?> agentTypes = Class.forName(
-                "space.br1440.platform.tracing.otel.javaagent.control.jmx.protocol.PrivateControlWireTypes");
-        Class<?> springTypes = Class.forName(
-                "space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlWireTypes");
+    void springOpenTypesExactlyMatchCanonicalAgentSchema() {
+        assertThat(JmxOpenTypes.ROUTE_RATIO)
+                .isEqualTo(space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated
+                        .JmxOpenTypes.ROUTE_RATIO);
 
-        assertThat(openType(springTypes, "ROUTE_ROW"))
-                .isEqualTo(openType(agentTypes, "ROUTE_ROW"));
-        assertThat(openType(springTypes, "ROUTES"))
-                .isEqualTo(openType(agentTypes, "ROUTES"));
-        assertThat(openType(springTypes, "POLICY"))
-                .isEqualTo(openType(agentTypes, "POLICY"));
-        assertThat(openType(springTypes, "REQUEST"))
-                .isEqualTo(openType(agentTypes, "REQUEST"));
-        assertThat(openType(springTypes, "RESPONSE"))
-                .isEqualTo(openType(agentTypes, "RESPONSE"));
-        assertThat(openType(springTypes, "COMPLETE_RESPONSE"))
-                .isEqualTo(openType(agentTypes, "ACCEPTED_COMPLETE"));
+        assertThat(JmxOpenTypes.ROUTE_RATIOS)
+                .isEqualTo(space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated
+                        .JmxOpenTypes.ROUTE_RATIOS);
+
+        assertThat(JmxOpenTypes.RUNTIME_POLICY)
+                .isEqualTo(space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated
+                        .JmxOpenTypes.RUNTIME_POLICY);
+
+        assertThat(JmxOpenTypes.APPLY_SNAPSHOT_REQUEST)
+                .isEqualTo(space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated
+                        .JmxOpenTypes.APPLY_SNAPSHOT_REQUEST);
+
+        assertThat(JmxOpenTypes.APPLY_SNAPSHOT_RESPONSE)
+                .isEqualTo(space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated
+                        .JmxOpenTypes.APPLY_SNAPSHOT_RESPONSE);
+
+        assertThat(JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT)
+                .isEqualTo(space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated
+                        .JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT);
     }
 
-    private static OpenType<?> openType(Class<?> owner, String fieldName) throws Exception {
-        Field field = owner.getDeclaredField(fieldName);
-        field.setAccessible(true);
-        return (OpenType<?>) field.get(null);
-    }
-
-    private static Map<String, String> stringConstants(Class<?> type) throws IllegalAccessException {
-        Map<String, String> constants = new TreeMap<>();
-        for (Field field : type.getFields()) {
-            if (Modifier.isStatic(field.getModifiers())
-                    && field.getType() == String.class
-                    && field.getName().endsWith("_OBJECT_NAME_STR")) {
-                constants.put(field.getName(), (String) field.get(null));
-            }
-        }
-        return constants;
-    }
 }

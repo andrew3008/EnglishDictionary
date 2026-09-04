@@ -1,17 +1,32 @@
 package space.br1440.platform.leaderelection.processor;
 
-import lombok.extern.slf4j.Slf4j;
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+
 import org.apache.commons.lang3.ClassUtils;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.config.BeanPostProcessor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.env.Environment;
-import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
+
 import space.br1440.platform.leaderelection.annotation.leadership.LeaderAware;
 import space.br1440.platform.leaderelection.configuration.LeaderElectionProperties;
 import space.br1440.platform.leaderelection.event.OnLeaderGrantedEvent;
@@ -26,21 +41,9 @@ import space.br1440.platform.leaderelection.util.LeadershipNameResolver;
 import space.br1440.platform.leaderelection.util.ThreadFactoryBuilder;
 import space.br1440.platform.leaderelection.util.ThreadUtils;
 
-import java.lang.reflect.AccessibleObject;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-@Component
-@ConditionalOnBean(LeaderElectionProperties.class)
 public class LeaderAwareProcessor implements BeanPostProcessor, ApplicationListener<ApplicationEvent>, DisposableBean {
 
     private static final int SCHEDULER_POOL_SIZE = 4;

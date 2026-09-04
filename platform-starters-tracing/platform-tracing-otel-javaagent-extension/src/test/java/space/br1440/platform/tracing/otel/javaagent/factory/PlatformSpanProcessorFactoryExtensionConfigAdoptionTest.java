@@ -18,7 +18,7 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfi
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
@@ -74,7 +74,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) { return null; }
             @Override public Boolean getBoolean(String name) {
-                return "platform.tracing.metrics.enabled".equals(name) ? true : false;
+                return "platform.tracing.metrics.enabled".equals(name);
             }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }
@@ -89,7 +89,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) { return null; }
             @Override public Boolean getBoolean(String name) {
-                return "platform.tracing.watchdog.enabled".equals(name) ? true : false;
+                return "platform.tracing.watchdog.enabled".equals(name);
             }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }
@@ -104,7 +104,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) { return null; }
             @Override public Boolean getBoolean(String name) {
-                return "platform.tracing.validation.enabled".equals(name) ? true : false;
+                return "platform.tracing.validation.enabled".equals(name);
             }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }
@@ -129,10 +129,14 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T> T registrarSlotOwner(DomainMBeanRegistrar reg, String slotAccessorName) throws Exception {
-        Field slotsField = DomainMBeanRegistrar.class.getDeclaredField("slots");
+    private static <T> T registrarSlotOwner(PlatformTracingMBeanRegistrar reg, String slotAccessorName) throws Exception {
+        Field runtimePlaneField = PlatformTracingMBeanRegistrar.class.getDeclaredField("runtimePlane");
+        runtimePlaneField.setAccessible(true);
+        Object runtimePlane = runtimePlaneField.get(reg);
+
+        Field slotsField = runtimePlane.getClass().getDeclaredField("slots");
         slotsField.setAccessible(true);
-        Object slots = slotsField.get(reg);
+        Object slots = slotsField.get(runtimePlane);
 
         Method slotAccessor = slots.getClass().getDeclaredMethod(slotAccessorName);
         slotAccessor.setAccessible(true);
@@ -142,19 +146,19 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         return state instanceof OwnerRegistrationState.Present<T> present ? present.owner() : null;
     }
 
-    private static SpanLimitsMetricsProcessor getMetrics(DomainMBeanRegistrar r) throws Exception {
+    private static SpanLimitsMetricsProcessor getMetrics(PlatformTracingMBeanRegistrar r) throws Exception {
         return registrarSlotOwner(r, "metrics");
     }
 
-    private static SpanWatchdogProcessor getWatchdog(DomainMBeanRegistrar r) throws Exception {
+    private static SpanWatchdogProcessor getWatchdog(PlatformTracingMBeanRegistrar r) throws Exception {
         return registrarSlotOwner(r, "watchdog");
     }
 
-    private static ValidatingSpanProcessor getValidating(DomainMBeanRegistrar r) throws Exception {
+    private static ValidatingSpanProcessor getValidating(PlatformTracingMBeanRegistrar r) throws Exception {
         return registrarSlotOwner(r, "validating");
     }
 
-    private static PlatformCompositeSpanProcessor getComposite(DomainMBeanRegistrar r) throws Exception {
+    private static PlatformCompositeSpanProcessor getComposite(PlatformTracingMBeanRegistrar r) throws Exception {
         return registrarSlotOwner(r, "composite");
     }
 
@@ -163,7 +167,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         delegatesField.setAccessible(true);
         List<?> delegates = (List<?>) delegatesField.get(composite);
 
-        Object namedDelegate = delegates.get(0);
+        Object namedDelegate = delegates.getFirst();
         Method delegateAccessor = namedDelegate.getClass().getDeclaredMethod("delegate");
         delegateAccessor.setAccessible(true);
         return delegateAccessor.invoke(namedDelegate);
@@ -175,7 +179,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void composite_contains_only_passive_validation_carrier() throws Exception {
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -193,7 +197,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void validation_owner_is_the_processor_installed_in_composite() throws Exception {
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -211,7 +215,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void no_metrics_set_when_all_disabled() throws Exception {
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -227,7 +231,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void no_watchdog_set_when_all_disabled() throws Exception {
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -245,7 +249,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
     @Test
     void factory_preserves_required_on_ending_order() throws Exception {
         // given
-        DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
         ConfigProperties properties = allEnabledConfig();
         ExtensionConfig extensionConfig = new ExtensionConfig(properties);
         PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
@@ -291,7 +295,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
     @Test
     void factory_backed_pipeline_recordsValidationMarker_onlyForSpanWithoutProducerResult() throws Exception {
         // given
-        DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
         ConfigProperties properties = allEnabledConfig();
         ExtensionConfig extensionConfig = new ExtensionConfig(properties);
         PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
@@ -364,7 +368,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void metrics_enabled_registers_metrics_processor() throws Exception {
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -383,7 +387,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void metrics_enabled_registers_composite() throws Exception {
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -401,7 +405,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void watchdog_enabled_registers_watchdog_processor() throws Exception {
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -420,7 +424,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void validation_enabled_registers_validating_processor() throws Exception {
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -444,7 +448,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void factoryAddsBaggageProcessorWithCanonicalDefaults() throws Exception {
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
             ExtensionConfig defaultConfig = new ExtensionConfig(new ConfigProperties() {
@@ -473,7 +477,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void factoryDoesNotAddWatchdogProcessorByDefault() throws Exception {
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled()
             );

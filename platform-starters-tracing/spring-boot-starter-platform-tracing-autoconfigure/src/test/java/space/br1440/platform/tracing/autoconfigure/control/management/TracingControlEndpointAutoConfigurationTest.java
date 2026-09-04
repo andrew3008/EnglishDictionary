@@ -32,7 +32,7 @@ class TracingControlEndpointAutoConfigurationTest {
                     assertThat(context).hasSingleBean(TracingControlEndpoint.class);
                     assertThat(context).hasSingleBean(TracingSettingsMutationService.class);
                     assertThat(context)
-                            .hasSingleBean(TracingSettingsControlAutoConfiguration.ActuatorAgentReadinessProbe.class);
+                            .hasSingleBean(ActuatorAgentReadinessProbe.class);
                 });
     }
 

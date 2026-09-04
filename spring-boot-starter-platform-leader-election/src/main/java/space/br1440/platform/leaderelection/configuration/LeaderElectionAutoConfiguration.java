@@ -1,13 +1,18 @@
 package space.br1440.platform.leaderelection.configuration;
 
-import io.micrometer.core.instrument.MeterRegistry;
+import java.time.Duration;
+
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.context.annotation.*;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.RedisSerializer;
+
 import space.br1440.platform.leaderelection.configuration.condition.RedisRequiredCondition;
 import space.br1440.platform.leaderelection.configuration.redis.RedisConfigurationFactory;
 import space.br1440.platform.leaderelection.lock.DistributedLockRegistry;
@@ -17,14 +22,14 @@ import space.br1440.platform.leaderelection.lock.persistence.redis.resilience.Ci
 import space.br1440.platform.leaderelection.metrics.LeaderElectionMetrics;
 import space.br1440.platform.leaderelection.metrics.LeaderElectionMetricsInterface;
 import space.br1440.platform.leaderelection.metrics.NoOpLeaderElectionMetrics;
+import space.br1440.platform.leaderelection.validation.configuration.LeaderElectionConfigurationValidator;
 
-import java.time.Duration;
+import io.micrometer.core.instrument.MeterRegistry;
 
-@Configuration
+@AutoConfiguration
 @EnableConfigurationProperties(LeaderElectionProperties.class)
 @Conditional(RedisRequiredCondition.class)
 @EnableAspectJAutoProxy(proxyTargetClass = true)
-@Import({LeadershipAutoConfiguration.class, LockAutoConfiguration.class})
 public class LeaderElectionAutoConfiguration {
 
     @Bean
@@ -95,4 +100,8 @@ public class LeaderElectionAutoConfiguration {
         );
     }
 
+    @Bean
+    public LeaderElectionConfigurationValidator leaderElectionConfigurationValidator(LeaderElectionProperties properties) {
+        return new LeaderElectionConfigurationValidator(properties);
+    }
 }

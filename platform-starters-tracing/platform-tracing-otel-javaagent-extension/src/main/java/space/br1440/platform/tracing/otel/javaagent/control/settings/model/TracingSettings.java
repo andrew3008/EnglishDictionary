@@ -6,6 +6,9 @@ import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.TreeMap;
 
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireUtf8Meter;
+
 public record TracingSettings(boolean samplingEnabled,
                               double samplingRatio,
                               NavigableMap<String, Double> samplingRouteRatios,
@@ -15,13 +18,10 @@ public record TracingSettings(boolean samplingEnabled,
                               boolean traceControlHeadersEnabled,
                               TracingLogLevel diagnosticsLogLevel) {
 
-    public static final int MAX_ROUTE_ENTRIES = 100;
-
-    private static final int MAX_ROUTE_PREFIX_LENGTH = 255;
-
     public TracingSettings {
         samplingRatio = normalizeRatio(samplingRatio, "samplingRatio");
         samplingRouteRatios = normalizeRouteRatios(samplingRouteRatios);
+
         Objects.requireNonNull(diagnosticsLogLevel, "diagnosticsLogLevel");
     }
 
@@ -58,10 +58,11 @@ public record TracingSettings(boolean samplingEnabled,
 
     private static NavigableMap<String, Double> normalizeRouteRatios(Map<String, Double> routeRatios) {
         Objects.requireNonNull(routeRatios, "routeRatios");
-        if (routeRatios.size() > MAX_ROUTE_ENTRIES) {
+
+        if (routeRatios.size() > JmxWireContract.MAX_ROUTE_ENTRIES) {
             throw new IllegalArgumentException(
                     "routeRatios must contain at most %d entries, but had %d"
-                            .formatted(MAX_ROUTE_ENTRIES, routeRatios.size())
+                            .formatted(JmxWireContract.MAX_ROUTE_ENTRIES, routeRatios.size())
             );
         }
 
@@ -85,10 +86,11 @@ public record TracingSettings(boolean samplingEnabled,
             throw new IllegalArgumentException("routePrefix must not be blank");
         }
 
-        if (routePrefix.length() > MAX_ROUTE_PREFIX_LENGTH) {
+        long utf8Bytes = JmxWireUtf8Meter.utf8Length(routePrefix);
+        if (utf8Bytes > JmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES) {
             throw new IllegalArgumentException(
-                    "routePrefix must contain at most %d UTF-16 code units, but had %d"
-                            .formatted(MAX_ROUTE_PREFIX_LENGTH, routePrefix.length())
+                    "routePrefix must contain at most %d UTF-8 bytes, but had %d"
+                            .formatted(JmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES, utf8Bytes)
             );
         }
 

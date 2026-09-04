@@ -59,6 +59,28 @@ class PlatformExtensionReadinessTest {
     }
 
     @Test
+    void terminalCleanupFailureOverridesPreliminaryTransportStaleFailure() {
+        // given
+        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
+        readiness.fail(
+                "JMX_TRANSPORT_STALE",
+                new IllegalStateException("JMX runtime controls are being deregistered")
+        );
+
+        // when
+        readiness.failTerminalCleanup(
+                "FAILED_ROLLBACK_INCOMPLETE",
+                new NoClassDefFoundError("simulated cleanup linkage failure")
+        );
+
+        // then
+        assertThat(readiness.lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
+        assertThat(readiness.failureCode()).isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
+        assertThat(readiness.failureMessage())
+                .isEqualTo("NoClassDefFoundError: simulated cleanup linkage failure");
+    }
+
+    @Test
     void markInstalledAndHasRejectNullCapability() {
         PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
 

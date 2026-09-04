@@ -31,9 +31,6 @@ public final class PlatformAttributes {
     /** Финальный статус операции согласно платформенному стандарту. См. {@link space.br1440.platform.tracing.api.span.SpanResult}. */
     public static final String PLATFORM_RESULT = "platform.trace.result";
 
-    /** Идентификатор организационной группы (C-Group), которой принадлежит сервис. */
-    public static final String PLATFORM_C_GROUP = "platform.c_group";
-
     /** Идентификатор сервиса в реестре платформы. */
     public static final String PLATFORM_ID = "platform.id";
 

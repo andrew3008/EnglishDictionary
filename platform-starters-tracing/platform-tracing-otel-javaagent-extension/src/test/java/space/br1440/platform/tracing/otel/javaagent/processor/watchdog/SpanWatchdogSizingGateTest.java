@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,6 +37,7 @@ class SpanWatchdogSizingGateTest {
     private static final long ABSOLUTE_HEAP_CEILING_BYTES = 32L * 1024 * 1024;
     private static final int SCAN_WARMUP = 5;
     private static final int SCAN_SAMPLES = 40;
+    private static final int HEAP_CAPACITY_SEARCH_CEILING = 5_000_000;
 
     @Test
     void sizingGateSelectsDefaultFromHeapAndScanCeilings() throws Exception {
@@ -98,7 +98,7 @@ class SpanWatchdogSizingGateTest {
 
     private static void printObjectLayouts() {
         List<Class<?>> layoutTargets = List.of(
-                TraceWatchdogState.class, TraceWatchdogState.Tracked.class, SpanPermitLedger.class);
+                TraceWatchdogState.class, TraceWatchdogState.Tracked.class, SpanPermitTracker.class);
         for (Class<?> target : layoutTargets) {
             try {
                 System.out.println("SIZING layout " + target.getSimpleName() + "="
@@ -113,47 +113,44 @@ class SpanWatchdogSizingGateTest {
     private static Profile measureProfile(String name, int traces, int spansPerTrace) throws Exception {
         int maxTraces = Math.max(MAX_TRACKED_TRACES, traces);
         AtomicLong clock = new AtomicLong();
-        SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
-                Duration.ofHours(1), Duration.ofHours(1), clock::get, maxTraces, Integer.MAX_VALUE, Integer.MAX_VALUE);
-        List<ReadWriteSpan> live = new ArrayList<>(traces * spansPerTrace);
-        int spanOrdinal = 0;
-        for (int traceIndex = 0; traceIndex < traces; traceIndex++) {
-            for (int spanIndex = 0; spanIndex < spansPerTrace; spanIndex++) {
-                live.add(startSpan(watchdog, traceIndex + 1, ++spanOrdinal));
+        try (SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+                Duration.ofHours(1), Duration.ofHours(1), clock::get, maxTraces, Integer.MAX_VALUE, Integer.MAX_VALUE)) {
+            int spanOrdinal = 0;
+            for (int traceIndex = 0; traceIndex < traces; traceIndex++) {
+                for (int spanIndex = 0; spanIndex < spansPerTrace; spanIndex++) {
+                    startSpan(watchdog, traceIndex + 1, ++spanOrdinal);
+                }
             }
-        }
-        assertThat(watchdog.getTrackingEvictedTotal()).isZero();
-        assertThat(watchdog.getActiveSpanCount()).isEqualTo(traces * spansPerTrace);
+            assertThat(watchdog.getTrackingEvictedTotal()).isZero();
+            assertThat(watchdog.getActiveSpanCount()).isEqualTo(traces * spansPerTrace);
 
-        live.clear();
-        forceGc();
-        Object index = activeTraces(watchdog);
-        long retained = GraphLayout.parseInstance(index).totalSize();
-        long heapUsed = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getUsed();
-        long scanP99 = scanP99(watchdog);
-        System.out.println("SIZING profile=" + name
-                + " traces=" + traces
-                + " spans=" + (traces * spansPerTrace)
-                + " trackedTraces=" + watchdog.getTrackedTraceCount()
-                + " jolRetainedBytes=" + retained
-                + " heapUsedBytes=" + heapUsed
-                + " scanP99Nanos=" + scanP99);
-        watchdog.shutdown();
-        return new Profile(traces * spansPerTrace, retained, scanP99);
+            forceGc();
+            Object index = activeTraces(watchdog);
+            long retained = GraphLayout.parseInstance(index).totalSize();
+            long heapUsed = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getUsed();
+            long scanP99 = scanP99(watchdog);
+            System.out.println("SIZING profile=" + name
+                    + " traces=" + traces
+                    + " spans=" + (traces * spansPerTrace)
+                    + " trackedTraces=" + watchdog.getTrackedTraceCount()
+                    + " jolRetainedBytes=" + retained
+                    + " heapUsedBytes=" + heapUsed
+                    + " scanP99Nanos=" + scanP99);
+            return new Profile(traces * spansPerTrace, retained, scanP99);
+        }
     }
 
     private static BurstResult measureBurstAdmission() throws Exception {
         AtomicLong clock = new AtomicLong();
-        SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
-                Duration.ofHours(1), Duration.ofHours(1), clock::get,
-                MAX_TRACKED_TRACES, Integer.MAX_VALUE, Integer.MAX_VALUE);
         int threads = 8;
         int perThread = 400;
-        ExecutorService executor = Executors.newFixedThreadPool(threads);
         CountDownLatch start = new CountDownLatch(1);
         CountDownLatch done = new CountDownLatch(threads);
         long[] samples = new long[threads * perThread];
-        try {
+        try (SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+                Duration.ofHours(1), Duration.ofHours(1), clock::get,
+                MAX_TRACKED_TRACES, Integer.MAX_VALUE, Integer.MAX_VALUE);
+             ExecutorService executor = Executors.newFixedThreadPool(threads)) {
             for (int thread = 0; thread < threads; thread++) {
                 int threadIndex = thread;
                 executor.execute(() -> {
@@ -174,29 +171,25 @@ class SpanWatchdogSizingGateTest {
             }
             start.countDown();
             assertThat(done.await(10, TimeUnit.SECONDS)).isTrue();
-        } finally {
-            executor.shutdownNow();
-            watchdog.shutdown();
         }
-        return new BurstResult(percentile(samples, 99));
+        return new BurstResult(p99(samples));
     }
 
     private static CasResult measureCasPermitBurst() throws Exception {
-        AtomicInteger ledger = new AtomicInteger();
+        AtomicInteger acquired = new AtomicInteger();
         int cap = 10_000;
         int threads = 8;
         int attempts = 20_000;
-        ExecutorService executor = Executors.newFixedThreadPool(threads);
         CountDownLatch start = new CountDownLatch(1);
         CountDownLatch done = new CountDownLatch(threads);
         long began = System.nanoTime();
-        try {
+        try (ExecutorService executor = Executors.newFixedThreadPool(threads)) {
             for (int thread = 0; thread < threads; thread++) {
                 executor.execute(() -> {
                     try {
                         start.await();
                         for (int index = 0; index < attempts; index++) {
-                            tryAcquire(ledger, cap);
+                            tryAcquire(acquired, cap);
                         }
                     } catch (InterruptedException interrupted) {
                         Thread.currentThread().interrupt();
@@ -207,25 +200,23 @@ class SpanWatchdogSizingGateTest {
             }
             start.countDown();
             assertThat(done.await(5, TimeUnit.SECONDS)).isTrue();
-        } finally {
-            executor.shutdownNow();
         }
-        return new CasResult(ledger.get(), TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - began));
+        return new CasResult(acquired.get(), TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - began));
     }
 
-    private static boolean tryAcquire(AtomicInteger ledger, int cap) {
+    private static void tryAcquire(AtomicInteger acquired, int cap) {
         for (;;) {
-            int current = ledger.get();
+            int current = acquired.get();
             if (current >= cap) {
-                return false;
+                return;
             }
-            if (ledger.compareAndSet(current, current + 1)) {
-                return true;
+            if (acquired.compareAndSet(current, current + 1)) {
+                return;
             }
         }
     }
 
-    private static ReadWriteSpan startSpan(SpanWatchdogProcessor watchdog, int traceOrdinal, int spanOrdinal) {
+    private static void startSpan(SpanWatchdogProcessor watchdog, int traceOrdinal, int spanOrdinal) {
         SpanContext context = SpanContext.create(
                 String.format("%032x", traceOrdinal),
                 String.format("%016x", spanOrdinal),
@@ -235,7 +226,6 @@ class SpanWatchdogSizingGateTest {
         Mockito.when(span.getSpanContext()).thenReturn(context);
         Mockito.when(span.hasEnded()).thenReturn(false);
         watchdog.onStart(Context.root(), span);
-        return span;
     }
 
     private static long scanP99(SpanWatchdogProcessor watchdog) {
@@ -248,33 +238,29 @@ class SpanWatchdogSizingGateTest {
             watchdog.scanForTesting();
             samples[index] = System.nanoTime() - began;
         }
-        return percentile(samples, 99);
+        return p99(samples);
     }
 
-    private static long percentile(long[] samples, int percentile) {
+    private static long p99(long[] samples) {
         long[] copy = Arrays.copyOf(samples, samples.length);
         Arrays.sort(copy);
-        int rank = (int) Math.ceil((percentile / 100.0d) * copy.length) - 1;
+        int rank = (int) Math.ceil((99 / 100.0d) * copy.length) - 1;
         return copy[Math.max(0, rank)];
     }
 
     private static int capacityByHeap(long budgetBytes, long bytesPerTracePlusSpan, long bytesPerExtraSpan) {
         int capacity = 1;
-        while (capacity < Integer.MAX_VALUE / 2) {
+        while (capacity < HEAP_CAPACITY_SEARCH_CEILING) {
             int next = capacity + 1;
             if (estimatedHeap(next, bytesPerTracePlusSpan, bytesPerExtraSpan) > budgetBytes) {
                 return capacity;
             }
             capacity = next;
-            if (capacity > 5_000_000) {
-                return capacity;
-            }
         }
         return capacity;
     }
 
     private static long estimatedHeap(int spans, long bytesPerTracePlusSpan, long bytesPerExtraSpan) {
-        int traces = Math.min(spans, MAX_TRACKED_TRACES);
         if (spans <= MAX_TRACKED_TRACES) {
             return (long) spans * bytesPerTracePlusSpan;
         }

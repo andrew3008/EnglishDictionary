@@ -5,6 +5,9 @@ import java.util.Set;
 
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class BoundedThrowableRenderer {
 
     static final int MAX_CAUSES = AgentLogEvent.MAX_CAUSES;
@@ -19,9 +22,6 @@ public final class BoundedThrowableRenderer {
 
     static int maxDigestChars() {
         return MAX_TOTAL_LENGTH + TRUNCATION_SUFFIX.length();
-    }
-
-    private BoundedThrowableRenderer() {
     }
 
     public static String render(Throwable throwable) {

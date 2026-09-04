@@ -86,7 +86,7 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
                 .tags("scope", "traces")
                 .description("Traces currently holding at least one live span in the watchdog")
                 .register(registry);
-        Gauge.builder(WATCHDOG_TRACKED_METRIC_NAME, this, binder -> binder.trackedTraceCount())
+        Gauge.builder(WATCHDOG_TRACKED_METRIC_NAME, this, PlatformTracingProcessorMetricsBinder::trackedTraceCount)
                 .tags("scope", "traces")
                 .description("Trace records currently retained by the span watchdog, including epoch tombstones")
                 .register(registry);
@@ -170,7 +170,7 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
 
     private String processorMetricsAgentInstanceId() {
         return client.processorMetrics().observation()
-                .map(ProcessorMetricsObservation::agentInstanceId)
+                .map(observation -> observation.capture().agentInstanceId())
                 .orElseGet(MonotonicJmxCounterGroupBridge.LOCAL_PROCESS_IDENTITY);
     }
 

@@ -41,9 +41,11 @@ class SpanWatchdogSchedulerLiveTest {
         // then
         assertThat(exporter.getFinishedSpanItems()).isNotEmpty();
         assertThat(watchdog.getForcedSpanCloses()).isEqualTo(1);
-        assertThat(threadNamed("platform-tracing-watchdog")).isTrue();
+        Thread watchdogThread = threadNamed("platform-tracing-watchdog");
+        assertThat(watchdogThread).isNotNull();
+        assertThat(watchdogThread.isDaemon()).isTrue();
 
-        watchdog.shutdown();
+        assertThat(watchdog.shutdown().isSuccess()).isTrue();
         int afterShutdown = exporter.getFinishedSpanItems().size();
         Span another = tracer.spanBuilder("after-shutdown").startSpan();
         sleep(Duration.ofMillis(200));
@@ -85,13 +87,13 @@ class SpanWatchdogSchedulerLiveTest {
         tracerProvider.shutdown();
     }
 
-    private static boolean threadNamed(String name) {
+    private static Thread threadNamed(String name) {
         for (Thread thread : Thread.getAllStackTraces().keySet()) {
-            if (name.equals(thread.getName()) && thread.isDaemon()) {
-                return true;
+            if (name.equals(thread.getName())) {
+                return thread;
             }
         }
-        return false;
+        return null;
     }
 
     private static void awaitCondition(Duration timeout, BooleanSupplier condition) {

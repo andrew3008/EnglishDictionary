@@ -52,20 +52,22 @@ class PlatformResourceCustomizerTest {
 
     @Test
     void platform_properties_fill_identity() {
+        // given
         Map<String, String> values = Map.of(
                 PlatformResourceCustomizer.PROP_SERVICE_NAME, "demo-service",
                 PlatformResourceCustomizer.PROP_SERVICE_VERSION, "1.0.0",
                 PlatformResourceCustomizer.PROP_ENVIRONMENT, "prod",
-                PlatformResourceCustomizer.PROP_C_GROUP, "billing",
-                PlatformResourceCustomizer.PROP_ID, "demo-001");
+                PlatformResourceCustomizer.PROP_ID, "demo-001"
+        );
 
+        // when
         Resource resource = customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(values));
 
+        // then
         assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isEqualTo("demo-service");
         assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_VERSION))).isEqualTo("1.0.0");
         assertThat(resource.getAttribute(key(PlatformAttributes.PLATFORM_ENVIRONMENT))).isEqualTo("production");
-        assertThat(resource.getAttribute(key(PlatformAttributes.PLATFORM_C_GROUP))).isEqualTo("billing");
         assertThat(resource.getAttribute(key(PlatformAttributes.PLATFORM_ID))).isEqualTo("demo-001");
     }
 
@@ -196,18 +198,19 @@ class PlatformResourceCustomizerTest {
 
     @Test
     void strict_does_not_fail_with_otel_service_name_effective_view() {
-        // RV-08: service.name приходит через OTEL_*, env/c_group заданы — STRICT НЕ должен падать.
+        // given
         Map<String, String> values = Map.of(
                 ExtensionPropertyNames.RESOURCE_VALIDATION_MODE, "STRICT",
                 "otel.service.name", "otel-svc",
-                PlatformResourceCustomizer.PROP_ENVIRONMENT, "production",
-                PlatformResourceCustomizer.PROP_C_GROUP, "billing");
+                PlatformResourceCustomizer.PROP_ENVIRONMENT, "production");
 
+        // when
         Resource resource = customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(values));
 
+        // then
         assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isNull();
-        assertThat(resource.getAttribute(key(PlatformAttributes.PLATFORM_C_GROUP))).isEqualTo("billing");
+        assertThat(resource.getAttribute(key(PlatformAttributes.PLATFORM_ENVIRONMENT))).isEqualTo("production");
     }
 
     @Test

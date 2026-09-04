@@ -1,14 +1,5 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport;
 
-import javax.management.AttributeNotFoundException;
-import javax.management.InstanceNotFoundException;
-import javax.management.MBeanException;
-import javax.management.MBeanServerConnection;
-import javax.management.ObjectName;
-import javax.management.ReflectionException;
-import javax.management.RuntimeErrorException;
-import javax.management.RuntimeMBeanException;
-import javax.management.RuntimeOperationsException;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
@@ -19,6 +10,17 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
+import javax.management.AttributeNotFoundException;
+import javax.management.InstanceNotFoundException;
+import javax.management.IntrospectionException;
+import javax.management.MBeanException;
+import javax.management.MBeanInfo;
+import javax.management.MBeanServerConnection;
+import javax.management.ObjectName;
+import javax.management.ReflectionException;
+import javax.management.RuntimeErrorException;
+import javax.management.RuntimeMBeanException;
+import javax.management.RuntimeOperationsException;
 
 public final class JmxReadExecutor {
 
@@ -27,6 +29,7 @@ public final class JmxReadExecutor {
     private final MBeanServerConnection connection;
     private final Clock clock;
     private final JmxReadStateRegistry registry;
+    private final JmxWireGraphValidator wireValidator;
     private final EnumMap<JmxDomain, ReentrantLock> transportLocks = new EnumMap<>(JmxDomain.class);
     private final AtomicLong observationSequence = new AtomicLong();
 
@@ -38,6 +41,7 @@ public final class JmxReadExecutor {
         this.connection = Objects.requireNonNull(connection, "connection");
         this.clock = Objects.requireNonNull(clock, "clock");
         this.registry = new JmxReadStateRegistry(clock, warnRateLimit);
+        this.wireValidator = new JmxWireGraphValidator();
 
         for (JmxDomain domain : JmxDomain.values()) {
             transportLocks.put(domain, new ReentrantLock());
@@ -53,7 +57,11 @@ public final class JmxReadExecutor {
     }
 
     public <T> Optional<T> read(ObjectName objectName, JmxAttribute<T> attribute) {
-        TimedRead raw = readRaw(attribute.point(), () -> connection.getAttribute(objectName, attribute.name()));
+        Objects.requireNonNull(objectName, "objectName");
+        Objects.requireNonNull(attribute, "attribute");
+        TimedRead raw = readRaw(
+                attribute.point(),
+                () -> readExactAttribute(objectName, attribute));
         return resolve(attribute.point(), attribute.decoder(), raw);
     }
 
@@ -122,9 +130,13 @@ public final class JmxReadExecutor {
         }
 
         try {
+            wireValidator.validate(rawValue);
             T decoded = decoder.decode(rawValue);
             registry.recordPresent(point, sequence, observedAt);
             return Optional.of(decoded);
+        } catch (JmxWireTypeViolationException ignored) {
+            registry.recordContractViolation(point, JmxDiagnosticKind.JMX_WIRE_TYPE_VIOLATION, sequence, observedAt);
+            return Optional.empty();
         } catch (JmxContractViolationException e) {
             registry.recordContractViolation(point, e.kind(), sequence, observedAt);
             return Optional.empty();
@@ -139,6 +151,10 @@ public final class JmxReadExecutor {
             try {
                 Object value = call.execute();
                 return new TimedRead(observationSequence.incrementAndGet(), clock.instant(), new JmxRead.Present(value));
+            } catch (JmxMBeanInfoShapeViolationException e) {
+                return contractViolation(JmxDiagnosticKind.MBEAN_INFO_SHAPE_VIOLATION);
+            } catch (MetadataRetrievalException e) {
+                return executionFailure(JmxDiagnosticKind.METADATA_RETRIEVAL_FAILURE);
             } catch (InstanceNotFoundException e) {
                 return new TimedRead(observationSequence.incrementAndGet(), clock.instant(), new JmxRead.Absent());
             } catch (AttributeNotFoundException e) {
@@ -170,8 +186,26 @@ public final class JmxReadExecutor {
         }
     }
 
+    private Object readExactAttribute(
+            ObjectName objectName,
+            JmxAttribute<?> attribute)
+            throws InstanceNotFoundException, AttributeNotFoundException, MBeanException,
+            ReflectionException, IOException {
+        MBeanInfo mBeanInfo;
+        try {
+            mBeanInfo = connection.getMBeanInfo(objectName);
+        } catch (IntrospectionException | ReflectionException e) {
+            throw new MetadataRetrievalException(e);
+        }
+        JmxMBeanInfoShape.requireReadOnlySnapshot(mBeanInfo, attribute.name(), attribute.openType());
+        return connection.getAttribute(objectName, attribute.name());
+    }
+
     private TimedRead contractViolation(JmxDiagnosticKind kind) {
-        return new TimedRead(observationSequence.incrementAndGet(), clock.instant(), new JmxRead.ContractViolation(kind));
+        return new TimedRead(
+                observationSequence.incrementAndGet(),
+                clock.instant(),
+                new JmxRead.ContractViolation(kind));
     }
 
     private TimedRead executionFailure(JmxDiagnosticKind kind) {
@@ -180,7 +214,15 @@ public final class JmxReadExecutor {
 
     @FunctionalInterface
     private interface TransportCall {
-        Object execute() throws InstanceNotFoundException, AttributeNotFoundException, MBeanException, ReflectionException, IOException;
+        Object execute() throws InstanceNotFoundException, AttributeNotFoundException,
+                MBeanException, ReflectionException, IOException;
+    }
+
+    private static final class MetadataRetrievalException extends RuntimeException {
+
+        private MetadataRetrievalException(Exception cause) {
+            super("Cannot retrieve JMX MBean metadata", cause, false, false);
+        }
     }
 
     private sealed interface JmxRead {

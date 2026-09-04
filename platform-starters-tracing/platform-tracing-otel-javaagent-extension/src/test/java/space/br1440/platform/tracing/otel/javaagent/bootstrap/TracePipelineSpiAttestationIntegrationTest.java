@@ -8,14 +8,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 
-import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
-import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.AutoConfiguredSdkPrivateControlIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.testsupport.BootstrapIsolatedClassLoader;
 import space.br1440.platform.tracing.otel.javaagent.testsupport.spi.LegacyTracerProviderConfigurerProbe;
@@ -28,7 +26,7 @@ import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvide
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
-@ExtendWith(AutoConfiguredSdkPrivateControlIsolationExtension.class)
+@ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 class TracePipelineSpiAttestationIntegrationTest {
 
     private static final int PLATFORM_ORDER = 100;
@@ -38,19 +36,15 @@ class TracePipelineSpiAttestationIntegrationTest {
         TracePipelineAttackProbe.reset();
     }
 
-    @AfterEach
-    void resetAttestationIsolation() {
-        System.clearProperty(ExtensionPropertyNames.SPI_ATTESTATION_MODE);
-        TracePipelineSpiAttestation.resetEvidenceMarkerForTests();
-    }
-
     @Test
     void realBuildFailsBeforeConfigureSdk_whenLowerOrderProviderDelaysExporterMutation(@TempDir Path overlayDir)
             throws IOException {
         ClassLoader serviceClassLoader = isolatedClassLoaderWithOverlay(
-                overlayDir, AutoConfigurationCustomizerProvider.class, LowerOrderDelayedMutationProvider.class);
+                overlayDir, AutoConfigurationCustomizerProvider.class.getName(),
+                LowerOrderDelayedMutationProvider.class
+        );
 
-        Throwable failure = catchThrowable(() -> buildSdk(serviceClassLoader));
+        Throwable failure = catchThrowable(() -> buildSdk(serviceClassLoader).getOpenTelemetrySdk().close());
 
         assertAttestationFailed(failure);
         assertThat(TracePipelineAttackProbe.ACP_EXPORTER_CUSTOMIZER_CALLED)
@@ -88,6 +82,7 @@ class TracePipelineSpiAttestationIntegrationTest {
                 .isEqualTo(SanitizerBootstrapException.TRACE_PIPELINE_ATTESTATION_FAILED);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static <T extends Throwable> T findCause(Throwable failure, Class<T> type) {
         Throwable current = failure;
         while (current != null) {
@@ -109,11 +104,6 @@ class TracePipelineSpiAttestationIntegrationTest {
                         "otel.logs.exporter", "none",
                         "otel.traces.exporter", "none"))
                 .build();
-    }
-
-    private static ClassLoader isolatedClassLoaderWithOverlay(
-            Path overlayDir, Class<?> spiType, Class<?> providerType) throws IOException {
-        return isolatedClassLoaderWithOverlay(overlayDir, spiType.getName(), providerType);
     }
 
     private static ClassLoader isolatedClassLoaderWithOverlay(

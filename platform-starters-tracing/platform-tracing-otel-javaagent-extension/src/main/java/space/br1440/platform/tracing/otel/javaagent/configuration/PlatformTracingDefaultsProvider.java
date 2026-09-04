@@ -29,7 +29,6 @@ public final class PlatformTracingDefaultsProvider {
         putEnvFallback(defaults, ExtensionEnvironmentVariables.SERVICE_NAME, PlatformResourceCustomizer.PROP_SERVICE_NAME);
         putEnvFallback(defaults, ExtensionEnvironmentVariables.SERVICE_VERSION, PlatformResourceCustomizer.PROP_SERVICE_VERSION);
         putEnvFallback(defaults, ExtensionEnvironmentVariables.SERVICE_ENVIRONMENT, PlatformResourceCustomizer.PROP_ENVIRONMENT);
-        putEnvFallback(defaults, ExtensionEnvironmentVariables.SERVICE_C_GROUP, PlatformResourceCustomizer.PROP_C_GROUP);
         return defaults;
     }
 

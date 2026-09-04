@@ -14,14 +14,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.ConfigurableEnvironment;
 
 import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationGuardException;
-import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateJmxControlAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsContractViolationException;
 import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;
 import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
 
 @AutoConfiguration
-@AutoConfigureAfter(PrivateJmxControlAutoConfiguration.class)
+@AutoConfigureAfter(PlatformJmxControlAutoConfiguration.class)
 @ConditionalOnClass(EnvironmentChangeEvent.class)
 @ConditionalOnProperty(name = "platform.tracing.configuration.authority", havingValue = "CONFIG_SERVER")
 public class ConfigServerTracingSettingsAutoConfiguration {
@@ -94,11 +94,11 @@ public class ConfigServerTracingSettingsAutoConfiguration {
             try {
                 reader.currentComplete()
                         .orElseThrow(() -> new TracingConfigurationGuardException(
-                                "[CONFIG_SERVER readiness] private writer unreachable or has not "
-                                        + "committed an accepted policy (readAcceptedComplete empty)."));
+                                "[CONFIG_SERVER readiness] AcceptedPolicySnapshot is unavailable "
+                                        + "or no accepted policy has been committed."));
             } catch (TracingSettingsContractViolationException e) {
                 throw new TracingSettingsContractViolationException(
-                        "[CONFIG_SERVER readiness] FATAL: readAcceptedComplete unavailable or "
+                        "[CONFIG_SERVER readiness] FATAL: AcceptedPolicySnapshot is unavailable or "
                                 + "malformed. Original cause: " + e.getMessage(),
                         e);
             }

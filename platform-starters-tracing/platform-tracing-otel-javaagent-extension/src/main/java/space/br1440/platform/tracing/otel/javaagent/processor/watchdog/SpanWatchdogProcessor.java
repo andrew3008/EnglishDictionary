@@ -44,6 +44,7 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
 
     private static final String DIAGNOSTIC_ID = "watchdog";
     private static final Runnable NO_BEFORE_COMPUTE_HOOK = () -> { };
+    private static final long SHUTDOWN_TIMEOUT_MILLIS = 2_000L;
 
     private final ScheduledExecutorService scheduler;
     private final LongSupplier nanoTime;
@@ -103,7 +104,7 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
                 trueMaxTrackedTraces,
                 trueMaxTrackedSpansPerTrace,
                 this.nanoTime,
-                new SpanPermitLedger(trueMaxTrackedSpans)
+                new SpanPermitTracker(trueMaxTrackedSpans)
         );
 
         if (scanInterval != null) {
@@ -170,9 +171,7 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
     public CompletableResultCode shutdown() {
         admissionOpen.set(false);
 
-        if (scheduler != null) {
-            scheduler.shutdownNow();
-        }
+        boolean scannerStopped = stopScanner();
 
         int leakedSpans = getActiveSpanCount();
         if (leakedSpans > 0) {
@@ -182,7 +181,29 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
 
         index.drainAll();
 
-        return CompletableResultCode.ofSuccess();
+        return scannerStopped ? CompletableResultCode.ofSuccess() : CompletableResultCode.ofFailure();
+    }
+
+    private boolean stopScanner() {
+        if (scheduler == null) {
+            return true;
+        }
+
+        scheduler.shutdownNow();
+        try {
+            if (scheduler.awaitTermination(SHUTDOWN_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
+                return true;
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            log.warn(AgentEventCodes.EXPORT_WATCHDOG,
+                    "Interrupted while waiting for the watchdog scanner to stop");
+            return false;
+        }
+
+        log.warn(AgentEventCodes.EXPORT_WATCHDOG, "Watchdog scanner did not stop within the shutdown timeout",
+                "timeoutMillis", String.valueOf(SHUTDOWN_TIMEOUT_MILLIS));
+        return false;
     }
 
     @Override
@@ -239,8 +260,8 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
         return index.rejectedGlobalTotal();
     }
 
-    public long getSpanLedgerInvariantViolationTotal() {
-        return index.ledgerInvariantViolationTotal();
+    public long getSpanPermitInvariantViolationTotal() {
+        return index.permitInvariantViolationTotal();
     }
 
     private void scanSafely() {

@@ -9,6 +9,48 @@ platformJavaLibrary {
     bomProjectPath = ':spring-boot-starter-platform-bom'
 }
 
+def jmxContractProject = project(':platform-starters-tracing:platform-tracing-jmx-contract')
+def generateJmxWireContract = ':platform-starters-tracing:platform-tracing-jmx-contract:generateJmxWireContract'
+def generatedJmxContractSources = files(jmxContractProject.layout.buildDirectory.dir(
+        'generated/jmx-wire-contract/extension/java'
+)).builtBy(generateJmxWireContract)
+def generatedJmxContractResources = files(jmxContractProject.layout.buildDirectory.dir(
+        'generated/jmx-wire-contract/extension/resources'
+)).builtBy(generateJmxWireContract)
+
+sourceSets.main.java.srcDir(generatedJmxContractSources)
+
+tasks.named('compileJava') {
+    dependsOn generateJmxWireContract
+}
+
+tasks.named('processResources', ProcessResources) {
+    dependsOn generateJmxWireContract
+    from(generatedJmxContractResources)
+}
+
+def mockitoAgentConfiguration = configurations.create('mockitoAgent') {
+    canBeConsumed = false
+    canBeResolved = true
+}
+
+dependencies {
+    mockitoAgent(platform(project(':spring-boot-starter-platform-bom')))
+    mockitoAgent('org.mockito:mockito-core') {
+        transitive = false
+    }
+}
+
+tasks.named('test', Test) {
+    jvmArgs(
+            "-javaagent:${mockitoAgentConfiguration.singleFile.absolutePath}",
+            '-XX:+DisableAttachMechanism',
+            '-Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED',
+            '-Dplatform.tracing.jmx.remote.listener-confirmed=false',
+            '-Dplatform.tracing.jmx.remote.authorization-forwarder-installed=false'
+    )
+}
+
 dependencies {
     implementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
     implementation project(':platform-starters-tracing:platform-tracing-runtime-policy')

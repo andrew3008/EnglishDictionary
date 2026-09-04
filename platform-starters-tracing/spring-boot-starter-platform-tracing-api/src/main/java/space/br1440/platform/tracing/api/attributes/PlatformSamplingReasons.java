@@ -2,6 +2,8 @@ package space.br1440.platform.tracing.api.attributes;
 
 import java.util.Set;
 
+import lombok.experimental.UtilityClass;
+
 /**
  * Канонические значения атрибута {@code platform.sampling.reason}
  * ({@link PlatformAttributes#PLATFORM_SAMPLING_REASON}).
@@ -9,6 +11,7 @@ import java.util.Set;
  * Production-контракт SDK ↔ Collector: политики {@code tail_sampling} в YAML-конфигурациях Collector'а
  * обязаны ссылаться только на значения из множества {@link #EXPORTED}.
  */
+@UtilityClass
 public final class PlatformSamplingReasons {
 
     // *********************************************************************************************

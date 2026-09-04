@@ -6,7 +6,7 @@ import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.AutoConfiguredSdkPrivateControlIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
 import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
 
@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * {@code addTracerProviderCustomizer}) без необходимости имплементировать все остальные методы
  * интерфейса. SDK-минорные обновления, добавляющие новые методы в интерфейс, не сломают тест.
  */
-@ExtendWith(AutoConfiguredSdkPrivateControlIsolationExtension.class)
+@ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 class PlatformAutoConfigurationCustomizerTest {
 
     private static BootstrapAutoConfigurationCustomizerProvider newProvider() {

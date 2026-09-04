@@ -1,36 +1,28 @@
 package space.br1440.platform.tracing.autoconfigure.support;
 
+import java.lang.management.ManagementFactory;
+import java.util.concurrent.locks.ReentrantLock;
+import javax.management.DynamicMBean;
+import javax.management.MBeanServer;
+
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.event.ContextClosedEvent;
+
+import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
+
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxObjectNames;
-
-import javax.management.MBeanServer;
-import javax.management.StandardMBean;
-import java.lang.management.ManagementFactory;
-import java.util.Set;
-import java.util.concurrent.locks.ReentrantLock;
-
-import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.event.ContextClosedEvent;
 
 /**
- * Изолированный test-only стенд application-side контракта Controlled Agent.
+ * Изолированный тестовый стенд контракта Controlled Agent со стороны приложения.
  */
 public final class ControlledAgentTestRuntime implements AutoCloseable {
 
     private static final ReentrantLock GLOBAL_RUNTIME_LOCK = new ReentrantLock();
-    private static final Set<String> COMPLETE_CAPABILITIES = Set.of(
-            "CONFIGURATION_LOADED",
-            "PLATFORM_SAMPLER_INSTALLED",
-            "REQUIRED_SPAN_PROCESSORS_INSTALLED",
-            "SANITIZER_INSTALLED",
-            "PROPAGATION_HOOKS_INSTALLED",
-            "SAFE_EXPORTER_INSTALLED",
-            "EXPORT_PATH_PROTECTED");
 
     private final MBeanServer server;
     private final SdkTracerProvider tracerProvider;
@@ -46,12 +38,12 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
     }
 
     public static ControlledAgentTestRuntime start() {
-        return start(null, new ReadyExtension());
+        return start(null, ReadinessJmxTestFixtures.endpoint(ReadinessJmxTestFixtures::readySnapshot));
     }
 
     private static ControlledAgentTestRuntime start(
             InMemorySpanExporter spanExporter,
-            ReadyExtensionMBean extension) {
+            DynamicMBean readinessEndpoint) {
         GLOBAL_RUNTIME_LOCK.lock();
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         var tracerProviderBuilder = SdkTracerProvider.builder();
@@ -60,14 +52,14 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
         }
         SdkTracerProvider tracerProvider = tracerProviderBuilder.build();
         try {
-            if (server.isRegistered(PlatformTracingJmxObjectNames.EXTENSION_READINESS)) {
+            if (server.isRegistered(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME)) {
                 throw new IllegalStateException("Controlled Agent readiness MBean is already registered");
             }
             GlobalOpenTelemetry.resetForTest();
             GlobalOpenTelemetry.set(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build());
             server.registerMBean(
-                    new StandardMBean(extension, ReadyExtensionMBean.class),
-                    PlatformTracingJmxObjectNames.EXTENSION_READINESS);
+                    readinessEndpoint,
+                    JmxWireContract.EXTENSION_READINESS_OBJECT_NAME);
             return new ControlledAgentTestRuntime(server, tracerProvider, spanExporter);
         } catch (Exception failure) {
             tracerProvider.close();
@@ -84,25 +76,22 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
 
     public static void initializeWithExporter(ConfigurableApplicationContext context) {
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
-        ControlledAgentTestRuntime runtime = start(exporter, new ReadyExtension());
+        ControlledAgentTestRuntime runtime = start(
+                exporter,
+                ReadinessJmxTestFixtures.endpoint(ReadinessJmxTestFixtures::readySnapshot));
         context.getBeanFactory().registerSingleton("controlledAgentSpanExporter", exporter);
         closeWithContext(context, runtime);
     }
 
     public static ControlledAgentTestRuntime startIncompatible() {
-        return start(null, new IncompatibleExtension());
+        return start(null, ReadinessJmxTestFixtures.endpoint(() -> "not-composite"));
     }
 
     /**
-     * The {@link AgentStartupVerifier} counterpart of every fixture in this class: all of
-     * {@link ReadyExtension}, {@link IncompatibleExtension} report {@code development} as
-     * {@code ExtensionVersion}, so a Spring context under test must register this bean (overriding
-     * the production {@code @ConditionalOnMissingBean} default) to reach the two-sided
-     * {@code development}/{@code development} unit seam (plan &sect;6.1) — the exploded test
-     * classpath has no packaged {@code Implementation-Version} manifest attribute.
+     * Возвращает проверяющий компонент с версией приложения из тестового readiness-снимка.
      */
     public static AgentStartupVerifier verifier() {
-        return new AgentStartupVerifier(ManagementFactory.getPlatformMBeanServer(), "development");
+        return new AgentStartupVerifier(ManagementFactory.getPlatformMBeanServer(), "1.2.3");
     }
 
     private static void closeWithContext(
@@ -118,8 +107,8 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
     @Override
     public void close() {
         try {
-            if (server.isRegistered(PlatformTracingJmxObjectNames.EXTENSION_READINESS)) {
-                server.unregisterMBean(PlatformTracingJmxObjectNames.EXTENSION_READINESS);
+            if (server.isRegistered(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME)) {
+                server.unregisterMBean(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME);
             }
             tracerProvider.close();
             if (spanExporter != null) {
@@ -130,68 +119,6 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
             throw new IllegalStateException("Cannot stop Controlled Agent test runtime", failure);
         } finally {
             GLOBAL_RUNTIME_LOCK.unlock();
-        }
-    }
-
-    public interface ReadyExtensionMBean {
-        String getExtensionVersion();
-
-        int getProtocolVersion();
-
-        String getProfile();
-
-        String getLifecycleState();
-
-        String getFailureCode();
-
-        String getFailureMessage();
-
-        String[] getCapabilities();
-    }
-
-    public static class ReadyExtension implements ReadyExtensionMBean {
-
-        @Override
-        public String getExtensionVersion() {
-            return "development";
-        }
-
-        @Override
-        public int getProtocolVersion() {
-            return 1;
-        }
-
-        @Override
-        public String getProfile() {
-            return "platform-agent-secure-v1";
-        }
-
-        @Override
-        public String getLifecycleState() {
-            return "READY";
-        }
-
-        @Override
-        public String getFailureCode() {
-            return "";
-        }
-
-        @Override
-        public String getFailureMessage() {
-            return "";
-        }
-
-        @Override
-        public String[] getCapabilities() {
-            return COMPLETE_CAPABILITIES.toArray(String[]::new);
-        }
-    }
-
-    private static final class IncompatibleExtension extends ReadyExtension {
-
-        @Override
-        public int getProtocolVersion() {
-            return Integer.MAX_VALUE;
         }
     }
 }

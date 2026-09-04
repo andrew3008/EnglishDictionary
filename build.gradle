@@ -4,13 +4,15 @@ plugins {
 
 allprojects {
     group = 'space.br1440.platform.starters'
-    version = '1.2.0'
+    version = '2.0.0'
 }
 
 def nonPublishedProjects = [
         ':platform-starters-tracing',
         ':platform-starters-tracing:platform-tracing-testkit',
         ':platform-starters-tracing:platform-tracing-otel-javaagent-extension',
+        ':platform-starters-tracing:platform-tracing-jmx-contract',
+        ':platform-starters-tracing:platform-tracing-e2e-tests',
         ':platform-starters-error-handling',
         ':platform-starters-common',
 ] as Set

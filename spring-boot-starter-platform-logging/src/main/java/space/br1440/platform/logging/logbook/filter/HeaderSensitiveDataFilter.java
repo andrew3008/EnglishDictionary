@@ -1,5 +1,6 @@
 package space.br1440.platform.logging.logbook.filter;
 
+import org.jspecify.annotations.NullMarked;
 import org.zalando.logbook.HeaderFilter;
 import org.zalando.logbook.HttpHeaders;
 import space.br1440.platform.logging.masking.SensitiveDataMasker;
@@ -8,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@NullMarked
 public class HeaderSensitiveDataFilter implements HeaderFilter {
 
     private final SensitiveDataMasker masker;

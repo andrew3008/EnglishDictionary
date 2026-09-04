@@ -6,10 +6,7 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.stereotype.Component;
 import space.br1440.platform.leaderelection.annotation.leadership.OnLeaderChange;
-import space.br1440.platform.leaderelection.configuration.LeaderElectionProperties;
 import space.br1440.platform.leaderelection.processor.executor.LeaderChangeTaskExecutor;
 
 import java.lang.reflect.Method;
@@ -21,9 +18,7 @@ import java.util.concurrent.TimeoutException;
 
 @Slf4j
 @Aspect
-@Component
 @RequiredArgsConstructor
-@ConditionalOnBean(LeaderElectionProperties.class)
 public class LeaderOnChangeAspect {
 
     private static final long ASYNC_TIMEOUT_MS = 30000; // 30 seconds

@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.atomic.LongAdder;
 import javax.management.MBeanServer;
+import javax.management.ObjectName;
 
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 import org.junit.jupiter.api.AfterEach;
@@ -22,29 +23,17 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.Jmx
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
-import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
+import space.br1440.platform.tracing.autoconfigure.support.DomainSnapshotEndpoints;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
-import space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.DiagnosticsControl;
-import space.br1440.platform.tracing.otel.javaagent.jmx.export.ExportControl;
-import space.br1440.platform.tracing.otel.javaagent.jmx.metrics.ProcessorMetricsControl;
+import space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.DiagnosticsObservationSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.export.ExportObservationSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.metrics.ProcessorMetricsObservationSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
-import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.SamplingControl;
-import space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.ScrubbingControl;
-import space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationControl;
-import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.SamplingObservationSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.ScrubbingObservationSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationObservationSource;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
-import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
-/**
- * Absent-owner encoding end-to-end на живом {@code PlatformMBeanServer}: агент кодирует
- * presence-дискриминатор, {@code *JmxView} декодирует в {@link JmxOwnerState.Absent},
- * {@code domain.readable} остаётся {@code 1}, {@code owner.present} — {@code 0},
- * contract violation не записывается. Незарегистрированный MBean по-прежнему даёт
- * transport-{@code Absent} и {@code readable = 0}.
- */
 class DomainAbsentOwnerEncodingRoundTripTest {
 
     private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
@@ -58,7 +47,7 @@ class DomainAbsentOwnerEncodingRoundTripTest {
 
     @AfterEach
     void cleanup() throws Exception {
-        for (var name : new javax.management.ObjectName[]{
+        for (ObjectName name : new ObjectName[]{
                 DomainObjectNames.SAMPLING,
                 DomainObjectNames.SCRUBBING,
                 DomainObjectNames.VALIDATION,
@@ -86,35 +75,39 @@ class DomainAbsentOwnerEncodingRoundTripTest {
         String expectedAgentInstanceId = agentInstanceId.toString();
 
         assertThat(client.sampling().observation()).isPresent();
-        assertThat(client.sampling().observation().get().decisionCounts())
+        assertThat(client.sampling().observation().orElseThrow().decisionCounts())
                 .isInstanceOf(JmxOwnerState.Absent.class);
-        assertThat(client.sampling().observation().get().agentInstanceId()).isEqualTo(expectedAgentInstanceId);
+        assertThat(client.sampling().observation().orElseThrow().agentInstanceId()).isEqualTo(expectedAgentInstanceId);
 
         assertThat(client.scrubbing().observation()).isPresent();
-        assertThat(client.scrubbing().observation().get().owner())
+        assertThat(client.scrubbing().observation().orElseThrow().owner())
                 .isInstanceOf(JmxOwnerState.Absent.class);
-        assertThat(client.scrubbing().observation().get().agentInstanceId()).isEqualTo(expectedAgentInstanceId);
+        assertThat(client.scrubbing().observation().orElseThrow().agentInstanceId()).isEqualTo(expectedAgentInstanceId);
 
         assertThat(client.validation().observation()).isPresent();
-        assertThat(client.validation().observation().get().owner())
+        assertThat(client.validation().observation().orElseThrow().owner())
                 .isInstanceOf(JmxOwnerState.Absent.class);
-        assertThat(client.validation().observation().get().agentInstanceId()).isEqualTo(expectedAgentInstanceId);
+        assertThat(client.validation().observation().orElseThrow().agentInstanceId()).isEqualTo(expectedAgentInstanceId);
 
         assertThat(client.export().observation()).isPresent();
-        ExportObservation export = client.export().observation().get();
+        ExportObservation export = client.export().observation().orElseThrow();
         assertThat(export.processor()).isInstanceOf(JmxOwnerState.Absent.class);
         assertThat(export.exporter()).isInstanceOf(JmxOwnerState.Absent.class);
         assertThat(export.agentInstanceId()).isEqualTo(expectedAgentInstanceId);
 
         assertThat(client.processorMetrics().observation()).isPresent();
-        ProcessorMetricsObservation processor = client.processorMetrics().observation().get();
+        ProcessorMetricsObservation processor = client.processorMetrics().observation().orElseThrow();
         assertThat(processor.watchdog()).isInstanceOf(JmxOwnerState.Absent.class);
         assertThat(processor.composite()).isInstanceOf(JmxOwnerState.Absent.class);
         assertThat(processor.metrics()).isInstanceOf(JmxOwnerState.Absent.class);
-        assertThat(processor.agentInstanceId()).isEqualTo(expectedAgentInstanceId);
+        assertThat(processor.capture().agentInstanceId()).isEqualTo(expectedAgentInstanceId);
+        assertThat(processor.capture().sequence()).isPositive();
+        assertThat(processor.capture().startedAtEpochMilli()).isPositive();
+        assertThat(processor.capture().completedAtEpochMilli())
+                .isGreaterThanOrEqualTo(processor.capture().startedAtEpochMilli());
 
         assertThat(client.diagnostics().observation()).isPresent();
-        assertThat(client.diagnostics().observation().get().agentInstanceId()).isEqualTo(expectedAgentInstanceId);
+        assertThat(client.diagnostics().observation().orElseThrow().agentInstanceId()).isEqualTo(expectedAgentInstanceId);
 
         // Observation присутствует (transport Present), владельцы Absent, CV не записывается.
         assertThat(client.sampling().lastSuccessAge()).isPresent();
@@ -129,13 +122,13 @@ class DomainAbsentOwnerEncodingRoundTripTest {
                 TracingSettingsSource.isolatedValidation(true, false, false));
         slot.replace(processor);
         processor.onEnding(mock(ReadWriteSpan.class));
+        ValidationObservationSource validation = new ValidationObservationSource(slot, agentInstanceId);
         server.registerMBean(
-                new ValidationControl(slot, agentInstanceId),
+                DomainSnapshotEndpoints.validation(validation::getValidationObservation),
                 DomainObjectNames.VALIDATION);
 
         ValidationObservation observation = client.validation().observation().orElseThrow();
         assertThat(observation.owner()).isInstanceOf(JmxOwnerState.Present.class);
-        @SuppressWarnings("unchecked")
         JmxOwnerState.Present<ValidationValues> owner =
                 (JmxOwnerState.Present<ValidationValues>) observation.owner();
         assertThat(owner.values().violationsTotal()).isEqualTo(1L);
@@ -144,31 +137,51 @@ class DomainAbsentOwnerEncodingRoundTripTest {
 
     private void registerAllDomainsWithEmptyOwnerSlots() throws Exception {
         TracingSettingsSource acceptedPolicy = TracingSettingsSource.isolatedSampling(
-                true, Collections.emptyMap(), 0.5d);
+                true, Collections.emptyMap(), 0.5d
+        );
+        SamplingObservationSource sampling = new SamplingObservationSource(
+                acceptedPolicy, new OwnerRegistrationSlot<>(), agentInstanceId
+        );
+        ScrubbingObservationSource scrubbing = new ScrubbingObservationSource(new OwnerRegistrationSlot<>(), agentInstanceId);
+        ValidationObservationSource validation = new ValidationObservationSource(
+                new OwnerRegistrationSlot<>(), agentInstanceId
+        );
+        ExportObservationSource export = new ExportObservationSource(
+                new OwnerRegistrationSlot<>(),
+                new OwnerRegistrationSlot<>(),
+                agentInstanceId
+        );
+        ProcessorMetricsObservationSource processorMetrics = new ProcessorMetricsObservationSource(
+                new OwnerRegistrationSlot<>(),
+                new OwnerRegistrationSlot<>(),
+                new OwnerRegistrationSlot<>(),
+                agentInstanceId
+        );
+        DiagnosticsObservationSource diagnostics = new DiagnosticsObservationSource(new LongAdder(), agentInstanceId);
+
         server.registerMBean(
-                new SamplingControl(acceptedPolicy, new OwnerRegistrationSlot<CompositeSampler>(), agentInstanceId),
-                DomainObjectNames.SAMPLING);
+                DomainSnapshotEndpoints.sampling(sampling::getSamplingObservation),
+                DomainObjectNames.SAMPLING
+        );
         server.registerMBean(
-                new ScrubbingControl(new OwnerRegistrationSlot<>(), agentInstanceId),
-                DomainObjectNames.SCRUBBING);
+                DomainSnapshotEndpoints.scrubbing(scrubbing::getScrubbingObservation),
+                DomainObjectNames.SCRUBBING
+        );
         server.registerMBean(
-                new ValidationControl(new OwnerRegistrationSlot<ValidatingSpanProcessor>(), agentInstanceId),
-                DomainObjectNames.VALIDATION);
+                DomainSnapshotEndpoints.validation(validation::getValidationObservation),
+                DomainObjectNames.VALIDATION
+        );
         server.registerMBean(
-                new ExportControl(
-                        new OwnerRegistrationSlot<PlatformDropOldestExportSpanProcessor>(),
-                        new OwnerRegistrationSlot<SafeSpanExporter>(),
-                        agentInstanceId),
-                DomainObjectNames.EXPORT);
+                DomainSnapshotEndpoints.export(export::getExportObservation),
+                DomainObjectNames.EXPORT
+        );
         server.registerMBean(
-                new ProcessorMetricsControl(
-                        new OwnerRegistrationSlot<SpanWatchdogProcessor>(),
-                        new OwnerRegistrationSlot<PlatformCompositeSpanProcessor>(),
-                        new OwnerRegistrationSlot<SpanLimitsMetricsProcessor>(),
-                        agentInstanceId),
-                DomainObjectNames.PROCESSOR_METRICS);
+                DomainSnapshotEndpoints.processorMetrics(processorMetrics::getProcessorMetricsObservation),
+                DomainObjectNames.PROCESSOR_METRICS
+        );
         server.registerMBean(
-                new DiagnosticsControl(new LongAdder(), agentInstanceId),
-                DomainObjectNames.DIAGNOSTICS);
+                DomainSnapshotEndpoints.diagnostics(diagnostics::getDiagnosticsObservation),
+                DomainObjectNames.DIAGNOSTICS
+        );
     }
 }

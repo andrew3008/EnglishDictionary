@@ -1,2 +1,4 @@
 space.br1440.platform.leaderelection.configuration.LeaderElectionAutoConfiguration
+space.br1440.platform.leaderelection.configuration.LeadershipAutoConfiguration
+space.br1440.platform.leaderelection.configuration.LockAutoConfiguration
 space.br1440.platform.leaderelection.metrics.LeaderElectorMetricsConfiguration

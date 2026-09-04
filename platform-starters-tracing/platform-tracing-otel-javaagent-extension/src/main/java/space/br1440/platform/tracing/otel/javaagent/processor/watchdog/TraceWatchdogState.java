@@ -42,6 +42,7 @@ final class TraceWatchdogState {
             single = tracked;
             return true;
         }
+
         if (single.spanId().equals(tracked.spanId())) {
             return false;
         }
@@ -97,10 +98,9 @@ final class TraceWatchdogState {
     int drain() {
         ConcurrentHashMap<String, Tracked> current = multiple;
         if (current != null) {
-            int drainedCount = current.size();
             multiple = null;
             single = null;
-            return drainedCount;
+            return current.size();
         }
 
         if (single != null) {
@@ -143,7 +143,11 @@ final class TraceWatchdogState {
 
         @Override
         public boolean equals(Object that) {
-            return this == that;
+            if (that instanceof Tracked) {
+                return (this == that);
+            }
+
+            return false;
         }
 
         @Override
