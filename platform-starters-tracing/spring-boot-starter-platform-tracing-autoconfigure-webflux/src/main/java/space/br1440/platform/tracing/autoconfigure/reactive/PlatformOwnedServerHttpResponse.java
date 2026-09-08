@@ -6,6 +6,8 @@ import java.util.Map;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpResponseDecorator;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.util.MultiValueMap;
 
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
@@ -43,6 +45,7 @@ final class PlatformOwnedServerHttpResponse extends ServerHttpResponseDecorator 
     }
 
     @Override
+    @NonNull
     public HttpHeaders getHeaders() {
         return headers;
     }
@@ -71,7 +74,7 @@ final class PlatformOwnedServerHttpResponse extends ServerHttpResponseDecorator 
         }
 
         @Override
-        public void set(String headerName, String headerValue) {
+        public void set(@NonNull String headerName, @Nullable String headerValue) {
             if (owner.isProtected(headerName)) {
                 return;
             }
@@ -80,7 +83,7 @@ final class PlatformOwnedServerHttpResponse extends ServerHttpResponseDecorator 
         }
 
         @Override
-        public void add(String headerName, String headerValue) {
+        public void add(@NonNull String headerName, @Nullable String headerValue) {
             if (owner.isProtected(headerName)) {
                 return;
             }
@@ -88,7 +91,7 @@ final class PlatformOwnedServerHttpResponse extends ServerHttpResponseDecorator 
         }
 
         @Override
-        public void addAll(String key, List<? extends String> values) {
+        public void addAll(@NonNull String key, @NonNull List<? extends String> values) {
             if (owner.isProtected(key)) {
                 return;
             }
@@ -97,33 +100,35 @@ final class PlatformOwnedServerHttpResponse extends ServerHttpResponseDecorator 
         }
 
         @Override
-        public void addAll(MultiValueMap<String, String> values) {
-            values.forEach((key, headerValues) -> addAll(key, headerValues));
+        public void addAll(@NonNull MultiValueMap<String, String> values) {
+            values.forEach(this::addAll);
         }
 
         @Override
-        public void setAll(Map<String, String> values) {
+        public void setAll(@NonNull Map<String, String> values) {
             values.forEach(this::set);
         }
 
         @Override
-        public List<String> put(String key, List<String> value) {
+        @NonNull
+        public List<String> put(@NonNull String key, @NonNull List<String> value) {
             if (owner.isProtected(key)) {
-                return get(key);
+                return getOrEmpty(key);
             }
 
             return super.put(key, value);
         }
 
         @Override
-        public void putAll(Map<? extends String, ? extends List<String>> map) {
+        public void putAll(@NonNull Map<? extends String, ? extends List<String>> map) {
             map.forEach(this::put);
         }
 
         @Override
-        public List<String> remove(Object key) {
+        @NonNull
+        public List<String> remove(@NonNull Object key) {
             if (key instanceof String name && owner.isProtected(name)) {
-                return get(name);
+                return getOrEmpty(name);
             }
 
             return super.remove(key);

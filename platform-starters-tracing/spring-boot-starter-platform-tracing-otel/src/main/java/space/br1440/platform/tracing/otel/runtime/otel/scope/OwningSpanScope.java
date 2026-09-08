@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.runtime.otel.scope;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -9,7 +10,9 @@ import lombok.extern.slf4j.Slf4j;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
+import space.br1440.platform.tracing.otel.mdc.SpanContextMdcProjection;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
@@ -26,6 +29,36 @@ public final class OwningSpanScope implements AutoCloseable {
         this.span = span;
         this.scope = scope;
         this.exceptionRecorder = exceptionRecorder;
+    }
+
+    @Nonnull
+    @SuppressWarnings("resource")
+    public static OwningSpanScope activate(@Nonnull Span span,
+                                           @Nonnull ExceptionRecorder exceptionRecorder) {
+        Objects.requireNonNull(span, "span");
+        Objects.requireNonNull(exceptionRecorder, "exceptionRecorder");
+
+        Scope otelScope = Context.current().with(span).makeCurrent();
+        try {
+            SpanContextMdcProjection.Snapshot previousSpanMdc = SpanContextMdcProjection.installCurrent();
+            Scope scope = () -> {
+                try {
+                    otelScope.close();
+                } finally {
+                    previousSpanMdc.restore();
+                }
+            };
+
+            return new OwningSpanScope(span, scope, exceptionRecorder);
+        } catch (RuntimeException ex) {
+            try {
+                otelScope.close();
+            } finally {
+                span.end();
+            }
+
+            throw ex;
+        }
     }
 
     @Nonnull

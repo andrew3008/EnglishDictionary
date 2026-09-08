@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.reactive;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -23,26 +25,23 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 class ReactiveIdentityMdcPropagationIntegrationTest {
 
-    private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;
-    private OpenTelemetrySdk openTelemetry;
-    private TracingRuntime runtime;
     private ReactiveIdentityContextPropagation propagation;
 
     @BeforeEach
     void setUp() {
         Hooks.enableAutomaticContextPropagation();
 
-        exporter = InMemorySpanExporter.create();
+        InMemorySpanExporter exporter = InMemorySpanExporter.create();
         tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        openTelemetry = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build();
-        runtime = OtelTracingRuntimeFactory.create(openTelemetry);
+        OpenTelemetrySdk openTelemetry = OpenTelemetrySdk.builder()
+                .setTracerProvider(tracerProvider)
+                .build();
+        TracingRuntime runtime = OtelTracingRuntimeFactory.create(openTelemetry);
 
         propagation = new ReactiveIdentityContextPropagation(new RequestIdentityBoundarySupport(runtime));
         propagation.afterSingletonsInstantiated();

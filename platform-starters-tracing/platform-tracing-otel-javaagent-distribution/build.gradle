@@ -34,9 +34,10 @@ def jakartaAnnotationApiCoordinate = 'jakarta.annotation:jakarta.annotation-api:
 def otelApiModule = 'io.opentelemetry:opentelemetry-api'
 def otelContextModule = 'io.opentelemetry:opentelemetry-context'
 def otelCommonModule = 'io.opentelemetry:opentelemetry-common'
-def packagedExtensionJarName = 'platform-tracing-otel-javaagent-extension.jar'
-def extensionEntryPath = 'extensions/' + packagedExtensionJarName
+def embeddedExtensionJarName = 'platform-tracing-otel-javaagent-extension.jar'
+def extensionEntryPath = 'extensions/' + embeddedExtensionJarName
 def identityEntryPath = 'META-INF/platform-tracing/javaagent-distribution.properties'
+def standaloneExtensionJarName = 'platform-tracing-otel-javaagent-extension-' + project.version + '.jar'
 
 def otelJavaAgent = configurations.create('otelJavaAgent') {
     canBeConsumed = false
@@ -122,8 +123,6 @@ Provider<Map<String, String>> extensionSchemaIdentity = agentExtensionFile.map {
 }
 
 Provider<RegularFile> controlledAgentJarFile = layout.buildDirectory.file('libs/platform-tracing-javaagent-' + project.version + '.jar') as Provider<RegularFile>
-Provider<RegularFile> packagedExtensionJarFile = layout.buildDirectory.file('controlled-agent/platform-tracing-otel-javaagent-extension.jar') as Provider<RegularFile>
-Provider<RegularFile> stagingExtensionJarFile = layout.buildDirectory.file('controlled-agent/staging/platform-tracing-otel-javaagent-extension.jar') as Provider<RegularFile>
 Provider<RegularFile> stagingAgentJarFile = layout.buildDirectory.file('controlled-agent/staging/platform-tracing-javaagent-' + project.version + '.jar') as Provider<RegularFile>
 Provider<RegularFile> identityFile = layout.buildDirectory.file('controlled-agent/staging/javaagent-distribution.properties') as Provider<RegularFile>
 def stagingTreeDir = layout.buildDirectory.dir('controlled-agent/staging-tree')
@@ -138,10 +137,12 @@ def allowedExtensionCoordinates = [
         otelCommonModule + ':' + otelSdkVersion
 ] as Set
 
-def packagePlatformExtension = tasks.named('shadowJar') {
+def packageStandaloneExtension = tasks.named('shadowJar') {
     group = 'build'
-    archiveFileName = packagedExtensionJarName
-    destinationDirectory.set(layout.buildDirectory.dir('controlled-agent/staging'))
+    archiveFileName = standaloneExtensionJarName
+    archiveClassifier.set('')
+    destinationDirectory.set(layout.buildDirectory.dir('libs'))
+
     configurations = [agentExtension]
     duplicatesStrategy = DuplicatesStrategy.FAIL
     preserveFileTimestamps = false
@@ -178,14 +179,17 @@ def packagePlatformExtension = tasks.named('shadowJar') {
     }
 }
 
+Provider<RegularFile> standaloneExtensionJarFile = packageStandaloneExtension.flatMap {
+    AbstractArchiveTask task -> task.archiveFile
+} as Provider<RegularFile>
+
 def validateControlledAgentInputs = tasks.register('validateControlledAgentInputs') {
     group = 'build'
     description = 'Pin/SHA check of the OTel agent, allowlist of extension dependencies, identity write'
-    dependsOn packagePlatformExtension
 
     inputs.file(otelJavaAgentFile)
     inputs.file(agentExtensionFile)
-    inputs.file(stagingExtensionJarFile)
+    inputs.file(standaloneExtensionJarFile)
     inputs.property('distributionVersion', project.version.toString())
     inputs.property('otelJavaAgentCoordinate', resolvedOtelJavaAgentCoordinate)
     inputs.property('extensionCoordinates', agentExtensionArtifactCoordinates)
@@ -202,13 +206,14 @@ def validateControlledAgentInputs = tasks.register('validateControlledAgentInput
 
         File agent = otelJavaAgentFile.get()
         File library = agentExtensionFile.get()
-        File packaged = stagingExtensionJarFile.get().asFile
+        File packaged = standaloneExtensionJarFile.get().asFile
 
         Map<String, String> pin = readZipProperties(
-                library, 'META-INF/platform-tracing/otel-javaagent-acp-pin.properties'
+                library,
+                'META-INF/platform-tracing/otel-javaagent-acp-pin.properties'
         )
-        String reviewed = pin.get('otel.javaagent.sha256')
 
+        String reviewed = pin.get('otel.javaagent.sha256')
         String actual = sha256Hex(agent)
         if (reviewed == null || reviewed != actual) {
             throw new GradleException(
@@ -223,21 +228,22 @@ def validateControlledAgentInputs = tasks.register('validateControlledAgentInput
                 resolvedOtelJavaAgentCoordinate,
                 actual,
                 sha256Hex(packaged),
-                publishedExtensionPath)
+                publishedExtensionPath
+        )
     }
 }
 
 def syncControlledAgentStaging = tasks.register('syncControlledAgentStaging', Sync) {
     group = 'build'
     dependsOn validateControlledAgentInputs
-    def extensionJarName = packagedExtensionJarName
+    def extensionJarName = embeddedExtensionJarName
 
     from(otelJavaAgentFile.map {
         File agent -> zipTree(agent)
     })
 
 
-    from(stagingExtensionJarFile) {
+    from(standaloneExtensionJarFile) {
         into 'extensions'
         rename { extensionJarName }
     }
@@ -273,18 +279,12 @@ def assembleControlledJavaAgentJar = tasks.register('assembleControlledJavaAgent
 
 def publishControlledJavaAgent = tasks.register('publishControlledJavaAgent') {
     group = 'build'
-    dependsOn assembleControlledJavaAgentJar, packagePlatformExtension
+    dependsOn assembleControlledJavaAgentJar
 
     inputs.file(stagingAgentJarFile)
-    inputs.file(stagingExtensionJarFile)
-
     outputs.file(controlledAgentJarFile)
-    outputs.file(packagedExtensionJarFile)
 
     doLast {
-        publishAtomically(stagingExtensionJarFile.get().asFile.toPath(),
-                packagedExtensionJarFile.get().asFile.toPath())
-
         publishAtomically(stagingAgentJarFile.get().asFile.toPath(),
                 controlledAgentJarFile.get().asFile.toPath())
     }
@@ -369,6 +369,9 @@ abstract class ControlledAgentTestArguments implements CommandLineArgumentProvid
     @Input
     abstract Property<String> getOtelJavaAgentCoordinate()
 
+    @Internal
+    abstract DirectoryProperty getTestRepositoryRoot()
+
     @Override
     Iterable<String> asArguments() {
         [
@@ -377,10 +380,14 @@ abstract class ControlledAgentTestArguments implements CommandLineArgumentProvid
                 '-DplatformTracing.extensionLibraryJar=' + extensionLibraryJar.get().asFile.absolutePath,
                 '-DplatformTracing.otelJavaAgentJar=' + otelJavaAgentJar.get().asFile.absolutePath,
                 '-DplatformTracing.distributionVersion=' + distributionVersion.get(),
-                '-DplatformTracing.otelJavaAgentCoordinate=' + otelJavaAgentCoordinate.get()
+                '-DplatformTracing.otelJavaAgentCoordinate=' + otelJavaAgentCoordinate.get(),
+                '-DplatformTracing.testRepository=' + testRepositoryRoot.get().asFile.absolutePath
         ]
     }
 }
+
+def testRepositoryName = 'testRepository'
+def testRepositoryDir = layout.buildDirectory.dir('test-repository')
 
 tasks.withType(Test).configureEach {
     enabled = true
@@ -388,11 +395,12 @@ tasks.withType(Test).configureEach {
 
     def arguments = objects.newInstance(ControlledAgentTestArguments)
     arguments.controlledAgentJar.set(controlledAgentJarFile)
-    arguments.extensionJar.set(packagedExtensionJarFile)
+    arguments.extensionJar.set(standaloneExtensionJarFile)
     arguments.extensionLibraryJar.fileProvider(agentExtensionFile)
     arguments.otelJavaAgentJar.fileProvider(otelJavaAgentFile)
     arguments.distributionVersion.set(project.version.toString())
     arguments.otelJavaAgentCoordinate.set(resolvedOtelJavaAgentCoordinate)
+    arguments.testRepositoryRoot.set(testRepositoryDir)
 
     jvmArgumentProviders.add(arguments)
 }
@@ -402,17 +410,68 @@ tasks.named('check') {
     dependsOn testing.suites.named('controlledAgentRuntimeTest')
 }
 
-tasks.withType(AbstractPublishToMaven).configureEach {
-    dependsOn tasks.named('check')
+def targetsTestRepository = { Task task ->
+    task instanceof PublishToMavenRepository && task.repository != null && task.repository.name == testRepositoryName
+}
+
+def resetTestRepository = tasks.register('resetTestRepository', Delete) {
+    delete testRepositoryDir
+}
+
+def testRepositoryPublications = tasks.withType(AbstractPublishToMaven).matching(targetsTestRepository)
+
+tasks.withType(AbstractPublishToMaven).configureEach { task ->
+    task.dependsOn({ targetsTestRepository(task) ? resetTestRepository : tasks.named('check') })
+}
+
+def publishToTestRepository = tasks.register('publishToTestRepository') {
+    group = 'verification'
+    description = 'Publish every distribution publication into an isolated file repository'
+    dependsOn testRepositoryPublications
+}
+
+def repositoryInventory = fileTree(testRepositoryDir) {
+    exclude '**/maven-metadata*'
+}
+
+tasks.named('controlledAgentArtifactTest', Test) {
+    dependsOn publishToTestRepository
+
+    inputs.files(repositoryInventory)
+            .withPropertyName('publishedRepositoryArtifacts')
+            .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 publishing {
-    publications.named('mavenJava', MavenPublication) { MavenPublication publication ->
-        publication.artifactId = 'platform-tracing-javaagent'
-        publication.artifacts.clear()
-        publication.artifact(controlledAgentJarFile) { MavenArtifact artifact ->
-            artifact.builtBy(assembleControlledJavaAgent)
-            artifact.extension = 'jar'
+    repositories {
+        maven {
+            name = testRepositoryName
+            url = testRepositoryDir
+        }
+    }
+
+    publications {
+        named('mavenJava', MavenPublication) { MavenPublication publication ->
+            publication.artifactId = 'platform-tracing-javaagent'
+            publication.setArtifacts([])
+            publication.artifact(controlledAgentJarFile) { MavenArtifact artifact ->
+                artifact.builtBy(assembleControlledJavaAgent)
+                artifact.extension = 'jar'
+            }
+
+            publication.pom { pom ->
+                pom.name = 'Platform Tracing Controlled OpenTelemetry Java Agent'
+                pom.description = 'Controlled OpenTelemetry Java agent distribution with the platform tracing extension embedded'
+            }
+        }
+
+        create('extension', MavenPublication) { MavenPublication publication ->
+            publication.artifactId = 'platform-tracing-otel-javaagent-extension'
+            publication.artifact(packageStandaloneExtension)
+            publication.pom { pom ->
+                pom.name = 'Platform Tracing OTel Java agent extension'
+                pom.description = 'Standalone platform OpenTelemetry Java agent extension artifact'
+            }
         }
     }
 }
@@ -540,7 +599,8 @@ static void publishAtomically(Path source, Path target) {
             Files.move(
                     temporary,
                     target,
-                    StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING
             )
         } catch (AtomicMoveNotSupportedException exception) {
             throw new GradleException(

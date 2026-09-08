@@ -17,9 +17,6 @@ import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
 
-import reactor.core.publisher.Hooks;
-import reactor.core.publisher.Mono;
-
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
@@ -33,11 +30,13 @@ import space.br1440.platform.tracing.runtime.propagation.control.DefaultTraceCon
 import space.br1440.platform.tracing.runtime.propagation.control.OutboundApplicationIdentitySource;
 import space.br1440.platform.tracing.webflux.ReactiveCorrelationOperations;
 
+import reactor.core.publisher.Hooks;
+import reactor.core.publisher.Mono;
+
 class PlatformOutboundExchangeFilterFunctionCorrelationTest {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(5);
 
-    private TracingRuntime runtime;
     private ReactiveIdentityContextPropagation propagation;
     private ReactiveCorrelationOperations operations;
     private PlatformOutboundExchangeFilterFunction trustedFilter;
@@ -50,7 +49,7 @@ class PlatformOutboundExchangeFilterFunctionCorrelationTest {
 
     @BeforeEach
     void setUp() {
-        runtime = NoOpTracingRuntime.disabledByConfiguration("reactive-outbound-correlation-test");
+        TracingRuntime runtime = NoOpTracingRuntime.disabledByConfiguration("reactive-outbound-correlation-test");
         RequestIdentityBoundarySupport boundary = new RequestIdentityBoundarySupport(runtime);
         propagation = new ReactiveIdentityContextPropagation(boundary);
         propagation.afterSingletonsInstantiated();
@@ -59,9 +58,11 @@ class PlatformOutboundExchangeFilterFunctionCorrelationTest {
         TraceOperations traceOperations = new DefaultTraceOperations(runtime);
         OutboundApplicationIdentitySource identitySource = OutboundApplicationIdentitySource.of(
                 () -> traceOperations.traceContext().requestId().orElse(null),
-                () -> traceOperations.traceContext().correlationId().orElse(null));
+                () -> traceOperations.traceContext().correlationId().orElse(null)
+        );
         PlatformOutboundPropagation propagationPort = new DefaultTraceControlHeaderInjector(
-                "X-Trace-On", "X-QA-Trace", "X-Request-Id", identitySource);
+                "X-Trace-On", "X-QA-Trace", "X-Request-Id", identitySource
+        );
 
         OutboundPropagationPolicy allowAll = destination -> OutboundPropagationDecision.ALLOW_ALL;
         OutboundPropagationPolicy denyAll = destination -> OutboundPropagationDecision.DENY_ALL;

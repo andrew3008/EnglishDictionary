@@ -14,9 +14,6 @@ import space.br1440.platform.tracing.api.span.SpanResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Юнит-тесты реактивной серверной {@link PlatformReactiveServerRequestObservationConvention}.
- */
 class PlatformReactiveServerRequestObservationConventionTest {
 
     private final PlatformReactiveServerRequestObservationConvention convention =
@@ -25,6 +22,7 @@ class PlatformReactiveServerRequestObservationConventionTest {
     @Test
     void successWhenStatus2xxAndNoError() {
         ServerRequestObservationContext ctx = newContext(HttpStatus.OK, null);
+
         KeyValues kv = convention.getLowCardinalityKeyValues(ctx);
         assertThat(asMap(kv)).containsEntry(PlatformAttributes.PLATFORM_TYPE, SpanCategory.HTTP_SERVER.value());
         assertThat(asMap(kv)).containsEntry(PlatformAttributes.PLATFORM_RESULT, SpanResult.SUCCESS.value());
@@ -33,6 +31,7 @@ class PlatformReactiveServerRequestObservationConventionTest {
     @Test
     void failureWhenStatus5xx() {
         ServerRequestObservationContext ctx = newContext(HttpStatus.INTERNAL_SERVER_ERROR, null);
+
         KeyValues kv = convention.getLowCardinalityKeyValues(ctx);
         assertThat(asMap(kv)).containsEntry(PlatformAttributes.PLATFORM_RESULT, SpanResult.FAILURE.value());
     }
@@ -40,6 +39,7 @@ class PlatformReactiveServerRequestObservationConventionTest {
     @Test
     void failureWhenErrorPresentEvenIfStatus2xx() {
         ServerRequestObservationContext ctx = newContext(HttpStatus.OK, new RuntimeException("boom"));
+
         KeyValues kv = convention.getLowCardinalityKeyValues(ctx);
         assertThat(asMap(kv)).containsEntry(PlatformAttributes.PLATFORM_RESULT, SpanResult.FAILURE.value());
     }
@@ -48,7 +48,7 @@ class PlatformReactiveServerRequestObservationConventionTest {
         MockServerHttpRequest request = MockServerHttpRequest.get("/api/orders").build();
         MockServerHttpResponse response = new MockServerHttpResponse();
         response.setStatusCode(status);
-        // Конструктор reactive-контекста требует Map атрибутов (Spring Framework 6.x / SB 3.5).
+
         ServerRequestObservationContext ctx = new ServerRequestObservationContext(request, response, new HashMap<>());
         if (error != null) {
             ctx.setError(error);

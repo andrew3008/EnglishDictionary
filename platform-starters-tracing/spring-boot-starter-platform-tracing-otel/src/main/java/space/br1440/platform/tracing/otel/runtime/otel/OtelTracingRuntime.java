@@ -16,7 +16,6 @@ import space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.otel.context.DefaultActiveTraceContextView;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
-import space.br1440.platform.tracing.otel.mdc.SpanContextMdcProjection;
 import space.br1440.platform.tracing.otel.runtime.SpanHandleImpl;
 import space.br1440.platform.tracing.otel.runtime.TraceControlBoundaryState;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
@@ -34,7 +33,6 @@ import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.api.trace.TraceStateBuilder;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
-import io.opentelemetry.context.Scope;
 
 public final class OtelTracingRuntime implements TracingRuntime {
 
@@ -59,7 +57,8 @@ public final class OtelTracingRuntime implements TracingRuntime {
                 this::currentTraceId,
                 this::currentSpanId,
                 this::currentRequestId,
-                this::currentCorrelationId);
+                this::currentCorrelationId
+        );
     }
 
     @Override
@@ -92,19 +91,7 @@ public final class OtelTracingRuntime implements TracingRuntime {
         }
 
         Span span = builder.startSpan();
-        Context ctx = Context.current().with(span);
-        Scope otelScope = ctx.makeCurrent();
-        SpanContextMdcProjection.Snapshot previousSpanMdc = SpanContextMdcProjection.installCurrent();
-        Scope scope = () -> {
-            try {
-                otelScope.close();
-            } finally {
-                previousSpanMdc.restore();
-            }
-        };
-
-        OwningSpanScope spanScope = new OwningSpanScope(span, scope, exceptionRecorder);
-        return SpanHandleImpl.wrap(spanScope);
+        return SpanHandleImpl.wrap(OwningSpanScope.activate(span, exceptionRecorder));
     }
 
     @Override
@@ -179,7 +166,8 @@ public final class OtelTracingRuntime implements TracingRuntime {
                 link.traceId(),
                 link.spanId(),
                 TraceFlags.fromByte(link.traceFlags()),
-                resolveTraceState(link.traceState()));
+                resolveTraceState(link.traceState())
+        );
     }
 
     @Nonnull

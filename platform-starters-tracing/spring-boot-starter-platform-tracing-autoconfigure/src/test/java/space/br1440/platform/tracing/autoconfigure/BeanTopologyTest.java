@@ -1,41 +1,44 @@
 package space.br1440.platform.tracing.autoconfigure;
 
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
+import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
-import space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
+import space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
-import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.NoOpSpanHandle;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TraceControlBoundaryState;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 import space.br1440.platform.tracing.otel.runtime.state.TracingState;
-import space.br1440.platform.tracing.otel.runtime.NoOpSpanHandle;
 import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
 
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 class BeanTopologyTest {
 
@@ -43,10 +46,12 @@ class BeanTopologyTest {
             .withConfiguration(AutoConfigurations.of(
                     TracingConfigurationAuthorityAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class,
-                    TracingMetricsAutoConfiguration.class))
+                    TracingMetricsAutoConfiguration.class)
+            )
             .withPropertyValues(
                     "platform.tracing.configuration.authority=HELM",
-                    "platform.environment=LOCAL");
+                    "platform.environment=LOCAL"
+            );
 
     private final ApplicationContextRunner controlledAgentRunner = contextRunner
             .withInitializer(ControlledAgentTestRuntime::initialize)
@@ -58,10 +63,8 @@ class BeanTopologyTest {
                 .run(context -> {
                     assertThat(context.getBeansOfType(TraceOperations.class)).hasSize(1);
                     assertThat(context.getBeansOfType(TracingRuntime.class)).hasSize(1);
-                    assertThat(context.getBean(TraceOperations.class))
-                            .isInstanceOf(DefaultTraceOperations.class);
-                    assertThat(context.getBean(TracingRuntime.class))
-                            .isInstanceOf(OtelTracingRuntime.class);
+                    assertThat(context.getBean(TraceOperations.class)).isInstanceOf(DefaultTraceOperations.class);
+                    assertThat(context.getBean(TracingRuntime.class)).isInstanceOf(OtelTracingRuntime.class);
                 });
     }
 
@@ -82,8 +85,7 @@ class BeanTopologyTest {
                 .run(context -> {
                     assertThat(context).doesNotHaveBean("meteredTraceOperations");
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(DefaultTraceOperations.class);
-                    assertThat(context.getBean(TracingRuntime.class))
-                            .isInstanceOf(MeteredTracingRuntime.class);
+                    assertThat(context.getBean(TracingRuntime.class)).isInstanceOf(MeteredTracingRuntime.class);
                     assertThat(((MeteredTracingRuntime) context.getBean(TracingRuntime.class)).delegate())
                             .isInstanceOf(OtelTracingRuntime.class);
                 });
@@ -92,8 +94,7 @@ class BeanTopologyTest {
     @Test
     void disabledTracingMode_exposesNonEnabledTracingState() {
         contextRunner
-                .withPropertyValues(
-                        "platform.tracing.enabled=false")
+                .withPropertyValues("platform.tracing.enabled=false")
                 .run(context -> {
                     TracingRuntime impl = context.getBean(TracingRuntime.class);
                     assertThat(impl.state().mode()).isEqualTo(TracingRuntimeMode.DISABLED_BY_CONFIGURATION);
@@ -111,20 +112,22 @@ class BeanTopologyTest {
 
     @Test
     void userPrimaryTracingRuntime_isRejectedAsUnsupportedSdkOwnershipBypass() {
+        String message = """
+            Application-owned TracingRuntime bean is not supported \
+            with Controlled Agent ownership: \
+            customTracingRuntime""";
+
         contextRunner
                 .withUserConfiguration(CustomPrimaryTracingRuntimeConfig.class)
                 .run(context -> {
                     assertThat(context).hasFailed();
-                    assertThat(context.getStartupFailure())
-                            .hasMessage(
-                                    "Application-owned TracingRuntime bean is not supported "
-                                            + "with Controlled Agent ownership: "
-                                            + "customTracingRuntime");
+                    assertThat(context.getStartupFailure()).hasMessage(message);
                 });
     }
 
     @Configuration
     static class MeterRegistryConfiguration {
+
         @Bean
         MeterRegistry meterRegistry() {
             return new SimpleMeterRegistry();
@@ -135,23 +138,9 @@ class BeanTopologyTest {
 
         private final TracingRuntime identityDelegate = NoOpTracingRuntime.noop();
 
-
-        private static final TracingState STATE = new TracingState() {
-            @Override
-            public TracingRuntimeMode mode() {
-                return TracingRuntimeMode.TEST;
-            }
-
-            @Override
-            public Optional<String> reason() {
-                return Optional.of("test-primary");
-            }
-
-            @Override
-            public Map<String, String> details() {
-                return Map.of();
-            }
-        };
+        private static final TracingState STATE = ImmutableTracingState.of(
+                TracingRuntimeMode.TEST, "test-primary", Map.of()
+        );
 
         @Override
         @Nonnull
@@ -166,31 +155,37 @@ class BeanTopologyTest {
         }
 
         @Override
-        public CorrelationScope openCorrelationScope(String correlationId) {
+        @Nonnull
+        public CorrelationScope openCorrelationScope(@Nonnull String correlationId) {
             return identityDelegate.openCorrelationScope(correlationId);
         }
 
         @Override
-        public CorrelationScope openRequestIdentityScope(String requestId, boolean forceTrace, boolean qaTrace) {
+        @Nonnull
+        public CorrelationScope openRequestIdentityScope(@Nonnull String requestId, boolean forceTrace, boolean qaTrace) {
             return identityDelegate.openRequestIdentityScope(requestId, forceTrace, qaTrace);
         }
 
         @Override
-        public String requireCanonicalCorrelationId(String correlationId) {
+        @Nonnull
+        public String requireCanonicalCorrelationId(@Nonnull String correlationId) {
             return identityDelegate.requireCanonicalCorrelationId(correlationId);
         }
 
         @Override
+        @Nonnull
         public Optional<String> currentRequestId() {
             return identityDelegate.currentRequestId();
         }
 
         @Override
+        @Nonnull
         public Optional<String> currentCorrelationId() {
             return identityDelegate.currentCorrelationId();
         }
 
         @Override
+        @Nonnull
         public TraceControlBoundaryState currentTraceControlBoundary() {
             return identityDelegate.currentTraceControlBoundary();
         }
@@ -215,6 +210,7 @@ class BeanTopologyTest {
 
     @Configuration
     static class CustomPrimaryTracingRuntimeConfig {
+
         @Bean
         @Primary
         TracingRuntime customTracingRuntime() {

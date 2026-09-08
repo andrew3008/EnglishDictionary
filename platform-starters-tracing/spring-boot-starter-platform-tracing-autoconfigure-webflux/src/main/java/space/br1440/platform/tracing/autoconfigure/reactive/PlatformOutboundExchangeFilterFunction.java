@@ -1,8 +1,8 @@
 package space.br1440.platform.tracing.autoconfigure.reactive;
 
 import java.util.Objects;
-
 import jakarta.annotation.Nonnull;
+
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
@@ -10,9 +10,9 @@ import org.springframework.web.reactive.function.client.ExchangeFunction;
 
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
+import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
-import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 
 import reactor.core.publisher.Mono;
@@ -23,7 +23,7 @@ public final class PlatformOutboundExchangeFilterFunction implements ExchangeFil
     private final PlatformOutboundPropagation propagation;
 
     public PlatformOutboundExchangeFilterFunction(OutboundPropagationPolicy policy,
-                                                   PlatformOutboundPropagation propagation) {
+                                                  PlatformOutboundPropagation propagation) {
         this.policy = policy;
         this.propagation = propagation;
     }
@@ -40,7 +40,8 @@ public final class PlatformOutboundExchangeFilterFunction implements ExchangeFil
                         .<ReactiveIdentityContextPropagation.IdentityState>getOrEmpty(ReactiveIdentityContextPropagation.KEY)
                         .orElse(ReactiveIdentityContextPropagation.EMPTY);
                 InboundTraceControl control = new InboundTraceControl(
-                        identityState.forceTrace(), identityState.qaTrace(), null, null, null);
+                        identityState.forceTrace(), identityState.qaTrace(), null, null, null
+                );
 
                 ClientRequest.Builder builder = ClientRequest.from(request);
                 builder.headers(httpHeaders -> httpHeaders.remove(PlatformHeaders.X_CORRELATION_ID));

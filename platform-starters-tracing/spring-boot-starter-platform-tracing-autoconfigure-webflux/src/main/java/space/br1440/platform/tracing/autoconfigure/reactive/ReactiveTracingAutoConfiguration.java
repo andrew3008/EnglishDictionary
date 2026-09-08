@@ -80,6 +80,7 @@ public class ReactiveTracingAutoConfiguration {
         return builder -> builder.filters(filters -> {
             boolean alreadyPresent = filters.stream()
                     .anyMatch(f -> f instanceof PlatformOutboundExchangeFilterFunction);
+
             if (!alreadyPresent) {
                 filters.add(filter);
             }

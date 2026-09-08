@@ -1,27 +1,37 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
-import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
-/**
- * Slice 7: stable JSON contract for {@link SpanFactoryDiagnostics#toActuatorMap()}.
- */
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
+import space.br1440.platform.tracing.api.context.CorrelationScope;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
+import space.br1440.platform.tracing.api.span.spec.SpanSpec;
+import space.br1440.platform.tracing.otel.runtime.NoOpSpanHandle;
+import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.TraceControlBoundaryState;
+import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.state.ImmutableTracingState;
+import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
+import space.br1440.platform.tracing.otel.runtime.state.TracingState;
+import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
+
 class SpanFactoryDiagnosticsJsonContractTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Test
     void actuatorMap_serializesStableTopLevelKeysOnly() throws Exception {
-        SpanFactoryDiagnostics diagnostics = new SpanFactoryDiagnostics(
-                NoOpTracingRuntime.noop());
+        SpanFactoryDiagnostics diagnostics = new SpanFactoryDiagnostics(NoOpTracingRuntime.noop());
 
         @SuppressWarnings("unchecked")
         Map<String, Object> json = OBJECT_MAPPER.readValue(
@@ -73,168 +83,150 @@ class SpanFactoryDiagnosticsJsonContractTest {
         }
     }
 
-    private static String modeFrom(space.br1440.platform.tracing.otel.runtime.TracingRuntime runtime) {
+    private static String modeFrom(TracingRuntime runtime) {
         return (String) new SpanFactoryDiagnostics(runtime).toActuatorMap().get("mode");
     }
 
-    private static final class TestModeTracingRuntime implements space.br1440.platform.tracing.otel.runtime.TracingRuntime {
+    private static final class TestModeTracingRuntime implements TracingRuntime {
 
-        private final space.br1440.platform.tracing.otel.runtime.TracingRuntime identityDelegate =
-                NoOpTracingRuntime.noop();
+        private final TracingRuntime identityDelegate = NoOpTracingRuntime.noop();
 
         @Override
-        public space.br1440.platform.tracing.api.span.spec.SpanHandle startSpan(
-                space.br1440.platform.tracing.api.span.spec.SpanSpec spec) {
-            return space.br1440.platform.tracing.otel.runtime.NoOpSpanHandle.INSTANCE;
+        @Nonnull
+        public SpanHandle startSpan(@Nonnull SpanSpec spec) {
+            return NoOpSpanHandle.INSTANCE;
         }
 
         @Override
-        public space.br1440.platform.tracing.api.context.ActiveTraceContextView currentTraceContext() {
+        @Nonnull
+        public ActiveTraceContextView currentTraceContext() {
             return identityDelegate.currentTraceContext();
         }
 
         @Override
-        public space.br1440.platform.tracing.api.context.CorrelationScope openCorrelationScope(String correlationId) {
+        @Nonnull
+        public CorrelationScope openCorrelationScope(@Nonnull String correlationId) {
             return identityDelegate.openCorrelationScope(correlationId);
         }
 
         @Override
-        public space.br1440.platform.tracing.api.context.CorrelationScope openRequestIdentityScope(
-                String requestId, boolean forceTrace, boolean qaTrace) {
+        @Nonnull
+        public CorrelationScope openRequestIdentityScope(@Nonnull String requestId, boolean forceTrace, boolean qaTrace) {
             return identityDelegate.openRequestIdentityScope(requestId, forceTrace, qaTrace);
         }
 
         @Override
-        public String requireCanonicalCorrelationId(String correlationId) {
+        @Nonnull
+        public String requireCanonicalCorrelationId(@Nonnull String correlationId) {
             return identityDelegate.requireCanonicalCorrelationId(correlationId);
         }
 
         @Override
+        @Nonnull
         public Optional<String> currentRequestId() {
             return identityDelegate.currentRequestId();
         }
 
         @Override
+        @Nonnull
         public Optional<String> currentCorrelationId() {
             return identityDelegate.currentCorrelationId();
         }
 
         @Override
-        public space.br1440.platform.tracing.otel.runtime.TraceControlBoundaryState currentTraceControlBoundary() {
+        @Nonnull
+        public TraceControlBoundaryState currentTraceControlBoundary() {
             return identityDelegate.currentTraceControlBoundary();
         }
 
         @Override
-        public void recordException(
-                space.br1440.platform.tracing.api.span.spec.SpanHandle span, Throwable throwable) {
+        public void recordException(@Nonnull SpanHandle span, @Nullable Throwable throwable) {
         }
 
         @Override
-        public space.br1440.platform.tracing.otel.runtime.state.TracingState state() {
-            return new space.br1440.platform.tracing.otel.runtime.state.TracingState() {
-                @Override
-                public TracingRuntimeMode mode() {
-                    return TracingRuntimeMode.TEST;
-                }
-
-                @Override
-                public java.util.Optional<String> reason() {
-                    return java.util.Optional.of("test-primary");
-                }
-
-                @Override
-                public Map<String, String> details() {
-                    return Map.of();
-                }
-            };
+        @Nonnull
+        public TracingState state() {
+            return ImmutableTracingState.of(TracingRuntimeMode.TEST, "test-primary", Map.of());
         }
 
         @Override
-        public space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy attributePolicy() {
-            return new space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy();
+        @Nonnull
+        public AttributePolicy attributePolicy() {
+            return new AttributePolicy();
         }
     }
 
-    private static final class TestModeTracingRuntimeWithMode implements space.br1440.platform.tracing.otel.runtime.TracingRuntime {
+    private static final class TestModeTracingRuntimeWithMode implements TracingRuntime {
 
         private final TracingRuntimeMode mode;
-        private final space.br1440.platform.tracing.otel.runtime.TracingRuntime identityDelegate =
-                NoOpTracingRuntime.noop();
+        private final TracingRuntime identityDelegate = NoOpTracingRuntime.noop();
 
         private TestModeTracingRuntimeWithMode(TracingRuntimeMode mode) {
             this.mode = mode;
         }
 
         @Override
-        public space.br1440.platform.tracing.api.span.spec.SpanHandle startSpan(
-                space.br1440.platform.tracing.api.span.spec.SpanSpec spec) {
-            return space.br1440.platform.tracing.otel.runtime.NoOpSpanHandle.INSTANCE;
+        @Nonnull
+        public SpanHandle startSpan(@Nonnull SpanSpec spec) {
+            return NoOpSpanHandle.INSTANCE;
         }
 
         @Override
-        public space.br1440.platform.tracing.api.context.ActiveTraceContextView currentTraceContext() {
+        @Nonnull
+        public ActiveTraceContextView currentTraceContext() {
             return identityDelegate.currentTraceContext();
         }
 
         @Override
-        public space.br1440.platform.tracing.api.context.CorrelationScope openCorrelationScope(String correlationId) {
+        @Nonnull
+        public CorrelationScope openCorrelationScope(@Nonnull String correlationId) {
             return identityDelegate.openCorrelationScope(correlationId);
         }
 
         @Override
-        public space.br1440.platform.tracing.api.context.CorrelationScope openRequestIdentityScope(
-                String requestId, boolean forceTrace, boolean qaTrace) {
+        @Nonnull
+        public CorrelationScope openRequestIdentityScope(@Nonnull String requestId, boolean forceTrace, boolean qaTrace) {
             return identityDelegate.openRequestIdentityScope(requestId, forceTrace, qaTrace);
         }
 
         @Override
-        public String requireCanonicalCorrelationId(String correlationId) {
+        @Nonnull
+        public String requireCanonicalCorrelationId(@Nonnull String correlationId) {
             return identityDelegate.requireCanonicalCorrelationId(correlationId);
         }
 
         @Override
+        @Nonnull
         public Optional<String> currentRequestId() {
             return identityDelegate.currentRequestId();
         }
 
         @Override
+        @Nonnull
         public Optional<String> currentCorrelationId() {
             return identityDelegate.currentCorrelationId();
         }
 
         @Override
-        public space.br1440.platform.tracing.otel.runtime.TraceControlBoundaryState currentTraceControlBoundary() {
+        @Nonnull
+        public TraceControlBoundaryState currentTraceControlBoundary() {
             return identityDelegate.currentTraceControlBoundary();
         }
 
         @Override
-        public void recordException(
-                space.br1440.platform.tracing.api.span.spec.SpanHandle span, Throwable throwable) {
+        public void recordException(@Nonnull SpanHandle span, @Nullable Throwable throwable) {
         }
 
         @Override
-        public space.br1440.platform.tracing.otel.runtime.state.TracingState state() {
-            return new space.br1440.platform.tracing.otel.runtime.state.TracingState() {
-                @Override
-                public TracingRuntimeMode mode() {
-                    return mode;
-                }
-
-                @Override
-                public Optional<String> reason() {
-                    return Optional.empty();
-                }
-
-                @Override
-                public Map<String, String> details() {
-                    return Map.of();
-                }
-            };
+        @Nonnull
+        public TracingState state() {
+            return ImmutableTracingState.of(mode, null, Map.of());
         }
 
         @Override
-        public space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy attributePolicy() {
-            return new space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy();
+        @Nonnull
+        public AttributePolicy attributePolicy() {
+            return new AttributePolicy();
         }
     }
 }

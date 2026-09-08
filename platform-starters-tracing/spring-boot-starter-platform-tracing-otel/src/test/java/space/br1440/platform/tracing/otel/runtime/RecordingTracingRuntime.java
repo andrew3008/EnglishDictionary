@@ -1,7 +1,12 @@
 package space.br1440.platform.tracing.otel.runtime;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+
 import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
@@ -9,11 +14,6 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.otel.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.otel.runtime.state.TracingState;
 import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 
 public final class RecordingTracingRuntime implements TracingRuntime {
 
@@ -37,31 +37,37 @@ public final class RecordingTracingRuntime implements TracingRuntime {
     }
 
     @Override
-    public CorrelationScope openCorrelationScope(String correlationId) {
+    @Nonnull
+    public CorrelationScope openCorrelationScope(@Nonnull String correlationId) {
         return identityDelegate.openCorrelationScope(correlationId);
     }
 
     @Override
-    public CorrelationScope openRequestIdentityScope(String requestId, boolean forceTrace, boolean qaTrace) {
+    @Nonnull
+    public CorrelationScope openRequestIdentityScope(@Nonnull String requestId, boolean forceTrace, boolean qaTrace) {
         return identityDelegate.openRequestIdentityScope(requestId, forceTrace, qaTrace);
     }
 
     @Override
-    public String requireCanonicalCorrelationId(String correlationId) {
+    @Nonnull
+    public String requireCanonicalCorrelationId(@Nonnull String correlationId) {
         return identityDelegate.requireCanonicalCorrelationId(correlationId);
     }
 
     @Override
+    @Nonnull
     public Optional<String> currentRequestId() {
         return identityDelegate.currentRequestId();
     }
 
     @Override
+    @Nonnull
     public Optional<String> currentCorrelationId() {
         return identityDelegate.currentCorrelationId();
     }
 
     @Override
+    @Nonnull
     public TraceControlBoundaryState currentTraceControlBoundary() {
         return identityDelegate.currentTraceControlBoundary();
     }
@@ -90,9 +96,5 @@ public final class RecordingTracingRuntime implements TracingRuntime {
     @Nonnull
     public List<SpanSpec> receivedSpecs() {
         return List.copyOf(receivedSpecs);
-    }
-
-    public void reset() {
-        receivedSpecs.clear();
     }
 }

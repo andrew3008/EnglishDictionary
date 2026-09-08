@@ -29,6 +29,7 @@ final class PlatformOwnedHttpServletResponse extends HttpServletResponseWrapper 
         if (requestIdValue != null && requestIdName != null) {
             delegate.setHeader(requestIdName, requestIdValue);
         }
+
         if (traceIdValue != null) {
             delegate.setHeader(PlatformHeaders.X_TRACE_ID, traceIdValue);
         }
@@ -39,6 +40,7 @@ final class PlatformOwnedHttpServletResponse extends HttpServletResponseWrapper 
         if (isProtected(name)) {
             return;
         }
+
         super.setHeader(name, value);
     }
 
@@ -47,6 +49,7 @@ final class PlatformOwnedHttpServletResponse extends HttpServletResponseWrapper 
         if (isProtected(name)) {
             return;
         }
+
         super.addHeader(name, value);
     }
 
@@ -55,6 +58,7 @@ final class PlatformOwnedHttpServletResponse extends HttpServletResponseWrapper 
         if (isProtected(name)) {
             return;
         }
+
         super.setIntHeader(name, value);
     }
 
@@ -63,6 +67,7 @@ final class PlatformOwnedHttpServletResponse extends HttpServletResponseWrapper 
         if (isProtected(name)) {
             return;
         }
+
         super.addIntHeader(name, value);
     }
 
@@ -71,6 +76,7 @@ final class PlatformOwnedHttpServletResponse extends HttpServletResponseWrapper 
         if (isProtected(name)) {
             return;
         }
+
         super.setDateHeader(name, date);
     }
 
@@ -79,6 +85,7 @@ final class PlatformOwnedHttpServletResponse extends HttpServletResponseWrapper 
         if (isProtected(name)) {
             return;
         }
+
         super.addDateHeader(name, date);
     }
 
@@ -97,10 +104,11 @@ final class PlatformOwnedHttpServletResponse extends HttpServletResponseWrapper 
         if (name == null) {
             return false;
         }
-        if (traceIdValue != null
-                && PlatformHeaders.X_TRACE_ID.equalsIgnoreCase(name)) {
+
+        if ((traceIdValue != null) && PlatformHeaders.X_TRACE_ID.equalsIgnoreCase(name)) {
             return true;
         }
+
         return requestIdValue != null
                 && requestIdName != null
                 && requestIdName.equalsIgnoreCase(name);
