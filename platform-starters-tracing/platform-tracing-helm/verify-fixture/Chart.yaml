@@ -1,0 +1,10 @@
+apiVersion: v2
+name: platform-tracing-verify-fixture
+description: Local umbrella used to render and lint the platform-tracing library helper.
+type: application
+version: 0.0.0
+appVersion: "0.0.0"
+dependencies:
+  - name: platform-tracing
+    version: 0.1.0
+    repository: "file://../platform-tracing"

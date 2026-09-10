@@ -50,6 +50,7 @@ public final class PlatformTracingJavaAgentPlugin implements Plugin<Project> {
 
         project.getPluginManager().withPlugin(JAVA_PLUGIN_ID, applied -> configureClasspathGuard(project));
         project.getPluginManager().withPlugin(SPRING_BOOT_PLUGIN_ID, applied -> configureBootRun(project, verify, agentArtifact.jar()));
+        JibAgentIntegration.configureIfJibIsApplied(project, verify, agentArtifact.jar(), pin);
     }
 
     private static Configuration createControlledAgentConfiguration(Project project,

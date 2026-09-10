@@ -47,6 +47,7 @@ dependencies {
 
     implementation project(':platform-starters-common:platform-starters-common-util')
 
+    testImplementation gradleApi()
     testImplementation gradleTestKit()
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
