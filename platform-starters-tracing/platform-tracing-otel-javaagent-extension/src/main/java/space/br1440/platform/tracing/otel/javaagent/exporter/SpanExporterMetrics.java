@@ -9,6 +9,9 @@ public final class SpanExporterMetrics {
     public static final String EXPORT_BATCH_FAILURES = "export_batch_failures";
     public static final String EXPORTED_SPANS = "exported_spans";
     public static final String TRANSPORT_DROPPED_SPANS = "transport_dropped_spans";
+    public static final String PARTIAL_SUCCESS_BATCHES = "partial_success_batches";
+    public static final String REJECTED_SPANS = "rejected_spans";
+    public static final String ACCEPTED_UNKNOWN_BATCHES = "accepted_unknown_batches";
     public static final String FLUSH_FAILURES = "flush_failures";
     public static final String SHUTDOWN_FAILURES = "shutdown_failures";
     public static final String LAST_EXPORT_DURATION_NANOS = "last_export_duration_nanos";

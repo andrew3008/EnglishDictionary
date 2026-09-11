@@ -14,8 +14,8 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'org.aspectj:aspectjweaver'
 
-    api 'org.zalando:logbook-core'
-    implementation 'org.zalando:logbook-servlet'
+    api 'org.zalando:logbook-core:4.0.4'
+    implementation 'org.zalando:logbook-servlet:4.0.4'
     compileOnly 'org.jspecify:jspecify'
 
     compileOnly 'jakarta.servlet:jakarta.servlet-api'

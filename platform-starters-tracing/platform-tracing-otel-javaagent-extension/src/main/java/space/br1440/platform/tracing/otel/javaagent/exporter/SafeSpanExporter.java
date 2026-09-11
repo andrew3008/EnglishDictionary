@@ -11,6 +11,8 @@ import java.util.concurrent.atomic.LongAdder;
 import jakarta.annotation.Nullable;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseObservation;
+import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseScope;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
@@ -35,6 +37,9 @@ public final class SafeSpanExporter implements SpanExporter {
     private final LongAdder exportFailures = new LongAdder();
     private final LongAdder exportedSpans = new LongAdder();
     private final LongAdder droppedSpans = new LongAdder();
+    private final LongAdder partialSuccessBatches = new LongAdder();
+    private final LongAdder rejectedSpans = new LongAdder();
+    private final LongAdder acceptedUnknownBatches = new LongAdder();
     private final LongAdder flushFailures = new LongAdder();
     private final LongAdder shutdownFailures = new LongAdder();
     private final AtomicLong lastExportDurationNanos = new AtomicLong();
@@ -81,8 +86,9 @@ public final class SafeSpanExporter implements SpanExporter {
         exportBatches.increment();
         long startedAt = System.nanoTime();
 
+        ExportResponseObservation observation = new ExportResponseObservation(effectiveCount);
         CompletableResultCode result;
-        try {
+        try (ExportResponseScope.Handle ignored = ExportResponseScope.open(observation)) {
             result = delegate.export(batch);
         } catch (Throwable ex) {
             PlatformThrowables.propagateIfFatal(ex);
@@ -95,7 +101,7 @@ public final class SafeSpanExporter implements SpanExporter {
             return CompletableResultCode.ofFailure();
         }
 
-        result.whenComplete(() -> onExportComplete(result, effectiveCount, startedAt));
+        result.whenComplete(() -> onExportComplete(result, observation, startedAt));
         return result;
     }
 
@@ -139,11 +145,15 @@ public final class SafeSpanExporter implements SpanExporter {
         return snapshotRequired ? ordered : batch;
     }
 
-    private void onExportComplete(CompletableResultCode result, int count, long startedAt) {
+    private void onExportComplete(CompletableResultCode result,
+                                  ExportResponseObservation observation,
+                                  long startedAt) {
+        int count = observation.effectiveSpanCount();
         try {
             lastExportDurationNanos.set(System.nanoTime() - startedAt);
+
             if (result.isSuccess()) {
-                exportedSpans.add(count);
+                recordAcceptedSpans(observation, count);
                 log.logRecoveryOnce("SafeSpanExporter: export recovered after a series of failures");
             } else {
                 recordFailureMetrics(count, "export() returned failure");
@@ -151,6 +161,23 @@ public final class SafeSpanExporter implements SpanExporter {
         } catch (Throwable ex) {
             PlatformThrowables.propagateIfFatal(ex);
             log.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, "completion callback failed", ex);
+        }
+    }
+
+    private void recordAcceptedSpans(ExportResponseObservation observation, int count) {
+        switch (observation.outcome()) {
+            case PARTIALLY_REJECTED -> {
+                partialSuccessBatches.increment();
+                rejectedSpans.add(observation.rejectedSpans());
+                exportedSpans.add(observation.acceptedSpans());
+            }
+
+            case NOT_DETERMINED -> {
+                acceptedUnknownBatches.increment();
+                log.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, "OTLP response did not yield a usable accepted span count");
+            }
+
+            case ALL_ACCEPTED, NOT_OBSERVED -> exportedSpans.add(count);
         }
     }
 
@@ -234,6 +261,18 @@ public final class SafeSpanExporter implements SpanExporter {
         return exportBatches.sum();
     }
 
+    public long getPartialSuccessBatches() {
+        return partialSuccessBatches.sum();
+    }
+
+    public long getRejectedSpans() {
+        return rejectedSpans.sum();
+    }
+
+    public long getAcceptedUnknownBatches() {
+        return acceptedUnknownBatches.sum();
+    }
+
     public long getFlushFailures() {
         return flushFailures.sum();
     }
@@ -260,6 +299,9 @@ public final class SafeSpanExporter implements SpanExporter {
         snapshot.put(SpanExporterMetrics.EXPORT_BATCH_FAILURES, getExportFailures());
         snapshot.put(SpanExporterMetrics.EXPORTED_SPANS, getExportedSpans());
         snapshot.put(SpanExporterMetrics.TRANSPORT_DROPPED_SPANS, getDroppedSpans());
+        snapshot.put(SpanExporterMetrics.PARTIAL_SUCCESS_BATCHES, getPartialSuccessBatches());
+        snapshot.put(SpanExporterMetrics.REJECTED_SPANS, getRejectedSpans());
+        snapshot.put(SpanExporterMetrics.ACCEPTED_UNKNOWN_BATCHES, getAcceptedUnknownBatches());
         snapshot.put(SpanExporterMetrics.FLUSH_FAILURES, getFlushFailures());
         snapshot.put(SpanExporterMetrics.SHUTDOWN_FAILURES, getShutdownFailures());
         snapshot.put(SpanExporterMetrics.LAST_EXPORT_DURATION_NANOS, getLastExportDurationNanos());

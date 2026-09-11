@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.PlatformTracingDefaultsProvider;
+import space.br1440.platform.tracing.otel.javaagent.exporter.response.ObservingSenderPreference;
 import space.br1440.platform.tracing.otel.javaagent.propagation.BaggagePropagationCustomizer;
 import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagatorsDefaultsCustomizer;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
@@ -49,6 +50,12 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
                 TracePipelineSpiAttestation.attest(PLATFORM_EXTENSION_ORDER, getClass());
                 return null;
             });
+
+            bootstrap.execute("SENDER_SPI_INSTALLATION_FAILED", () -> {
+                ObservingSenderPreference.install();
+                return null;
+            });
+
             bootstrap.prepare(config);
             return Map.of();
         });

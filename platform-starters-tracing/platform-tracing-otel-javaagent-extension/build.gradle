@@ -56,9 +56,13 @@ dependencies {
     implementation project(':platform-starters-tracing:platform-tracing-runtime-policy')
     implementation project(':platform-starters-common:platform-starters-common-util')
 
+    implementation 'io.opentelemetry.proto:opentelemetry-proto'
+    implementation 'com.google.protobuf:protobuf-java'
+
     compileOnly 'io.opentelemetry:opentelemetry-sdk'
     compileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
     compileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure'
+    compileOnly 'io.opentelemetry:opentelemetry-exporter-sender-okhttp'
     compileOnly 'io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api'
     compileOnly 'org.projectlombok:lombok'
 

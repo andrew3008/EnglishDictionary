@@ -31,6 +31,9 @@ def commonUtilProjectPath = ':platform-starters-common:platform-starters-common-
 def junitJupiterVersion = libs.versions.junit.jupiter.get()
 def assertjCoordinate = 'org.assertj:assertj-core:' + libs.versions.assertj.get()
 def jakartaAnnotationApiCoordinate = 'jakarta.annotation:jakarta.annotation-api:2.1.1'
+def otelProtoCoordinate = 'io.opentelemetry.proto:opentelemetry-proto:' + libs.versions.bom.otelproto.get()
+def protobufJavaCoordinate = 'com.google.protobuf:protobuf-java:' + libs.versions.bom.protobuf.get()
+def shadedPrefix = 'space.br1440.platform.tracing.otel.javaagent.shaded.'
 def otelApiModule = 'io.opentelemetry:opentelemetry-api'
 def otelContextModule = 'io.opentelemetry:opentelemetry-context'
 def otelCommonModule = 'io.opentelemetry:opentelemetry-common'
@@ -132,6 +135,8 @@ def allowedExtensionCoordinates = [
         'project:' + runtimePolicyProjectPath,
         'project:' + commonUtilProjectPath,
         jakartaAnnotationApiCoordinate,
+        otelProtoCoordinate,
+        protobufJavaCoordinate,
         otelApiModule + ':' + otelSdkVersion,
         otelContextModule + ':' + otelSdkVersion,
         otelCommonModule + ':' + otelSdkVersion
@@ -163,11 +168,16 @@ def packageStandaloneExtension = tasks.named('shadowJar') {
         include(project(runtimePolicyProjectPath))
         include(project(commonUtilProjectPath))
         include(dependency(jakartaAnnotationApiCoordinate))
+        include(dependency(otelProtoCoordinate))
+        include(dependency(protobufJavaCoordinate))
 
         exclude(dependency(otelApiModule))
         exclude(dependency(otelContextModule))
         exclude(dependency(otelCommonModule))
     }
+
+    relocate 'com.google.protobuf', shadedPrefix + 'com.google.protobuf'
+    relocate 'io.opentelemetry.proto', shadedPrefix + 'io.opentelemetry.proto'
 
     manifest {
         attributes(
@@ -322,7 +332,34 @@ testing {
         register('controlledAgentRuntimeTest', JvmTestSuite) { JvmTestSuite suite ->
             suite.useJUnitJupiter(junitJupiterVersion)
             suite.dependencies.implementation.add(assertjCoordinate)
+
+            suite.dependencies.implementation.add(otelProtoCoordinate)
+            suite.dependencies.implementation.add(protobufJavaCoordinate)
+
+            suite.dependencies.compileOnly.add(otelApiModule + ':' + otelSdkVersion)
         }
+    }
+}
+
+def otlpProbeApiRuntimeClasspath = configurations.create('otlpProbeApiRuntimeClasspath') {
+    canBeConsumed = false
+    canBeResolved = true
+}
+
+dependencies {
+    add(otlpProbeApiRuntimeClasspath.name, otelApiModule + ':' + otelSdkVersion)
+}
+
+tasks.named('controlledAgentRuntimeTest', Test) {
+    inputs.files(otlpProbeApiRuntimeClasspath)
+            .withPropertyName('otlpProbeApiRuntimeClasspath')
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+
+    doFirst {
+        systemProperty(
+                'platformTracing.otlpProbeApiClasspath',
+                otlpProbeApiRuntimeClasspath.files*.absolutePath.join(File.pathSeparator)
+        )
     }
 }
 

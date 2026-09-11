@@ -23,10 +23,12 @@ dependencies {
         // экосистема OpenTelemetry
         api "io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api:${libs.versions.bom.otelextension.get()}"
 
+        // OTLP generated model для разбора partial-success ответа экспортёра
+        api "io.opentelemetry.proto:opentelemetry-proto:${libs.versions.bom.otelproto.get()}"
+        api "com.google.protobuf:protobuf-java:${libs.versions.bom.protobuf.get()}"
+
         // логирование
         api "net.logstash.logback:logstash-logback-encoder:${libs.versions.bom.logstash.get()}"
-        api "org.zalando:logbook-core:${libs.versions.bom.logbook.get()}"
-        api "org.zalando:logbook-servlet:${libs.versions.bom.logbook.get()}"
 
         // инфраструктурные клиенты и утилиты времени выполнения
         api "com.github.f4b6a3:uuid-creator:${libs.versions.bom.uuid.get()}"

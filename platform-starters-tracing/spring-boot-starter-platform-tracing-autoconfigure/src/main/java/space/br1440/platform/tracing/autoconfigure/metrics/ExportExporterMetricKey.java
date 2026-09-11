@@ -6,6 +6,9 @@ enum ExportExporterMetricKey {
     EXPORT_BATCH_FAILURES("export_batch_failures"),
     EXPORTED_SPANS("exported_spans"),
     TRANSPORT_DROPPED_SPANS("transport_dropped_spans"),
+    PARTIAL_SUCCESS_BATCHES("partial_success_batches"),
+    REJECTED_SPANS("rejected_spans"),
+    ACCEPTED_UNKNOWN_BATCHES("accepted_unknown_batches"),
     FLUSH_FAILURES("flush_failures"),
     SHUTDOWN_FAILURES("shutdown_failures"),
     SUPPRESSED_SPANS_EXPORT_DISABLED("suppressed_spans_export_disabled");

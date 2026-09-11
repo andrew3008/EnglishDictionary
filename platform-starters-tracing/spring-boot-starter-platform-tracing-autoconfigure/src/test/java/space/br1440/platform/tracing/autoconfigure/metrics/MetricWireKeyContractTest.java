@@ -10,6 +10,7 @@ class MetricWireKeyContractTest {
 
     @Test
     void samplerDecisionKeysMatchTheSupportedWireKeySpace() {
+        // when/then
         assertThat(Arrays.stream(SamplerDecisionKey.values()).map(SamplerDecisionKey::wireKey).toList())
                 .containsExactlyInAnyOrder(
                         "RECORD_AND_SAMPLE:force_header",
@@ -27,6 +28,7 @@ class MetricWireKeyContractTest {
 
     @Test
     void scrubbingKeysMatchTheExportedCumulativeMetrics() {
+        // when/then
         assertThat(Arrays.stream(ScrubbingMetricKey.values()).map(ScrubbingMetricKey::wireKey).toList())
                 .containsExactlyInAnyOrder(
                         "drop",
@@ -42,19 +44,25 @@ class MetricWireKeyContractTest {
 
     @Test
     void exporterKeysMatchTheExportedCumulativeMetrics() {
+        // when/then
         assertThat(Arrays.stream(ExportExporterMetricKey.values()).map(ExportExporterMetricKey::wireKey).toList())
                 .containsExactlyInAnyOrder(
                         "export_batches",
                         "export_batch_failures",
                         "exported_spans",
                         "transport_dropped_spans",
+                        "partial_success_batches",
+                        "rejected_spans",
+                        "accepted_unknown_batches",
                         "flush_failures",
                         "shutdown_failures",
-                        "suppressed_spans_export_disabled");
+                        "suppressed_spans_export_disabled"
+                );
     }
 
     @Test
     void processorNamesMatchTheBoundedMetricTagAllowlist() {
+        // when/then
         assertThat(ProcessorCompositeErrorKey.TOTAL.processorName()).isNull();
         assertThat(Arrays.stream(ProcessorCompositeErrorKey.values())
                 .filter(key -> key != ProcessorCompositeErrorKey.TOTAL)
