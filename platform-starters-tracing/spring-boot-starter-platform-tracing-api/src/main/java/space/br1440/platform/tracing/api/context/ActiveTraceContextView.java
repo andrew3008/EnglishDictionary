@@ -21,4 +21,7 @@ public interface ActiveTraceContextView {
     @Nonnull
     Optional<String> correlationId();
 
+    @Nonnull
+    Optional<String> traceparent();
+
 }

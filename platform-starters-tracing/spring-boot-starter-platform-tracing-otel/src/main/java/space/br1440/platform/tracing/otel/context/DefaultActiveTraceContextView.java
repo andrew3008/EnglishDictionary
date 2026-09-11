@@ -12,15 +12,18 @@ public final class DefaultActiveTraceContextView implements ActiveTraceContextVi
     private final Supplier<Optional<String>> spanIdSupplier;
     private final Supplier<Optional<String>> requestIdSupplier;
     private final Supplier<Optional<String>> correlationIdSupplier;
+    private final Supplier<Optional<String>> traceparentSupplier;
 
     public DefaultActiveTraceContextView(@Nonnull Supplier<Optional<String>> traceIdSupplier,
                                          @Nonnull Supplier<Optional<String>> spanIdSupplier,
                                          @Nonnull Supplier<Optional<String>> requestIdSupplier,
-                                         @Nonnull Supplier<Optional<String>> correlationIdSupplier) {
+                                         @Nonnull Supplier<Optional<String>> correlationIdSupplier,
+                                         @Nonnull Supplier<Optional<String>> traceparentSupplier) {
         this.traceIdSupplier = traceIdSupplier;
         this.spanIdSupplier = spanIdSupplier;
         this.requestIdSupplier = requestIdSupplier;
         this.correlationIdSupplier = correlationIdSupplier;
+        this.traceparentSupplier = traceparentSupplier;
     }
 
     @Override
@@ -45,5 +48,11 @@ public final class DefaultActiveTraceContextView implements ActiveTraceContextVi
     @Nonnull
     public Optional<String> correlationId() {
         return correlationIdSupplier.get();
+    }
+
+    @Override
+    @Nonnull
+    public Optional<String> traceparent() {
+        return traceparentSupplier.get();
     }
 }

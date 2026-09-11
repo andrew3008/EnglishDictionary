@@ -1,5 +1,8 @@
 package space.br1440.platform.tracing.otel.runtime;
 
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
@@ -12,10 +15,6 @@ import space.br1440.platform.tracing.otel.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 import space.br1440.platform.tracing.otel.runtime.state.TracingState;
 import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
-
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
 
 public final class NoOpTracingRuntime implements TracingRuntime {
 
@@ -31,7 +30,9 @@ public final class NoOpTracingRuntime implements TracingRuntime {
                 this::currentTraceId,
                 this::currentSpanId,
                 this::currentRequestId,
-                this::currentCorrelationId);
+                this::currentCorrelationId,
+                this::currentTraceparent
+        );
     }
 
     public static NoOpTracingRuntime disabledByConfiguration(@Nonnull String reason) {
@@ -128,6 +129,11 @@ public final class NoOpTracingRuntime implements TracingRuntime {
 
     @Nonnull
     Optional<String> currentSpanId() {
+        return Optional.empty();
+    }
+
+    @Nonnull
+    Optional<String> currentTraceparent() {
         return Optional.empty();
     }
 }

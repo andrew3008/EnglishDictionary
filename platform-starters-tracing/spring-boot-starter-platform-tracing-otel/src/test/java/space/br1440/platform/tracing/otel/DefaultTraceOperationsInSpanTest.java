@@ -13,6 +13,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.span.SpanResult;
 
 import java.io.IOException;
@@ -23,9 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * Тесты v3 {@code spans().operation(...).run/call/callChecked} scoped execution.
- */
 class DefaultTraceOperationsInSpanTest {
 
     private InMemorySpanExporter exporter;
@@ -54,7 +52,7 @@ class DefaultTraceOperationsInSpanTest {
         assertThat(tracing.traceContext().spanId()).isEmpty();
         List<SpanData> spans = exporter.getFinishedSpanItems();
         assertThat(spans).hasSize(1);
-        assertThat(spans.get(0).getName()).isEqualTo("op");
+        assertThat(spans.getFirst().getName()).isEqualTo("op");
     }
 
     @Test
@@ -73,7 +71,7 @@ class DefaultTraceOperationsInSpanTest {
 
         List<SpanData> spans = exporter.getFinishedSpanItems();
         assertThat(spans).hasSize(1);
-        SpanData failed = spans.get(0);
+        SpanData failed = spans.getFirst();
         assertThat(failed.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
         assertThat(failed.getAttributes().asMap().toString())
                 .contains(SpanResult.FAILURE.value());
@@ -89,7 +87,7 @@ class DefaultTraceOperationsInSpanTest {
 
         List<SpanData> spans = exporter.getFinishedSpanItems();
         assertThat(spans).hasSize(1);
-        assertThat(spans.get(0).getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+        assertThat(spans.getFirst().getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
     }
 
     @Test
@@ -143,6 +141,32 @@ class DefaultTraceOperationsInSpanTest {
         });
 
         assertThat(exporter.getFinishedSpanItems()).hasSize(2);
+    }
+
+    @Test
+    void traceparent_liveView_reflectsCurrentScopeThroughPublicView() {
+        // given: view получен до открытия scope
+        ActiveTraceContextView view = tracing.traceContext();
+        assertThat(view.traceparent()).isEmpty();
+
+        tracing.spans().operation("outer").run(() -> {
+            // when: активен scope A
+            Optional<String> valueA = view.traceparent();
+            // then
+            assertThat(valueA).isPresent();
+
+            tracing.spans().operation("inner").root().run(() -> {
+                // when: активен вложенный scope B
+                // then
+                assertThat(view.traceparent()).isPresent().isNotEqualTo(valueA);
+            });
+
+            // then: после закрытия B снова видно значение A
+            assertThat(view.traceparent()).isEqualTo(valueA);
+        });
+
+        // then: после закрытия A — пусто
+        assertThat(view.traceparent()).isEmpty();
     }
 
     private String readSimulated() throws IOException {

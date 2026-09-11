@@ -57,7 +57,8 @@ public final class OtelTracingRuntime implements TracingRuntime {
                 this::currentTraceId,
                 this::currentSpanId,
                 this::currentRequestId,
-                this::currentCorrelationId
+                this::currentCorrelationId,
+                this::currentTraceparent
         );
     }
 
@@ -158,6 +159,17 @@ public final class OtelTracingRuntime implements TracingRuntime {
     Optional<String> currentSpanId() {
         SpanContext context = Span.current().getSpanContext();
         return context.isValid() ? Optional.of(context.getSpanId()) : Optional.empty();
+    }
+
+    @Nonnull
+    Optional<String> currentTraceparent() {
+        SpanContext context = Span.current().getSpanContext();
+        if (!context.isValid()) {
+            return Optional.empty();
+        }
+
+        String traceparent = "00-" + context.getTraceId() + "-" + context.getSpanId() + "-" + context.getTraceFlags().asHex();
+        return Optional.of(traceparent);
     }
 
     @Nonnull
