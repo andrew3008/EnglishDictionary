@@ -3,6 +3,8 @@ package space.br1440.platform.tracing.gradle;
 import java.util.List;
 
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
@@ -14,8 +16,14 @@ public abstract class ControlledAgentArgumentProvider implements CommandLineArgu
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getAgentJar();
 
+    @Input
+    public abstract Property<String> getExpectedSha256();
+
     @Override
     public Iterable<String> asArguments() {
-        return List.of("-javaagent:" + getAgentJar().get().getAsFile().getAbsolutePath());
+        return List.of(
+                "-javaagent:" + getAgentJar().get().getAsFile().getAbsolutePath(),
+                "-D" + ControlledAgentSystemProperties.EXPECTED_SHA256_PROPERTY + "=" + getExpectedSha256().get()
+        );
     }
 }

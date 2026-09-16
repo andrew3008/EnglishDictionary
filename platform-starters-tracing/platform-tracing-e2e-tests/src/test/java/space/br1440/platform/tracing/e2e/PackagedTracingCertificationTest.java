@@ -23,18 +23,16 @@ import space.br1440.platform.tracing.e2e.artifact.ControlledAgentArtifactMutator
 
 class PackagedTracingCertificationTest {
 
-    private static final Pattern FAILURE_ENVELOPE = Pattern.compile(
-            "platform\\.tracing\\.enabled=true rejected Controlled Platform Agent: "
+    static final Pattern FAILURE_ENVELOPE = Pattern.compile(
+            "Platform tracing startup rejected: "
                     + "runtimeState=([A-Z][A-Z0-9_]*), reason=([A-Z][A-Z0-9_]*)([^\\r\\n]*)"
     );
     private static final Pattern LIFECYCLE_FIELD = Pattern.compile("(?:^|, )lifecycle=([A-Z][A-Z0-9_]*)");
     private static final String STALE_EXTENSION_VERSION = "0.9.0-stale-fixture";
     private static final String CUSTOMIZER_PROVIDER_CLASS_ENTRY =
-            "space/br1440/platform/tracing/otel/javaagent/bootstrap/"
-                    + "BootstrapAutoConfigurationCustomizerProvider.class";
+            "space/br1440/platform/tracing/otel/javaagent/bootstrap/BootstrapAutoConfigurationCustomizerProvider.class";
     private static final String CUSTOMIZER_PROVIDER_SERVICE_ENTRY =
-            "META-INF/services/io.opentelemetry.sdk.autoconfigure.spi."
-                    + "AutoConfigurationCustomizerProvider";
+            "META-INF/services/io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider";
 
     private Path controlledAgent;
     private Path applicationBootJar;
@@ -161,24 +159,33 @@ class PackagedTracingCertificationTest {
         // then
         assertFailure("agent-missing", missingAgent,
                 "AGENT_MISSING", "CONTROLLED_AGENT_MISSING", null);
+
         assertFailure("distribution-mismatch", digestMismatch,
                 "EXTENSION_INCOMPATIBLE", "DISTRIBUTION_MISMATCH", "FAILED");
+
         assertFailure("accidental-remote-jmx", remoteConfigured,
                 "EXTENSION_INCOMPATIBLE",
                 "REMOTE_JMX_UNCERTIFIED_STARTUP_CONFIGURATION",
                 "FAILED");
+
         assertFailure("extension-missing", extensionMissing,
                 "EXTENSION_MISSING", "PLATFORM_EXTENSION_MISSING", null);
+
         assertFailure("extension-provider-class-removed", providerClassRemoved,
                 "EXTENSION_MISSING", "PLATFORM_EXTENSION_MISSING", null);
+
         assertFailure("spi-metadata-removed", spiMetadataRemoved,
                 "EXTENSION_MISSING", "PLATFORM_EXTENSION_MISSING", null);
+
         assertFailure("stale-topology-api", staleTopologyApi,
                 "EXTENSION_INCOMPATIBLE", "EXTENSION_LINKAGE_ERROR", "FAILED");
+
         assertThat(staleTopologyApi.combinedOutput())
                 .contains("extensionVersion=" + STALE_EXTENSION_VERSION);
+
         assertThat(ControlledAgentArtifactMutator.identity(staleTopologyAgent))
                 .containsEntry("distribution.version", STALE_EXTENSION_VERSION);
+
         assertFailure("dual-sdk", dualSdk,
                 "DUAL_SDK_DETECTED", "DUAL_SDK_COLLISION", null);
     }
@@ -248,9 +255,7 @@ class PackagedTracingCertificationTest {
         properties.put("platform.tracing.resource.validation-mode", "STRICT");
         properties.put("platform.tracing.jmx.remote.mode", "REMOTE_PROHIBITED");
         properties.put("platform.tracing.jmx.remote.listener-confirmed", "false");
-        properties.put(
-                "platform.tracing.jmx.remote.authorization-forwarder-installed",
-                "false");
+        properties.put("platform.tracing.jmx.remote.authorization-forwarder-installed", "false");
         properties.put("platform.tracing.controlled-agent.expected-sha256", expectedAgentSha);
         properties.put("platform.tracing.enabled", "true");
         properties.put("platform.tracing.configuration.authority", "ACTUATOR");
@@ -263,18 +268,23 @@ class PackagedTracingCertificationTest {
         Files.write(extension, ControlledAgentArtifactMutator.packagedExtension(controlledAgent));
         try (URLClassLoader loader = new URLClassLoader(
                 new URL[]{extension.toUri().toURL()},
-                ClassLoader.getPlatformClassLoader())) {
+                ClassLoader.getPlatformClassLoader()
+        )) {
             Class<?> extensionContract = Class.forName(
                     "space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated."
                             + "JmxWireContract",
                     true,
                     loader
             );
+
             assertThat(extensionContract).isNotSameAs(JmxWireContract.class);
+
             assertThat(stringField(extensionContract, "SCHEMA_ID"))
                     .isEqualTo(JmxWireContract.SCHEMA_ID);
+
             assertThat(stringField(extensionContract, "SCHEMA_DIGEST_SHA256"))
                     .isEqualTo(JmxWireContract.SCHEMA_DIGEST_SHA256);
+
             assertThat(stringField(extensionContract, "DESCRIPTOR_DIGEST_SHA256"))
                     .isEqualTo(JmxWireContract.DESCRIPTOR_DIGEST_SHA256);
         }
@@ -314,6 +324,7 @@ class PackagedTracingCertificationTest {
 
     private static Set<FailureEnvelope> failureEnvelopes(String output) {
         Matcher matcher = FAILURE_ENVELOPE.matcher(output);
+
         Set<FailureEnvelope> envelopes = new LinkedHashSet<>();
         while (matcher.find()) {
             Matcher lifecycle = LIFECYCLE_FIELD.matcher(matcher.group(3));
@@ -323,6 +334,7 @@ class PackagedTracingCertificationTest {
                     lifecycle.find() ? lifecycle.group(1) : null
             ));
         }
+
         return envelopes;
     }
 
@@ -348,6 +360,7 @@ class PackagedTracingCertificationTest {
         if (!Files.isRegularFile(path)) {
             throw new IllegalStateException("Required certification artifact is missing: " + path);
         }
+
         return path;
     }
 
@@ -356,6 +369,7 @@ class PackagedTracingCertificationTest {
         if (value == null || value.isBlank()) {
             throw new IllegalStateException("Required test system property is missing: " + name);
         }
+
         return value;
     }
 }

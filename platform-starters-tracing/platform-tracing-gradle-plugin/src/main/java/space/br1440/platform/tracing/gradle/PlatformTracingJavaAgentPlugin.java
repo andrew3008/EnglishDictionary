@@ -49,7 +49,7 @@ public final class PlatformTracingJavaAgentPlugin implements Plugin<Project> {
         registerPrepareTask(project, verify, dockerBuildArgs);
 
         project.getPluginManager().withPlugin(JAVA_PLUGIN_ID, applied -> configureClasspathGuard(project));
-        project.getPluginManager().withPlugin(SPRING_BOOT_PLUGIN_ID, applied -> configureBootRun(project, verify, agentArtifact.jar()));
+        project.getPluginManager().withPlugin(SPRING_BOOT_PLUGIN_ID, applied -> configureBootRun(project, verify, agentArtifact.jar(), pin));
         JibAgentIntegration.configureIfJibIsApplied(project, verify, agentArtifact.jar(), pin);
     }
 
@@ -159,12 +159,14 @@ public final class PlatformTracingJavaAgentPlugin implements Plugin<Project> {
 
     private static void configureBootRun(Project project,
                                          TaskProvider<VerifyControlledAgentTask> verify,
-                                         Provider<RegularFile> agentJar) {
+                                         Provider<RegularFile> agentJar,
+                                         ControlledAgentPin pin) {
         project.getTasks().withType(JavaExec.class).named(BOOT_RUN_TASK_NAME).configure(task -> {
             task.dependsOn(verify);
 
             ControlledAgentArgumentProvider provider = project.getObjects().newInstance(ControlledAgentArgumentProvider.class);
             provider.getAgentJar().set(agentJar);
+            provider.getExpectedSha256().set(pin.sha256());
             task.getJvmArgumentProviders().add(provider);
         });
     }

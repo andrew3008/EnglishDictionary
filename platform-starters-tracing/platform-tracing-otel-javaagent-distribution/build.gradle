@@ -37,10 +37,11 @@ def shadedPrefix = 'space.br1440.platform.tracing.otel.javaagent.shaded.'
 def otelApiModule = 'io.opentelemetry:opentelemetry-api'
 def otelContextModule = 'io.opentelemetry:opentelemetry-context'
 def otelCommonModule = 'io.opentelemetry:opentelemetry-common'
+def extensionMavenArtifactId = 'platform-tracing-otel-javaagent-extension'
 def embeddedExtensionJarName = 'platform-tracing-otel-javaagent-extension.jar'
 def extensionEntryPath = 'extensions/' + embeddedExtensionJarName
 def identityEntryPath = 'META-INF/platform-tracing/javaagent-distribution.properties'
-def standaloneExtensionJarName = 'platform-tracing-otel-javaagent-extension-' + project.version + '.jar'
+def standaloneExtensionJarName = extensionMavenArtifactId + '-' + project.version + '.jar'
 
 def otelJavaAgent = configurations.create('otelJavaAgent') {
     canBeConsumed = false
@@ -458,7 +459,9 @@ def resetTestRepository = tasks.register('resetTestRepository', Delete) {
 def testRepositoryPublications = tasks.withType(AbstractPublishToMaven).matching(targetsTestRepository)
 
 tasks.withType(AbstractPublishToMaven).configureEach { task ->
-    task.dependsOn({ targetsTestRepository(task) ? resetTestRepository : tasks.named('check') })
+    task.dependsOn({
+        targetsTestRepository(task) ? [resetTestRepository] : [tasks.named('check')]
+    })
 }
 
 def publishToTestRepository = tasks.register('publishToTestRepository') {
@@ -503,7 +506,7 @@ publishing {
         }
 
         create('extension', MavenPublication) { MavenPublication publication ->
-            publication.artifactId = 'platform-tracing-otel-javaagent-extension'
+            publication.artifactId = extensionMavenArtifactId
             publication.artifact(packageStandaloneExtension)
             publication.pom { pom ->
                 pom.name = 'Platform Tracing OTel Java agent extension'

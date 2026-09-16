@@ -64,20 +64,26 @@ dependencies {
         // ============================================================
         // Трассировка
         // ============================================================
+        [
+                // контракты и ядро времени выполнения
+                'spring-boot-starter-platform-tracing-api',
+                'platform-tracing-runtime-policy',
+                'spring-boot-starter-platform-tracing-otel',
 
-        // контракты и ядро времени выполнения
-        api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-api:${rootProject.version}"
-        api "space.br1440.platform.starters.tracing:platform-tracing-runtime-policy:${rootProject.version}"
-        api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-otel:${rootProject.version}"
+                // авто-конфигурация Spring Boot
+                'spring-boot-starter-platform-tracing-autoconfigure',
+                'spring-boot-starter-platform-tracing-autoconfigure-webmvc',
+                'spring-boot-starter-platform-tracing-autoconfigure-webflux',
 
-        // автоконфигурация Spring Boot
-        api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-autoconfigure:${rootProject.version}"
-        api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-autoconfigure-webmvc:${rootProject.version}"
-        api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-autoconfigure-webflux:${rootProject.version}"
-
-        // прикладные стартеры
-        api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-mvc:${rootProject.version}"
-        api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-webflux:${rootProject.version}"
+                // прикладные стартеры
+                'spring-boot-starter-platform-tracing-mvc',
+                'spring-boot-starter-platform-tracing-webflux'
+        ].each { artifact ->
+            api("space.br1440.platform.starters.tracing:${artifact}") {
+                version { strictly(rootProject.version.toString()) }
+                because 'Platform tracing modules must use the same release-train version'
+            }
+        }
 
         // ============================================================
         // Обработка ошибок

@@ -22,7 +22,6 @@ final class JibAgentIntegration {
     private static final String IMAGE_AGENT_DIRECTORY = "/opt/platform-tracing";
     private static final String IMAGE_AGENT_PATH = IMAGE_AGENT_DIRECTORY + "/" + STAGED_AGENT_FILE_NAME;
 
-    private static final String EXPECTED_SHA256_PROPERTY = "platform.tracing.controlled-agent.expected-sha256";
     private static final String JMX_REMOTE_DECLARATION_PREFIX = "platform.tracing.jmx.remote.";
     private static final String JMX_MODE_PROPERTY = JMX_REMOTE_DECLARATION_PREFIX + "mode";
     private static final String JMX_LISTENER_CONFIRMED_PROPERTY = JMX_REMOTE_DECLARATION_PREFIX + "listener-confirmed";
@@ -127,7 +126,7 @@ final class JibAgentIntegration {
     private static List<String> managedJvmFlags(ControlledAgentPin pin) {
         return List.of(
                 "-javaagent:" + IMAGE_AGENT_PATH,
-                "-D" + EXPECTED_SHA256_PROPERTY + "=" + pin.sha256(),
+                "-D" + ControlledAgentSystemProperties.EXPECTED_SHA256_PROPERTY + "=" + pin.sha256(),
                 "-D" + JMX_MODE_PROPERTY + "=REMOTE_PROHIBITED",
                 "-D" + JMX_LISTENER_CONFIRMED_PROPERTY + "=false",
                 "-D" + JMX_AUTHORIZATION_FORWARDER_PROPERTY + "=false",

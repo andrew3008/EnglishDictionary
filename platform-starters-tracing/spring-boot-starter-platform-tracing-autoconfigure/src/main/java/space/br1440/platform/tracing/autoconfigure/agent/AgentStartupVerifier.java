@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 import javax.management.MBeanServer;
 
 import space.br1440.platform.common.util.StringUtils;
@@ -23,28 +24,44 @@ public final class AgentStartupVerifier {
     private final Duration startupReadinessTimeout;
     private final LongSupplier nanoTime;
     private final Sleeper sleeper;
-    private final String applicationVersion;
+    private final Supplier<String> applicationVersion;
     private final AtomicReference<TracingDeploymentDiagnostics> stickyFailure = new AtomicReference<>();
 
     public AgentStartupVerifier() {
-        this(new AgentReadinessCoherenceGuard(), STARTUP_READINESS_TIMEOUT, System::nanoTime,
-                AgentStartupVerifier::parkAndPreserveInterrupt, resolveApplicationVersion());
+        this(new AgentReadinessCoherenceGuard(),
+                STARTUP_READINESS_TIMEOUT,
+                System::nanoTime,
+                AgentStartupVerifier::parkAndPreserveInterrupt,
+                StarterModuleVersionLoader::starterModuleVersion
+        );
     }
 
     public AgentStartupVerifier(MBeanServer server, String applicationVersion) {
-        this(new AgentReadinessCoherenceGuard(server), STARTUP_READINESS_TIMEOUT, System::nanoTime,
-                AgentStartupVerifier::parkAndPreserveInterrupt, applicationVersion);
+        this(new AgentReadinessCoherenceGuard(server),
+                STARTUP_READINESS_TIMEOUT,
+                System::nanoTime,
+                AgentStartupVerifier::parkAndPreserveInterrupt,
+                () -> applicationVersion
+        );
     }
 
     public AgentStartupVerifier(AgentReadinessCoherenceGuard coherenceGuard) {
-        this(coherenceGuard, STARTUP_READINESS_TIMEOUT, System::nanoTime,
-                AgentStartupVerifier::parkAndPreserveInterrupt, resolveApplicationVersion());
+        this(coherenceGuard,
+                STARTUP_READINESS_TIMEOUT,
+                System::nanoTime,
+                AgentStartupVerifier::parkAndPreserveInterrupt,
+                StarterModuleVersionLoader::starterModuleVersion
+        );
     }
 
     public AgentStartupVerifier(AgentReadinessCoherenceGuard coherenceGuard,
                                 String applicationVersion) {
-        this(coherenceGuard, STARTUP_READINESS_TIMEOUT, System::nanoTime,
-                AgentStartupVerifier::parkAndPreserveInterrupt, applicationVersion);
+        this(coherenceGuard,
+                STARTUP_READINESS_TIMEOUT,
+                System::nanoTime,
+                AgentStartupVerifier::parkAndPreserveInterrupt,
+                () -> applicationVersion
+        );
     }
 
     AgentStartupVerifier(MBeanServer server,
@@ -52,8 +69,21 @@ public final class AgentStartupVerifier {
                          LongSupplier nanoTime,
                          Sleeper sleeper,
                          String applicationVersion) {
-        this(new AgentReadinessCoherenceGuard(server), startupReadinessTimeout, nanoTime, sleeper,
-                applicationVersion);
+        this(new AgentReadinessCoherenceGuard(server),
+                startupReadinessTimeout,
+                nanoTime,
+                sleeper,
+                () -> applicationVersion
+        );
+    }
+
+    AgentStartupVerifier(AgentReadinessCoherenceGuard coherenceGuard, Supplier<String> applicationVersion) {
+        this(coherenceGuard,
+                STARTUP_READINESS_TIMEOUT,
+                System::nanoTime,
+                AgentStartupVerifier::parkAndPreserveInterrupt,
+                applicationVersion
+        );
     }
 
     AgentStartupVerifier(AgentReadinessCoherenceGuard coherenceGuard,
@@ -61,20 +91,28 @@ public final class AgentStartupVerifier {
                          LongSupplier nanoTime,
                          Sleeper sleeper,
                          String applicationVersion) {
+        this(coherenceGuard,
+                startupReadinessTimeout,
+                nanoTime,
+                sleeper,
+                () -> applicationVersion
+        );
+    }
+
+    AgentStartupVerifier(AgentReadinessCoherenceGuard coherenceGuard,
+                         Duration startupReadinessTimeout,
+                         LongSupplier nanoTime,
+                         Sleeper sleeper,
+                         Supplier<String> applicationVersion) {
         this.coherenceGuard = Objects.requireNonNull(coherenceGuard, "coherenceGuard");
         this.startupReadinessTimeout = Objects.requireNonNull(startupReadinessTimeout, "startupReadinessTimeout");
         this.nanoTime = Objects.requireNonNull(nanoTime, "nanoTime");
         this.sleeper = Objects.requireNonNull(sleeper, "sleeper");
-        this.applicationVersion = applicationVersion;
+        this.applicationVersion = Objects.requireNonNull(applicationVersion, "applicationVersion");
 
         if (startupReadinessTimeout.isNegative() || startupReadinessTimeout.isZero()) {
             throw new IllegalArgumentException("startupReadinessTimeout must be positive");
         }
-    }
-
-    private static String resolveApplicationVersion() {
-        Package thisPackage = AgentStartupVerifier.class.getPackage();
-        return (thisPackage == null) ? null : thisPackage.getImplementationVersion();
     }
 
     private static void parkAndPreserveInterrupt(long nanos) {
@@ -124,7 +162,8 @@ public final class AgentStartupVerifier {
                         AgentRuntimeState.DUAL_SDK_DETECTED,
                         agentMarkerVisible,
                         endpointPresent,
-                        "DUAL_SDK_COLLISION");
+                        "DUAL_SDK_COLLISION"
+                );
             }
 
             if (!endpointPresent) {
@@ -147,7 +186,7 @@ public final class AgentStartupVerifier {
             AgentReadinessProbe.ProbeResult result = readCoherent();
             if (result instanceof AgentReadinessProbe.ProbeResult.Present(AgentReadinessSnapshot snapshot)) {
                 everSucceeded = true;
-                AgentReadinessClassifier.Decision decision = AgentReadinessClassifier.decide(snapshot, applicationVersion);
+                AgentReadinessClassifier.Decision decision = AgentReadinessClassifier.decide(snapshot, applicationVersion.get());
                 AgentRuntimeState state = decision.state();
 
                 if (tracingEnabled && state == AgentRuntimeState.EXTENSION_INITIALIZING) {
@@ -183,7 +222,8 @@ public final class AgentStartupVerifier {
                         state,
                         agentMarkerVisible,
                         snapshot,
-                        resolveSnapshotFailureCode(tracingEnabled, snapshot, decision));
+                        resolveSnapshotFailureCode(tracingEnabled, snapshot, decision)
+                );
             }
 
             AgentReadinessProbe.ProbeReason reason = AgentReadinessProbe.ProbeResult.reasonOf(result);
@@ -201,11 +241,13 @@ public final class AgentStartupVerifier {
                 sleeper.sleep(pollDelay(elapsed));
                 continue;
             }
+
             if (reason == AgentReadinessProbe.ProbeReason.ENDPOINT_DISAPPEARED && !everSucceeded) {
                 if (!tracingEnabled
                         && isAbsentSignals(agentMarkerVisible, userOpenTelemetryBeanPresent, globalOpenTelemetrySet)) {
                     return disabled();
                 }
+
                 return missing(tracingEnabled, agentMarkerVisible);
             }
 
@@ -272,13 +314,13 @@ public final class AgentStartupVerifier {
     private static String resolveSnapshotFailureCode(boolean tracingEnabled,
                                                      AgentReadinessSnapshot snapshot,
                                                      AgentReadinessClassifier.Decision decision) {
+        if (!tracingEnabled && decision.state() != AgentRuntimeState.DISABLED) {
+            return "CONTROLLED_AGENT_FORBIDDEN";
+        }
+
         String resolved = firstNonBlank(snapshot.lifecycleState().failureCode(), decision.reasonCode());
         if (StringUtils.hasText(resolved)) {
             return resolved;
-        }
-
-        if (!tracingEnabled && decision.state() != AgentRuntimeState.DISABLED) {
-            return "CONTROLLED_AGENT_FORBIDDEN";
         }
 
         return "";
@@ -309,25 +351,36 @@ public final class AgentStartupVerifier {
                 state,
                 new TracingDeploymentDiagnostics.AgentReadiness(
                         true,
+
                         new TracingDeploymentDiagnostics.ContractIdentity(
                                 contractIdentity.contractId(),
-                                contractIdentity.schemaDigest()),
+                                contractIdentity.schemaDigest()
+                        ),
+
                         new TracingDeploymentDiagnostics.ReadinessAnchor(
                                 anchorIdentity.runtimeEpoch(),
                                 anchorIdentity.evidenceGeneration(),
-                                anchorIdentity.batchId()),
+                                anchorIdentity.batchId()
+                        ),
+
                         new TracingDeploymentDiagnostics.LifecycleState(
                                 lifecycleState.lifecycle(),
                                 failureCode,
                                 lifecycleState.capabilities(),
-                                lifecycleState.missingRequired()),
+                                lifecycleState.missingRequired()
+                        ),
+
                         new TracingDeploymentDiagnostics.DistributionIdentity(
                                 distributionIdentity.agentDistributionSha256(),
                                 distributionIdentity.upstreamAgentVersion(),
-                                distributionIdentity.extensionVersion()),
+                                distributionIdentity.extensionVersion()
+                        ),
+
                         new TracingDeploymentDiagnostics.ClassloaderTopology(
                                 classloaderTopology.extensionDefiningLoader(),
-                                classloaderTopology.sdkDefiningLoader()))
+                                classloaderTopology.sdkDefiningLoader()
+                        )
+                )
         );
     }
 
@@ -341,11 +394,11 @@ public final class AgentStartupVerifier {
                     tracingEnabled,
                     agentMarkerVisible,
                     state,
-                    failureCode);
+                    failureCode
+            );
         }
 
-        TracingDeploymentDiagnostics.AgentReadiness unavailable =
-                TracingDeploymentDiagnostics.AgentReadiness.unavailable(failureCode);
+        TracingDeploymentDiagnostics.AgentReadiness unavailable = TracingDeploymentDiagnostics.AgentReadiness.unavailable(failureCode);
         return new TracingDeploymentDiagnostics(
                 tracingEnabled,
                 agentMarkerVisible,
@@ -356,17 +409,23 @@ public final class AgentStartupVerifier {
                         unavailable.readinessAnchor(),
                         unavailable.lifecycleState(),
                         unavailable.distributionIdentity(),
-                        unavailable.classloaderTopology())
+                        unavailable.classloaderTopology()
+                )
         );
     }
 
     private static TracingDeploymentDiagnostics enforceContract(boolean tracingEnabled,
                                                                 TracingDeploymentDiagnostics diagnostics,
-                                                                String applicationVersion) {
+                                                                Supplier<String> applicationVersion) {
         AgentRuntimeState expected = tracingEnabled ? AgentRuntimeState.AGENT_READY : AgentRuntimeState.DISABLED;
         if (diagnostics.runtimeState() != expected) {
             throw new IllegalStateException(
-                    AgentContractFailureMessages.reject(tracingEnabled, diagnostics, applicationVersion));
+                    AgentContractFailureMessages.reject(
+                            tracingEnabled,
+                            diagnostics,
+                            applicationVersion
+                    )
+            );
         }
 
         return diagnostics;

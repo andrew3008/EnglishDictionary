@@ -25,9 +25,32 @@ tasks.named('compileJava') {
     dependsOn generateJmxWireContract
 }
 
+def moduleVersionProvider = project.provider { project.version.toString() }
+def moduleVersionOutputDir = layout.buildDirectory.dir('generated/module-version')
+
+def writeStarterModuleVersion = tasks.register('writeStarterModuleVersion', WriteProperties) {
+    group = 'build'
+    description = 'Writes the module.version resource that StarterModuleVersionLoader reads at runtime'
+
+    destinationFile = moduleVersionOutputDir.map {
+        it.file('META-INF/platform-tracing/module-version/' + project.name + '.properties')
+    }
+    property('module.version', moduleVersionProvider)
+}
+
+def generatedModuleVersionResource = files(moduleVersionOutputDir).builtBy(writeStarterModuleVersion)
+
 tasks.named('processResources', ProcessResources) {
     dependsOn generateJmxWireContract
     from(generatedJmxContractResources)
+    from(generatedModuleVersionResource)
+}
+
+tasks.named('test', Test) {
+    def expectedVersion = moduleVersionProvider.get()
+
+    inputs.property('expectedModuleVersion', expectedVersion)
+    systemProperty('platformTracing.expectedModuleVersion', expectedVersion)
 }
 
 tasks.named('sourcesJar', Jar) {
@@ -46,6 +69,7 @@ dependencies {
 
     implementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-otel')
     implementation project(':platform-starters-common:platform-starters-common-util')
+    implementation 'space.br1440.platform:error-handling-model'
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
     implementation 'org.springframework.boot:spring-boot'
     implementation 'org.slf4j:slf4j-api'

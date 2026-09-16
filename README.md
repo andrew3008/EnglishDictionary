@@ -80,11 +80,22 @@ plugins {
 кладёт JAR в `build/platform-tracing/agent/platform-tracing-javaagent-<V>.jar`
 и пишет `build/platform-tracing/docker-build-args.env` с `PLATFORM_AGENT_JAR`.
 Публичная задача — `prepareControlledAgent`. `bootJar` и `assemble` агент не тянут.
-`bootRun` получает `-javaagent` на проверенный файл.
+`bootRun` получает `-javaagent` на проверенный файл и `-Dplatform.tracing.controlled-agent.expected-sha256`
+из того же вшитого pin — вручную прописывать SHA-256 в JVM Options локально не нужно.
 
 Это build-time верификация. Runtime-проверка SHA-256 до старта JVM, mount path
 и delivery mechanism остаются за deployment/GitOps-слоем и в этом репозитории
 не реализованы.
+
+Стартовая проверка в `spring-boot-starter-platform-tracing-autoconfigure`
+(`AgentStartupVerifier`) сопоставляет прочитанный readiness snapshot агента с флагом
+`platform.tracing.enabled`. Если `platform.tracing.enabled=false`, а readiness snapshot
+уже прочитан и классифицирован не как `DISABLED` (агент версионно несовместим, terminal
+`FAILED` с непустым `failureCode` и т.д.), итоговая причина отказа — `CONTROLLED_AGENT_FORBIDDEN`;
+она перекрывает и `failureCode` агента, и reason классификатора. При `platform.tracing.enabled=true`
+приоритет прежний: сначала `failureCode` агента, затем reason классификатора. Правило ограничено
+веткой обработки уже прочитанного snapshot и не распространяется на `DUAL_SDK_COLLISION` и на
+ошибки чтения readiness-эндпоинта.
 
 Контракт ownership, развёртывание и release/rollback:
 

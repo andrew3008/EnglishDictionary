@@ -388,6 +388,163 @@ class AgentStartupVerifierTest {
         assertThat(sleeps.get()).isZero();
     }
 
+    @Test
+    void disabledOutcomeNeverDereferencesTheStarterModuleVersionSource() {
+        // given
+        AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard(MBeanServerFactory.createMBeanServer());
+        AgentStartupVerifier verifier = new AgentStartupVerifier(
+                coherenceGuard,
+                () -> {
+                    throw new AssertionError("applicationVersion must not be read on the DISABLED success path");
+                });
+
+        // when
+        TracingDeploymentDiagnostics diagnostics = verifier.verify(false, false, false, false);
+
+        // then
+        assertThat(diagnostics.runtimeState()).isEqualTo(AgentRuntimeState.DISABLED);
+    }
+
+    @Test
+    void missingAgentOutcomeNeverDereferencesTheStarterModuleVersionSource() {
+        // given
+        AgentStartupVerifier verifier = new AgentStartupVerifier(
+                new AgentReadinessCoherenceGuard(MBeanServerFactory.createMBeanServer()),
+                () -> {
+                    throw new AssertionError("applicationVersion must not be read when the agent is missing");
+                });
+
+        // when
+        // then
+        assertThatIllegalStateException()
+                .isThrownBy(() -> verifier.verify(true, false, false, false))
+                .withMessageContaining("runtimeState=AGENT_MISSING")
+                .withMessageContaining("reason=CONTROLLED_AGENT_MISSING");
+    }
+
+    @Test
+    void modeForbiddenTakesPriorityOverCompatibleReadyAgent() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot ready = ReadinessTestFixtures.readySnapshot();
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(ready));
+        AgentStartupVerifier verifier = verifier(server);
+
+        // when
+        // then
+        assertThatIllegalStateException()
+                .isThrownBy(() -> verifier.verify(false, true, false, false))
+                .withMessageContaining("runtimeState=AGENT_READY")
+                .withMessageContaining("reason=CONTROLLED_AGENT_FORBIDDEN");
+    }
+
+    @Test
+    void modeForbiddenTakesPriorityOverVersionMismatch() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot ready = ReadinessTestFixtures.readySnapshot();
+        AgentReadinessSnapshot incompatible = ReadinessTestFixtures.toBuilder(ready)
+                .distributionIdentity(new AgentReadinessSnapshot.DistributionIdentity(
+                        ready.distributionIdentity().agentDistributionSha256(),
+                        ready.distributionIdentity().upstreamAgentVersion(),
+                        "9.9.9"))
+                .build();
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(incompatible));
+        AgentStartupVerifier verifier = verifier(server);
+
+        // when
+        // then
+        assertThatIllegalStateException()
+                .isThrownBy(() -> verifier.verify(false, true, false, false))
+                .withMessageContaining("reason=CONTROLLED_AGENT_FORBIDDEN")
+                .satisfies(failure -> assertThat(failure.getMessage())
+                        .doesNotContain("EXTENSION_VERSION_MISMATCH"));
+    }
+
+    @Test
+    void enabledTrueDoesNotForgiveVersionMismatch() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot ready = ReadinessTestFixtures.readySnapshot();
+        AgentReadinessSnapshot incompatible = ReadinessTestFixtures.toBuilder(ready)
+                .distributionIdentity(new AgentReadinessSnapshot.DistributionIdentity(
+                        ready.distributionIdentity().agentDistributionSha256(),
+                        ready.distributionIdentity().upstreamAgentVersion(),
+                        "9.9.9"))
+                .build();
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(incompatible));
+        AgentStartupVerifier verifier = verifier(server);
+
+        // when
+        // then
+        assertThatIllegalStateException()
+                .isThrownBy(() -> verifier.verify(true, true, false, true))
+                .withMessageContaining("reason=EXTENSION_VERSION_MISMATCH");
+    }
+
+    @Test
+    void modeForbiddenTakesPriorityOverFailedAgentWithFailureCode() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot failed = ReadinessTestFixtures.failedSnapshot("SPI_DISCOVERY_INCOMPLETE");
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(failed));
+        AgentStartupVerifier verifier = verifier(server);
+
+        // when
+        // then
+        assertThatIllegalStateException()
+                .isThrownBy(() -> verifier.verify(false, true, false, false))
+                .withMessageContaining("runtimeState=EXTENSION_FAILED")
+                .withMessageContaining("reason=CONTROLLED_AGENT_FORBIDDEN")
+                .satisfies(failure -> assertThat(failure.getMessage())
+                        .doesNotContain("SPI_DISCOVERY_INCOMPLETE"));
+    }
+
+    @Test
+    void enabledTrueDoesNotForgiveFailedAgentFailureCode() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot failed = ReadinessTestFixtures.failedSnapshot("SPI_DISCOVERY_INCOMPLETE");
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(failed));
+        AgentStartupVerifier verifier = verifier(server);
+
+        // when
+        // then
+        assertThatIllegalStateException()
+                .isThrownBy(() -> verifier.verify(true, true, false, true))
+                .withMessageContaining("runtimeState=EXTENSION_FAILED")
+                .withMessageContaining("reason=SPI_DISCOVERY_INCOMPLETE");
+    }
+
+    @Test
+    void modeForbiddenIsReturnedImmediatelyForInitializingAgentWithoutPolling() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot initializing = ReadinessTestFixtures.initializingSnapshot();
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(initializing));
+        AtomicLong clock = new AtomicLong();
+        AtomicInteger sleeps = new AtomicInteger();
+        AgentStartupVerifier verifier = new AgentStartupVerifier(
+                server,
+                Duration.ofSeconds(2),
+                clock::get,
+                nanos -> {
+                    sleeps.incrementAndGet();
+                    clock.addAndGet(nanos);
+                },
+                ReadinessTestFixtures.APPLICATION_VERSION
+        );
+
+        // when
+        // then
+        assertThatIllegalStateException()
+                .isThrownBy(() -> verifier.verify(false, true, false, false))
+                .withMessageContaining("runtimeState=EXTENSION_INITIALIZING")
+                .withMessageContaining("reason=CONTROLLED_AGENT_FORBIDDEN");
+        assertThat(sleeps.get()).isZero();
+        assertThat(clock.get()).isZero();
+    }
+
     private static AgentStartupVerifier verifier(MBeanServer server) {
         return new AgentStartupVerifier(
                 server,
@@ -395,7 +552,8 @@ class AgentStartupVerifierTest {
                 System::nanoTime,
                 nanos -> {
                 },
-                ReadinessTestFixtures.APPLICATION_VERSION);
+                ReadinessTestFixtures.APPLICATION_VERSION
+        );
     }
 
     @SuppressWarnings("SameParameterValue")
@@ -404,8 +562,12 @@ class AgentStartupVerifierTest {
                                                          String batchId) {
         AgentReadinessSnapshot.AnchorIdentity anchorIdentity = source.anchorIdentity();
         return ReadinessTestFixtures.toBuilder(source)
-                .anchorIdentity(new AgentReadinessSnapshot.AnchorIdentity(
-                        anchorIdentity.runtimeEpoch(), evidenceGeneration, batchId)
+                .anchorIdentity(
+                        new AgentReadinessSnapshot.AnchorIdentity(
+                                anchorIdentity.runtimeEpoch(),
+                                evidenceGeneration,
+                                batchId
+                        )
                 )
                 .build();
     }
@@ -414,8 +576,12 @@ class AgentStartupVerifierTest {
                                                            String schemaDigest) {
         AgentReadinessSnapshot.ContractIdentity contractIdentity = source.contractIdentity();
         return ReadinessTestFixtures.toBuilder(source)
-                .contractIdentity(new AgentReadinessSnapshot.ContractIdentity(
-                        contractIdentity.contractId(), schemaDigest))
+                .contractIdentity(
+                        new AgentReadinessSnapshot.ContractIdentity(
+                                contractIdentity.contractId(),
+                                schemaDigest
+                        )
+                )
                 .build();
     }
 }

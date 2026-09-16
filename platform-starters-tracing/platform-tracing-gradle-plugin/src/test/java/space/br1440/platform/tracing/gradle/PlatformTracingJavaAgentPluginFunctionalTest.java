@@ -244,7 +244,15 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
 
         // then
         assertThat(project.resolve("build/boot-run-args.txt"))
-                .hasContent("-javaagent:" + agentJarIn(project).toRealPath());
+                .hasContent(
+                        """
+                        -javaagent:%s
+                        -Dplatform.tracing.controlled-agent.expected-sha256=%s
+                        """.formatted(
+                                agentJarIn(project).toRealPath(),
+                                loadPin().getProperty("agent.sha256")
+                        )
+                );
     }
 
     private String javaConsumer() {

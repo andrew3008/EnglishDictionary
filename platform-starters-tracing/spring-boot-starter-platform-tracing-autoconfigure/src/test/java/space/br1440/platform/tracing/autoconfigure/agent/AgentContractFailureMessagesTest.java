@@ -1,0 +1,533 @@
+package space.br1440.platform.tracing.autoconfigure.agent;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.Set;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
+
+class AgentContractFailureMessagesTest {
+
+    @Test
+    void expectedExtensionImplementationTitleMatchesTheExtensionRuntimeConstant() {
+        // then
+        assertThat(AgentContractFailureMessages.EXPECTED_EXTENSION_IMPLEMENTATION_TITLE)
+                .isEqualTo(PlatformExtensionReadiness.IMPLEMENTATION_TITLE);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "1.2.0, 2.0.0",
+            "2.0.0, 1.2.0"
+    })
+    void formatsVersionMismatch(String applicationVersion, String extensionVersion) {
+        // given
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "EXTENSION_VERSION_MISMATCH",
+                "READY",
+                "contract",
+                "digest",
+                "epoch",
+                1L,
+                "batch",
+                extensionVersion
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> applicationVersion);
+
+        // then
+        assertThat(message).isEqualTo(
+                "Platform tracing startup rejected: runtimeState=EXTENSION_INCOMPATIBLE, reason=EXTENSION_VERSION_MISMATCH"
+                        + ", applicationVersion=" + applicationVersion
+                        + ", extensionVersion=" + extensionVersion
+                        + ". "
+                        + AgentContractFailureMessages.VERSION_MISMATCH_RELEASE_DETAIL
+        );
+    }
+
+    @Test
+    void formatsVersionMismatchWhenContractIdIsBlank() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "EXTENSION_VERSION_MISMATCH",
+                "READY",
+                "",
+                "digest",
+                "epoch",
+                1L,
+                "batch",
+                "9.9.9"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.3");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                        "EXTENSION_VERSION_MISMATCH")
+                        + ", applicationVersion=1.2.3, extensionVersion=9.9.9. "
+                        + AgentContractFailureMessages.VERSION_MISMATCH_RELEASE_DETAIL
+        );
+    }
+
+    @Test
+    void formatsGenerationInconsistentContextWithMissingEpochAndBatch() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "READINESS_GENERATION_INCONSISTENT",
+                "READY",
+                "contract",
+                "digest",
+                "",
+                0L,
+                "",
+                "1.2.0"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                        "READINESS_GENERATION_INCONSISTENT")
+                        + ", runtimeEpoch=<missing>, evidenceGeneration=0, batchId=<missing>. "
+                        + AgentContractFailureMessages.READINESS_GENERATION_INVALID_EXPLANATION
+        );
+    }
+
+    @Test
+    void formatsGenerationInconsistentContextWithoutUuidsWhenAnchorsArePresent() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "READINESS_GENERATION_INCONSISTENT",
+                "READY",
+                "contract",
+                "digest",
+                "epoch",
+                0L,
+                "batch",
+                "1.2.0"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                        "READINESS_GENERATION_INCONSISTENT")
+                        + ", evidenceGeneration=0. "
+                        + AgentContractFailureMessages.READINESS_GENERATION_INVALID_EXPLANATION
+        );
+    }
+
+    @Test
+    void formatsGenerationInconsistentContextWithSingleMissingAnchor() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "READINESS_GENERATION_INCONSISTENT",
+                "READY",
+                "contract",
+                "digest",
+                "",
+                5L,
+                "batch",
+                "1.2.0"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                        "READINESS_GENERATION_INCONSISTENT")
+                        + ", runtimeEpoch=<missing>, evidenceGeneration=5. "
+                        + AgentContractFailureMessages.READINESS_GENERATION_INVALID_EXPLANATION
+        );
+    }
+
+    @Test
+    void formatsInitializingInconsistentContextWithUnexpectedBatch() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "EXTENSION_INITIALIZING_INCONSISTENT",
+                "INITIALIZING",
+                "contract",
+                "digest",
+                "epoch",
+                0L,
+                "batch",
+                "1.2.0"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                        "EXTENSION_INITIALIZING_INCONSISTENT")
+                        + ", lifecycle=INITIALIZING, evidenceGeneration=0, batchId=<unexpected>. "
+                        + AgentContractFailureMessages.EXTENSION_INITIALIZING_INCONSISTENT_EXPLANATION
+        );
+    }
+
+    @Test
+    void formatsInitializingInconsistentContextOmitsBatchWhenAbsent() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "EXTENSION_INITIALIZING_INCONSISTENT",
+                "INITIALIZING",
+                "contract",
+                "digest",
+                "epoch",
+                0L,
+                "",
+                "1.2.0"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                        "EXTENSION_INITIALIZING_INCONSISTENT")
+                        + ", lifecycle=INITIALIZING, evidenceGeneration=0. "
+                        + AgentContractFailureMessages.EXTENSION_INITIALIZING_INCONSISTENT_EXPLANATION
+        );
+    }
+
+    @Test
+    void formatsGenerationInvalidContextWithNegativeGenerationWithoutAnchors() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "READINESS_GENERATION_INVALID",
+                "READY",
+                "contract",
+                "digest",
+                "epoch",
+                -1L,
+                "batch",
+                "1.2.0"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                        "READINESS_GENERATION_INVALID")
+                        + ", evidenceGeneration=-1. "
+                        + AgentContractFailureMessages.READINESS_GENERATION_INVALID_EXPLANATION
+        );
+    }
+
+    @Test
+    void formatsAnchorDriftContextWithFullObservedAnchor() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "READINESS_ANCHOR_CONTENT_DRIFT",
+                "READY",
+                "contract",
+                "digest",
+                "epoch",
+                1L,
+                "batch",
+                "1.2.0"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                        "READINESS_ANCHOR_CONTENT_DRIFT")
+                        + ", runtimeEpoch=epoch, evidenceGeneration=1, batchId=batch. "
+                        + AgentContractFailureMessages.DEFAULT_EXPLANATION_TEMPLATE.formatted("READY")
+        );
+    }
+
+    @Test
+    void includesSchemaIdMismatchContext() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "READINESS_SCHEMA_ID_MISMATCH",
+                "READY",
+                "another-contract",
+                "digest",
+                "epoch",
+                1L,
+                "batch",
+                "1.2.0"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                        "READINESS_SCHEMA_ID_MISMATCH")
+                        + ", expectedContractId=" + JmxWireContract.SCHEMA_ID
+                        + ", observedContractId=another-contract. "
+                        + AgentContractFailureMessages.READINESS_SCHEMA_MISMATCH_EXPLANATION
+        );
+    }
+
+    @Test
+    void includesSchemaDigestMismatchContext() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "READINESS_SCHEMA_DIGEST_MISMATCH",
+                "READY",
+                JmxWireContract.SCHEMA_ID,
+                "0".repeat(64),
+                "epoch",
+                1L,
+                "batch",
+                "1.2.0"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                        "READINESS_SCHEMA_DIGEST_MISMATCH")
+                        + ", expectedSchemaDigest=" + JmxWireContract.SCHEMA_DIGEST_SHA256
+                        + ", observedSchemaDigest=" + "0".repeat(64)
+                        + ". "
+                        + AgentContractFailureMessages.READINESS_SCHEMA_MISMATCH_EXPLANATION
+        );
+    }
+
+    @Test
+    void printsMissingObservedContractId() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "READINESS_SCHEMA_ID_MISMATCH",
+                "READY",
+                "",
+                "digest",
+                "epoch",
+                1L,
+                "batch",
+                "1.2.0"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                        "READINESS_SCHEMA_ID_MISMATCH")
+                        + ", expectedContractId=" + JmxWireContract.SCHEMA_ID
+                        + ", observedContractId=<missing>. "
+                        + AgentContractFailureMessages.READINESS_SCHEMA_MISMATCH_EXPLANATION
+        );
+    }
+
+    @Test
+    void formatsMixedGenerationWithoutSnapshotAnchors() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = TracingDeploymentDiagnostics.withoutAgentData(
+                true,
+                true,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "READINESS_MIXED_GENERATION"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                        "READINESS_MIXED_GENERATION")
+                        + ". "
+                        + AgentContractFailureMessages.READINESS_MIXED_GENERATION_EXPLANATION
+        );
+    }
+
+    @Test
+    void keepsUnknownReasonAndLifecycleFallback() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "REMOTE_JMX_UNCERTIFIED_STARTUP_CONFIGURATION",
+                "FAILED",
+                "contract",
+                "digest",
+                "epoch",
+                1L,
+                "batch",
+                "1.2.0"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                        "REMOTE_JMX_UNCERTIFIED_STARTUP_CONFIGURATION")
+                        + ", lifecycle=FAILED. "
+                        + AgentContractFailureMessages.DEFAULT_EXPLANATION_TEMPLATE.formatted("FAILED")
+        );
+    }
+
+    @Test
+    void rejectOmitsContextWhenReadinessEndpointIsAbsent() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = TracingDeploymentDiagnostics.withoutAgentData(
+                true,
+                false,
+                AgentRuntimeState.AGENT_MISSING,
+                "CONTROLLED_AGENT_MISSING"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.3");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.AGENT_MISSING,
+                        "CONTROLLED_AGENT_MISSING")
+                        + ". "
+                        + AgentContractFailureMessages.CONTROLLED_AGENT_MISSING_EXPLANATION
+        );
+    }
+
+    @Test
+    void rejectUsesUnspecifiedContractFailureWhenFailureCodeIsBlank() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = TracingDeploymentDiagnostics.withoutAgentData(
+                false,
+                false,
+                AgentRuntimeState.DISABLED,
+                "");
+
+        // when
+        String message = AgentContractFailureMessages.reject(false, diagnostics, () -> "1.2.3");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.DISABLED,
+                        "UNSPECIFIED_CONTRACT_FAILURE")
+                        + ". "
+                        + AgentContractFailureMessages.UNSPECIFIED_CONTRACT_FAILURE_TEMPLATE.formatted(
+                                AgentRuntimeState.DISABLED,
+                                false)
+        );
+    }
+
+    @Test
+    void versionMismatchExplanationDescribesMissingManifestTitleWhenExtensionVersionIsDevelopment() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "EXTENSION_VERSION_MISMATCH",
+                "READY",
+                "contract",
+                "digest",
+                "epoch",
+                1L,
+                "batch",
+                "development"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
+
+        // then
+        String expectedDevelopmentDetail = AgentContractFailureMessages.VERSION_MISMATCH_DEVELOPMENT_DETAIL_TEMPLATE
+                .formatted(AgentContractFailureMessages.EXPECTED_EXTENSION_IMPLEMENTATION_TITLE);
+
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                        "EXTENSION_VERSION_MISMATCH")
+                        + ", applicationVersion=1.2.0, extensionVersion=development. "
+                        + expectedDevelopmentDetail
+        );
+    }
+
+    private static TracingDeploymentDiagnostics diagnostics(AgentRuntimeState runtimeState,
+                                                            String failureCode,
+                                                            String lifecycle,
+                                                            String contractId,
+                                                            String schemaDigest,
+                                                            String runtimeEpoch,
+                                                            long evidenceGeneration,
+                                                            String batchId,
+                                                            String extensionVersion) {
+        return new TracingDeploymentDiagnostics(
+                true,
+                true,
+                runtimeState,
+                new TracingDeploymentDiagnostics.AgentReadiness(
+                        true,
+
+                        new TracingDeploymentDiagnostics.ContractIdentity(contractId, schemaDigest),
+
+                        new TracingDeploymentDiagnostics.ReadinessAnchor(runtimeEpoch, evidenceGeneration, batchId),
+
+                        new TracingDeploymentDiagnostics.LifecycleState(
+                                lifecycle,
+                                failureCode,
+                                Set.of(),
+                                Set.of()
+                        ),
+
+                        new TracingDeploymentDiagnostics.DistributionIdentity(
+                                "a".repeat(64),
+                                "2.30.0",
+                                extensionVersion
+                        ),
+
+                        new TracingDeploymentDiagnostics.ClassloaderTopology("agent-loader@1", "sdk-loader@2")
+                )
+        );
+    }
+}
