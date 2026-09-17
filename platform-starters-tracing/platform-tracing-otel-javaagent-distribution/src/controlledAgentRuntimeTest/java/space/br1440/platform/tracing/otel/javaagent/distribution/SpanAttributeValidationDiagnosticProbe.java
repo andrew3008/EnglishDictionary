@@ -1,0 +1,135 @@
+package space.br1440.platform.tracing.otel.javaagent.distribution;
+
+import java.lang.management.ManagementFactory;
+import java.time.Duration;
+import java.util.Locale;
+import javax.management.MBeanServer;
+import javax.management.openmbean.CompositeData;
+
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
+
+import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
+import io.opentelemetry.api.trace.Tracer;
+
+public final class SpanAttributeValidationDiagnosticProbe {
+
+    private static final Duration READY_TIMEOUT = Duration.ofSeconds(20);
+    private static final Duration OBSERVATION_TIMEOUT = Duration.ofSeconds(20);
+    private static final Duration POLL_INTERVAL = Duration.ofMillis(100);
+
+    private static final String LIFECYCLE_READY = "READY";
+    private static final String LIFECYCLE_FAILED = "FAILED";
+
+    static final String INVALID_SPAN_NAME = "span-attribute-validation-invalid";
+
+    private SpanAttributeValidationDiagnosticProbe() {
+    }
+
+    public static void main(String[] arguments) throws Exception {
+        MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+        waitForReady(server);
+
+        CompositeData validationBefore = validationObservation(server);
+        boolean enabled = (Boolean) validationBefore.get(
+                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_ENABLED
+        );
+        boolean strict = (Boolean) validationBefore.get(
+                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT
+        );
+        if (!enabled || !strict) {
+            throw new IllegalStateException("""
+                    Process ERROR did not become the accepted validation state: enabled=%s strict=%s\
+                    """.formatted(enabled, strict)
+            );
+        }
+
+        long violationsBefore = (Long) validationBefore.get(
+                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_VIOLATIONS_TOTAL
+        );
+
+        SpanIdentity stimulus = emitInvalidSpan();
+        long violationsAfter = waitForViolationGrowth(server, violationsBefore);
+
+        System.out.printf(Locale.ROOT,
+                "SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_OK enabled=%s strict=%s "
+                        + "violationsBefore=%d violationsAfter=%d traceId=%s spanId=%s%n",
+                enabled,
+                strict,
+                violationsBefore,
+                violationsAfter,
+                stimulus.traceId(),
+                stimulus.spanId()
+        );
+    }
+
+    private static SpanIdentity emitInvalidSpan() {
+        Tracer tracer = GlobalOpenTelemetry.getTracer("controlled-agent-span-attribute-validation-probe");
+        Span span = tracer.spanBuilder(INVALID_SPAN_NAME).startSpan();
+        SpanContext spanContext = span.getSpanContext();
+        span.end();
+
+        return new SpanIdentity(spanContext.getTraceId(), spanContext.getSpanId());
+    }
+
+    private static long waitForViolationGrowth(MBeanServer server, long violationsBefore) throws Exception {
+        long deadlineNanos = System.nanoTime() + OBSERVATION_TIMEOUT.toNanos();
+        long lastViolations = violationsBefore;
+
+        while (System.nanoTime() < deadlineNanos) {
+            lastViolations = (Long) validationObservation(server).get(
+                    JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_VIOLATIONS_TOTAL
+            );
+            if (lastViolations > violationsBefore) {
+                return lastViolations;
+            }
+
+            Thread.sleep(POLL_INTERVAL.toMillis());
+        }
+
+        throw new IllegalStateException("""
+                Diagnostic ERROR stimulus did not increase validationViolationsTotal within %d seconds; \
+                violationsBefore=%d lastViolations=%d\
+                """.formatted(OBSERVATION_TIMEOUT.toSeconds(), violationsBefore, lastViolations)
+        );
+    }
+
+    private static void waitForReady(MBeanServer server) throws Exception {
+        long deadlineNanos = System.nanoTime() + READY_TIMEOUT.toNanos();
+        while (System.nanoTime() < deadlineNanos) {
+            if (server.isRegistered(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME)) {
+                CompositeData snapshot = (CompositeData) server.getAttribute(
+                        JmxWireContract.EXTENSION_READINESS_OBJECT_NAME,
+                        JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT
+                );
+                String lifecycle = (String) snapshot.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE);
+
+                if (LIFECYCLE_READY.equals(lifecycle)) {
+                    return;
+                }
+
+                if (LIFECYCLE_FAILED.equals(lifecycle)) {
+                    throw new IllegalStateException("Platform extension readiness failed before the diagnostic scenario could run");
+                }
+            }
+
+            Thread.sleep(POLL_INTERVAL.toMillis());
+        }
+
+        throw new IllegalStateException(
+                "Platform extension did not become READY within %d seconds"
+                        .formatted(READY_TIMEOUT.toSeconds())
+        );
+    }
+
+    private static CompositeData validationObservation(MBeanServer server) throws Exception {
+        return (CompositeData) server.getAttribute(
+                JmxWireContract.VALIDATION_OBSERVATION_OBJECT_NAME,
+                JmxWireContract.ATTRIBUTE_VALIDATION_OBSERVATION_VALIDATION_OBSERVATION
+        );
+    }
+
+    private record SpanIdentity(String traceId, String spanId) {
+    }
+}

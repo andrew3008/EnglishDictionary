@@ -23,6 +23,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
+
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.TraceFlags;
 import io.opentelemetry.api.trace.TraceState;
@@ -34,21 +39,7 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
-import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
-
-/**
- * PR-0 характеризация поведения {@link PlatformDropOldestExportSpanProcessor} с фиксацией
- * PR-6 hardening фактов, согласно {@code dropoldest_processor_refactoring_646d03d4.plan.md}.
- * <p>
- * Тесты, независимые от декомпозиции (R1/R2/R3, scheduling, isolation), сохранены без изменений.
- * Тесты, документировавшие подтверждённые дефекты (R4, R6, sticky {@code workerFailure}) —
- * переименованы и переписаны под нормативную семантику ADR-drop-oldest-export-processor-v2 §2/§7,
- * которую эти дефекты обязаны были исправить.
- */
-class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
+class PlatformDropOldestExportSpanProcessorContractTest {
 
     @RegisterExtension
     AgentLogCapture capture = new AgentLogCapture();
@@ -78,8 +69,7 @@ class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
                 .maxExportBatchSize(64)
                 .scheduleDelay(Duration.ofMillis(50))
                 .build();
-        SdkTracerProvider tp = provider(processor);
-        try {
+        try (SdkTracerProvider tp = provider(processor)) {
             Tracer tracer = tp.get("schedule-delay-test");
             tracer.spanBuilder("scheduled").startSpan().end();
 
@@ -87,8 +77,6 @@ class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
             // then: worker самостоятельно экспортирует спан по истечении scheduleDelay
             awaitTrue(() -> exporter.exported.size() == 1, Duration.ofSeconds(2),
                     "background scheduleDelay export did not happen");
-        } finally {
-            tp.close();
         }
     }
 
@@ -125,7 +113,7 @@ class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
             CompletableResultCode flush = flushFuture.get(5, TimeUnit.SECONDS);
             CompletableResultCode shutdown = shutdownFuture.get(5, TimeUnit.SECONDS);
 
-            // then: ни один promise не зависает — R3 уже устранено failPendingFlushesLocked()
+            // then: ни один promise не зависает — их завершает failPendingFlushesLocked()
             assertThat(flush.join(5, TimeUnit.SECONDS).isDone()).isTrue();
             assertThat(shutdown.join(5, TimeUnit.SECONDS).isDone()).isTrue();
             assertThat(shutdown.isSuccess()).isTrue();
@@ -247,13 +235,13 @@ class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
             @Override public CompletableResultCode flush() { return CompletableResultCode.ofSuccess(); }
             @Override public CompletableResultCode shutdown() { return CompletableResultCode.ofSuccess(); }
         };
+
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(throwsRuntimeExceptionOnce)
                 .maxQueueSize(16)
                 .maxExportBatchSize(1)
                 .scheduleDelay(Duration.ofMillis(50))
                 .build();
-        SdkTracerProvider tp = provider(processor);
-        try {
+        try (SdkTracerProvider tp = provider(processor)) {
             Tracer tracer = tp.get("runtime-exception-isolation-test");
             tracer.spanBuilder("first").startSpan().end();
             tracer.spanBuilder("second").startSpan().end();
@@ -270,8 +258,6 @@ class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
             awaitTrue(() -> calls.get() >= 2, Duration.ofSeconds(2),
                     "worker did not continue exporting after an isolated RuntimeException");
             assertThat(processor.metricsSnapshot().failuresTotal()).isEqualTo(1);
-        } finally {
-            tp.close();
         }
     }
 
@@ -292,13 +278,13 @@ class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
             @Override public CompletableResultCode flush() { return CompletableResultCode.ofSuccess(); }
             @Override public CompletableResultCode shutdown() { return CompletableResultCode.ofSuccess(); }
         };
+
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(throwsErrorForever)
                 .maxQueueSize(16)
                 .maxExportBatchSize(1)
                 .scheduleDelay(Duration.ofMinutes(10))
                 .build();
-        SdkTracerProvider tp = provider(processor);
-        try {
+        try (SdkTracerProvider tp = provider(processor)) {
             Tracer tracer = tp.get("worker-death-test");
             tracer.spanBuilder("poisoned").startSpan().end();
 
@@ -316,8 +302,6 @@ class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
             awaitTrue(() -> calls.get() >= 2, Duration.ofSeconds(2),
                     "worker must keep retrying export after a nonfatal Error instead of dying silently");
             assertThat(processor.metricsSnapshot().lifecycleState()).isEqualTo("ACTIVE");
-        } finally {
-            tp.close();
         }
     }
 
@@ -334,13 +318,14 @@ class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
             @Override public CompletableResultCode flush() { return CompletableResultCode.ofSuccess(); }
             @Override public CompletableResultCode shutdown() { return CompletableResultCode.ofSuccess(); }
         };
+
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(throwsErrorForever)
                 .maxQueueSize(16)
                 .maxExportBatchSize(1)
                 .scheduleDelay(Duration.ofMinutes(10))
                 .build();
-        SdkTracerProvider tp = provider(processor);
-        try {
+
+        try (SdkTracerProvider tp = provider(processor)) {
             Tracer tracer = tp.get("stuck-flush-promise-test");
             tracer.spanBuilder("poisoned").startSpan().end();
 
@@ -355,8 +340,6 @@ class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
                     .as("flush promise must complete even when the batch export fails with a nonfatal Error")
                     .isTrue();
             assertThat(joined.isSuccess()).isFalse();
-        } finally {
-            tp.close();
         }
     }
 
@@ -376,6 +359,7 @@ class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
             @Override public CompletableResultCode flush() { return CompletableResultCode.ofSuccess(); }
             @Override public CompletableResultCode shutdown() { return CompletableResultCode.ofSuccess(); }
         };
+
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(failsOnceThenAlwaysSucceeds)
                 .maxQueueSize(16)
                 .maxExportBatchSize(1)
@@ -394,9 +378,6 @@ class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
         CompletableResultCode shutdown = tp.shutdown();
         shutdown.join(5, TimeUnit.SECONDS);
 
-        // then: shutdown успешен — единственный давний неуспешный batch не переводит processor
-        // в терминальный FAILED и не имеет sticky-эффекта на shutdown() (ADR-drop-oldest-export-processor-v2 §5:
-        // sticky lastExportFailed не вводится, исход batch принадлежит его собственному flush-generation)
         assertThat(shutdown.isSuccess())
                 .as("a single historical export failure must not poison an unrelated later shutdown() outcome")
                 .isTrue();
@@ -413,23 +394,20 @@ class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
             @Override public CompletableResultCode flush() { return CompletableResultCode.ofSuccess(); }
             @Override public CompletableResultCode shutdown() { return CompletableResultCode.ofSuccess(); }
         };
+
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(alwaysThrows)
                 .maxQueueSize(32)
                 .maxExportBatchSize(1)
                 .scheduleDelay(Duration.ofMillis(20))
                 .build();
-        SdkTracerProvider tp = provider(processor);
-        try {
+
+        try (SdkTracerProvider tp = provider(processor)) {
             Tracer tracer = tp.get("log-throttle-test");
             for (int i = 0; i < 10; i++) {
                 tracer.spanBuilder("f-" + i).startSpan().end();
                 processor.forceFlush().join(2, TimeUnit.SECONDS);
             }
 
-            // when: exporter упал десять раз подряд
-            // then: WARN о export failure троттлится RateLimitedLogger'ом (двухфазный fast/throttled
-            // token bucket), а не глушится единственным permanent one-shot флагом — счётчик failuresTotal
-            // при этом растёт на каждый вызов независимо от логирования
             long exportFailureWarnCount = capture.events().stream()
                     .filter(event -> event.level() == AgentLogLevel.WARN)
                     .filter(event -> AgentEventCodes.EXPORT_TIMED.equals(event.eventCode()))
@@ -441,12 +419,8 @@ class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
             assertThat(processor.metricsSnapshot().failuresTotal())
                     .as("counter keeps growing on every export failure regardless of log throttling")
                     .isEqualTo(10);
-        } finally {
-            tp.close();
         }
     }
-
-    // ---------------------------------------------------------------------------------------------
 
     private static SdkTracerProvider provider(PlatformDropOldestExportSpanProcessor processor) {
         return SdkTracerProvider.builder()
@@ -472,19 +446,28 @@ class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
             if (condition.getAsBoolean()) {
                 return;
             }
+
             LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(5));
         }
+
         assertThat(condition.getAsBoolean()).as(failureMessage).isTrue();
     }
 
     private static final class CountingExporter implements SpanExporter {
         final List<SpanData> exported = new CopyOnWriteArrayList<>();
+
         @Override
         public CompletableResultCode export(Collection<SpanData> batch) {
             exported.addAll(batch);
             return CompletableResultCode.ofSuccess();
         }
-        @Override public CompletableResultCode flush() { return CompletableResultCode.ofSuccess(); }
-        @Override public CompletableResultCode shutdown() { return CompletableResultCode.ofSuccess(); }
+
+        @Override public CompletableResultCode flush() {
+            return CompletableResultCode.ofSuccess();
+        }
+
+        @Override public CompletableResultCode shutdown() {
+            return CompletableResultCode.ofSuccess();
+        }
     }
 }

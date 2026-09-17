@@ -26,13 +26,12 @@ class TracingPropertiesBindingTest {
         contextRunner
                 .withPropertyValues(
                         "platform.tracing.sampling.enabled=false",
-                        "platform.tracing.sampling.ratio=0.42",
-                        "platform.tracing.validation.enabled=false",
-                        "platform.tracing.validation.mode=STRICT")
+                        "platform.tracing.sampling.ratio=0.42")
                 .run(ctx -> {
                     assertThat(ctx).hasNotFailed();
                     TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getSemantic()).isNotNull();
+                    assertThat(properties.getSpanAttributes()).isNotNull();
+                    assertThat(properties.getExceptionRecording()).isNotNull();
                 });
     }
 
@@ -70,16 +69,35 @@ class TracingPropertiesBindingTest {
                         "platform.tracing.control.channel=STATIC",
                         "platform.tracing.sampling.enabled=false",
                         "platform.tracing.sampling.ratio=0.42",
-                        "platform.tracing.validation.enabled=false",
-                        "platform.tracing.validation.mode=STRICT")
+                        "platform.tracing.javaagent.span-attributes.validation.enabled=false",
+                        "platform.tracing.javaagent.span-attributes.validation.level=ERROR")
                 .run(ctx -> {
                     assertThat(ctx).hasNotFailed();
                     assertThat(ctx.getBean(TracingBootstrapSettings.class).tracingEnabled()).isTrue();
                 });
         assertThat(output).contains("platform.tracing.sampling.enabled");
         assertThat(output).contains("platform.tracing.sampling.ratio");
-        assertThat(output).contains("platform.tracing.validation.enabled");
-        assertThat(output).contains("platform.tracing.validation.mode");
+        assertThat(output).contains("platform.tracing.javaagent.span-attributes.validation.enabled");
+        assertThat(output).contains("platform.tracing.javaagent.span-attributes.validation.level");
+    }
+
+    @Test
+    void bindsSpanAttributeValidationAndExceptionRecording() {
+        contextRunner
+                .withPropertyValues(
+                        "platform.tracing.span-attributes.validation.level=DISABLED",
+                        "platform.tracing.span-attributes.validation.disabled-reason=emergency",
+                        "platform.tracing.exception-recording.include-message=true",
+                        "platform.tracing.exception-recording.include-stacktrace=true")
+                .run(ctx -> {
+                    TracingProperties properties = ctx.getBean(TracingProperties.class);
+                    assertThat(properties.getSpanAttributes().getValidation().getLevel().name())
+                            .isEqualTo("DISABLED");
+                    assertThat(properties.getSpanAttributes().getValidation().getDisabledReason())
+                            .isEqualTo("emergency");
+                    assertThat(properties.getExceptionRecording().isIncludeMessage()).isTrue();
+                    assertThat(properties.getExceptionRecording().isIncludeStacktrace()).isTrue();
+                });
     }
 
     @Test

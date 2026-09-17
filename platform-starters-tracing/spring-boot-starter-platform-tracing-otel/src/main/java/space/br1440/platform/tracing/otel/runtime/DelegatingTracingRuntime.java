@@ -2,15 +2,8 @@ package space.br1440.platform.tracing.otel.runtime;
 
 import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.context.CorrelationScope;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 
-/**
- * Маркер для декораторов {@link TracingRuntime}, которые полностью делегируют поведение.
- * <p>
- * Реализации по умолчанию делегируют каждый новый метод SPI в {@link #delegate()},
- * чтобы существующим подклассам-декораторам (например, {@code MeteredTracingRuntime})
- * не требовались шаблонные переопределения для сквозных (pass-through) методов.
- */
 public interface DelegatingTracingRuntime extends TracingRuntime {
 
     @Nonnull
@@ -18,8 +11,8 @@ public interface DelegatingTracingRuntime extends TracingRuntime {
 
     @Override
     @Nonnull
-    default AttributePolicy attributePolicy() {
-        return delegate().attributePolicy();
+    default SpanAttributeValidator spanAttributeValidator() {
+        return delegate().spanAttributeValidator();
     }
 
     @Override

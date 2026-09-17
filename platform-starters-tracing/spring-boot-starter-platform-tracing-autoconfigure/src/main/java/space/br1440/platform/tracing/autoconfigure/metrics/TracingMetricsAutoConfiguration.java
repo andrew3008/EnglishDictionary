@@ -7,12 +7,12 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 
-import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
+import space.br1440.platform.tracing.api.attributes.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.DiagnosticsObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration;
-import space.br1440.platform.tracing.otel.semconv.policy.SemconvMetrics;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidationMetrics;
 
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -35,24 +35,24 @@ public class TracingMetricsAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(SemconvMetrics.class)
-    public SemconvMetrics platformSemconvMetrics(MeterRegistry meterRegistry) {
-        return new MicrometerSemconvMetrics(meterRegistry);
+    @ConditionalOnMissingBean(SpanAttributeValidationMetrics.class)
+    public SpanAttributeValidationMetrics platformSpanAttributeValidationMetrics(MeterRegistry meterRegistry) {
+        return new MicrometerSpanAttributeValidationMetrics(meterRegistry);
     }
 
     @Bean
-    public MeterBinder platformSemanticValidationDisabledBinder(TracingProperties properties) {
+    public MeterBinder platformSpanAttributeValidationDisabledBinder(TracingProperties properties) {
         return registry -> Gauge.builder(
-                        "platform.tracing.semantic.validation.disabled",
+                        "platform.tracing.span_attributes.validation.disabled",
                         properties,
-                        TracingMetricsAutoConfiguration::semanticValidationDisabledValue)
-                .description("1 if platform.tracing.semantic.validation-mode=DISABLED, otherwise 0")
+                        TracingMetricsAutoConfiguration::spanAttributeValidationDisabledValue)
+                .description("1 if platform.tracing.span-attributes.validation.level=DISABLED, otherwise 0")
                 .register(registry);
     }
 
-    private static double semanticValidationDisabledValue(TracingProperties properties) {
-        SemconvValidationMode validationMode = properties.getSemantic().getValidationMode();
-        return (validationMode == SemconvValidationMode.DISABLED) ? 1 : 0;
+    private static double spanAttributeValidationDisabledValue(TracingProperties properties) {
+        SpanAttributeValidationLevel level = properties.getSpanAttributes().getValidation().getLevel();
+        return (level == SpanAttributeValidationLevel.DISABLED) ? 1 : 0;
     }
 
     @Bean

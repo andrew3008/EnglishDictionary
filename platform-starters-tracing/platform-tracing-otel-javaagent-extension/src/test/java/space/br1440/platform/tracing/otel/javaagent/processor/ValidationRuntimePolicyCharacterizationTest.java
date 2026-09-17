@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ValidationRuntimePolicyCharacterizationTest {
 
     @Test
-    void updateValidation_increments_version_for_lenient_update() {
+    void updateValidation_increments_version_for_warn_level_update() {
         TracingSettingsSource access = TracingSettingsSource.isolatedValidation(true, false);
         try (ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access)) {
             long v0 = processor.getPolicyVersion();

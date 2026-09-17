@@ -1,19 +1,17 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.sdk.resources.Resource;
 import org.junit.jupiter.api.Test;
+
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.test.assertions.ValidationAssertions;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.sdk.resources.Resource;
 
-/**
- * Characterization {@link ValidatingSpanProcessor} observable behavior (PR-5B).
- */
 class ValidatingSpanProcessorCharacterizationTest {
 
     @Test
@@ -25,22 +23,26 @@ class ValidatingSpanProcessorCharacterizationTest {
             Tracer tracer = h.tracer("t");
             tracer.spanBuilder("op").startSpan().end();
 
-            ValidationAssertions.assertMissingAbsent(h.exporter().getFinishedSpanItems().get(0));
+            ValidationAssertions.assertMissingAbsent(h.exporter().getFinishedSpanItems().getFirst());
         }
     }
 
     @Test
-    void lenient_mode_records_missing_but_export_continues() {
+    void warn_level_records_missing_but_export_continues() {
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(
-                TracingSettingsSource.isolatedValidation(true, false));
+                TracingSettingsSource.isolatedValidation(true, false)
+        );
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
             Tracer tracer = h.tracer("t");
             tracer.spanBuilder("op").startSpan().end();
 
-            var data = h.exporter().getFinishedSpanItems().get(0);
+            var data = h.exporter().getFinishedSpanItems().getFirst();
             ValidationAssertions.assertMissingRecorded(
-                    data, PlatformAttributes.PLATFORM_TYPE, PlatformAttributes.PLATFORM_RESULT);
+                    data,
+                    PlatformAttributes.PLATFORM_TYPE,
+                    PlatformAttributes.PLATFORM_RESULT
+            );
             assertThat(data.getName()).isEqualTo("op");
         }
     }

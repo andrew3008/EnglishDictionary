@@ -14,11 +14,11 @@ import space.br1440.platform.tracing.otel.context.DefaultActiveTraceContextView;
 import space.br1440.platform.tracing.otel.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 import space.br1440.platform.tracing.otel.runtime.state.TracingState;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 
 public final class NoOpTracingRuntime implements TracingRuntime {
 
-    private static final AttributePolicy PERMISSIVE = new AttributePolicy();
+    private static final SpanAttributeValidator PERMISSIVE = new SpanAttributeValidator();
 
     private final TracingState state;
     private final ThreadLocalIdentityStorage identityStorage = new ThreadLocalIdentityStorage();
@@ -118,7 +118,7 @@ public final class NoOpTracingRuntime implements TracingRuntime {
 
     @Override
     @Nonnull
-    public AttributePolicy attributePolicy() {
+    public SpanAttributeValidator spanAttributeValidator() {
         return PERMISSIVE;
     }
 

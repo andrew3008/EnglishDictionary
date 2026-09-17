@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,19 +38,37 @@ class ControlledAgentRuntimeTest {
     private static final Pattern OTLP_PARTIAL_SUCCESS_LINE_PATTERN = Pattern.compile(
             OTLP_PARTIAL_SUCCESS_PROBE_OK_PREFIX + " partialSuccessBatches=(\\d+) rejectedSpans=(\\d+) exportedSpans=(\\d+)"
     );
+    private static final String SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_OK_PREFIX = "SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_OK";
+    private static final Pattern SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_LINE_PATTERN = Pattern.compile(
+            SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_OK_PREFIX
+                    + " enabled=(true|false) strict=(true|false) "
+                    + "violationsBefore=(\\d+) violationsAfter=(\\d+) traceId=([0-9a-f]{32}) spanId=([0-9a-f]{16})"
+    );
+    private static final String VALIDATION_MISSING_ATTRIBUTE_KEY = "platform.validation.missing";
+    private static final String VALIDATION_ERROR_DIAGNOSTIC_MARKER = "\"event_code\":\"PTA-VALID-003\"";
+    private static final String ERROR_LEVEL_MARKER = "\"level\":\"ERROR\"";
+    private static final Duration EXPORT_TIMEOUT = Duration.ofSeconds(20);
+    private static final Duration EXPORT_POLL_INTERVAL = Duration.ofMillis(100);
 
     @TempDir
     Path temporaryDirectory;
 
     @Test
-    void controlled_agent_applies_process_strict_validation_mode() throws IOException, InterruptedException, URISyntaxException {
+    void controlled_agent_error_validation_remains_diagnostic_on_invalid_span() throws Exception {
+        // given
         AgentTestFixture fixture = AgentTestFixture.load();
 
-        ChildProcessResult result = runControlledAgentProbe(fixture, List.of(
-                "-Dplatform.tracing.validation.mode=STRICT"));
+        try (OtlpTraceCollector collector = OtlpTraceCollector.startAcceptingAllSpans()) {
 
-        assertProcessCompletedSuccessfully(result);
-        assertThat(result.stdout()).contains("CONTROLLED_AGENT_VALIDATION enabled=true strict=true");
+            // when
+            ChildProcessResult result = runSpanAttributeValidationDiagnosticProbe(fixture, collector.tracesEndpoint());
+
+            // then
+            assertProcessCompletedSuccessfully(result);
+            StimulusSpan stimulus = assertSpanAttributeValidationDiagnosticObserved(result);
+            assertInvalidSpanExportedWithViolationMarker(collector, stimulus);
+            assertErrorDiagnosticEmitted(result);
+        }
     }
 
     @Test
@@ -72,7 +91,7 @@ class ControlledAgentRuntimeTest {
         // given
         AgentTestFixture fixture = AgentTestFixture.load();
 
-        try (OtlpPartialSuccessCollector collector = OtlpPartialSuccessCollector.start()) {
+        try (OtlpTraceCollector collector = OtlpTraceCollector.startRejectingOneSpanPerBatch()) {
 
             // when
             ChildProcessResult result = runOtlpPartialSuccessProbe(fixture, collector.tracesEndpoint());
@@ -86,18 +105,39 @@ class ControlledAgentRuntimeTest {
 
     private ChildProcessResult runControlledAgentProbe(AgentTestFixture fixture)
             throws IOException, InterruptedException, URISyntaxException {
-        return runControlledAgentProbe(fixture, List.of());
-    }
-
-    private ChildProcessResult runControlledAgentProbe(AgentTestFixture fixture, List<String> extraJvmArguments)
-            throws IOException, InterruptedException, URISyntaxException {
         Path javaExecutable = javaExecutable();
         Path probeClassPath = probeClassPath(ControlledAgentRuntimeProbe.class);
         Path stdoutFile = temporaryDirectory.resolve("child.stdout.log");
         Path stderrFile = temporaryDirectory.resolve("child.stderr.log");
 
+        ProcessBuilder processBuilder = new ProcessBuilder(childCommand(javaExecutable, probeClassPath, fixture));
+        removeContaminatingEnvironment(processBuilder.environment());
+        processBuilder.redirectOutput(stdoutFile.toFile());
+        processBuilder.redirectError(stderrFile.toFile());
+
+        Process process = processBuilder.start();
+        boolean finished = process.waitFor(WAIT_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        if (!finished) {
+            process.destroyForcibly().waitFor(KILL_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        }
+
+        String stdout = Files.readString(stdoutFile, StandardCharsets.UTF_8);
+        String stderr = Files.readString(stderrFile, StandardCharsets.UTF_8);
+        Integer exitCode = finished ? process.exitValue() : null;
+
+        return new ChildProcessResult(finished, exitCode, stdout, stderr);
+    }
+
+    private ChildProcessResult runSpanAttributeValidationDiagnosticProbe(AgentTestFixture fixture, String tracesEndpoint)
+            throws IOException, InterruptedException, URISyntaxException {
+        Path javaExecutable = javaExecutable();
+        Path probeClassPath = probeClassPath(SpanAttributeValidationDiagnosticProbe.class);
+        Path stdoutFile = temporaryDirectory.resolve("validation-diagnostic-child.stdout.log");
+        Path stderrFile = temporaryDirectory.resolve("validation-diagnostic-child.stderr.log");
+
         ProcessBuilder processBuilder = new ProcessBuilder(
-                childCommand(javaExecutable, probeClassPath, fixture, extraJvmArguments));
+                spanAttributeValidationDiagnosticChildCommand(javaExecutable, probeClassPath, fixture, tracesEndpoint)
+        );
         removeContaminatingEnvironment(processBuilder.environment());
         processBuilder.redirectOutput(stdoutFile.toFile());
         processBuilder.redirectError(stderrFile.toFile());
@@ -174,6 +214,76 @@ class ControlledAgentRuntimeTest {
                 .doesNotContain("FATAL");
     }
 
+    private StimulusSpan assertSpanAttributeValidationDiagnosticObserved(ChildProcessResult result) {
+        List<String> matchingLines = result.stdout()
+                .lines()
+                .filter(line -> line.startsWith(SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_OK_PREFIX))
+                .toList();
+        assertThat(matchingLines)
+                .as("Child stdout must contain exactly one diagnostic probe line: %s", result.stdout())
+                .hasSize(1);
+
+        Matcher matcher = SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_LINE_PATTERN.matcher(matchingLines.getFirst());
+        assertThat(matcher.matches())
+                .as("Probe line does not match the expected shape: %s", matchingLines.getFirst())
+                .isTrue();
+
+        assertThat(matcher.group(1)).isEqualTo("true");
+        assertThat(matcher.group(2)).isEqualTo("true");
+        long violationsBefore = Long.parseLong(matcher.group(3));
+        long violationsAfter = Long.parseLong(matcher.group(4));
+
+        assertThat(violationsAfter)
+                .as("validationViolationsTotal must grow after the invalid-span stimulus")
+                .isGreaterThan(violationsBefore);
+
+        return new StimulusSpan(matcher.group(5), matcher.group(6));
+    }
+
+    private void assertInvalidSpanExportedWithViolationMarker(OtlpTraceCollector collector, StimulusSpan stimulus)
+            throws InterruptedException {
+        OtlpTraceCollector.ReceivedSpan exported = awaitExportedSpan(collector, stimulus);
+
+        assertThat(exported.traceId()).isEqualTo(stimulus.traceId());
+        assertThat(exported.name()).isEqualTo(SpanAttributeValidationDiagnosticProbe.INVALID_SPAN_NAME);
+        assertThat(exported.stringAttributes())
+                .as("The exported invalid span must carry the validation marker: %s", exported)
+                .containsKey(VALIDATION_MISSING_ATTRIBUTE_KEY);
+        assertThat(exported.stringAttributes().get(VALIDATION_MISSING_ATTRIBUTE_KEY))
+                .as("The marker must name the producer-owned attribute that was missing")
+                .contains("platform.trace.result");
+    }
+
+    private OtlpTraceCollector.ReceivedSpan awaitExportedSpan(OtlpTraceCollector collector, StimulusSpan stimulus)
+            throws InterruptedException {
+        long deadlineNanos = System.nanoTime() + EXPORT_TIMEOUT.toNanos();
+        while (System.nanoTime() < deadlineNanos) {
+            Optional<OtlpTraceCollector.ReceivedSpan> exported = collector.receivedSpans()
+                    .stream()
+                    .filter(span -> span.spanId().equals(stimulus.spanId()))
+                    .findFirst();
+            if (exported.isPresent()) {
+                return exported.get();
+            }
+
+            Thread.sleep(EXPORT_POLL_INTERVAL.toMillis());
+        }
+
+        throw new AssertionError(
+                "The invalid span was never exported: spanId=%s receivedSpans=%s"
+                        .formatted(stimulus.spanId(), collector.receivedSpans())
+        );
+    }
+
+    private void assertErrorDiagnosticEmitted(ChildProcessResult result) {
+        assertThat(result.stderr()
+                .lines()
+                .filter(line -> line.contains(VALIDATION_ERROR_DIAGNOSTIC_MARKER))
+                .filter(line -> line.contains(ERROR_LEVEL_MARKER)))
+                .as("Agent ERROR level must produce a PTA-VALID-003 diagnostic: %s", result.stderr())
+                .hasSize(1);
+    }
+
     private void assertOtlpPartialSuccessObserved(ChildProcessResult result) {
         List<String> matchingLines = result.stdout()
                 .lines()
@@ -183,9 +293,9 @@ class ControlledAgentRuntimeTest {
                 .as("Child stdout must contain exactly one OTLP partial-success probe line: %s", result.stdout())
                 .hasSize(1);
 
-        Matcher matcher = OTLP_PARTIAL_SUCCESS_LINE_PATTERN.matcher(matchingLines.get(0));
+        Matcher matcher = OTLP_PARTIAL_SUCCESS_LINE_PATTERN.matcher(matchingLines.getFirst());
         assertThat(matcher.matches())
-                .as("Probe line does not match the expected shape: %s", matchingLines.get(0))
+                .as("Probe line does not match the expected shape: %s", matchingLines.getFirst())
                 .isTrue();
 
         long partialSuccessBatches = Long.parseLong(matcher.group(1));
@@ -222,8 +332,7 @@ class ControlledAgentRuntimeTest {
 
     private static List<String> childCommand(Path javaExecutable,
                                              Path probeClassPath,
-                                             AgentTestFixture fixture,
-                                             List<String> extraJvmArguments) {
+                                             AgentTestFixture fixture) {
         List<String> command = new ArrayList<>();
         command.add(javaExecutable.toString());
         command.add("-XX:+DisableAttachMechanism");
@@ -233,7 +342,6 @@ class ControlledAgentRuntimeTest {
         command.add("-Dotel.traces.exporter=logging");
         command.add("-Dotel.metrics.exporter=none");
         command.add("-Dotel.logs.exporter=none");
-        command.addAll(extraJvmArguments);
         command.add("-Dplatform.tracing.service.name=controlled-agent-runtime-test");
         command.add("-Dplatform.tracing.service.version=1.0.0");
         command.add("-Dplatform.tracing.service.environment=test");
@@ -250,6 +358,42 @@ class ControlledAgentRuntimeTest {
         command.add(fixture.controlledAgent().toString());
         command.add(fixture.expectedOtelJavaAgentSha());
         command.add(fixture.expectedExtensionSha());
+        return command;
+    }
+
+    private static List<String> spanAttributeValidationDiagnosticChildCommand(Path javaExecutable,
+                                                                             Path probeClassPath,
+                                                                             AgentTestFixture fixture,
+                                                                             String tracesEndpoint) {
+        List<String> command = new ArrayList<>();
+        command.add(javaExecutable.toString());
+        command.add("-XX:+DisableAttachMechanism");
+        command.add("-Dfile.encoding=UTF-8");
+        command.add("-Dsun.stdout.encoding=UTF-8");
+        command.add("-Dsun.stderr.encoding=UTF-8");
+        command.add("-Dotel.traces.exporter=otlp");
+        command.add("-Dotel.exporter.otlp.traces.protocol=http/protobuf");
+        command.add("-Dotel.exporter.otlp.traces.endpoint=" + tracesEndpoint);
+        command.add("-Dotel.exporter.otlp.traces.compression=none");
+        command.add("-Dotel.metrics.exporter=none");
+        command.add("-Dotel.logs.exporter=none");
+        command.add("-Dotel.bsp.schedule.delay=200");
+        command.add("-Dplatform.tracing.sampling.enabled=true");
+        command.add("-Dplatform.tracing.sampling.ratio=1.0");
+        command.add("-Dplatform.tracing.javaagent.span-attributes.validation.enabled=true");
+        command.add("-Dplatform.tracing.javaagent.span-attributes.validation.level=ERROR");
+        command.add("-Dplatform.tracing.service.name=controlled-agent-runtime-test");
+        command.add("-Dplatform.tracing.service.version=1.0.0");
+        command.add("-Dplatform.tracing.service.environment=test");
+        command.add("-Dplatform.tracing.resource.validation-mode=STRICT");
+        command.add("-Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED");
+        command.add("-Dplatform.tracing.jmx.remote.listener-confirmed=false");
+        command.add("-Dplatform.tracing.jmx.remote.authorization-forwarder-installed=false");
+        command.add("-Dplatform.tracing.controlled-agent.expected-sha256=" + fixture.expectedControlledAgentSha());
+        command.add("-javaagent:" + fixture.controlledAgent());
+        command.add("-cp");
+        command.add(probeClassPath + File.pathSeparator + openTelemetryApiClasspathEntries());
+        command.add(SpanAttributeValidationDiagnosticProbe.class.getName());
         return command;
     }
 
@@ -357,5 +501,8 @@ class ControlledAgentRuntimeTest {
     }
 
     private record ChildProcessResult(boolean finished, Integer exitCode, String stdout, String stderr) {
+    }
+
+    private record StimulusSpan(String traceId, String spanId) {
     }
 }

@@ -30,7 +30,7 @@ public class DefaultTraceOperations implements TraceOperations {
     }
 
     private static RuntimeHolder buildHolder(@Nonnull TracingRuntime runtime) {
-        return new RuntimeHolder(runtime, new DefaultSpanFactory(runtime, runtime.attributePolicy()));
+        return new RuntimeHolder(runtime, new DefaultSpanFactory(runtime, runtime.spanAttributeValidator()));
     }
 
     @Override

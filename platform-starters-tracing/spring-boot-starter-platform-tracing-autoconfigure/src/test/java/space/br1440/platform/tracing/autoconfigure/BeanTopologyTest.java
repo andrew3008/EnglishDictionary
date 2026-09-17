@@ -35,7 +35,7 @@ import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 import space.br1440.platform.tracing.otel.runtime.state.TracingState;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -202,8 +202,8 @@ class BeanTopologyTest {
 
         @Override
         @Nonnull
-        public AttributePolicy attributePolicy() {
-            return new AttributePolicy();
+        public SpanAttributeValidator spanAttributeValidator() {
+            return new SpanAttributeValidator();
         }
     }
 

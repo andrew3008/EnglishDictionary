@@ -3,7 +3,6 @@ package space.br1440.platform.tracing.otel.span.spec;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
@@ -12,19 +11,16 @@ import space.br1440.platform.tracing.api.span.spec.SpanExecution;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
 
-/**
- * Public bridge: единый governed pipeline для {@code fromSpec} и builder entry paths.
- */
 public final class DefaultSpanSpecFactory {
 
     private final TracingRuntime runtime;
-    private final AttributePolicy policy;
+    private final SpanAttributeValidator policy;
 
     public DefaultSpanSpecFactory(@Nonnull TracingRuntime runtime,
-                                    @Nonnull AttributePolicy policy) {
+                                  @Nonnull SpanAttributeValidator policy) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.policy = Objects.requireNonNull(policy, "policy");
     }
@@ -35,7 +31,8 @@ public final class DefaultSpanSpecFactory {
                 runtime,
                 Objects.requireNonNull(spec, "spec"),
                 policy,
-                "DefaultSpanSpecFactory.fromSpec");
+                "DefaultSpanSpecFactory.fromSpec"
+        );
     }
 
     @Nonnull
@@ -45,7 +42,8 @@ public final class DefaultSpanSpecFactory {
                 runtime,
                 Objects.requireNonNull(rawSpec, "rawSpec"),
                 policy,
-                Objects.requireNonNull(builderName, "builderName"));
+                Objects.requireNonNull(builderName, "builderName")
+        );
     }
 
     @Nonnull
@@ -72,7 +70,8 @@ public final class DefaultSpanSpecFactory {
                 links,
                 attributes,
                 policy,
-                builderName);
+                builderName
+        );
         return new SpanExecutionImpl(runtime, spec, policy, builderName);
     }
 }

@@ -9,7 +9,7 @@ import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.span.SpanFactory;
 import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 import space.br1440.platform.tracing.otel.span.DefaultSpanFactory;
 
 public final class NoopTraceOperations implements TraceOperations {
@@ -21,7 +21,7 @@ public final class NoopTraceOperations implements TraceOperations {
 
     private NoopTraceOperations(@Nonnull NoOpTracingRuntime runtime) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
-        this.spanFactory = new DefaultSpanFactory(runtime, new AttributePolicy());
+        this.spanFactory = new DefaultSpanFactory(runtime, new SpanAttributeValidator());
     }
 
     public static NoopTraceOperations forDisabledRuntime(@Nonnull NoOpTracingRuntime runtime) {

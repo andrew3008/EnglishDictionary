@@ -13,11 +13,11 @@ import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.otel.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.otel.runtime.state.TracingState;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 
 public final class RecordingTracingRuntime implements TracingRuntime {
 
-    private static final AttributePolicy PERMISSIVE = new AttributePolicy();
+    private static final SpanAttributeValidator PERMISSIVE = new SpanAttributeValidator();
 
     private final List<SpanSpec> receivedSpecs = new ArrayList<>();
     private final TracingRuntime identityDelegate = NoOpTracingRuntime.noop();
@@ -85,7 +85,7 @@ public final class RecordingTracingRuntime implements TracingRuntime {
 
     @Override
     @Nonnull
-    public AttributePolicy attributePolicy() {
+    public SpanAttributeValidator spanAttributeValidator() {
         return PERMISSIVE;
     }
 

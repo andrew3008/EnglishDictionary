@@ -1,0 +1,163 @@
+package space.br1440.platform.tracing.otel.javaagent.distribution;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.GZIPInputStream;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+
+import io.opentelemetry.proto.collector.trace.v1.ExportTracePartialSuccess;
+import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
+import io.opentelemetry.proto.common.v1.AnyValue;
+import io.opentelemetry.proto.common.v1.KeyValue;
+import io.opentelemetry.proto.trace.v1.Span;
+
+/**
+ * Принимающая сторона OTLP/HTTP для процессных гейтов: сохраняет идентификаторы и строковые
+ * атрибуты принятых span, чтобы тест мог доказать экспорт конкретного span.
+ */
+final class OtlpTraceCollector implements AutoCloseable {
+
+    private static final String TRACES_PATH = "/v1/traces";
+
+    private final HttpServer server;
+    private final ExecutorService executor;
+    private final long rejectedSpansPerBatch;
+    private final AtomicInteger receivedBatches = new AtomicInteger();
+    private final List<ReceivedSpan> receivedSpans = new CopyOnWriteArrayList<>();
+
+    private OtlpTraceCollector(HttpServer server, ExecutorService executor, long rejectedSpansPerBatch) {
+        this.server = server;
+        this.executor = executor;
+        this.rejectedSpansPerBatch = rejectedSpansPerBatch;
+    }
+
+    /** Коллектор, отвергающий один span в каждом батче: сценарий partial success. */
+    static OtlpTraceCollector startRejectingOneSpanPerBatch() throws IOException {
+        return start(1L);
+    }
+
+    /** Коллектор, принимающий батчи целиком. */
+    static OtlpTraceCollector startAcceptingAllSpans() throws IOException {
+        return start(0L);
+    }
+
+    private static OtlpTraceCollector start(long rejectedSpansPerBatch) throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        server.setExecutor(executor);
+
+        OtlpTraceCollector collector = new OtlpTraceCollector(server, executor, rejectedSpansPerBatch);
+        server.createContext(TRACES_PATH, collector::handle);
+        server.start();
+        return collector;
+    }
+
+    String tracesEndpoint() {
+        return "http://127.0.0.1:" + server.getAddress().getPort() + TRACES_PATH;
+    }
+
+    int receivedBatches() {
+        return receivedBatches.get();
+    }
+
+    List<ReceivedSpan> receivedSpans() {
+        return List.copyOf(receivedSpans);
+    }
+
+    private void handle(HttpExchange exchange) throws IOException {
+        try (exchange) {
+            byte[] requestBody = readBody(exchange);
+            List<ReceivedSpan> spans = parseSpans(requestBody);
+            receivedSpans.addAll(spans);
+            receivedBatches.incrementAndGet();
+
+            byte[] responseBody = response(spans.size());
+
+            exchange.getResponseHeaders().add("Content-Type", "application/x-protobuf");
+            exchange.sendResponseHeaders(200, responseBody.length);
+            try (OutputStream output = exchange.getResponseBody()) {
+                output.write(responseBody);
+            }
+        }
+    }
+
+    private byte[] response(int spanCount) {
+        ExportTraceServiceResponse.Builder response = ExportTraceServiceResponse.newBuilder();
+        if (rejectedSpansPerBatch > 0L) {
+            response.setPartialSuccess(ExportTracePartialSuccess.newBuilder()
+                    .setRejectedSpans(Math.min(rejectedSpansPerBatch, spanCount))
+                    .setErrorMessage("stub-collector: synthetic partial rejection")
+                    .build());
+        }
+
+        return response.build().toByteArray();
+    }
+
+    private static byte[] readBody(HttpExchange exchange) throws IOException {
+        InputStream body = exchange.getRequestBody();
+        String contentEncoding = exchange.getRequestHeaders().getFirst("Content-Encoding");
+        if ("gzip".equalsIgnoreCase(contentEncoding)) {
+            body = new GZIPInputStream(body);
+        }
+
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        body.transferTo(buffer);
+        return buffer.toByteArray();
+    }
+
+    private static List<ReceivedSpan> parseSpans(byte[] requestBody) throws IOException {
+        ExportTraceServiceRequest request = ExportTraceServiceRequest.parseFrom(requestBody);
+        return request.getResourceSpansList().stream()
+                .flatMap(resourceSpans -> resourceSpans.getScopeSpansList().stream())
+                .flatMap(scopeSpans -> scopeSpans.getSpansList().stream())
+                .map(OtlpTraceCollector::toReceivedSpan)
+                .toList();
+    }
+
+    private static ReceivedSpan toReceivedSpan(Span span) {
+        Map<String, String> attributes = new LinkedHashMap<>();
+        for (KeyValue attribute : span.getAttributesList()) {
+            AnyValue value = attribute.getValue();
+            if (value.hasStringValue()) {
+                attributes.put(attribute.getKey(), value.getStringValue());
+            }
+        }
+
+        HexFormat hex = HexFormat.of();
+        return new ReceivedSpan(
+                hex.formatHex(span.getTraceId().toByteArray()),
+                hex.formatHex(span.getSpanId().toByteArray()),
+                span.getName(),
+                Map.copyOf(attributes)
+        );
+    }
+
+    @Override
+    public void close() {
+        server.stop(0);
+        executor.shutdownNow();
+        try {
+            executor.awaitTermination(5, TimeUnit.SECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    record ReceivedSpan(String traceId, String spanId, String name, Map<String, String> stringAttributes) {
+    }
+}

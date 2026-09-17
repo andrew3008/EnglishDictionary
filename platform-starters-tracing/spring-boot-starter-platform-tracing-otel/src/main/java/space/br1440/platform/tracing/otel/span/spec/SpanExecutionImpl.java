@@ -8,19 +8,19 @@ import space.br1440.platform.tracing.api.span.spec.SpanExecution;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.util.ThrowingSupplier;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
 
 final class SpanExecutionImpl implements SpanExecution {
 
     private final TracingRuntime implementation;
     private final SpanSpec spec;
-    private final AttributePolicy policy;
+    private final SpanAttributeValidator policy;
     private final String builderName;
 
     SpanExecutionImpl(@Nonnull TracingRuntime implementation,
                       @Nonnull SpanSpec spec,
-                      @Nonnull AttributePolicy policy,
+                      @Nonnull SpanAttributeValidator policy,
                       @Nonnull String builderName) {
         this.implementation = Objects.requireNonNull(implementation, "implementation");
         this.spec = Objects.requireNonNull(spec, "spec");

@@ -111,11 +111,13 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
         recorder.primeWithConfig(new MapConfigPropertiesWithList(props,
                 "platform.tracing.enriching.remote-service-priority",
-                List.of("rpc.service", "peer.service")));
+                List.of("rpc.service", "peer.service"))
+        );
         SdkTracerProviderBuilder builder = SdkTracerProvider.builder();
         recorder.tracerProviderCustomizer.apply(builder, new MapConfigPropertiesWithList(props,
                 "platform.tracing.enriching.remote-service-priority",
-                List.of("rpc.service", "peer.service")));
+                List.of("rpc.service", "peer.service"))
+        );
 
         try (SdkTracerProvider provider = builder.build()) {
             assertThat(provider).isNotNull();
@@ -241,7 +243,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         Map<String, String> disableAll = Map.of(
                 "platform.tracing.enriching.enabled", "false",
                 "platform.tracing.javaagent.scrubbing.enabled", "false",
-                "platform.tracing.validation.enabled", "false",
+                "platform.tracing.javaagent.span-attributes.validation.enabled", "false",
                 "platform.tracing.watchdog.enabled", "false"
         );
 

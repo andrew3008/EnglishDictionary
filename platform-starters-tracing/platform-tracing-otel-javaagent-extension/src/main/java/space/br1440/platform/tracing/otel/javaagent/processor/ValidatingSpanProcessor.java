@@ -50,7 +50,7 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
 
     private static final long NEVER_WARNED = (Long.MIN_VALUE / 2);
 
-    private final AtomicLong lastLenientDiagnosticAt = new AtomicLong(NEVER_WARNED);
+    private final AtomicLong lastWarnDiagnosticAt = new AtomicLong(NEVER_WARNED);
     private final AtomicLong lastStrictDiagnosticAt = new AtomicLong(NEVER_WARNED);
     private final LongAdder validationViolationsTotal = new LongAdder();
     private final LongSupplier clock;
@@ -96,7 +96,7 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
 
     private void recordDiagnostic(boolean strict) {
         long now = clock.getAsLong();
-        AtomicLong lastDiagnosticAt = strict ? lastStrictDiagnosticAt : lastLenientDiagnosticAt;
+        AtomicLong lastDiagnosticAt = strict ? lastStrictDiagnosticAt : lastWarnDiagnosticAt;
         long previous = lastDiagnosticAt.get();
         long thresholdMs = MISSING_ATTRIBUTES_DIAGNOSTIC_THROTTLE_INTERVAL.toMillis();
 
@@ -146,7 +146,7 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
     }
 
     long lastDiagnosticTimestampForTesting(boolean strict) {
-        AtomicLong lastDiagnosticAt = strict ? lastStrictDiagnosticAt : lastLenientDiagnosticAt;
+        AtomicLong lastDiagnosticAt = strict ? lastStrictDiagnosticAt : lastWarnDiagnosticAt;
         return lastDiagnosticAt.get();
     }
 }

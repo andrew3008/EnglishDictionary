@@ -499,6 +499,22 @@ class BootstrapCoordinatorTest {
     }
 
     @Test
+    void unknown_span_attribute_validation_level_classified_as_CONFIGURATION_INITIALIZATION_FAILED() {
+        // given
+        BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
+
+        // when/then
+        assertThatThrownBy(() -> coordinator.prepare(config(Map.of(
+                ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
+                "STRICT"
+        ))))
+                .isInstanceOf(BootstrapException.class)
+                .extracting(failure -> ((BootstrapException) failure).failure().code())
+                .isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
+        assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+    }
+
+    @Test
     void empty_built_in_rule_set_preserves_SANITIZER_RULE_SET_EMPTY() {
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator(
                 ScrubbingRuntimeTestFixtures.factory(List::of)

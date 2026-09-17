@@ -25,8 +25,8 @@
 {{- if $tracing.controlChannel -}}
   {{- $env = append $env (dict "name" "PLATFORM_TRACING_CONTROL_CHANNEL" "value" $tracing.controlChannel) -}}
 {{- end -}}
-{{- if $tracing.validationMode -}}
-  {{- $env = append $env (dict "name" "PLATFORM_TRACING_VALIDATION_MODE" "value" $tracing.validationMode) -}}
+{{- if $tracing.spanAttributeValidationLevel -}}
+  {{- $env = append $env (dict "name" "PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL" "value" $tracing.spanAttributeValidationLevel) -}}
 {{- end -}}
 {{/* Пять Instrumentation CR в Infra задают ровно этот список; менять его — отдельное решение. */}}
 {{- $env = append $env (dict "name" "OTEL_PROPAGATORS" "value" "tracecontext,baggage,b3") -}}

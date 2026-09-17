@@ -9,22 +9,19 @@ import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
+import space.br1440.platform.tracing.otel.attributes.validation.ValidatedAttributes;
 import space.br1440.platform.tracing.otel.runtime.otel.SpanSpecAttributeValueConverter;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
-import space.br1440.platform.tracing.otel.semconv.policy.ValidatedAttributes;
 
 import io.opentelemetry.api.common.Attributes;
 import lombok.experimental.UtilityClass;
 
-/**
- * Применяет единый semantic-контракт к внешней спецификации span до передачи в runtime.
- */
 @UtilityClass
 final class SpanSpecGovernance {
 
     @Nonnull
     static SpanSpec validateAndNormalize(@Nonnull SpanSpec spec,
-                                         @Nonnull AttributePolicy policy,
+                                         @Nonnull SpanAttributeValidator policy,
                                          @Nonnull String builderName) {
         Objects.requireNonNull(spec, "spec");
         Objects.requireNonNull(policy, "policy");

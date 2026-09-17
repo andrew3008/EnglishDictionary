@@ -64,7 +64,7 @@ class RuntimeFacadeBoundaryArchTest {
             noClasses().that().resideInAPackage(SPAN_BUILDER)
                     .should().dependOnClassesThat().resideInAnyPackage(
                             RUNTIME,
-                            "space.br1440.platform.tracing.otel.semconv.policy..",
+                            "space.br1440.platform.tracing.otel.attributes.validation..",
                             "io.opentelemetry.api.trace..",
                             "io.opentelemetry.context..")
                     .because("span builders must delegate through the platform span factory boundary");

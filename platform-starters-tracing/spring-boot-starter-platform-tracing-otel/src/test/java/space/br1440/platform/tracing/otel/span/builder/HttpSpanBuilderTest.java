@@ -1,28 +1,26 @@
 package space.br1440.platform.tracing.otel.span.builder;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.span.builder.HttpClientSpanBuilder;
-import space.br1440.platform.tracing.api.span.builder.HttpServerSpanBuilder;
-import space.br1440.platform.tracing.api.span.builder.HttpTracing;
-import space.br1440.platform.tracing.api.span.SpanFactory;
-import space.br1440.platform.tracing.api.semconv.annotation.HttpSemconvVersion;
-import space.br1440.platform.tracing.api.semconv.SemconvViolationException;
-import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
-import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-import space.br1440.platform.tracing.otel.runtime.RecordingTracingRuntime;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
-import space.br1440.platform.tracing.otel.semconv.policy.SemconvMetrics;
-import space.br1440.platform.tracing.otel.span.DefaultSpanFactory;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * Hard gate: {@code spans().transport().http()} builder foundation.
- */
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.attributes.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.api.attributes.validation.SpanAttributeViolationException;
+import space.br1440.platform.tracing.api.semconv.annotation.HttpSemconvVersion;
+import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.api.span.SpanFactory;
+import space.br1440.platform.tracing.api.span.builder.HttpClientSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.HttpServerSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.HttpTracing;
+import space.br1440.platform.tracing.api.span.spec.SpanSpec;
+import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidationMetrics;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
+import space.br1440.platform.tracing.otel.runtime.RecordingTracingRuntime;
+import space.br1440.platform.tracing.otel.span.DefaultSpanFactory;
+
 class HttpSpanBuilderTest {
 
     private RecordingTracingRuntime recording;
@@ -31,7 +29,7 @@ class HttpSpanBuilderTest {
     @BeforeEach
     void setUp() {
         recording = new RecordingTracingRuntime();
-        AttributePolicy strictPolicy = new AttributePolicy(SemconvValidationMode.STRICT, false, SemconvMetrics.NOOP);
+        SpanAttributeValidator strictPolicy = new SpanAttributeValidator(SpanAttributeValidationLevel.STRICT, SpanAttributeValidationMetrics.NOOP);
         manual = new DefaultSpanFactory(recording, strictPolicy);
     }
 
@@ -93,14 +91,14 @@ class HttpSpanBuilderTest {
     void httpServerWithoutMethod_rejectedInStrictMode() {
         assertThatThrownBy(() ->
                 manual.transport().http().server().start())
-                .isInstanceOf(SemconvViolationException.class);
+                .isInstanceOf(SpanAttributeViolationException.class);
     }
 
     @Test
     void httpClientWithoutMethod_rejectedInStrictMode() {
         assertThatThrownBy(() ->
                 manual.transport().http().client().url("https://example.com").start())
-                .isInstanceOf(SemconvViolationException.class);
+                .isInstanceOf(SpanAttributeViolationException.class);
     }
 
     @Test

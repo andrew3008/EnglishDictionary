@@ -40,7 +40,7 @@ class ValidationStartupStrictPolicyTest {
     }
 
     @Test
-    void lenient_violation_emits_warn_instead_of_error() {
+    void warn_level_violation_emits_warn_instead_of_error() {
         // given
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false));
 
@@ -61,9 +61,9 @@ class ValidationStartupStrictPolicyTest {
     @Test
     void startup_strict_true_preserves_strict_behavior() {
         // given/when
-        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true));
-
-        // then
-        assertThat(processor.isStrict()).isTrue();
+        try (ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true))) {
+            // then
+            assertThat(processor.isStrict()).isTrue();
+        }
     }
 }

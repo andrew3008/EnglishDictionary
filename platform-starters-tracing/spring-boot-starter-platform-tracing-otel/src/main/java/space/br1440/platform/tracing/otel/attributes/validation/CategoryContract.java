@@ -1,19 +1,12 @@
-package space.br1440.platform.tracing.otel.semconv.policy;
-
-import io.opentelemetry.api.common.AttributeKey;
-
-import space.br1440.platform.tracing.api.span.SpanCategory;
+package space.br1440.platform.tracing.otel.attributes.validation;
 
 import java.util.List;
 import java.util.Set;
 
-/**
- * Immutable semantic-контракт одной {@link SpanCategory}:
- * какие атрибуты разрешены, какие обязательны, какие запрещены.
- * <p>
- * Внутренний тип: используется только {@link CategoryContracts} и {@link AttributePolicy}.
- * Не является частью публичного API платформы.
- */
+import space.br1440.platform.tracing.api.span.SpanCategory;
+
+import io.opentelemetry.api.common.AttributeKey;
+
 record CategoryContract(SpanCategory category,
                         Set<AttributeKey<?>> allowlist,
                         Set<AttributeKey<?>> required,

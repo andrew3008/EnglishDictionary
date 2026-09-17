@@ -15,15 +15,15 @@ public final class ExceptionRecorder {
 
     private static final String EXCEPTION_EVENT_NAME = "exception";
 
-    private final ExceptionMessagePolicy messagePolicy;
+    private final ExceptionRecordingPolicy recordingPolicy;
 
-    public ExceptionRecorder(@Nonnull ExceptionMessagePolicy messagePolicy) {
-        this.messagePolicy = Objects.requireNonNull(messagePolicy, "messagePolicy");
+    public ExceptionRecorder(@Nonnull ExceptionRecordingPolicy recordingPolicy) {
+        this.recordingPolicy = Objects.requireNonNull(recordingPolicy, "recordingPolicy");
     }
 
     @Nonnull
     public static ExceptionRecorder secureDefault() {
-        return new ExceptionRecorder(ExceptionMessagePolicy.secureDefault());
+        return new ExceptionRecorder(ExceptionRecordingPolicy.secureDefault());
     }
 
     public void record(@Nullable Throwable t) {
@@ -39,7 +39,7 @@ public final class ExceptionRecorder {
         span.setAttribute(SemconvKeys.ERROR_TYPE, type);
         span.setAttribute(SemconvKeys.PLATFORM_RESULT, SpanResult.FAILURE.value());
 
-        String safeMessage = messagePolicy.sanitizeOrNull(exception);
+        String safeMessage = recordingPolicy.sanitizeOrNull(exception);
         if (safeMessage != null) {
             span.setStatus(StatusCode.ERROR, safeMessage);
         } else {
@@ -51,7 +51,7 @@ public final class ExceptionRecorder {
             event.put(SemconvKeys.EXCEPTION_MESSAGE, safeMessage);
         }
 
-        String stack = messagePolicy.sanitizedStackOrNull(exception);
+        String stack = recordingPolicy.sanitizedStackOrNull(exception);
         if (stack != null) {
             event.put(SemconvKeys.EXCEPTION_STACKTRACE, stack);
         }

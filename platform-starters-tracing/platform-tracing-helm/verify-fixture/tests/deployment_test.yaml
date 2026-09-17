@@ -53,17 +53,35 @@ tests:
       - notContains:
           path: spec.template.spec.containers[0].env
           content:
-            name: PLATFORM_TRACING_VALIDATION_MODE
+            name: PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL
 
-  - it: emits optional PLATFORM_TRACING_VALIDATION_MODE when requested
+  - it: emits optional PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL when requested
     set:
-      platformTracing.validationMode: STRICT
+      platformTracing.spanAttributeValidationLevel: ERROR
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
-            name: PLATFORM_TRACING_VALIDATION_MODE
-            value: STRICT
+            name: PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL
+            value: ERROR
+
+  - it: does not emit PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL when the value is empty
+    set:
+      platformTracing.spanAttributeValidationLevel: ""
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL
+
+  - it: fails when the application env sets PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL itself
+    set:
+      deployment.env:
+        - name: PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL
+          value: ERROR
+    asserts:
+      - failedTemplate:
+          errorPattern: "reserved for platform-tracing.v1.env"
 
   - it: fails when the application env sets PLATFORM_TRACING_CONTROL_CHANNEL itself
     set:

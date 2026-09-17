@@ -10,7 +10,7 @@ import space.br1440.platform.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
-public final class ExceptionMessagePolicy {
+public final class ExceptionRecordingPolicy {
 
     private static final int MAX_MESSAGE_LENGTH = 512;
 
@@ -18,8 +18,8 @@ public final class ExceptionMessagePolicy {
     private final boolean includeStackTrace;
 
     @Nonnull
-    public static ExceptionMessagePolicy secureDefault() {
-        return new ExceptionMessagePolicy(false, false);
+    public static ExceptionRecordingPolicy secureDefault() {
+        return new ExceptionRecordingPolicy(false, false);
     }
 
     @Nullable

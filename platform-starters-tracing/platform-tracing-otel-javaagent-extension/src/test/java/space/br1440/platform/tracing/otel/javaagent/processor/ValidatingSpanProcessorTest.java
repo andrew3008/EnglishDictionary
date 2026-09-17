@@ -1,40 +1,41 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
+import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.resources.Resource;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
-import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import io.opentelemetry.sdk.trace.data.SpanData;
 
 class ValidatingSpanProcessorTest {
 
-    private static ValidatingSpanProcessor lenient() {
+    private static ValidatingSpanProcessor warnLevel() {
         return new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false));
     }
 
-    private static ValidatingSpanProcessor strict() {
+    private static ValidatingSpanProcessor errorLevel() {
         return new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true));
     }
 
     @Test
     void sets_platform_validation_missing_when_span_attributes_absent() {
-        try (SpanProcessorHarness h = SpanProcessorHarness.of(lenient(), Resource.empty())) {
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(warnLevel(), Resource.empty())) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();
             span.end();
 
-            var data = h.exporter().getFinishedSpanItems().getFirst();
+            SpanData data = h.exporter().getFinishedSpanItems().getFirst();
             String missing = data.getAttributes().get(AttributeKey.stringKey("platform.validation.missing"));
-            // После Фазы 9 валидируются span-specific поля type/result (resource-ключи — на старте).
             assertThat(missing)
                     .contains(PlatformAttributes.PLATFORM_TYPE)
                     .contains(PlatformAttributes.PLATFORM_RESULT);
@@ -43,23 +44,23 @@ class ValidatingSpanProcessorTest {
 
     @Test
     void does_not_record_violation_when_span_type_and_result_attributes_are_set() {
-        try (SpanProcessorHarness h = SpanProcessorHarness.of(lenient(), Resource.empty())) {
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(warnLevel(), Resource.empty())) {
             h.tracer("test").spanBuilder("op")
                     .setAttribute(PlatformAttributes.PLATFORM_TYPE, "HTTP")
                     .setAttribute(PlatformAttributes.PLATFORM_RESULT, "success")
                     .startSpan().end();
 
-            var attrs = h.exporter().getFinishedSpanItems().get(0).getAttributes();
+            Attributes attrs = h.exporter().getFinishedSpanItems().getFirst().getAttributes();
             assertThat(attrs.get(AttributeKey.stringKey("platform.validation.missing"))).isNull();
         }
     }
 
     @Test
     void throttling_suppresses_repeated_warn_and_does_not_move_timestamp() {
-        // Виртуальное время: clock возвращает фиксированную метку 1000 — это эмулирует «сразу же»
-        // 1000 span'ов друг за другом в пределах одного throttle-окна.
         ValidatingSpanProcessor validator = new ValidatingSpanProcessor(
-                () -> 1000L, TracingSettingsSource.isolatedValidation(true, false));
+                () -> 1000L,
+                TracingSettingsSource.isolatedValidation(true, false)
+        );
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(validator, Resource.empty())) {
             Tracer tracer = h.tracer("test");
@@ -69,7 +70,7 @@ class ValidatingSpanProcessorTest {
 
             // Все 1000 span'ов получили атрибут platform.validation.missing — это контракт.
             assertThat(h.exporter().getFinishedSpanItems()).hasSize(1000);
-            for (var data : h.exporter().getFinishedSpanItems()) {
+            for (SpanData data : h.exporter().getFinishedSpanItems()) {
                 assertThat(data.getAttributes().get(AttributeKey.stringKey("platform.validation.missing"))).isNotBlank();
             }
         }
@@ -81,15 +82,15 @@ class ValidatingSpanProcessorTest {
     }
 
     @Test
-    void lenient_and_strict_diagnostics_have_independent_throttling() {
+    void warn_and_error_diagnostics_have_independent_throttling() {
         TracingSettingsSource access = TracingSettingsSource.isolatedValidation(true, false);
         ValidatingSpanProcessor validator = new ValidatingSpanProcessor(() -> 1000L, access);
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(validator, Resource.empty())) {
-            h.tracer("test").spanBuilder("lenient").startSpan().end();
+            h.tracer("test").spanBuilder("warn").startSpan().end();
             assertThat(AcceptedPolicyMutationAccess.applyValidation(access, true, true))
                     .isEqualTo(SettingsUpdateStatus.APPLIED);
-            h.tracer("test").spanBuilder("strict").startSpan().end();
+            h.tracer("test").spanBuilder("error").startSpan().end();
         }
 
         assertThat(validator.lastDiagnosticTimestampForTesting(false)).isEqualTo(1000L);
@@ -98,8 +99,8 @@ class ValidatingSpanProcessorTest {
     }
 
     @Test
-    void strict_mode_records_violation_without_interrupting_span_end() {
-        ValidatingSpanProcessor validator = strict();
+    void error_level_records_violation_without_interrupting_span_end() {
+        ValidatingSpanProcessor validator = errorLevel();
         try (SpanProcessorHarness h = SpanProcessorHarness.of(validator, Resource.empty())) {
             Tracer tracer = h.tracer("test");
             tracer.spanBuilder("op").startSpan().end();
@@ -109,22 +110,13 @@ class ValidatingSpanProcessorTest {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // SP-03 — Resource fallback removal characterization
-    // -------------------------------------------------------------------------
-
-    /**
-     * SP-03 / Test 1.
-     * platform.trace.type на Resource не засчитывается как span-атрибут: валидация
-     * обнаруживает его как отсутствующий и в STRICT-режиме бросает исключение.
-     */
     @Test
     void strictValidationDoesNotUseResourceAttributeAsTraceTypeFallback() {
         // platform.trace.type задан только как resource-атрибут, NOT on span
         Resource resourceWithType = Resource.create(
                 Attributes.of(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TYPE), "http_server"));
 
-        ValidatingSpanProcessor validator = strict();
+        ValidatingSpanProcessor validator = errorLevel();
         try (SpanProcessorHarness h = SpanProcessorHarness.of(validator, resourceWithType)) {
             Tracer tracer = h.tracer("test");
             // platform.trace.result задан на span'е, только type — нет
@@ -133,25 +125,20 @@ class ValidatingSpanProcessorTest {
 
             builder.startSpan().end();
 
-            String missing = h.exporter().getFinishedSpanItems().get(0).getAttributes()
+            String missing = h.exporter().getFinishedSpanItems().getFirst().getAttributes()
                     .get(AttributeKey.stringKey("platform.validation.missing"));
             assertThat(missing).isEqualTo(PlatformAttributes.PLATFORM_TYPE);
             assertThat(validator.getValidationViolationsTotal()).isEqualTo(1L);
         }
     }
 
-    /**
-     * SP-03 / Test 2.
-     * platform.trace.result на Resource не засчитывается как span-атрибут: валидация
-     * обнаруживает его как отсутствующий и в STRICT-режиме бросает исключение.
-     */
     @Test
     void strictValidationDoesNotUseResourceAttributeAsTraceResultFallback() {
         // platform.trace.result задан только как resource-атрибут, NOT on span
         Resource resourceWithResult = Resource.create(
                 Attributes.of(AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT), "success"));
 
-        ValidatingSpanProcessor validator = strict();
+        ValidatingSpanProcessor validator = errorLevel();
         try (SpanProcessorHarness h = SpanProcessorHarness.of(validator, resourceWithResult)) {
             Tracer tracer = h.tracer("test");
             // platform.trace.type задан на span'е, только result — нет
@@ -160,21 +147,16 @@ class ValidatingSpanProcessorTest {
 
             builder.startSpan().end();
 
-            String missing = h.exporter().getFinishedSpanItems().get(0).getAttributes()
+            String missing = h.exporter().getFinishedSpanItems().getFirst().getAttributes()
                     .get(AttributeKey.stringKey("platform.validation.missing"));
             assertThat(missing).isEqualTo(PlatformAttributes.PLATFORM_RESULT);
             assertThat(validator.getValidationViolationsTotal()).isEqualTo(1L);
         }
     }
 
-    /**
-     * SP-03 / Test 3.
-     * Span-атрибуты platform.trace.type и platform.trace.result удовлетворяют валидацию
-     * в STRICT-режиме — основной положительный сценарий после SP-03.
-     */
     @Test
     void strictValidationAcceptsTraceTypeAndTraceResultSpanAttributes() {
-        ValidatingSpanProcessor validator = strict();
+        ValidatingSpanProcessor validator = errorLevel();
         try (SpanProcessorHarness h = SpanProcessorHarness.of(validator, Resource.empty())) {
             Tracer tracer = h.tracer("test");
             // Оба обязательных атрибута заданы на span'е — исключения быть не должно
@@ -183,33 +165,25 @@ class ValidatingSpanProcessorTest {
                     .setAttribute(PlatformAttributes.PLATFORM_RESULT, "success")
                     .startSpan().end();
 
-            var attrs = h.exporter().getFinishedSpanItems().get(0).getAttributes();
+            Attributes attrs = h.exporter().getFinishedSpanItems().getFirst().getAttributes();
             assertThat(attrs.get(AttributeKey.stringKey("platform.validation.missing"))).isNull();
         }
     }
 
-    /**
-     * SP-03 / Test 4.
-     * LENIENT-режим не бросает исключение, даже когда обязательные атрибуты существуют
-     * только как resource-атрибуты (т.е. ресурсный fallback удалён, поле считается
-     * пропущенным, но LENIENT не падает — только проставляет диагностический атрибут).
-     */
     @Test
-    void lenientValidationDoesNotThrowWhenRequiredSpanAttributesExistOnlyOnResource() {
+    void warnLevelValidationDoesNotThrowWhenRequiredSpanAttributesExistOnlyOnResource() {
         Resource resourceWithBoth = Resource.create(Attributes.builder()
                 .put(PlatformAttributes.PLATFORM_TYPE, "http_server")
                 .put(PlatformAttributes.PLATFORM_RESULT, "success")
                 .build());
 
-        // LENIENT (strict=false) — не должен бросать
-        try (SpanProcessorHarness h = SpanProcessorHarness.of(lenient(), resourceWithBoth)) {
+        // WARN (strict=false) — не должен бросать
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(warnLevel(), resourceWithBoth)) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();
-            span.end(); // должен завершиться без исключения
+            span.end();
 
-            // Атрибуты заданы только на resource, не на span →
-            // после SP-03 валидатор считает их отсутствующими и проставляет missing
-            var data = h.exporter().getFinishedSpanItems().get(0);
+            SpanData data = h.exporter().getFinishedSpanItems().getFirst();
             String missing = data.getAttributes().get(AttributeKey.stringKey("platform.validation.missing"));
             assertThat(missing)
                     .contains(PlatformAttributes.PLATFORM_TYPE)

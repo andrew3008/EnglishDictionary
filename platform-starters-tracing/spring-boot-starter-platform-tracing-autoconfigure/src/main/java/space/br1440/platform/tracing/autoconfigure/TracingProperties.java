@@ -5,20 +5,13 @@ import java.util.List;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import space.br1440.platform.tracing.api.attributes.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
-import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
-/**
- * Платформенная конфигурация модуля трассировки.
- * <p>
- * Содержит только свойства, которые Spring реально применяет. Category A runtime policy
- * ({@code platform.tracing.policy.*}) доставляется через Config Server / Actuator control plane
- * и не зеркалируется здесь.
- */
 @Getter
 @Setter
 @Accessors(chain = true)
@@ -28,7 +21,8 @@ public class TracingProperties {
     public static final String PREFIX = "platform.tracing";
 
     private final RequestIdResponseHeader requestIdHeader = new RequestIdResponseHeader();
-    private final Semantic semantic = new Semantic();
+    private final SpanAttributes spanAttributes = new SpanAttributes();
+    private final ExceptionRecording exceptionRecording = new ExceptionRecording();
     private final Propagation propagation = new Propagation();
     private final Kafka kafka = new Kafka();
 
@@ -50,53 +44,58 @@ public class TracingProperties {
         private String name = PlatformHeaders.X_REQUEST_ID;
     }
 
+    /**
+     * Политика проверки атрибутов span'а, создаваемых платформенными builders.
+     * Property-namespace: {@code platform.tracing.span-attributes.*}.
+     */
     @Getter @Setter @Accessors(chain = true)
-    public static class Semantic {
+    public static class SpanAttributes {
 
-        /**
-         * Режим валидации платформенного semantic-контракта атрибутов span'а.
-         * <ul>
-         *     <li> <b>{@code WARN}</b> — production default: нарушения логируются, но не блокируют. </li>
-         *     <li> <b>{@code STRICT}</b> — предназначен только для test/CI — бросает исключение на нарушении контракта. </li>
-         *     <li> <b>{@code DISABLED}</b> — аварийный opt-out, полностью отключающий валидацию;
-         *          это не режим миграции, и он не влияет на PII-скрабинг, который работает независимо. </li>
-         * </ul>
-         */
-        private SemconvValidationMode validationMode = SemconvValidationMode.WARN;
-
-        /**
-         * Причина перевода {@link #validationMode} в {@code DISABLED}, попадает в
-         * стартовый WARN-лог для аудита. Не имеет эффекта при других режимах.
-         */
-        private String disabledReason;
-
-        /**
-         * Escape hatch, разрешающий {@code AttributePolicy} пропускать нестандартные
-         * (не входящие в платформенный semantic-контракт) атрибуты span'а вместо их
-         * отбраковки. По умолчанию выключен — типового сценария использования нет.
-         */
-        private boolean allowUnsafeAttributes = false;
-
-        /** Политика публикации текста исключения в span (см. {@link ExceptionEvent}). */
-        private final ExceptionEvent exception = new ExceptionEvent();
+        private final Validation validation = new Validation();
 
         @Getter @Setter @Accessors(chain = true)
-        public static class ExceptionEvent {
+        public static class Validation {
 
             /**
-             * Публиковать {@code exception.message} в exception-событии span'а.
-             * По-умолчанию выключено, так как сообщение исключения может содержать
-             * PII или внутренние детали реализации; включение — осознанный выбор.
+             * Уровень проверки атрибутов span'а.
+             * Значения — взаимоисключающие режимы окружений, а не градация строгости:
+             * <ul>
+             *     <li> <b>{@code WARN}</b> — production default: нарушения логируются, но не блокируют. </li>
+             *     <li> <b>{@code STRICT}</b> — только test/CI: бросает исключение до {@code startSpan()}. </li>
+             *     <li> <b>{@code DISABLED}</b> — аварийный opt-out, полностью отключающий валидацию;
+             *          это не режим миграции, и он не влияет на PII-скрабинг. </li>
+             * </ul>
              */
-            private boolean includeMessage = false;
+            private SpanAttributeValidationLevel level = SpanAttributeValidationLevel.WARN;
 
             /**
-             * Публиковать stacktrace в exception-событии span'а.
-             * По-умолчанию выключено: stacktrace раскрывает внутреннюю структуру кода и
-             * может быть избыточным по объёму; включение — осознанный выбор.
+             * Причина перевода {@link #level} в {@code DISABLED}, попадает в
+             * стартовый WARN-лог для аудита. Не имеет эффекта при других режимах.
              */
-            private boolean includeStacktrace = false;
+            private String disabledReason;
         }
+    }
+
+    /**
+     * Политика публикации текста исключения в span.
+     * Property-namespace: {@code platform.tracing.exception-recording.*}.
+     */
+    @Getter @Setter @Accessors(chain = true)
+    public static class ExceptionRecording {
+
+        /**
+         * Публиковать {@code exception.message} в exception-событии span'а.
+         * По-умолчанию выключено, так как сообщение исключения может содержать
+         * PII или внутренние детали реализации; включение — осознанный выбор.
+         */
+        private boolean includeMessage = false;
+
+        /**
+         * Публиковать stacktrace в exception-событии span'а.
+         * По-умолчанию выключено: stacktrace раскрывает внутреннюю структуру кода и
+         * может быть избыточным по объёму; включение — осознанный выбор.
+         */
+        private boolean includeStacktrace = false;
     }
 
     @Getter @Setter @Accessors(chain = true)

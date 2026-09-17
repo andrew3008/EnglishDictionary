@@ -7,32 +7,32 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
-import space.br1440.platform.tracing.api.semconv.SemconvViolationException;
+import space.br1440.platform.tracing.api.attributes.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.api.attributes.validation.SpanAttributeViolationException;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-import space.br1440.platform.tracing.otel.span.DefaultSpanFactory;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidationMetrics;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 import space.br1440.platform.tracing.otel.runtime.RecordingTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.otel.SpanSpecAttributeValueConverter;
 import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
-import space.br1440.platform.tracing.otel.semconv.policy.SemconvMetrics;
+import space.br1440.platform.tracing.otel.span.DefaultSpanFactory;
 
 class FromSpecPolicyGovernanceTest {
 
     @Test
     void fromSpecRejectsAttributesRejectedByStrictPolicy() {
-        AttributePolicy strictPolicy = new AttributePolicy(
-                SemconvValidationMode.STRICT, false, SemconvMetrics.NOOP);
+        SpanAttributeValidator strictPolicy = new SpanAttributeValidator(
+                SpanAttributeValidationLevel.STRICT, SpanAttributeValidationMetrics.NOOP);
         SpanSpec invalidSpec = SpanSpec.builder("characterization.from-spec")
                 .category(SpanCategory.INTERNAL)
                 .reason(SpanSpecReason.LEGACY_INTEGRATION)
                 .build();
 
-        assertThatExceptionOfType(SemconvViolationException.class)
+        assertThatExceptionOfType(SpanAttributeViolationException.class)
                 .isThrownBy(() -> strictPolicy.validateAndNormalize(
                         invalidSpec.category(),
                         SpanSpecAttributeValueConverter.toAttributes(invalidSpec.attributes()),
@@ -40,7 +40,7 @@ class FromSpecPolicyGovernanceTest {
 
         RecordingTracingRuntime runtime = new RecordingTracingRuntime();
         DefaultSpanFactory factory = new DefaultSpanFactory(runtime, strictPolicy);
-        assertThatExceptionOfType(SemconvViolationException.class)
+        assertThatExceptionOfType(SpanAttributeViolationException.class)
                 .isThrownBy(() -> factory.fromSpec(invalidSpec).start());
         assertThat(runtime.receivedSpecs()).isEmpty();
     }
@@ -52,8 +52,8 @@ class FromSpecPolicyGovernanceTest {
                 "01234567890123456789012345678901",
                 "0123456789012345");
         RecordingTracingRuntime runtime = new RecordingTracingRuntime();
-        AttributePolicy warnPolicy = new AttributePolicy(
-                SemconvValidationMode.WARN, false, SemconvMetrics.NOOP);
+        SpanAttributeValidator warnPolicy = new SpanAttributeValidator(
+                SpanAttributeValidationLevel.WARN, SpanAttributeValidationMetrics.NOOP);
         DefaultSpanFactory factory = new DefaultSpanFactory(runtime, warnPolicy);
         SpanSpec spec = SpanSpec.builder("characterization.normalized-from-spec")
                 .category(category)

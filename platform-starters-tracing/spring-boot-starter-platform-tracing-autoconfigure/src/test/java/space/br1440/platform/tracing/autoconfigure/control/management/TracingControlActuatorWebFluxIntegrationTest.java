@@ -26,7 +26,9 @@ class TracingControlActuatorWebFluxIntegrationTest {
     private static final String EXTENSION_VERSION = "1.2.3";
     private static final String[] EXCLUDED_UNRELATED_AUTOCONFIGURATIONS = {
             "space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.semantic.SemanticLayerAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.attributes.SpanAttributeValidationAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.exception.ExceptionRecordingAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.span.SpanEnrichmentAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.observation.TracingObservationAutoConfiguration",

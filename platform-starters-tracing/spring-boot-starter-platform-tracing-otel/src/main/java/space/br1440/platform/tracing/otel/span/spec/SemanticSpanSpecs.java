@@ -4,11 +4,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
-import io.opentelemetry.api.common.Attributes;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import lombok.experimental.UtilityClass;
 
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.SpanCategory;
@@ -17,10 +14,13 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
+import space.br1440.platform.tracing.otel.attributes.validation.ValidatedAttributes;
 import space.br1440.platform.tracing.otel.runtime.otel.SpanSpecAttributeValueConverter;
 import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
-import space.br1440.platform.tracing.otel.semconv.policy.ValidatedAttributes;
+
+import io.opentelemetry.api.common.Attributes;
+import lombok.experimental.UtilityClass;
 
 @UtilityClass
 final class SemanticSpanSpecs {
@@ -31,7 +31,7 @@ final class SemanticSpanSpecs {
                                  @Nonnull SpanRelationship relationship,
                                  @Nonnull List<RemoteSpanLink> links,
                                  @Nonnull Map<String, SpanSpecAttributeValue> attributes,
-                                 @Nonnull AttributePolicy policy,
+                                 @Nonnull SpanAttributeValidator policy,
                                  @Nonnull String builderName) {
         Objects.requireNonNull(category, "category");
         Objects.requireNonNull(relationship, "relationship");

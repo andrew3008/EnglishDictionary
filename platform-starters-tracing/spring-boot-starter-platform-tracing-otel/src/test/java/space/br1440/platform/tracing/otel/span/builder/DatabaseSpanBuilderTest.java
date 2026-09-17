@@ -6,20 +6,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
+import space.br1440.platform.tracing.api.attributes.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanFactory;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidationMetrics;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 import space.br1440.platform.tracing.otel.runtime.RecordingTracingRuntime;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
-import space.br1440.platform.tracing.otel.semconv.policy.SemconvMetrics;
 import space.br1440.platform.tracing.otel.span.DefaultSpanFactory;
 
-/**
- * Hard gate: {@code spans().transport().database()} builder behavior.
- */
 class DatabaseSpanBuilderTest {
 
     private RecordingTracingRuntime recording;
@@ -28,7 +25,7 @@ class DatabaseSpanBuilderTest {
     @BeforeEach
     void setUp() {
         recording = new RecordingTracingRuntime();
-        AttributePolicy strictPolicy = new AttributePolicy(SemconvValidationMode.STRICT, false, SemconvMetrics.NOOP);
+        SpanAttributeValidator strictPolicy = new SpanAttributeValidator(SpanAttributeValidationLevel.STRICT, SpanAttributeValidationMetrics.NOOP);
         manual = new DefaultSpanFactory(recording, strictPolicy);
     }
 

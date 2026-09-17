@@ -187,21 +187,15 @@ class PlatformAutoConfigurationCustomizerTest {
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
-        // Передаём null-builder: при выключенных процессорах customize не должен вызывать
-        // addSpanProcessor. Любой такой вызов на null дал бы NPE; PlatformCompositeSpanProcessor
-        // внутри также не должен создаваться (пустой список делегатов не регистрируется).
-        // Корректное поведение — просто вернуть тот же builder.
         ConfigProperties props = new MapConfigProperties(Map.of(
                 "platform.tracing.enriching.enabled", "false",
                 "platform.tracing.javaagent.scrubbing.enabled", "false",
-                "platform.tracing.validation.enabled", "false",
+                "platform.tracing.javaagent.span-attributes.validation.enabled", "false",
                 "platform.tracing.watchdog.enabled", "false",
                 "platform.tracing.classification.enabled", "false",
                 "platform.tracing.metrics.enabled", "false"
         ));
-        // BLOCKER-1/§4: prepare() runs inside the shared coordinator now, so a Class A security
-        // violation is classified into BootstrapException rather than propagating the raw
-        // ConfigurationException directly (the original cause is still embedded in the message).
+
         assertThatThrownBy(() -> recorder.primeWithConfig(props))
                 .isInstanceOf(BootstrapException.class)
                 .hasMessageContaining("scrubbing.enabled=false is forbidden");

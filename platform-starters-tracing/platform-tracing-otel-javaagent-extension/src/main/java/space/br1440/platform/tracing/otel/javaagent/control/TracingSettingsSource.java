@@ -20,10 +20,13 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Traci
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.ValidationMode;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.ValidationModeResolver;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 public final class TracingSettingsSource {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(TracingSettingsSource.class);
 
     private final TracingSettingsStore store;
     private final LastSettingsUpdate diagnostics;
@@ -38,12 +41,13 @@ public final class TracingSettingsSource {
     public static TracingSettingsSource fromStartup(ExtensionConfig config) {
         Objects.requireNonNull(config, "config");
 
-        ValidationMode effectiveMode = ValidationModeResolver.resolve(
-                config.validation().requestedValidationMode()
-        ).effectiveMode();
+        SpanAttributeValidationLevel level = config.validation().requestedLevel();
+        if (level.isDisabled()) {
+            log.warn(AgentEventCodes.VALID_POLICY, "Validation DISABLED");
+        }
 
-        boolean validationEnabled = !effectiveMode.isDisabled() && config.validation().enabled();
-        boolean validationStrict = !effectiveMode.isDisabled() && effectiveMode.isStrict();
+        boolean validationEnabled = !level.isDisabled() && config.validation().enabled();
+        boolean validationStrict = !level.isDisabled() && level.isError();
 
         return create(config.sampling(), validationEnabled, validationStrict);
     }

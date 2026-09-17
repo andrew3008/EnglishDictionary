@@ -18,10 +18,10 @@
           "enum": ["", "STATIC", "CONFIG_SERVER", "ACTUATOR"],
           "description": "Value of PLATFORM_TRACING_CONTROL_CHANNEL. Empty means the chart does not emit the variable. Library Java default is not introduced; production umbrellas should set STATIC, CONFIG_SERVER or ACTUATOR explicitly."
         },
-        "validationMode": {
+        "spanAttributeValidationLevel": {
           "type": "string",
-          "enum": ["", "LENIENT", "STRICT", "DISABLED"],
-          "description": "Optional PLATFORM_TRACING_VALIDATION_MODE for agent premain. Do not set LENIENT as a hardcoded -D; empty leaves the agent default."
+          "enum": ["", "WARN", "ERROR", "DISABLED"],
+          "description": "Optional PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL for agent premain. Do not set WARN as a hardcoded -D; empty leaves the agent default."
         },
         "export": {
           "type": "object",

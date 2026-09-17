@@ -28,7 +28,7 @@ import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
@@ -96,7 +96,7 @@ public class TracingRuntimeAutoConfiguration {
     }
 
     @Bean
-    public TracingRuntime tracingImplementation(ObjectProvider<AttributePolicy> policyProvider,
+    public TracingRuntime tracingImplementation(ObjectProvider<SpanAttributeValidator> policyProvider,
                                                 ObjectProvider<ExceptionRecorder> exceptionRecorderProvider,
                                                 ObjectProvider<PlatformTracingMetrics> metricsProvider,
                                                 TracingBootstrapSettings bootstrapSettings,
@@ -116,7 +116,7 @@ public class TracingRuntimeAutoConfiguration {
         return base;
     }
 
-    private TracingRuntime resolveTracingRuntime(ObjectProvider<AttributePolicy> policyProvider,
+    private TracingRuntime resolveTracingRuntime(ObjectProvider<SpanAttributeValidator> policyProvider,
                                                  ObjectProvider<ExceptionRecorder> exceptionRecorderProvider,
                                                  TracingBootstrapSettings bootstrapSettings,
                                                  TracingDeploymentDiagnostics deploymentDiagnostics) {
@@ -132,12 +132,10 @@ public class TracingRuntimeAutoConfiguration {
         }
 
         if (!GlobalOpenTelemetry.isSet()) {
-            throw new IllegalStateException(
-                    "Controlled Platform Agent reported READY but GlobalOpenTelemetry is not registered"
-            );
+            throw new IllegalStateException("Controlled Platform Agent reported READY but GlobalOpenTelemetry is not registered");
         }
 
-        AttributePolicy policy = policyProvider.getIfAvailable(AttributePolicy::new);
+        SpanAttributeValidator policy = policyProvider.getIfAvailable(SpanAttributeValidator::new);
         ExceptionRecorder exceptionRecorder = exceptionRecorderProvider.getIfAvailable(ExceptionRecorder::secureDefault);
         return new OtelTracingRuntime(GlobalOpenTelemetry.get(), policy, exceptionRecorder);
     }

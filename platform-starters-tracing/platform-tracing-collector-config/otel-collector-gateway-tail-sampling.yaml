@@ -98,13 +98,13 @@ processors:
         type: status_code
         status_code:
           status_codes: [ERROR]
-      
+
       # 2) Сохраняем долгие транзакции
       - name: slow-traces
         type: latency
         latency:
           threshold_ms: ${env:TAIL_SAMPLING_SLOW_TRACE_THRESHOLD_MS:-5000}
-          
+
       # 3) Сохраняем трейсы, форсированные через SDK.
       # Значения синхронизированы с PlatformSamplingReasons.EXPORTED.
       # История: до Фазы 16 здесь стоял несуществующий
@@ -148,7 +148,7 @@ processors:
                   type: status_code
                   status_code:
                     status_codes: [ERROR]
-          
+
       # 5) Базовый сэмплинг
       - name: success-baseline
         type: probabilistic

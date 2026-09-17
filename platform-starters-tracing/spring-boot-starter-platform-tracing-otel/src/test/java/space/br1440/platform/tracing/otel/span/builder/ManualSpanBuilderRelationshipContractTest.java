@@ -5,11 +5,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder;
-import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
+import space.br1440.platform.tracing.api.attributes.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.otel.runtime.RecordingTracingRuntime;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
-import space.br1440.platform.tracing.otel.semconv.policy.SemconvMetrics;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidationMetrics;
 import space.br1440.platform.tracing.otel.span.DefaultSpanFactory;
 
 import java.util.stream.Stream;
@@ -17,23 +17,25 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class AbstractSemanticSpanBuilderRelationshipRepeatedCallTest {
+class ManualSpanBuilderRelationshipContractTest {
 
     private static final RemoteSpanLink VALID_LINK = RemoteSpanLink.sampled(
-            "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
+            "0102030405060708090a0b0c0d0e0f10",
+            "0102030405060708"
+    );
 
     private RecordingTracingRuntime recording;
-    private AttributePolicy policy;
+    private SpanAttributeValidator policy;
 
     @BeforeEach
     void setUp() {
         recording = new RecordingTracingRuntime();
-        policy = new AttributePolicy(SemconvValidationMode.WARN, false, SemconvMetrics.NOOP);
+        policy = new SpanAttributeValidator(SpanAttributeValidationLevel.WARN, SpanAttributeValidationMetrics.NOOP);
     }
 
     static Stream<ManualSpanBuilder<?>> builders() {
         RecordingTracingRuntime impl = new RecordingTracingRuntime();
-        AttributePolicy policy = new AttributePolicy(SemconvValidationMode.WARN, false, SemconvMetrics.NOOP);
+        SpanAttributeValidator policy = new SpanAttributeValidator(SpanAttributeValidationLevel.WARN, SpanAttributeValidationMetrics.NOOP);
         DefaultSpanFactory manual = new DefaultSpanFactory(impl, policy);
         var transport = manual.transport();
         var rpc = transport.rpc();

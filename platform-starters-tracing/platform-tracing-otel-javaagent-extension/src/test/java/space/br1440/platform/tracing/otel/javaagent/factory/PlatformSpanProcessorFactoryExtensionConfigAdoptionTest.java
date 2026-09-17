@@ -104,7 +104,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) { return null; }
             @Override public Boolean getBoolean(String name) {
-                return "platform.tracing.validation.enabled".equals(name);
+                return "platform.tracing.javaagent.span-attributes.validation.enabled".equals(name);
             }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }

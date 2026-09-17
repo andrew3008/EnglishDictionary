@@ -1,5 +1,10 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.WebApplicationType;
@@ -9,21 +14,11 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.web.client.RestTemplate;
 
-import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * Тонкий HTTP wire-contract тест: {@link space.br1440.platform.tracing.autoconfigure.diagnostics
- * .health.startup.TracingStartupContractHealthComponentModelTest} через {@code HealthEndpoint} не
- * покрывает HTTP-сериализацию, show-details policy, фактический JSON path и HTTP status mapping —
- * этот тест проверяет ровно их через реальный {@link SpringApplicationBuilder} boot на случайном
- * порту (тот же паттерн, что {@code TracingControlManagementChildContextIntegrationTest}), исключая
- * из auto-configuration только несвязанные с health модули (Kafka, AOP, propagation), а не весь
- * production-стек.
- */
 class TracingStartupContractHealthHttpContractTest {
+
+    private static final String AGENT_STARTUP_VERIFIER_BEAN_NAME = "agentStartupVerifier";
 
     private static final String[] EXCLUDED_UNRELATED_AUTOCONFIGURATIONS = {
             "org.springframework.boot.actuate.autoconfigure.observation.ObservationAutoConfiguration",
@@ -32,7 +27,9 @@ class TracingStartupContractHealthHttpContractTest {
             "org.springframework.boot.actuate.autoconfigure.tracing.MicrometerTracingAutoConfiguration",
             "org.springframework.boot.actuate.autoconfigure.logging.OpenTelemetryLoggingAutoConfiguration",
             "org.springframework.boot.actuate.autoconfigure.metrics.export.otlp.OtlpMetricsExportAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.semantic.SemanticLayerAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.attributes.SpanAttributeValidationAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.exception.ExceptionRecordingAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.span.SpanEnrichmentAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.observation.TracingObservationAutoConfiguration",
@@ -41,11 +38,11 @@ class TracingStartupContractHealthHttpContractTest {
             "space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.kafka.PlatformKafkaAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.kafka.PlatformKafkaOutboundAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.servlet.ServletTracingAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.servlet.ServletTracingAutoConfiguration"
     };
 
     @Test
-    void enabledContractExposesTracingStartupContractKeyOverHttpAndOmitsLegacyTracingKey() throws Exception {
+    void enabledContractExposesTracingStartupContractKeyOverHttpAndOmitsLegacyTracingKey() {
         try (ControlledAgentTestRuntime ignored = ControlledAgentTestRuntime.start()) {
             try (ConfigurableApplicationContext context = boot(
                     "platform.tracing.enabled=true",
@@ -53,10 +50,8 @@ class TracingStartupContractHealthHttpContractTest {
                     "server.port=0",
                     "management.endpoints.web.exposure.include=health",
                     "management.endpoint.health.show-details=always")) {
-
-                int port = Integer.parseInt(context.getEnvironment().getProperty("local.server.port"));
                 RestTemplate rest = new RestTemplateBuilder().build();
-
+                int port = context.getEnvironment().getRequiredProperty("local.server.port", Integer.class);
                 String body = rest.getForObject("http://localhost:" + port + "/actuator/health", String.class);
 
                 assertThat(body).contains("\"tracingStartupContract\"");
@@ -66,14 +61,22 @@ class TracingStartupContractHealthHttpContractTest {
     }
 
     private static ConfigurableApplicationContext boot(String... properties) {
-        SpringApplicationBuilder builder = new SpringApplicationBuilder(EmptyApp.class)
+        List<String> allProperties = new ArrayList<>(List.of(properties));
+        String excluded = String.join(",", EXCLUDED_UNRELATED_AUTOCONFIGURATIONS);
+        allProperties.add("spring.autoconfigure.exclude=" + excluded);
+
+        return new SpringApplicationBuilder(EmptyApp.class)
                 .web(WebApplicationType.SERVLET)
-                .properties(properties)
-                .properties("spring.autoconfigure.exclude="
-                        + String.join(",", EXCLUDED_UNRELATED_AUTOCONFIGURATIONS))
-                .initializers(context -> context.getBeanFactory()
-                        .registerSingleton("agentStartupVerifier", ControlledAgentTestRuntime.verifier()));
-        return builder.run();
+                .properties(allProperties.toArray(String[]::new))
+                .initializers(TracingStartupContractHealthHttpContractTest::registerAgentStartupVerifier)
+                .run();
+    }
+
+    private static void registerAgentStartupVerifier(ConfigurableApplicationContext context) {
+        context.getBeanFactory().registerSingleton(
+                AGENT_STARTUP_VERIFIER_BEAN_NAME,
+                ControlledAgentTestRuntime.verifier()
+        );
     }
 
     @SpringBootConfiguration

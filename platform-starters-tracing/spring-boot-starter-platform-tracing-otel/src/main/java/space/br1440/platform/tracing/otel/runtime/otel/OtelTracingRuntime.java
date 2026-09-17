@@ -14,6 +14,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 import space.br1440.platform.tracing.otel.context.DefaultActiveTraceContextView;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.otel.runtime.SpanHandleImpl;
@@ -22,7 +23,6 @@ import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.otel.scope.OwningSpanScope;
 import space.br1440.platform.tracing.otel.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.otel.runtime.state.TracingState;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
 
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
@@ -39,13 +39,13 @@ public final class OtelTracingRuntime implements TracingRuntime {
     public static final String INSTRUMENTATION_NAME = "space.br1440.platform.tracing";
 
     private final Tracer tracer;
-    private final AttributePolicy attributePolicy;
+    private final SpanAttributeValidator attributePolicy;
     private final ExceptionRecorder exceptionRecorder;
     private final OtelIdentityStorage identityStorage = new OtelIdentityStorage();
     private final ActiveTraceContextView traceContextView;
 
     public OtelTracingRuntime(@Nonnull OpenTelemetry openTelemetry,
-                              @Nonnull AttributePolicy policy,
+                              @Nonnull SpanAttributeValidator policy,
                               @Nonnull ExceptionRecorder exceptionRecorder) {
         Objects.requireNonNull(openTelemetry, "openTelemetry");
         Objects.requireNonNull(policy, "policy");
@@ -64,7 +64,7 @@ public final class OtelTracingRuntime implements TracingRuntime {
 
     @Override
     @Nonnull
-    public AttributePolicy attributePolicy() {
+    public SpanAttributeValidator spanAttributeValidator() {
         return attributePolicy;
     }
 

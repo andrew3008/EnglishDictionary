@@ -64,7 +64,7 @@ class ValidationRuntimeFoundationTest {
     }
 
     @Test
-    void lenient_validation_failure_still_exports_span_not_dropped() {
+    void warn_level_validation_failure_still_exports_span_not_dropped() {
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(
                 TracingSettingsSource.isolatedValidation(true, false));
 

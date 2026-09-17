@@ -14,7 +14,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.otel.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.otel.propagation.OtelTraceparentReaderImpl;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 import space.br1440.platform.tracing.otel.span.builder.DefaultSpanBuilderFactory;
 import space.br1440.platform.tracing.otel.span.spec.DefaultSpanSpecFactory;
 
@@ -24,7 +24,7 @@ public final class DefaultSpanFactory implements SpanFactory {
     private final DefaultSpanBuilderFactory builderFactory;
 
     public DefaultSpanFactory(@Nonnull TracingRuntime runtime,
-                              @Nonnull AttributePolicy policy) {
+                              @Nonnull SpanAttributeValidator policy) {
         Objects.requireNonNull(runtime, "runtime");
         Objects.requireNonNull(policy, "policy");
 

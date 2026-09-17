@@ -27,18 +27,26 @@ public final class TracingBootstrapSettingsResolver {
             "platform.tracing.sampling.route-ratios",
             "platform.tracing.javaagent.sampling.drop-paths",
             "platform.tracing.javaagent.sampling.force-record-values",
-            "platform.tracing.validation.enabled",
-            "platform.tracing.validation.mode");
+            "platform.tracing.javaagent.span-attributes.validation.enabled",
+            "platform.tracing.javaagent.span-attributes.validation.level"
+    );
 
     public static TracingBootstrapSettings resolve(Environment environment) {
         failFastOnObsoleteSpringOnlyKeys(environment);
         warnOnAgentBootstrapKeys(environment);
-        boolean tracingEnabled = parseBoolean(environment,
+
+        boolean tracingEnabled = parseBoolean(
+                environment,
                 TracingBootstrapPropertyNames.ENABLED,
-                true);
-        TracingControlChannel controlChannel = parseRequiredEnum(environment,
+                true
+        );
+
+        TracingControlChannel controlChannel = parseRequiredEnum(
+                environment,
                 TracingBootstrapPropertyNames.CONTROL_CHANNEL,
-                TracingControlChannel.class);
+                TracingControlChannel.class
+        );
+
         rejectDisabledWriteChannel(tracingEnabled, controlChannel);
         return new TracingBootstrapSettings(tracingEnabled, controlChannel);
     }
@@ -56,28 +64,29 @@ public final class TracingBootstrapSettingsResolver {
         if (tracingEnabled) {
             return;
         }
+
         if (controlChannel == TracingControlChannel.CONFIG_SERVER) {
-            throw new TracingConfigurationGuardException(
-                    "Tracing disabled is incompatible with CONFIG_SERVER authority.");
+            throw new TracingConfigurationGuardException("Tracing disabled is incompatible with CONFIG_SERVER authority.");
         }
+
         if (controlChannel == TracingControlChannel.ACTUATOR) {
-            throw new TracingConfigurationGuardException(
-                    "Tracing disabled is incompatible with ACTUATOR authority.");
+            throw new TracingConfigurationGuardException("Tracing disabled is incompatible with ACTUATOR authority.");
         }
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static <E extends Enum<E>> E parseRequiredEnum(Environment environment,
                                                            String propertyName,
                                                            Class<E> enumType) {
         String raw = environment.getProperty(propertyName);
         if (StringUtils.isNullOrBlank(raw)) {
-            throw new IllegalStateException("Missing required property '" + propertyName + "'");
+            throw new IllegalStateException("Missing required property '%s'".formatted(propertyName));
         }
+
         if (!raw.equals(raw.trim())) {
-            throw new IllegalStateException(
-                    "Invalid property '" + propertyName + "'='" + raw
-                            + "'. Surrounding whitespace is not accepted. Accepted values: "
-                            + List.of(enumType.getEnumConstants()));
+            throw new IllegalStateException("""
+                    Invalid property '%s'='%s'. Surrounding whitespace is not accepted. \
+                    Accepted values: %s""".formatted(propertyName, raw, List.of(enumType.getEnumConstants())));
         }
 
         return parseEnumValue(propertyName, raw, enumType);
@@ -88,15 +97,15 @@ public final class TracingBootstrapSettingsResolver {
                                                         Class<E> enumType) {
         String normalized = raw.trim().toUpperCase(Locale.ROOT);
         if (normalized.isEmpty()) {
-            throw new IllegalStateException("Property '" + propertyName + "' must not be blank");
+            throw new IllegalStateException("Property '%s' must not be blank".formatted(propertyName));
         }
 
         try {
             return Enum.valueOf(enumType, normalized);
         } catch (IllegalArgumentException exception) {
-            throw new IllegalStateException(
-                    "Invalid property '" + propertyName + "'='" + raw
-                            + "'. Accepted values: " + List.of(enumType.getEnumConstants()),
+            throw new IllegalStateException("""
+                    Invalid property '%s'='%s'. \
+                    Accepted values: %s""".formatted(propertyName, raw, List.of(enumType.getEnumConstants())),
                     exception);
         }
     }
@@ -113,26 +122,28 @@ public final class TracingBootstrapSettingsResolver {
         return switch (raw.trim().toLowerCase(Locale.ROOT)) {
             case "true" -> true;
             case "false" -> false;
-            default -> throw new IllegalStateException(
-                    "Invalid property '" + propertyName + "'='" + raw + "'. Accepted values: true, false");
+            default -> throw new IllegalStateException("""
+                    Invalid property '%s'='%s'. Accepted values: true, false""".formatted(propertyName, raw)
+            );
         };
     }
 
     private static void failFastOnObsoleteSpringOnlyKeys(Environment environment) {
         for (Map.Entry<String, String> obsolete : OBSOLETE_SPRING_ONLY_KEYS.entrySet()) {
-            if (environment.containsProperty(obsolete.getKey())) {
-                String hint = obsolete.getValue();
-                if (hint.isBlank()) {
-                    throw new IllegalStateException(
-                            "Obsolete Spring-only property '" + obsolete.getKey()
-                                    + "' is no longer bound or applied. Remove it from configuration."
-                    );
-                }
-                throw new IllegalStateException(
-                        "Obsolete Spring-only property '" + obsolete.getKey()
-                                + "' is no longer bound or applied. Use '" + hint + "'."
-                );
+            if (!environment.containsProperty(obsolete.getKey())) {
+                continue;
             }
+
+            String hint = obsolete.getValue();
+            if (hint.isBlank()) {
+                throw new IllegalStateException("""
+                        Obsolete Spring-only property '%s' is no longer bound or applied. \
+                        Remove it from configuration.""".formatted(obsolete.getKey()));
+            }
+
+            throw new IllegalStateException("""
+                    Obsolete Spring-only property '%s' is no longer bound or applied. \
+                    Use '%s'.""".formatted(obsolete.getKey(), hint));
         }
     }
 
@@ -144,10 +155,12 @@ public final class TracingBootstrapSettingsResolver {
             }
         }
 
-        if (!present.isEmpty()) {
-            log.warn("Spring Environment contains Java-agent bootstrap-only properties {}. "
-                    + "Spring does not bind or apply these properties.", present
-            );
+        if (present.isEmpty()) {
+            return;
         }
+
+        log.warn("""
+                Spring Environment contains Java-agent bootstrap-only properties {}. \
+                Spring does not bind or apply these properties.""", present);
     }
 }

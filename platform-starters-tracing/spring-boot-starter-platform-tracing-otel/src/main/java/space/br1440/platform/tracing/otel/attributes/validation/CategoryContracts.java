@@ -1,24 +1,18 @@
-package space.br1440.platform.tracing.otel.semconv.policy;
+package space.br1440.platform.tracing.otel.attributes.validation;
 
-import lombok.experimental.UtilityClass;
-import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
-import space.br1440.platform.tracing.api.span.SpanCategory;
-
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Реестр {@link CategoryContract} по {@link SpanCategory} — единственный источник истины для
- * {@link AttributePolicy}.
- * <p>
- * Контракты собираются один раз при загрузке класса и неизменяемы.
- * <p>
- * Внутренний тип: не является частью публичного API платформы.
- */
+import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
+
+import lombok.experimental.UtilityClass;
+
 @UtilityClass
-final class CategoryContracts {
+class CategoryContracts {
 
     private static final Map<SpanCategory, CategoryContract> REGISTRY = build();
 
@@ -115,6 +109,6 @@ final class CategoryContracts {
                 List.of(),
                 Set.of()));
 
-        return new EnumMap<>(map);
+        return Collections.unmodifiableMap(map);
     }
 }

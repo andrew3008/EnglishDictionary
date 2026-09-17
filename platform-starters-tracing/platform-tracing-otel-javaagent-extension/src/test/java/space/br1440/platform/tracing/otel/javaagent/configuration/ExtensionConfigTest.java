@@ -10,7 +10,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.ValidationMode;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
@@ -126,7 +126,31 @@ class ExtensionConfigTest {
         ExtensionConfig config = new ExtensionConfig(emptyConfig());
 
         assertThat(config.validation().enabled()).isTrue();
-        assertThat(config.validation().requestedValidationMode()).isEqualTo(ValidationMode.LENIENT);
+        assertThat(config.validation().requestedLevel()).isEqualTo(SpanAttributeValidationLevel.WARN);
+    }
+
+    @Test
+    void validation_reads_enabled_false() {
+        // given/when
+        ExtensionConfig config = new ExtensionConfig(booleanConfig(
+                ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_ENABLED,
+                false
+        ));
+
+        // then
+        assertThat(config.validation().enabled()).isFalse();
+        assertThat(config.validation().requestedLevel()).isEqualTo(SpanAttributeValidationLevel.WARN);
+    }
+
+    @Test
+    void validation_rejects_unknown_level() {
+        // given/when/then
+        assertThatThrownBy(() -> new ExtensionConfig(stringConfig(
+                ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
+                "STRICT"
+        )))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("platform.tracing.javaagent.span-attributes.validation.level");
     }
 
     @Test

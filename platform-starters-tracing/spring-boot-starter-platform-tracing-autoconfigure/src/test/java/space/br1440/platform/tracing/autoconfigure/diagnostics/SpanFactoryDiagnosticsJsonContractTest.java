@@ -16,6 +16,7 @@ import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 import space.br1440.platform.tracing.otel.runtime.NoOpSpanHandle;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TraceControlBoundaryState;
@@ -23,7 +24,6 @@ import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 import space.br1440.platform.tracing.otel.runtime.state.TracingState;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
 
 class SpanFactoryDiagnosticsJsonContractTest {
 
@@ -75,7 +75,8 @@ class SpanFactoryDiagnosticsJsonContractTest {
                 "DISABLED_BY_CONFIGURATION",
                 "UNAVAILABLE",
                 "NOOP",
-                "UNKNOWN");
+                "UNKNOWN"
+        );
 
         for (TracingRuntimeMode internal : TracingRuntimeMode.values()) {
             String mapped = modeFrom(new TestModeTracingRuntimeWithMode(internal));
@@ -151,8 +152,8 @@ class SpanFactoryDiagnosticsJsonContractTest {
 
         @Override
         @Nonnull
-        public AttributePolicy attributePolicy() {
-            return new AttributePolicy();
+        public SpanAttributeValidator spanAttributeValidator() {
+            return new SpanAttributeValidator();
         }
     }
 
@@ -225,8 +226,8 @@ class SpanFactoryDiagnosticsJsonContractTest {
 
         @Override
         @Nonnull
-        public AttributePolicy attributePolicy() {
-            return new AttributePolicy();
+        public SpanAttributeValidator spanAttributeValidator() {
+            return new SpanAttributeValidator();
         }
     }
 }

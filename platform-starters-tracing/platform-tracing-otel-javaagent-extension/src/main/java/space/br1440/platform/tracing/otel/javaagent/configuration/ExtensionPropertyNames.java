@@ -24,8 +24,10 @@ public final class ExtensionPropertyNames {
 
     public static final String METRICS_ENABLED = "platform.tracing.metrics.enabled";
 
-    public static final String VALIDATION_ENABLED = "platform.tracing.validation.enabled";
-    public static final String VALIDATION_MODE = "platform.tracing.validation.mode";
+    public static final String SPAN_ATTRIBUTES_VALIDATION_ENABLED =
+            "platform.tracing.javaagent.span-attributes.validation.enabled";
+    public static final String SPAN_ATTRIBUTES_VALIDATION_LEVEL =
+            "platform.tracing.javaagent.span-attributes.validation.level";
 
     public static final String RESOURCE_NORMALIZE_ENVIRONMENT = "platform.tracing.resource.normalize-environment";
     public static final String RESOURCE_VALIDATION_MODE = "platform.tracing.resource.validation-mode";

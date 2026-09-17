@@ -1,12 +1,12 @@
-package space.br1440.platform.tracing.api.semconv;
+package space.br1440.platform.tracing.api.attributes.validation;
 
 /**
- * Режим валидации платформенного semantic-контракта при создании/обогащении span'ов.
+ * Уровень проверки атрибутов span'а, создаваемых платформенными builders.
  * <p>
- * Поддерживаемые режимы:
+ * Значения — взаимоисключающие режимы окружений, а не градация строгости одной оси:
  * <ul>
  *   <li>{@link #STRICT} — fail-fast для CI/test: при нарушении контракта бросается
- *       {@link SemconvViolationException} <b>до</b> {@code startSpan()} (на build-фазе), что
+ *       {@link SpanAttributeViolationException} <b>до</b> {@code startSpan()} (на build-фазе), что
  *       ломает тест, но не бизнес-логику в runtime. В production runtime НЕ поддерживается.</li>
  *   <li>{@link #WARN} — production default: span создаётся всегда; для безопасных
  *       platform-required полей подставляются safe-defaults (сам факт подстановки считается
@@ -16,9 +16,9 @@ package space.br1440.platform.tracing.api.semconv;
  *       атрибуты передаются as-is, дефолты не подставляются, per-span логов/метрик нарушений нет.</li>
  * </ul>
  */
-public enum SemconvValidationMode {
+public enum SpanAttributeValidationLevel {
 
-    /** Fail-fast для CI/test: бросает {@link SemconvViolationException} до старта span'а. */
+    /** Fail-fast для CI/test: бросает {@link SpanAttributeViolationException} до старта span'а. */
     STRICT,
 
     /** Production default: safe-defaults + лог + метрика, span создаётся всегда. */

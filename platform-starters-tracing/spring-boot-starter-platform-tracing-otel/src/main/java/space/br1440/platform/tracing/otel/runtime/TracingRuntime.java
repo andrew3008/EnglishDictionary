@@ -9,7 +9,7 @@ import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.otel.runtime.state.TracingState;
-import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 
 public interface TracingRuntime {
 
@@ -48,6 +48,6 @@ public interface TracingRuntime {
     TracingState state();
 
     @Nonnull
-    AttributePolicy attributePolicy();
+    SpanAttributeValidator spanAttributeValidator();
 
 }

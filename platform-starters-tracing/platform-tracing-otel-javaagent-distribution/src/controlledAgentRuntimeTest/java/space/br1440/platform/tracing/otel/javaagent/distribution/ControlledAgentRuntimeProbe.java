@@ -255,13 +255,6 @@ public final class ControlledAgentRuntimeProbe {
                 JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT, Boolean.class);
         require(ownerPresent, "Validation owner is absent after agent readiness");
 
-        String requestedMode = System.getProperty("platform.tracing.validation.mode", "");
-        if ("STRICT".equalsIgnoreCase(requestedMode)) {
-            require(enabled && strict,
-                    "Process STRICT did not become the accepted validation state: enabled="
-                            + enabled + " strict=" + strict);
-        }
-
         System.out.printf("CONTROLLED_AGENT_VALIDATION enabled=%s strict=%s%n", enabled, strict);
     }
 
@@ -282,7 +275,6 @@ public final class ControlledAgentRuntimeProbe {
         return snapshot;
     }
 
-    /** Форма метаданных — часть контракта: consumer отвергает readiness с иной формой. */
     private static void verifyReadinessMetadata(MBeanServer server) throws Exception {
         MBeanInfo info = server.getMBeanInfo(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME);
         MBeanAttributeInfo[] attributes = info.getAttributes();
@@ -357,10 +349,6 @@ public final class ControlledAgentRuntimeProbe {
                 "Readiness distribution SHA-256 mismatch");
     }
 
-    /**
-     * Плоскости изолированы: расширение и SDK определяются загрузчиками агента, поэтому их
-     * описания не могут совпасть с загрузчиком приложения.
-     */
     private static void verifyLoaderIsolation(CompositeData snapshot) {
         String applicationLoader = loaderDescription(ControlledAgentRuntimeProbe.class.getClassLoader());
         String extensionLoader = value(snapshot,
