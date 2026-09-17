@@ -18,19 +18,15 @@ import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRu
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Slice 6 hard gate: metered decorator increments bounded self-metrics without masking SpanRelationship.
- */
 class MeteredMetricsCountTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
                     TracingConfigurationAuthorityAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class,
-                    TracingMetricsAutoConfiguration.class))
-            .withPropertyValues(
-                    "platform.tracing.configuration.authority=HELM",
-                    "platform.environment=LOCAL")
+                    TracingMetricsAutoConfiguration.class)
+            )
+            .withPropertyValues("platform.tracing.configuration.authority=HELM")
             .withInitializer(ControlledAgentTestRuntime::initializeWithExporter)
             .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withUserConfiguration(MeterRegistryConfiguration.class);

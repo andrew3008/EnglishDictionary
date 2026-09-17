@@ -26,7 +26,6 @@ public final class ExtensionPropertyNames {
 
     public static final String VALIDATION_ENABLED = "platform.tracing.validation.enabled";
     public static final String VALIDATION_MODE = "platform.tracing.validation.mode";
-    public static final String PLATFORM_ENVIRONMENT = "platform.environment";
 
     public static final String RESOURCE_NORMALIZE_ENVIRONMENT = "platform.tracing.resource.normalize-environment";
     public static final String RESOURCE_VALIDATION_MODE = "platform.tracing.resource.validation-mode";

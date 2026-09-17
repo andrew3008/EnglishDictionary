@@ -20,7 +20,6 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsValidationConstraints;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 
@@ -41,8 +40,7 @@ class LastSettingsUpdateConcurrencyTest {
                 new ExpectedSettingsRevision(RUNTIME_INSTANCE_ID, expectedSequence);
 
         LastSettingsUpdate diagnostics = new LastSettingsUpdate();
-        TracingSettingsUpdater updater = new TracingSettingsUpdater(
-                store, new SettingsValidationConstraints(true), diagnostics);
+        TracingSettingsUpdater updater = new TracingSettingsUpdater(store, diagnostics);
 
         List<SettingsUpdateAttempt> attempts = new ArrayList<>(THREAD_COUNT);
         for (int index = 0; index < THREAD_COUNT; index++) {

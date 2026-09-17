@@ -133,10 +133,6 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
         return acceptedPolicy.current().validationStrict();
     }
 
-    public boolean isStrictRuntimeAllowed() {
-        return acceptedPolicy.isStrictRuntimeAllowed();
-    }
-
     public long getPolicyVersion() {
         return acceptedPolicy.current().acceptedSequence();
     }

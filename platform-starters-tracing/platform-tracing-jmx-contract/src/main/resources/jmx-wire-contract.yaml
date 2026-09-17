@@ -295,7 +295,6 @@ openTypes:
       - { name: ownerCapturedOffsetNanos, type: long, required: true, nullable: false }
       - { name: validationEnabled, type: boolean, required: true, nullable: false }
       - { name: validationStrict, type: boolean, required: true, nullable: false }
-      - { name: validationStrictRuntimeAllowed, type: boolean, required: true, nullable: false }
       - { name: validationViolationsTotal, type: long, required: true, nullable: false }
       - { name: validationConfigVersion, type: long, required: true, nullable: false }
       - { name: validationConfigLastUpdatedSource, type: string, required: true, nullable: false }

@@ -51,9 +51,6 @@ public final class AcceptedPolicyMutationAccess {
             boolean enabled,
             boolean strict) {
         Objects.requireNonNull(access, "access");
-        if (strict && !access.isStrictRuntimeAllowed()) {
-            return SettingsUpdateStatus.REJECTED;
-        }
         return applyCandidate(access, current -> TracingSettings.of(
                 current.samplingEnabled(),
                 current.samplingRatio(),

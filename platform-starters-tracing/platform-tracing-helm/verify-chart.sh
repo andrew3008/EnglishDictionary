@@ -32,8 +32,12 @@ require_match "grpc" "protocol must be grpc"
 require_match "otel-collector.ops-system.svc.cluster.local:4317" "default collector endpoint missing"
 require_match "JDK_JAVA_OPTIONS" "application JDK_JAVA_OPTIONS was not preserved"
 require_match "secretKeyRef" "application valueFrom was not preserved"
+require_match "PLATFORM_TRACING_CONFIGURATION_AUTHORITY" "configuration authority env missing"
+require_match "HELM" "fixture must emit HELM authority"
 require_no_match "JAVA_TOOL_OPTIONS" "helper must not emit JAVA_TOOL_OPTIONS"
 require_no_match "-javaagent" "helper must not emit -javaagent"
+require_no_match "PLATFORM_ENVIRONMENT" "chart must not emit PLATFORM_ENVIRONMENT"
+require_no_match "platform.tracing.validation.mode=LENIENT" "chart must not hardcode LENIENT"
 
 conflict_values="$(mktemp)"
 trap 'rm -f "$conflict_values"' EXIT

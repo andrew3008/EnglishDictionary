@@ -20,7 +20,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsValidationConstraints;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
@@ -34,10 +33,7 @@ final class PlatformSettingsMutationInvokeContractTest {
     @BeforeEach
     void setUp() throws Exception {
         store = JmxSettingsMutationFixtures.store();
-        TracingSettingsUpdater updater = new TracingSettingsUpdater(
-                store,
-                new SettingsValidationConstraints(true),
-                new LastSettingsUpdate());
+        TracingSettingsUpdater updater = new TracingSettingsUpdater(store, new LastSettingsUpdate());
         server = MBeanServerFactory.createMBeanServer();
         server.registerMBean(
                 new PlatformSettingsMutationMBean(updater),

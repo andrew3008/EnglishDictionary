@@ -48,7 +48,8 @@ class PlatformTracingMBeanRegistrarIntegrationTest {
 
         samplerHolder = TracingSettingsSource.isolatedSampling(true, Collections.emptyMap(), 0.2d);
         validatingProcessor = new ValidatingSpanProcessor(
-                TracingSettingsSource.isolatedValidation(true, false, false));
+                TracingSettingsSource.isolatedValidation(true, false)
+        );
 
         registrar = new PlatformTracingMBeanRegistrar(server);
     }

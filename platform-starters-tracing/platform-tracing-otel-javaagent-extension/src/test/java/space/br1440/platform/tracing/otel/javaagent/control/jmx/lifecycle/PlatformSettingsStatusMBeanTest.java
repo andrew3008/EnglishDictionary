@@ -23,7 +23,6 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsValidationConstraints;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
@@ -99,10 +98,7 @@ class PlatformSettingsStatusMBeanTest {
         TracingSettings initial = settings(1.0d, Map.of());
         TracingSettings candidate = settings(0.25d, Map.of("/orders", 0.5d));
         TracingSettingsStore store = new TracingSettingsStore(runtimeInstanceId, initial);
-        TracingSettingsUpdater updater = new TracingSettingsUpdater(
-                store,
-                new SettingsValidationConstraints(true),
-                new LastSettingsUpdate());
+        TracingSettingsUpdater updater = new TracingSettingsUpdater(store, new LastSettingsUpdate());
         SettingsUpdateAttempt attempt = new SettingsUpdateAttempt(
                 UUID.randomUUID().toString(),
                 Instant.parse("2026-08-24T04:00:00Z"),
@@ -178,7 +174,6 @@ class PlatformSettingsStatusMBeanTest {
     ) {
         return new TracingSettingsUpdater(
                 new TracingSettingsStore(runtimeInstanceId, settings),
-                new SettingsValidationConstraints(true),
                 new LastSettingsUpdate());
     }
 

@@ -34,8 +34,7 @@ class ConfigurationEnabledRuntimeContractTest {
                     TracingRuntimeAutoConfiguration.class))
             .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withPropertyValues(
-                    "platform.tracing.configuration.authority=HELM",
-                    "platform.environment=LOCAL");
+                    "platform.tracing.configuration.authority=HELM");
 
     private final ApplicationContextRunner observableRuntimeRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
@@ -46,8 +45,7 @@ class ConfigurationEnabledRuntimeContractTest {
                     TracingStatusAutoConfiguration.class))
             .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withPropertyValues(
-                    "platform.tracing.configuration.authority=HELM",
-                    "platform.environment=LOCAL");
+                    "platform.tracing.configuration.authority=HELM");
 
     @Test
     void agentEnabledWithReadyAgentKeepsManualTracingOperational() {

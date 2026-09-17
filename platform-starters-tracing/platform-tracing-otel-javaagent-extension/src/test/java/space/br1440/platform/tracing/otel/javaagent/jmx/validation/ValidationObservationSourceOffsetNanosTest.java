@@ -30,7 +30,6 @@ class ValidationObservationSourceOffsetNanosTest {
         ValidatingSpanProcessor validating = mock(ValidatingSpanProcessor.class);
         when(validating.isEnabled()).thenReturn(true);
         when(validating.isStrict()).thenReturn(false);
-        when(validating.isStrictRuntimeAllowed()).thenReturn(true);
         when(validating.getPolicyVersion()).thenReturn(7L);
         when(validating.getPolicySource()).thenReturn("test-policy-source");
 
@@ -95,7 +94,6 @@ class ValidationObservationSourceOffsetNanosTest {
         ValidatingSpanProcessor validating = mock(ValidatingSpanProcessor.class);
         when(validating.isEnabled()).thenReturn(true);
         when(validating.isStrict()).thenReturn(true);
-        when(validating.isStrictRuntimeAllowed()).thenReturn(false);
         when(validating.getPolicyVersion()).thenReturn(42L);
         when(validating.getPolicySource()).thenReturn("dynamic-config");
 
@@ -120,10 +118,6 @@ class ValidationObservationSourceOffsetNanosTest {
 
         assertThat((Boolean) observation.get(
                 JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT)).isTrue();
-
-        assertThat((Boolean) observation.get(
-                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT_RUNTIME_ALLOWED))
-                .isFalse();
 
         assertThat((Long) observation.get(
                 JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_VERSION))
@@ -159,10 +153,6 @@ class ValidationObservationSourceOffsetNanosTest {
 
         assertThat((Boolean) observation.get(
                 JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT)).isFalse();
-
-        assertThat((Boolean) observation.get(
-                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT_RUNTIME_ALLOWED))
-                .isFalse();
 
         assertThat((Long) observation.get(
                 JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_VERSION))

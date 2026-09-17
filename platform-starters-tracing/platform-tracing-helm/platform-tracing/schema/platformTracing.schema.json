@@ -13,6 +13,16 @@
           "minLength": 1,
           "description": "Value of OTEL_SERVICE_NAME. Required."
         },
+        "configurationAuthority": {
+          "type": "string",
+          "enum": ["", "HELM", "CONFIG_SERVER", "ACTUATOR"],
+          "description": "Value of PLATFORM_TRACING_CONFIGURATION_AUTHORITY. Empty means the chart does not emit the variable. Library Java default is not introduced; production umbrellas should set HELM."
+        },
+        "validationMode": {
+          "type": "string",
+          "enum": ["", "LENIENT", "STRICT", "DISABLED"],
+          "description": "Optional PLATFORM_TRACING_VALIDATION_MODE for agent premain. Do not set LENIENT as a hardcoded -D; empty leaves the agent default."
+        },
         "export": {
           "type": "object",
           "additionalProperties": false,

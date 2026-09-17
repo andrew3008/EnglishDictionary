@@ -24,8 +24,7 @@ class TracingEnabledAutoConfigurationTest {
                     TracingRuntimeAutoConfiguration.class)
             )
             .withPropertyValues(
-                    "platform.tracing.configuration.authority=HELM",
-                    "platform.environment=LOCAL"
+                    "platform.tracing.configuration.authority=HELM"
             );
 
     @Test

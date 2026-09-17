@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.otel.javaagent.control.settings.update;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsValidationConstraints;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 
@@ -26,7 +25,7 @@ class TracingSettingsUpdaterPreApplyTest {
                 UUID.randomUUID().toString(),
                 TracingSettings.of(true, 1.0, Map.of(), true, false, true, true, TracingLogLevel.INFO));
         diagnostics = new LastSettingsUpdate();
-        updater = new TracingSettingsUpdater(store, new SettingsValidationConstraints(true), diagnostics);
+        updater = new TracingSettingsUpdater(store, diagnostics);
     }
 
     @Test

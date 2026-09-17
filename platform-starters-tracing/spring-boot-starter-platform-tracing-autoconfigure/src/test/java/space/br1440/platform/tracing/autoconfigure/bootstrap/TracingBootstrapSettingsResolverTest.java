@@ -60,7 +60,6 @@ class TracingBootstrapSettingsResolverTest {
 
     private static MockEnvironment environment() {
         return new MockEnvironment()
-                .withProperty("platform.tracing.configuration.authority", "HELM")
-                .withProperty("platform.environment", "LOCAL");
+                .withProperty("platform.tracing.configuration.authority", "HELM");
     }
 }

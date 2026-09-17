@@ -18,11 +18,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ValidatingSpanProcessorTest {
 
     private static ValidatingSpanProcessor lenient() {
-        return new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false, false));
+        return new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false));
     }
 
     private static ValidatingSpanProcessor strict() {
-        return new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true, false));
+        return new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true));
     }
 
     @Test
@@ -32,7 +32,7 @@ class ValidatingSpanProcessorTest {
             Span span = tracer.spanBuilder("op").startSpan();
             span.end();
 
-            var data = h.exporter().getFinishedSpanItems().get(0);
+            var data = h.exporter().getFinishedSpanItems().getFirst();
             String missing = data.getAttributes().get(AttributeKey.stringKey("platform.validation.missing"));
             // После Фазы 9 валидируются span-specific поля type/result (resource-ключи — на старте).
             assertThat(missing)
@@ -59,7 +59,7 @@ class ValidatingSpanProcessorTest {
         // Виртуальное время: clock возвращает фиксированную метку 1000 — это эмулирует «сразу же»
         // 1000 span'ов друг за другом в пределах одного throttle-окна.
         ValidatingSpanProcessor validator = new ValidatingSpanProcessor(
-                () -> 1000L, TracingSettingsSource.isolatedValidation(true, false, false));
+                () -> 1000L, TracingSettingsSource.isolatedValidation(true, false));
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(validator, Resource.empty())) {
             Tracer tracer = h.tracer("test");
@@ -82,7 +82,7 @@ class ValidatingSpanProcessorTest {
 
     @Test
     void lenient_and_strict_diagnostics_have_independent_throttling() {
-        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(true, false, true);
+        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(true, false);
         ValidatingSpanProcessor validator = new ValidatingSpanProcessor(() -> 1000L, access);
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(validator, Resource.empty())) {

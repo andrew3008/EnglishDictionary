@@ -27,23 +27,18 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * Slice 6 hard gate: metered {@link TracingRuntime} preserves SpanRelationship and links.
- */
 class MeteredTopologyMatrixTest {
 
     private static final String INVALID_SPAN_ID = "0000000000000000";
-    private static final String TRACEPARENT =
-            "00-0102030405060708090a0b0c0d0e0f10-0102030405060708-01";
+    private static final String TRACEPARENT = "00-0102030405060708090a0b0c0d0e0f10-0102030405060708-01";
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
                     TracingConfigurationAuthorityAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class,
-                    TracingMetricsAutoConfiguration.class))
-            .withPropertyValues(
-                    "platform.tracing.configuration.authority=HELM",
-                    "platform.environment=LOCAL")
+                    TracingMetricsAutoConfiguration.class)
+            )
+            .withPropertyValues("platform.tracing.configuration.authority=HELM")
             .withInitializer(ControlledAgentTestRuntime::initializeWithExporter)
             .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withUserConfiguration(MeterRegistryConfiguration.class);

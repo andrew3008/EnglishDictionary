@@ -194,7 +194,6 @@ public final class TracingStatusAssembler {
         Map<String, Object> validation = new LinkedHashMap<>();
         validation.put("enabled", values.map(ValidationValues::enabled).orElse(null));
         validation.put("strict", values.map(ValidationValues::strict).orElse(null));
-        validation.put("strictRuntimeAllowed", values.map(ValidationValues::strictRuntimeAllowed).orElse(null));
         validation.put("violationsTotal", values.map(ValidationValues::violationsTotal).orElse(null));
         validation.put("configVersion", values.map(ValidationValues::configVersion).orElse(null));
         validation.put("configSource", values.map(ValidationValues::configLastUpdatedSource).orElse(null));

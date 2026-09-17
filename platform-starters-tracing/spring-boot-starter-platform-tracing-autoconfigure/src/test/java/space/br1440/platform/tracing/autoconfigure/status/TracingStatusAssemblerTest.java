@@ -17,7 +17,6 @@ import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherence
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceTestSupport;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
-import space.br1440.platform.tracing.autoconfigure.bootstrap.PlatformEnvironmentPosture;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority;
 import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
@@ -116,14 +115,13 @@ class TracingStatusAssemblerTest {
     @Test
     void runtimeValidationSectionIncludesViolationCounter() {
         PlatformTracingJmxClient jmxClient = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
-        ValidationValues values = new ValidationValues(true, true, true, 42L, 7L, "accepted-state");
+        ValidationValues values = new ValidationValues(true, true, 42L, 7L, "accepted-state");
         when(jmxClient.validation().observation()).thenReturn(Optional.of(
                 new ValidationObservation("agent-instance", new JmxOwnerState.Present<>(values, 1L))));
 
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 true,
-                TracingConfigurationAuthority.HELM,
-                PlatformEnvironmentPosture.LOCAL);
+                TracingConfigurationAuthority.HELM);
 
         TracingStatusAssembler assembler = new TracingStatusAssembler(
                 NoopTraceOperations.INSTANCE,
@@ -155,8 +153,7 @@ class TracingStatusAssemblerTest {
         );
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 true,
-                TracingConfigurationAuthority.HELM,
-                PlatformEnvironmentPosture.LOCAL);
+                TracingConfigurationAuthority.HELM);
         TracingStatusAssembler assembler = new TracingStatusAssembler(
                 NoopTraceOperations.INSTANCE,
                 NoOpTracingRuntime.noop(),
@@ -170,7 +167,7 @@ class TracingStatusAssemblerTest {
         TracingStatusSnapshot snapshot = assembler.assemble();
 
         // then
-        assertThat(snapshot.schemaVersion()).isEqualTo(1);
+        assertThat(snapshot.schemaVersion()).isEqualTo(TracingStatusSnapshot.CURRENT_SCHEMA_VERSION);
         @SuppressWarnings("unchecked")
         Map<String, Object> watchdog = (Map<String, Object>) snapshot.runtime().get("watchdog");
         assertThat(watchdog)
@@ -231,8 +228,7 @@ class TracingStatusAssemblerTest {
     private static Map<String, Object> watchdogSectionOf(PlatformTracingJmxClient jmxClient) {
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 true,
-                TracingConfigurationAuthority.HELM,
-                PlatformEnvironmentPosture.LOCAL);
+                TracingConfigurationAuthority.HELM);
         TracingStatusAssembler assembler = new TracingStatusAssembler(
                 NoopTraceOperations.INSTANCE,
                 NoOpTracingRuntime.noop(),
@@ -270,8 +266,7 @@ class TracingStatusAssemblerTest {
 
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 true,
-                TracingConfigurationAuthority.CONFIG_SERVER,
-                PlatformEnvironmentPosture.LOCAL
+                TracingConfigurationAuthority.CONFIG_SERVER
         );
 
         AcceptedSettingsReadModel projection = new AcceptedSettingsReadModel(
@@ -316,8 +311,7 @@ class TracingStatusAssemblerTest {
                                                     AcceptedSettingsReadModel projection) {
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 enabled,
-                authority,
-                PlatformEnvironmentPosture.LOCAL);
+                authority);
 
         TracingRuntime runtime = enabled
                 ? NoOpTracingRuntime.noop()

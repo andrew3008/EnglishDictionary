@@ -10,7 +10,6 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCom
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsValidationConstraints;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 
 public final class TracingSettingsUpdater {
@@ -18,15 +17,12 @@ public final class TracingSettingsUpdater {
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(TracingSettingsUpdater.class);
 
     private final TracingSettingsStore store;
-    private final SettingsValidationConstraints validationConstraints;
     private final LastSettingsUpdate diagnostics;
     private final Object updateMonitor = new Object();
 
     public TracingSettingsUpdater(TracingSettingsStore store,
-                                  SettingsValidationConstraints validationConstraints,
                                   LastSettingsUpdate diagnostics) {
         this.store = Objects.requireNonNull(store, "store");
-        this.validationConstraints = Objects.requireNonNull(validationConstraints,"validationConstraints");
         this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
     }
 
@@ -116,20 +112,6 @@ public final class TracingSettingsUpdater {
 
     private SettingsUpdateResult evaluate(ExpectedSettingsRevision expectedBase,
                                           TracingSettings candidate) {
-        SettingsRejectionReason validationCode = TracingSettingsValidator.validate(
-                candidate,
-                validationConstraints
-        );
-
-        if (validationCode != SettingsRejectionReason.NONE) {
-            TracingSettingsRevision accepted = store.current();
-            return result(
-                    SettingsUpdateStatus.REJECTED,
-                    accepted,
-                    validationCode
-            );
-        }
-
         TracingSettingsRevision witnessed = store.current();
         SettingsRejectionReason staleCode = staleCode(witnessed, expectedBase);
         if (staleCode != SettingsRejectionReason.NONE) {

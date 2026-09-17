@@ -22,7 +22,7 @@ class ProcessorDefaultLifecycleContractTest {
             new BaggageSpanProcessor(Set.of(), List.of()),
             new EnrichingSpanProcessor(),
             ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of()),
-            new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false, false)),
+            new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false)),
             new ClassificationSpanProcessor(Duration.ofSeconds(5), Duration.ofSeconds(1))
     );
 

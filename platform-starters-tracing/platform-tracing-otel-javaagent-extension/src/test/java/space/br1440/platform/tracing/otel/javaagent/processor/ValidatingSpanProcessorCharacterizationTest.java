@@ -18,7 +18,7 @@ class ValidatingSpanProcessorCharacterizationTest {
 
     @Test
     void runtime_policy_update_disables_subsequent_validation() {
-        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(false, false, true);
+        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(false, false);
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access);
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
@@ -32,7 +32,7 @@ class ValidatingSpanProcessorCharacterizationTest {
     @Test
     void lenient_mode_records_missing_but_export_continues() {
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(
-                TracingSettingsSource.isolatedValidation(true, false, false));
+                TracingSettingsSource.isolatedValidation(true, false));
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
             Tracer tracer = h.tracer("t");

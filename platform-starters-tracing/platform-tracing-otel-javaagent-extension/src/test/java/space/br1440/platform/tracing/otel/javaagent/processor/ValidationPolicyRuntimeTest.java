@@ -8,24 +8,22 @@ import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutati
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Runtime-политика валидации (Фаза 14): атомарное переключение enabled/strict через accepted store.
- */
 class ValidationPolicyRuntimeTest {
 
     @Test
     void updateValidation_atomically_changes_enabled_without_strict() {
-        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(true, false, true);
-        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access);
-        assertThat(processor.isEnabled()).isTrue();
-        assertThat(processor.isStrict()).isFalse();
-        long versionBefore = processor.getPolicyVersion();
+        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(true, false);
+        try (ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access)) {
+            assertThat(processor.isEnabled()).isTrue();
+            assertThat(processor.isStrict()).isFalse();
+            long versionBefore = processor.getPolicyVersion();
 
-        SettingsUpdateStatus outcome = AcceptedPolicyMutationAccess.applyValidation(access, false, false);
+            SettingsUpdateStatus outcome = AcceptedPolicyMutationAccess.applyValidation(access, false, false);
 
-        assertThat(outcome).isEqualTo(SettingsUpdateStatus.APPLIED);
-        assertThat(processor.isEnabled()).isFalse();
-        assertThat(processor.isStrict()).isFalse();
-        assertThat(processor.getPolicyVersion()).isEqualTo(versionBefore + 1);
+            assertThat(outcome).isEqualTo(SettingsUpdateStatus.APPLIED);
+            assertThat(processor.isEnabled()).isFalse();
+            assertThat(processor.isStrict()).isFalse();
+            assertThat(processor.getPolicyVersion()).isEqualTo(versionBefore + 1);
+        }
     }
 }

@@ -80,7 +80,6 @@ class TracingControlActuatorWebFluxIntegrationTest {
                 .web(WebApplicationType.REACTIVE)
                 .properties(
                         "platform.tracing.configuration.authority=ACTUATOR",
-                        "platform.environment=LOCAL",
                         "management.server.port=0",
                         "management.endpoints.web.base-path=/management",
                         "management.endpoints.web.exposure.include=tracingControl",

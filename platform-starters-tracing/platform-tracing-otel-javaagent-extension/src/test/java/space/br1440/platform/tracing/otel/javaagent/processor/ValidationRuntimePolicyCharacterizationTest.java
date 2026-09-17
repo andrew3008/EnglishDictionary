@@ -8,21 +8,19 @@ import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutati
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Characterization runtime validation policy updates (PR-5B).
- */
 class ValidationRuntimePolicyCharacterizationTest {
 
     @Test
     void updateValidation_increments_version_for_lenient_update() {
-        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(true, false, true);
-        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access);
-        long v0 = processor.getPolicyVersion();
+        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(true, false);
+        try (ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access)) {
+            long v0 = processor.getPolicyVersion();
 
-        assertThat(AcceptedPolicyMutationAccess.applyValidation(access, false, false))
-                .isEqualTo(SettingsUpdateStatus.APPLIED);
-        assertThat(processor.isEnabled()).isFalse();
-        assertThat(processor.isStrict()).isFalse();
-        assertThat(processor.getPolicyVersion()).isEqualTo(v0 + 1);
+            assertThat(AcceptedPolicyMutationAccess.applyValidation(access, false, false))
+                    .isEqualTo(SettingsUpdateStatus.APPLIED);
+            assertThat(processor.isEnabled()).isFalse();
+            assertThat(processor.isStrict()).isFalse();
+            assertThat(processor.getPolicyVersion()).isEqualTo(v0 + 1);
+        }
     }
 }

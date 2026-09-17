@@ -220,7 +220,7 @@ class PlatformCompositeSpanProcessorTest {
     @Test
     void validationViolationUsesValidatorDiagnosticsWithoutCompositeError() {
         AtomicInteger followingDelegateCalls = new AtomicInteger();
-        ValidatingSpanProcessor validator = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true, false));
+        ValidatingSpanProcessor validator = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true));
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(
                 validator,
                 new RecordingOnEndingProcessor(followingDelegateCalls)));
@@ -232,7 +232,7 @@ class PlatformCompositeSpanProcessorTest {
                     .end();
 
             assertThat(harness.exporter().getFinishedSpanItems()).hasSize(1);
-            assertThat(harness.exporter().getFinishedSpanItems().get(0).getAttributes()
+            assertThat(harness.exporter().getFinishedSpanItems().getFirst().getAttributes()
                     .get(AttributeKey.stringKey("platform.validation.missing")))
                     .contains(PlatformAttributes.PLATFORM_TYPE, PlatformAttributes.PLATFORM_RESULT);
         }
@@ -245,7 +245,7 @@ class PlatformCompositeSpanProcessorTest {
 
     @Test
     void validSpanDoesNotIncrementValidationViolationCounter() {
-        ValidatingSpanProcessor validator = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true, false));
+        ValidatingSpanProcessor validator = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true));
         PlatformCompositeSpanProcessor composite =
                 new PlatformCompositeSpanProcessor(List.of(validator));
 

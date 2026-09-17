@@ -7,8 +7,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-import lombok.Getter;
-
 import space.br1440.platform.common.util.MapUtils;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
@@ -18,11 +16,11 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsValidationConstraints;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.ValidationMode;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.ValidationModeResolver;
 
 public final class TracingSettingsSource {
@@ -30,48 +28,36 @@ public final class TracingSettingsSource {
     private final TracingSettingsStore store;
     private final LastSettingsUpdate diagnostics;
     private final TracingSettingsUpdater updater;
-    @Getter
-    private final boolean strictRuntimeAllowed;
 
-    private TracingSettingsSource(TracingSettingsStore store,
-                                  boolean strictRuntimeAllowed) {
+    private TracingSettingsSource(TracingSettingsStore store) {
         this.store = Objects.requireNonNull(store, "store");
-        this.strictRuntimeAllowed = strictRuntimeAllowed;
         this.diagnostics = new LastSettingsUpdate();
-        this.updater = new TracingSettingsUpdater(
-                store,
-                new SettingsValidationConstraints(strictRuntimeAllowed),
-                diagnostics
-        );
+        this.updater = new TracingSettingsUpdater(store, diagnostics);
     }
 
     public static TracingSettingsSource fromStartup(ExtensionConfig config) {
         Objects.requireNonNull(config, "config");
 
-        ValidationModeResolver.Resolution validation = ValidationModeResolver.resolve(
-                config.validation().platformEnvironment(),
+        ValidationMode effectiveMode = ValidationModeResolver.resolve(
                 config.validation().requestedValidationMode()
-        );
+        ).effectiveMode();
 
-        return create(
-                config.sampling(),
-                config.validation().enabled(),
-                validation.effectiveMode().isStrict(),
-                validation.strictRuntimeAllowed()
-        );
+        boolean validationEnabled = !effectiveMode.isDisabled() && config.validation().enabled();
+        boolean validationStrict = !effectiveMode.isDisabled() && effectiveMode.isStrict();
+
+        return create(config.sampling(), validationEnabled, validationStrict);
     }
 
     public static TracingSettingsSource fromSampling(SamplingExtensionConfig sampling) {
-        return create(sampling, true, false, false);
+        return create(sampling, true, false);
     }
 
     public static TracingSettingsSource isolatedDefaults() {
-        return isolatedValidation(true, false, true);
+        return isolatedValidation(true, false);
     }
 
     public static TracingSettingsSource isolatedValidation(boolean enabled,
-                                                           boolean strict,
-                                                           boolean strictRuntimeAllowed) {
+                                                           boolean strict) {
         TracingSettings settings = TracingSettings.of(
                 true,
                 1.0d,
@@ -83,10 +69,7 @@ public final class TracingSettingsSource {
                 TracingLogLevel.INFO
         );
 
-        return new TracingSettingsSource(
-                new TracingSettingsStore(UUID.randomUUID().toString(), settings),
-                strictRuntimeAllowed
-        );
+        return new TracingSettingsSource(new TracingSettingsStore(UUID.randomUUID().toString(), settings));
     }
 
     public static TracingSettingsSource isolatedSampling(boolean enabled,
@@ -103,10 +86,7 @@ public final class TracingSettingsSource {
                 TracingLogLevel.INFO
         );
 
-        return new TracingSettingsSource(
-                new TracingSettingsStore(UUID.randomUUID().toString(), settings),
-                true
-        );
+        return new TracingSettingsSource(new TracingSettingsStore(UUID.randomUUID().toString(), settings));
     }
 
     public TracingSettingsRevision current() {
@@ -163,8 +143,7 @@ public final class TracingSettingsSource {
 
     private static TracingSettingsSource create(SamplingExtensionConfig sampling,
                                                 boolean validationEnabled,
-                                                boolean validationStrict,
-                                                boolean strictRuntimeAllowed) {
+                                                boolean validationStrict) {
         Map<String, Double> routeRatios = parseRouteRatios(sampling.routeRatios());
         TracingSettings settings = TracingSettings.of(
                 sampling.enabled(),
@@ -177,10 +156,7 @@ public final class TracingSettingsSource {
                 TracingLogLevel.INFO
         );
 
-        return new TracingSettingsSource(
-                new TracingSettingsStore(UUID.randomUUID().toString(), settings),
-                strictRuntimeAllowed
-        );
+        return new TracingSettingsSource(new TracingSettingsStore(UUID.randomUUID().toString(), settings));
     }
 
     private static Map<String, Double> parseRouteRatios(Map<String, String> source) {

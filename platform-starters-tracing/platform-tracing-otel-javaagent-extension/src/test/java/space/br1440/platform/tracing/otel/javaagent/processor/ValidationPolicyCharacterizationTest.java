@@ -34,8 +34,7 @@ class ValidationPolicyCharacterizationTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("characterizedCases")
     void matrix_case(ValidationDecisionCase c) {
-        TracingSettingsSource access =
-                TracingSettingsSource.isolatedValidation(c.enabled(), c.strict(), true);
+        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(c.enabled(), c.strict());
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access);
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
@@ -49,7 +48,7 @@ class ValidationPolicyCharacterizationTest {
             }
 
             builder.startSpan().end();
-            var data = h.exporter().getFinishedSpanItems().get(0);
+            var data = h.exporter().getFinishedSpanItems().getFirst();
 
             if (c.expectMissingAttribute()) {
                 ValidationAssertions.assertMissingRecorded(

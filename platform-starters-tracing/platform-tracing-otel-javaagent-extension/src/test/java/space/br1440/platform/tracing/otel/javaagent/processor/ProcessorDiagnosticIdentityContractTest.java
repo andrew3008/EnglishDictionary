@@ -31,7 +31,7 @@ class ProcessorDiagnosticIdentityContractTest {
                 new BaggageSpanProcessor(Set.of(), List.of()),
                 new EnrichingSpanProcessor(),
                 ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of()),
-                new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false, false)),
+                new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false)),
                 new ClassificationSpanProcessor(Duration.ofSeconds(5), Duration.ofSeconds(1)),
                 new SpanWatchdogProcessor(Duration.ofSeconds(5), Duration.ofSeconds(30), Duration.ofDays(365),
                         10_000, Integer.MAX_VALUE, Integer.MAX_VALUE),

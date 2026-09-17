@@ -50,7 +50,6 @@ class TracingStartupContractHealthHttpContractTest {
             try (ConfigurableApplicationContext context = boot(
                     "platform.tracing.enabled=true",
                     "platform.tracing.configuration.authority=HELM",
-                    "platform.environment=LOCAL",
                     "server.port=0",
                     "management.endpoints.web.exposure.include=health",
                     "management.endpoint.health.show-details=always")) {

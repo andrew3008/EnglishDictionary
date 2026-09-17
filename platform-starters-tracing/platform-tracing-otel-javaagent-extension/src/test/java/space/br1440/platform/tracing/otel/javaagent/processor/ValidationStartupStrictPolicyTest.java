@@ -12,9 +12,6 @@ import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Проверяет безопасную диагностическую семантику строгого режима.
- */
 class ValidationStartupStrictPolicyTest {
 
     @RegisterExtension
@@ -23,7 +20,7 @@ class ValidationStartupStrictPolicyTest {
     @Test
     void strict_violation_emits_sanitized_error() {
         // given
-        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true, false));
+        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true));
 
         // when
         try (SpanProcessorHarness harness = SpanProcessorHarness.of(processor, Resource.empty())) {
@@ -44,11 +41,15 @@ class ValidationStartupStrictPolicyTest {
 
     @Test
     void lenient_violation_emits_warn_instead_of_error() {
-        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false, false));
+        // given
+        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false));
+
+        // when
         try (SpanProcessorHarness harness = SpanProcessorHarness.of(processor, Resource.empty())) {
             harness.tracer("test").spanBuilder("missing-attributes").startSpan().end();
         }
 
+        // then
         assertThat(capture.events())
                 .filteredOn(event -> event.level() == AgentLogLevel.WARN)
                 .hasSize(1);
@@ -59,8 +60,10 @@ class ValidationStartupStrictPolicyTest {
 
     @Test
     void startup_strict_true_preserves_strict_behavior() {
-        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true, false));
+        // given/when
+        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true));
 
+        // then
         assertThat(processor.isStrict()).isTrue();
     }
 }

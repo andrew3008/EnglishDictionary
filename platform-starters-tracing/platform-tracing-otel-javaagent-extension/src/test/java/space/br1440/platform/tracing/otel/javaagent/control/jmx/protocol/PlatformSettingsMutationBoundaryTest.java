@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsValidationConstraints;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
@@ -32,10 +31,7 @@ final class PlatformSettingsMutationBoundaryTest {
     void setUp() throws Exception {
         store = JmxSettingsMutationFixtures.store();
         diagnostics = new LastSettingsUpdate();
-        TracingSettingsUpdater updater = new TracingSettingsUpdater(
-                store,
-                new SettingsValidationConstraints(true),
-                diagnostics);
+        TracingSettingsUpdater updater = new TracingSettingsUpdater(store, diagnostics);
         server = MBeanServerFactory.createMBeanServer();
         server.registerMBean(
                 new PlatformSettingsMutationMBean(updater),

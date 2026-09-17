@@ -102,13 +102,11 @@ class TracingControlActuatorServletIntegrationTest {
                 .web(WebApplicationType.SERVLET)
                 .properties(
                         "platform.tracing.configuration.authority=ACTUATOR",
-                        "platform.environment=LOCAL",
                         "management.server.port=0",
                         "management.endpoints.web.base-path=/management",
                         "management.endpoints.web.exposure.include=tracingControl",
                         "server.port=0",
-                        "spring.autoconfigure.exclude="
-                                + String.join(",", EXCLUDED_UNRELATED_AUTOCONFIGURATIONS))
+                        "spring.autoconfigure.exclude=" + String.join(",", EXCLUDED_UNRELATED_AUTOCONFIGURATIONS))
                 .run();
     }
 

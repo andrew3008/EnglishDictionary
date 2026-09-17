@@ -46,7 +46,7 @@ class ValidationObservationSourceTest {
     @Test
     void ownerPresentReflectsProcessorStateAndPositiveGeneration() {
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(
-                TracingSettingsSource.isolatedValidation(true, true, false)
+                TracingSettingsSource.isolatedValidation(true, true)
         );
 
         try (SpanProcessorHarness harness = SpanProcessorHarness.of(processor, Resource.empty())) {

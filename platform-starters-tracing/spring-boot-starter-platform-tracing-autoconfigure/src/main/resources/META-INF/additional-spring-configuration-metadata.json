@@ -9,12 +9,7 @@
     {
       "name": "platform.tracing.configuration.authority",
       "type": "space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority",
-      "description": "Единственный разрешенный источник изменения runtime-политики трассировки."
-    },
-    {
-      "name": "platform.environment",
-      "type": "space.br1440.platform.tracing.autoconfigure.bootstrap.PlatformEnvironmentPosture",
-      "description": "Операционный профиль окружения, ограничивающий доступные поверхности управления."
+      "description": "Единственный разрешенный источник изменения runtime-политики трассировки. Обязателен, значения HELM, CONFIG_SERVER, ACTUATOR. Библиотечного default нет."
     },
     {
       "name": "platform.tracing.kafka.batch-links-enabled",

@@ -1,5 +1,6 @@
 platformTracing:
   serviceName: ballistics
+  configurationAuthority: HELM
   resourceAttributes:
     serviceVersion: "2.0.0"
     deploymentEnvironmentName: staging

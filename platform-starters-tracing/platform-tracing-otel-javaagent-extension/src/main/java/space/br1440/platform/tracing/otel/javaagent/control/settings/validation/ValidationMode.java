@@ -9,14 +9,19 @@ import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
  * <p>
  * Конфигурационное свойство — {@code platform.tracing.validation.mode}, см. {@link
  * space.br1440.platform.tracing.otel.javaagent.configuration.ValidationExtensionConfig}.
+ * Агент читает его при инициализации из JVM system property или
+ * {@code PLATFORM_TRACING_VALIDATION_MODE}, до загрузки Spring.
  * <p>
  * Допустимые значения для {@code platform.tracing.validation.mode} (без учёта регистра):
  * <ul>
  *   <li>{@code LENIENT} — валидировать и предупреждать о недостающих атрибутах; никогда не бросать исключение</li>
  *   <li>{@code STRICT} — валидировать и выдавать throttled ERROR-диагностику при недостающих
- *       атрибутах без прерывания завершения span; разрешён только в {@link PlatformEnvironment#DEV} и
- *       {@link PlatformEnvironment#STAGING}</li>
- *   <li>{@code DISABLED} — полностью пропускать валидацию; разрешён везде с видимостью риска</li>
+ *       атрибутах без прерывания завершения span. Это диагностический уровень, а не fail-fast:
+ *       исключения не бросаются и публичный {@code TraceOperations} не меняется</li>
+ *   <li>{@code DISABLED} — пропустить validation-проверку процессора. Экспорт, scrubbing,
+ *       enrichment и остальной composite pipeline продолжают работать. Начальное состояние —
+ *       {@code validationEnabled=false} и {@code validationStrict=false}; runtime-включение
+ *       validation остаётся отдельной операцией</li>
  * </ul>
  * Неизвестные или пустые значения по умолчанию сводятся к {@link #LENIENT}.
  */

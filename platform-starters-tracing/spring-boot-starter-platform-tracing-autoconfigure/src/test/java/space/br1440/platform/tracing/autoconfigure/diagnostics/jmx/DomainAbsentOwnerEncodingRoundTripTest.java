@@ -119,7 +119,7 @@ class DomainAbsentOwnerEncodingRoundTripTest {
     void validationViolationCounterRoundTripsFromAgentOwner() throws Exception {
         OwnerRegistrationSlot<ValidatingSpanProcessor> slot = new OwnerRegistrationSlot<>();
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(
-                TracingSettingsSource.isolatedValidation(true, false, false));
+                TracingSettingsSource.isolatedValidation(true, false));
         slot.replace(processor);
         processor.onEnding(mock(ReadWriteSpan.class));
         ValidationObservationSource validation = new ValidationObservationSource(slot, agentInstanceId);

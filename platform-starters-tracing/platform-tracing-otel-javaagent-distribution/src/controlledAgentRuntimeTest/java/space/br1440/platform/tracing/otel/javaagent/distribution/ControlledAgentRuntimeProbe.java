@@ -62,6 +62,7 @@ public final class ControlledAgentRuntimeProbe {
         verifyApplicationClassLoaderIsolation();
         String upstreamVersion = verifyDistributionIdentity(probeArguments);
         verifyReadiness(probeArguments.version(), upstreamVersion);
+        verifyProcessValidationState();
 
         System.out.printf("CONTROLLED_AGENT_PROBE_OK version=%s schema=%s capabilities=%d%n",
                 probeArguments.version(), JmxWireContract.SCHEMA_ID, EXPECTED_CAPABILITIES.size());
@@ -229,6 +230,39 @@ public final class ControlledAgentRuntimeProbe {
                 "Platform extension readiness did not become READY within %d seconds"
                         .formatted(READINESS_TIMEOUT.toSeconds())
         );
+    }
+
+    private static void verifyProcessValidationState() throws Exception {
+        MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+        require(server.isRegistered(JmxWireContract.VALIDATION_OBSERVATION_OBJECT_NAME),
+                "Validation observation MBean is not registered");
+
+        Object raw = server.getAttribute(
+                JmxWireContract.VALIDATION_OBSERVATION_OBJECT_NAME,
+                JmxWireContract.ATTRIBUTE_VALIDATION_OBSERVATION_VALIDATION_OBSERVATION);
+        require(raw instanceof CompositeData,
+                "ValidationObservation must be CompositeData, got " + typeName(raw));
+
+        CompositeData observation = (CompositeData) raw;
+        require(JmxOpenTypes.VALIDATION_OBSERVATION.equals(observation.getCompositeType()),
+                "ValidationObservation OpenType differs from the generated application contract");
+
+        boolean ownerPresent = value(observation,
+                JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT, Boolean.class);
+        boolean enabled = value(observation,
+                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_ENABLED, Boolean.class);
+        boolean strict = value(observation,
+                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT, Boolean.class);
+        require(ownerPresent, "Validation owner is absent after agent readiness");
+
+        String requestedMode = System.getProperty("platform.tracing.validation.mode", "");
+        if ("STRICT".equalsIgnoreCase(requestedMode)) {
+            require(enabled && strict,
+                    "Process STRICT did not become the accepted validation state: enabled="
+                            + enabled + " strict=" + strict);
+        }
+
+        System.out.printf("CONTROLLED_AGENT_VALIDATION enabled=%s strict=%s%n", enabled, strict);
     }
 
     private static void sleepPollInterval() throws InterruptedException {

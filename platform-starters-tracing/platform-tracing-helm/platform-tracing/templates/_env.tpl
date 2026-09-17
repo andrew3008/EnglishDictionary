@@ -19,6 +19,12 @@
 {{- if $attributePairs -}}
   {{- $env = append $env (dict "name" "OTEL_RESOURCE_ATTRIBUTES" "value" (join "," $attributePairs)) -}}
 {{- end -}}
+{{- if $tracing.configurationAuthority -}}
+  {{- $env = append $env (dict "name" "PLATFORM_TRACING_CONFIGURATION_AUTHORITY" "value" $tracing.configurationAuthority) -}}
+{{- end -}}
+{{- if $tracing.validationMode -}}
+  {{- $env = append $env (dict "name" "PLATFORM_TRACING_VALIDATION_MODE" "value" $tracing.validationMode) -}}
+{{- end -}}
 {{/* Пять Instrumentation CR в Infra задают ровно этот список; менять его — отдельное решение. */}}
 {{- $env = append $env (dict "name" "OTEL_PROPAGATORS" "value" "tracecontext,baggage,b3") -}}
 {{/* Этот chart отвечает только за trace export. */}}

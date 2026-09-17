@@ -12,9 +12,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsValidationConstraints;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdateSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsRejectionReason;
@@ -34,10 +31,7 @@ class AcceptedPolicyCoordinatorTest {
     void exposesAllApplyOutcomesWithoutHiddenRetry() throws Exception {
         TracingSettingsStore store = store();
         LastSettingsUpdate diagnostics = new LastSettingsUpdate();
-        TracingSettingsUpdater updater = new TracingSettingsUpdater(
-                store,
-                new SettingsValidationConstraints(false),
-                diagnostics);
+        TracingSettingsUpdater updater = new TracingSettingsUpdater(store, diagnostics);
 
         ExpectedSettingsRevision initialBase = store.current().base();
         SettingsUpdateResult applied = updater.apply(
@@ -52,10 +46,9 @@ class AcceptedPolicyCoordinatorTest {
                 AcceptedPolicyTestFixtures.attempt(3L),
                 initialBase,
                 AcceptedPolicyTestFixtures.policy(0.3d));
-        SettingsUpdateResult rejected = updater.apply(
-                AcceptedPolicyTestFixtures.attempt(4L),
-                applied.accepted().base(),
-                strictPolicy());
+        SettingsUpdateResult rejected = updater.rejectBeforeApply(
+                AcceptedPolicyTestFixtures.attempt(4L).attemptId(),
+                SettingsRejectionReason.INVALID_VALUE);
 
         SettingsUpdateAttempt failedAttempt = AcceptedPolicyTestFixtures.attempt(5L);
         setAcceptedSequence(store, Long.MAX_VALUE);
@@ -73,7 +66,7 @@ class AcceptedPolicyCoordinatorTest {
                 .isEqualTo(SettingsRejectionReason.ACCEPTED_SEQUENCE_MISMATCH);
         assertThat(rejected.outcome()).isEqualTo(SettingsUpdateStatus.REJECTED);
         assertThat(rejected.messageCode())
-                .isEqualTo(SettingsRejectionReason.STRICT_RUNTIME_NOT_ALLOWED);
+                .isEqualTo(SettingsRejectionReason.INVALID_VALUE);
         assertThat(failed.outcome()).isEqualTo(SettingsUpdateStatus.FAILED);
         assertThat(failed.messageCode()).isEqualTo(SettingsRejectionReason.INTERNAL_FAILURE);
         assertThat(capture.events())
@@ -99,7 +92,6 @@ class AcceptedPolicyCoordinatorTest {
         TracingSettingsStore store = store();
         TracingSettingsUpdater updater = new TracingSettingsUpdater(
                 store,
-                new SettingsValidationConstraints(true),
                 new LastSettingsUpdate());
 
         SettingsUpdateResult result = updater.apply(
@@ -118,18 +110,6 @@ class AcceptedPolicyCoordinatorTest {
         return new TracingSettingsStore(
                 AcceptedPolicyTestFixtures.RUNTIME_INSTANCE_ID,
                 AcceptedPolicyTestFixtures.policy(0.1d));
-    }
-
-    private static TracingSettings strictPolicy() {
-        return TracingSettings.of(
-                true,
-                0.2d,
-                Map.of(),
-                true,
-                true,
-                true,
-                true,
-                TracingLogLevel.INFO);
     }
 
     @SuppressWarnings("unchecked")

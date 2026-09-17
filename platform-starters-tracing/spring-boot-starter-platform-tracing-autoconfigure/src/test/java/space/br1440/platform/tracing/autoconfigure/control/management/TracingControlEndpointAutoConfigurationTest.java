@@ -24,10 +24,8 @@ class TracingControlEndpointAutoConfigurationTest {
                     () -> (expectedBase, snapshot, source) -> TracingSettingsDeliveryResult.APPLIED);
 
     @Test
-    void actuatorLocalRegistersEndpointAndMutationService() {
-        runner.withPropertyValues(
-                        "platform.tracing.configuration.authority=ACTUATOR",
-                        "platform.environment=LOCAL")
+    void actuatorRegistersEndpointAndMutationService() {
+        runner.withPropertyValues("platform.tracing.configuration.authority=ACTUATOR")
                 .run(context -> {
                     assertThat(context).hasSingleBean(TracingControlEndpoint.class);
                     assertThat(context).hasSingleBean(TracingSettingsMutationService.class);
@@ -37,17 +35,24 @@ class TracingControlEndpointAutoConfigurationTest {
     }
 
     @Test
-    void nonLocalAndNonActuatorPosturesHaveNoWriteSurface() {
-        assertAbsent("ACTUATOR", "SHARED");
-        assertAbsent("ACTUATOR", "PRODUCTION");
-        assertAbsent("HELM", "LOCAL");
-        assertAbsent("CONFIG_SERVER", "LOCAL");
+    void leftoverPlatformEnvironmentDoesNotDisableActuator() {
+        runner.withPropertyValues(
+                        "platform.tracing.configuration.authority=ACTUATOR",
+                        "platform.environment=PRODUCTION")
+                .run(context -> {
+                    assertThat(context).hasSingleBean(TracingControlEndpoint.class);
+                    assertThat(context).hasSingleBean(TracingSettingsMutationService.class);
+                });
     }
 
-    private void assertAbsent(String authority, String environment) {
-        runner.withPropertyValues(
-                        "platform.tracing.configuration.authority=" + authority,
-                        "platform.environment=" + environment)
+    @Test
+    void nonActuatorAuthoritiesHaveNoWriteSurface() {
+        assertAbsent("HELM");
+        assertAbsent("CONFIG_SERVER");
+    }
+
+    private void assertAbsent(String authority) {
+        runner.withPropertyValues("platform.tracing.configuration.authority=" + authority)
                 .run(context -> {
                     assertThat(context).doesNotHaveBean(TracingControlEndpoint.class);
                     assertThat(context).doesNotHaveBean(TracingSettingsMutationService.class);

@@ -49,7 +49,6 @@ public record PlatformJmxResponse(long acceptedSequence,
         LIMIT_EXCEEDED,
         RUNTIME_INSTANCE_MISMATCH,
         ACCEPTED_SEQUENCE_MISMATCH,
-        STRICT_RUNTIME_NOT_ALLOWED,
         INTERNAL_FAILURE
     }
 

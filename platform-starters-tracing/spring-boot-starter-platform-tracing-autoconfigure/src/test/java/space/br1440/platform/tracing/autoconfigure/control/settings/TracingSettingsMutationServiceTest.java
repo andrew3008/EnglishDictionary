@@ -101,6 +101,26 @@ class TracingSettingsMutationServiceTest {
     }
 
     @Test
+    void setValidationStrictChangesExactlyThatLeaf() {
+        TracingSettingsDeliveryResult result = adapter.setValidationStrict(true);
+
+        assertThat(result).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
+        assertThat(client.lastSnapshot().validationStrict()).isTrue();
+        assertThat(client.lastSnapshot().validationEnabled()).isTrue();
+        assertThat(client.lastSnapshot().exporterEnabled()).isTrue();
+    }
+
+    @Test
+    void setExporterEnabledDoesNotChangeValidationLeaves() {
+        TracingSettingsDeliveryResult result = adapter.setExporterEnabled(false);
+
+        assertThat(result).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
+        assertThat(client.lastSnapshot().exporterEnabled()).isFalse();
+        assertThat(client.lastSnapshot().validationEnabled()).isTrue();
+        assertThat(client.lastSnapshot().validationStrict()).isFalse();
+    }
+
+    @Test
     void setDiagnosticsLogLevelRejectsUnknownLevel() {
         assertThat(adapter.setDiagnosticsLogLevel("VERBOSE")).isEqualTo(TracingSettingsDeliveryResult.REJECTED);
         assertThat(adapter.setDiagnosticsLogLevel(null)).isEqualTo(TracingSettingsDeliveryResult.REJECTED);

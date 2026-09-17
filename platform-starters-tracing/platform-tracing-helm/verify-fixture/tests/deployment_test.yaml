@@ -41,6 +41,38 @@ tests:
           content:
             name: OTEL_LOGS_EXPORTER
             value: none
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PLATFORM_TRACING_CONFIGURATION_AUTHORITY
+            value: HELM
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PLATFORM_ENVIRONMENT
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PLATFORM_TRACING_VALIDATION_MODE
+
+  - it: emits optional PLATFORM_TRACING_VALIDATION_MODE when requested
+    set:
+      platformTracing.validationMode: STRICT
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PLATFORM_TRACING_VALIDATION_MODE
+            value: STRICT
+
+  - it: fails when the application env sets PLATFORM_TRACING_CONFIGURATION_AUTHORITY itself
+    set:
+      deployment.env:
+        - name: PLATFORM_TRACING_CONFIGURATION_AUTHORITY
+          value: ACTUATOR
+    asserts:
+      - failedTemplate:
+          errorPattern: "reserved for platform-tracing.v1.env"
 
   - it: preserves the application's own JDK_JAVA_OPTIONS and valueFrom env untouched
     asserts:

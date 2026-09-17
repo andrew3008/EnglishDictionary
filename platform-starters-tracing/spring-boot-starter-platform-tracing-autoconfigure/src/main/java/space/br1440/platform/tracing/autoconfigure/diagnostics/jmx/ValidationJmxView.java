@@ -69,10 +69,6 @@ public final class ValidationJmxView {
                 composite, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT
         );
 
-        boolean strictRuntimeAllowed = JmxObservationCodec.getBoolean(
-                composite, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT_RUNTIME_ALLOWED
-        );
-
         long violationsTotal = JmxObservationCodec.getLong(
                 composite, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_VIOLATIONS_TOTAL
         );
@@ -86,7 +82,7 @@ public final class ValidationJmxView {
         );
 
         return new ValidationValues(
-                enabled, strict, strictRuntimeAllowed, violationsTotal, configVersion, configSource
+                enabled, strict, violationsTotal, configVersion, configSource
         );
     }
 }

@@ -14,7 +14,6 @@ import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
-import space.br1440.platform.tracing.autoconfigure.bootstrap.PlatformEnvironmentPosture;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
@@ -32,8 +31,7 @@ class ActuatorEndpointContractTest {
             .withBean(TracingRuntime.class, () -> NoOpTracingRuntime.disabledByConfiguration("test"))
             .withBean(TracingBootstrapSettings.class, () -> new TracingBootstrapSettings(
                     false,
-                    TracingConfigurationAuthority.HELM,
-                    PlatformEnvironmentPosture.LOCAL))
+                    TracingConfigurationAuthority.HELM))
             .withBean(PlatformTracingJmxClient.class, PlatformTracingJmxClient::new)
             .withBean(AgentReadinessCoherenceGuard.class, AgentReadinessCoherenceGuard::new)
             .withBean(TracingDeploymentDiagnostics.class, () -> TracingDeploymentDiagnostics.withoutAgentData(

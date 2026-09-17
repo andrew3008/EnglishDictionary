@@ -27,7 +27,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsValidationConstraints;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsRejectionReason;
@@ -58,8 +57,7 @@ final class PlatformSettingsMutationFailureContractTest {
         RuntimeException decodeFailure = new IllegalStateException("decode failed");
         CompositeData encodedFailure = mock(CompositeData.class);
         when(codec.decode(request)).thenThrow(decodeFailure);
-        when(codec.encode(any(SettingsUpdateResult.class), eq("")))
-                .thenReturn(encodedFailure);
+        when(codec.encode(any(SettingsUpdateResult.class), eq(""))).thenReturn(encodedFailure);
         PlatformSettingsMutationMBean writer = new PlatformSettingsMutationMBean(updater, codec);
 
         // when
@@ -241,10 +239,7 @@ final class PlatformSettingsMutationFailureContractTest {
             TracingSettingsStore store,
             LastSettingsUpdate diagnostics
     ) {
-        return new TracingSettingsUpdater(
-                store,
-                new SettingsValidationConstraints(true),
-                diagnostics);
+        return new TracingSettingsUpdater(store, diagnostics);
     }
 
     private static SettingsUpdateAttempt attempt() {

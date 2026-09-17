@@ -41,12 +41,6 @@ public final class TracingBootstrapSettingsResolver {
                 parseRequiredEnum(environment,
                         TracingBootstrapPropertyNames.CONFIGURATION_AUTHORITY,
                         TracingConfigurationAuthority.class
-                ),
-
-                parseRequiredEnum(
-                        environment,
-                        TracingBootstrapPropertyNames.ENVIRONMENT_POSTURE,
-                        PlatformEnvironmentPosture.class
                 )
         );
     }
@@ -58,10 +52,6 @@ public final class TracingBootstrapSettingsResolver {
         if (StringUtils.isNullOrBlank(raw)) {
             if (TracingBootstrapPropertyNames.CONFIGURATION_AUTHORITY.equals(propertyName)) {
                 throw new IllegalStateException("Missing platform.tracing.configuration.authority");
-            }
-
-            if (TracingBootstrapPropertyNames.ENVIRONMENT_POSTURE.equals(propertyName)) {
-                throw new IllegalStateException("Unknown platform.environment value: ''");
             }
 
             throw new IllegalStateException("Missing required property '" + propertyName + "'");
@@ -85,13 +75,6 @@ public final class TracingBootstrapSettingsResolver {
                 throw new IllegalStateException(
                         "Invalid platform.tracing.configuration.authority='" + raw
                                 + "'. Must be one of: HELM, CONFIG_SERVER, ACTUATOR",
-                        exception);
-            }
-
-            if (TracingBootstrapPropertyNames.ENVIRONMENT_POSTURE.equals(propertyName)) {
-                throw new IllegalStateException(
-                        "Unknown platform.environment value: '" + raw + "'. Accepted exact values: "
-                                + "LOCAL, SHARED, PRODUCTION",
                         exception);
             }
 

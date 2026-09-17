@@ -22,9 +22,6 @@ import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Slice 7: extended Spring Boot autoconfiguration matrix beyond Slice 2 {@code BeanTopologyTest}.
- */
 class SpringBootContextMatrixTest {
 
     private final ApplicationContextRunner baseRunner = new ApplicationContextRunner()
@@ -33,9 +30,7 @@ class SpringBootContextMatrixTest {
                     TracingRuntimeAutoConfiguration.class,
                     TracingRuntimeDiagnosticsAutoConfiguration.class,
                     TracingMetricsAutoConfiguration.class))
-            .withPropertyValues(
-                    "platform.tracing.configuration.authority=HELM",
-                    "platform.environment=LOCAL");
+            .withPropertyValues("platform.tracing.configuration.authority=HELM");
 
     private final ApplicationContextRunner controlledAgentRunner = baseRunner
             .withInitializer(ControlledAgentTestRuntime::initialize)

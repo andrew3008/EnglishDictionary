@@ -43,10 +43,11 @@ class PipelinePolicyCharacterizationTest {
     void validation_runs_before_enrichment_in_composite_onEnding() {
         // given
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(
-                new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false, false)),
+                new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false)),
                 new EnrichingSpanProcessor(),
                 ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
-                        List.of(BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")))));
+                        List.of(BuiltInSpanAttributeScrubbingRules.resolve("oauth-header"))))
+        );
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(composite, Resource.empty())) {
             // when
@@ -67,10 +68,11 @@ class PipelinePolicyCharacterizationTest {
     void validation_marker_absent_whenValidationDisabled() {
         // given
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(
-                new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(false, false, false)),
+                new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(false, false)),
                 new EnrichingSpanProcessor(),
                 ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
-                        List.of(BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")))));
+                        List.of(BuiltInSpanAttributeScrubbingRules.resolve("oauth-header"))))
+        );
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(composite, Resource.empty())) {
             // when
@@ -79,7 +81,7 @@ class PipelinePolicyCharacterizationTest {
             span.end();
 
             // then
-            var data = h.exporter().getFinishedSpanItems().get(0);
+            var data = h.exporter().getFinishedSpanItems().getFirst();
             ValidationAssertions.assertMissingAbsent(data);
         }
     }

@@ -41,7 +41,6 @@ class TracingStartupContractHealthComponentModelTest {
             .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withPropertyValues(
                     "platform.tracing.configuration.authority=HELM",
-                    "platform.environment=LOCAL",
                     "management.endpoint.health.enabled=true",
                     "management.endpoint.health.show-details=always");
 

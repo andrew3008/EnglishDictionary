@@ -49,7 +49,6 @@ class TracingPropertiesBindingTest {
                 .withConfiguration(AutoConfigurations.of(TracingConfigurationAuthorityAutoConfiguration.class))
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=HELM",
-                        "platform.environment=LOCAL",
                         "platform.tracing.log-level=warn")
                 .run(ctx -> {
                     assertThat(ctx).hasFailed();
@@ -72,7 +71,6 @@ class TracingPropertiesBindingTest {
                 .withConfiguration(AutoConfigurations.of(TracingConfigurationAuthorityAutoConfiguration.class))
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=HELM",
-                        "platform.environment=LOCAL",
                         "platform.tracing.sampling.enabled=false",
                         "platform.tracing.sampling.ratio=0.42",
                         "platform.tracing.validation.enabled=false",

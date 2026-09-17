@@ -42,6 +42,17 @@ class ControlledAgentRuntimeTest {
     Path temporaryDirectory;
 
     @Test
+    void controlled_agent_applies_process_strict_validation_mode() throws IOException, InterruptedException, URISyntaxException {
+        AgentTestFixture fixture = AgentTestFixture.load();
+
+        ChildProcessResult result = runControlledAgentProbe(fixture, List.of(
+                "-Dplatform.tracing.validation.mode=STRICT"));
+
+        assertProcessCompletedSuccessfully(result);
+        assertThat(result.stdout()).contains("CONTROLLED_AGENT_VALIDATION enabled=true strict=true");
+    }
+
+    @Test
     void controlled_agent_starts_with_attested_identity_and_ready_extension() throws IOException, InterruptedException, URISyntaxException {
         // given
         AgentTestFixture fixture = AgentTestFixture.load();
@@ -73,14 +84,20 @@ class ControlledAgentRuntimeTest {
         }
     }
 
-    private ChildProcessResult runControlledAgentProbe(AgentTestFixture fixture) throws IOException, InterruptedException, URISyntaxException {
+    private ChildProcessResult runControlledAgentProbe(AgentTestFixture fixture)
+            throws IOException, InterruptedException, URISyntaxException {
+        return runControlledAgentProbe(fixture, List.of());
+    }
+
+    private ChildProcessResult runControlledAgentProbe(AgentTestFixture fixture, List<String> extraJvmArguments)
+            throws IOException, InterruptedException, URISyntaxException {
         Path javaExecutable = javaExecutable();
         Path probeClassPath = probeClassPath(ControlledAgentRuntimeProbe.class);
         Path stdoutFile = temporaryDirectory.resolve("child.stdout.log");
         Path stderrFile = temporaryDirectory.resolve("child.stderr.log");
 
         ProcessBuilder processBuilder = new ProcessBuilder(
-                childCommand(javaExecutable, probeClassPath, fixture));
+                childCommand(javaExecutable, probeClassPath, fixture, extraJvmArguments));
         removeContaminatingEnvironment(processBuilder.environment());
         processBuilder.redirectOutput(stdoutFile.toFile());
         processBuilder.redirectError(stderrFile.toFile());
@@ -205,7 +222,8 @@ class ControlledAgentRuntimeTest {
 
     private static List<String> childCommand(Path javaExecutable,
                                              Path probeClassPath,
-                                             AgentTestFixture fixture) {
+                                             AgentTestFixture fixture,
+                                             List<String> extraJvmArguments) {
         List<String> command = new ArrayList<>();
         command.add(javaExecutable.toString());
         command.add("-XX:+DisableAttachMechanism");
@@ -215,7 +233,7 @@ class ControlledAgentRuntimeTest {
         command.add("-Dotel.traces.exporter=logging");
         command.add("-Dotel.metrics.exporter=none");
         command.add("-Dotel.logs.exporter=none");
-        command.add("-Dplatform.environment=dev");
+        command.addAll(extraJvmArguments);
         command.add("-Dplatform.tracing.service.name=controlled-agent-runtime-test");
         command.add("-Dplatform.tracing.service.version=1.0.0");
         command.add("-Dplatform.tracing.service.environment=test");
@@ -252,7 +270,6 @@ class ControlledAgentRuntimeTest {
         command.add("-Dotel.metrics.exporter=none");
         command.add("-Dotel.logs.exporter=none");
         command.add("-Dotel.bsp.schedule.delay=200");
-        command.add("-Dplatform.environment=dev");
         command.add("-Dplatform.tracing.service.name=controlled-agent-runtime-test");
         command.add("-Dplatform.tracing.service.version=1.0.0");
         command.add("-Dplatform.tracing.service.environment=test");

@@ -20,7 +20,6 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsValidationConstraints;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 
@@ -45,10 +44,7 @@ class TracingSettingsUpdaterCoherentStatusTest {
                 any(SettingsUpdateAttempt.class),
                 any(SettingsUpdateResult.class));
 
-        TracingSettingsUpdater updater = new TracingSettingsUpdater(
-                store,
-                new SettingsValidationConstraints(true),
-                diagnostics);
+        TracingSettingsUpdater updater = new TracingSettingsUpdater(store, diagnostics);
         SettingsUpdateAttempt attempt = new SettingsUpdateAttempt(
                 UUID.randomUUID().toString(),
                 Instant.parse("2026-08-24T04:00:00Z"),

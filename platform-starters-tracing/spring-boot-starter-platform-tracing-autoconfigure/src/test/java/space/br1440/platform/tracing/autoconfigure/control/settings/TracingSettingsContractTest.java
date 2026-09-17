@@ -8,7 +8,6 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 
-import space.br1440.platform.tracing.autoconfigure.bootstrap.PlatformEnvironmentPosture;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsResolver;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority;
 import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityGuard;
@@ -18,11 +17,8 @@ class TracingSettingsContractTest {
 
     @Test
     void authorityHasOnlySupportedValues() {
-        // given
         TracingConfigurationAuthority[] values = TracingConfigurationAuthority.values();
 
-        // when
-        // then
         assertThat(values).containsExactly(
                 TracingConfigurationAuthority.HELM,
                 TracingConfigurationAuthority.CONFIG_SERVER,
@@ -30,144 +26,90 @@ class TracingSettingsContractTest {
     }
 
     @Test
-    void postureHasOnlySupportedValues() {
-        // given
-        PlatformEnvironmentPosture[] values = PlatformEnvironmentPosture.values();
-
-        // when
-        // then
-        assertThat(values).containsExactly(
-                PlatformEnvironmentPosture.LOCAL,
-                PlatformEnvironmentPosture.SHARED,
-                PlatformEnvironmentPosture.PRODUCTION);
-    }
-
-    @Test
-    void authorityAndPostureRemainOrthogonal() {
-        // given
-        var authorityNames = assertThat(TracingConfigurationAuthority.values())
-                .extracting(Enum::name);
-        var postureNames = assertThat(PlatformEnvironmentPosture.values())
-                .extracting(Enum::name);
-
-        // when
-        // then
-        authorityNames.doesNotContain("LOCAL", "SHARED", "PRODUCTION");
-        postureNames.doesNotContain("HELM", "CONFIG_SERVER", "ACTUATOR");
-    }
-
-    @Test
-    void actuatorIsRejectedForSharedPosture() {
-        // given
+    void actuatorIsAllowedWithoutEnvironmentGate() {
         var guard = new TracingConfigurationAuthorityGuard(
                 TracingConfigurationAuthority.ACTUATOR,
-                PlatformEnvironmentPosture.SHARED,
                 true);
 
-        // when
-        // then
-        assertThatThrownBy(guard::validate)
-                .isInstanceOf(TracingConfigurationGuardException.class);
-    }
-
-    @Test
-    void actuatorIsRejectedForProductionPosture() {
-        // given
-        var guard = new TracingConfigurationAuthorityGuard(
-                TracingConfigurationAuthority.ACTUATOR,
-                PlatformEnvironmentPosture.PRODUCTION,
-                true);
-
-        // when
-        // then
-        assertThatThrownBy(guard::validate)
-                .isInstanceOf(TracingConfigurationGuardException.class);
-    }
-
-    @Test
-    void actuatorIsAllowedForLocalPosture() {
-        // given
-        var guard = new TracingConfigurationAuthorityGuard(
-                TracingConfigurationAuthority.ACTUATOR,
-                PlatformEnvironmentPosture.LOCAL,
-                true);
-
-        // when
         guard.validate();
 
-        // then
-        assertThat(guard.isActuatorMutationSurfaceAllowed()).isTrue();
+        assertThat(guard.authority()).isEqualTo(TracingConfigurationAuthority.ACTUATOR);
+        assertThat(guard.isTracingEnabled()).isTrue();
     }
 
     @Test
     void missingAuthorityIsRejected() {
-        // given
-        var environment = new MockEnvironment().withProperty("platform.environment", "LOCAL");
+        var environment = new MockEnvironment();
 
-        // when
-        // then
         assertThatThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Missing platform.tracing.configuration.authority");
+    }
+
+    @Test
+    void emptyAuthorityIsRejected() {
+        var environment = new MockEnvironment()
+                .withProperty("platform.tracing.configuration.authority", "  ");
+
+        assertThatThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Missing platform.tracing.configuration.authority");
+    }
+
+    @Test
+    void unknownAuthorityIsRejected() {
+        var environment = new MockEnvironment()
+                .withProperty("platform.tracing.configuration.authority", "DEV_ACTUATOR");
+
+        assertThatThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Invalid platform.tracing.configuration.authority");
+    }
+
+    @Test
+    void platformEnvironmentDoesNotSelectAuthority() {
+        var environment = new MockEnvironment()
+                ;
+
+        assertThatThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Missing platform.tracing.configuration.authority");
+    }
+
+    @Test
+    void deploymentEnvironmentNameDoesNotSelectAuthority() {
+        var environment = new MockEnvironment()
+                .withProperty("deployment.environment.name", "production");
+
+        assertThatThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Missing platform.tracing.configuration.authority");
     }
 
     @Test
     void disabledTracingWithConfigServerIsRejected() {
-        // given
         var environment = new MockEnvironment()
                 .withProperty("platform.tracing.configuration.authority", "CONFIG_SERVER")
-                .withProperty("platform.environment", "LOCAL")
                 .withProperty("platform.tracing.enabled", "false");
         var guard = new TracingConfigurationAuthorityGuard(
                 TracingBootstrapSettingsResolver.resolve(environment));
 
-        // when
-        // then
         assertThatThrownBy(guard::validate)
                 .isInstanceOf(TracingConfigurationGuardException.class);
     }
 
     @Test
-    void postureAliasIsRejected() {
-        // given
-        var environment = new MockEnvironment()
-                .withProperty("platform.tracing.configuration.authority", "HELM")
-                .withProperty("platform.environment", "dev");
-
-        // when
-        // then
-        assertThatThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
-                .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
-    void postureTypoIsRejected() {
-        // given
-        var environment = new MockEnvironment()
-                .withProperty("platform.tracing.configuration.authority", "HELM")
-                .withProperty("platform.environment", "LOACL");
-
-        // when
-        // then
-        assertThatThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
-                .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
     void partialSnapshotIsRejected() {
-        // given
         var builder = CompleteTracingSettings.builder()
                 .samplingEnabled(true)
                 .samplingRatio(0.5);
 
-        // when
-        // then
         assertThatThrownBy(builder::build)
                 .isInstanceOf(TracingSettingsManifestException.class);
     }
 
     @Test
     void completeSnapshotIsBuilt() {
-        // given
         var builder = CompleteTracingSettings.builder()
                 .samplingEnabled(true)
                 .samplingRatio(0.5)
@@ -178,10 +120,8 @@ class TracingSettingsContractTest {
                 .traceControlHeadersEnabled(true)
                 .diagnosticsLogLevel("INFO");
 
-        // when
         CompleteTracingSettings settings = builder.build();
 
-        // then
         assertThat(settings.samplingEnabled()).isTrue();
         assertThat(settings.samplingRatio()).isEqualTo(0.5);
         assertThat(settings.samplingRouteRatios()).isEmpty();
@@ -189,7 +129,6 @@ class TracingSettingsContractTest {
 
     @Test
     void singleLeafMutationPreservesOtherSettings() {
-        // given
         CompleteTracingSettings original = CompleteTracingSettings.builder()
                 .samplingEnabled(true)
                 .samplingRatio(1.0)
@@ -201,10 +140,8 @@ class TracingSettingsContractTest {
                 .diagnosticsLogLevel("INFO")
                 .build();
 
-        // when
         CompleteTracingSettings mutated = original.withExporterEnabled(false);
 
-        // then
         assertThat(mutated.exporterEnabled()).isFalse();
         assertThat(mutated.samplingRouteRatios())
                 .containsExactlyInAnyOrderEntriesOf(Map.of("checkout", 0.5, "search", 0.3));

@@ -49,8 +49,7 @@ class BeanTopologyTest {
                     TracingMetricsAutoConfiguration.class)
             )
             .withPropertyValues(
-                    "platform.tracing.configuration.authority=HELM",
-                    "platform.environment=LOCAL"
+                    "platform.tracing.configuration.authority=HELM"
             );
 
     private final ApplicationContextRunner controlledAgentRunner = contextRunner

@@ -216,7 +216,6 @@ class PackagedTracingCertificationTest {
         properties.put("logging.level.root", "ERROR");
         properties.put("platform.tracing.enabled", "true");
         properties.put("platform.tracing.configuration.authority", "ACTUATOR");
-        properties.put("platform.environment", "LOCAL");
         return new PackagedProcessLauncher.LaunchRequest(
                 scenario,
                 applicationBootJar,
@@ -259,7 +258,6 @@ class PackagedTracingCertificationTest {
         properties.put("platform.tracing.controlled-agent.expected-sha256", expectedAgentSha);
         properties.put("platform.tracing.enabled", "true");
         properties.put("platform.tracing.configuration.authority", "ACTUATOR");
-        properties.put("platform.environment", "LOCAL");
         return properties;
     }
 
