@@ -1,12 +1,16 @@
 package space.br1440.platform.tracing.autoconfigure.bootstrap;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import org.springframework.core.env.Environment;
 
 import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
@@ -15,10 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 @UtilityClass
 public final class TracingBootstrapSettingsResolver {
 
-    private static final List<String> OBSOLETE_SPRING_ONLY_KEYS = List.of(
-            "platform.tracing.log-level",
-            "platform.tracing.mode",
-            "platform.tracing.configuration.enabled");
+    private static final Map<String, String> OBSOLETE_SPRING_ONLY_KEYS = obsoleteKeys();
 
     private static final List<String> AGENT_BOOTSTRAP_KEEP_KEYS = List.of(
             "platform.tracing.sampling.enabled",
@@ -32,17 +33,37 @@ public final class TracingBootstrapSettingsResolver {
     public static TracingBootstrapSettings resolve(Environment environment) {
         failFastOnObsoleteSpringOnlyKeys(environment);
         warnOnAgentBootstrapKeys(environment);
-        return new TracingBootstrapSettings(
-                parseBoolean(environment,
-                        TracingBootstrapPropertyNames.ENABLED,
-                        true
-                ),
+        boolean tracingEnabled = parseBoolean(environment,
+                TracingBootstrapPropertyNames.ENABLED,
+                true);
+        TracingControlChannel controlChannel = parseRequiredEnum(environment,
+                TracingBootstrapPropertyNames.CONTROL_CHANNEL,
+                TracingControlChannel.class);
+        rejectDisabledWriteChannel(tracingEnabled, controlChannel);
+        return new TracingBootstrapSettings(tracingEnabled, controlChannel);
+    }
 
-                parseRequiredEnum(environment,
-                        TracingBootstrapPropertyNames.CONFIGURATION_AUTHORITY,
-                        TracingConfigurationAuthority.class
-                )
-        );
+    private static Map<String, String> obsoleteKeys() {
+        Map<String, String> keys = new LinkedHashMap<>();
+        keys.put("platform.tracing.log-level", "");
+        keys.put("platform.tracing.mode", "");
+        keys.put("platform.tracing.configuration.enabled", "");
+        keys.put("platform.tracing.configuration.authority", TracingBootstrapPropertyNames.CONTROL_CHANNEL);
+        return Collections.unmodifiableMap(keys);
+    }
+
+    private static void rejectDisabledWriteChannel(boolean tracingEnabled, TracingControlChannel controlChannel) {
+        if (tracingEnabled) {
+            return;
+        }
+        if (controlChannel == TracingControlChannel.CONFIG_SERVER) {
+            throw new TracingConfigurationGuardException(
+                    "Tracing disabled is incompatible with CONFIG_SERVER authority.");
+        }
+        if (controlChannel == TracingControlChannel.ACTUATOR) {
+            throw new TracingConfigurationGuardException(
+                    "Tracing disabled is incompatible with ACTUATOR authority.");
+        }
     }
 
     private static <E extends Enum<E>> E parseRequiredEnum(Environment environment,
@@ -50,11 +71,13 @@ public final class TracingBootstrapSettingsResolver {
                                                            Class<E> enumType) {
         String raw = environment.getProperty(propertyName);
         if (StringUtils.isNullOrBlank(raw)) {
-            if (TracingBootstrapPropertyNames.CONFIGURATION_AUTHORITY.equals(propertyName)) {
-                throw new IllegalStateException("Missing platform.tracing.configuration.authority");
-            }
-
             throw new IllegalStateException("Missing required property '" + propertyName + "'");
+        }
+        if (!raw.equals(raw.trim())) {
+            throw new IllegalStateException(
+                    "Invalid property '" + propertyName + "'='" + raw
+                            + "'. Surrounding whitespace is not accepted. Accepted values: "
+                            + List.of(enumType.getEnumConstants()));
         }
 
         return parseEnumValue(propertyName, raw, enumType);
@@ -71,13 +94,6 @@ public final class TracingBootstrapSettingsResolver {
         try {
             return Enum.valueOf(enumType, normalized);
         } catch (IllegalArgumentException exception) {
-            if (TracingBootstrapPropertyNames.CONFIGURATION_AUTHORITY.equals(propertyName)) {
-                throw new IllegalStateException(
-                        "Invalid platform.tracing.configuration.authority='" + raw
-                                + "'. Must be one of: HELM, CONFIG_SERVER, ACTUATOR",
-                        exception);
-            }
-
             throw new IllegalStateException(
                     "Invalid property '" + propertyName + "'='" + raw
                             + "'. Accepted values: " + List.of(enumType.getEnumConstants()),
@@ -97,16 +113,24 @@ public final class TracingBootstrapSettingsResolver {
         return switch (raw.trim().toLowerCase(Locale.ROOT)) {
             case "true" -> true;
             case "false" -> false;
-            default -> throw new IllegalStateException("Invalid property '" + propertyName + "'='" + raw + "'. Accepted values: true, false");
+            default -> throw new IllegalStateException(
+                    "Invalid property '" + propertyName + "'='" + raw + "'. Accepted values: true, false");
         };
     }
 
     private static void failFastOnObsoleteSpringOnlyKeys(Environment environment) {
-        for (String key : OBSOLETE_SPRING_ONLY_KEYS) {
-            if (environment.containsProperty(key)) {
+        for (Map.Entry<String, String> obsolete : OBSOLETE_SPRING_ONLY_KEYS.entrySet()) {
+            if (environment.containsProperty(obsolete.getKey())) {
+                String hint = obsolete.getValue();
+                if (hint.isBlank()) {
+                    throw new IllegalStateException(
+                            "Obsolete Spring-only property '" + obsolete.getKey()
+                                    + "' is no longer bound or applied. Remove it from configuration."
+                    );
+                }
                 throw new IllegalStateException(
-                        "Obsolete Spring-only property '" + key
-                                + "' is no longer bound or applied. Remove it from configuration."
+                        "Obsolete Spring-only property '" + obsolete.getKey()
+                                + "' is no longer bound or applied. Use '" + hint + "'."
                 );
             }
         }

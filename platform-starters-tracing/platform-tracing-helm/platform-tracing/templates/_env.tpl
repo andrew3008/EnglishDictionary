@@ -1,5 +1,8 @@
 {{- define "platform-tracing.v1.env" -}}
 {{- $tracing := required "platform-tracing.v1.env: \"tracing\" is required" .tracing -}}
+{{- if hasKey $tracing "configurationAuthority" -}}
+  {{- fail "platform-tracing.v1.env: configurationAuthority is obsolete; use controlChannel (STATIC|CONFIG_SERVER|ACTUATOR)" -}}
+{{- end -}}
 {{- $serviceName := required "platform-tracing.v1.env: platformTracing.serviceName is required" $tracing.serviceName -}}
 {{- $export := default dict $tracing.export -}}
 {{- $endpoint := default "http://otel-collector.ops-system.svc.cluster.local:4317" $export.endpoint -}}
@@ -19,8 +22,8 @@
 {{- if $attributePairs -}}
   {{- $env = append $env (dict "name" "OTEL_RESOURCE_ATTRIBUTES" "value" (join "," $attributePairs)) -}}
 {{- end -}}
-{{- if $tracing.configurationAuthority -}}
-  {{- $env = append $env (dict "name" "PLATFORM_TRACING_CONFIGURATION_AUTHORITY" "value" $tracing.configurationAuthority) -}}
+{{- if $tracing.controlChannel -}}
+  {{- $env = append $env (dict "name" "PLATFORM_TRACING_CONTROL_CHANNEL" "value" $tracing.controlChannel) -}}
 {{- end -}}
 {{- if $tracing.validationMode -}}
   {{- $env = append $env (dict "name" "PLATFORM_TRACING_VALIDATION_MODE" "value" $tracing.validationMode) -}}

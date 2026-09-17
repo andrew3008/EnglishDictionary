@@ -9,7 +9,7 @@ import javax.management.MBeanServer;
 
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationGuardException;
+import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsContractViolationException;

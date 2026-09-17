@@ -9,93 +9,88 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsResolver;
-import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority;
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityGuard;
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationGuardException;
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingControlChannel;
+import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 
 class TracingSettingsContractTest {
 
     @Test
-    void authorityHasOnlySupportedValues() {
-        TracingConfigurationAuthority[] values = TracingConfigurationAuthority.values();
+    void controlChannelHasOnlySupportedValues() {
+        // given
+        // when
+        TracingControlChannel[] values = TracingControlChannel.values();
 
+        // then
         assertThat(values).containsExactly(
-                TracingConfigurationAuthority.HELM,
-                TracingConfigurationAuthority.CONFIG_SERVER,
-                TracingConfigurationAuthority.ACTUATOR);
+                TracingControlChannel.STATIC,
+                TracingControlChannel.CONFIG_SERVER,
+                TracingControlChannel.ACTUATOR);
     }
 
     @Test
     void actuatorIsAllowedWithoutEnvironmentGate() {
-        var guard = new TracingConfigurationAuthorityGuard(
-                TracingConfigurationAuthority.ACTUATOR,
-                true);
+        // given
+        var environment = new MockEnvironment()
+                .withProperty("platform.tracing.control.channel", "ACTUATOR");
 
-        guard.validate();
+        // when
+        var settings = TracingBootstrapSettingsResolver.resolve(environment);
 
-        assertThat(guard.authority()).isEqualTo(TracingConfigurationAuthority.ACTUATOR);
-        assertThat(guard.isTracingEnabled()).isTrue();
+        // then
+        assertThat(settings.controlChannel()).isEqualTo(TracingControlChannel.ACTUATOR);
+        assertThat(settings.tracingEnabled()).isTrue();
     }
 
     @Test
-    void missingAuthorityIsRejected() {
+    void missingControlChannelIsRejected() {
+        // given
         var environment = new MockEnvironment();
 
+        // when
+        // then
         assertThatThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Missing platform.tracing.configuration.authority");
+                .hasMessageContaining("Missing required property 'platform.tracing.control.channel'");
     }
 
     @Test
-    void emptyAuthorityIsRejected() {
+    void emptyControlChannelIsRejected() {
+        // given
         var environment = new MockEnvironment()
-                .withProperty("platform.tracing.configuration.authority", "  ");
+                .withProperty("platform.tracing.control.channel", "  ");
 
+        // when
+        // then
         assertThatThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Missing platform.tracing.configuration.authority");
+                .hasMessageContaining("Missing required property 'platform.tracing.control.channel'");
     }
 
     @Test
-    void unknownAuthorityIsRejected() {
+    void unknownControlChannelIsRejected() {
+        // given
         var environment = new MockEnvironment()
-                .withProperty("platform.tracing.configuration.authority", "DEV_ACTUATOR");
+                .withProperty("platform.tracing.control.channel", "DEV_ACTUATOR");
 
+        // when
+        // then
         assertThatThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Invalid platform.tracing.configuration.authority");
-    }
-
-    @Test
-    void platformEnvironmentDoesNotSelectAuthority() {
-        var environment = new MockEnvironment()
-                ;
-
-        assertThatThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Missing platform.tracing.configuration.authority");
-    }
-
-    @Test
-    void deploymentEnvironmentNameDoesNotSelectAuthority() {
-        var environment = new MockEnvironment()
-                .withProperty("deployment.environment.name", "production");
-
-        assertThatThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Missing platform.tracing.configuration.authority");
+                .hasMessageContaining("Invalid property 'platform.tracing.control.channel'");
     }
 
     @Test
     void disabledTracingWithConfigServerIsRejected() {
+        // given
         var environment = new MockEnvironment()
-                .withProperty("platform.tracing.configuration.authority", "CONFIG_SERVER")
+                .withProperty("platform.tracing.control.channel", "CONFIG_SERVER")
                 .withProperty("platform.tracing.enabled", "false");
-        var guard = new TracingConfigurationAuthorityGuard(
-                TracingBootstrapSettingsResolver.resolve(environment));
 
-        assertThatThrownBy(guard::validate)
-                .isInstanceOf(TracingConfigurationGuardException.class);
+        // when
+        // then
+        assertThatThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
+                .isInstanceOf(TracingConfigurationGuardException.class)
+                .hasMessage("Tracing disabled is incompatible with CONFIG_SERVER authority.");
     }
 
     @Test

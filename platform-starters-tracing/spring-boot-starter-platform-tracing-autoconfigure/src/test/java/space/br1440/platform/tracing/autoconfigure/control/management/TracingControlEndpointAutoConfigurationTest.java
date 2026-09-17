@@ -25,7 +25,7 @@ class TracingControlEndpointAutoConfigurationTest {
 
     @Test
     void actuatorRegistersEndpointAndMutationService() {
-        runner.withPropertyValues("platform.tracing.configuration.authority=ACTUATOR")
+        runner.withPropertyValues("platform.tracing.control.channel=ACTUATOR")
                 .run(context -> {
                     assertThat(context).hasSingleBean(TracingControlEndpoint.class);
                     assertThat(context).hasSingleBean(TracingSettingsMutationService.class);
@@ -36,8 +36,11 @@ class TracingControlEndpointAutoConfigurationTest {
 
     @Test
     void leftoverPlatformEnvironmentDoesNotDisableActuator() {
+        // given
+        // when
+        // then
         runner.withPropertyValues(
-                        "platform.tracing.configuration.authority=ACTUATOR",
+                        "platform.tracing.control.channel=ACTUATOR",
                         "platform.environment=PRODUCTION")
                 .run(context -> {
                     assertThat(context).hasSingleBean(TracingControlEndpoint.class);
@@ -46,13 +49,16 @@ class TracingControlEndpointAutoConfigurationTest {
     }
 
     @Test
-    void nonActuatorAuthoritiesHaveNoWriteSurface() {
-        assertAbsent("HELM");
+    void nonActuatorChannelsHaveNoWriteSurface() {
+        // given
+        // when
+        // then
+        assertAbsent("STATIC");
         assertAbsent("CONFIG_SERVER");
     }
 
-    private void assertAbsent(String authority) {
-        runner.withPropertyValues("platform.tracing.configuration.authority=" + authority)
+    private void assertAbsent(String channel) {
+        runner.withPropertyValues("platform.tracing.control.channel=" + channel)
                 .run(context -> {
                     assertThat(context).doesNotHaveBean(TracingControlEndpoint.class);
                     assertThat(context).doesNotHaveBean(TracingSettingsMutationService.class);

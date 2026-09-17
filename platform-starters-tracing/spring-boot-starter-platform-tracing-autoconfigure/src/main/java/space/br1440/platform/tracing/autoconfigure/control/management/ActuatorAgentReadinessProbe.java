@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.autoconfigure.control.management;
 
 import org.springframework.context.SmartLifecycle;
 
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationGuardException;
+import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsContractViolationException;
 import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
 

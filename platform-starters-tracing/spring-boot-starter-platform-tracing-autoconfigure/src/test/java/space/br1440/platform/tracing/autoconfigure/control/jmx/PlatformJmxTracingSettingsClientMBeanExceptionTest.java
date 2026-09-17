@@ -24,7 +24,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceTestSupport;
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationGuardException;
+import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsContractViolationException;

@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
 
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 
@@ -20,11 +20,11 @@ class TracingEnabledAutoConfigurationTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
-                    TracingConfigurationAuthorityAutoConfiguration.class,
+                    TracingControlChannelAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class)
             )
             .withPropertyValues(
-                    "platform.tracing.configuration.authority=HELM"
+                    "platform.tracing.control.channel=STATIC"
             );
 
     @Test

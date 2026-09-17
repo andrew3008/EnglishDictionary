@@ -13,10 +13,10 @@
           "minLength": 1,
           "description": "Value of OTEL_SERVICE_NAME. Required."
         },
-        "configurationAuthority": {
+        "controlChannel": {
           "type": "string",
-          "enum": ["", "HELM", "CONFIG_SERVER", "ACTUATOR"],
-          "description": "Value of PLATFORM_TRACING_CONFIGURATION_AUTHORITY. Empty means the chart does not emit the variable. Library Java default is not introduced; production umbrellas should set HELM."
+          "enum": ["", "STATIC", "CONFIG_SERVER", "ACTUATOR"],
+          "description": "Value of PLATFORM_TRACING_CONTROL_CHANNEL. Empty means the chart does not emit the variable. Library Java default is not introduced; production umbrellas should set STATIC, CONFIG_SERVER or ACTUATOR explicitly."
         },
         "validationMode": {
           "type": "string",

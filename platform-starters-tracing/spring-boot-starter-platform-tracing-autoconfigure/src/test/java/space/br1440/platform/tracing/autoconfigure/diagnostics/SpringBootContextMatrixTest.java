@@ -11,7 +11,7 @@ import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
@@ -26,11 +26,11 @@ class SpringBootContextMatrixTest {
 
     private final ApplicationContextRunner baseRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
-                    TracingConfigurationAuthorityAutoConfiguration.class,
+                    TracingControlChannelAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class,
                     TracingRuntimeDiagnosticsAutoConfiguration.class,
                     TracingMetricsAutoConfiguration.class))
-            .withPropertyValues("platform.tracing.configuration.authority=HELM");
+            .withPropertyValues("platform.tracing.control.channel=STATIC");
 
     private final ApplicationContextRunner controlledAgentRunner = baseRunner
             .withInitializer(ControlledAgentTestRuntime::initialize)

@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.autoconfigure.control.authority;
+package space.br1440.platform.tracing.autoconfigure.control.channel;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -20,6 +20,9 @@ import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherence
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingControlChannel;
+import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerTracingSettingsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxTracingSettingsClient;
@@ -27,47 +30,39 @@ import space.br1440.platform.tracing.autoconfigure.control.management.TracingSet
 import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsMutationService;
 import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPlatformJmxPlane;
 
-class AuthorityPostureMatrixTest {
+class ControlChannelPostureMatrixTest {
 
-    private final ApplicationContextRunner guardRunner = new ApplicationContextRunner()
-            .withConfiguration(AutoConfigurations.of(
-                    TracingConfigurationAuthorityAutoConfiguration.class));
+    private final ApplicationContextRunner bootstrapRunner = new ApplicationContextRunner()
+            .withConfiguration(AutoConfigurations.of(TracingControlChannelAutoConfiguration.class));
 
     private final ApplicationContextRunner actuatorStackRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
-                    TracingConfigurationAuthorityAutoConfiguration.class,
+                    TracingControlChannelAutoConfiguration.class,
                     TracingSettingsControlAutoConfiguration.class));
 
-    @ParameterizedTest(name = "legal: authority={0}")
-    @ValueSource(strings = {"HELM", "CONFIG_SERVER", "ACTUATOR"})
-    void legalAuthority_startsAndExposesGuard(String authority) {
-        guardRunner
-                .withPropertyValues("platform.tracing.configuration.authority=" + authority)
+    @ParameterizedTest(name = "legal: channel={0}")
+    @ValueSource(strings = {"STATIC", "CONFIG_SERVER", "ACTUATOR"})
+    void legalChannelStartsAndExposesBootstrapSettings(String channel) {
+        // given
+        // when
+        // then
+        bootstrapRunner
+                .withPropertyValues("platform.tracing.control.channel=" + channel)
                 .run(context -> {
                     assertThat(context).hasNotFailed();
-                    assertThat(context).hasSingleBean(TracingConfigurationAuthorityGuard.class);
-                    TracingConfigurationAuthorityGuard guard =
-                            context.getBean(TracingConfigurationAuthorityGuard.class);
-                    assertThat(guard.authority().name()).isEqualTo(authority);
+                    assertThat(context).hasSingleBean(TracingBootstrapSettings.class);
+                    assertThat(context.getBean(TracingBootstrapSettings.class).controlChannel().name())
+                            .isEqualTo(channel);
                 });
     }
 
     @Test
-    void actuatorAuthorityStartsWithoutEnvironmentGate() {
-        guardRunner
-                .withPropertyValues("platform.tracing.configuration.authority=ACTUATOR")
-                .run(context -> {
-                    assertThat(context).hasNotFailed();
-                    TracingConfigurationAuthorityGuard guard =
-                            context.getBean(TracingConfigurationAuthorityGuard.class);
-                    assertThat(guard.authority().name()).isEqualTo("ACTUATOR");
-                });
-    }
-
-    @Test
-    void helmAuthorityJmxControlBeansAbsent() {
+    void staticChannelDoesNotCreateWriteBeans() {
+        // given
+        // when
+        // then
         actuatorStackRunner
-                .withPropertyValues("platform.tracing.configuration.authority=HELM")
+                .withPropertyValues("platform.tracing.control.channel=STATIC")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).doesNotHaveBean(PlatformJmxTracingSettingsClient.class);
@@ -76,16 +71,20 @@ class AuthorityPostureMatrixTest {
     }
 
     @Test
-    void configServerAuthorityJmxControlPresentWithoutActuatorWrite() throws Exception {
+    void configServerCreatesJmxWithoutActuatorWrite() throws Exception {
+        // given
         try (FakeAgentPlatformJmxPlane ignored =
                      FakeAgentPlatformJmxPlane.compliant(UUID.randomUUID().toString(), 0L)) {
             AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard();
             TracingDeploymentDiagnostics startupDiagnostics =
                     new AgentStartupVerifier(coherenceGuard, "1.2.3")
                             .verify(true, true, false, true);
+
+            // when
+            // then
             new ApplicationContextRunner()
                     .withConfiguration(AutoConfigurations.of(
-                            TracingConfigurationAuthorityAutoConfiguration.class,
+                            TracingControlChannelAutoConfiguration.class,
                             PlatformJmxControlAutoConfiguration.class,
                             ConfigServerTracingSettingsAutoConfiguration.class))
                     .withBean(AgentReadinessCoherenceGuard.class, () -> coherenceGuard)
@@ -105,7 +104,7 @@ class AuthorityPostureMatrixTest {
                                                 "platform.tracing.policy.diagnostics.log-level", "INFO"));
                         context.getEnvironment().getPropertySources().addFirst(authoritative);
                     })
-                    .withPropertyValues("platform.tracing.configuration.authority=CONFIG_SERVER")
+                    .withPropertyValues("platform.tracing.control.channel=CONFIG_SERVER")
                     .run(context -> {
                         assertThat(context).hasNotFailed();
                         assertThat(context).hasSingleBean(PlatformJmxTracingSettingsClient.class);
@@ -117,6 +116,7 @@ class AuthorityPostureMatrixTest {
     @ParameterizedTest(name = "userClientPresent={0}")
     @ValueSource(booleans = {false, true})
     void configServerWithoutAgentReadyFailsClosedBeforeJmxDiscovery(boolean userClientPresent) {
+        // given
         MBeanServer server = mock(MBeanServer.class);
         AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard(server);
         ApplicationContextRunner runner = configServerJmxStack(coherenceGuard, incompatibleStartupDiagnostics());
@@ -126,44 +126,19 @@ class AuthorityPostureMatrixTest {
                     () -> new PlatformJmxTracingSettingsClient(server, coherenceGuard));
         }
 
+        // when
+        // then
         runner.run(context -> assertStartupTrustFailureWithoutJmx(context, server));
     }
 
-    @ParameterizedTest(name = "DISABLED incompatible: authority={0}")
-    @ValueSource(strings = {"CONFIG_SERVER", "ACTUATOR"})
-    void disabledMode_withWriteAuthority_failsClosed(String authority) {
-        guardRunner
-                .withPropertyValues(
-                        "platform.tracing.configuration.authority=" + authority,
-                        "platform.tracing.enabled=false")
-                .run(context -> {
-                    assertThat(context).hasFailed();
-                    String msg = context.getStartupFailure().getMessage()
-                            + " / " + (context.getStartupFailure().getCause() == null ? ""
-                                    : context.getStartupFailure().getCause().getMessage());
-                    assertThat(msg).containsIgnoringCase("Tracing disabled is incompatible");
-                });
-    }
-
-    @Test
-    void helmDisabledMode_starts() {
-        guardRunner
-                .withPropertyValues(
-                        "platform.tracing.configuration.authority=HELM",
-                        "platform.tracing.enabled=false")
-                .run(context -> {
-                    assertThat(context).hasNotFailed();
-                    TracingConfigurationAuthorityGuard guard =
-                            context.getBean(TracingConfigurationAuthorityGuard.class);
-                    assertThat(guard.isTracingEnabled()).isFalse();
-                });
-    }
-
-    @ParameterizedTest(name = "zero-write proof: authority={0}")
-    @ValueSource(strings = {"HELM", "CONFIG_SERVER"})
-    void readOnlyAuthority_actuatorAdapterPhysicallyAbsent(String authority) {
+    @ParameterizedTest(name = "zero-write: channel={0}")
+    @ValueSource(strings = {"STATIC", "CONFIG_SERVER"})
+    void nonActuatorChannelHasNoActuatorWriter(String channel) {
+        // given
+        // when
+        // then
         actuatorStackRunner
-                .withPropertyValues("platform.tracing.configuration.authority=" + authority)
+                .withPropertyValues("platform.tracing.control.channel=" + channel)
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).doesNotHaveBean(TracingSettingsMutationService.class);
@@ -171,10 +146,13 @@ class AuthorityPostureMatrixTest {
     }
 
     @Test
-    void helmDisabled_actuatorWriteAdapterPhysicallyAbsent() {
+    void disabledStaticHasNoActuatorWriter() {
+        // given
+        // when
+        // then
         actuatorStackRunner
                 .withPropertyValues(
-                        "platform.tracing.configuration.authority=HELM",
+                        "platform.tracing.control.channel=STATIC",
                         "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -183,17 +161,19 @@ class AuthorityPostureMatrixTest {
     }
 
     @Test
-    void leftoverPlatformEnvironmentDoesNotChangeAuthority() {
-        guardRunner
+    void leftoverPlatformKeysDoNotChangeSelectedChannel() {
+        // given
+        // when
+        // then
+        bootstrapRunner
                 .withPropertyValues(
-                        "platform.tracing.configuration.authority=HELM",
+                        "platform.tracing.control.channel=STATIC",
                         "platform.environment=LOCAL",
                         "deployment.environment.name=production")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
-                    TracingConfigurationAuthorityGuard guard =
-                            context.getBean(TracingConfigurationAuthorityGuard.class);
-                    assertThat(guard.authority().name()).isEqualTo("HELM");
+                    assertThat(context.getBean(TracingBootstrapSettings.class).controlChannel())
+                            .isEqualTo(TracingControlChannel.STATIC);
                 });
     }
 
@@ -202,12 +182,12 @@ class AuthorityPostureMatrixTest {
             TracingDeploymentDiagnostics startupDiagnostics) {
         return new ApplicationContextRunner()
                 .withConfiguration(AutoConfigurations.of(
-                        TracingConfigurationAuthorityAutoConfiguration.class,
+                        TracingControlChannelAutoConfiguration.class,
                         PlatformJmxControlAutoConfiguration.class,
                         ConfigServerTracingSettingsAutoConfiguration.class))
                 .withBean(AgentReadinessCoherenceGuard.class, () -> coherenceGuard)
                 .withBean(TracingDeploymentDiagnostics.class, () -> startupDiagnostics)
-                .withPropertyValues("platform.tracing.configuration.authority=CONFIG_SERVER");
+                .withPropertyValues("platform.tracing.control.channel=CONFIG_SERVER");
     }
 
     private static TracingDeploymentDiagnostics incompatibleStartupDiagnostics() {

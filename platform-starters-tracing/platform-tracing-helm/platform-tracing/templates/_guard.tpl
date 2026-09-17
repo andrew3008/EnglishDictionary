@@ -20,7 +20,7 @@
     {{- fail (printf "platform-tracing.v1.assertLaunchEnv: env contains duplicate variable %s" $name) -}}
   {{- end -}}
   {{- $_ := set $seen $name true -}}
-  {{- if or (hasPrefix "OTEL_" $name) (eq $name "PLATFORM_TRACING_CONFIGURATION_AUTHORITY") (eq $name "PLATFORM_TRACING_VALIDATION_MODE") -}}
+  {{- if or (hasPrefix "OTEL_" $name) (eq $name "PLATFORM_TRACING_CONTROL_CHANNEL") (eq $name "PLATFORM_TRACING_CONFIGURATION_AUTHORITY") (eq $name "PLATFORM_TRACING_VALIDATION_MODE") -}}
     {{- fail (printf "platform-tracing.v1.assertLaunchEnv: env variable %s is reserved for platform-tracing.v1.env; remove it from the application env" $name) -}}
   {{- end -}}
   {{- if has $name $jvmVariableNames -}}

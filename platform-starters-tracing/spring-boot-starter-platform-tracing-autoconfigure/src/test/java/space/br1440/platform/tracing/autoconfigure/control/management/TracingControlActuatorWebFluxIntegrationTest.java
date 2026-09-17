@@ -79,7 +79,7 @@ class TracingControlActuatorWebFluxIntegrationTest {
         return new SpringApplicationBuilder(EmptyApp.class)
                 .web(WebApplicationType.REACTIVE)
                 .properties(
-                        "platform.tracing.configuration.authority=ACTUATOR",
+                        "platform.tracing.control.channel=ACTUATOR",
                         "management.server.port=0",
                         "management.endpoints.web.base-path=/management",
                         "management.endpoints.web.exposure.include=tracingControl",

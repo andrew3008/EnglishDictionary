@@ -44,8 +44,8 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
-            name: PLATFORM_TRACING_CONFIGURATION_AUTHORITY
-            value: HELM
+            name: PLATFORM_TRACING_CONTROL_CHANNEL
+            value: STATIC
       - notContains:
           path: spec.template.spec.containers[0].env
           content:
@@ -65,7 +65,16 @@ tests:
             name: PLATFORM_TRACING_VALIDATION_MODE
             value: STRICT
 
-  - it: fails when the application env sets PLATFORM_TRACING_CONFIGURATION_AUTHORITY itself
+  - it: fails when the application env sets PLATFORM_TRACING_CONTROL_CHANNEL itself
+    set:
+      deployment.env:
+        - name: PLATFORM_TRACING_CONTROL_CHANNEL
+          value: ACTUATOR
+    asserts:
+      - failedTemplate:
+          errorPattern: "reserved for platform-tracing.v1.env"
+
+  - it: fails when the application env sets obsolete PLATFORM_TRACING_CONFIGURATION_AUTHORITY
     set:
       deployment.env:
         - name: PLATFORM_TRACING_CONFIGURATION_AUTHORITY
@@ -73,6 +82,22 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "reserved for platform-tracing.v1.env"
+
+  - it: does not emit PLATFORM_TRACING_CONTROL_CHANNEL when controlChannel is empty
+    set:
+      platformTracing.controlChannel: ""
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PLATFORM_TRACING_CONTROL_CHANNEL
+
+  - it: fails when obsolete configurationAuthority is still set
+    set:
+      platformTracing.configurationAuthority: HELM
+    asserts:
+      - failedTemplate:
+          errorPattern: "configurationAuthority is obsolete"
 
   - it: preserves the application's own JDK_JAVA_OPTIONS and valueFrom env untouched
     asserts:

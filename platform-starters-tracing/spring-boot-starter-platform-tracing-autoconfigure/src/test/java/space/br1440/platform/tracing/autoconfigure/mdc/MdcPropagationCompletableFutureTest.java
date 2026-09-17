@@ -46,7 +46,7 @@ import static org.assertj.core.api.Assertions.assertThat;
                         + "space.br1440.platform.tracing.autoconfigure.metrics."
                         + "TracingMetricsAutoConfiguration",
                 "platform.tracing.enabled=false",
-                "platform.tracing.configuration.authority=HELM"
+                "platform.tracing.control.channel=STATIC"
         })
 class MdcPropagationCompletableFutureTest {
 

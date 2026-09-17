@@ -11,11 +11,11 @@ import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfigurati
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationGuardException;
+import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 
 @AutoConfiguration
 @AutoConfigureAfter(TracingRuntimeAutoConfiguration.class)
-@Conditional(PlatformJmxControlAutoConfiguration.PlatformJmxControlAuthorityCondition.class)
+@Conditional(PlatformJmxControlAutoConfiguration.PlatformJmxControlChannelCondition.class)
 public class PlatformJmxControlAutoConfiguration {
 
     @Bean
@@ -33,14 +33,14 @@ public class PlatformJmxControlAutoConfiguration {
         return client;
     }
 
-    static final class PlatformJmxControlAuthorityCondition extends AnyNestedCondition {
+        static final class PlatformJmxControlChannelCondition extends AnyNestedCondition {
 
-        PlatformJmxControlAuthorityCondition() {
+        PlatformJmxControlChannelCondition() {
             super(ConfigurationPhase.REGISTER_BEAN);
         }
 
         @ConditionalOnProperty(
-                name = "platform.tracing.configuration.authority",
+                name = "platform.tracing.control.channel",
                 havingValue = "ACTUATOR"
         )
         @SuppressWarnings("unused")
@@ -48,7 +48,7 @@ public class PlatformJmxControlAutoConfiguration {
         }
 
         @ConditionalOnProperty(
-                name = "platform.tracing.configuration.authority",
+                name = "platform.tracing.control.channel",
                 havingValue = "CONFIG_SERVER"
         )
         @SuppressWarnings("unused")

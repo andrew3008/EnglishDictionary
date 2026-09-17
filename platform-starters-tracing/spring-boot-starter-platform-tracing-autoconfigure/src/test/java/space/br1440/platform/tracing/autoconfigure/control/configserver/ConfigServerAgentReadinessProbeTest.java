@@ -16,7 +16,7 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.mock.env.MockEnvironment;
 
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationGuardException;
+import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
 import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;

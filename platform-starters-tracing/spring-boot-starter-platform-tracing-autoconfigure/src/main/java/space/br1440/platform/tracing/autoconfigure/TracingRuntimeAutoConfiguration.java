@@ -18,7 +18,7 @@ import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.agent.OtelJavaAgentMarkerDetector;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
@@ -34,7 +34,7 @@ import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 
 @AutoConfiguration
-@AutoConfigureAfter(TracingConfigurationAuthorityAutoConfiguration.class)
+@AutoConfigureAfter(TracingControlChannelAutoConfiguration.class)
 @ConditionalOnClass(OpenTelemetry.class)
 @EnableConfigurationProperties(TracingProperties.class)
 @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")

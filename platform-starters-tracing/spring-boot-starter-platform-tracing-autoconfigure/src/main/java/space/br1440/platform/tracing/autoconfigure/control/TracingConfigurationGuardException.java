@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.autoconfigure.control.authority;
+package space.br1440.platform.tracing.autoconfigure.control;
 
 public final class TracingConfigurationGuardException extends RuntimeException {
 

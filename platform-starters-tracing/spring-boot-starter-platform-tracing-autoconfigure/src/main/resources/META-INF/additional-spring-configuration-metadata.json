@@ -7,9 +7,9 @@
       "defaultValue": true
     },
     {
-      "name": "platform.tracing.configuration.authority",
-      "type": "space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority",
-      "description": "Единственный разрешенный источник изменения runtime-политики трассировки. Обязателен, значения HELM, CONFIG_SERVER, ACTUATOR. Библиотечного default нет."
+      "name": "platform.tracing.control.channel",
+      "type": "space.br1440.platform.tracing.autoconfigure.bootstrap.TracingControlChannel",
+      "description": "Единственный разрешённый Spring write-intake для runtime-политики трассировки. Обязателен, значения STATIC, CONFIG_SERVER, ACTUATOR. Библиотечного default нет. STATIC не создаёт write-клиент."
     },
     {
       "name": "platform.tracing.kafka.batch-links-enabled",

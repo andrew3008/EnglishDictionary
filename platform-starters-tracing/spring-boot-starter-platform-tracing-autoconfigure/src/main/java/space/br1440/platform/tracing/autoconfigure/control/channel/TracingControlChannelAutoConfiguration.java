@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.autoconfigure.control.authority;
+package space.br1440.platform.tracing.autoconfigure.control.channel;
 
 import jakarta.annotation.Nonnull;
 
@@ -15,6 +15,7 @@ import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfigurati
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsRegistrar;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsResolver;
+import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerTracingSettingsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsControlAutoConfiguration;
@@ -26,16 +27,14 @@ import space.br1440.platform.tracing.autoconfigure.control.management.TracingSet
         TracingSettingsControlAutoConfiguration.class,
         ConfigServerTracingSettingsAutoConfiguration.class
 })
-public class TracingConfigurationAuthorityAutoConfiguration {
-
-    public static final String GUARD_BEAN_NAME = "tracingConfigurationAuthorityGuard";
+public class TracingControlChannelAutoConfiguration {
 
     @Bean
-    public static BeanFactoryPostProcessor tracingConfigurationAuthorityGuardProcessor() {
-        return new AuthorityGuardBeanFactoryPostProcessor();
+    public static BeanFactoryPostProcessor tracingControlChannelBootstrapProcessor() {
+        return new ControlChannelBootstrapProcessor();
     }
 
-    static final class AuthorityGuardBeanFactoryPostProcessor implements BeanFactoryPostProcessor, EnvironmentAware {
+    static final class ControlChannelBootstrapProcessor implements BeanFactoryPostProcessor, EnvironmentAware {
 
         private Environment environment;
 
@@ -54,11 +53,6 @@ public class TracingConfigurationAuthorityAutoConfiguration {
             }
 
             TracingBootstrapSettingsRegistrar.register(beanFactory, settings);
-
-            TracingConfigurationAuthorityGuard guard = new TracingConfigurationAuthorityGuard(settings).validate();
-            if (!beanFactory.containsSingleton(GUARD_BEAN_NAME)) {
-                beanFactory.registerSingleton(GUARD_BEAN_NAME, guard);
-            }
         }
     }
 }

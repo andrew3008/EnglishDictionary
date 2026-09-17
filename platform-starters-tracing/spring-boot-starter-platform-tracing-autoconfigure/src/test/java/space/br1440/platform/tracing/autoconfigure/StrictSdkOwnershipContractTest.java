@@ -19,7 +19,7 @@ class StrictSdkOwnershipContractTest {
     @Test
     void bootstrapSettingsDefaultToEnabledTracing() {
         assertThat(TracingBootstrapSettingsResolver.resolve(new MockEnvironment()
-                .withProperty("platform.tracing.configuration.authority", "HELM")
+                .withProperty("platform.tracing.control.channel", "STATIC")
                 ).tracingEnabled()).isTrue();
     }
 

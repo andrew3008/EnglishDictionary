@@ -15,7 +15,7 @@ import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherence
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
-import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority;
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingControlChannel;
 import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsReadModel;
 import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedTracingSettingsReader;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.DiagnosticsObservation;
@@ -92,7 +92,7 @@ public final class TracingStatusAssembler {
         return new TracingStatusSnapshot(
                 TracingStatusSnapshot.CURRENT_SCHEMA_VERSION,
                 bootstrapSettings.tracingEnabled(),
-                bootstrapSettings.authority().name(),
+                bootstrapSettings.controlChannel(),
                 agentSection(diagnostics),
                 runtimeSection(),
                 settingsStatus(diagnostics),
@@ -105,7 +105,7 @@ public final class TracingStatusAssembler {
         return new TracingStatusSnapshot(
                 TracingStatusSnapshot.CURRENT_SCHEMA_VERSION,
                 bootstrapSettings.tracingEnabled(),
-                bootstrapSettings.authority().name(),
+                bootstrapSettings.controlChannel(),
                 agentSection(diagnostics, AgentRuntimeState.EXTENSION_INCOMPATIBLE, failureCode),
                 Map.of(),
                 TracingStatusSnapshot.SettingsStatus.absent(SettingsAbsenceReason.AGENT_UNAVAILABLE),
@@ -331,8 +331,8 @@ public final class TracingStatusAssembler {
             return SettingsAbsenceReason.TRACING_DISABLED;
         }
 
-        if (bootstrapSettings.authority() == TracingConfigurationAuthority.HELM) {
-            return SettingsAbsenceReason.AUTHORITY_HAS_NO_ACCEPTED_SETTINGS;
+        if (bootstrapSettings.controlChannel() == TracingControlChannel.STATIC) {
+            return SettingsAbsenceReason.CONTROL_CHANNEL_HAS_NO_ACCEPTED_SETTINGS;
         }
 
         if (runtimeState != AgentRuntimeState.AGENT_READY) {

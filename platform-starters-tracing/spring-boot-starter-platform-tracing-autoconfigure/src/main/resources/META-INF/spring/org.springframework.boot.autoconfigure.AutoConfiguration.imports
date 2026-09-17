@@ -1,4 +1,4 @@
-space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration
+space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxControlAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerTracingSettingsAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration

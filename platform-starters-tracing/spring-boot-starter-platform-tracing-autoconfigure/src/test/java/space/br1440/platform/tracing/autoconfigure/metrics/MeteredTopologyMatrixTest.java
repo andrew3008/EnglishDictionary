@@ -17,7 +17,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
@@ -34,11 +34,11 @@ class MeteredTopologyMatrixTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
-                    TracingConfigurationAuthorityAutoConfiguration.class,
+                    TracingControlChannelAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class,
                     TracingMetricsAutoConfiguration.class)
             )
-            .withPropertyValues("platform.tracing.configuration.authority=HELM")
+            .withPropertyValues("platform.tracing.control.channel=STATIC")
             .withInitializer(ControlledAgentTestRuntime::initializeWithExporter)
             .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withUserConfiguration(MeterRegistryConfiguration.class);

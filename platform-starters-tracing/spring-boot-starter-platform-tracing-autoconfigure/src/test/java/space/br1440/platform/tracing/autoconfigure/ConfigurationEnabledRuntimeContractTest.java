@@ -15,7 +15,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.TracingRuntimeDiagnosticsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup.TracingStartupContractHealthAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.status.TracingStatusAutoConfiguration;
@@ -30,22 +30,22 @@ class ConfigurationEnabledRuntimeContractTest {
 
     private final ApplicationContextRunner runtimeRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
-                    TracingConfigurationAuthorityAutoConfiguration.class,
+                    TracingControlChannelAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class))
             .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withPropertyValues(
-                    "platform.tracing.configuration.authority=HELM");
+                    "platform.tracing.control.channel=STATIC");
 
     private final ApplicationContextRunner observableRuntimeRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
-                    TracingConfigurationAuthorityAutoConfiguration.class,
+                    TracingControlChannelAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class,
                     TracingRuntimeDiagnosticsAutoConfiguration.class,
                     TracingStartupContractHealthAutoConfiguration.class,
                     TracingStatusAutoConfiguration.class))
             .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withPropertyValues(
-                    "platform.tracing.configuration.authority=HELM");
+                    "platform.tracing.control.channel=STATIC");
 
     @Test
     void agentEnabledWithReadyAgentKeepsManualTracingOperational() {

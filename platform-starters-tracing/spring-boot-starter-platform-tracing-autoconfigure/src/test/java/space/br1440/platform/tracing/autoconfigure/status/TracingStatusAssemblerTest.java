@@ -12,13 +12,18 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.management.MBeanServer;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceTestSupport;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
-import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority;
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingControlChannel;
 import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
 import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedPolicySummary;
 import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsReadModel;
@@ -37,37 +42,60 @@ import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 
 class TracingStatusAssemblerTest {
 
-    @Test
-    void reasonPriorityStartsWithDisabledThenAuthority() {
-        TracingStatusAssembler disabled = assembler(
-                false,
-                TracingConfigurationAuthority.HELM,
-                diagnostics(AgentRuntimeState.AGENT_MISSING)
-        );
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-        TracingStatusAssembler helm = assembler(
+    @ParameterizedTest
+    @EnumSource(TracingControlChannel.class)
+    void controlChannelSerializesAsJsonString(TracingControlChannel channel) throws Exception {
+        // given
+        TracingStatusSnapshot snapshot = assembler(
                 true,
-                TracingConfigurationAuthority.HELM,
+                channel,
                 diagnostics(AgentRuntimeState.AGENT_MISSING)
-        );
+        ).assemble();
 
-        assertThat(disabled.assemble().settings().reason())
-                .isEqualTo(SettingsAbsenceReason.TRACING_DISABLED);
-        assertThat(helm.assemble().settings().reason())
-                .isEqualTo(SettingsAbsenceReason.AUTHORITY_HAS_NO_ACCEPTED_SETTINGS);
+        // when
+        JsonNode node = OBJECT_MAPPER.valueToTree(Map.of("controlChannel", snapshot.controlChannel()));
+
+        // then
+        assertThat(node.get("controlChannel").isTextual()).isTrue();
+        assertThat(node.get("controlChannel").asText()).isEqualTo(channel.name());
+        assertThat(snapshot.controlChannel()).isEqualTo(channel);
     }
 
     @Test
-    void writeAuthorityDistinguishesAgentUnavailableAndPolicyNotAccepted() {
+    void reasonPriorityStartsWithDisabledThenControlChannel() {
+        // given
+        TracingStatusAssembler disabled = assembler(
+                false,
+                TracingControlChannel.STATIC,
+                diagnostics(AgentRuntimeState.AGENT_MISSING)
+        );
+        TracingStatusAssembler staticChannel = assembler(
+                true,
+                TracingControlChannel.STATIC,
+                diagnostics(AgentRuntimeState.AGENT_MISSING)
+        );
+
+        // when
+        // then
+        assertThat(disabled.assemble().settings().reason())
+                .isEqualTo(SettingsAbsenceReason.TRACING_DISABLED);
+        assertThat(staticChannel.assemble().settings().reason())
+                .isEqualTo(SettingsAbsenceReason.CONTROL_CHANNEL_HAS_NO_ACCEPTED_SETTINGS);
+    }
+
+    @Test
+    void writeChannelDistinguishesAgentUnavailableAndPolicyNotAccepted() {
         TracingStatusAssembler unavailable = assembler(
                 true,
-                TracingConfigurationAuthority.CONFIG_SERVER,
+                TracingControlChannel.CONFIG_SERVER,
                 diagnostics(AgentRuntimeState.EXTENSION_FAILED)
         );
 
         TracingStatusAssembler notAccepted = assembler(
                 true,
-                TracingConfigurationAuthority.CONFIG_SERVER,
+                TracingControlChannel.CONFIG_SERVER,
                 diagnostics(AgentRuntimeState.AGENT_READY)
         );
 
@@ -89,7 +117,7 @@ class TracingStatusAssemblerTest {
 
         TracingStatusAssembler assembler = assembler(
                 true,
-                TracingConfigurationAuthority.CONFIG_SERVER,
+                TracingControlChannel.CONFIG_SERVER,
                 state,
                 projection
         );
@@ -121,7 +149,7 @@ class TracingStatusAssemblerTest {
 
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 true,
-                TracingConfigurationAuthority.HELM);
+                TracingControlChannel.STATIC);
 
         TracingStatusAssembler assembler = new TracingStatusAssembler(
                 NoopTraceOperations.INSTANCE,
@@ -153,7 +181,7 @@ class TracingStatusAssemblerTest {
         );
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 true,
-                TracingConfigurationAuthority.HELM);
+                TracingControlChannel.STATIC);
         TracingStatusAssembler assembler = new TracingStatusAssembler(
                 NoopTraceOperations.INSTANCE,
                 NoOpTracingRuntime.noop(),
@@ -228,7 +256,7 @@ class TracingStatusAssemblerTest {
     private static Map<String, Object> watchdogSectionOf(PlatformTracingJmxClient jmxClient) {
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 true,
-                TracingConfigurationAuthority.HELM);
+                TracingControlChannel.STATIC);
         TracingStatusAssembler assembler = new TracingStatusAssembler(
                 NoopTraceOperations.INSTANCE,
                 NoOpTracingRuntime.noop(),
@@ -266,7 +294,7 @@ class TracingStatusAssemblerTest {
 
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 true,
-                TracingConfigurationAuthority.CONFIG_SERVER
+                TracingControlChannel.CONFIG_SERVER
         );
 
         AcceptedSettingsReadModel projection = new AcceptedSettingsReadModel(
@@ -300,18 +328,18 @@ class TracingStatusAssemblerTest {
     }
 
     private static TracingStatusAssembler assembler(boolean enabled,
-                                                    TracingConfigurationAuthority authority,
+                                                    TracingControlChannel controlChannel,
                                                     TracingDeploymentDiagnostics diagnostics) {
-        return assembler(enabled, authority, new AtomicReference<>(diagnostics), null);
+        return assembler(enabled, controlChannel, new AtomicReference<>(diagnostics), null);
     }
 
     private static TracingStatusAssembler assembler(boolean enabled,
-                                                    TracingConfigurationAuthority authority,
+                                                    TracingControlChannel controlChannel,
                                                     AtomicReference<TracingDeploymentDiagnostics> diagnostics,
                                                     AcceptedSettingsReadModel projection) {
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 enabled,
-                authority);
+                controlChannel);
 
         TracingRuntime runtime = enabled
                 ? NoOpTracingRuntime.noop()

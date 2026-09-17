@@ -19,7 +19,7 @@ public class TracingSettingsControlAutoConfiguration {
 
     @Configuration
     @ConditionalOnClass(WebEndpoint.class)
-    @ConditionalOnProperty(name = "platform.tracing.configuration.authority", havingValue = "ACTUATOR")
+    @ConditionalOnProperty(name = "platform.tracing.control.channel", havingValue = "ACTUATOR")
     static class ActuatorAdapterConfiguration {
 
         @Bean

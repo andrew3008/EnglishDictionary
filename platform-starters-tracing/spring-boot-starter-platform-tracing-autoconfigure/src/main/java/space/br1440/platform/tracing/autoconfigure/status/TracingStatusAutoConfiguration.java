@@ -14,7 +14,7 @@ import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfigurati
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedTracingSettingsReader;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
@@ -22,7 +22,7 @@ import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 
 @AutoConfiguration
 @AutoConfigureAfter({
-        TracingConfigurationAuthorityAutoConfiguration.class,
+        TracingControlChannelAutoConfiguration.class,
         TracingRuntimeAutoConfiguration.class,
         TracingSettingsControlAutoConfiguration.class
 })

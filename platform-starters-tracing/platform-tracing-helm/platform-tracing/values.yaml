@@ -1,6 +1,6 @@
 platformTracing:
   serviceName: ""
-  configurationAuthority: ""
+  controlChannel: ""
   validationMode: ""
   export:
     endpoint: http://otel-collector.ops-system.svc.cluster.local:4317

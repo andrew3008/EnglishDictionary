@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.autoconfigure.control.authority;
+package space.br1440.platform.tracing.autoconfigure.control.channel;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -9,6 +9,8 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
+import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxTracingSettingsClient;
 import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsMutationService;
@@ -17,18 +19,20 @@ class DisabledNoDiscoveryTest {
 
     private final ApplicationContextRunner actuatorStackRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
-                    TracingConfigurationAuthorityAutoConfiguration.class,
+                    TracingControlChannelAutoConfiguration.class,
                     TracingSettingsControlAutoConfiguration.class));
 
-    private final ApplicationContextRunner guardRunner = new ApplicationContextRunner()
-            .withConfiguration(AutoConfigurations.of(
-                    TracingConfigurationAuthorityAutoConfiguration.class));
+    private final ApplicationContextRunner bootstrapRunner = new ApplicationContextRunner()
+            .withConfiguration(AutoConfigurations.of(TracingControlChannelAutoConfiguration.class));
 
     @Test
-    void disabledWithHelm_noDiscoveryBeansCreated() {
+    void disabledWithStatic_noDiscoveryBeansCreated() {
+        // given
+        // when
+        // then
         actuatorStackRunner
                 .withPropertyValues(
-                        "platform.tracing.configuration.authority=HELM",
+                        "platform.tracing.control.channel=STATIC",
                         "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -37,27 +41,31 @@ class DisabledNoDiscoveryTest {
                 });
     }
 
-    @ParameterizedTest(name = "DISABLED write authority fails fast: authority={0}")
+    @ParameterizedTest(name = "disabled write channel fails fast: channel={0}")
     @ValueSource(strings = {"CONFIG_SERVER", "ACTUATOR"})
-    void disabledWithWriteAuthority_failsClosedBeforeDiscovery(String authority) {
+    void disabledWithWriteChannel_failsClosedBeforeDiscovery(String channel) {
+        // given
+        // when
+        // then
         actuatorStackRunner
                 .withPropertyValues(
-                        "platform.tracing.configuration.authority=" + authority,
+                        "platform.tracing.control.channel=" + channel,
                         "platform.tracing.enabled=false")
                 .run(context -> assertGuardFailure(context, "Tracing disabled is incompatible"));
     }
 
     @Test
-    void disabledWithHelm_guardFlagsAreFalse() {
-        guardRunner
+    void disabledWithStatic_bootstrapFlagsAreFalse() {
+        // given
+        // when
+        // then
+        bootstrapRunner
                 .withPropertyValues(
-                        "platform.tracing.configuration.authority=HELM",
+                        "platform.tracing.control.channel=STATIC",
                         "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
-                    TracingConfigurationAuthorityGuard guard =
-                            context.getBean(TracingConfigurationAuthorityGuard.class);
-                    assertThat(guard.isTracingEnabled()).isFalse();
+                    assertThat(context.getBean(TracingBootstrapSettings.class).tracingEnabled()).isFalse();
                 });
     }
 
@@ -67,7 +75,6 @@ class DisabledNoDiscoveryTest {
         Throwable failure = context.getStartupFailure();
         assertThat(failure).isNotNull();
         assertThat(failure)
-                .as("startup failure must be or wrap TracingConfigurationGuardException")
                 .matches(throwable ->
                         throwable instanceof TracingConfigurationGuardException
                                 || throwable.getCause() instanceof TracingConfigurationGuardException);

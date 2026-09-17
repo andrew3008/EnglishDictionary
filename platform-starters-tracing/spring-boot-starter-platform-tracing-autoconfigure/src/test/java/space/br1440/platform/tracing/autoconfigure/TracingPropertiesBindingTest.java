@@ -9,14 +9,11 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Configuration;
 
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Проверяет корректный bind вложенных свойств {@link TracingProperties} из {@code application.properties}.
- */
 @ExtendWith(OutputCaptureExtension.class)
 class TracingPropertiesBindingTest {
 
@@ -46,9 +43,9 @@ class TracingPropertiesBindingTest {
     @Test
     void obsoleteSpringOnlyLogLevelKeyFailsStartupFast() {
         contextRunner
-                .withConfiguration(AutoConfigurations.of(TracingConfigurationAuthorityAutoConfiguration.class))
+                .withConfiguration(AutoConfigurations.of(TracingControlChannelAutoConfiguration.class))
                 .withPropertyValues(
-                        "platform.tracing.configuration.authority=HELM",
+                        "platform.tracing.control.channel=STATIC",
                         "platform.tracing.log-level=warn")
                 .run(ctx -> {
                     assertThat(ctx).hasFailed();
@@ -68,9 +65,9 @@ class TracingPropertiesBindingTest {
     @Test
     void agentBootstrapKeepKeysInSpringEnvironmentSucceedButAreNotSilent(CapturedOutput output) {
         contextRunner
-                .withConfiguration(AutoConfigurations.of(TracingConfigurationAuthorityAutoConfiguration.class))
+                .withConfiguration(AutoConfigurations.of(TracingControlChannelAutoConfiguration.class))
                 .withPropertyValues(
-                        "platform.tracing.configuration.authority=HELM",
+                        "platform.tracing.control.channel=STATIC",
                         "platform.tracing.sampling.enabled=false",
                         "platform.tracing.sampling.ratio=0.42",
                         "platform.tracing.validation.enabled=false",

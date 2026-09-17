@@ -17,22 +17,16 @@ import org.springframework.context.annotation.Configuration;
 
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Component-model contract через {@link HealthEndpoint}: contributor ID, структура
- * {@code CompositeHealth}, статус и details в модели, relaxed binding property, back-off по имени
- * бина. {@code HealthEndpoint} не проверяет HTTP-сериализацию, show-details policy или фактический
- * JSON path — это отдельный {@code TracingStartupContractHealthHttpContractTest}.
- */
 class TracingStartupContractHealthComponentModelTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
-                    TracingConfigurationAuthorityAutoConfiguration.class,
+                    TracingControlChannelAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class,
                     TracingStartupContractHealthAutoConfiguration.class,
                     EndpointAutoConfiguration.class,
@@ -40,7 +34,7 @@ class TracingStartupContractHealthComponentModelTest {
                     HealthContributorAutoConfiguration.class))
             .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withPropertyValues(
-                    "platform.tracing.configuration.authority=HELM",
+                    "platform.tracing.control.channel=STATIC",
                     "management.endpoint.health.enabled=true",
                     "management.endpoint.health.show-details=always");
 

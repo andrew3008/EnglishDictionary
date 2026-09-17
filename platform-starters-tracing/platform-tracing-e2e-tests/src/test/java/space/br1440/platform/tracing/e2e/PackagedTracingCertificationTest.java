@@ -215,7 +215,7 @@ class PackagedTracingCertificationTest {
         properties.put("spring.main.banner-mode", "off");
         properties.put("logging.level.root", "ERROR");
         properties.put("platform.tracing.enabled", "true");
-        properties.put("platform.tracing.configuration.authority", "ACTUATOR");
+        properties.put("platform.tracing.control.channel", "ACTUATOR");
         return new PackagedProcessLauncher.LaunchRequest(
                 scenario,
                 applicationBootJar,
@@ -257,7 +257,7 @@ class PackagedTracingCertificationTest {
         properties.put("platform.tracing.jmx.remote.authorization-forwarder-installed", "false");
         properties.put("platform.tracing.controlled-agent.expected-sha256", expectedAgentSha);
         properties.put("platform.tracing.enabled", "true");
-        properties.put("platform.tracing.configuration.authority", "ACTUATOR");
+        properties.put("platform.tracing.control.channel", "ACTUATOR");
         return properties;
     }
 

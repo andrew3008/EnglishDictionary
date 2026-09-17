@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.integrations.aop.TracedAspect;
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.integrations.observation.TracingObservationAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup.TracingStartupContractHealthAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
@@ -24,24 +24,18 @@ import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Тесты авто-конфигураций платформенной трассировки. Используются {@link ApplicationContextRunner}
- * для проверки условных правил ({@code ConditionalOnClass}, {@code ConditionalOnBean},
- * {@code ConditionalOnProperty}) без поднятия полноценного Spring Boot приложения.
- */
 class TracingAutoConfigurationTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
-                    TracingConfigurationAuthorityAutoConfiguration.class,
+                    TracingControlChannelAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class,
                     TracingMetricsAutoConfiguration.class,
                     TracingAopAutoConfiguration.class,
                     TracingObservationAutoConfiguration.class,
                     TracingStartupContractHealthAutoConfiguration.class
             ))
-            .withPropertyValues(
-                    "platform.tracing.configuration.authority=HELM");
+            .withPropertyValues("platform.tracing.control.channel=STATIC");
 
     private final ApplicationContextRunner controlledAgentRunner = contextRunner
             .withInitializer(ControlledAgentTestRuntime::initialize)

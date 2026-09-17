@@ -21,7 +21,7 @@ import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
 import space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
@@ -44,12 +44,12 @@ class BeanTopologyTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
-                    TracingConfigurationAuthorityAutoConfiguration.class,
+                    TracingControlChannelAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class,
                     TracingMetricsAutoConfiguration.class)
             )
             .withPropertyValues(
-                    "platform.tracing.configuration.authority=HELM"
+                    "platform.tracing.control.channel=STATIC"
             );
 
     private final ApplicationContextRunner controlledAgentRunner = contextRunner

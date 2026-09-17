@@ -13,7 +13,7 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.ConfigurableEnvironment;
 
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationGuardException;
+import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsContractViolationException;
 import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;
@@ -23,7 +23,7 @@ import space.br1440.platform.tracing.autoconfigure.control.settings.read.Complet
 @AutoConfiguration
 @AutoConfigureAfter(PlatformJmxControlAutoConfiguration.class)
 @ConditionalOnClass(EnvironmentChangeEvent.class)
-@ConditionalOnProperty(name = "platform.tracing.configuration.authority", havingValue = "CONFIG_SERVER")
+@ConditionalOnProperty(name = "platform.tracing.control.channel", havingValue = "CONFIG_SERVER")
 public class ConfigServerTracingSettingsAutoConfiguration {
 
     @Bean
