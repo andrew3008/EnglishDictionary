@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.span.builder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import space.br1440.platform.tracing.api.span.SpanFactory;
 import space.br1440.platform.tracing.api.span.builder.RpcClientSpanBuilder;
 import space.br1440.platform.tracing.api.span.builder.RpcServerSpanBuilder;
 import space.br1440.platform.tracing.api.span.builder.RpcTracing;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
@@ -57,12 +59,13 @@ class RpcSpanBuilderTest {
 
     @Test
     void rpcServerStart_routesSpanSpecThroughTracingRuntime() {
-        manual.transport().rpc().server()
+        try (SpanHandle handle = manual.transport().rpc().server()
                 .system("grpc")
                 .service("OrderService")
                 .method("CreateOrder")
-                .start()
-                .close();
+                .start()) {
+            assertThat(handle).isNotNull();
+        }
 
         assertThat(recording.receivedSpecs()).hasSize(1);
         SpanSpec spec = recording.receivedSpecs().getFirst();
@@ -76,13 +79,14 @@ class RpcSpanBuilderTest {
 
     @Test
     void rpcClientStart_routesSpanSpecThroughTracingRuntime() {
-        manual.transport().rpc().client()
+        try (SpanHandle handle = manual.transport().rpc().client()
                 .system("grpc")
                 .service("OrderService")
                 .method("CreateOrder")
                 .serverAddress("order-service")
-                .start()
-                .close();
+                .start()) {
+            assertThat(handle).isNotNull();
+        }
 
         SpanSpec spec = recording.receivedSpecs().getFirst();
         assertThat(spec.category()).isEqualTo(SpanCategory.RPC_CLIENT);
@@ -91,46 +95,56 @@ class RpcSpanBuilderTest {
 
     @Test
     void missingSystem_rejected() {
-        assertThatThrownBy(() ->
-                manual.transport().rpc().server()
-                        .service("OrderService")
-                        .method("CreateOrder")
-                        .start())
+        assertThatThrownBy(() -> {
+            try (SpanHandle handle = manual.transport().rpc().server()
+                    .service("OrderService")
+                    .method("CreateOrder")
+                    .start()) {
+                fail("missing rpc.system must fail at start(), got " + handle);
+            }
+        })
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("system");
     }
 
     @Test
     void missingService_rejected() {
-        assertThatThrownBy(() ->
-                manual.transport().rpc().client()
-                        .system("grpc")
-                        .method("CreateOrder")
-                        .start())
+        assertThatThrownBy(() -> {
+            try (SpanHandle handle = manual.transport().rpc().client()
+                    .system("grpc")
+                    .method("CreateOrder")
+                    .start()) {
+                fail("missing rpc.service must fail at start(), got " + handle);
+            }
+        })
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("service");
     }
 
     @Test
     void missingMethod_rejectedInStrictMode() {
-        assertThatThrownBy(() ->
-                manual.transport().rpc().server()
-                        .system("grpc")
-                        .service("OrderService")
-                        .start())
+        assertThatThrownBy(() -> {
+            try (SpanHandle handle = manual.transport().rpc().server()
+                    .system("grpc")
+                    .service("OrderService")
+                    .start()) {
+                fail("missing rpc.method must fail at start(), got " + handle);
+            }
+        })
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("method");
     }
 
     @Test
     void rootRelationship_works() {
-        manual.transport().rpc().server()
+        try (SpanHandle handle = manual.transport().rpc().server()
                 .system("grpc")
                 .service("OrderService")
                 .method("CreateOrder")
                 .root()
-                .start()
-                .close();
+                .start()) {
+            assertThat(handle).isNotNull();
+        }
 
         assertThat(recording.receivedSpecs().getFirst().relationship().kind()).isEqualTo(SpanRelationship.ROOT);
     }
@@ -140,14 +154,17 @@ class RpcSpanBuilderTest {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10",
                 "0102030405060708");
-        assertThatThrownBy(() ->
-                manual.transport().rpc().server()
-                        .system("grpc")
-                        .service("OrderService")
-                        .method("CreateOrder")
-                        .child()
-                        .linkedTo(link)
-                        .start())
+        assertThatThrownBy(() -> {
+            try (SpanHandle handle = manual.transport().rpc().server()
+                    .system("grpc")
+                    .service("OrderService")
+                    .method("CreateOrder")
+                    .child()
+                    .linkedTo(link)
+                    .start()) {
+                fail("CHILD with links must fail at start(), got " + handle);
+            }
+        })
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("CHILD");
     }

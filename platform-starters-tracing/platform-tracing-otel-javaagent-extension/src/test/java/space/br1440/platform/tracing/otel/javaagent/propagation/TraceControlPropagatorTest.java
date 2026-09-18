@@ -1,23 +1,24 @@
 package space.br1440.platform.tracing.otel.javaagent.propagation;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
-
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.TextMapGetter;
-import io.opentelemetry.context.propagation.TextMapSetter;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
-import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
-import space.br1440.platform.tracing.test.harness.InboundTraceControls;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
+import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
+import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
+import space.br1440.platform.tracing.test.harness.InboundTraceControls;
+
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.propagation.TextMapGetter;
+import io.opentelemetry.context.propagation.TextMapSetter;
 
 @DisplayName("TraceControlPropagator: extract в Context; outbound inject — intentional no-op")
 class TraceControlPropagatorTest {
@@ -98,54 +99,60 @@ class TraceControlPropagatorTest {
 
     @Test
     @DisplayName("Gate выключен (Фаза 14): extract не извлекает — propagation no-op")
-    void disabledGateMakesExtractNoOp() {
+    void disabledGateMakesExtractNoOp() throws Exception {
         // given
         PlatformPropagationGate gate = new PlatformPropagationGate();
         TracingSettingsSource policy = TracingSettingsSource.isolatedDefaults();
-        gate.bindAcceptedPolicy(policy);
-        SettingsUpdateStatus outcome = AcceptedPolicyMutationAccess.applyTraceControlHeaders(policy, false);
-        assertThat(outcome).isIn(SettingsUpdateStatus.APPLIED, SettingsUpdateStatus.UNCHANGED);
-        assertThat(gate.isEnabled()).isFalse();
+        try (AutoCloseable ignored = gate.bindAcceptedPolicy(policy)) {
+            SettingsUpdateStatus outcome = AcceptedPolicyMutationAccess.applyTraceControlHeaders(policy, false);
+            assertThat(outcome).isIn(SettingsUpdateStatus.APPLIED, SettingsUpdateStatus.UNCHANGED);
+            assertThat(gate.isEnabled()).isFalse();
 
-        TraceControlPropagator gated =
-                new TraceControlPropagator("X-Trace-On", "X-QA-Trace", "X-Request-Id", gate);
+            TraceControlPropagator gated =
+                    new TraceControlPropagator("X-Trace-On", "X-QA-Trace", "X-Request-Id", gate);
 
-        Map<String, String> inbound = new HashMap<>();
-        inbound.put("X-Trace-On", "on");
-        inbound.put("X-Request-Id", "req-1");
-        Context input = Context.root();
+            Map<String, String> inbound = new HashMap<>();
+            inbound.put("X-Trace-On", "on");
+            inbound.put("X-Request-Id", "req-1");
+            Context input = Context.root();
 
-        // when/then
-        AtomicInteger getterCalls = new AtomicInteger();
-        TextMapGetter<Map<String, String>> countingGetter = new TextMapGetter<>() {
-            @Override
-            public Iterable<String> keys(Map<String, String> carrier) {
-                return carrier.keySet();
-            }
+            // when/then
+            AtomicInteger getterCalls = new AtomicInteger();
+            TextMapGetter<Map<String, String>> countingGetter = new TextMapGetter<>() {
+                @Override
+                public Iterable<String> keys(Map<String, String> carrier) {
+                    return carrier.keySet();
+                }
 
-            @Override
-            public String get(Map<String, String> carrier, String key) {
-                getterCalls.incrementAndGet();
-                return carrier == null ? null : carrier.get(key);
-            }
-        };
-        Context extracted = gated.extract(input, inbound, countingGetter);
-        assertThat(extracted).isSameAs(input);
-        assertThat(getterCalls.get()).isZero();
+                @Override
+                public String get(Map<String, String> carrier, String key) {
+                    getterCalls.incrementAndGet();
+                    return carrier == null ? null : carrier.get(key);
+                }
+            };
+            Context extracted = gated.extract(input, inbound, countingGetter);
+            assertThat(extracted).isSameAs(input);
+            assertThat(getterCalls.get()).isZero();
+        }
     }
 
     @Test
     @DisplayName("fields() не зависит от текущего gate value")
-    void fields_doesNotDependOnGateValue() {
+    void fields_doesNotDependOnGateValue() throws Exception {
         // given
         PlatformPropagationGate gate = new PlatformPropagationGate();
         TracingSettingsSource policy = TracingSettingsSource.isolatedDefaults();
-        gate.bindAcceptedPolicy(policy);
-        AcceptedPolicyMutationAccess.applyTraceControlHeaders(policy, false);
-        TraceControlPropagator gated =
-                new TraceControlPropagator("X-Trace-On", "X-QA-Trace", "X-Request-Id", gate);
+        try (AutoCloseable ignored = gate.bindAcceptedPolicy(policy)) {
+            AcceptedPolicyMutationAccess.applyTraceControlHeaders(policy, false);
+            TraceControlPropagator gated = new TraceControlPropagator(
+                    "X-Trace-On",
+                    "X-QA-Trace",
+                    "X-Request-Id",
+                    gate
+            );
 
-        // when/then
-        assertThat(gated.fields()).containsExactlyInAnyOrder("X-Trace-On", "X-QA-Trace", "X-Request-Id");
+            // when/then
+            assertThat(gated.fields()).containsExactlyInAnyOrder("X-Trace-On", "X-QA-Trace", "X-Request-Id");
+        }
     }
 }

@@ -1,14 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
-import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
-import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
-import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
-import io.opentelemetry.sdk.trace.samplers.Sampler;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
-import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
-import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -22,8 +15,17 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
+import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
+
+import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
+import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
+import io.opentelemetry.sdk.trace.samplers.Sampler;
 
 /**
  * Регрессионные тесты точки входа платформенного расширения ({@link BootstrapAutoConfigurationCustomizerProvider}).
@@ -117,7 +119,7 @@ class PlatformAutoConfigurationCustomizerTest {
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
-        // PR-5: addPropertiesCustomizer должен отработать до samplerCustomizer, чтобы
+        // addPropertiesCustomizer должен отработать до samplerCustomizer, чтобы
         // extensionConfig был инициализирован. Прайминг с пустым конфигом → defaultRatio=0.1.
         recorder.primeWithConfig(new MapConfigProperties(Map.of()));
 
@@ -235,16 +237,10 @@ class PlatformAutoConfigurationCustomizerTest {
      * которых обязательны (без default). Прокси позволяет реагировать только на нужные нам имена
      * методов и автоматически возвращать сам proxy для всех fluent-вызовов; устойчив к изменениям
      * сигнатур интерфейса в будущих версиях SDK (если только не переименуют ключевые методы).
-     *
-     * <p>PR-5: {@code addPropertiesCustomizer} callbacks теперь перехватываются и вызываются
-     * через {@link #primeWithConfig(ConfigProperties)}, моделируя порядок OTel SDK lifecycle.
      */
     private static final class Recorder {
-        @SuppressWarnings("unchecked")
         BiFunction<Sampler, ConfigProperties, Sampler> samplerCustomizer;
-        @SuppressWarnings("unchecked")
         BiFunction<SdkTracerProviderBuilder, ConfigProperties, SdkTracerProviderBuilder> tracerProviderCustomizer;
-        @SuppressWarnings("unchecked")
         Supplier<Map<String, String>> propertiesSupplier;
 
         private final List<Function<ConfigProperties, Map<String, String>>> propertiesCustomizers = new ArrayList<>();
@@ -265,91 +261,85 @@ class PlatformAutoConfigurationCustomizerTest {
             return (AutoConfigurationCustomizer) Proxy.newProxyInstance(
                     AutoConfigurationCustomizer.class.getClassLoader(),
                     new Class<?>[]{AutoConfigurationCustomizer.class},
-                    (Object proxyObj, Method method, Object[] args) -> {
-                        switch (method.getName()) {
-                            case "addSamplerCustomizer":
-                                BiFunction<Sampler, ConfigProperties, Sampler> sc =
-                                        (BiFunction<Sampler, ConfigProperties, Sampler>) args[0];
-                                this.samplerCustomizer = sc;
-                                return proxyObj;
-
-                            case "addTracerProviderCustomizer":
-                                BiFunction<SdkTracerProviderBuilder, ConfigProperties, SdkTracerProviderBuilder> tpc =
-                                        (BiFunction<SdkTracerProviderBuilder, ConfigProperties, SdkTracerProviderBuilder>) args[0];
-                                this.tracerProviderCustomizer = tpc;
-                                return proxyObj;
-
-                            case "addPropertiesSupplier":
-                                Supplier<Map<String, String>> ps =
-                                        (Supplier<Map<String, String>>) args[0];
-                                this.propertiesSupplier = ps;
-                                return proxyObj;
-
-                            case "addPropertiesCustomizer":
-                                propertiesCustomizers.add(
-                                        (Function<ConfigProperties, Map<String, String>>) args[0]);
-                                return proxyObj;
-
-                            default:
-                                // Все прочие методы fluent-API возвращают сам customizer.
-                                return proxyObj;
+                    (Object proxyObj, Method method, Object[] args) -> switch (method.getName()) {
+                        case "addSamplerCustomizer" -> {
+                            this.samplerCustomizer = (BiFunction<Sampler, ConfigProperties, Sampler>) args[0];
+                            yield proxyObj;
                         }
+
+                        case "addTracerProviderCustomizer" -> {
+                            this.tracerProviderCustomizer = (BiFunction<SdkTracerProviderBuilder, ConfigProperties, SdkTracerProviderBuilder>) args[0];
+                            yield proxyObj;
+                        }
+
+                        case "addPropertiesSupplier" -> {
+                            this.propertiesSupplier = (Supplier<Map<String, String>>) args[0];
+                            yield proxyObj;
+                        }
+
+                        case "addPropertiesCustomizer" -> {
+                            propertiesCustomizers.add((Function<ConfigProperties, Map<String, String>>) args[0]);
+                            yield proxyObj;
+                        }
+
+                        default ->
+                            // Все прочие методы fluent-API возвращают сам customizer.
+                                proxyObj;
                     });
         }
     }
 
     /**
-     * Минимальная in-memory реализация {@link ConfigProperties} для unit-тестов.
-     */
-    private static final class MapConfigProperties implements ConfigProperties {
-        private final Map<String, String> data;
+         * Минимальная in-memory реализация {@link ConfigProperties} для unit-тестов.
+         */
+        private record MapConfigProperties(Map<String, String> data) implements ConfigProperties {
 
-        MapConfigProperties(Map<String, String> data) {
-            this.data = new HashMap<>(data);
-        }
+            private MapConfigProperties(Map<String, String> data) {
+                this.data = new HashMap<>(data);
+            }
 
-        @Override
-        public String getString(String name) {
-            return data.get(name);
-        }
+            @Override
+            public String getString(String name) {
+                return data.get(name);
+            }
 
-        @Override
-        public Boolean getBoolean(String name) {
-            String value = data.get(name);
-            return value == null ? null : Boolean.parseBoolean(value);
-        }
+            @Override
+            public Boolean getBoolean(String name) {
+                String value = data.get(name);
+                return value == null ? null : Boolean.parseBoolean(value);
+            }
 
-        @Override
-        public Integer getInt(String name) {
-            String value = data.get(name);
-            return value == null ? null : Integer.valueOf(value);
-        }
+            @Override
+            public Integer getInt(String name) {
+                String value = data.get(name);
+                return value == null ? null : Integer.valueOf(value);
+            }
 
-        @Override
-        public Long getLong(String name) {
-            String value = data.get(name);
-            return value == null ? null : Long.valueOf(value);
-        }
+            @Override
+            public Long getLong(String name) {
+                String value = data.get(name);
+                return value == null ? null : Long.valueOf(value);
+            }
 
-        @Override
-        public Double getDouble(String name) {
-            String value = data.get(name);
-            return value == null ? null : Double.valueOf(value);
-        }
+            @Override
+            public Double getDouble(String name) {
+                String value = data.get(name);
+                return value == null ? null : Double.valueOf(value);
+            }
 
-        @Override
-        public Duration getDuration(String name) {
-            return null;
-        }
+            @Override
+            public Duration getDuration(String name) {
+                return null;
+            }
 
-        @Override
-        public List<String> getList(String name) {
-            return Collections.emptyList();
-        }
+            @Override
+            public List<String> getList(String name) {
+                return Collections.emptyList();
+            }
 
-        @Override
-        public Map<String, String> getMap(String name) {
-            return Collections.emptyMap();
+            @Override
+            public Map<String, String> getMap(String name) {
+                return Collections.emptyMap();
+            }
         }
-    }
 }

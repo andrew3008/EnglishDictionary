@@ -52,7 +52,6 @@ class TracingSettingsUpdaterCoherentStatusTest {
                 SettingsUpdateTrigger.REFRESH,
                 "revision-coherence");
         TracingSettings candidate = settings(0.25d);
-        ExecutorService executor = Executors.newSingleThreadExecutor();
         AtomicReference<SettingsStatusSnapshot> captured = new AtomicReference<>();
         AtomicReference<Throwable> captureFailure = new AtomicReference<>();
         CountDownLatch captureStarted = new CountDownLatch(1);
@@ -66,43 +65,43 @@ class TracingSettingsUpdaterCoherentStatusTest {
         }, "platform-settings-status-capture-test");
         captureThread.setDaemon(true);
 
-        try {
-            Future<SettingsUpdateResult> updateFuture = executor.submit(
-                    () -> updater.apply(attempt, store.current().base(), candidate));
-            assertThat(recordEntered.await(5, TimeUnit.SECONDS)).isTrue();
-            assertThat(store.current().acceptedSequence()).isEqualTo(1L);
-            assertThat(diagnostics.snapshot().latestAttempt()).isNull();
+        try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
+            try {
+                Future<SettingsUpdateResult> updateFuture = executor.submit(
+                        () -> updater.apply(attempt, store.current().base(), candidate));
+                assertThat(recordEntered.await(5, TimeUnit.SECONDS)).isTrue();
+                assertThat(store.current().acceptedSequence()).isEqualTo(1L);
+                assertThat(diagnostics.snapshot().latestAttempt()).isNull();
 
-            // when
-            captureThread.start();
-            assertThat(captureStarted.await(5, TimeUnit.SECONDS)).isTrue();
-            awaitBlocked(captureThread);
+                // when
+                captureThread.start();
+                assertThat(captureStarted.await(5, TimeUnit.SECONDS)).isTrue();
+                awaitBlocked(captureThread);
 
-            // then
-            assertThat(captureThread.getState()).isEqualTo(Thread.State.BLOCKED);
-            assertThat(captured.get()).isNull();
+                // then
+                assertThat(captureThread.getState()).isEqualTo(Thread.State.BLOCKED);
+                assertThat(captured.get()).isNull();
 
-            releaseRecord.countDown();
-            SettingsUpdateResult result = updateFuture.get(5, TimeUnit.SECONDS);
-            captureThread.join(TimeUnit.SECONDS.toMillis(5));
+                releaseRecord.countDown();
+                SettingsUpdateResult result = updateFuture.get(5, TimeUnit.SECONDS);
+                captureThread.join(TimeUnit.SECONDS.toMillis(5));
 
-            assertThat(result.outcome()).isEqualTo(SettingsUpdateStatus.APPLIED);
-            assertThat(captureThread.isAlive()).isFalse();
-            assertThat(captureFailure.get()).isNull();
-            assertThat(captured.get()).isNotNull();
-            assertThat(captured.get().accepted().acceptedSequence()).isEqualTo(1L);
-            assertThat(captured.get().accepted().policy()).isEqualTo(candidate);
-            assertThat(captured.get().update().latestAttempt()).isEqualTo(attempt);
-            assertThat(captured.get().update().latestOutcome())
-                    .isEqualTo(SettingsUpdateStatus.APPLIED);
-            assertThat(captured.get().update().latestMessageCode())
-                    .isEqualTo(SettingsRejectionReason.NONE);
-        } finally {
-            releaseRecord.countDown();
-            captureThread.interrupt();
-            captureThread.join(TimeUnit.SECONDS.toMillis(5));
-            executor.shutdownNow();
-            executor.awaitTermination(5, TimeUnit.SECONDS);
+                assertThat(result.outcome()).isEqualTo(SettingsUpdateStatus.APPLIED);
+                assertThat(captureThread.isAlive()).isFalse();
+                assertThat(captureFailure.get()).isNull();
+                assertThat(captured.get()).isNotNull();
+                assertThat(captured.get().accepted().acceptedSequence()).isEqualTo(1L);
+                assertThat(captured.get().accepted().policy()).isEqualTo(candidate);
+                assertThat(captured.get().update().latestAttempt()).isEqualTo(attempt);
+                assertThat(captured.get().update().latestOutcome())
+                        .isEqualTo(SettingsUpdateStatus.APPLIED);
+                assertThat(captured.get().update().latestMessageCode())
+                        .isEqualTo(SettingsRejectionReason.NONE);
+            } finally {
+                releaseRecord.countDown();
+                captureThread.interrupt();
+                captureThread.join(TimeUnit.SECONDS.toMillis(5));
+            }
         }
     }
 

@@ -266,13 +266,17 @@ class ControlledAgentRuntimeTest {
                 return exported.get();
             }
 
-            Thread.sleep(EXPORT_POLL_INTERVAL.toMillis());
+            sleepExportPollInterval();
         }
 
         throw new AssertionError(
                 "The invalid span was never exported: spanId=%s receivedSpans=%s"
                         .formatted(stimulus.spanId(), collector.receivedSpans())
         );
+    }
+
+    private static void sleepExportPollInterval() throws InterruptedException {
+        Thread.sleep(EXPORT_POLL_INTERVAL.toMillis());
     }
 
     private void assertErrorDiagnosticEmitted(ChildProcessResult result) {
@@ -305,9 +309,11 @@ class ControlledAgentRuntimeTest {
         assertThat(partialSuccessBatches)
                 .as("partial_success_batches must be observed at least once")
                 .isGreaterThanOrEqualTo(1L);
+
         assertThat(rejectedSpans)
                 .as("rejected_spans must reflect the stub collector's rejection")
                 .isGreaterThanOrEqualTo(1L);
+
         assertThat(exportedSpans)
                 .as("exported_spans must count the span accepted from the partial batch")
                 .isGreaterThanOrEqualTo(1L);

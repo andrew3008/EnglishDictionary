@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Configuration;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
@@ -73,7 +74,7 @@ class MeteredTopologyMatrixTest {
         contextRunner.run(context -> {
             TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
-            try (var parent = tracing.spans().operation("parent").start()) {
+            try (var ignored = tracing.spans().operation("parent").start()) {
                 tracing.spans().operation("orphan").detached().start().close();
             }
 
@@ -90,10 +91,16 @@ class MeteredTopologyMatrixTest {
         contextRunner.run(context -> {
             TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
-            RemoteSpanLink link = RemoteSpanLink.sampled(
-                    "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
-            assertThatThrownBy(() ->
-                    tracing.spans().operation("bad-detached").detached().linkedTo(link).start())
+            RemoteSpanLink link = RemoteSpanLink.sampled("0102030405060708090a0b0c0d0e0f10", "0102030405060708");
+            assertThatThrownBy(() -> {
+                try (SpanHandle handle = tracing.spans()
+                        .operation("bad-detached")
+                        .detached()
+                        .linkedTo(link)
+                        .start()) {
+                    throw new AssertionError("DETACHED + linkedTo must fail before start() returns " + handle);
+                }
+            })
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("DETACHED");
             assertThat(exporter.getFinishedSpanItems()).isEmpty();

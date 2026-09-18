@@ -46,7 +46,7 @@ class TracingStatusAssemblerTest {
 
     @ParameterizedTest
     @EnumSource(TracingControlChannel.class)
-    void controlChannelSerializesAsJsonString(TracingControlChannel channel) throws Exception {
+    void controlChannelSerializesAsJsonString(TracingControlChannel channel) {
         // given
         TracingStatusSnapshot snapshot = assembler(
                 true,

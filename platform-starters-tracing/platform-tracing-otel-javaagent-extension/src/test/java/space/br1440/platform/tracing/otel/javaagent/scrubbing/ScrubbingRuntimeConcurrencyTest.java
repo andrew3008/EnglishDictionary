@@ -171,38 +171,41 @@ class ScrubbingRuntimeConcurrencyTest {
         for (int i = 0; i < THREADS; i++) {
             Runnable action = (i % 2 == 0) ? evenThreadAction : oddThreadAction;
             workers.add(() -> {
-                awaitQuietly(start);
+                awaitStart(start);
                 for (int iteration = 0; iteration < ITERATIONS; iteration++) {
                     action.run();
                 }
             });
         }
 
-        ExecutorService pool = Executors.newFixedThreadPool(THREADS);
-        try {
+        try (ExecutorService pool = Executors.newFixedThreadPool(THREADS)) {
             List<java.util.concurrent.Future<?>> futures = new ArrayList<>();
             workers.forEach(worker -> futures.add(pool.submit(worker)));
             start.countDown();
             for (java.util.concurrent.Future<?> future : futures) {
                 future.get(60, TimeUnit.SECONDS);
             }
-        } finally {
-            pool.shutdownNow();
         }
     }
 
-    private static void awaitQuietly(CountDownLatch latch) {
+    private static void awaitStart(CountDownLatch latch) {
         try {
-            latch.await(60, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
+            if (!latch.await(60, TimeUnit.SECONDS)) {
+                throw new AssertionError("start signal was not released in time");
+            }
+        } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
+            throw new AssertionError("interrupted while waiting for start signal", interrupted);
         }
     }
 
     private static ScrubbingRuntime runtimeOf(String hmacKey) {
-        SpanAttributeScrubbingRule password = BuiltInSpanAttributeScrubbingRules.resolve("password");
+        SpanAttributeScrubbingRule password = BuiltInSpanAttributeScrubbingRules.PASSWORD_KEY.create();
         RuntimeRule rule = new RuntimeRule(
-                new ExecutableRule(password, new RuleCircuitBreaker(password.name())), RuleOrigin.BUILT_IN);
+                new ExecutableRule(password, new RuleCircuitBreaker(password.name())),
+                RuleOrigin.BUILT_IN
+        );
+
         return ScrubbingRuntime.create(List.of(rule), 1L, "test", MaskedSecret.of(hmacKey), false);
     }
 }

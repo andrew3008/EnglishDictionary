@@ -90,8 +90,7 @@ class ScrubbingFailureLogPrivacyTest {
     @DisplayName("The digest bounds the cause chain and never reads getMessage()")
     void digestIsBoundedAndMessageFree() {
         // given
-        Throwable deepest = new IllegalStateException(SECRET);
-        Throwable current = deepest;
+        Throwable current = new IllegalStateException(SECRET);
         for (int i = 0; i < 10; i++) {
             current = new IllegalStateException(SECRET, current);
         }

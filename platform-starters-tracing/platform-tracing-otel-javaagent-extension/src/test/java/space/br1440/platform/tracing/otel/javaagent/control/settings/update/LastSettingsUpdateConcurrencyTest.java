@@ -57,12 +57,9 @@ class LastSettingsUpdateConcurrencyTest {
         }
 
         // when
-        ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
         List<Future<SettingsUpdateResult>> futures;
-        try {
+        try (ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT)) {
             futures = executor.invokeAll(calls);
-        } finally {
-            executor.shutdown();
         }
 
         Map<String, SettingsUpdateResult> resultByAttemptId = new HashMap<>();

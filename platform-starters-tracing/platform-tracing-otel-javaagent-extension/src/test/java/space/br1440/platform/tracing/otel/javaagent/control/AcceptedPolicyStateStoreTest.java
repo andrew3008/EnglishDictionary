@@ -1,10 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.control;
 
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitOutcome;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitResult;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.management.ManagementFactory;
@@ -21,9 +16,12 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
-class AcceptedPolicyStateStoreTest {
+import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitOutcome;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitResult;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
 
-    private static volatile long allocationSink;
+class AcceptedPolicyStateStoreTest {
 
     @Test
     void admitsExactlyOneWinnerForTheSameExpectedBase() throws Exception {
@@ -32,8 +30,10 @@ class AcceptedPolicyStateStoreTest {
             for (int round = 0; round < 100; round++) {
                 TracingSettingsStore store = new TracingSettingsStore(
                         AcceptedPolicyTestFixtures.RUNTIME_INSTANCE_ID,
-                        AcceptedPolicyTestFixtures.policy(0.1d));
+                        AcceptedPolicyTestFixtures.policy(0.1d)
+                );
                 ExpectedSettingsRevision expected = store.current().base();
+
                 CountDownLatch start = new CountDownLatch(1);
                 List<Future<SettingsCommitResult>> futures = new ArrayList<>();
 
@@ -108,21 +108,25 @@ class AcceptedPolicyStateStoreTest {
         TracingSettingsStore store = new TracingSettingsStore(
                 AcceptedPolicyTestFixtures.RUNTIME_INSTANCE_ID,
                 AcceptedPolicyTestFixtures.policy(0.1d));
+        int warmupIterations = 200_000;
+        int measuredIterations = 2_000_000;
         long sum = 0L;
-        for (int index = 0; index < 200_000; index++) {
+        for (int index = 0; index < warmupIterations; index++) {
             sum += store.current().acceptedSequence();
         }
 
         // when
         long threadId = Thread.currentThread().threadId();
         long before = allocationBean.getThreadAllocatedBytes(threadId);
-        for (int index = 0; index < 2_000_000; index++) {
+        for (int index = 0; index < measuredIterations; index++) {
             sum += store.current().acceptedSequence();
         }
         long allocated = allocationBean.getThreadAllocatedBytes(threadId) - before;
-        allocationSink = sum;
 
         // then
+        assertThat(sum)
+                .as("сумма обязана остаться живой, иначе JIT может выкинуть read-loop")
+                .isEqualTo((long) (warmupIterations + measuredIterations) * store.current().acceptedSequence());
         assertThat(allocated).isZero();
     }
 }

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
@@ -27,10 +28,11 @@ class ClassificationCharacterizationTest {
             // when
             span.end();
 
-            Attributes attrs = h.exporter().getFinishedSpanItems().get(0).getAttributes();
             // then
-            assertThat(attrs.get(io.opentelemetry.api.common.AttributeKey.stringKey(
-                    PlatformAttributes.PLATFORM_TRACE_PRIORITY))).isEqualTo("high");
+            Attributes attrs = h.exporter().getFinishedSpanItems().getFirst().getAttributes();
+            assertThat(attrs.get(
+                    AttributeKey.stringKey(PlatformAttributes.PLATFORM_TRACE_PRIORITY))
+            ).isEqualTo("high");
         }
     }
 }

@@ -57,7 +57,9 @@ class ScrubbingSecurityCharacterizationTest {
             span.end();
 
             ScrubbingAssertions.assertStringAttributeEmpty(
-                    h.exporter().getFinishedSpanItems().get(0), "app.client-secret");
+                    h.exporter().getFinishedSpanItems().getFirst(),
+                    "app.client-secret"
+            );
         }
     }
 
@@ -73,7 +75,7 @@ class ScrubbingSecurityCharacterizationTest {
             // when
             span.end();
 
-            String eventValue = h.exporter().getFinishedSpanItems().get(0).getEvents().get(0)
+            String eventValue = h.exporter().getFinishedSpanItems().getFirst().getEvents().getFirst()
                     .getAttributes().get(AttributeKey.stringKey("http.request.header.authorization"));
             // then
             assertThat(eventValue).isEqualTo("Bearer secret");

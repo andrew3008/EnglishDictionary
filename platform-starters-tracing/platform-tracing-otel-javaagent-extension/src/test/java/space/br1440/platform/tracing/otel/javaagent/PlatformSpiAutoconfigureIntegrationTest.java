@@ -184,7 +184,7 @@ class PlatformSpiAutoconfigureIntegrationTest {
             // and: тот же final propagator должен вернуть исходное значение через extract
             io.opentelemetry.context.Context extracted =
                     root.extract(io.opentelemetry.context.Context.root(), carrier,
-                            new io.opentelemetry.context.propagation.TextMapGetter<Map<String, String>>() {
+                            new io.opentelemetry.context.propagation.TextMapGetter<>() {
                                 @Override
                                 public Iterable<String> keys(Map<String, String> c) {
                                     return c.keySet();

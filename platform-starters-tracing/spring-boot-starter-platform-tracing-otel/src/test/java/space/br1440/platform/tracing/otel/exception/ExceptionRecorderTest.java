@@ -4,7 +4,6 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
-import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.EventData;
@@ -33,10 +32,7 @@ class ExceptionRecorderTest {
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
 
-        tracer = OpenTelemetrySdk.builder()
-                .setTracerProvider(tracerProvider)
-                .build()
-                .getTracer("test");
+        tracer = tracerProvider.get("test");
     }
 
     @AfterEach
@@ -108,7 +104,7 @@ class ExceptionRecorderTest {
     @Test
     void record_withNullSpan_andInvalidSpan_doNotThrow() {
         ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
-        assertThatCode(() -> recorder.record((Span) null, new RuntimeException("x")))
+        assertThatCode(() -> recorder.record(null, new RuntimeException("x")))
                 .doesNotThrowAnyException();
         assertThatCode(() -> recorder.record(Span.getInvalid(), new RuntimeException("x")))
                 .doesNotThrowAnyException();

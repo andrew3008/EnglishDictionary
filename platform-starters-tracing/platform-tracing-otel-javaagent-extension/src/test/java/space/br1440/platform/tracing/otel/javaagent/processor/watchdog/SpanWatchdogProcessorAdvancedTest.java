@@ -105,7 +105,7 @@ class SpanWatchdogProcessorAdvancedTest {
 
             // then
             assertThat(exporter.getFinishedSpanItems()).hasSize(1);
-            SpanData data = exporter.getFinishedSpanItems().get(0);
+            SpanData data = exporter.getFinishedSpanItems().getFirst();
             assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TIMEOUT)))
                     .isEqualTo("span");
 
@@ -136,7 +136,7 @@ class SpanWatchdogProcessorAdvancedTest {
             watchdog.scanForTesting();
 
             // then
-            SpanData data = exporter.getFinishedSpanItems().get(0);
+            SpanData data = exporter.getFinishedSpanItems().getFirst();
             assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TIMEOUT)))
                     .isEqualTo("span");
             assertThat(watchdog.getForcedSpanCloses()).isEqualTo(1);

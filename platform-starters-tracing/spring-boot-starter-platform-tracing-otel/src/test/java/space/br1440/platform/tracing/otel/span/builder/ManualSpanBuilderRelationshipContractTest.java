@@ -1,21 +1,25 @@
 package space.br1440.platform.tracing.otel.span.builder;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
+
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder;
+
 import space.br1440.platform.tracing.api.attributes.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
-import space.br1440.platform.tracing.otel.runtime.RecordingTracingRuntime;
-import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
+import space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidationMetrics;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
+import space.br1440.platform.tracing.otel.runtime.RecordingTracingRuntime;
 import space.br1440.platform.tracing.otel.span.DefaultSpanFactory;
-
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ManualSpanBuilderRelationshipContractTest {
 
@@ -64,7 +68,11 @@ class ManualSpanBuilderRelationshipContractTest {
     @ParameterizedTest
     @MethodSource("builders")
     void noExplicitRelationship_defaultsToChild(ManualSpanBuilder<?> builder) {
-        assertThatCode(builder::start).doesNotThrowAnyException();
+        assertThatCode(() -> {
+            try (SpanHandle handle = builder.start()) {
+                assertThat(handle).isNotNull();
+            }
+        }).doesNotThrowAnyException();
     }
 
     @ParameterizedTest
@@ -78,26 +86,33 @@ class ManualSpanBuilderRelationshipContractTest {
     @MethodSource("builders")
     void linkedToThenDetached_failsAtFinalRelationshipLinkValidation(ManualSpanBuilder<?> builder) {
         builder.linkedTo(VALID_LINK);
-        assertThatThrownBy(() -> builder.detached().start())
-                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> {
+            try (SpanHandle handle = builder.detached().start()) {
+                fail("linkedTo+detached must fail at start(), got " + handle);
+            }
+        }).isInstanceOf(IllegalStateException.class);
     }
 
     @ParameterizedTest
     @MethodSource("builders")
     void linkedToThenChild_failsAtFinalRelationshipLinkValidation(ManualSpanBuilder<?> builder) {
         builder.linkedTo(VALID_LINK);
-        assertThatThrownBy(() -> builder.child().start())
-                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> {
+            try (SpanHandle handle = builder.child().start()) {
+                fail("linkedTo+child must fail at start(), got " + handle);
+            }
+        }).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void linkedToThenRootThenStart_succeedsForOperationBuilder() {
-        assertThatCode(() ->
-                new DefaultSpanFactory(recording, policy).operation("op")
-                        .linkedTo(VALID_LINK)
-                        .root()
-                        .start()
-                        .close())
-                .doesNotThrowAnyException();
+        assertThatCode(() -> {
+            try (SpanHandle handle = new DefaultSpanFactory(recording, policy).operation("op")
+                    .linkedTo(VALID_LINK)
+                    .root()
+                    .start()) {
+                assertThat(handle).isNotNull();
+            }
+        }).doesNotThrowAnyException();
     }
 }

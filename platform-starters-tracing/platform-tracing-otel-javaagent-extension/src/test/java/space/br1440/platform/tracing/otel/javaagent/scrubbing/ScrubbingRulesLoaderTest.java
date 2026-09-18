@@ -69,7 +69,7 @@ class ScrubbingRulesLoaderTest {
         // ScrubbingExtensionConfig.rulesConfig() returns null when property is absent.
         // load(String, ClassLoader) must handle null without NPE.
         // when
-        List<String> rules = ScrubbingRulesLoader.load((String) null, cl);
+        List<String> rules = ScrubbingRulesLoader.load(null, cl);
         // then
         assertThat(rules).isEmpty();
     }

@@ -29,10 +29,11 @@ class ScrubbingSpanProcessorCharacterizationTest {
         ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
                 ScrubbingCharacterizationSupport.resolveRules(List.of("password"))
         );
-        new ScrubbingSpanProcessor(runtime);
 
-        // then
-        assertThat(runtime.enabled()).isTrue();
+        try (ScrubbingSpanProcessor ignored = new ScrubbingSpanProcessor(runtime)) {
+            // then
+            assertThat(runtime.enabled()).isTrue();
+        }
     }
 
     @Test

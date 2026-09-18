@@ -24,6 +24,15 @@ class ExtensionConfigTest {
         assertThatNullPointerException().isThrownBy(() -> new ExtensionConfig(null));
     }
 
+    /**
+     * Проверяет, что секции конфигурации разбираются один раз в конструкторе и возвращаются как
+     * готовые {@code final}-поля.
+     * <p>
+     * Сравнение по {@code isSameAs} здесь обязательно: {@code equals} не отличил бы кешированный
+     * экземпляр от повторного разбора {@link ConfigProperties} на каждом вызове accessor'а.
+     * Повторный разбор недопустим — accessor'ы вызываются при построении pipeline'а, а валидация
+     * в конструкторах секций обязана выполняться однократно на старте агента.
+     */
     @Nested
     @DisplayName("Accessors return cached final-field instances")
     class CachedInstances {

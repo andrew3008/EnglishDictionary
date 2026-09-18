@@ -65,7 +65,7 @@ class EnrichmentPolicyCharacterizationTest {
             span.end();
 
             // then
-            SpanData data = h.exporter().getFinishedSpanItems().get(0);
+            SpanData data = h.exporter().getFinishedSpanItems().getFirst();
             EnrichmentAssertions.assertPlatformType(data, c.expectedPlatformType());
             EnrichmentAssertions.assertPlatformResult(data, c.expectedPlatformResult());
             if (c.expectedRemoteService() == null) {

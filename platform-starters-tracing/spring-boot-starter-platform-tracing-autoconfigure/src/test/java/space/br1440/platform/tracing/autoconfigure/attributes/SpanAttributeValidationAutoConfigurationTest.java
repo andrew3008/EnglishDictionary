@@ -8,6 +8,7 @@ import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.attributes.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.api.attributes.validation.SpanAttributeViolationException;
 import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
@@ -20,6 +21,7 @@ import io.opentelemetry.api.common.Attributes;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
 
 class SpanAttributeValidationAutoConfigurationTest {
 
@@ -91,7 +93,11 @@ class SpanAttributeValidationAutoConfigurationTest {
                             .build();
 
                     // when / then
-                    assertThatThrownBy(() -> tracing.spans().fromSpec(invalid).start())
+                    assertThatThrownBy(() -> {
+                        try (SpanHandle handle = tracing.spans().fromSpec(invalid).start()) {
+                            fail("start() must not return " + handle);
+                        }
+                    })
                             .isInstanceOf(SpanAttributeViolationException.class);
                 });
     }

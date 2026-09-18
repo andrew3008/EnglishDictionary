@@ -97,7 +97,7 @@ class ScrubbingSnapshotTest {
         private final java.util.regex.Pattern pattern;
 
         InvalidRegexRule() {
-            pattern = java.util.regex.Pattern.compile("([unclosed");
+            pattern = java.util.regex.Pattern.compile(/*language=TEXT*/ "([unclosed");
         }
 
         @Nonnull

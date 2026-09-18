@@ -1,22 +1,28 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.Collection;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 
 class MeteredMetricsCountTest {
 
@@ -34,10 +40,12 @@ class MeteredMetricsCountTest {
     @Test
     void startSpan_incrementsSpansStartedByCategory() {
         contextRunner.run(context -> {
+            // given
             MeterRegistry registry = context.getBean(MeterRegistry.class);
             TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
 
+            // when
             tracing.spans().operation("op-a").start().close();
             tracing.spans().operation("op-b").root().start().close();
             tracing.spans().transport().kafka().consumer()
@@ -48,14 +56,17 @@ class MeteredMetricsCountTest {
                     .start()
                     .close();
 
-            assertThat(registry.find(PlatformTracingMetrics.SPANS_STARTED)
+            // then
+            assertThat(registry.get(PlatformTracingMetrics.SPANS_STARTED)
                     .tag("category", SpanCategory.INTERNAL.value())
                     .counter()
                     .count()).isEqualTo(2.0);
-            assertThat(registry.find(PlatformTracingMetrics.SPANS_STARTED)
+
+            assertThat(registry.get(PlatformTracingMetrics.SPANS_STARTED)
                     .tag("category", SpanCategory.KAFKA_CONSUMER.value())
                     .counter()
                     .count()).isEqualTo(1.0);
+
             assertThat(exporter.getFinishedSpanItems()).hasSize(3);
         });
     }
@@ -63,17 +74,21 @@ class MeteredMetricsCountTest {
     @Test
     void recordException_incrementsExceptionsRecorded() {
         contextRunner.run(context -> {
+            // given
             MeterRegistry registry = context.getBean(MeterRegistry.class);
             TraceOperations tracing = context.getBean(TraceOperations.class);
 
-            var handle = tracing.spans().operation("failing-op").start();
+            // when
+            SpanHandle handle = tracing.spans().operation("failing-op").start();
             handle.recordException(new IllegalStateException("boom"));
             handle.close();
 
-            assertThat(registry.find(PlatformTracingMetrics.EXCEPTIONS_RECORDED)
+            // then
+            assertThat(registry.get(PlatformTracingMetrics.EXCEPTIONS_RECORDED)
                     .counter()
                     .count()).isEqualTo(1.0);
-            assertThat(registry.find(PlatformTracingMetrics.SPANS_STARTED)
+
+            assertThat(registry.get(PlatformTracingMetrics.SPANS_STARTED)
                     .tag("category", SpanCategory.INTERNAL.value())
                     .counter()
                     .count()).isEqualTo(1.0);
@@ -83,14 +98,17 @@ class MeteredMetricsCountTest {
     @Test
     void spansStartedMetric_usesBoundedCategoryTagsOnly() {
         contextRunner.run(context -> {
+            // given
             MeterRegistry registry = context.getBean(MeterRegistry.class);
             TraceOperations tracing = context.getBean(TraceOperations.class);
 
+            // when
             tracing.spans().operation("dynamic-name-" + System.nanoTime()).start().close();
 
-            var counters = registry.find(PlatformTracingMetrics.SPANS_STARTED).counters();
+            // then
+            Collection<Counter> counters = registry.find(PlatformTracingMetrics.SPANS_STARTED).counters();
             assertThat(counters).isNotEmpty();
-            for (var counter : counters) {
+            for (Counter counter : counters) {
                 assertThat(counter.getId().getTags()).hasSize(1);
                 assertThat(counter.getId().getTags().getFirst().getKey()).isEqualTo("category");
             }
@@ -99,6 +117,7 @@ class MeteredMetricsCountTest {
 
     @Configuration
     static class MeterRegistryConfiguration {
+
         @Bean
         MeterRegistry meterRegistry() {
             return new SimpleMeterRegistry();

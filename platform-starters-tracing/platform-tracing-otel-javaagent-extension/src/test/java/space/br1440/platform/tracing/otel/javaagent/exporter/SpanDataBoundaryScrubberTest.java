@@ -153,13 +153,13 @@ class SpanDataBoundaryScrubberTest {
             }
         };
         jul.addHandler(handler);
-        LoggingSpanExporter logging = LoggingSpanExporter.create();
-        try {
+
+        try (LoggingSpanExporter logging = LoggingSpanExporter.create()) {
             logging.export(List.of(outcome.spanData()));
         } finally {
-            logging.shutdown();
             jul.removeHandler(handler);
         }
+
         assertThat(logged).noneMatch(line -> line != null && line.contains(secret));
     }
 

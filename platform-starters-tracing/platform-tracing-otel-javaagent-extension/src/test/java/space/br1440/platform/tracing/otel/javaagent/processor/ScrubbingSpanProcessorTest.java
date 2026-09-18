@@ -26,14 +26,14 @@ class ScrubbingSpanProcessorTest {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("db.password", "supersecret");
-            span.setAttribute("just.text", "Ð½Ð¸Ñ‡ÐµÐ³Ð¾ Ð¸Ð½Ñ‚ÐµÑ€ÐµÑÐ½Ð¾Ð³Ð¾");
+            span.setAttribute("just.text", "ничего интересного");
             // when
             span.end();
 
-            Attributes attributes = h.exporter().getFinishedSpanItems().get(0).getAttributes();
             // then
+            Attributes attributes = h.exporter().getFinishedSpanItems().getFirst().getAttributes();
             assertThat(attributes.get(AttributeKey.stringKey("db.password"))).isEmpty();
-            assertThat(attributes.get(AttributeKey.stringKey("just.text"))).isEqualTo("Ð½Ð¸Ñ‡ÐµÐ³Ð¾ Ð¸Ð½Ñ‚ÐµÑ€ÐµÑÐ½Ð¾Ð³Ð¾");
+            assertThat(attributes.get(AttributeKey.stringKey("just.text"))).isEqualTo("ничего интересного");
         }
     }
 
@@ -49,7 +49,7 @@ class ScrubbingSpanProcessorTest {
             // when
             span.end();
 
-            Attributes attributes = h.exporter().getFinishedSpanItems().get(0).getAttributes();
+            Attributes attributes = h.exporter().getFinishedSpanItems().getFirst().getAttributes();
             // then
             assertThat(attributes.get(AttributeKey.stringKey("token.value"))).isEmpty();
         }

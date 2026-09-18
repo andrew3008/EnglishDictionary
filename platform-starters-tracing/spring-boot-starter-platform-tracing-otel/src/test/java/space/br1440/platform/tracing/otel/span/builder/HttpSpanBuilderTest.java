@@ -14,6 +14,7 @@ import space.br1440.platform.tracing.api.span.SpanFactory;
 import space.br1440.platform.tracing.api.span.builder.HttpClientSpanBuilder;
 import space.br1440.platform.tracing.api.span.builder.HttpServerSpanBuilder;
 import space.br1440.platform.tracing.api.span.builder.HttpTracing;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidationMetrics;
@@ -89,16 +90,20 @@ class HttpSpanBuilderTest {
 
     @Test
     void httpServerWithoutMethod_rejectedInStrictMode() {
-        assertThatThrownBy(() ->
-                manual.transport().http().server().start())
-                .isInstanceOf(SpanAttributeViolationException.class);
+        assertThatThrownBy(() -> {
+            try (SpanHandle handle = manual.transport().http().server().start()) {
+                throw new AssertionError("STRICT HTTP server start must fail before returning " + handle);
+            }
+        }).isInstanceOf(SpanAttributeViolationException.class);
     }
 
     @Test
     void httpClientWithoutMethod_rejectedInStrictMode() {
-        assertThatThrownBy(() ->
-                manual.transport().http().client().url("https://example.com").start())
-                .isInstanceOf(SpanAttributeViolationException.class);
+        assertThatThrownBy(() -> {
+            try (SpanHandle handle = manual.transport().http().client().url("https://example.com").start()) {
+                throw new AssertionError("STRICT HTTP client start must fail before returning " + handle);
+            }
+        }).isInstanceOf(SpanAttributeViolationException.class);
     }
 
     @Test

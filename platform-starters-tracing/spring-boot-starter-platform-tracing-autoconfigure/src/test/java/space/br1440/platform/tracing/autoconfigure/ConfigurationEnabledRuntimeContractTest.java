@@ -125,10 +125,11 @@ class ConfigurationEnabledRuntimeContractTest {
         operations.spans().fromSpec(spec).start().close();
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static void assertDisabledRuntime(TracingRuntime runtime, String expectedReason) {
         assertThat(runtime.state().mode())
-                .isEqualTo(
-                        TracingRuntimeMode.DISABLED_BY_CONFIGURATION);
+                .isEqualTo(TracingRuntimeMode.DISABLED_BY_CONFIGURATION);
+
         assertThat(runtime.state().reason()).contains(expectedReason);
     }
 }

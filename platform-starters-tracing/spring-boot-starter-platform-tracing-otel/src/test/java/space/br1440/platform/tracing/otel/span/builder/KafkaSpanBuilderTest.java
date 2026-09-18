@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.span.builder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import space.br1440.platform.tracing.api.span.builder.KafkaBatchSpanBuilder;
 import space.br1440.platform.tracing.api.span.builder.KafkaConsumerSpanBuilder;
 import space.br1440.platform.tracing.api.span.builder.KafkaProducerSpanBuilder;
 import space.br1440.platform.tracing.api.span.builder.KafkaTracing;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
@@ -61,11 +63,12 @@ class KafkaSpanBuilderTest {
 
     @Test
     void kafkaProducerStart_routesSpanSpecThroughTracingRuntime() {
-        manual.transport().kafka().producer()
+        try (SpanHandle handle = manual.transport().kafka().producer()
                 .destination("orders")
                 .operation("publish")
-                .start()
-                .close();
+                .start()) {
+            assertThat(handle).isNotNull();
+        }
 
         assertThat(recording.receivedSpecs()).hasSize(1);
         SpanSpec spec = recording.receivedSpecs().getFirst();
@@ -79,11 +82,12 @@ class KafkaSpanBuilderTest {
 
     @Test
     void kafkaConsumerStart_routesSpanSpecThroughTracingRuntime() {
-        manual.transport().kafka().consumer()
+        try (SpanHandle handle = manual.transport().kafka().consumer()
                 .destination("orders")
                 .operation("receive")
-                .start()
-                .close();
+                .start()) {
+            assertThat(handle).isNotNull();
+        }
 
         SpanSpec spec = recording.receivedSpecs().getFirst();
         assertThat(spec.category()).isEqualTo(SpanCategory.KAFKA_CONSUMER);
@@ -92,10 +96,11 @@ class KafkaSpanBuilderTest {
 
     @Test
     void kafkaBatchStart_routesSpanSpecWithPreconfiguredDestination() {
-        manual.transport().kafka().consumer()
+        try (SpanHandle handle = manual.transport().kafka().consumer()
                 .batch("orders")
-                .start()
-                .close();
+                .start()) {
+            assertThat(handle).isNotNull();
+        }
 
         SpanSpec spec = recording.receivedSpecs().getFirst();
         assertThat(spec.category()).isEqualTo(SpanCategory.KAFKA_CONSUMER);
@@ -121,20 +126,26 @@ class KafkaSpanBuilderTest {
 
     @Test
     void missingDestination_rejected() {
-        assertThatThrownBy(() ->
-                manual.transport().kafka().producer()
-                        .operation("publish")
-                        .start())
+        assertThatThrownBy(() -> {
+            try (SpanHandle handle = manual.transport().kafka().producer()
+                    .operation("publish")
+                    .start()) {
+                fail("missing destination must fail at start(), got " + handle);
+            }
+        })
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("destination");
     }
 
     @Test
     void missingOperation_rejected() {
-        assertThatThrownBy(() ->
-                manual.transport().kafka().consumer()
-                        .destination("orders")
-                        .start())
+        assertThatThrownBy(() -> {
+            try (SpanHandle handle = manual.transport().kafka().consumer()
+                    .destination("orders")
+                    .start()) {
+                fail("missing operation must fail at start(), got " + handle);
+            }
+        })
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("operation");
     }
@@ -149,12 +160,13 @@ class KafkaSpanBuilderTest {
 
     @Test
     void rootRelationship_works() {
-        manual.transport().kafka().producer()
+        try (SpanHandle handle = manual.transport().kafka().producer()
                 .destination("orders")
                 .operation("publish")
                 .root()
-                .start()
-                .close();
+                .start()) {
+            assertThat(handle).isNotNull();
+        }
 
         assertThat(recording.receivedSpecs().getFirst().relationship().kind()).isEqualTo(SpanRelationship.ROOT);
     }

@@ -55,11 +55,27 @@ class ProcessorDiagnosticIdentityContractTest {
     @Test
     void infrastructureProcessorsAreNotDiagnosticDelegates() {
         // given
+        Set<String> infrastructureProcessors = Set.of(
+                PlatformCompositeSpanProcessor.class.getName(),
+                PlatformDropOldestExportSpanProcessor.class.getName()
+        );
+
+        List<JavaClass> imported = new ClassFileImporter()
+                .withImportOption(new ImportOption.DoNotIncludeTests())
+                .importPackages(PROCESSOR_PACKAGE)
+                .stream()
+                .filter(javaClass -> infrastructureProcessors.contains(javaClass.getName()))
+                .toList();
+
         // then
-        assertThat(ProcessorDiagnosticIdentity.class.isAssignableFrom(PlatformCompositeSpanProcessor.class)).isFalse();
-        assertThat(ProcessorDiagnosticIdentity.class.isAssignableFrom(
-                PlatformDropOldestExportSpanProcessor.class
-        )).isFalse();
+        assertThat(imported)
+                .extracting(JavaClass::getSimpleName)
+                .containsExactlyInAnyOrder(
+                        "PlatformCompositeSpanProcessor",
+                        "PlatformDropOldestExportSpanProcessor");
+        assertThat(imported)
+                .filteredOn(javaClass -> javaClass.isAssignableTo(ProcessorDiagnosticIdentity.class))
+                .isEmpty();
     }
 
     @Test

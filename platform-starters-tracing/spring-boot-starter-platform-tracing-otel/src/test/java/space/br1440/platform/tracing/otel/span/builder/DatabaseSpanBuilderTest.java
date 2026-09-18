@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.span.builder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,7 @@ import space.br1440.platform.tracing.api.attributes.validation.SpanAttributeVali
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanFactory;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidationMetrics;
@@ -31,12 +33,13 @@ class DatabaseSpanBuilderTest {
 
     @Test
     void validBuilder_routesSpanSpecThroughTracingRuntime() {
-        manual.transport().database()
+        try (SpanHandle handle = manual.transport().database()
                 .operation("SELECT")
                 .system("postgresql")
                 .collection("orders")
-                .start()
-                .close();
+                .start()) {
+            assertThat(handle).isNotNull();
+        }
 
         assertThat(recording.receivedSpecs()).hasSize(1);
         SpanSpec spec = recording.receivedSpecs().getFirst();
@@ -50,46 +53,56 @@ class DatabaseSpanBuilderTest {
 
     @Test
     void missingOperation_rejected() {
-        assertThatThrownBy(() ->
-                manual.transport().database()
-                        .system("postgresql")
-                        .collection("orders")
-                        .start())
+        assertThatThrownBy(() -> {
+            try (SpanHandle handle = manual.transport().database()
+                    .system("postgresql")
+                    .collection("orders")
+                    .start()) {
+                fail("start() must not return " + handle);
+            }
+        })
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("operation");
     }
 
     @Test
     void missingSystem_rejected() {
-        assertThatThrownBy(() ->
-                manual.transport().database()
-                        .operation("SELECT")
-                        .collection("orders")
-                        .start())
+        assertThatThrownBy(() -> {
+            try (SpanHandle handle = manual.transport().database()
+                    .operation("SELECT")
+                    .collection("orders")
+                    .start()) {
+                fail("start() must not return " + handle);
+            }
+        })
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("system");
     }
 
     @Test
     void missingCollection_rejected() {
-        assertThatThrownBy(() ->
-                manual.transport().database()
-                        .operation("SELECT")
-                        .system("postgresql")
-                        .start())
+        assertThatThrownBy(() -> {
+            try (SpanHandle handle = manual.transport().database()
+                    .operation("SELECT")
+                    .system("postgresql")
+                    .start()) {
+                fail("start() must not return " + handle);
+            }
+        })
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("collection");
     }
 
     @Test
     void rootRelationship_works() {
-        manual.transport().database()
+        try (SpanHandle handle = manual.transport().database()
                 .operation("INSERT")
                 .system("postgresql")
                 .collection("orders")
                 .root()
-                .start()
-                .close();
+                .start()) {
+            assertThat(handle).isNotNull();
+        }
 
         assertThat(recording.receivedSpecs().getFirst().relationship().kind())
                 .isEqualTo(space.br1440.platform.tracing.api.span.spec.SpanRelationship.ROOT);
@@ -100,14 +113,17 @@ class DatabaseSpanBuilderTest {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10",
                 "0102030405060708");
-        assertThatThrownBy(() ->
-                manual.transport().database()
-                        .operation("SELECT")
-                        .system("postgresql")
-                        .collection("orders")
-                        .child()
-                        .linkedTo(link)
-                        .start())
+        assertThatThrownBy(() -> {
+            try (SpanHandle handle = manual.transport().database()
+                    .operation("SELECT")
+                    .system("postgresql")
+                    .collection("orders")
+                    .child()
+                    .linkedTo(link)
+                    .start()) {
+                fail("start() must not return " + handle);
+            }
+        })
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("CHILD");
     }

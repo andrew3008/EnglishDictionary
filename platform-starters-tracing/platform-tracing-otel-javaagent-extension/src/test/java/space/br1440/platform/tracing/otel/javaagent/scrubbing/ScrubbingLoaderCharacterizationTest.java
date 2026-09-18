@@ -56,7 +56,9 @@ class ScrubbingLoaderCharacterizationTest {
 
             // then
             ScrubbingAssertions.assertStringAttributeEmpty(
-                    h.exporter().getFinishedSpanItems().get(0), "db.password");
+                    h.exporter().getFinishedSpanItems().getFirst(),
+                    "db.password"
+            );
         }
     }
 }

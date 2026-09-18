@@ -116,21 +116,24 @@ class AcceptedPolicyCoordinatorTest {
     private static TracingSettingsStore store() {
         return new TracingSettingsStore(
                 AcceptedPolicyTestFixtures.RUNTIME_INSTANCE_ID,
-                AcceptedPolicyTestFixtures.policy(0.1d));
+                AcceptedPolicyTestFixtures.policy(0.1d)
+        );
     }
 
-    @SuppressWarnings("unchecked")
-    private static void setAcceptedSequence(
-            TracingSettingsStore store,
-            long acceptedSequence) throws Exception {
+    @SuppressWarnings({"unchecked", "SameParameterValue"})
+    private static void setAcceptedSequence(TracingSettingsStore store,
+                                            long acceptedSequence) throws Exception {
         Field currentField = TracingSettingsStore.class.getDeclaredField("current");
         currentField.setAccessible(true);
-        AtomicReference<TracingSettingsRevision> current =
-                (AtomicReference<TracingSettingsRevision>) currentField.get(store);
+
+        AtomicReference<TracingSettingsRevision> current = (AtomicReference<TracingSettingsRevision>) currentField.get(store);
         TracingSettingsRevision previous = current.get();
-        current.set(new TracingSettingsRevision(
-                previous.runtimeInstanceId(),
-                acceptedSequence,
-                previous.policy()));
+        current.set(
+                new TracingSettingsRevision(
+                        previous.runtimeInstanceId(),
+                        acceptedSequence,
+                        previous.policy()
+                )
+        );
     }
 }

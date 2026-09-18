@@ -85,9 +85,7 @@ class TracingAutoConfigurationTest {
 
     @Test
     void registersAspectForAnnotation() {
-        controlledAgentRunner.run(context -> {
-            assertThat(context).hasSingleBean(TracedAspect.class);
-        });
+        controlledAgentRunner.run(context -> assertThat(context).hasSingleBean(TracedAspect.class));
     }
 
     @Test
@@ -102,13 +100,12 @@ class TracingAutoConfigurationTest {
                         "management.health.tracing-startup-contract.enabled=true",
                         "management.endpoints.web.exposure.include=*"
                 )
-                .run(context -> {
-                    assertThat(context).hasBean("tracingStartupContractHealthIndicator");
-                });
+                .run(context -> assertThat(context).hasBean("tracingStartupContractHealthIndicator"));
     }
 
     @Configuration
     static class MeterRegistryConfiguration {
+
         @Bean
         public MeterRegistry meterRegistry() {
             return new SimpleMeterRegistry();

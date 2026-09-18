@@ -104,7 +104,7 @@ class ScrubbingSpanProcessorAdvancedTest {
             // when
             span.end();
 
-            Attributes attributes = h.exporter().getFinishedSpanItems().get(0).getAttributes();
+            Attributes attributes = h.exporter().getFinishedSpanItems().getFirst().getAttributes();
             // then
             assertThat(attributes.get(AttributeKey.doubleKey("geo.lat"))).isEqualTo(0.0d);
             assertThat(attributes.get(AttributeKey.doubleKey("geo.other"))).isEqualTo(1.5d);
@@ -137,7 +137,7 @@ class ScrubbingSpanProcessorAdvancedTest {
             // when
             span.end();
 
-            Attributes attributes = h.exporter().getFinishedSpanItems().get(0).getAttributes();
+            Attributes attributes = h.exporter().getFinishedSpanItems().getFirst().getAttributes();
             // then
             assertThat(attributes.get(AttributeKey.stringKey("ok"))).isEqualTo("fine");
             assertThat(attributes.get(AttributeKey.stringKey("bad"))).isEqualTo("explodes");

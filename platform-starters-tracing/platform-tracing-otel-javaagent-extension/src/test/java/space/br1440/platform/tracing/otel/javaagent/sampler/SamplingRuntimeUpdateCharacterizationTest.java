@@ -1,125 +1,160 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
-import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
-
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.sdk.trace.samplers.SamplingResult;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
-import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
-import space.br1440.platform.tracing.test.assertions.SamplingAssertions;
-import space.br1440.platform.tracing.test.harness.SamplerHarness;
-
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
+import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
+import space.br1440.platform.tracing.test.assertions.SamplingAssertions;
+import space.br1440.platform.tracing.test.harness.SamplerHarness;
+
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 
 /**
- * Characterization: читатели sampling видят консistent snapshot после runtime update (PR-5A).
- * <p>
- * Дополняет {@link SamplerRuntimeUpdateConcurrencyTest} проверкой изменения decision/reason.
+ * Characterization: читатели sampling видят consistent snapshot после runtime update.
+ *
+ * <p>Дополняет {@link SamplerRuntimeUpdateConcurrencyTest} проверкой изменения decision/reason.
  */
 class SamplingRuntimeUpdateCharacterizationTest {
 
-    @Test
-    void route_ratio_update_changes_reason_from_global_to_route() throws Exception {
-        // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 1.0);
-        CompositeSampler sampler = new CompositeSampler(
-                holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
-        String urlPath = "/api/v1/orders";
+    private static final String ROUTE_PATH = "/api/v1/orders";
+    private static final double INITIAL_ROUTE_RATIO = 1.0d;
+    private static final double DROPPED_ROUTE_RATIO = 0.0d;
 
-        // when
-        SamplingResult globalResult = SamplerHarness.of(sampler)
-                .spanKind(SpanKind.SERVER)
-                .putStringAttribute("url.path", urlPath)
-                .sample();
+    private static final double INITIAL_GLOBAL_RATIO = 0.5d;
+    private static final double UPDATED_GLOBAL_RATIO = 0.1d;
+    private static final int CONCURRENT_UPDATE_ITERATIONS = 200;
+    private static final int READER_WRITER_POOL_SIZE = 2;
+    private static final Duration WRITER_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration POOL_SHUTDOWN_TIMEOUT = Duration.ofSeconds(5);
+
+    @Test
+    void routeRatioUpdateChangesReasonFromGlobalToRoute() {
+        // given
+        TracingSettingsSource settings = TracingSettingsSource.isolatedSampling(true, Map.of(), INITIAL_ROUTE_RATIO);
+        CompositeSampler sampler = new CompositeSampler(
+                settings,
+                CategoryBSamplingAccess.snapshot(List.of(), List.of("on"))
+        );
+
+        // when: глобальный ratio ещё не переопределён для маршрута
+        SamplingResult globalResult = sampleRoute(sampler);
+
         // then
         SamplingAssertions.assertSamplingReason(globalResult, PlatformSamplingReasons.GLOBAL_RATIO);
 
-        // when
-        AcceptedPolicyMutationAccess.applySampling(holder, true, 1.0d, Map.of("/api/v1/orders", 0.0d));
+        // when: применяется route-specific override, отключающий выборку для маршрута
+        AcceptedPolicyMutationAccess.applySampling(
+                settings,
+                true,
+                INITIAL_ROUTE_RATIO,
+                Map.of(ROUTE_PATH, DROPPED_ROUTE_RATIO)
+        );
+        SamplingResult routeDropResult = sampleRoute(sampler);
 
-        SamplingResult routeDrop = SamplerHarness.of(sampler)
-                .spanKind(SpanKind.SERVER)
-                .putStringAttribute("url.path", urlPath)
-                .sample();
         // then
-        SamplerDecisionAssert.assertThat(routeDrop).isDrop();
-        SamplingAssertions.assertSamplingReason(routeDrop, PlatformSamplingReasons.ROUTE_RATIO_DROP);
+        SamplerDecisionAssert.assertThat(routeDropResult).isDrop();
+        SamplingAssertions.assertSamplingReason(routeDropResult, PlatformSamplingReasons.ROUTE_RATIO_DROP);
     }
 
     @Test
-    void parallel_read_after_valid_update_does_not_see_invalid_ratio() throws Exception {
+    void parallelReadAfterValidUpdateDoesNotSeeInvalidRatio() throws InterruptedException {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
-        CompositeSampler sampler = new CompositeSampler(
-                holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
+        TracingSettingsSource settings = TracingSettingsSource
+                .isolatedSampling(true, Map.of(), INITIAL_GLOBAL_RATIO);
 
-        ExecutorService pool = Executors.newFixedThreadPool(2);
+        CompositeSampler sampler = new CompositeSampler(
+                settings,
+                CategoryBSamplingAccess.snapshot(List.of(), List.of("on"))
+        );
+
         CountDownLatch start = new CountDownLatch(1);
         CountDownLatch writerDone = new CountDownLatch(1);
-        java.util.concurrent.atomic.AtomicBoolean stopReader = new java.util.concurrent.atomic.AtomicBoolean(false);
+        AtomicBoolean stopReader = new AtomicBoolean(false);
         AtomicReference<String> violation = new AtomicReference<>();
 
         // when
-        try {
-            pool.submit(() -> {
-                await(start);
-                try {
-                    for (int i = 0; i < 200; i++) {
-                        AcceptedPolicyMutationAccess.applySampling(holder, true, 0.1d, Map.of());
-                    }
-                } finally {
-                    writerDone.countDown();
-                }
-            });
-
-            pool.submit(() -> {
-                await(start);
-                while (!stopReader.get()) {
-                    double ratio = holder.current().samplingRatio();
-                    if (ratio != 0.5 && ratio != 0.1) {
-                        violation.compareAndSet(null, "unexpected ratio: " + ratio);
-                        return;
-                    }
-                    SamplerHarness.of(sampler)
-                            .spanKind(SpanKind.SERVER)
-                            .sample();
-                    if (holder.current() == null) {
-                        violation.compareAndSet(null, "missing policy snapshot");
-                        return;
-                    }
-                }
-            });
+        try (ExecutorService pool = Executors.newFixedThreadPool(READER_WRITER_POOL_SIZE)) {
+            pool.submit(() -> runRatioWriter(settings, start, writerDone));
+            pool.submit(() -> runRatioReader(settings, sampler, start, stopReader, violation));
 
             start.countDown();
-            assertThat(writerDone.await(10, TimeUnit.SECONDS)).isTrue();
-        } finally {
+            assertThat(writerDone.await(WRITER_TIMEOUT.toSeconds(), TimeUnit.SECONDS)).isTrue();
+
             stopReader.set(true);
             pool.shutdown();
-            assertThat(pool.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(pool.awaitTermination(POOL_SHUTDOWN_TIMEOUT.toSeconds(), TimeUnit.SECONDS)).isTrue();
         }
 
         // then
         assertThat(violation.get()).isNull();
     }
 
-    private static void await(CountDownLatch latch) {
+    private static SamplingResult sampleRoute(CompositeSampler sampler) {
+        return SamplerHarness.of(sampler)
+                .spanKind(SpanKind.SERVER)
+                .putStringAttribute("url.path", ROUTE_PATH)
+                .sample();
+    }
+
+    private static void runRatioWriter(TracingSettingsSource settings,
+                                       CountDownLatch start,
+                                       CountDownLatch writerDone) {
+        awaitUninterruptibly(start);
+        try {
+            for (int i = 0; i < CONCURRENT_UPDATE_ITERATIONS; i++) {
+                AcceptedPolicyMutationAccess.applySampling(settings, true, UPDATED_GLOBAL_RATIO, Map.of());
+            }
+        } finally {
+            writerDone.countDown();
+        }
+    }
+
+    private static void runRatioReader(TracingSettingsSource settings,
+                                       CompositeSampler sampler,
+                                       CountDownLatch start,
+                                       AtomicBoolean stopReader,
+                                       AtomicReference<String> violation) {
+        awaitUninterruptibly(start);
+        while (!stopReader.get()) {
+            double observedRatio = settings.current().samplingRatio();
+            if (observedRatio != INITIAL_GLOBAL_RATIO && observedRatio != UPDATED_GLOBAL_RATIO) {
+                violation.compareAndSet(null, "unexpected ratio: " + observedRatio);
+                return;
+            }
+
+            SamplerHarness.of(sampler)
+                    .spanKind(SpanKind.SERVER)
+                    .sample();
+
+            if (settings.current() == null) {
+                violation.compareAndSet(null, "missing policy snapshot");
+                return;
+            }
+        }
+    }
+
+    private static void awaitUninterruptibly(CountDownLatch latch) {
         try {
             latch.await();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException(e);
+            throw new IllegalStateException("Interrupted while waiting for test synchronization latch", e);
         }
     }
 }

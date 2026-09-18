@@ -6,6 +6,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.attributes.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.api.attributes.validation.SpanAttributeViolation;
 import space.br1440.platform.tracing.api.attributes.validation.SpanAttributeViolationException;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
@@ -40,7 +41,7 @@ class SpanAttributeValidatorTest {
         // then
         assertThat(result.attributes().get(SemconvKeys.PLATFORM_TYPE)).isEqualTo("internal");
         assertThat(result.violations())
-                .extracting(v -> v.ruleId())
+                .extracting(SpanAttributeViolation::ruleId)
                 .contains("REQUIRED_MISSING");
         assertThat(metrics.violations).contains("REQUIRED_MISSING|InternalSpanBuilder");
     }
@@ -89,7 +90,7 @@ class SpanAttributeValidatorTest {
 
         // then
         assertThat(result.violations())
-                .extracting(v -> v.ruleId())
+                .extracting(SpanAttributeViolation::ruleId)
                 .contains("ATTR_FORBIDDEN");
         assertThat(metrics.violations).contains("ATTR_FORBIDDEN|InternalSpanBuilder");
     }
@@ -115,10 +116,11 @@ class SpanAttributeValidatorTest {
 
         // then
         assertThat(missing.violations())
-                .extracting(v -> v.ruleId())
+                .extracting(SpanAttributeViolation::ruleId)
                 .contains("REQUIRED_ANY_OF_MISSING");
+
         assertThat(ok.violations())
-                .extracting(v -> v.ruleId())
+                .extracting(SpanAttributeViolation::ruleId)
                 .doesNotContain("REQUIRED_ANY_OF_MISSING");
     }
 
@@ -126,7 +128,11 @@ class SpanAttributeValidatorTest {
     void defaultConstructor_isWarn() {
         // given / when / then
         assertThatNoException().isThrownBy(() -> new SpanAttributeValidator().validateAndNormalize(
-                SpanCategory.INTERNAL, Attributes.empty(), "default"));
+                SpanCategory.INTERNAL,
+                Attributes.empty(),
+                "default"
+        ));
+
         assertThat(new SpanAttributeValidator().level()).isEqualTo(SpanAttributeValidationLevel.WARN);
     }
 }

@@ -79,7 +79,7 @@ class PlatformDropOldestExportSpanProcessorContractTest {
     }
 
     @Test
-    void forceFlushDuringConcurrentShutdownStillCompletes() throws InterruptedException {
+    void forceFlushDuringConcurrentShutdownStillCompletes() {
         // given
         CountingExporter exporter = new CountingExporter();
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)
@@ -127,7 +127,7 @@ class PlatformDropOldestExportSpanProcessorContractTest {
     }
 
     @Test
-    void manyParallelForceFlushCallsAllCompleteWithoutHangOrException() throws InterruptedException {
+    void manyParallelForceFlushCallsAllCompleteWithoutHangOrException() {
         // given
         CountingExporter exporter = new CountingExporter();
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)

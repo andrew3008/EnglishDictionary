@@ -153,7 +153,7 @@ class ExtensionRuleLoaderTest {
         Path jar = dir.resolve("rules.jar");
         writeJar(jar, Map.of("com/example/Marker.txt", "x"));
 
-        String property = jar.toString() + "," + dir.toString();
+        String property = jar + "," + dir;
         // when/then
         try (ExtensionRuleLoader loader = loader()) {
             assertThat(loader.load(property)).isEmpty();

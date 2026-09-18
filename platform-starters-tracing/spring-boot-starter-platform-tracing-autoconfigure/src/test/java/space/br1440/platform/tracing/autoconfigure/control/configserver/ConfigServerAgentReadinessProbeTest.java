@@ -200,6 +200,7 @@ class ConfigServerAgentReadinessProbeTest {
             return new RecordingApplier(outcome, List.of());
         }
 
+        @SuppressWarnings("SameParameterValue")
         static RecordingApplier queued(TracingSettingsDeliveryResult first,
                                        TracingSettingsDeliveryResult second) {
             return new RecordingApplier(second, List.of(first, second));

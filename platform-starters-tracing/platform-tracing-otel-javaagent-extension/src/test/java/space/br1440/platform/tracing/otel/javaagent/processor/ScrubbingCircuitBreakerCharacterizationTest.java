@@ -52,7 +52,7 @@ class ScrubbingCircuitBreakerCharacterizationTest {
             span.end();
 
             // then
-            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes()
+            assertThat(h.exporter().getFinishedSpanItems().getFirst().getAttributes()
                     .get(AttributeKey.stringKey("secret.key")))
                     .isEqualTo(SCRUBBING_FAILED_REASON);
         }

@@ -1,5 +1,14 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.test.junit.OtelSdkExtension;
+import space.br1440.platform.tracing.test.junit.internal.ScopeMode;
+
 import io.opentelemetry.api.baggage.Baggage;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
@@ -7,16 +16,10 @@ import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.data.SpanData;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
-import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.test.junit.OtelSdkExtension;
-import space.br1440.platform.tracing.test.junit.internal.ScopeMode;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class EnrichingSpanProcessorTest {
 
@@ -32,7 +35,8 @@ class EnrichingSpanProcessorTest {
             .build();
 
     @Test
-    void setsPlatformTypeFromSpanKind(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void setsPlatformTypeFromSpanKind(OpenTelemetrySdk sdk,
+                                      InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -48,7 +52,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void doesNotSetPlatformHostOnSpan(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void doesNotSetPlatformHostOnSpan(OpenTelemetrySdk sdk,
+                                      InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -62,7 +67,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void doesNotOverwriteExistingPlatformType(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void doesNotOverwriteExistingPlatformType(OpenTelemetrySdk sdk,
+                                              InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -77,7 +83,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void setsPlatformResultFailureOnStatusCodeError(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void setsPlatformResultFailureOnStatusCodeError(OpenTelemetrySdk sdk,
+                                                    InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -92,7 +99,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void setsPlatformRemoteServiceFromPeerServiceOnClientError(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void setsPlatformRemoteServiceFromPeerServiceOnClientError(OpenTelemetrySdk sdk,
+                                                               InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -109,7 +117,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void platformRemoteServiceFallsBackToRpcService(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void platformRemoteServiceFallsBackToRpcService(OpenTelemetrySdk sdk,
+                                                    InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -125,7 +134,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void doesNotSetPlatformRemoteServiceForSuccessfulClientCall(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void doesNotSetPlatformRemoteServiceForSuccessfulClientCall(OpenTelemetrySdk sdk,
+                                                                InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -140,7 +150,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void doesNotSetPlatformRemoteServiceForServerSpanWithError(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void doesNotSetPlatformRemoteServiceForServerSpanWithError(OpenTelemetrySdk sdk,
+                                                               InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -156,7 +167,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void platformRemoteServiceIgnoresIpServerAddress(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void platformRemoteServiceIgnoresIpServerAddress(OpenTelemetrySdk sdk,
+                                                     InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -172,7 +184,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void platformRemoteServiceUsesServerAddressWithHostnameAndPort(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void platformRemoteServiceUsesServerAddressWithHostnameAndPort(OpenTelemetrySdk sdk,
+                                                                   InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -189,7 +202,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void platformRemoteServiceIgnoresPureIpv6Address(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void platformRemoteServiceIgnoresPureIpv6Address(OpenTelemetrySdk sdk,
+                                                     InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -205,7 +219,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void platformRemoteServiceUsesShortDnsName(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void platformRemoteServiceUsesShortDnsName(OpenTelemetrySdk sdk,
+                                               InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -221,7 +236,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void platformRemoteServiceUsesServerAddressAsDnsName(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void platformRemoteServiceUsesServerAddressAsDnsName(OpenTelemetrySdk sdk,
+                                                         InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -238,8 +254,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void overridesPlatformTypeToDatabaseWhenStableDbSystemNamePresent(
-            OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void overridesPlatformTypeToDatabaseWhenStableDbSystemNamePresent(OpenTelemetrySdk sdk,
+                                                                      InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -254,8 +270,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void overridesPlatformTypeToDatabaseWhenLegacyDbSystemPresent(
-            OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void overridesPlatformTypeToDatabaseWhenLegacyDbSystemPresent(OpenTelemetrySdk sdk,
+                                                                  InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -270,8 +286,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void overridesPlatformTypeToDatabaseWhenBothDbSystemAttributesPresent(
-            OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void overridesPlatformTypeToDatabaseWhenBothDbSystemAttributesPresent(OpenTelemetrySdk sdk,
+                                                                          InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -287,8 +303,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void doesNotOverridePlatformTypeWhenSetExplicitlyByApplication(
-            OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void doesNotOverridePlatformTypeWhenSetExplicitlyByApplication(OpenTelemetrySdk sdk,
+                                                                   InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -304,8 +320,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void doesNotOverridePlatformTypeForServerSpanWithDbAttributes(
-            OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void doesNotOverridePlatformTypeForServerSpanWithDbAttributes(OpenTelemetrySdk sdk,
+                                                                  InMemorySpanExporter exporter) {
         // given
         Tracer tracer = sdk.getTracer("test");
 
@@ -320,8 +336,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void neverProjectsReservedPlatformAttributesFromBaggage(
-            OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void neverProjectsReservedPlatformAttributesFromBaggage(OpenTelemetrySdk sdk,
+                                                            InMemorySpanExporter exporter) {
         // given
         Baggage baggage = Baggage.builder()
                 .put(PlatformAttributes.PLATFORM_REQUEST_ID, "req-123")
@@ -331,7 +347,7 @@ class EnrichingSpanProcessorTest {
         Tracer tracer = sdk.getTracer("test");
 
         // when
-        try (io.opentelemetry.context.Scope scope = context.makeCurrent()) {
+        try (Scope ignored = context.makeCurrent()) {
             Span span = tracer.spanBuilder("test-op").startSpan();
             span.end();
         }
