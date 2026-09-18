@@ -3,7 +3,6 @@ package space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.AttributeNotFoundException;
@@ -100,13 +99,11 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
     }
 
     @Override
-    public Object invoke(
-            String actionName,
-            Object[] params,
-            String[] signature
-    ) throws ReflectionException {
-        throw new ReflectionException(
-                new NoSuchMethodException("JMX settings status endpoint has no operations"));
+    public Object invoke(String actionName,
+                         Object[] params,
+                         String[] signature) throws ReflectionException {
+        NoSuchMethodException rootCause = new NoSuchMethodException("JMX settings status endpoint has no operations");
+        throw new ReflectionException(rootCause);
     }
 
     @Override
@@ -119,54 +116,81 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
         return encode(status.accepted(), status.update());
     }
 
-    private static CompositeData encode(
-            TracingSettingsRevision accepted,
-            LastSettingsUpdateSnapshot update
-    ) {
+    private static CompositeData encode(TracingSettingsRevision accepted,
+                                        LastSettingsUpdateSnapshot update) {
         try {
             Map<String, Object> fields = new LinkedHashMap<>();
+
             fields.put(
                     JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_SEQUENCE,
-                    accepted.acceptedSequence());
+                    accepted.acceptedSequence()
+            );
+
             fields.put(
                     JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_RUNTIME_INSTANCE_ID,
-                    accepted.runtimeInstanceId());
+                    accepted.runtimeInstanceId()
+            );
+
             fields.put(
                     JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_POLICY_DIGEST,
-                    TracingSettingsDigest.sha256(accepted.policy()));
+                    TracingSettingsDigest.sha256(accepted.policy())
+            );
+
             fields.put(
                     JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_APPLY_OUTCOME,
-                    token(update.latestOutcome()));
+                    token(update.latestOutcome())
+            );
+
             fields.put(
                     JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_ATTEMPT_ID,
-                    lastAttemptId(update));
+                    lastAttemptId(update)
+            );
+
             fields.put(
                     JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_FAILURE_CODE,
-                    failureCode(update));
+                    failureCode(update)
+            );
+
             fields.put(
                     JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ENABLED,
-                    accepted.samplingEnabled());
+                    accepted.samplingEnabled()
+            );
+
             fields.put(
                     JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO,
-                    accepted.samplingRatio());
+                    accepted.samplingRatio()
+            );
+
             fields.put(
                     JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS,
-                    routeRatios(accepted));
+                    routeRatios(accepted)
+            );
+
             fields.put(
                     JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_ENABLED,
-                    accepted.validationEnabled());
+                    accepted.validationEnabled()
+            );
+
             fields.put(
                     JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_STRICT,
-                    accepted.validationStrict());
+                    accepted.validationStrict()
+            );
+
             fields.put(
                     JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_EXPORTER_ENABLED,
-                    accepted.exporterEnabled());
+                    accepted.exporterEnabled()
+            );
+
             fields.put(
                     JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_TRACE_CONTROL_HEADERS_ENABLED,
-                    accepted.traceControlHeadersEnabled());
+                    accepted.traceControlHeadersEnabled()
+            );
+
             fields.put(
                     JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_DIAGNOSTICS_LOG_LEVEL,
-                    accepted.diagnosticsLogLevel());
+                    accepted.diagnosticsLogLevel()
+            );
+
             return new CompositeDataSupport(JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT, fields);
         } catch (OpenDataException exception) {
             throw new IllegalStateException("Cannot encode accepted-policy snapshot", exception);
@@ -199,7 +223,7 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
     }
 
     private static String token(Enum<?> value) {
-        return value == null ? "" : value.name();
+        return (value == null) ? "" : value.name();
     }
 
     private static MBeanInfo buildMBeanInfo() {
@@ -209,21 +233,25 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
                 JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT,
                 true,
                 false,
-                false);
+                false
+        );
+
         return new OpenMBeanInfoSupport(
                 PlatformSettingsStatusMBean.class.getName(),
                 "Accepted runtime settings status",
                 new OpenMBeanAttributeInfo[]{snapshot},
                 new OpenMBeanConstructorInfo[0],
                 new OpenMBeanOperationInfo[0],
-                new MBeanNotificationInfo[0]);
+                new MBeanNotificationInfo[0]
+        );
     }
 
     private static void logCaptureFailure(RuntimeException failure) {
         log.warn(
                 AgentEventCodes.CTRL_PLANE,
                 "JMX settings status capture failed",
-                failure);
+                failure
+        );
     }
 
     @SuppressWarnings("SameParameterValue")

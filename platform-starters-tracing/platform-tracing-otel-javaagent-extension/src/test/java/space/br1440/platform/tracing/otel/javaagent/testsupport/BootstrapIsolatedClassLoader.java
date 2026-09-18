@@ -5,15 +5,15 @@ import java.io.InputStream;
 
 public final class BootstrapIsolatedClassLoader extends ClassLoader {
 
-    private static final String BOOTSTRAP_PACKAGE_PREFIX =
-            "space.br1440.platform.tracing.otel.javaagent.bootstrap.";
+    private static final String BOOTSTRAP_PACKAGE_PREFIX = "space.br1440.platform.tracing.otel.javaagent.bootstrap.";
 
     private BootstrapIsolatedClassLoader(ClassLoader parent) {
         super(parent);
     }
 
     public static ClassLoader freshBootstrapClassLoader() {
-        return freshBootstrapClassLoader(BootstrapIsolatedClassLoader.class.getClassLoader());
+        ClassLoader classLoader = BootstrapIsolatedClassLoader.class.getClassLoader();
+        return freshBootstrapClassLoader(classLoader);
     }
 
     public static ClassLoader freshBootstrapClassLoader(ClassLoader parent) {
@@ -27,9 +27,11 @@ public final class BootstrapIsolatedClassLoader extends ClassLoader {
             if (loaded == null) {
                 loaded = name.startsWith(BOOTSTRAP_PACKAGE_PREFIX) ? defineOwnClass(name) : getParent().loadClass(name);
             }
+
             if (resolve) {
                 resolveClass(loaded);
             }
+
             return loaded;
         }
     }
@@ -40,6 +42,7 @@ public final class BootstrapIsolatedClassLoader extends ClassLoader {
             if (in == null) {
                 throw new ClassNotFoundException(name);
             }
+
             byte[] bytes = in.readAllBytes();
             return defineClass(name, bytes, 0, bytes.length);
         } catch (IOException e) {

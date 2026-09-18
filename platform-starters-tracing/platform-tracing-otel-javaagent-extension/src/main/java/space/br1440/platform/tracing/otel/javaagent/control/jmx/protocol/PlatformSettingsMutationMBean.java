@@ -34,9 +34,9 @@ public final class PlatformSettingsMutationMBean implements DynamicMBean {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(PlatformSettingsMutationMBean.class);
 
-    private static final String OP_APPLY =
-            JmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT;
+    private static final String OP_APPLY = JmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT;
     private static final String FALLBACK_ATTEMPT_ID = "";
+    private static final String ATTEMPT_ID_UNAVAILABLE = "<unavailable>";
     private static final MBeanInfo INFO = buildMBeanInfo();
 
     private final TracingSettingsUpdater updater;
@@ -46,10 +46,8 @@ public final class PlatformSettingsMutationMBean implements DynamicMBean {
         this(updater, new JmxControlOpenTypeCodec());
     }
 
-    PlatformSettingsMutationMBean(
-            TracingSettingsUpdater updater,
-            JmxControlOpenTypeCodec codec
-    ) {
+    PlatformSettingsMutationMBean(TracingSettingsUpdater updater,
+                                  JmxControlOpenTypeCodec codec) {
         this.updater = Objects.requireNonNull(updater, "updater");
         this.codec = Objects.requireNonNull(codec, "codec");
     }
@@ -75,16 +73,15 @@ public final class PlatformSettingsMutationMBean implements DynamicMBean {
     }
 
     @Override
-    public Object invoke(
-            String actionName,
-            Object[] params,
-            String[] signature
-    ) throws MBeanException, ReflectionException {
+    public Object invoke(String actionName,
+                         Object[] params,
+                         String[] signature) throws MBeanException, ReflectionException {
         if (isApplySnapshot(actionName, params, signature)) {
             return handleApplySnapshot((CompositeData) params[0]);
         }
-        throw new ReflectionException(
-                new NoSuchMethodException("Unsupported JMX settings mutation operation"));
+
+        NoSuchMethodException rootCause = new NoSuchMethodException("Unsupported JMX settings mutation operation");
+        throw new ReflectionException(rootCause);
     }
 
     @Override
@@ -132,11 +129,9 @@ public final class PlatformSettingsMutationMBean implements DynamicMBean {
         }
     }
 
-    private Object encodePreApplyResult(
-            String wireAttemptId,
-            SettingsRejectionReason reason,
-            boolean failed
-    ) throws MBeanException {
+    private Object encodePreApplyResult(String wireAttemptId,
+                                        SettingsRejectionReason reason,
+                                        boolean failed) throws MBeanException {
         try {
             SettingsUpdateResult result = failed
                     ? updater.failBeforeApply(wireAttemptId, reason)
@@ -146,7 +141,8 @@ public final class PlatformSettingsMutationMBean implements DynamicMBean {
             logFailure(exception, "pre-apply-response", wireAttemptId);
             throw neutralFailure(
                     "JMX_CONTROL_PRE_APPLY_ENCODING_FAILED",
-                    "Pre-apply settings response encoding failed");
+                    "Pre-apply settings response encoding failed"
+            );
         }
     }
 
@@ -155,6 +151,7 @@ public final class PlatformSettingsMutationMBean implements DynamicMBean {
         if (request == null || !request.containsKey(key)) {
             return FALLBACK_ATTEMPT_ID;
         }
+
         Object value = request.get(key);
         return value instanceof String text && StringUtils.hasText(text)
                 ? text
@@ -167,11 +164,9 @@ public final class PlatformSettingsMutationMBean implements DynamicMBean {
                 : FALLBACK_ATTEMPT_ID;
     }
 
-    private static boolean isApplySnapshot(
-            String actionName,
-            Object[] params,
-            String[] signature
-    ) {
+    private static boolean isApplySnapshot(String actionName,
+                                           Object[] params,
+                                           String[] signature) {
         return OP_APPLY.equals(actionName)
                 && params != null
                 && params.length == 1
@@ -185,41 +180,43 @@ public final class PlatformSettingsMutationMBean implements DynamicMBean {
         OpenMBeanParameterInfo request = new OpenMBeanParameterInfoSupport(
                 JmxWireContract.PARAMETER_SETTINGS_MUTATION_APPLY_SNAPSHOT_REQUEST,
                 "Complete tracing settings snapshot",
-                JmxOpenTypes.APPLY_SNAPSHOT_REQUEST);
+                JmxOpenTypes.APPLY_SNAPSHOT_REQUEST
+        );
+
         OpenMBeanOperationInfo apply = new OpenMBeanOperationInfoSupport(
                 OP_APPLY,
                 "Applies one complete tracing settings snapshot",
                 new OpenMBeanParameterInfo[]{request},
                 JmxOpenTypes.APPLY_SNAPSHOT_RESPONSE,
-                MBeanOperationInfo.ACTION);
+                MBeanOperationInfo.ACTION
+        );
+
         return new OpenMBeanInfoSupport(
                 PlatformSettingsMutationMBean.class.getName(),
                 "Local tracing settings mutation endpoint",
                 new OpenMBeanAttributeInfo[0],
                 new OpenMBeanConstructorInfo[0],
                 new OpenMBeanOperationInfo[]{apply},
-                new MBeanNotificationInfo[0]);
+                new MBeanNotificationInfo[0]
+        );
     }
 
-    private static void logFailure(
-            RuntimeException failure,
-            String phase,
-            String attemptId
-    ) {
+    private static void logFailure(RuntimeException failure, String phase, String attemptId) {
         log.warn(
                 AgentEventCodes.CTRL_WRITER,
-                "JMX settings mutation failed",
-                failure,
-                "phase",
-                phase,
-                "attemptId",
-                SettingsUpdateAttempt.isCanonicalAttemptId(attemptId)
-                        ? attemptId
-                        : "<unavailable>");
+                "JMX settings mutation failed", failure,
+                "phase", phase,
+                "attemptId", sanitizeAttemptIdForLog(attemptId)
+        );
+    }
+
+    private static String sanitizeAttemptIdForLog(String attemptId) {
+        return SettingsUpdateAttempt.isCanonicalAttemptId(attemptId)
+                ? attemptId
+                : ATTEMPT_ID_UNAVAILABLE;
     }
 
     private static MBeanException neutralFailure(String code, String message) {
-        // Исходное исключение остаётся в extension-плоскости и не становится target exception JMX.
         return new MBeanException(null, code + ": " + message);
     }
 }
