@@ -53,7 +53,8 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
     void fullRoundTripEmptyRouteTable() throws OpenDataException {
         String rid = "rid-empty-" + UUID.randomUUID();
         CompositeData wire = buildPinnedPayload(0L, rid, false, 0.0d, Map.of(),
-                "DISABLED", true, false, "ERROR");
+                "DISABLED", true, false, "ERROR"
+        );
 
         var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
 

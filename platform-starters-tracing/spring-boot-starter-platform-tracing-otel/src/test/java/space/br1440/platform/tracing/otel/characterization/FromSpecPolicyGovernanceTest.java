@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.otel.characterization;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.assertj.core.api.Assertions.fail;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -48,7 +47,7 @@ class FromSpecPolicyGovernanceTest {
         assertThatExceptionOfType(SpanAttributeViolationException.class)
                 .isThrownBy(() -> {
                     try (SpanHandle handle = factory.fromSpec(invalidSpec).start()) {
-                        fail("ERROR fromSpec().start() must not return " + handle);
+                        throw new AssertionError("ERROR fromSpec().start() must not return " + handle);
                     }
                 });
         assertThat(runtime.receivedSpecs()).isEmpty();
@@ -59,10 +58,15 @@ class FromSpecPolicyGovernanceTest {
     void fromSpecPassesNormalizedAttributesToRuntime(SpanCategory category) {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "01234567890123456789012345678901",
-                "0123456789012345");
+                "0123456789012345"
+        );
+
         RecordingTracingRuntime runtime = new RecordingTracingRuntime();
         SpanAttributeValidator warnPolicy = new SpanAttributeValidator(
-                SpanAttributeValidationLevel.WARNING, SpanAttributeValidationMetrics.NOOP);
+                SpanAttributeValidationLevel.WARNING,
+                SpanAttributeValidationMetrics.NOOP
+        );
+
         DefaultSpanFactory factory = new DefaultSpanFactory(runtime, warnPolicy);
         SpanSpec spec = SpanSpec.builder("characterization.normalized-from-spec")
                 .category(category)

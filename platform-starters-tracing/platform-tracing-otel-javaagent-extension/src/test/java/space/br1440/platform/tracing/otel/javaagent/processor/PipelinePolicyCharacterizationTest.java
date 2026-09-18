@@ -28,7 +28,7 @@ class PipelinePolicyCharacterizationTest {
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(
                 new EnrichingSpanProcessor(),
                 ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
-                        List.of(BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")))));
+                        List.of(BuiltInSpanAttributeScrubbingRules.OAUTH_HEADER.create()))));
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(composite)) {
             // when
@@ -51,7 +51,7 @@ class PipelinePolicyCharacterizationTest {
                 new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING)),
                 new EnrichingSpanProcessor(),
                 ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
-                        List.of(BuiltInSpanAttributeScrubbingRules.resolve("oauth-header"))))
+                        List.of(BuiltInSpanAttributeScrubbingRules.OAUTH_HEADER.create())))
         );
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(composite, Resource.empty())) {
@@ -76,7 +76,7 @@ class PipelinePolicyCharacterizationTest {
                 new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.DISABLED)),
                 new EnrichingSpanProcessor(),
                 ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
-                        List.of(BuiltInSpanAttributeScrubbingRules.resolve("oauth-header"))))
+                        List.of(BuiltInSpanAttributeScrubbingRules.OAUTH_HEADER.create())))
         );
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(composite, Resource.empty())) {

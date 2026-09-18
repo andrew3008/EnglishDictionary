@@ -30,6 +30,7 @@ class PlatformResourceCustomizerTest {
         return AttributeKey.stringKey(name);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static PlatformResourceCustomizer customizer(Function<String, String> env,
                                                           Supplier<Optional<String>> buildVersion,
                                                           Supplier<Optional<String>> manifestVersion,

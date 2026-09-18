@@ -66,6 +66,7 @@ public final class ResourceValidationDiagnostics {
                 && !name.startsWith("unknown_service");
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static boolean isUnknownOrBlank(AttributeKey<String> key,
                                             Attributes resolved,
                                             Resource otelEnv,
