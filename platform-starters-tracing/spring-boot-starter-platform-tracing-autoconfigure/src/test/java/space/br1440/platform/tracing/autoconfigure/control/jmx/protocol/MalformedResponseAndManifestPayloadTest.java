@@ -102,8 +102,7 @@ class MalformedResponseAndManifestPayloadTest {
                 "samplingEnabled", true,
                 "samplingRatio", 1.0,
                 "samplingRouteRatios", emptyRoutes(),
-                "validationEnabled", true,
-                "validationStrict", false,
+                "validationLevel", "WARNING",
                 "exporterEnabled", true,
                 "traceControlHeadersEnabled", true,
                 "diagnosticsLogLevel", "INFO"
@@ -122,8 +121,7 @@ class MalformedResponseAndManifestPayloadTest {
                 "samplingEnabled", true,
                 "samplingRatio", 1.0,
                 "samplingRouteRatios", emptyRoutes(),
-                "validationEnabled", true,
-                "validationStrict", false,
+                "validationLevel", "WARNING",
                 "exporterEnabled", true,
                 "traceControlHeadersEnabled", true,
                 "diagnosticsLogLevel", "INFO"
@@ -143,8 +141,7 @@ class MalformedResponseAndManifestPayloadTest {
                 "samplingEnabled", true,
                 "samplingRatio", 1.0,
                 "samplingRouteRatios", emptyRoutes(),
-                "validationEnabled", true,
-                "validationStrict", false,
+                "validationLevel", "WARNING",
                 "exporterEnabled", true,
                 "traceControlHeadersEnabled", true
         ), /* nullFields= */ new String[]{"diagnosticsLogLevel"});
@@ -162,8 +159,7 @@ class MalformedResponseAndManifestPayloadTest {
                 "runtimeInstanceId", "inst-1",
                 "samplingRatio", 1.0,
                 "samplingRouteRatios", emptyRoutes(),
-                "validationEnabled", true,
-                "validationStrict", false,
+                "validationLevel", "WARNING",
                 "exporterEnabled", true,
                 "traceControlHeadersEnabled", true,
                 "diagnosticsLogLevel", "INFO"
@@ -475,14 +471,14 @@ class MalformedResponseAndManifestPayloadTest {
                             "acceptedSequence", "runtimeInstanceId",
                             "acceptedPolicyDigest", "lastApplyOutcome", "lastAttemptId", "failureCode",
                             "samplingEnabled", "samplingRatio", "samplingRouteRatios",
-                            "validationEnabled", "validationStrict", "exporterEnabled",
+                            "validationLevel", "exporterEnabled",
                             "traceControlHeadersEnabled", "diagnosticsLogLevel"
                     },
                     new Object[]{
                             seq, instanceId,
                             "accepted-policy-digest", "APPLIED", "attempt-id", "",
                             true, ratio, routes,
-                            true, false, true,
+                            "WARNING", true,
                             true, logLevel
                     });
         } catch (OpenDataException e) {
@@ -496,7 +492,7 @@ class MalformedResponseAndManifestPayloadTest {
                 "acceptedSequence", "runtimeInstanceId",
                 "acceptedPolicyDigest", "lastApplyOutcome", "lastAttemptId", "failureCode",
                 "samplingEnabled", "samplingRatio", "samplingRouteRatios",
-                "validationEnabled", "validationStrict", "exporterEnabled",
+                "validationLevel", "exporterEnabled",
                 "traceControlHeadersEnabled", "diagnosticsLogLevel"
         };
 
@@ -521,10 +517,9 @@ class MalformedResponseAndManifestPayloadTest {
             case "lastAttemptId" -> "attempt-id";
             case "failureCode" -> "";
             case "samplingEnabled",
-                 "validationEnabled",
                  "exporterEnabled",
                  "traceControlHeadersEnabled" -> true;
-            case "validationStrict" -> false;
+            case "validationLevel" -> "WARNING";
             case "samplingRatio" -> 1.0;
             case "samplingRouteRatios" -> emptyRoutes();
             case "diagnosticsLogLevel" -> "INFO";
@@ -587,21 +582,21 @@ class MalformedResponseAndManifestPayloadTest {
                             "acceptedSequence", "runtimeInstanceId",
                             "acceptedPolicyDigest", "lastApplyOutcome", "lastAttemptId", "failureCode",
                             "samplingEnabled", "samplingRatio", "samplingRouteRatios",
-                            "validationEnabled", "validationStrict", "exporterEnabled",
+                            "validationLevel", "exporterEnabled",
                             "traceControlHeadersEnabled", "diagnosticsLogLevel"
                     },
                     new String[]{
                             "acceptedSequence", "runtimeInstanceId",
                             "acceptedPolicyDigest", "lastApplyOutcome", "lastAttemptId", "failureCode",
                             "samplingEnabled", "samplingRatio", "samplingRouteRatios",
-                            "validationEnabled", "validationStrict", "exporterEnabled",
+                            "validationLevel", "exporterEnabled",
                             "traceControlHeadersEnabled", "diagnosticsLogLevel"
                     },
                     new OpenType<?>[]{
                             SimpleType.LONG, SimpleType.STRING,
                             SimpleType.STRING, SimpleType.STRING, SimpleType.STRING, SimpleType.STRING,
                             SimpleType.BOOLEAN, SimpleType.DOUBLE, routesType(routeRowType()),
-                            SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.BOOLEAN,
+                            SimpleType.STRING, SimpleType.BOOLEAN,
                             SimpleType.BOOLEAN, SimpleType.STRING
                     });
         } catch (OpenDataException e) {
@@ -683,8 +678,7 @@ class MalformedResponseAndManifestPayloadTest {
                 Map.of(
                         "platform.tracing.policy.sampling.enabled", "true",
                         "platform.tracing.policy.sampling.ratio", "1.0",
-                        "platform.tracing.policy.validation.enabled", "true",
-                        "platform.tracing.policy.validation.strict", "false",
+                        "platform.tracing.policy.validation.level", "WARNING",
                         "platform.tracing.policy.exporter.enabled", "true",
                         "platform.tracing.policy.propagation.trace-control-headers.enabled", "true",
                         "platform.tracing.policy.diagnostics.log-level", "INFO"

@@ -100,11 +100,15 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         });
     }
 
-    private static ExtensionConfig configWithValidationEnabled() {
+    private static ExtensionConfig configWithValidationWarning() {
         return new ExtensionConfig(new ConfigProperties() {
-            @Override public String getString(String name) { return null; }
+            @Override public String getString(String name) {
+                return "platform.tracing.javaagent.span-attributes.validation.level".equals(name)
+                        ? "WARNING"
+                        : null;
+            }
             @Override public Boolean getBoolean(String name) {
-                return "platform.tracing.javaagent.span-attributes.validation.enabled".equals(name);
+                return null;
             }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }
@@ -457,7 +461,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
-            ExtensionConfig extensionConfig = configWithValidationEnabled();
+            ExtensionConfig extensionConfig = configWithValidationWarning();
 
             // when
             factory.registerSpanProcessors(

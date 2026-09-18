@@ -46,28 +46,23 @@ public final class TracingSettingsSource {
             log.warn(AgentEventCodes.VALID_POLICY, "Validation DISABLED");
         }
 
-        boolean validationEnabled = !level.isDisabled() && config.validation().enabled();
-        boolean validationStrict = !level.isDisabled() && level.isError();
-
-        return create(config.sampling(), validationEnabled, validationStrict);
+        return create(config.sampling(), level);
     }
 
     public static TracingSettingsSource fromSampling(SamplingExtensionConfig sampling) {
-        return create(sampling, true, false);
+        return create(sampling, SpanAttributeValidationLevel.WARNING);
     }
 
     public static TracingSettingsSource isolatedDefaults() {
-        return isolatedValidation(true, false);
+        return isolatedValidation(SpanAttributeValidationLevel.WARNING);
     }
 
-    public static TracingSettingsSource isolatedValidation(boolean enabled,
-                                                           boolean strict) {
+    public static TracingSettingsSource isolatedValidation(SpanAttributeValidationLevel validationLevel) {
         TracingSettings settings = TracingSettings.of(
                 true,
                 1.0d,
                 Map.of(),
-                enabled,
-                strict,
+                validationLevel,
                 true,
                 true,
                 TracingLogLevel.INFO
@@ -83,8 +78,7 @@ public final class TracingSettingsSource {
                 enabled,
                 defaultRatio,
                 routeRatios,
-                false,
-                false,
+                SpanAttributeValidationLevel.DISABLED,
                 true,
                 true,
                 TracingLogLevel.INFO
@@ -113,8 +107,7 @@ public final class TracingSettingsSource {
                 current.samplingEnabled(),
                 current.samplingRatio(),
                 current.samplingRouteRatios(),
-                current.validationEnabled(),
-                current.validationStrict(),
+                current.validationLevel(),
                 current.exporterEnabled(),
                 current.traceControlHeadersEnabled(),
                 level
@@ -146,15 +139,13 @@ public final class TracingSettingsSource {
     }
 
     private static TracingSettingsSource create(SamplingExtensionConfig sampling,
-                                                boolean validationEnabled,
-                                                boolean validationStrict) {
+                                                SpanAttributeValidationLevel validationLevel) {
         Map<String, Double> routeRatios = parseRouteRatios(sampling.routeRatios());
         TracingSettings settings = TracingSettings.of(
                 sampling.enabled(),
                 sampling.ratio(),
                 routeRatios,
-                validationEnabled,
-                validationStrict,
+                validationLevel,
                 true,
                 true,
                 TracingLogLevel.INFO

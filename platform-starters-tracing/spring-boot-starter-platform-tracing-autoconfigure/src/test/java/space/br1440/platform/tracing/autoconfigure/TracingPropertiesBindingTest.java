@@ -69,7 +69,6 @@ class TracingPropertiesBindingTest {
                         "platform.tracing.control.channel=STATIC",
                         "platform.tracing.sampling.enabled=false",
                         "platform.tracing.sampling.ratio=0.42",
-                        "platform.tracing.javaagent.span-attributes.validation.enabled=false",
                         "platform.tracing.javaagent.span-attributes.validation.level=ERROR")
                 .run(ctx -> {
                     assertThat(ctx).hasNotFailed();
@@ -77,7 +76,6 @@ class TracingPropertiesBindingTest {
                 });
         assertThat(output).contains("platform.tracing.sampling.enabled");
         assertThat(output).contains("platform.tracing.sampling.ratio");
-        assertThat(output).contains("platform.tracing.javaagent.span-attributes.validation.enabled");
         assertThat(output).contains("platform.tracing.javaagent.span-attributes.validation.level");
     }
 

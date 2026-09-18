@@ -16,6 +16,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 
@@ -32,12 +33,7 @@ final class JmxSettingsMutationFixtures {
         return TracingSettings.of(
                 true,
                 ratio,
-                Map.of("/orders", 0.5d),
-                true,
-                false,
-                true,
-                true,
-                TracingLogLevel.INFO);
+                Map.of("/orders", 0.5d), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO);
     }
 
     static CompositeData request(
@@ -74,11 +70,8 @@ final class JmxSettingsMutationFixtures {
                 JmxWireContract.FIELD_RUNTIME_POLICY_TRACE_CONTROL_HEADERS_ENABLED,
                 policy.traceControlHeadersEnabled());
         policyFields.put(
-                JmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_ENABLED,
-                policy.validationEnabled());
-        policyFields.put(
-                JmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_STRICT,
-                policy.validationStrict());
+                JmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_LEVEL,
+                policy.validationLevel().name());
         CompositeData policyData = new CompositeDataSupport(
                 JmxOpenTypes.RUNTIME_POLICY,
                 policyFields);

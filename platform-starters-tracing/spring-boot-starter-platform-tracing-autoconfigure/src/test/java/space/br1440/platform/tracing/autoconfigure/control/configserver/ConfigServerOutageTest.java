@@ -37,8 +37,7 @@ class ConfigServerOutageTest {
                 .samplingEnabled(true)
                 .samplingRatio(1.0)
                 .samplingRouteRatios(Map.of())
-                .validationEnabled(true)
-                .validationStrict(false)
+                .validationLevel("WARNING")
                 .exporterEnabled(true)
                 .traceControlHeadersEnabled(true)
                 .diagnosticsLogLevel("INFO")
@@ -296,7 +295,7 @@ class ConfigServerOutageTest {
                 .thenReturn(sampleSnapshot())
                 .thenThrow(new TracingSettingsManifestException(
                         "Local override rejected for policy key "
-                                + "'platform.tracing.policy.validation.strict'"));
+                                + "'platform.tracing.policy.validation.level'"));
 
         AtomicInteger applyCount = new AtomicInteger(0);
         TracingSettingsApplier client = (expectedBase, s, source) -> {
@@ -731,7 +730,7 @@ class ConfigServerOutageTest {
         adapter.onEnvironmentChange(new EnvironmentChangeEvent(
                 Set.of(
                         "platform.tracing.policy.sampling.ratio",
-                        "platform.tracing.policy.validation.enabled",
+                        "platform.tracing.policy.validation.level",
                         "platform.tracing.policy.exporter.enabled")));
         assertThat(onRefreshCalls.get())
                 .as("multiple policy keys in one event → still exactly one more coalescer trigger")

@@ -189,8 +189,7 @@ class ConfigServerSettingsManifestBuilderRouteRatiosTest {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("platform.tracing.policy.sampling.enabled", "true");
         values.put("platform.tracing.policy.sampling.ratio", "1.0");
-        values.put("platform.tracing.policy.validation.enabled", "true");
-        values.put("platform.tracing.policy.validation.strict", "false");
+        values.put("platform.tracing.policy.validation.level", "WARNING");
         values.put("platform.tracing.policy.exporter.enabled", "true");
         values.put("platform.tracing.policy.propagation.trace-control-headers.enabled", "true");
         values.put("platform.tracing.policy.diagnostics.log-level", "INFO");

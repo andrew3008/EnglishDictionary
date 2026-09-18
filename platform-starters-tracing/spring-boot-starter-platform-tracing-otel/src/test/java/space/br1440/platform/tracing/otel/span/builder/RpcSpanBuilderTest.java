@@ -32,7 +32,11 @@ class RpcSpanBuilderTest {
     @BeforeEach
     void setUp() {
         recording = new RecordingTracingRuntime();
-        SpanAttributeValidator strictPolicy = new SpanAttributeValidator(SpanAttributeValidationLevel.STRICT, SpanAttributeValidationMetrics.NOOP);
+        SpanAttributeValidator strictPolicy = new SpanAttributeValidator(
+                SpanAttributeValidationLevel.ERROR,
+                SpanAttributeValidationMetrics.NOOP
+        );
+
         manual = new DefaultSpanFactory(recording, strictPolicy);
     }
 
@@ -122,7 +126,7 @@ class RpcSpanBuilderTest {
     }
 
     @Test
-    void missingMethod_rejectedInStrictMode() {
+    void missingMethod_rejectedAtStart() {
         assertThatThrownBy(() -> {
             try (SpanHandle handle = manual.transport().rpc().server()
                     .system("grpc")

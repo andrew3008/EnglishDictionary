@@ -109,8 +109,7 @@ class TracingSettingsContractTest {
                 .samplingEnabled(true)
                 .samplingRatio(0.5)
                 .samplingRouteRatios(Map.of())
-                .validationEnabled(true)
-                .validationStrict(false)
+                .validationLevel("WARNING")
                 .exporterEnabled(true)
                 .traceControlHeadersEnabled(true)
                 .diagnosticsLogLevel("INFO");
@@ -128,8 +127,7 @@ class TracingSettingsContractTest {
                 .samplingEnabled(true)
                 .samplingRatio(1.0)
                 .samplingRouteRatios(Map.of("checkout", 0.5, "search", 0.3))
-                .validationEnabled(true)
-                .validationStrict(false)
+                .validationLevel("WARNING")
                 .exporterEnabled(true)
                 .traceControlHeadersEnabled(true)
                 .diagnosticsLogLevel("INFO")
@@ -141,8 +139,7 @@ class TracingSettingsContractTest {
         assertThat(mutated.samplingRouteRatios())
                 .containsExactlyInAnyOrderEntriesOf(Map.of("checkout", 0.5, "search", 0.3));
         assertThat(mutated.samplingEnabled()).isTrue();
-        assertThat(mutated.validationEnabled()).isTrue();
-        assertThat(mutated.validationStrict()).isFalse();
+        assertThat(mutated.validationLevel()).isEqualTo("WARNING");
         assertThat(mutated.traceControlHeadersEnabled()).isTrue();
         assertThat(mutated.diagnosticsLogLevel()).isEqualTo("INFO");
     }

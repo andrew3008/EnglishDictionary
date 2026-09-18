@@ -15,22 +15,22 @@ import space.br1440.platform.common.util.StringUtils;
  * <p>
  * Допустимые значения (без учёта регистра):
  * <ul>
- *   <li>{@code WARN} — валидировать и писать throttled WARN-диагностику; span не прерывается</li>
+ *   <li>{@code WARNING} — валидировать и писать throttled WARN-диагностику; span не прерывается</li>
  *   <li>{@code ERROR} — валидировать и писать throttled ERROR-диагностику без прерывания
  *       завершения span. Это диагностический уровень, а не fail-fast: исключения не бросаются
- *       и публичный {@code TraceOperations} не меняется. Отображается в булево
- *       {@code validationStrict=true} без автоматического включения {@code validationEnabled}</li>
+ *       и публичный {@code TraceOperations} не меняется</li>
  *   <li>{@code DISABLED} — пропустить validation-проверку процессора. Экспорт, scrubbing,
- *       enrichment и остальной composite pipeline продолжают работать. Начальное состояние —
- *       {@code validationEnabled=false} и {@code validationStrict=false}; runtime-включение
- *       validation остаётся отдельной операцией</li>
+ *       enrichment и остальной composite pipeline продолжают работать. Повторное включение
+ *       требует явного {@code WARNING} или {@code ERROR}</li>
  * </ul>
- * Отсутствующее или пустое значение сводится к {@link #WARN}. Заданное неизвестное значение,
- * включая снятые {@code LENIENT} и {@code STRICT}, приводит к отказу конфигурации.
+ * Startup: отсутствующее или пустое значение сводится к {@link #WARNING}. Runtime apply и
+ * полный snapshot: отсутствующее, пустое или неизвестное значение отклоняет обновление.
+ * Заданное неизвестное значение, включая снятые {@code WARN}, {@code LENIENT} и {@code STRICT},
+ * приводит к отказу.
  */
 public enum SpanAttributeValidationLevel {
 
-    WARN,
+    WARNING,
     ERROR,
     DISABLED;
 
@@ -42,21 +42,51 @@ public enum SpanAttributeValidationLevel {
         return (this == DISABLED);
     }
 
+    /**
+     * Startup-разбор: пустое значение даёт {@link #WARNING}.
+     */
     public static SpanAttributeValidationLevel parse(String value) {
         if (StringUtils.isNullOrBlank(value)) {
-            return WARN;
+            return WARNING;
         }
 
+        return parseKnownToken(value, true);
+    }
+
+    /**
+     * Runtime-разбор: пустое или неизвестное значение отклоняет обновление.
+     */
+    public static SpanAttributeValidationLevel require(String value) {
+        if (StringUtils.isNullOrBlank(value)) {
+            throw invalidRuntimeToken(value);
+        }
+
+        return parseKnownToken(value, false);
+    }
+
+    private static SpanAttributeValidationLevel parseKnownToken(String value, boolean startup) {
         String normalized = value.trim().toUpperCase(Locale.ROOT);
         return switch (normalized) {
-            case "WARN" -> WARN;
+            case "WARNING" -> WARNING;
             case "ERROR" -> ERROR;
             case "DISABLED" -> DISABLED;
-            default -> throw new IllegalStateException("""
-                    Invalid property 'platform.tracing.javaagent.span-attributes.validation.level'='%s'. \
-                    Accepted values: WARN, ERROR, DISABLED\
-                    """.formatted(value)
-            );
+            default -> {
+                if (startup) {
+                    throw new IllegalStateException(invalidTokenMessage(value));
+                }
+                throw invalidRuntimeToken(value);
+            }
         };
+    }
+
+    private static IllegalArgumentException invalidRuntimeToken(String value) {
+        return new IllegalArgumentException(invalidTokenMessage(value));
+    }
+
+    private static String invalidTokenMessage(String value) {
+        return """
+                Invalid property 'platform.tracing.javaagent.span-attributes.validation.level'='%s'. \
+                Accepted values: WARNING, ERROR, DISABLED\
+                """.formatted(value);
     }
 }

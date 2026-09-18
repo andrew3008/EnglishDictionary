@@ -32,16 +32,13 @@ public final class SpanAttributeValidationDiagnosticProbe {
         waitForReady(server);
 
         CompositeData validationBefore = validationObservation(server);
-        boolean enabled = (Boolean) validationBefore.get(
-                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_ENABLED
+        String validationLevel = (String) validationBefore.get(
+                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_LEVEL
         );
-        boolean strict = (Boolean) validationBefore.get(
-                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT
-        );
-        if (!enabled || !strict) {
+        if (!"ERROR".equals(validationLevel)) {
             throw new IllegalStateException("""
-                    Process ERROR did not become the accepted validation state: enabled=%s strict=%s\
-                    """.formatted(enabled, strict)
+                    Process ERROR did not become the accepted validation state: level=%s\
+                    """.formatted(validationLevel)
             );
         }
 
@@ -53,14 +50,13 @@ public final class SpanAttributeValidationDiagnosticProbe {
         long violationsAfter = waitForViolationGrowth(server, violationsBefore);
 
         String message = """
-                SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_OK enabled=%s strict=%s \
+                SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_OK level=%s \
                 violationsBefore=%d violationsAfter=%d traceId=%s spanId=%s%n\
                 """;
         System.out.printf(
                 Locale.ROOT,
                 message,
-                enabled,
-                strict,
+                validationLevel,
                 violationsBefore,
                 violationsAfter,
                 stimulus.traceId(),

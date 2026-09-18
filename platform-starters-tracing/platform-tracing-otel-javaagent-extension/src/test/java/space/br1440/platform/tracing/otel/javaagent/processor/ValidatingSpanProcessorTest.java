@@ -8,6 +8,7 @@ import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -20,11 +21,11 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 class ValidatingSpanProcessorTest {
 
     private static ValidatingSpanProcessor warnLevel() {
-        return new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false));
+        return new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING));
     }
 
     private static ValidatingSpanProcessor errorLevel() {
-        return new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true));
+        return new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.ERROR));
     }
 
     @Test
@@ -66,7 +67,7 @@ class ValidatingSpanProcessorTest {
         // given
         ValidatingSpanProcessor validator = new ValidatingSpanProcessor(
                 () -> 1000L,
-                TracingSettingsSource.isolatedValidation(true, false)
+                TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING)
         );
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(validator, Resource.empty())) {
@@ -86,27 +87,27 @@ class ValidatingSpanProcessorTest {
 
         // Throttling: Ð¼ÐµÑ‚ÐºÐ° Ð²Ñ€ÐµÐ¼ÐµÐ½Ð¸ Ð´Ð»Ñ ÑƒÐ½Ð¸ÐºÐ°Ð»ÑŒÐ½Ð¾Ð³Ð¾ missing-Ð½Ð°Ð±Ð¾Ñ€Ð° Ð·Ð°Ñ„Ð¸ÐºÑÐ¸Ñ€Ð¾Ð²Ð°Ð½Ð° Ð¾Ð´Ð¸Ð½ Ñ€Ð°Ð· Ð¸
         // Ð½Ðµ Ð´Ð²Ð¸Ð³Ð°Ð»Ð°ÑÑŒ Ð¿Ð¾Ð²Ñ‚Ð¾Ñ€Ð½Ð¾ â€” Ð·Ð½Ð°Ñ‡Ð¸Ñ‚, Ð¿Ð¾Ð²Ñ‚Ð¾Ñ€Ð½Ñ‹Ðµ WARN'Ñ‹ Ð² Ð»Ð¾Ð³Ðµ Ð¿Ð¾Ð´Ð°Ð²Ð»ÐµÐ½Ñ‹.
-        assertThat(validator.lastDiagnosticTimestampForTesting(false)).isEqualTo(1000L);
+        assertThat(validator.lastDiagnosticTimestampForTesting(SpanAttributeValidationLevel.WARNING)).isEqualTo(1000L);
         assertThat(validator.getValidationViolationsTotal()).isEqualTo(1000L);
     }
 
     @Test
     void warn_and_error_diagnostics_have_independent_throttling() {
         // given
-        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(true, false);
+        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING);
         ValidatingSpanProcessor validator = new ValidatingSpanProcessor(() -> 1000L, access);
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(validator, Resource.empty())) {
         // when
             h.tracer("test").spanBuilder("warn").startSpan().end();
             // then
-            assertThat(AcceptedPolicyMutationAccess.applyValidation(access, true, true))
+            assertThat(AcceptedPolicyMutationAccess.applyValidation(access, SpanAttributeValidationLevel.ERROR))
                     .isEqualTo(SettingsUpdateStatus.APPLIED);
             h.tracer("test").spanBuilder("error").startSpan().end();
         }
 
-        assertThat(validator.lastDiagnosticTimestampForTesting(false)).isEqualTo(1000L);
-        assertThat(validator.lastDiagnosticTimestampForTesting(true)).isEqualTo(1000L);
+        assertThat(validator.lastDiagnosticTimestampForTesting(SpanAttributeValidationLevel.WARNING)).isEqualTo(1000L);
+        assertThat(validator.lastDiagnosticTimestampForTesting(SpanAttributeValidationLevel.ERROR)).isEqualTo(1000L);
         assertThat(validator.getValidationViolationsTotal()).isEqualTo(2L);
     }
 

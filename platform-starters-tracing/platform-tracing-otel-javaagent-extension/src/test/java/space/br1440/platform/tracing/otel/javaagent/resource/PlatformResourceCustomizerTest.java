@@ -203,9 +203,9 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void strict_fails_when_required_keys_absent() {
+    void error_fails_when_required_keys_absent() {
         // given
-        Map<String, String> values = Map.of(ExtensionPropertyNames.RESOURCE_VALIDATION_MODE, "STRICT");
+        Map<String, String> values = Map.of(ExtensionPropertyNames.RESOURCE_VALIDATION_MODE, "ERROR");
         PlatformResourceCustomizer customizer =
                 customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost());
 
@@ -215,10 +215,10 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void strict_does_not_fail_with_otel_service_name_effective_view() {
+    void error_does_not_fail_with_otel_service_name_effective_view() {
         // given
         Map<String, String> values = Map.of(
-                ExtensionPropertyNames.RESOURCE_VALIDATION_MODE, "STRICT",
+                ExtensionPropertyNames.RESOURCE_VALIDATION_MODE, "ERROR",
                 "otel.service.name", "otel-svc",
                 PlatformResourceCustomizer.PROP_ENVIRONMENT, "production");
 

@@ -16,8 +16,7 @@ final class AcceptedSettingsReadModelMapper {
                 snapshot.samplingEnabled(),
                 snapshot.samplingRatio(),
                 snapshot.samplingRouteRatios().size(),
-                snapshot.validationEnabled(),
-                snapshot.validationStrict(),
+                snapshot.validationLevel(),
                 snapshot.exporterEnabled(),
                 snapshot.traceControlHeadersEnabled(),
                 snapshot.diagnosticsLogLevel()

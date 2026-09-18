@@ -29,17 +29,16 @@ import space.br1440.platform.tracing.autoconfigure.control.settings.read.Complet
 class M10ProductionFlowTest {
 
     // =========================================================================
-    // Canonical 8-leaf snapshots
+    // Canonical 7-leaf snapshots
     // =========================================================================
 
-    /** M10 initial complete snapshot — all 8 leaves present. */
+    /** M10 initial complete snapshot — all 7 leaves present. */
     private static final CompleteTracingSettings M10_INITIAL =
             CompleteTracingSettings.builder()
                     .samplingEnabled(true)
                     .samplingRatio(0.8)
                     .samplingRouteRatios(Map.of("/api/health", 0.0, "/api/orders", 1.0))
-                    .validationEnabled(true)
-                    .validationStrict(false)
+                    .validationLevel("WARNING")
                     .exporterEnabled(true)
                     .traceControlHeadersEnabled(true)
                     .diagnosticsLogLevel("INFO")
@@ -51,8 +50,7 @@ class M10ProductionFlowTest {
                     .samplingEnabled(true)
                     .samplingRatio(0.5)
                     .samplingRouteRatios(Map.of("/api/orders", 0.9))
-                    .validationEnabled(true)
-                    .validationStrict(false)
+                    .validationLevel("WARNING")
                     .exporterEnabled(true)
                     .traceControlHeadersEnabled(true)
                     .diagnosticsLogLevel("INFO")
@@ -64,8 +62,7 @@ class M10ProductionFlowTest {
                     .samplingEnabled(true)
                     .samplingRatio(0.5)
                     .samplingRouteRatios(Map.of("/api/orders", 0.9))
-                    .validationEnabled(true)
-                    .validationStrict(false)
+                    .validationLevel("WARNING")
                     .exporterEnabled(true)
                     .traceControlHeadersEnabled(true)
                     .diagnosticsLogLevel("WARN")
@@ -93,7 +90,7 @@ class M10ProductionFlowTest {
         }
 
         @Test
-        @DisplayName("M10-1: deliverInitial calls applySnapshot exactly once with all 8 leaves")
+        @DisplayName("M10-1: deliverInitial calls applySnapshot exactly once with all 7 leaves")
         void m10_deliverInitial_callsApplySnapshotOnce() {
             client.setNextOutcome(TracingSettingsDeliveryResult.APPLIED);
 
@@ -110,7 +107,7 @@ class M10ProductionFlowTest {
         }
 
         @Test
-        @DisplayName("M10-2: applied snapshot contains all 8 Category A leaves unchanged")
+        @DisplayName("M10-2: applied snapshot contains all 7 Category A leaves unchanged")
         void m10_appliedSnapshot_containsAll8Leaves() {
             client.setNextOutcome(TracingSettingsDeliveryResult.APPLIED);
 
@@ -128,8 +125,7 @@ class M10ProductionFlowTest {
             assertThat(applied.samplingRouteRatios())
                     .containsEntry("/api/health", 0.0)
                     .containsEntry("/api/orders", 1.0);
-            assertThat(applied.validationEnabled()).isTrue();
-            assertThat(applied.validationStrict()).isFalse();
+            assertThat(applied.validationLevel()).isEqualTo("WARNING");
             assertThat(applied.exporterEnabled()).isTrue();
             assertThat(applied.traceControlHeadersEnabled()).isTrue();
             assertThat(applied.diagnosticsLogLevel()).isEqualTo("INFO");

@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ExtensionRuleLoaderTest {
 
     private static ExtensionRuleLoader loader() {
-        return new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.LENIENT, Set.of());
+        return new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.WARNING, Set.of());
     }
 
     @Test
@@ -100,7 +100,7 @@ class ExtensionRuleLoaderTest {
     }
 
     @Test
-    void duplicate_jar_in_LENIENT_is_skipped_with_DUPLICATE_CONFIG(@TempDir Path dir) throws IOException {
+    void duplicate_jar_in_WARNING_is_skipped_with_DUPLICATE_CONFIG(@TempDir Path dir) throws IOException {
         // given
         Path jar = dir.resolve("rules.jar");
         writeJar(jar, Map.of("com/example/Marker.txt", "x"));
@@ -108,7 +108,7 @@ class ExtensionRuleLoaderTest {
 
         // when/then
         try (ExtensionRuleLoader loader =
-                     new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.LENIENT, Set.of(canonical))) {
+                     new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.WARNING, Set.of(canonical))) {
             assertThat(loader.load(jar.toString())).isEmpty();
             assertThat(loader.getFailedEntries())
                     .extracting(ExtensionRuleLoader.FailedEntry::reason)
@@ -117,7 +117,7 @@ class ExtensionRuleLoaderTest {
     }
 
     @Test
-    void duplicate_jar_in_STRICT_throws(@TempDir Path dir) throws IOException {
+    void duplicate_jar_in_ERROR_throws(@TempDir Path dir) throws IOException {
         // given
         Path jar = dir.resolve("rules.jar");
         writeJar(jar, Map.of("com/example/Marker.txt", "x"));
@@ -125,21 +125,21 @@ class ExtensionRuleLoaderTest {
 
         // when/then
         try (ExtensionRuleLoader loader =
-                     new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.STRICT, Set.of(canonical))) {
+                     new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.ERROR, Set.of(canonical))) {
             org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
                     () -> loader.load(jar.toString()));
         }
     }
 
     @Test
-    void STRICT_mode_throws_on_hygiene_violation(@TempDir Path dir) throws IOException {
+    void ERROR_mode_throws_on_hygiene_violation(@TempDir Path dir) throws IOException {
         // given
         Path jar = dir.resolve("dirty.jar");
         writeJar(jar, Map.of("io/opentelemetry/Foo.class", "x"));
 
         // when/then
         try (ExtensionRuleLoader loader =
-                     new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.STRICT, Set.of())) {
+                     new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.ERROR, Set.of())) {
             org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
                     () -> loader.load(jar.toString()));
         }
@@ -182,7 +182,7 @@ class ExtensionRuleLoaderTest {
     }
 
     @Test
-    void ordinary_RuntimeException_in_LENIENT_mode_is_still_skipped() {
+    void ordinary_RuntimeException_in_WARNING_mode_is_still_skipped() {
         // given/when
         PlatformThrowables.propagateFatalCauseChain(new IllegalStateException("provider misbehaved"));
     }

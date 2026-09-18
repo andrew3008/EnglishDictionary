@@ -65,6 +65,16 @@ tests:
             name: PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL
             value: ERROR
 
+  - it: emits optional PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL for WARNING
+    set:
+      platformTracing.spanAttributeValidationLevel: WARNING
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL
+            value: WARNING
+
   - it: does not emit PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL when the value is empty
     set:
       platformTracing.spanAttributeValidationLevel: ""

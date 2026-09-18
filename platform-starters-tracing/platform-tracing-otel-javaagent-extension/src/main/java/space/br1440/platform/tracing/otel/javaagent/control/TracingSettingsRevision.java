@@ -5,6 +5,7 @@ import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 
 public record TracingSettingsRevision(String runtimeInstanceId,
                                       long acceptedSequence,
@@ -35,12 +36,8 @@ public record TracingSettingsRevision(String runtimeInstanceId,
         return policy.samplingRouteRatios();
     }
 
-    public boolean validationEnabled() {
-        return policy.validationEnabled();
-    }
-
-    public boolean validationStrict() {
-        return policy.validationStrict();
+    public SpanAttributeValidationLevel validationLevel() {
+        return policy.validationLevel();
     }
 
     public boolean exporterEnabled() {

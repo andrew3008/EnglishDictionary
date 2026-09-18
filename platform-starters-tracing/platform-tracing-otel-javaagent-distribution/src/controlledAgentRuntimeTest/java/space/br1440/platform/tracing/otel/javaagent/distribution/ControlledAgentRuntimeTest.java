@@ -41,7 +41,7 @@ class ControlledAgentRuntimeTest {
     private static final String SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_OK_PREFIX = "SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_OK";
     private static final Pattern SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_LINE_PATTERN = Pattern.compile(
             SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_OK_PREFIX
-                    + " enabled=(true|false) strict=(true|false) "
+                    + " level=(WARNING|ERROR|DISABLED) "
                     + "violationsBefore=(\\d+) violationsAfter=(\\d+) traceId=([0-9a-f]{32}) spanId=([0-9a-f]{16})"
     );
     private static final String VALIDATION_MISSING_ATTRIBUTE_KEY = "platform.validation.missing";
@@ -228,16 +228,15 @@ class ControlledAgentRuntimeTest {
                 .as("Probe line does not match the expected shape: %s", matchingLines.getFirst())
                 .isTrue();
 
-        assertThat(matcher.group(1)).isEqualTo("true");
-        assertThat(matcher.group(2)).isEqualTo("true");
-        long violationsBefore = Long.parseLong(matcher.group(3));
-        long violationsAfter = Long.parseLong(matcher.group(4));
+        assertThat(matcher.group(1)).isEqualTo("ERROR");
+        long violationsBefore = Long.parseLong(matcher.group(2));
+        long violationsAfter = Long.parseLong(matcher.group(3));
 
         assertThat(violationsAfter)
                 .as("validationViolationsTotal must grow after the invalid-span stimulus")
                 .isGreaterThan(violationsBefore);
 
-        return new StimulusSpan(matcher.group(5), matcher.group(6));
+        return new StimulusSpan(matcher.group(4), matcher.group(5));
     }
 
     private void assertInvalidSpanExportedWithViolationMarker(OtlpTraceCollector collector, StimulusSpan stimulus)
@@ -351,7 +350,7 @@ class ControlledAgentRuntimeTest {
         command.add("-Dplatform.tracing.service.name=controlled-agent-runtime-test");
         command.add("-Dplatform.tracing.service.version=1.0.0");
         command.add("-Dplatform.tracing.service.environment=test");
-        command.add("-Dplatform.tracing.resource.validation-mode=STRICT");
+        command.add("-Dplatform.tracing.resource.validation-mode=ERROR");
         command.add("-Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED");
         command.add("-Dplatform.tracing.jmx.remote.listener-confirmed=false");
         command.add("-Dplatform.tracing.jmx.remote.authorization-forwarder-installed=false");
@@ -386,12 +385,11 @@ class ControlledAgentRuntimeTest {
         command.add("-Dotel.bsp.schedule.delay=200");
         command.add("-Dplatform.tracing.sampling.enabled=true");
         command.add("-Dplatform.tracing.sampling.ratio=1.0");
-        command.add("-Dplatform.tracing.javaagent.span-attributes.validation.enabled=true");
         command.add("-Dplatform.tracing.javaagent.span-attributes.validation.level=ERROR");
         command.add("-Dplatform.tracing.service.name=controlled-agent-runtime-test");
         command.add("-Dplatform.tracing.service.version=1.0.0");
         command.add("-Dplatform.tracing.service.environment=test");
-        command.add("-Dplatform.tracing.resource.validation-mode=STRICT");
+        command.add("-Dplatform.tracing.resource.validation-mode=ERROR");
         command.add("-Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED");
         command.add("-Dplatform.tracing.jmx.remote.listener-confirmed=false");
         command.add("-Dplatform.tracing.jmx.remote.authorization-forwarder-installed=false");
@@ -423,7 +421,7 @@ class ControlledAgentRuntimeTest {
         command.add("-Dplatform.tracing.service.name=controlled-agent-runtime-test");
         command.add("-Dplatform.tracing.service.version=1.0.0");
         command.add("-Dplatform.tracing.service.environment=test");
-        command.add("-Dplatform.tracing.resource.validation-mode=STRICT");
+        command.add("-Dplatform.tracing.resource.validation-mode=ERROR");
         command.add("-Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED");
         command.add("-Dplatform.tracing.jmx.remote.listener-confirmed=false");
         command.add("-Dplatform.tracing.jmx.remote.authorization-forwarder-installed=false");

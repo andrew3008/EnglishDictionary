@@ -35,7 +35,7 @@ class SpanAttributeValidationAutoConfigurationTest {
             assertThat(context).hasSingleBean(SpanAttributeValidator.class);
             assertThat(context).hasBean("platformSpanAttributeValidator");
             assertThat(context.getBean(SpanAttributeValidator.class).level())
-                    .isEqualTo(SpanAttributeValidationLevel.WARN);
+                    .isEqualTo(SpanAttributeValidationLevel.WARNING);
         });
     }
 
@@ -49,22 +49,22 @@ class SpanAttributeValidationAutoConfigurationTest {
     }
 
     @Test
-    void property_switchesLevelToStrict() {
+    void property_switchesLevelToError() {
         contextRunner
-                .withPropertyValues("platform.tracing.span-attributes.validation.level=STRICT")
+                .withPropertyValues("platform.tracing.span-attributes.validation.level=ERROR")
                 .run(context ->
                         assertThat(context.getBean(SpanAttributeValidator.class).level())
-                                .isEqualTo(SpanAttributeValidationLevel.STRICT));
+                                .isEqualTo(SpanAttributeValidationLevel.ERROR));
     }
 
     @Test
     void applicationBeanOfLevelTypeDoesNotOverrideProperty() {
         contextRunner
-                .withBean(SpanAttributeValidationLevel.class, () -> SpanAttributeValidationLevel.STRICT)
-                .withPropertyValues("platform.tracing.span-attributes.validation.level=WARN")
+                .withBean(SpanAttributeValidationLevel.class, () -> SpanAttributeValidationLevel.ERROR)
+                .withPropertyValues("platform.tracing.span-attributes.validation.level=WARNING")
                 .run(context ->
                         assertThat(context.getBean(SpanAttributeValidator.class).level())
-                                .isEqualTo(SpanAttributeValidationLevel.WARN)
+                                .isEqualTo(SpanAttributeValidationLevel.WARNING)
                 );
     }
 
@@ -80,7 +80,7 @@ class SpanAttributeValidationAutoConfigurationTest {
                 )
                 .withPropertyValues(
                         "platform.tracing.control.channel=STATIC",
-                        "platform.tracing.span-attributes.validation.level=STRICT"
+                        "platform.tracing.span-attributes.validation.level=ERROR"
                 )
                 .withInitializer(ControlledAgentTestRuntime::initializeWithExporter)
                 .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)

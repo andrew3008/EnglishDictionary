@@ -14,6 +14,7 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
@@ -33,7 +34,7 @@ class ProcessorDiagnosticIdentityContractTest {
                 new BaggageSpanProcessor(Set.of(), List.of()),
                 new EnrichingSpanProcessor(),
                 ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of()),
-                new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false)),
+                new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING)),
                 new ClassificationSpanProcessor(Duration.ofSeconds(5), Duration.ofSeconds(1)),
                 new SpanWatchdogProcessor(Duration.ofSeconds(5), Duration.ofSeconds(30), Duration.ofDays(365),
                         10_000, Integer.MAX_VALUE, Integer.MAX_VALUE),

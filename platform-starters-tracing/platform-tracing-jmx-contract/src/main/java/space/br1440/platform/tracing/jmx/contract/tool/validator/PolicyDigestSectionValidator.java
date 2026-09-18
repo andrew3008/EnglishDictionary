@@ -31,7 +31,7 @@ final class PolicyDigestSectionValidator {
         ContractValues.assertKeys(digest, "policyDigest", keys, keys);
         ContractValues.requireValue(digest, "algorithmId", "SHA-256", "policyDigest");
         if (ContractValues.integer(digest.get("algorithmVersion"), "policyDigest.algorithmVersion") != 1
-                || ContractValues.integer(digest.get("encodingVersion"), "policyDigest.encodingVersion") != 0) {
+                || ContractValues.integer(digest.get("encodingVersion"), "policyDigest.encodingVersion") != 1) {
             throw new ContractValidationException(
                     "JMX_SCHEMA_DIGEST_VERSION_INVALID",
                     "Unsupported policy digest version"

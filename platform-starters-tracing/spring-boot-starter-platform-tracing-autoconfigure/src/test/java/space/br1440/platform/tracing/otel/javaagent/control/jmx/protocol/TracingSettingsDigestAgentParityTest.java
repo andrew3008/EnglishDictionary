@@ -11,22 +11,21 @@ import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxTra
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 
 final class TracingSettingsDigestAgentParityTest {
 
     @Test
     void matchesAgentDigestForDefaultPolicy() {
         assertParity(TracingSettings.of(
-                true, 1.0, Map.of(),
-                true, false, true, true, TracingLogLevel.INFO
+                true, 1.0, Map.of(), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO
         ));
     }
 
     @Test
     void matchesAgentDigestForPolicyWithRouteRatios() {
         assertParity(TracingSettings.of(
-                true, 0.25, Map.of("/checkout", 0.5, "/search", 0.3),
-                true, true, false, false, TracingLogLevel.DEBUG
+                true, 0.25, Map.of("/checkout", 0.5, "/search", 0.3), SpanAttributeValidationLevel.ERROR, false, false, TracingLogLevel.DEBUG
         ));
     }
 
@@ -35,7 +34,7 @@ final class TracingSettingsDigestAgentParityTest {
         for (TracingLogLevel level : TracingLogLevel.values()) {
             assertParity(TracingSettings.of(
                     false, 0.0, Map.of(),
-                    false, false, false, false, level
+                    SpanAttributeValidationLevel.DISABLED, false, false, level
             ));
         }
     }
@@ -43,8 +42,7 @@ final class TracingSettingsDigestAgentParityTest {
     @Test
     void matchesAgentDigestWhenNegativeZeroIsCanonicalized() {
         assertParity(TracingSettings.of(
-                        true, -0.0d, Map.of("/z", -0.0d),
-                        true, false, true, true, TracingLogLevel.INFO
+                        true, -0.0d, Map.of("/z", -0.0d), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO
                 ));
     }
 
@@ -55,8 +53,7 @@ final class TracingSettingsDigestAgentParityTest {
                 .samplingEnabled(agentPolicy.samplingEnabled())
                 .samplingRatio(agentPolicy.samplingRatio())
                 .samplingRouteRatios(agentPolicy.samplingRouteRatios())
-                .validationEnabled(agentPolicy.validationEnabled())
-                .validationStrict(agentPolicy.validationStrict())
+                .validationLevel(agentPolicy.validationLevel().name())
                 .exporterEnabled(agentPolicy.exporterEnabled())
                 .traceControlHeadersEnabled(agentPolicy.traceControlHeadersEnabled())
                 .diagnosticsLogLevel(agentPolicy.diagnosticsLogLevel().name())
@@ -66,8 +63,7 @@ final class TracingSettingsDigestAgentParityTest {
                 springPolicy.samplingEnabled(),
                 springPolicy.samplingRatio(),
                 springPolicy.samplingRouteRatios(),
-                springPolicy.validationEnabled(),
-                springPolicy.validationStrict(),
+                springPolicy.validationLevel(),
                 springPolicy.exporterEnabled(),
                 springPolicy.traceControlHeadersEnabled(),
                 springPolicy.diagnosticsLogLevel());

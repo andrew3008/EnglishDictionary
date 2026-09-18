@@ -20,8 +20,8 @@
         },
         "spanAttributeValidationLevel": {
           "type": "string",
-          "enum": ["", "WARN", "ERROR", "DISABLED"],
-          "description": "Optional PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL for agent premain. Do not set WARN as a hardcoded -D; empty leaves the agent default."
+          "enum": ["", "WARNING", "ERROR", "DISABLED"],
+          "description": "Optional PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL for agent premain. Do not set WARNING as a hardcoded -D; empty leaves the agent default."
         },
         "export": {
           "type": "object",

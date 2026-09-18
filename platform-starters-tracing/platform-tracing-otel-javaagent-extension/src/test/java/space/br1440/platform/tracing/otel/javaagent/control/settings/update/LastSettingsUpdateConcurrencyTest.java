@@ -22,6 +22,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Setti
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 
 class LastSettingsUpdateConcurrencyTest {
 
@@ -123,12 +124,7 @@ class LastSettingsUpdateConcurrencyTest {
         return TracingSettings.of(
                 true,
                 samplingRatio,
-                Map.of(),
-                true,
-                false,
-                true,
-                true,
-                TracingLogLevel.INFO
+                Map.of(), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO
         );
     }
 }

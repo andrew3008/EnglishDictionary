@@ -162,8 +162,7 @@ openTypes:
       - { name: samplingRatio, type: double, required: true, nullable: false }
       - { name: samplingRouteRatios, type: "tabular:routeRatios", required: true, nullable: false }
       - { name: traceControlHeadersEnabled, type: boolean, required: true, nullable: false }
-      - { name: validationEnabled, type: boolean, required: true, nullable: false }
-      - { name: validationStrict, type: boolean, required: true, nullable: false }
+      - { name: validationLevel, type: string, required: true, nullable: false }
   applySnapshotRequest:
     kind: composite
     typeName: space.br1440.platform.tracing.control.ApplySnapshotRequest.v1
@@ -200,8 +199,7 @@ openTypes:
       - { name: samplingEnabled, type: boolean, required: true, nullable: false }
       - { name: samplingRatio, type: double, required: true, nullable: false }
       - { name: samplingRouteRatios, type: "tabular:routeRatios", required: true, nullable: false }
-      - { name: validationEnabled, type: boolean, required: true, nullable: false }
-      - { name: validationStrict, type: boolean, required: true, nullable: false }
+      - { name: validationLevel, type: string, required: true, nullable: false }
       - { name: exporterEnabled, type: boolean, required: true, nullable: false }
       - { name: traceControlHeadersEnabled, type: boolean, required: true, nullable: false }
       - { name: diagnosticsLogLevel, type: string, required: true, nullable: false }
@@ -293,8 +291,7 @@ openTypes:
       - { name: ownerPresent, type: boolean, required: true, nullable: false }
       - { name: ownerGeneration, type: long, required: true, nullable: false }
       - { name: ownerCapturedOffsetNanos, type: long, required: true, nullable: false }
-      - { name: validationEnabled, type: boolean, required: true, nullable: false }
-      - { name: validationStrict, type: boolean, required: true, nullable: false }
+      - { name: validationLevel, type: string, required: true, nullable: false }
       - { name: validationViolationsTotal, type: long, required: true, nullable: false }
       - { name: validationConfigVersion, type: long, required: true, nullable: false }
       - { name: validationConfigLastUpdatedSource, type: string, required: true, nullable: false }
@@ -478,7 +475,7 @@ wireGraph:
 policyDigest:
   algorithmId: SHA-256
   algorithmVersion: 1
-  encodingVersion: 0
+  encodingVersion: 1
   domainSeparator: platform-tracing-policy-v1
   routeOrdering: unsigned-utf8-lexicographic
   validLogLevels: ['OFF', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE']
@@ -486,8 +483,7 @@ policyDigest:
     - { id: 1, name: samplingEnabled, type: boolean }
     - { id: 2, name: samplingRatio, type: double }
     - { id: 3, name: samplingRouteRatios, type: sortedUtf8DoubleMap }
-    - { id: 4, name: validationEnabled, type: boolean }
-    - { id: 5, name: validationStrict, type: boolean }
-    - { id: 6, name: exporterEnabled, type: boolean }
-    - { id: 7, name: traceControlHeadersEnabled, type: boolean }
-    - { id: 8, name: diagnosticsLogLevel, type: asciiToken }
+    - { id: 4, name: validationLevel, type: asciiToken }
+    - { id: 5, name: exporterEnabled, type: boolean }
+    - { id: 6, name: traceControlHeadersEnabled, type: boolean }
+    - { id: 7, name: diagnosticsLogLevel, type: asciiToken }

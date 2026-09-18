@@ -20,10 +20,8 @@ import org.junit.jupiter.api.Test;
  */
 class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
 
-    // ── §1 полный цикл с непустой таблицей маршрутов ──────────────────────────
-
     @Test
-    void fullRoundTripAllEightLeavesNonEmptyRoutes() throws OpenDataException {
+    void fullRoundTripAllSevenLeavesNonEmptyRoutes() throws OpenDataException {
         String rid = "agent-instance-" + UUID.randomUUID();
         long seq = 77L;
         Map<String, Double> routes = Map.of(
@@ -31,8 +29,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
                 "/api/v2", 0.5d,
                 "/health", 0.0d);
 
-        CompositeData wire = buildPinnedPayload(seq, rid, true, 0.75d, routes,
-                true, true, false, true, "WARN");
+        CompositeData wire = buildPinnedPayload(seq, rid, true, 0.75d, routes, "ERROR", false, true, "WARN");
 
         var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
 
@@ -46,20 +43,17 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         assertThat(snap.samplingRouteRatios()).containsEntry("/api/v1", 1.0d);
         assertThat(snap.samplingRouteRatios()).containsEntry("/api/v2", 0.5d);
         assertThat(snap.samplingRouteRatios()).containsEntry("/health", 0.0d);
-        assertThat(snap.validationEnabled()).isTrue();
-        assertThat(snap.validationStrict()).isTrue();
+        assertThat(snap.validationLevel()).isEqualTo("ERROR");
         assertThat(snap.exporterEnabled()).isFalse();
         assertThat(snap.traceControlHeadersEnabled()).isTrue();
         assertThat(snap.diagnosticsLogLevel()).isEqualTo("WARN");
     }
 
-    // ── §2 полный цикл с пустой таблицей маршрутов ────────────────────────────
-
     @Test
     void fullRoundTripEmptyRouteTable() throws OpenDataException {
         String rid = "rid-empty-" + UUID.randomUUID();
         CompositeData wire = buildPinnedPayload(0L, rid, false, 0.0d, Map.of(),
-                false, false, true, false, "ERROR");
+                "DISABLED", true, false, "ERROR");
 
         var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
 
@@ -69,14 +63,11 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         assertThat(snap.samplingEnabled()).isFalse();
         assertThat(snap.samplingRatio()).isEqualTo(0.0d);
         assertThat(snap.samplingRouteRatios()).isEmpty();
-        assertThat(snap.validationEnabled()).isFalse();
-        assertThat(snap.validationStrict()).isFalse();
+        assertThat(snap.validationLevel()).isEqualTo("DISABLED");
         assertThat(snap.exporterEnabled()).isTrue();
         assertThat(snap.traceControlHeadersEnabled()).isFalse();
         assertThat(snap.diagnosticsLogLevel()).isEqualTo("ERROR");
     }
-
-    // ── §3 монотонность последовательности сохраняется ────────────────────────
 
     @Test
     void sequenceIsPreservedExactly() throws OpenDataException {
@@ -84,15 +75,13 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         for (long seq : seqs) {
             CompositeData wire = buildPinnedPayload(seq, "rid-seq-" + seq,
                     true, 0.5d, Map.of(),
-                    true, false, true, true, "INFO");
+                    "WARNING", true, true, "INFO");
             var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
             assertThat(decoded.acceptedSequence())
                     .as("sequence %d must be preserved", seq)
                     .isEqualTo(seq);
         }
     }
-
-    // ── §4 runtimeInstanceId непрозрачен и сохраняется без изменений ──────────
 
     @Test
     void runtimeInstanceIdPreservedVerbatim() throws OpenDataException {
@@ -105,7 +94,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         for (String rid : ids) {
             CompositeData wire = buildPinnedPayload(1L, rid,
                     true, 0.5d, Map.of(),
-                    true, false, true, true, "INFO");
+                    "WARNING", true, true, "INFO");
             var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
             assertThat(decoded.runtimeInstanceId())
                     .as("runtimeInstanceId must be preserved verbatim for: %s", rid)
@@ -113,14 +102,15 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         }
     }
 
-    // ── §5 граничные значения коэффициента выборки 0.0 и 1.0 допустимы ────────
-
     @Test
     void samplingRatioBoundaryValuesAreValid() throws OpenDataException {
         for (double ratio : new double[]{0.0d, 1.0d}) {
-            CompositeData wire = buildPinnedPayload(1L, "rid-boundary",
+            CompositeData wire = buildPinnedPayload(
+                    1L, "rid-boundary",
                     true, ratio, Map.of(),
-                    true, false, true, true, "INFO");
+                    "WARNING", true, true, "INFO"
+            );
+
             var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
             assertThat(decoded.snapshot().samplingRatio())
                     .as("ratio %s is a valid boundary", ratio)
@@ -128,14 +118,15 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         }
     }
 
-    // ── §6 все допустимые значения перечисления diagnosticsLogLevel ───────────
-
     @Test
     void allValidDiagnosticsLogLevelsAccepted() throws OpenDataException {
         for (String level : new String[]{"OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"}) {
-            CompositeData wire = buildPinnedPayload(1L, "rid-level-" + level,
+            CompositeData wire = buildPinnedPayload(
+                    1L, "rid-level-" + level,
                     true, 0.5d, Map.of(),
-                    true, false, true, true, level);
+                    "WARNING", true, true, level
+            );
+
             var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
             assertThat(decoded.snapshot().diagnosticsLogLevel())
                     .as("log level %s must round-trip", level)
@@ -143,14 +134,14 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         }
     }
 
-    // ── §7 ключ и значение маршрута не переставлены местами ───────────────────
-
     @Test
     void routeKeyValueNotTransposed() throws OpenDataException {
         Map<String, Double> routes = Map.of("/distinct-prefix", 0.123d);
-        CompositeData wire = buildPinnedPayload(1L, "rid-swap",
+        CompositeData wire = buildPinnedPayload(
+                1L, "rid-swap",
                 true, 0.5d, routes,
-                true, false, true, true, "INFO");
+                "WARNING", true, true, "INFO"
+        );
 
         var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
 
@@ -161,87 +152,73 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
                 .doesNotContainKey("0.123");
     }
 
-    // ── §8 все булевы листья проверены независимо ─────────────────────────────
-
     @Test
-    void booleanLeavesAreIndependent() throws OpenDataException {
-        record BoolCase(boolean sampEn, boolean valEn, boolean valStrict,
-                        boolean expEn, boolean tcHeaders) {}
+    void validationLevelsAreIndependent() throws OpenDataException {
+        for (String level : new String[]{"WARNING", "ERROR", "DISABLED"}) {
+            CompositeData wire = buildPinnedPayload(
+                    1L, "rid-level",
+                    false, 0.5d, Map.of(),
+                    level, false, false, "INFO"
+            );
 
-        var cases = new BoolCase[]{
-                new BoolCase(true,  false, false, false, false),
-                new BoolCase(false, true,  false, false, false),
-                new BoolCase(false, false, true,  false, false),
-                new BoolCase(false, false, false, true,  false),
-                new BoolCase(false, false, false, false, true),
-        };
-
-        for (var c : cases) {
-            CompositeData wire = buildPinnedPayload(1L, "rid-bool",
-                    c.sampEn(), 0.5d, Map.of(),
-                    c.valEn(), c.valStrict(), c.expEn(), c.tcHeaders(), "INFO");
             var snap = AcceptedPolicySnapshotDecoder.decode(wire).snapshot();
-            assertThat(snap.samplingEnabled()).isEqualTo(c.sampEn());
-            assertThat(snap.validationEnabled()).isEqualTo(c.valEn());
-            assertThat(snap.validationStrict()).isEqualTo(c.valStrict());
-            assertThat(snap.exporterEnabled()).isEqualTo(c.expEn());
-            assertThat(snap.traceControlHeadersEnabled()).isEqualTo(c.tcHeaders());
+            assertThat(snap.validationLevel()).isEqualTo(level);
+            assertThat(snap.samplingEnabled()).isFalse();
+            assertThat(snap.exporterEnabled()).isFalse();
+            assertThat(snap.traceControlHeadersEnabled()).isFalse();
         }
     }
 
-    // ── §9 инвариант производственной DTO-схемы: ровно восемь листьев ─────────
-
     @Test
-    void decodedSchemaFieldCountIsExactlyEight() throws OpenDataException {
-        CompositeData wire = buildPinnedPayload(1L, "rid-schema",
+    void decodedSchemaFieldCountIsExactlySeven() throws OpenDataException {
+        CompositeData wire = buildPinnedPayload(
+                1L, "rid-schema",
                 true, 0.5d, Map.of(),
-                true, false, true, true, "INFO");
+                "WARNING", true, true, "INFO"
+        );
+
         var snap = AcceptedPolicySnapshotDecoder.decode(wire).snapshot();
 
-        // Все восемь листьев перечислены явно, чтобы новые поля нельзя было
-        // незаметно добавить без пересмотра контракта.
         assertThat(java.util.List.of(
                 snap.samplingEnabled(),
                 snap.samplingRatio(),
                 snap.samplingRouteRatios(),
-                snap.validationEnabled(),
-                snap.validationStrict(),
+                snap.validationLevel(),
                 snap.exporterEnabled(),
                 snap.traceControlHeadersEnabled(),
                 snap.diagnosticsLogLevel()
-        )).hasSize(8);
+        )).hasSize(7);
     }
-
-    // ── вспомогательная сборка CompositeData без сгенерированных констант полей ──
 
     /**
      * Собирает {@code CompositeData} для {@code "AcceptedCompleteSnapshot/v1"} по независимо
      * закреплённым литералам, чтобы обнаруживать синхронное расхождение сгенерированного кода
      * и потребителя.
      */
-    private static CompositeData buildPinnedPayload(
-            long acceptedSequence,
-            String runtimeInstanceId,
-            boolean samplingEnabled,
-            double samplingRatio,
-            Map<String, Double> routes,
-            boolean validationEnabled,
-            boolean validationStrict,
-            boolean exporterEnabled,
-            boolean traceControlHeadersEnabled,
-            String diagnosticsLogLevel) throws OpenDataException {
-
+    private static CompositeData buildPinnedPayload(long acceptedSequence,
+                                                    String runtimeInstanceId,
+                                                    boolean samplingEnabled,
+                                                    double samplingRatio,
+                                                    Map<String, Double> routes,
+                                                    String validationLevel,
+                                                    boolean exporterEnabled,
+                                                    boolean traceControlHeadersEnabled,
+                                                    String diagnosticsLogLevel) throws OpenDataException {
         CompositeType routeRow = new CompositeType(
                 "space.br1440.platform.tracing.control.RouteRatio.v1",
                 "space.br1440.platform.tracing.control.RouteRatio.v1",
                 new String[]{"ratio", "routePrefix"},
                 new String[]{"ratio", "routePrefix"},
-                new OpenType<?>[]{SimpleType.DOUBLE, SimpleType.STRING});
+                new OpenType<?>[]{SimpleType.DOUBLE, SimpleType.STRING}
+        );
+
         TabularType routesType = new TabularType(
                 "space.br1440.platform.tracing.control.RouteRatios.v1",
                 "space.br1440.platform.tracing.control.RouteRatios.v1",
                 routeRow,
-                new String[]{"routePrefix"});
+                new String[]{"routePrefix"}
+        );
+
         TabularDataSupport routeTable = new TabularDataSupport(routesType);
         for (var e : routes.entrySet()) {
             routeTable.put(new CompositeDataSupport(routeRow,
@@ -252,25 +229,29 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         String[] keys = {
                 "acceptedSequence", "runtimeInstanceId", "acceptedPolicyDigest",
                 "lastApplyOutcome", "lastAttemptId", "failureCode", "samplingEnabled",
-                "samplingRatio", "samplingRouteRatios", "validationEnabled",
-                "validationStrict", "exporterEnabled", "traceControlHeadersEnabled",
+                "samplingRatio", "samplingRouteRatios", "validationLevel",
+                "exporterEnabled", "traceControlHeadersEnabled",
                 "diagnosticsLogLevel"
         };
+
         OpenType<?>[] types = {
                 SimpleType.LONG, SimpleType.STRING, SimpleType.STRING,
                 SimpleType.STRING, SimpleType.STRING, SimpleType.STRING, SimpleType.BOOLEAN,
-                SimpleType.DOUBLE, routesType, SimpleType.BOOLEAN,
-                SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.BOOLEAN,
+                SimpleType.DOUBLE, routesType, SimpleType.STRING,
+                SimpleType.BOOLEAN, SimpleType.BOOLEAN,
                 SimpleType.STRING
         };
+
         CompositeType ct = new CompositeType(
                 "AcceptedCompleteSnapshot/v1", "AcceptedCompleteSnapshot/v1",
-                keys, keys, types);
+                keys, keys, types
+        );
+
         return new CompositeDataSupport(ct, keys, new Object[]{
                 acceptedSequence, runtimeInstanceId, "accepted-policy-digest",
                 "APPLIED", "attempt-id", "", samplingEnabled,
-                samplingRatio, routeTable, validationEnabled,
-                validationStrict, exporterEnabled, traceControlHeadersEnabled,
+                samplingRatio, routeTable, validationLevel,
+                exporterEnabled, traceControlHeadersEnabled,
                 diagnosticsLogLevel
         });
     }

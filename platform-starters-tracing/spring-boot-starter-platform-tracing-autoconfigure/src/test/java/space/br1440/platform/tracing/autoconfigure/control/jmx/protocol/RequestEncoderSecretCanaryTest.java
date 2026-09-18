@@ -54,8 +54,7 @@ final class RequestEncoderSecretCanaryTest {
                 snapshot.samplingEnabled(),
                 snapshot.samplingRatio(),
                 snapshot.samplingRouteRatios(),
-                snapshot.validationEnabled(),
-                snapshot.validationStrict(),
+                snapshot.validationLevel(),
                 snapshot.exporterEnabled(),
                 snapshot.traceControlHeadersEnabled(),
                 snapshot.diagnosticsLogLevel()
@@ -172,8 +171,7 @@ final class RequestEncoderSecretCanaryTest {
                 .samplingEnabled(true)
                 .samplingRatio(0.5d)
                 .samplingRouteRatios(Map.of(CANARY_ROUTE, 0.25d))
-                .validationEnabled(true)
-                .validationStrict(false)
+                .validationLevel("WARNING")
                 .exporterEnabled(true)
                 .traceControlHeadersEnabled(true)
                 .diagnosticsLogLevel("INFO")
@@ -188,8 +186,7 @@ final class RequestEncoderSecretCanaryTest {
                         s.samplingEnabled(),
                         s.samplingRatio(),
                         s.samplingRouteRatios().size(),
-                        s.validationEnabled(),
-                        s.validationStrict(),
+                        s.validationLevel(),
                         s.exporterEnabled(),
                         s.traceControlHeadersEnabled(),
                         s.diagnosticsLogLevel()));
@@ -202,8 +199,7 @@ final class RequestEncoderSecretCanaryTest {
                 Map.of(
                         "platform.tracing.policy.sampling.enabled", "true",
                         "platform.tracing.policy.sampling.ratio", "1.0",
-                        "platform.tracing.policy.validation.enabled", "true",
-                        "platform.tracing.policy.validation.strict", "false",
+                        "platform.tracing.policy.validation.level", "WARNING",
                         "platform.tracing.policy.exporter.enabled", "true",
                         "platform.tracing.policy.propagation.trace-control-headers.enabled", "true",
                         "platform.tracing.policy.diagnostics.log-level", "INFO"
@@ -233,7 +229,7 @@ final class RequestEncoderSecretCanaryTest {
                         "acceptedSequence", "runtimeInstanceId",
                         "acceptedPolicyDigest", "lastApplyOutcome", "lastAttemptId", "failureCode",
                         "samplingEnabled", "samplingRatio", "samplingRouteRatios",
-                        "validationEnabled", "validationStrict", "exporterEnabled",
+                        "validationLevel", "exporterEnabled",
                         "traceControlHeadersEnabled", "diagnosticsLogLevel"
                 },
 
@@ -241,7 +237,7 @@ final class RequestEncoderSecretCanaryTest {
                         1L, "rid",
                         "accepted-policy-digest", "APPLIED", "attempt-id", "",
                         true, 1.0d, routes,
-                        true, false, true,
+                        "WARNING", true,
                         true, "INFO"
                 });
     }

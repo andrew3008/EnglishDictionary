@@ -167,13 +167,8 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
             );
 
             fields.put(
-                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_ENABLED,
-                    accepted.validationEnabled()
-            );
-
-            fields.put(
-                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_STRICT,
-                    accepted.validationStrict()
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_LEVEL,
+                    accepted.validationLevel().name()
             );
 
             fields.put(

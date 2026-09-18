@@ -27,7 +27,7 @@ class DatabaseSpanBuilderTest {
     @BeforeEach
     void setUp() {
         recording = new RecordingTracingRuntime();
-        SpanAttributeValidator strictPolicy = new SpanAttributeValidator(SpanAttributeValidationLevel.STRICT, SpanAttributeValidationMetrics.NOOP);
+        SpanAttributeValidator strictPolicy = new SpanAttributeValidator(SpanAttributeValidationLevel.ERROR, SpanAttributeValidationMetrics.NOOP);
         manual = new DefaultSpanFactory(recording, strictPolicy);
     }
 

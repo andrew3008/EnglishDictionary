@@ -4,6 +4,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevis
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,7 +24,7 @@ class TracingSettingsUpdaterPreApplyTest {
     void setUp() {
         store = new TracingSettingsStore(
                 UUID.randomUUID().toString(),
-                TracingSettings.of(true, 1.0, Map.of(), true, false, true, true, TracingLogLevel.INFO));
+                TracingSettings.of(true, 1.0, Map.of(), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO));
         diagnostics = new LastSettingsUpdate();
         updater = new TracingSettingsUpdater(store, diagnostics);
     }

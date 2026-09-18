@@ -16,6 +16,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Setti
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 
 class SecretCanaryAuditTest {
 
@@ -36,8 +37,7 @@ class SecretCanaryAuditTest {
                 true,
                 0.5d,
                 Map.of(CANARY_ROUTE, 0.25d),
-                true,
-                false,
+                SpanAttributeValidationLevel.WARNING,
                 true,
                 true,
                 TracingLogLevel.INFO

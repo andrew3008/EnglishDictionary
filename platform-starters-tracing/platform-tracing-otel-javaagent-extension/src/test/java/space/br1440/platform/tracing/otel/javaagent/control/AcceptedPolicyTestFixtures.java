@@ -5,6 +5,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 
 import java.time.Instant;
 import java.util.Map;
@@ -22,11 +23,11 @@ public final class AcceptedPolicyTestFixtures {
                 true,
                 samplingRatio,
                 Map.of("/orders", 0.5d, "/health", 0.0d),
+                SpanAttributeValidationLevel.WARNING,
                 true,
-                false,
                 true,
-                true,
-                TracingLogLevel.INFO);
+                TracingLogLevel.INFO
+        );
     }
 
     static SettingsUpdateAttempt attempt(long ordinal) {
@@ -35,6 +36,7 @@ public final class AcceptedPolicyTestFixtures {
                 Instant.parse("2026-07-28T10:15:30Z").plusSeconds(ordinal),
                 SettingsSourceAuthority.CONFIG_SERVER,
                 SettingsUpdateTrigger.REFRESH,
-                "revision-" + ordinal);
+                "revision-" + ordinal
+        );
     }
 }

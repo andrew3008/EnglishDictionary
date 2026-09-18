@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 
 class AcceptedPolicyAccessTest {
 
@@ -25,7 +26,7 @@ class AcceptedPolicyAccessTest {
         // when/then
         assertThat(AcceptedPolicyMutationAccess.applySampling(access, false, 0.3d, Map.of("/orders", 0.4d)))
                 .isEqualTo(SettingsUpdateStatus.APPLIED);
-        assertThat(AcceptedPolicyMutationAccess.applyValidation(access, true, true))
+        assertThat(AcceptedPolicyMutationAccess.applyValidation(access, SpanAttributeValidationLevel.ERROR))
                 .isEqualTo(SettingsUpdateStatus.APPLIED);
         assertThat(AcceptedPolicyMutationAccess.applyExporter(access, false))
                 .isEqualTo(SettingsUpdateStatus.APPLIED);
@@ -40,8 +41,7 @@ class AcceptedPolicyAccessTest {
         assertThat(accepted.samplingEnabled()).isFalse();
         assertThat(accepted.samplingRatio()).isEqualTo(0.3d);
         assertThat(accepted.samplingRouteRatios()).containsExactly(Map.entry("/orders", 0.4d));
-        assertThat(accepted.validationEnabled()).isTrue();
-        assertThat(accepted.validationStrict()).isTrue();
+        assertThat(accepted.validationLevel()).isEqualTo(SpanAttributeValidationLevel.ERROR);
         assertThat(accepted.exporterEnabled()).isFalse();
         assertThat(accepted.traceControlHeadersEnabled()).isFalse();
         assertThat(accepted.diagnosticsLogLevel()).isEqualTo("DEBUG");

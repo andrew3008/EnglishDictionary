@@ -27,7 +27,6 @@ public final class TracingBootstrapSettingsResolver {
             "platform.tracing.sampling.route-ratios",
             "platform.tracing.javaagent.sampling.drop-paths",
             "platform.tracing.javaagent.sampling.force-record-values",
-            "platform.tracing.javaagent.span-attributes.validation.enabled",
             "platform.tracing.javaagent.span-attributes.validation.level"
     );
 

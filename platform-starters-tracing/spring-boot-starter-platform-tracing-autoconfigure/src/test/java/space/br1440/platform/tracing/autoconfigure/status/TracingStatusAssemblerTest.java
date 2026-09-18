@@ -112,7 +112,7 @@ class TracingStatusAssemblerTest {
 
         AcceptedSettingsReadModel projection = new AcceptedSettingsReadModel(
                 new ExpectedSettingsRevision("runtime-1", 7L),
-                new AcceptedPolicySummary(true, 0.25, 3, true, false, true, true, "INFO")
+                new AcceptedPolicySummary(true, 0.25, 3, "WARNING", true, true, "INFO")
         );
 
         TracingStatusAssembler assembler = assembler(
@@ -143,7 +143,7 @@ class TracingStatusAssemblerTest {
     @Test
     void runtimeValidationSectionIncludesViolationCounter() {
         PlatformTracingJmxClient jmxClient = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
-        ValidationValues values = new ValidationValues(true, true, 42L, 7L, "accepted-state");
+        ValidationValues values = new ValidationValues("ERROR", 42L, 7L, "accepted-state");
         when(jmxClient.validation().observation()).thenReturn(Optional.of(
                 new ValidationObservation("agent-instance", new JmxOwnerState.Present<>(values, 1L))));
 
@@ -299,7 +299,7 @@ class TracingStatusAssemblerTest {
 
         AcceptedSettingsReadModel projection = new AcceptedSettingsReadModel(
                 new ExpectedSettingsRevision("runtime-1", 7L),
-                new AcceptedPolicySummary(true, 0.25, 3, true, false, true, true, "INFO")
+                new AcceptedPolicySummary(true, 0.25, 3, "WARNING", true, true, "INFO")
         );
 
         AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard(server);

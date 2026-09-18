@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.processor;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
@@ -26,7 +27,7 @@ class ValidationRuntimeFoundationTest {
     @Test
     void processor_uses_updated_snapshot_without_reconstruct() {
         // given
-        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(true, false);
+        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING);
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access);
         // when
         long initialSequence = processor.getPolicyVersion();
@@ -43,7 +44,7 @@ class ValidationRuntimeFoundationTest {
                     PlatformAttributes.PLATFORM_RESULT);
         }
 
-        assertThat(AcceptedPolicyMutationAccess.applyValidation(access, false, false))
+        assertThat(AcceptedPolicyMutationAccess.applyValidation(access, SpanAttributeValidationLevel.DISABLED))
                 .isEqualTo(SettingsUpdateStatus.APPLIED);
         assertThat(processor.getPolicyVersion()).isEqualTo(initialSequence + 1);
         assertThat(processor.getPolicySource()).isEqualTo("accepted-state");
@@ -54,7 +55,7 @@ class ValidationRuntimeFoundationTest {
             ValidationAssertions.assertMissingAbsent(h.exporter().getFinishedSpanItems().getFirst());
         }
 
-        assertThat(AcceptedPolicyMutationAccess.applyValidation(access, true, true))
+        assertThat(AcceptedPolicyMutationAccess.applyValidation(access, SpanAttributeValidationLevel.ERROR))
                 .isEqualTo(SettingsUpdateStatus.APPLIED);
         assertThat(processor.getPolicyVersion()).isEqualTo(initialSequence + 2);
 
@@ -70,7 +71,7 @@ class ValidationRuntimeFoundationTest {
     void warn_level_validation_failure_still_exports_span_not_dropped() {
         // given
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(
-                TracingSettingsSource.isolatedValidation(true, false));
+                TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING));
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
             Tracer tracer = h.tracer("t");
@@ -89,7 +90,7 @@ class ValidationRuntimeFoundationTest {
     @Test
     void concurrent_updateValidation_and_onEnding_never_throws() throws Exception {
         // given
-        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(true, false);
+        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING);
         int threads = 6;
         CountDownLatch start = new CountDownLatch(1);
         CountDownLatch writersDone = new CountDownLatch(2);
@@ -104,7 +105,9 @@ class ValidationRuntimeFoundationTest {
                         await(start);
                         try {
                             for (int i = 0; i < 100; i++) {
-                                AcceptedPolicyMutationAccess.applyValidation(access, i % 2 == 0, i % 3 == 0);
+                                AcceptedPolicyMutationAccess.applyValidation(
+                                        access,
+                                        SpanAttributeValidationLevel.values()[i % SpanAttributeValidationLevel.values().length]);
                             }
                         } finally {
                             writersDone.countDown();

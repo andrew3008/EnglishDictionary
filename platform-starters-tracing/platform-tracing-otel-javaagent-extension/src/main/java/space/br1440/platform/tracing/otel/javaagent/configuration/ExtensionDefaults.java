@@ -21,7 +21,6 @@ public final class ExtensionDefaults {
     );
 
     public static final String DEFAULT_SCRUBBING_MISSING_KEY_POLICY = "mask";
-    public static final String DEFAULT_SCRUBBING_VALIDATION_MODE = "LENIENT";
     public static final List<String> DEFAULT_BUILT_IN_RULES = BuiltInSpanAttributeScrubbingRules.defaultConfigNames();
 
     public static final boolean DEFAULT_RESOURCE_NORMALIZE_ENVIRONMENT = true;

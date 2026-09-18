@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.loader.ExtensionRuleLoader;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
@@ -155,7 +156,7 @@ class ExtensionConfigTest {
         assertThat(config.scrubbing().missingKeyPolicy()).isEqualTo("mask");
         assertThat(config.scrubbing().rulesConfig()).isNull();
         assertThat(config.scrubbing().rulesExtensions()).isNull();
-        assertThat(config.scrubbing().rulesValidationMode()).isEqualTo("LENIENT");
+        assertThat(config.scrubbing().rulesValidationMode()).isEqualTo(ExtensionRuleLoader.ValidationMode.WARNING);
     }
 
     @Test
@@ -164,21 +165,19 @@ class ExtensionConfigTest {
         ExtensionConfig config = new ExtensionConfig(emptyConfig());
 
         // then
-        assertThat(config.validation().enabled()).isTrue();
-        assertThat(config.validation().requestedLevel()).isEqualTo(SpanAttributeValidationLevel.WARN);
+        assertThat(config.validation().requestedLevel()).isEqualTo(SpanAttributeValidationLevel.WARNING);
     }
 
     @Test
-    void validation_reads_enabled_false() {
+    void validation_reads_disabled_level() {
         // given/when
-        ExtensionConfig config = new ExtensionConfig(booleanConfig(
-                ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_ENABLED,
-                false
+        ExtensionConfig config = new ExtensionConfig(stringConfig(
+                ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
+                "DISABLED"
         ));
 
         // then
-        assertThat(config.validation().enabled()).isFalse();
-        assertThat(config.validation().requestedLevel()).isEqualTo(SpanAttributeValidationLevel.WARN);
+        assertThat(config.validation().requestedLevel()).isEqualTo(SpanAttributeValidationLevel.DISABLED);
     }
 
     @Test

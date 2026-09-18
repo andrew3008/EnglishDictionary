@@ -59,8 +59,7 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
             JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ENABLED,
             JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO,
             JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS,
-            JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_ENABLED,
-            JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_STRICT,
+            JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_LEVEL,
             JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_EXPORTER_ENABLED,
             JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_TRACE_CONTROL_HEADERS_ENABLED,
             JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_DIAGNOSTICS_LOG_LEVEL
@@ -250,7 +249,7 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
             return new CompositeDataSupport(COMPLETE, COMPLETE_KEYS, new Object[]{
                     acceptedSequence.get(), runtimeInstanceId, "fake-policy-digest", "APPLIED",
                     "fake-attempt", "", true, 0.1,
-                    new TabularDataSupport(ROUTES), true, false, true, true, "INFO"
+                    new TabularDataSupport(ROUTES), "WARNING", true, true, "INFO"
             });
         } catch (OpenDataException e) {
             throw new IllegalStateException(e);

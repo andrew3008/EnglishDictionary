@@ -17,6 +17,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Setti
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 
 /**
  * Проверяет межмодульный паритет транспортного кодека от Spring к агенту.
@@ -47,7 +48,7 @@ class SpringToAgentWireCodecParityTest {
                 UUID.randomUUID().toString(), 42L,
                 UUID.randomUUID().toString(), "CONFIG_SERVER", "REFRESH", "revision-abc",
                 settings(true, 0.42d, Map.of("/checkout", 0.6d, "/search", 0.2d),
-                        true, false, true, true, "DEBUG"));
+                        "WARNING", true, true, "DEBUG"));
 
         assertThat(decoded.expectedBase().runtimeInstanceId()).isNotBlank();
         assertThat(decoded.expectedBase().acceptedSequence()).isEqualTo(42L);
@@ -58,8 +59,7 @@ class SpringToAgentWireCodecParityTest {
         assertThat(settings.samplingEnabled()).isTrue();
         assertThat(settings.samplingRatio()).isEqualTo(0.42d);
         assertThat(settings.samplingRouteRatios()).containsEntry("/checkout", 0.6d).containsEntry("/search", 0.2d);
-        assertThat(settings.validationEnabled()).isTrue();
-        assertThat(settings.validationStrict()).isFalse();
+        assertThat(settings.validationLevel()).isEqualTo(SpanAttributeValidationLevel.WARNING);
         assertThat(settings.exporterEnabled()).isTrue();
         assertThat(settings.traceControlHeadersEnabled()).isTrue();
         assertThat(settings.diagnosticsLogLevel()).isEqualTo(TracingLogLevel.DEBUG);
@@ -70,7 +70,7 @@ class SpringToAgentWireCodecParityTest {
         DecodedSettingsUpdate decoded = roundTrip(
                 UUID.randomUUID().toString(), 0L,
                 UUID.randomUUID().toString(), "HELM", "INITIAL", "",
-                settings(false, 0.0d, Map.of(), false, false, false, false, "OFF"));
+                settings(false, 0.0d, Map.of(), "DISABLED", false, false, "OFF"));
 
         assertThat(decoded.expectedBase().acceptedSequence()).isEqualTo(0L);
         assertThat(decoded.settings().samplingRouteRatios()).isEmpty();
@@ -83,48 +83,52 @@ class SpringToAgentWireCodecParityTest {
         String runtimeId = UUID.randomUUID().toString();
         DecodedSettingsUpdate decoded = roundTrip(
                 runtimeId, 5L, UUID.randomUUID().toString(), "CONFIG_SERVER", "REFRESH", "rev",
-                settings(true, 0.5d, Map.of(), true, false, true, true, "INFO"));
+                settings(true, 0.5d, Map.of(), "WARNING", true, true, "INFO"));
 
         assertThat(decoded.expectedBase().runtimeInstanceId()).isEqualTo(runtimeId);
     }
 
     @Test
     void samplingEnabledOneHotRoundTripsThroughRealSpringEncoder() {
-        assertBooleanOneHot(true, false, false, false, false);
+        assertBooleanOneHot(true, "DISABLED", false, false);
     }
 
     @Test
-    void validationEnabledOneHotRoundTripsThroughRealSpringEncoder() {
-        assertBooleanOneHot(false, true, false, false, false);
+    void validationLevelErrorOneHotRoundTripsThroughRealSpringEncoder() {
+        assertBooleanOneHot(false, "ERROR", false, false);
     }
 
     @Test
-    void validationStrictOneHotRoundTripsThroughRealSpringEncoder() {
-        assertBooleanOneHot(false, false, true, false, false);
+    void validationLevelWarningOneHotRoundTripsThroughRealSpringEncoder() {
+        assertBooleanOneHot(false, "WARNING", false, false);
+    }
+
+    @Test
+    void validationLevelDisabledOneHotRoundTripsThroughRealSpringEncoder() {
+        assertBooleanOneHot(false, "DISABLED", false, false);
     }
 
     @Test
     void exporterEnabledOneHotRoundTripsThroughRealSpringEncoder() {
-        assertBooleanOneHot(false, false, false, true, false);
+        assertBooleanOneHot(false, "DISABLED", true, false);
     }
 
     @Test
     void traceControlHeadersEnabledOneHotRoundTripsThroughRealSpringEncoder() {
-        assertBooleanOneHot(false, false, false, false, true);
+        assertBooleanOneHot(false, "DISABLED", false, true);
     }
 
-    private static void assertBooleanOneHot(boolean samplingEnabled, boolean validationEnabled,
-                                            boolean validationStrict, boolean exporterEnabled, boolean traceControlHeadersEnabled) {
+    private static void assertBooleanOneHot(boolean samplingEnabled, String validationLevel,
+                                            boolean exporterEnabled, boolean traceControlHeadersEnabled) {
         DecodedSettingsUpdate decoded = roundTrip(
                 UUID.randomUUID().toString(), 1L,
                 UUID.randomUUID().toString(), "CONFIG_SERVER", "REFRESH", "rev",
                 settings(samplingEnabled, 0.5d, Map.of(),
-                        validationEnabled, validationStrict, exporterEnabled, traceControlHeadersEnabled, "INFO"));
+                        validationLevel, exporterEnabled, traceControlHeadersEnabled, "INFO"));
 
         TracingSettings settings = decoded.settings();
         assertThat(settings.samplingEnabled()).isEqualTo(samplingEnabled);
-        assertThat(settings.validationEnabled()).isEqualTo(validationEnabled);
-        assertThat(settings.validationStrict()).isEqualTo(validationStrict);
+        assertThat(settings.validationLevel().name()).isEqualTo(validationLevel);
         assertThat(settings.exporterEnabled()).isEqualTo(exporterEnabled);
         assertThat(settings.traceControlHeadersEnabled()).isEqualTo(traceControlHeadersEnabled);
     }
@@ -149,14 +153,13 @@ class SpringToAgentWireCodecParityTest {
     }
 
     private static CompleteTracingSettings settings(boolean samplingEnabled, double samplingRatio,
-                                                    Map<String, Double> samplingRouteRatios, boolean validationEnabled, boolean validationStrict,
+                                                    Map<String, Double> samplingRouteRatios, String validationLevel,
                                                     boolean exporterEnabled, boolean traceControlHeadersEnabled, String diagnosticsLogLevel) {
         return CompleteTracingSettings.builder()
                 .samplingEnabled(samplingEnabled)
                 .samplingRatio(samplingRatio)
                 .samplingRouteRatios(new LinkedHashMap<>(samplingRouteRatios))
-                .validationEnabled(validationEnabled)
-                .validationStrict(validationStrict)
+                .validationLevel(validationLevel)
                 .exporterEnabled(exporterEnabled)
                 .traceControlHeadersEnabled(traceControlHeadersEnabled)
                 .diagnosticsLogLevel(diagnosticsLogLevel)

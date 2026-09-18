@@ -110,10 +110,7 @@ public final class ModuleTaxonomyArchRules {
             .because("the WebFlux integration must not depend on Servlet or Spring MVC");
 
     public static final ArchRule CORE_POLICY_PACKAGES_NO_OTEL_OR_SPRING = noClasses()
-            .that().resideInAnyPackage(
-                    "space.br1440.platform.tracing.runtime.sampling..",
-                    "space.br1440.platform.tracing.otel.scrubbing..",
-                    "space.br1440.platform.tracing.otel.validation..")
+            .that().resideInAnyPackage("space.br1440.platform.tracing.runtime.sampling..")
             .should().dependOnClassesThat().resideInAnyPackage(
                     "io.opentelemetry..",
                     "org.springframework..",

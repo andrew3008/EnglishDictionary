@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
@@ -48,7 +49,7 @@ class PlatformTracingMBeanRegistrarIntegrationTest {
 
         samplerHolder = TracingSettingsSource.isolatedSampling(true, Collections.emptyMap(), 0.2d);
         validatingProcessor = new ValidatingSpanProcessor(
-                TracingSettingsSource.isolatedValidation(true, false)
+                TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING)
         );
 
         registrar = new PlatformTracingMBeanRegistrar(server);

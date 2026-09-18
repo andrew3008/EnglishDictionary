@@ -17,8 +17,7 @@ public final class TracingSettingsDigest {
                 policy.samplingEnabled(),
                 policy.samplingRatio(),
                 policy.samplingRouteRatios(),
-                policy.validationEnabled(),
-                policy.validationStrict(),
+                policy.validationLevel().name(),
                 policy.exporterEnabled(),
                 policy.traceControlHeadersEnabled(),
                 policy.diagnosticsLogLevel().name()

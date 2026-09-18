@@ -64,8 +64,7 @@ class SecretCanaryCoalescerTest {
                 Map.of(
                         "platform.tracing.policy.sampling.enabled", "true",
                         "platform.tracing.policy.sampling.ratio", "1.0",
-                        "platform.tracing.policy.validation.enabled", "true",
-                        "platform.tracing.policy.validation.strict", "false",
+                        "platform.tracing.policy.validation.level", "WARNING",
                         "platform.tracing.policy.exporter.enabled", "true",
                         "platform.tracing.policy.propagation.trace-control-headers.enabled", "true",
                         "platform.tracing.policy.diagnostics.log-level", "INFO"

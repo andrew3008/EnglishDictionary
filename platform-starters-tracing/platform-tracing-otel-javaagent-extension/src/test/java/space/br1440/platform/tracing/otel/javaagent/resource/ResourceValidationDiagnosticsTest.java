@@ -29,7 +29,8 @@ class ResourceValidationDiagnosticsTest {
         // given
         // when
         ResourceValidationDiagnostics.ValidationResult result = diagnostics.validate(
-                fullIdentity(), Resource.empty(), Resource.empty(), ResourceValidationMode.STRICT);
+                fullIdentity(), Resource.empty(), Resource.empty(), ResourceValidationMode.ERROR
+        );
 
         // then
         assertThat(result.passed()).isTrue();
@@ -45,7 +46,8 @@ class ResourceValidationDiagnosticsTest {
 
         // when
         ResourceValidationDiagnostics.ValidationResult result = diagnostics.validate(
-                resolved, Resource.empty(), Resource.empty(), ResourceValidationMode.STRICT);
+                resolved, Resource.empty(), Resource.empty(), ResourceValidationMode.ERROR
+        );
 
         // then
         assertThat(result.passed()).isFalse();
@@ -64,7 +66,8 @@ class ResourceValidationDiagnosticsTest {
 
         // when
         ResourceValidationDiagnostics.ValidationResult result = diagnostics.validate(
-                resolved, otelEnv, Resource.empty(), ResourceValidationMode.STRICT);
+                resolved, otelEnv, Resource.empty(), ResourceValidationMode.ERROR
+        );
 
         // then
         assertThat(result.passed()).isTrue();
@@ -80,7 +83,8 @@ class ResourceValidationDiagnosticsTest {
 
         // when
         ResourceValidationDiagnostics.ValidationResult result = diagnostics.validate(
-                resolved, Resource.empty(), Resource.empty(), ResourceValidationMode.STRICT);
+                resolved, Resource.empty(), Resource.empty(), ResourceValidationMode.ERROR
+        );
 
         // then
         assertThat(result.passed()).isFalse();
@@ -92,7 +96,8 @@ class ResourceValidationDiagnosticsTest {
         // given
         // when
         ResourceValidationDiagnostics.ValidationResult result = diagnostics.validate(
-                Attributes.empty(), Resource.empty(), Resource.empty(), ResourceValidationMode.LENIENT);
+                Attributes.empty(), Resource.empty(), Resource.empty(), ResourceValidationMode.WARNING
+        );
 
         // then
         assertThat(result.passed()).isFalse();

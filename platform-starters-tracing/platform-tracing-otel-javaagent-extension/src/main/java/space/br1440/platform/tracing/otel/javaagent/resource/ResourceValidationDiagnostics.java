@@ -48,8 +48,8 @@ public final class ResourceValidationDiagnostics {
         }
 
         String keys = String.join(", ", result.missingKeys());
-        if (result.mode() == ResourceValidationMode.STRICT) {
-            throw new IllegalStateException("Resource identity failed STRICT validation; missing required keys [" + keys + "]");
+        if (result.mode() == ResourceValidationMode.ERROR) {
+            throw new IllegalStateException("Resource identity failed ERROR validation; missing required keys [" + keys + "]");
         }
     }
 

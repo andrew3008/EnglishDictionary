@@ -14,12 +14,12 @@ public final class CompleteTracingSettings {
     private static final int MAX_ROUTE_RATIOS = 100;
     private static final int MAX_ROUTE_KEY_LENGTH = 255;
     private static final Set<String> VALID_LOG_LEVELS = Set.of("OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE");
+    private static final Set<String> VALID_VALIDATION_LEVELS = Set.of("WARNING", "ERROR", "DISABLED");
 
     private final boolean samplingEnabled;
     private final double samplingRatio;
     private final Map<String, Double> samplingRouteRatios;
-    private final boolean validationEnabled;
-    private final boolean validationStrict;
+    private final String validationLevel;
     private final boolean exporterEnabled;
     private final boolean traceControlHeadersEnabled;
     private final String diagnosticsLogLevel;
@@ -27,8 +27,7 @@ public final class CompleteTracingSettings {
     private CompleteTracingSettings(boolean samplingEnabled,
                                           double samplingRatio,
                                           Map<String, Double> samplingRouteRatios,
-                                          boolean validationEnabled,
-                                          boolean validationStrict,
+                                          String validationLevel,
                                           boolean exporterEnabled,
                                           boolean traceControlHeadersEnabled,
                                           String diagnosticsLogLevel) {
@@ -37,8 +36,7 @@ public final class CompleteTracingSettings {
         this.samplingEnabled = samplingEnabled;
         this.samplingRatio = canonicalizeRatio(samplingRatio);
         this.samplingRouteRatios = Collections.unmodifiableMap(canonicalizeRoutes(copiedRoutes));
-        this.validationEnabled = validationEnabled;
-        this.validationStrict = validationStrict;
+        this.validationLevel = canonicalizeValidationLevel(validationLevel);
         this.exporterEnabled = exporterEnabled;
         this.traceControlHeadersEnabled = traceControlHeadersEnabled;
         this.diagnosticsLogLevel = canonicalizeLogLevel(diagnosticsLogLevel);
@@ -47,7 +45,7 @@ public final class CompleteTracingSettings {
     public static CompleteTracingSettings helmBootstrapDefaults() {
         return new CompleteTracingSettings(
                 true, 1.0, Map.of(),
-                true, false, true, true, "INFO"
+                "WARNING", true, true, "INFO"
         );
     }
 
@@ -63,12 +61,8 @@ public final class CompleteTracingSettings {
         return samplingRouteRatios;
     }
 
-    public boolean validationEnabled() {
-        return validationEnabled;
-    }
-
-    public boolean validationStrict() {
-        return validationStrict;
+    public String validationLevel() {
+        return validationLevel;
     }
 
     public boolean exporterEnabled() {
@@ -86,56 +80,49 @@ public final class CompleteTracingSettings {
     public CompleteTracingSettings withSamplingEnabled(boolean value) {
         return new CompleteTracingSettings(
                 value, samplingRatio, samplingRouteRatios,
-                validationEnabled, validationStrict, exporterEnabled, traceControlHeadersEnabled, diagnosticsLogLevel
+                validationLevel, exporterEnabled, traceControlHeadersEnabled, diagnosticsLogLevel
         );
     }
 
     public CompleteTracingSettings withSamplingRatio(double value) {
         return new CompleteTracingSettings(
                 samplingEnabled, value, samplingRouteRatios,
-                validationEnabled, validationStrict, exporterEnabled, traceControlHeadersEnabled, diagnosticsLogLevel
+                validationLevel, exporterEnabled, traceControlHeadersEnabled, diagnosticsLogLevel
         );
     }
 
     public CompleteTracingSettings withSamplingRouteRatios(Map<String, Double> value) {
         return new CompleteTracingSettings(
                 samplingEnabled, samplingRatio, value,
-                validationEnabled, validationStrict, exporterEnabled, traceControlHeadersEnabled, diagnosticsLogLevel
+                validationLevel, exporterEnabled, traceControlHeadersEnabled, diagnosticsLogLevel
         );
     }
 
-    public CompleteTracingSettings withValidationEnabled(boolean value) {
+    public CompleteTracingSettings withValidationLevel(String value) {
         return new CompleteTracingSettings(
                 samplingEnabled, samplingRatio, samplingRouteRatios,
-                value, validationStrict, exporterEnabled, traceControlHeadersEnabled, diagnosticsLogLevel
-        );
-    }
-
-    public CompleteTracingSettings withValidationStrict(boolean value) {
-        return new CompleteTracingSettings(
-                samplingEnabled, samplingRatio, samplingRouteRatios,
-                validationEnabled, value, exporterEnabled, traceControlHeadersEnabled, diagnosticsLogLevel
+                value, exporterEnabled, traceControlHeadersEnabled, diagnosticsLogLevel
         );
     }
 
     public CompleteTracingSettings withExporterEnabled(boolean value) {
         return new CompleteTracingSettings(
                 samplingEnabled, samplingRatio, samplingRouteRatios,
-                validationEnabled, validationStrict, value, traceControlHeadersEnabled, diagnosticsLogLevel
+                validationLevel, value, traceControlHeadersEnabled, diagnosticsLogLevel
         );
     }
 
     public CompleteTracingSettings withTraceControlHeadersEnabled(boolean value) {
         return new CompleteTracingSettings(
                 samplingEnabled, samplingRatio, samplingRouteRatios,
-                validationEnabled, validationStrict, exporterEnabled, value, diagnosticsLogLevel
+                validationLevel, exporterEnabled, value, diagnosticsLogLevel
         );
     }
 
     public CompleteTracingSettings withDiagnosticsLogLevel(String value) {
         return new CompleteTracingSettings(
                 samplingEnabled, samplingRatio, samplingRouteRatios,
-                validationEnabled, validationStrict, exporterEnabled, traceControlHeadersEnabled, value
+                validationLevel, exporterEnabled, traceControlHeadersEnabled, value
         );
     }
 
@@ -202,6 +189,10 @@ public final class CompleteTracingSettings {
         return !VALID_LOG_LEVELS.contains(diagnosticsLogLevel);
     }
 
+    public static boolean isUnrecognizedValidationLevel(String validationLevel) {
+        return validationLevel == null || !VALID_VALIDATION_LEVELS.contains(validationLevel);
+    }
+
     private static String canonicalizeLogLevel(String diagnosticsLogLevel) {
         if (diagnosticsLogLevel == null) {
             throw new IllegalArgumentException("diagnosticsLogLevel must not be null");
@@ -215,13 +206,25 @@ public final class CompleteTracingSettings {
         return canonical;
     }
 
+    private static String canonicalizeValidationLevel(String validationLevel) {
+        if (validationLevel == null || validationLevel.isBlank()) {
+            throw new IllegalArgumentException("validationLevel must not be blank");
+        }
+
+        String canonical = validationLevel.toUpperCase(Locale.ROOT);
+        if (isUnrecognizedValidationLevel(canonical)) {
+            throw new IllegalArgumentException("validationLevel is not a recognized level");
+        }
+
+        return canonical;
+    }
+
     public static final class Builder {
 
         private Boolean samplingEnabled;
         private Double samplingRatio;
         private Map<String, Double> samplingRouteRatios;
-        private Boolean validationEnabled;
-        private Boolean validationStrict;
+        private String validationLevel;
         private Boolean exporterEnabled;
         private Boolean traceControlHeadersEnabled;
         private String diagnosticsLogLevel;
@@ -241,13 +244,8 @@ public final class CompleteTracingSettings {
             return this;
         }
 
-        public Builder validationEnabled(boolean v) {
-            this.validationEnabled = v;
-            return this;
-        }
-
-        public Builder validationStrict(boolean v) {
-            this.validationStrict = v;
+        public Builder validationLevel(String v) {
+            this.validationLevel = v;
             return this;
         }
 
@@ -275,7 +273,7 @@ public final class CompleteTracingSettings {
 
             return new CompleteTracingSettings(
                     samplingEnabled, samplingRatio, samplingRouteRatios,
-                    validationEnabled, validationStrict, exporterEnabled,
+                    validationLevel, exporterEnabled,
                     traceControlHeadersEnabled, diagnosticsLogLevel
             );
         }
@@ -295,12 +293,8 @@ public final class CompleteTracingSettings {
                 missing.add("samplingRouteRatios");
             }
 
-            if (validationEnabled == null) {
-                missing.add("validationEnabled");
-            }
-
-            if (validationStrict == null) {
-                missing.add("validationStrict");
+            if (validationLevel == null) {
+                missing.add("validationLevel");
             }
 
             if (exporterEnabled == null) {
@@ -332,8 +326,7 @@ public final class CompleteTracingSettings {
         return samplingEnabled == s.samplingEnabled
                 && Double.compare(samplingRatio, s.samplingRatio) == 0
                 && samplingRouteRatios.equals(s.samplingRouteRatios)
-                && validationEnabled == s.validationEnabled
-                && validationStrict == s.validationStrict
+                && validationLevel.equals(s.validationLevel)
                 && exporterEnabled == s.exporterEnabled
                 && traceControlHeadersEnabled == s.traceControlHeadersEnabled
                 && diagnosticsLogLevel.equals(s.diagnosticsLogLevel);
@@ -343,7 +336,7 @@ public final class CompleteTracingSettings {
     public int hashCode() {
         return Objects.hash(
                 samplingEnabled, samplingRatio, samplingRouteRatios,
-                validationEnabled, validationStrict, exporterEnabled,
+                validationLevel, exporterEnabled,
                 traceControlHeadersEnabled, diagnosticsLogLevel
         );
     }
@@ -354,8 +347,7 @@ public final class CompleteTracingSettings {
                 "sampling.enabled=" + samplingEnabled +
                 ", sampling.ratio=" + samplingRatio +
                 ", sampling.route-ratios.size=" + samplingRouteRatios.size() +
-                ", validation.enabled=" + validationEnabled +
-                ", validation.strict=" + validationStrict +
+                ", validation.level=" + validationLevel +
                 ", exporter.enabled=" + exporterEnabled +
                 ", propagation.trace-control-headers.enabled=" + traceControlHeadersEnabled +
                 ", diagnostics.log-level=" + diagnosticsLogLevel +

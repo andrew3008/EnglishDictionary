@@ -14,10 +14,9 @@ public final class ContractSchema {
             new PolicyDigestField(1, "samplingEnabled", "boolean"),
             new PolicyDigestField(2, "samplingRatio", "double"),
             new PolicyDigestField(3, "samplingRouteRatios", "sortedUtf8DoubleMap"),
-            new PolicyDigestField(4, "validationEnabled", "boolean"),
-            new PolicyDigestField(5, "validationStrict", "boolean"),
-            new PolicyDigestField(6, "exporterEnabled", "boolean"),
-            new PolicyDigestField(7, "traceControlHeadersEnabled", "boolean"),
-            new PolicyDigestField(8, "diagnosticsLogLevel", "asciiToken")
+            new PolicyDigestField(4, "validationLevel", "asciiToken"),
+            new PolicyDigestField(5, "exporterEnabled", "boolean"),
+            new PolicyDigestField(6, "traceControlHeadersEnabled", "boolean"),
+            new PolicyDigestField(7, "diagnosticsLogLevel", "asciiToken")
     );
 }

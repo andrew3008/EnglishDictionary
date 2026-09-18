@@ -28,8 +28,7 @@ class TracingControlEndpointTest {
                 .samplingEnabled(true)
                 .samplingRatio(1.0)
                 .samplingRouteRatios(Map.of("checkout", 0.5))
-                .validationEnabled(true)
-                .validationStrict(false)
+                .validationLevel("WARNING")
                 .exporterEnabled(true)
                 .traceControlHeadersEnabled(true)
                 .diagnosticsLogLevel("INFO")
@@ -42,25 +41,23 @@ class TracingControlEndpointTest {
 
     @Test
     void appliesAllTypedOperations() {
-        assertApplied(endpoint.update("sampling", "enabled", false, null, null, null, null),
+        assertApplied(endpoint.update("sampling", "enabled", false, null, null, null),
                 "sampling.enabled", false);
-        assertApplied(endpoint.update("sampling", "ratio", null, 0.5, null, null, null),
+        assertApplied(endpoint.update("sampling", "ratio", null, 0.5, null, null),
                 "sampling.ratio", 0.5);
-        assertApplied(endpoint.update("sampling", "route-ratios", null, null, "{\"api\":0.8}", null, null),
+        assertApplied(endpoint.update("sampling", "route-ratios", null, null, "{\"api\":0.8}", null),
                 "sampling.route-ratios", 1);
-        assertApplied(endpoint.update("validation", "enabled", false, null, null, null, null),
-                "validation.enabled", false);
-        assertApplied(endpoint.update("validation", "strict", null, null, null, true, null),
-                "validation.strict", true);
-        assertApplied(endpoint.update("exporter", "enabled", false, null, null, null, null),
+        assertApplied(endpoint.update("validation", "level", null, null, null, "ERROR"),
+                "validation.level", "ERROR");
+        assertApplied(endpoint.update("exporter", "enabled", false, null, null, null),
                 "exporter.enabled", false);
         assertApplied(endpoint.update(
-                        "propagation", "trace-control-headers-enabled", false, null, null, null, null),
+                        "propagation", "trace-control-headers-enabled", false, null, null, null),
                 "propagation.trace-control-headers.enabled", false);
-        assertApplied(endpoint.update("diagnostics", "log-level", null, null, null, null, "DEBUG"),
+        assertApplied(endpoint.update("diagnostics", "log-level", null, null, null, "DEBUG"),
                 "diagnostics.log-level", "DEBUG");
 
-        assertThat(applier.applyCount).isEqualTo(8);
+        assertThat(applier.applyCount).isEqualTo(7);
     }
 
     @Test
@@ -81,7 +78,7 @@ class TracingControlEndpointTest {
     @Test
     void rejectsMissingInputBeforeMutation() {
         WebEndpointResponse<Map<String, Object>> response =
-                endpoint.update("sampling", "enabled", null, null, null, null, null);
+                endpoint.update("sampling", "enabled", null, null, null, null);
 
         assertThat(response.getStatus()).isEqualTo(400);
         assertThat(response.getBody())
@@ -94,7 +91,7 @@ class TracingControlEndpointTest {
     @Test
     void rejectsUnsupportedOperation() {
         WebEndpointResponse<Map<String, Object>> response =
-                endpoint.update("sampling", "unknown", true, null, null, null, null);
+                endpoint.update("sampling", "unknown", true, null, null, null);
 
         assertThat(response.getStatus()).isEqualTo(404);
         assertThat(response.getBody())
@@ -106,7 +103,7 @@ class TracingControlEndpointTest {
     @Test
     void rejectsMalformedRouteRatios() {
         WebEndpointResponse<Map<String, Object>> response =
-                endpoint.update("sampling", "route-ratios", null, null, "{\"api\":\"invalid\"}", null, null);
+                endpoint.update("sampling", "route-ratios", null, null, "{\"api\":\"invalid\"}", null);
 
         assertThat(response.getStatus()).isEqualTo(400);
         assertThat(response.getBody())
@@ -116,7 +113,7 @@ class TracingControlEndpointTest {
     }
 
     private WebEndpointResponse<Map<String, Object>> updateSampling() {
-        return endpoint.update("sampling", "enabled", true, null, null, null, null);
+        return endpoint.update("sampling", "enabled", true, null, null, null);
     }
 
     private static void assertApplied(

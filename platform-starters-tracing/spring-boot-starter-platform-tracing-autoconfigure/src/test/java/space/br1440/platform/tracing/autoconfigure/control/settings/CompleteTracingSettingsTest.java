@@ -13,29 +13,25 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CompleteTracingSettingsTest {
 
-    // The builder deliberately rejects a partial (fewer than eight leaves) snapshot — see
-    // P4ArchitectureTest.snapshotBuilderRejectsPartialSnapshot() — so every test here supplies
-    // all eight leaves, mirroring the only shape the real production adapters ever build.
+    // The builder rejects a partial snapshot — every test here supplies all seven leaves.
     private static CompleteTracingSettings.Builder fullBuilder() {
         return CompleteTracingSettings.builder()
                 .samplingEnabled(true)
                 .samplingRatio(1.0)
                 .samplingRouteRatios(Map.of())
-                .validationEnabled(true)
-                .validationStrict(false)
+                .validationLevel("WARNING")
                 .exporterEnabled(true)
                 .traceControlHeadersEnabled(true)
                 .diagnosticsLogLevel("INFO");
     }
 
     @Test
-    void builderProducesAllEightLeaves() {
+    void builderProducesAllSevenLeaves() {
         CompleteTracingSettings s = CompleteTracingSettings.builder()
                 .samplingEnabled(true)
                 .samplingRatio(0.5)
                 .samplingRouteRatios(Map.of("/api", 0.1))
-                .validationEnabled(true)
-                .validationStrict(false)
+                .validationLevel("WARNING")
                 .exporterEnabled(true)
                 .traceControlHeadersEnabled(true)
                 .diagnosticsLogLevel("DEBUG")
@@ -44,8 +40,7 @@ class CompleteTracingSettingsTest {
         assertThat(s.samplingEnabled()).isTrue();
         assertThat(s.samplingRatio()).isEqualTo(0.5);
         assertThat(s.samplingRouteRatios()).containsEntry("/api", 0.1);
-        assertThat(s.validationEnabled()).isTrue();
-        assertThat(s.validationStrict()).isFalse();
+        assertThat(s.validationLevel()).isEqualTo("WARNING");
         assertThat(s.exporterEnabled()).isTrue();
         assertThat(s.traceControlHeadersEnabled()).isTrue();
         assertThat(s.diagnosticsLogLevel()).isEqualTo("DEBUG");

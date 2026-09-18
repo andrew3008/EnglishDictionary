@@ -73,12 +73,12 @@ class MalformedPayloadTest {
     void rejectsMissingRuntimeInstanceId() throws OpenDataException {
         CompositeData cd = buildWith(
                 new String[]{"acceptedSequence", "samplingEnabled", "samplingRatio",
-                        "samplingRouteRatios", "validationEnabled", "validationStrict",
+                        "samplingRouteRatios", "validationLevel",
                         "exporterEnabled", "traceControlHeadersEnabled", "diagnosticsLogLevel"},
                 new OpenType<?>[]{SimpleType.LONG, SimpleType.BOOLEAN, SimpleType.DOUBLE,
-                        makeEmptyRouteTableType(), SimpleType.BOOLEAN, SimpleType.BOOLEAN,
+                        makeEmptyRouteTableType(), SimpleType.STRING,
                         SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.STRING},
-                new Object[]{1L, true, 0.5d, emptyRouteTable(), true, false, true, true, "INFO"});
+                new Object[]{1L, true, 0.5d, emptyRouteTable(), "WARNING", true, true, "INFO"});
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -88,12 +88,12 @@ class MalformedPayloadTest {
     void rejectsMissingAcceptedSequence() throws OpenDataException {
         CompositeData cd = buildWith(
                 new String[]{"runtimeInstanceId", "samplingEnabled", "samplingRatio",
-                        "samplingRouteRatios", "validationEnabled", "validationStrict",
+                        "samplingRouteRatios", "validationLevel",
                         "exporterEnabled", "traceControlHeadersEnabled", "diagnosticsLogLevel"},
                 new OpenType<?>[]{SimpleType.STRING, SimpleType.BOOLEAN, SimpleType.DOUBLE,
-                        makeEmptyRouteTableType(), SimpleType.BOOLEAN, SimpleType.BOOLEAN,
+                        makeEmptyRouteTableType(), SimpleType.STRING,
                         SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.STRING},
-                new Object[]{"rid-1", true, 0.5d, emptyRouteTable(), true, false, true, true, "INFO"});
+                new Object[]{"rid-1", true, 0.5d, emptyRouteTable(), "WARNING", true, true, "INFO"});
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -103,12 +103,12 @@ class MalformedPayloadTest {
     void rejectsMissingSamplingRouteRatios() throws OpenDataException {
         CompositeData cd = buildWith(
                 new String[]{"acceptedSequence", "runtimeInstanceId", "samplingEnabled",
-                        "samplingRatio", "validationEnabled", "validationStrict",
+                        "samplingRatio", "validationLevel",
                         "exporterEnabled", "traceControlHeadersEnabled", "diagnosticsLogLevel"},
                 new OpenType<?>[]{SimpleType.LONG, SimpleType.STRING, SimpleType.BOOLEAN,
-                        SimpleType.DOUBLE, SimpleType.BOOLEAN, SimpleType.BOOLEAN,
+                        SimpleType.DOUBLE, SimpleType.STRING,
                         SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.STRING},
-                new Object[]{1L, "rid-1", true, 0.5d, true, false, true, true, "INFO"});
+                new Object[]{1L, "rid-1", true, 0.5d, "WARNING", true, true, "INFO"});
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -121,8 +121,8 @@ class MalformedPayloadTest {
         OpenType<?>[] types = {
                 SimpleType.STRING, SimpleType.STRING, SimpleType.STRING,
                 SimpleType.STRING, SimpleType.STRING, SimpleType.STRING, SimpleType.BOOLEAN,
-                SimpleType.DOUBLE, makeEmptyRouteTableType(), SimpleType.BOOLEAN,
-                SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.BOOLEAN,
+                SimpleType.DOUBLE, makeEmptyRouteTableType(), SimpleType.STRING,
+                SimpleType.BOOLEAN, SimpleType.BOOLEAN,
                 SimpleType.STRING
         };
         CompositeType ct = new CompositeType(
@@ -131,7 +131,7 @@ class MalformedPayloadTest {
         CompositeData cd = new CompositeDataSupport(ct, keys, new Object[]{
                 "STRING-NOT-LONG", "rid-1", "accepted-policy-digest", "APPLIED", "attempt-id", "",
                 true, 0.5d, emptyRouteTable(),
-                true, false, true, true, "INFO"
+                "WARNING", true, true, "INFO"
         });
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
@@ -142,15 +142,15 @@ class MalformedPayloadTest {
     void rejectsSamplingRatioAsString() throws OpenDataException {
         String[] keys = {
                 "acceptedSequence", "runtimeInstanceId", "samplingEnabled",
-                "samplingRatio", "samplingRouteRatios", "validationEnabled",
-                "validationStrict", "exporterEnabled", "traceControlHeadersEnabled",
+                "samplingRatio", "samplingRouteRatios", "validationLevel",
+                "exporterEnabled", "traceControlHeadersEnabled",
                 "diagnosticsLogLevel"
         };
         OpenType<?>[] types = {
                 SimpleType.LONG, SimpleType.STRING, SimpleType.BOOLEAN,
                 SimpleType.STRING, // <-- wrong type
-                makeEmptyRouteTableType(), SimpleType.BOOLEAN,
-                SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.BOOLEAN,
+                makeEmptyRouteTableType(), SimpleType.STRING,
+                SimpleType.BOOLEAN, SimpleType.BOOLEAN,
                 SimpleType.STRING
         };
         CompositeType ct = new CompositeType(
@@ -158,7 +158,7 @@ class MalformedPayloadTest {
                 keys, keys, types);
         CompositeData cd = new CompositeDataSupport(ct, keys, new Object[]{
                 1L, "rid-1", true, "0.5", emptyRouteTable(),
-                true, false, true, true, "INFO"
+                "WARNING", true, true, "INFO"
         });
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
@@ -170,7 +170,7 @@ class MalformedPayloadTest {
         CompositeData cd = buildValidWith(
                 1L, null,
                 true, 0.5d, emptyRouteTable(),
-                true, false, true, true, "INFO");
+                "WARNING", true, true, "INFO");
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -181,7 +181,7 @@ class MalformedPayloadTest {
         CompositeData cd = buildValidWith(
                 1L, "rid-1",
                 true, 0.5d, emptyRouteTable(),
-                true, false, true, true, null);
+                "WARNING", true, true, null);
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -192,7 +192,7 @@ class MalformedPayloadTest {
         CompositeData cd = buildValidWith(
                 1L, "rid-1",
                 true, 0.5d, emptyRouteTable(),
-                true, false, true, true, "VERBOSE");
+                "WARNING", true, true, "VERBOSE");
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -204,7 +204,7 @@ class MalformedPayloadTest {
         CompositeData cd = buildValidWith(
                 1L, "   ",
                 true, 0.5d, emptyRouteTable(),
-                true, false, true, true, "INFO");
+                "WARNING", true, true, "INFO");
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -216,7 +216,7 @@ class MalformedPayloadTest {
         CompositeData cd = buildValidWith(
                 1L, "",
                 true, 0.5d, emptyRouteTable(),
-                true, false, true, true, "INFO");
+                "WARNING", true, true, "INFO");
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -228,7 +228,7 @@ class MalformedPayloadTest {
         CompositeData cd = buildValidWith(
                 -1L, "rid-1",
                 true, 0.5d, emptyRouteTable(),
-                true, false, true, true, "INFO");
+                "WARNING", true, true, "INFO");
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -240,7 +240,7 @@ class MalformedPayloadTest {
         CompositeData cd = buildValidWith(
                 1L, "rid-1",
                 true, Double.NaN, emptyRouteTable(),
-                true, false, true, true, "INFO");
+                "WARNING", true, true, "INFO");
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -252,7 +252,7 @@ class MalformedPayloadTest {
         CompositeData cd = buildValidWith(
                 1L, "rid-1",
                 true, Double.POSITIVE_INFINITY, emptyRouteTable(),
-                true, false, true, true, "INFO");
+                "WARNING", true, true, "INFO");
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -264,7 +264,7 @@ class MalformedPayloadTest {
         CompositeData cd = buildValidWith(
                 1L, "rid-1",
                 true, 1.0001d, emptyRouteTable(),
-                true, false, true, true, "INFO");
+                "WARNING", true, true, "INFO");
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -276,7 +276,7 @@ class MalformedPayloadTest {
         CompositeData cd = buildValidWith(
                 1L, "rid-1",
                 true, -0.001d, emptyRouteTable(),
-                true, false, true, true, "INFO");
+                "WARNING", true, true, "INFO");
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -289,7 +289,7 @@ class MalformedPayloadTest {
         CompositeData cd = buildValidWith(
                 1L, "rid-1",
                 true, 0.5d, badRoutes,
-                true, false, true, true, "INFO");
+                "WARNING", true, true, "INFO");
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -302,7 +302,7 @@ class MalformedPayloadTest {
         CompositeData cd = buildValidWith(
                 1L, "rid-1",
                 true, 0.5d, badRoutes,
-                true, false, true, true, "INFO");
+                "WARNING", true, true, "INFO");
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -317,7 +317,7 @@ class MalformedPayloadTest {
         CompositeData cd = buildValidWith(
                 1L, "rid-1",
                 true, 0.5d, buildRouteTable(bigRoutes),
-                true, false, true, true, "INFO");
+                "WARNING", true, true, "INFO");
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -330,7 +330,7 @@ class MalformedPayloadTest {
         CompositeData cd = buildValidWith(
                 1L, "rid-1",
                 true, 0.5d, buildRouteTable(Map.of(longKey, 0.5d)),
-                true, false, true, true, "INFO");
+                "WARNING", true, true, "INFO");
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -342,7 +342,7 @@ class MalformedPayloadTest {
         CompositeData cd = buildValidWith(
                 1L, longId,
                 true, 0.5d, emptyRouteTable(),
-                true, false, true, true, "INFO");
+                "WARNING", true, true, "INFO");
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -353,15 +353,15 @@ class MalformedPayloadTest {
     void rejectsUnknownExtraField() throws OpenDataException {
         String[] keys = {
                 "acceptedSequence", "runtimeInstanceId", "samplingEnabled",
-                "samplingRatio", "samplingRouteRatios", "validationEnabled",
-                "validationStrict", "exporterEnabled", "traceControlHeadersEnabled",
+                "samplingRatio", "samplingRouteRatios", "validationLevel",
+                "exporterEnabled", "traceControlHeadersEnabled",
                 "diagnosticsLogLevel",
                 "unknownFuture"
         };
         OpenType<?>[] types = {
                 SimpleType.LONG, SimpleType.STRING, SimpleType.BOOLEAN,
-                SimpleType.DOUBLE, makeEmptyRouteTableType(), SimpleType.BOOLEAN,
-                SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.BOOLEAN,
+                SimpleType.DOUBLE, makeEmptyRouteTableType(), SimpleType.STRING,
+                SimpleType.BOOLEAN, SimpleType.BOOLEAN,
                 SimpleType.STRING, SimpleType.STRING
         };
         CompositeType ct = new CompositeType(
@@ -369,7 +369,7 @@ class MalformedPayloadTest {
                 keys, keys, types);
         CompositeData cd = new CompositeDataSupport(ct, keys, new Object[]{
                 1L, "rid-1", true, 0.5d, emptyRouteTable(),
-                true, false, true, true, "INFO", "future-value"
+                "WARNING", true, true, "INFO", "future-value"
         });
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
@@ -395,7 +395,7 @@ class MalformedPayloadTest {
         CompositeData cd = buildValidWith(
                 1L, "rid-1",
                 true, 0.5d, wrongTable,
-                true, false, true, true, "INFO");
+                "WARNING", true, true, "INFO");
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -404,15 +404,15 @@ class MalformedPayloadTest {
     @SuppressWarnings("SameParameterValue")
     private CompositeData buildValidWith(long seq, String rid,
                                          boolean sampEn, double sampRatio, TabularData routes,
-                                         boolean valEn, boolean valStrict, boolean expEn,
+                                         String validationLevel, boolean expEn,
                                          boolean tcHeaders, String logLevel) throws OpenDataException {
 
         String[] keys = acceptedSnapshotFieldNames();
         OpenType<?>[] types = {
                 SimpleType.LONG, SimpleType.STRING, SimpleType.STRING,
                 SimpleType.STRING, SimpleType.STRING, SimpleType.STRING, SimpleType.BOOLEAN,
-                SimpleType.DOUBLE, routes.getTabularType(), SimpleType.BOOLEAN,
-                SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.BOOLEAN,
+                SimpleType.DOUBLE, routes.getTabularType(), SimpleType.STRING,
+                SimpleType.BOOLEAN, SimpleType.BOOLEAN,
                 SimpleType.STRING
         };
         CompositeType ct = new CompositeType(
@@ -421,7 +421,7 @@ class MalformedPayloadTest {
         return new CompositeDataSupport(ct, keys, new Object[]{
                 seq, rid, "accepted-policy-digest", "APPLIED", "attempt-id", "",
                 sampEn, sampRatio, routes,
-                valEn, valStrict, expEn, tcHeaders, logLevel
+                validationLevel, expEn, tcHeaders, logLevel
         });
     }
 
@@ -436,8 +436,7 @@ class MalformedPayloadTest {
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ENABLED,
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO,
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS,
-                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_ENABLED,
-                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_STRICT,
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_LEVEL,
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_EXPORTER_ENABLED,
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_TRACE_CONTROL_HEADERS_ENABLED,
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_DIAGNOSTICS_LOG_LEVEL

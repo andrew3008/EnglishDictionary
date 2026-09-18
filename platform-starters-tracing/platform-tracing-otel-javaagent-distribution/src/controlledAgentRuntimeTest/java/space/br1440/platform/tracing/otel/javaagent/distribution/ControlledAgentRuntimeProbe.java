@@ -244,11 +244,10 @@ public final class ControlledAgentRuntimeProbe {
                 "ValidationObservation OpenType differs from the generated application contract");
 
         boolean ownerPresent = value(observation, JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT, Boolean.class);
-        boolean enabled = value(observation, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_ENABLED, Boolean.class);
-        boolean strict = value(observation, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT, Boolean.class);
+        String validationLevel = value(observation, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_LEVEL, String.class);
         require(ownerPresent, "Validation owner is absent after agent readiness");
 
-        System.out.printf("CONTROLLED_AGENT_VALIDATION enabled=%s strict=%s%n", enabled, strict);
+        System.out.printf("CONTROLLED_AGENT_VALIDATION level=%s%n", validationLevel);
     }
 
     private static void sleepPollInterval() throws InterruptedException {

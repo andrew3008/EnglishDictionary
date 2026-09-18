@@ -41,8 +41,7 @@ class CategoryALeafMissingTest {
                     .samplingEnabled(true)
                     .samplingRatio(1.0)
                     .samplingRouteRatios(java.util.Map.of())
-                    .validationEnabled(true)
-                    .validationStrict(false)
+                    .validationLevel("WARNING")
                     .exporterEnabled(true)
                     .traceControlHeadersEnabled(true)
                     .diagnosticsLogLevel("INFO")
@@ -109,7 +108,7 @@ class CategoryALeafMissingTest {
         }
 
         @Test
-        @DisplayName("deliverInitial throws for EACH of the 7 mandatory non-route-ratio leaves")
+        @DisplayName("deliverInitial throws for EACH of the 6 mandatory non-route-ratio leaves")
         void deliverInitial_throwsForEachMandatoryLeaf() {
             // The manifest builder is responsible for failing per missing key;
             // here we assert that ANY TracingSettingsManifestException propagates
@@ -117,8 +116,7 @@ class CategoryALeafMissingTest {
             String[] mandatoryLeaves = {
                     "platform.tracing.policy.sampling.enabled",
                     "platform.tracing.policy.sampling.ratio",
-                    "platform.tracing.policy.validation.enabled",
-                    "platform.tracing.policy.validation.strict",
+                    "platform.tracing.policy.validation.level",
                     "platform.tracing.policy.exporter.enabled",
                     "platform.tracing.policy.propagation.trace-control-headers.enabled",
                     "platform.tracing.policy.diagnostics.log-level"
@@ -231,7 +229,7 @@ class CategoryALeafMissingTest {
             when(failingBuilder.build())
                     .thenThrow(new TracingSettingsManifestException(
                             "Required Category A policy key missing: "
-                                    + "'platform.tracing.policy.validation.strict'"));
+                                    + "'platform.tracing.policy.validation.level'"));
 
             TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
                     failingBuilder, trackingClient, trackingReader, Runnable::run);
@@ -350,8 +348,7 @@ class CategoryALeafMissingTest {
                             .samplingEnabled(false)   // deliberately different from LKG
                             .samplingRatio(0.5)
                             .samplingRouteRatios(java.util.Map.of())
-                            .validationEnabled(true)
-                            .validationStrict(true)
+                            .validationLevel("ERROR")
                             .exporterEnabled(false)
                             .traceControlHeadersEnabled(false)
                             .diagnosticsLogLevel("WARN")

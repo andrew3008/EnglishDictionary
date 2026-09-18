@@ -41,9 +41,10 @@ public class SpanAttributeValidationAutoConfiguration {
 
     private void emitStartupSignals(SpanAttributeValidationLevel level, String disabledReason) {
         switch (level) {
-            case STRICT -> log.warn("""
-                    platform.tracing.span-attributes.validation.level=STRICT is intended for test/CI only; \
-                    WARN is recommended for production runtime""");
+            case ERROR -> log.warn("""
+                    platform.tracing.span-attributes.validation.level=ERROR is intended for test/CI only; \
+                    WARNING is recommended for production runtime. Application ERROR fails before startSpan(); \
+                    agent ERROR remains diagnostic and does not drop the span""");
 
             case DISABLED -> {
                 String reason = StringUtils.hasText(disabledReason) ? disabledReason : UNSPECIFIED_REASON;
@@ -53,7 +54,7 @@ public class SpanAttributeValidationAutoConfiguration {
                         PII scrubbing continues independently of the validation level.""", reason);
             }
 
-            case WARN -> {
+            case WARNING -> {
             }
         }
     }

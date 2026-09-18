@@ -6,14 +6,14 @@ import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.TreeMap;
 
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireUtf8Meter;
 
 public record TracingSettings(boolean samplingEnabled,
                               double samplingRatio,
                               NavigableMap<String, Double> samplingRouteRatios,
-                              boolean validationEnabled,
-                              boolean validationStrict,
+                              SpanAttributeValidationLevel validationLevel,
                               boolean exporterEnabled,
                               boolean traceControlHeadersEnabled,
                               TracingLogLevel diagnosticsLogLevel) {
@@ -22,14 +22,14 @@ public record TracingSettings(boolean samplingEnabled,
         samplingRatio = normalizeRatio(samplingRatio, "samplingRatio");
         samplingRouteRatios = normalizeRouteRatios(samplingRouteRatios);
 
+        Objects.requireNonNull(validationLevel, "validationLevel");
         Objects.requireNonNull(diagnosticsLogLevel, "diagnosticsLogLevel");
     }
 
     public static TracingSettings of(boolean samplingEnabled,
                                      double samplingRatio,
                                      Map<String, Double> samplingRouteRatios,
-                                     boolean validationEnabled,
-                                     boolean validationStrict,
+                                     SpanAttributeValidationLevel validationLevel,
                                      boolean exporterEnabled,
                                      boolean traceControlHeadersEnabled,
                                      TracingLogLevel diagnosticsLogLevel) {
@@ -37,8 +37,7 @@ public record TracingSettings(boolean samplingEnabled,
                 samplingEnabled,
                 samplingRatio,
                 normalizeRouteRatios(samplingRouteRatios),
-                validationEnabled,
-                validationStrict,
+                validationLevel,
                 exporterEnabled,
                 traceControlHeadersEnabled,
                 diagnosticsLogLevel

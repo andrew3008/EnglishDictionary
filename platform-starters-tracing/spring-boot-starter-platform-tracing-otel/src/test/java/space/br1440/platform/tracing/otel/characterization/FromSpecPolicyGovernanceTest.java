@@ -26,26 +26,29 @@ import space.br1440.platform.tracing.otel.span.DefaultSpanFactory;
 class FromSpecPolicyGovernanceTest {
 
     @Test
-    void fromSpecRejectsAttributesRejectedByStrictPolicy() {
-        SpanAttributeValidator strictPolicy = new SpanAttributeValidator(
-                SpanAttributeValidationLevel.STRICT, SpanAttributeValidationMetrics.NOOP);
+    void fromSpecRejectsAttributesRejectedByErrorPolicy() {
+        SpanAttributeValidator errorPolicy = new SpanAttributeValidator(
+                SpanAttributeValidationLevel.ERROR,
+                SpanAttributeValidationMetrics.NOOP
+        );
+
         SpanSpec invalidSpec = SpanSpec.builder("characterization.from-spec")
                 .category(SpanCategory.INTERNAL)
                 .reason(SpanSpecReason.LEGACY_INTEGRATION)
                 .build();
 
         assertThatExceptionOfType(SpanAttributeViolationException.class)
-                .isThrownBy(() -> strictPolicy.validateAndNormalize(
+                .isThrownBy(() -> errorPolicy.validateAndNormalize(
                         invalidSpec.category(),
                         SpanSpecAttributeValueConverter.toAttributes(invalidSpec.attributes()),
                         "characterization"));
 
         RecordingTracingRuntime runtime = new RecordingTracingRuntime();
-        DefaultSpanFactory factory = new DefaultSpanFactory(runtime, strictPolicy);
+        DefaultSpanFactory factory = new DefaultSpanFactory(runtime, errorPolicy);
         assertThatExceptionOfType(SpanAttributeViolationException.class)
                 .isThrownBy(() -> {
                     try (SpanHandle handle = factory.fromSpec(invalidSpec).start()) {
-                        fail("STRICT fromSpec().start() must not return " + handle);
+                        fail("ERROR fromSpec().start() must not return " + handle);
                     }
                 });
         assertThat(runtime.receivedSpecs()).isEmpty();
@@ -59,7 +62,7 @@ class FromSpecPolicyGovernanceTest {
                 "0123456789012345");
         RecordingTracingRuntime runtime = new RecordingTracingRuntime();
         SpanAttributeValidator warnPolicy = new SpanAttributeValidator(
-                SpanAttributeValidationLevel.WARN, SpanAttributeValidationMetrics.NOOP);
+                SpanAttributeValidationLevel.WARNING, SpanAttributeValidationMetrics.NOOP);
         DefaultSpanFactory factory = new DefaultSpanFactory(runtime, warnPolicy);
         SpanSpec spec = SpanSpec.builder("characterization.normalized-from-spec")
                 .category(category)

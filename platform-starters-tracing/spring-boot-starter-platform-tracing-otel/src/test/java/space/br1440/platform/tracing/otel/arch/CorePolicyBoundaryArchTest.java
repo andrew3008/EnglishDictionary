@@ -14,10 +14,6 @@ import space.br1440.platform.tracing.test.arch.ModuleTaxonomyArchRules;
 class CorePolicyBoundaryArchTest {
 
     @ArchTest
-    static final ArchRule corePolicyDoesNotDependOnOpenTelemetryOrSpring =
-            ModuleTaxonomyArchRules.CORE_POLICY_PACKAGES_NO_OTEL_OR_SPRING;
-
-    @ArchTest
     static final ArchRule coreDoesNotDependOnJmx =
             ModuleTaxonomyArchRules.CORE_MAIN_NO_JMX;
 

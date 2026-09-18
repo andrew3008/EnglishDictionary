@@ -6,19 +6,23 @@ import space.br1440.platform.common.util.StringUtils;
 
 public enum ResourceValidationMode {
 
-    LENIENT,
-    STRICT;
+    WARNING,
+    ERROR;
 
     public static ResourceValidationMode fromConfig(String raw) {
         if (StringUtils.isNullOrBlank(raw)) {
-            return LENIENT;
+            return WARNING;
         }
 
         String normalized = raw.trim().toUpperCase(Locale.ROOT);
-        if (STRICT.name().equals(normalized)) {
-            return STRICT;
-        }
-
-        return LENIENT;
+        return switch (normalized) {
+            case "WARNING" -> WARNING;
+            case "ERROR" -> ERROR;
+            default -> throw new IllegalStateException("""
+                    Invalid property 'platform.tracing.resource.validation-mode'='%s'. \
+                    Accepted values: WARNING, ERROR\
+                    """.formatted(raw)
+            );
+        };
     }
 }

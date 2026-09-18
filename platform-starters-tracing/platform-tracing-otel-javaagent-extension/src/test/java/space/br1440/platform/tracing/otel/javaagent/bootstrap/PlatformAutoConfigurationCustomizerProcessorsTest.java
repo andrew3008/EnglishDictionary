@@ -281,7 +281,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         Map<String, String> disableAll = Map.of(
                 "platform.tracing.enriching.enabled", "false",
                 "platform.tracing.javaagent.scrubbing.enabled", "false",
-                "platform.tracing.javaagent.span-attributes.validation.enabled", "false",
+                "platform.tracing.javaagent.span-attributes.validation.level", "DISABLED",
                 "platform.tracing.watchdog.enabled", "false"
         );
 

@@ -23,8 +23,7 @@ public final class AcceptedPolicySnapshotDecoder {
     private static final String SAMPLING_ENABLED = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ENABLED;
     private static final String SAMPLING_RATIO = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO;
     private static final String SAMPLING_ROUTE_RATIOS = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS;
-    private static final String VALIDATION_ENABLED = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_ENABLED;
-    private static final String VALIDATION_STRICT = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_STRICT;
+    private static final String VALIDATION_LEVEL = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_LEVEL;
     private static final String EXPORTER_ENABLED = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_EXPORTER_ENABLED;
     private static final String TRACE_CONTROL_HEADERS_ENABLED = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_TRACE_CONTROL_HEADERS_ENABLED;
     private static final String DIAGNOSTICS_LOG_LEVEL = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_DIAGNOSTICS_LOG_LEVEL;
@@ -99,8 +98,7 @@ public final class AcceptedPolicySnapshotDecoder {
                 .samplingEnabled(requireField(response, SAMPLING_ENABLED, Boolean.class))
                 .samplingRatio(samplingRatio)
                 .samplingRouteRatios(routeRatios)
-                .validationEnabled(requireField(response, VALIDATION_ENABLED, Boolean.class))
-                .validationStrict(requireField(response, VALIDATION_STRICT, Boolean.class))
+                .validationLevel(requireValidationLevel(response))
                 .exporterEnabled(requireField(response, EXPORTER_ENABLED, Boolean.class))
                 .traceControlHeadersEnabled(requireField(response, TRACE_CONTROL_HEADERS_ENABLED, Boolean.class))
                 .diagnosticsLogLevel(diagnosticsLogLevel)
@@ -123,6 +121,15 @@ public final class AcceptedPolicySnapshotDecoder {
         return logLevel;
     }
 
+    private static String requireValidationLevel(CompositeData response) {
+        String validationLevel = requireField(response, VALIDATION_LEVEL, String.class);
+        if (validationLevel.isBlank() || CompleteTracingSettings.isUnrecognizedValidationLevel(validationLevel)) {
+            throw invalid("%s is not a recognized level: %s".formatted(VALIDATION_LEVEL, validationLevel));
+        }
+
+        return validationLevel;
+    }
+
     private static long logicalPayloadSize(CompositeData response) {
         long size = FIXED_LOGICAL_PAYLOAD_BYTES;
 
@@ -133,6 +140,11 @@ public final class AcceptedPolicySnapshotDecoder {
 
         Object logLevel = response.get(DIAGNOSTICS_LOG_LEVEL);
         if (logLevel instanceof String text) {
+            size += JmxWireUtf8Meter.utf8Length(text);
+        }
+
+        Object validationLevel = response.get(VALIDATION_LEVEL);
+        if (validationLevel instanceof String text) {
             size += JmxWireUtf8Meter.utf8Length(text);
         }
 

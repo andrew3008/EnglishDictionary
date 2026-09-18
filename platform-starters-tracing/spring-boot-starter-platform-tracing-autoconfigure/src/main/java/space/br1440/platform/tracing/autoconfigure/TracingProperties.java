@@ -60,13 +60,14 @@ public class TracingProperties {
              * Уровень проверки атрибутов span'а.
              * Значения — взаимоисключающие режимы окружений, а не градация строгости:
              * <ul>
-             *     <li> <b>{@code WARN}</b> — production default: нарушения логируются, но не блокируют. </li>
-             *     <li> <b>{@code STRICT}</b> — только test/CI: бросает исключение до {@code startSpan()}. </li>
+             *     <li> <b>{@code WARNING}</b> — production default: нарушения логируются, но не блокируют. </li>
+             *     <li> <b>{@code ERROR}</b> — только test/CI: бросает исключение до {@code startSpan()}.
+             *          Это прикладной fail-fast builders, не агентская диагностика onEnding. </li>
              *     <li> <b>{@code DISABLED}</b> — аварийный opt-out, полностью отключающий валидацию;
              *          это не режим миграции, и он не влияет на PII-скрабинг. </li>
              * </ul>
              */
-            private SpanAttributeValidationLevel level = SpanAttributeValidationLevel.WARN;
+            private SpanAttributeValidationLevel level = SpanAttributeValidationLevel.WARNING;
 
             /**
              * Причина перевода {@link #level} в {@code DISABLED}, попадает в

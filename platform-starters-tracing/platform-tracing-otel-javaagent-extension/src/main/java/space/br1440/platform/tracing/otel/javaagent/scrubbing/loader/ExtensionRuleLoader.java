@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
@@ -39,13 +40,30 @@ public final class ExtensionRuleLoader implements AutoCloseable {
     );
 
     /**
-     * Режим валидации кастомных правил.
-     * <ul>
-     *   <li>{@link #LENIENT} — WARN + skip проблемного JAR/провайдера (prod-default);</li>
-     *   <li>{@link #STRICT} — fail-fast (CI/strict-профиль).</li>
-     * </ul>
+     * Режим валидации кастомных правил. Закрытый набор — {@code WARNING} и {@code ERROR}.
+     * {@code DISABLED} не вводится и отвергается.
      */
-    public enum ValidationMode { LENIENT, STRICT }
+    public enum ValidationMode {
+        WARNING,
+        ERROR;
+
+        public static ValidationMode parse(String raw) {
+            if (StringUtils.isNullOrBlank(raw)) {
+                return WARNING;
+            }
+
+            String normalized = raw.trim().toUpperCase(Locale.ROOT);
+            return switch (normalized) {
+                case "WARNING" -> WARNING;
+                case "ERROR" -> ERROR;
+                default -> throw new IllegalStateException("""
+                        Invalid property 'platform.tracing.scrubbing.rules.validation-mode'='%s'. \
+                        Accepted values: WARNING, ERROR\
+                        """.formatted(raw)
+                );
+            };
+        }
+    }
 
     private final ValidationMode validationMode;
     private final Set<String> otelExtensionPaths;
@@ -223,8 +241,8 @@ public final class ExtensionRuleLoader implements AutoCloseable {
 
     private void failOrWarn(String name, FailedProviderReason reason, String safeDetails) {
         failedEntries.add(new FailedEntry(name, reason));
-        if (validationMode == ValidationMode.STRICT) {
-            throw new IllegalStateException("STRICT validation failed for '" + name + "': " + reason + " (" + safeDetails + ")");
+        if (validationMode == ValidationMode.ERROR) {
+            throw new IllegalStateException("ERROR validation failed for '" + name + "': " + reason + " (" + safeDetails + ")");
         }
 
         log.warn(AgentEventCodes.SCRUB_EXTENSION_SKIPPED, "Extension scrubbing rule skipped",

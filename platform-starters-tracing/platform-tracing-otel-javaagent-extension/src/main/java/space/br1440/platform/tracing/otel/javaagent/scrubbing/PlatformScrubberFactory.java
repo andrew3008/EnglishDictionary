@@ -17,7 +17,6 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfi
 import space.br1440.platform.tracing.otel.javaagent.configuration.JavaAgentExtensionPaths;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ScrubbingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.factory.ScrubbingMissingKeyPolicy;
-import space.br1440.platform.tracing.otel.javaagent.factory.ScrubbingRulesValidationMode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
@@ -202,10 +201,7 @@ public final class PlatformScrubberFactory {
     }
 
     private static ExtensionRuleLoader.ValidationMode resolveValidationMode(ScrubbingExtensionConfig scrubbing) {
-        String raw = scrubbing.rulesValidationMode();
-        return ScrubbingRulesValidationMode.STRICT.value().equalsIgnoreCase(raw)
-                ? ExtensionRuleLoader.ValidationMode.STRICT
-                : ExtensionRuleLoader.ValidationMode.LENIENT;
+        return scrubbing.rulesValidationMode();
     }
 
     private static Set<String> collectOtelExtensionCanonicalPaths(ConfigProperties config) {

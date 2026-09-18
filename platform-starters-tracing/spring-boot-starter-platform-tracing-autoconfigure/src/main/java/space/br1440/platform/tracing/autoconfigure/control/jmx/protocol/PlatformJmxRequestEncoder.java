@@ -50,8 +50,7 @@ public final class PlatformJmxRequestEncoder {
         policyFields.put(JmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_RATIO, policy.samplingRatio());
         policyFields.put(JmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_ROUTE_RATIOS, routeRatios);
         policyFields.put(JmxWireContract.FIELD_RUNTIME_POLICY_TRACE_CONTROL_HEADERS_ENABLED, policy.traceControlHeadersEnabled());
-        policyFields.put(JmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_ENABLED, policy.validationEnabled());
-        policyFields.put(JmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_STRICT, policy.validationStrict());
+        policyFields.put(JmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_LEVEL, policy.validationLevel());
 
         return new CompositeDataSupport(JmxOpenTypes.RUNTIME_POLICY, policyFields);
     }
@@ -73,8 +72,7 @@ public final class PlatformJmxRequestEncoder {
                 policy.samplingEnabled(),
                 policy.samplingRatio(),
                 policy.samplingRouteRatios(),
-                policy.validationEnabled(),
-                policy.validationStrict(),
+                policy.validationLevel(),
                 policy.exporterEnabled(),
                 policy.traceControlHeadersEnabled(),
                 policy.diagnosticsLogLevel()

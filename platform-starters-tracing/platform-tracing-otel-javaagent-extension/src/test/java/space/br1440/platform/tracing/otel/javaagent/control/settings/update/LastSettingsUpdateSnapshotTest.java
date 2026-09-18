@@ -18,6 +18,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Setti
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 
 class LastSettingsUpdateSnapshotTest {
 
@@ -180,12 +181,7 @@ class LastSettingsUpdateSnapshotTest {
         TracingSettings policy = TracingSettings.of(
                 true,
                 0.5d,
-                Map.of(),
-                true,
-                false,
-                true,
-                true,
-                TracingLogLevel.INFO);
+                Map.of(), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO);
         TracingSettingsStore store = new TracingSettingsStore(
                 "00000000-0000-0000-0000-000000000001",
                 policy);

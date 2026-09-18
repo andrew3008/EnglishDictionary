@@ -38,8 +38,7 @@ class AcceptedPolicySnapshotDecoderTest {
         assertThat(snap.samplingRouteRatios()).containsKeys("/api", "/health");
         assertThat(snap.samplingRouteRatios().get("/api")).isEqualTo(0.75d);
         assertThat(snap.samplingRouteRatios().get("/health")).isEqualTo(0.0d);
-        assertThat(snap.validationEnabled()).isTrue();
-        assertThat(snap.validationStrict()).isFalse();
+        assertThat(snap.validationLevel()).isEqualTo("WARNING");
         assertThat(snap.exporterEnabled()).isTrue();
         assertThat(snap.traceControlHeadersEnabled()).isTrue();
         assertThat(snap.diagnosticsLogLevel()).isEqualTo("INFO");
@@ -131,8 +130,7 @@ class AcceptedPolicySnapshotDecoderTest {
                 "samplingEnabled",
                 "samplingRatio",
                 "samplingRouteRatios",
-                "validationEnabled",
-                "validationStrict",
+                "validationLevel",
                 "exporterEnabled",
                 "traceControlHeadersEnabled",
                 "diagnosticsLogLevel"
@@ -149,8 +147,7 @@ class AcceptedPolicySnapshotDecoderTest {
                 true,    // samplingEnabled
                 0.5d,    // samplingRatio
                 routeTable,
-                true,    // validationEnabled
-                false,   // validationStrict
+                "WARNING",
                 true,    // exporterEnabled
                 true,    // traceControlHeadersEnabled
                 "INFO"   // diagnosticsLogLevel

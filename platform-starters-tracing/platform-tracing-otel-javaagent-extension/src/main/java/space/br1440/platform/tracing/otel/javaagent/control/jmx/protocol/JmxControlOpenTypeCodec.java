@@ -16,6 +16,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Setti
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsRejectionReason;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
@@ -260,16 +261,9 @@ final class JmxControlOpenTypeCodec {
 
                 decodedRoutes,
 
-                value(
+                SpanAttributeValidationLevel.require(token(
                         data,
-                        JmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_ENABLED,
-                        Boolean.class
-                ),
-
-                value(
-                        data,
-                        JmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_STRICT,
-                        Boolean.class
+                        JmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_LEVEL)
                 ),
 
                 value(
@@ -305,6 +299,7 @@ final class JmxControlOpenTypeCodec {
         logicalBytes += JmxWireUtf8Meter.utf8Length(trigger);
         logicalBytes += JmxWireUtf8Meter.utf8Length(sourceRevision);
         logicalBytes += JmxWireUtf8Meter.utf8Length(candidateDigest);
+        logicalBytes += JmxWireUtf8Meter.utf8Length(settings.validationLevel().name());
         logicalBytes += JmxWireUtf8Meter.utf8Length(settings.diagnosticsLogLevel().name());
 
         for (String routePrefix : settings.samplingRouteRatios().keySet()) {

@@ -1,7 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -12,9 +10,11 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
-import io.opentelemetry.sdk.trace.SpanProcessor;
-
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.IpPrefixTruncator;
+
+import io.opentelemetry.sdk.trace.SpanProcessor;
 
 class ProcessorDefaultLifecycleContractTest {
 
@@ -22,7 +22,7 @@ class ProcessorDefaultLifecycleContractTest {
             new BaggageSpanProcessor(Set.of(), List.of()),
             new EnrichingSpanProcessor(),
             ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of()),
-            new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false)),
+            new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING)),
             new ClassificationSpanProcessor(Duration.ofSeconds(5), Duration.ofSeconds(1))
     );
 

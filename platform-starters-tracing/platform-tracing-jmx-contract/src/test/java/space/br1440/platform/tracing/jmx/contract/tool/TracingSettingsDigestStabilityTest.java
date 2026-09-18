@@ -25,24 +25,24 @@ class TracingSettingsDigestStabilityTest {
 
     private static Map<String, String> expectedDigests() {
         Map<String, String> result = new LinkedHashMap<>();
-        result.put("all-false-boundary-zero", "410e3cb303a09ba87833cdde5f3749a50c79fc82812c32dcf80cf1e1d9c9ceaf");
-        result.put("all-true-boundary-one-with-routes", "205b1f4b37ae0793ee42d7a90e8e116d08d61372ff8b1a9c9a404d5dd82a39b9");
-        result.put("mixed-negative-zero-route", "2fa206ae150e21e8c5e27a648f4f6e85d72ec8e9f9d6addfdb5852673df6c75a");
+        result.put("all-false-boundary-zero", "fef637dad839644f2181beae7d85d1de2de5f496389e8ef599e643dd9657d2f9");
+        result.put("all-true-boundary-one-with-routes", "eda630a6f5026446ab316b3514557ce9d464403770ba00a7a0f93c1eec84563d");
+        result.put("mixed-negative-zero-route", "a69715fbc8e3898feae41add1f6139d6c54e95e227aea7d7790d263a83b48857");
         return result;
     }
 
     private static Map<String, DigestCase> cases() {
         Map<String, DigestCase> result = new LinkedHashMap<>();
         result.put("all-false-boundary-zero", new DigestCase(
-                false, 0.0, Map.of(), false, false, false, false, "OFF"
+                false, 0.0, Map.of(), "DISABLED", false, false, "OFF"
         ));
 
         result.put("all-true-boundary-one-with-routes", new DigestCase(
-                true, 1.0, Map.of("/b", 0.5, "/a", 0.25), true, true, true, true, "TRACE"
+                true, 1.0, Map.of("/b", 0.5, "/a", 0.25), "ERROR", true, true, "TRACE"
         ));
 
         result.put("mixed-negative-zero-route", new DigestCase(
-                true, 0.5, Map.of("/route", -0.0), false, true, false, true, "DEBUG"
+                true, 0.5, Map.of("/route", -0.0), "WARNING", false, true, "DEBUG"
         ));
 
         return result;
@@ -51,8 +51,7 @@ class TracingSettingsDigestStabilityTest {
     private record DigestCase(boolean samplingEnabled,
                               double samplingRatio,
                               Map<String, Double> samplingRouteRatios,
-                              boolean validationEnabled,
-                              boolean validationStrict,
+                              String validationLevel,
                               boolean exporterEnabled,
                               boolean traceControlHeadersEnabled,
                               String diagnosticsLogLevel) {
@@ -61,7 +60,7 @@ class TracingSettingsDigestStabilityTest {
     private static String invokeSha256(Class<?> generated, DigestCase digestCase) throws Exception {
         Method method = generated.getMethod(
                 "sha256", boolean.class, double.class, Map.class,
-                boolean.class, boolean.class, boolean.class, boolean.class, String.class
+                String.class, boolean.class, boolean.class, String.class
         );
 
         try {
@@ -70,8 +69,7 @@ class TracingSettingsDigestStabilityTest {
                     digestCase.samplingEnabled(),
                     digestCase.samplingRatio(),
                     digestCase.samplingRouteRatios(),
-                    digestCase.validationEnabled(),
-                    digestCase.validationStrict(),
+                    digestCase.validationLevel(),
                     digestCase.exporterEnabled(),
                     digestCase.traceControlHeadersEnabled(),
                     digestCase.diagnosticsLogLevel()
@@ -97,7 +95,7 @@ class TracingSettingsDigestStabilityTest {
     private static ContractDocument contractWithFixturePolicyDigest() {
         Map<String, Object> policyDigest = Map.of(
                 "domainSeparator", "platform-tracing/policy-digest/v1",
-                "encodingVersion", 0,
+                "encodingVersion", 1,
                 "validLogLevels", List.of("OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE")
         );
 

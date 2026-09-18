@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.control;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,16 +20,11 @@ class EffectiveTracingPolicyDigestTest {
         TracingSettings policy = TracingSettings.of(
                 true,
                 0.25d,
-                Map.of("/orders", 0.5d, "/health", 0.0d),
-                true,
-                false,
-                true,
-                true,
-                TracingLogLevel.INFO);
+                Map.of("/orders", 0.5d, "/health", 0.0d), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO);
 
         // when/then
         assertThat(TracingSettingsDigest.sha256(policy))
-                .isEqualTo("32f8d43cea97ff26a36b47374314ff8df8d14366e6449a3fe89699d963afdaf1");
+                .isEqualTo("8a2b6294d632df6e3536ccb114b33ef51a3e6abe1fc839954a18bb640ad1b9b4");
     }
 
     @Test
@@ -37,16 +33,11 @@ class EffectiveTracingPolicyDigestTest {
         TracingSettings policy = TracingSettings.of(
                 true,
                 0.25d,
-                Map.of(),
-                true,
-                false,
-                true,
-                true,
-                TracingLogLevel.INFO);
+                Map.of(), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO);
 
         // when/then
         assertThat(TracingSettingsDigest.sha256(policy))
-                .isEqualTo("5c7749beaa1333762487aafe8103a92f68c2757186aa944b756025a0696c2993");
+                .isEqualTo("29c8ec96198d7db4be9d0a864e0ce814e509d4245c2e91b116506c0544bf4131");
     }
 
     @Test
@@ -106,11 +97,6 @@ class EffectiveTracingPolicyDigestTest {
         return TracingSettings.of(
                 true,
                 samplingRatio,
-                routeRatios,
-                true,
-                false,
-                true,
-                true,
-                TracingLogLevel.INFO);
+                routeRatios, SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO);
     }
 }

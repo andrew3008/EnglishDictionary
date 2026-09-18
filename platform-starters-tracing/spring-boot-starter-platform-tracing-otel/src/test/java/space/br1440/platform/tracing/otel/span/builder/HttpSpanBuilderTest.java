@@ -30,7 +30,11 @@ class HttpSpanBuilderTest {
     @BeforeEach
     void setUp() {
         recording = new RecordingTracingRuntime();
-        SpanAttributeValidator strictPolicy = new SpanAttributeValidator(SpanAttributeValidationLevel.STRICT, SpanAttributeValidationMetrics.NOOP);
+        SpanAttributeValidator strictPolicy = new SpanAttributeValidator(
+                SpanAttributeValidationLevel.ERROR,
+                SpanAttributeValidationMetrics.NOOP
+        );
+
         manual = new DefaultSpanFactory(recording, strictPolicy);
     }
 
@@ -45,9 +49,11 @@ class HttpSpanBuilderTest {
     @Test
     void httpBuilders_haveExpectedSemconvVersionMarker() {
         final String expected = "1.28.0";
+
         assertThat(HttpClientSpanBuilder.class.getAnnotation(HttpSemconvVersion.class))
                 .isNotNull()
                 .extracting(HttpSemconvVersion::value).isEqualTo(expected);
+
         assertThat(HttpServerSpanBuilder.class.getAnnotation(HttpSemconvVersion.class))
                 .isNotNull()
                 .extracting(HttpSemconvVersion::value).isEqualTo(expected);
@@ -89,19 +95,19 @@ class HttpSpanBuilderTest {
     }
 
     @Test
-    void httpServerWithoutMethod_rejectedInStrictMode() {
+    void httpServerWithoutMethod_rejectedInErrorMode() {
         assertThatThrownBy(() -> {
             try (SpanHandle handle = manual.transport().http().server().start()) {
-                throw new AssertionError("STRICT HTTP server start must fail before returning " + handle);
+                throw new AssertionError("ERROR HTTP server start must fail before returning " + handle);
             }
         }).isInstanceOf(SpanAttributeViolationException.class);
     }
 
     @Test
-    void httpClientWithoutMethod_rejectedInStrictMode() {
+    void httpClientWithoutMethod_rejectedInErrorMode() {
         assertThatThrownBy(() -> {
             try (SpanHandle handle = manual.transport().http().client().url("https://example.com").start()) {
-                throw new AssertionError("STRICT HTTP client start must fail before returning " + handle);
+                throw new AssertionError("ERROR HTTP client start must fail before returning " + handle);
             }
         }).isInstanceOf(SpanAttributeViolationException.class);
     }

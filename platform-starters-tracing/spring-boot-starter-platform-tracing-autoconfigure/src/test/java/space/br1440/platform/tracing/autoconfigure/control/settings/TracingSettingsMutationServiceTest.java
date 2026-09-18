@@ -101,23 +101,21 @@ class TracingSettingsMutationServiceTest {
     }
 
     @Test
-    void setValidationStrictChangesExactlyThatLeaf() {
-        TracingSettingsDeliveryResult result = adapter.setValidationStrict(true);
+    void setValidationLevelChangesExactlyThatLeaf() {
+        TracingSettingsDeliveryResult result = adapter.setValidationLevel("ERROR");
 
         assertThat(result).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
-        assertThat(client.lastSnapshot().validationStrict()).isTrue();
-        assertThat(client.lastSnapshot().validationEnabled()).isTrue();
+        assertThat(client.lastSnapshot().validationLevel()).isEqualTo("ERROR");
         assertThat(client.lastSnapshot().exporterEnabled()).isTrue();
     }
 
     @Test
-    void setExporterEnabledDoesNotChangeValidationLeaves() {
+    void setExporterEnabledDoesNotChangeValidationLevel() {
         TracingSettingsDeliveryResult result = adapter.setExporterEnabled(false);
 
         assertThat(result).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
         assertThat(client.lastSnapshot().exporterEnabled()).isFalse();
-        assertThat(client.lastSnapshot().validationEnabled()).isTrue();
-        assertThat(client.lastSnapshot().validationStrict()).isFalse();
+        assertThat(client.lastSnapshot().validationLevel()).isEqualTo("WARNING");
     }
 
     @Test
@@ -161,12 +159,12 @@ class TracingSettingsMutationServiceTest {
     }
 
     @Test
-    void exactlyEightOperationsExist() {
+    void exactlySevenOperationsExist() {
         long writeMethodCount = java.util.Arrays.stream(TracingSettingsMutationService.class.getDeclaredMethods())
                 .filter(m -> java.lang.reflect.Modifier.isPublic(m.getModifiers()))
                 .filter(m -> m.getReturnType() == TracingSettingsDeliveryResult.class)
                 .count();
-        assertThat(writeMethodCount).isEqualTo(8);
+        assertThat(writeMethodCount).isEqualTo(7);
     }
 
     @Test
@@ -209,8 +207,7 @@ class TracingSettingsMutationServiceTest {
                 .samplingEnabled(true)
                 .samplingRatio(1.0)
                 .samplingRouteRatios(Map.of())
-                .validationEnabled(true)
-                .validationStrict(false)
+                .validationLevel("WARNING")
                 .exporterEnabled(true)
                 .traceControlHeadersEnabled(true)
                 .diagnosticsLogLevel("INFO")

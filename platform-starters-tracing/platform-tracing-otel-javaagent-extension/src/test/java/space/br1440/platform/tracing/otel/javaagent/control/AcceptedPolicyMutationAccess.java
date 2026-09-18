@@ -8,6 +8,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCom
 import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 
 public final class AcceptedPolicyMutationAccess {
 
@@ -34,8 +35,7 @@ public final class AcceptedPolicyMutationAccess {
                     enabled,
                     ratio,
                     routeRatios,
-                    current.validationEnabled(),
-                    current.validationStrict(),
+                    current.validationLevel(),
                     current.exporterEnabled(),
                     current.traceControlHeadersEnabled(),
                     current.diagnosticsLogLevel()
@@ -48,8 +48,7 @@ public final class AcceptedPolicyMutationAccess {
     }
 
     public static SettingsUpdateStatus applyValidation(TracingSettingsSource access,
-                                                       boolean enabled,
-                                                       boolean strict) {
+                                                       SpanAttributeValidationLevel validationLevel) {
         Objects.requireNonNull(access, "access");
 
         return applyCandidate(
@@ -58,8 +57,7 @@ public final class AcceptedPolicyMutationAccess {
                         current.samplingEnabled(),
                         current.samplingRatio(),
                         current.samplingRouteRatios(),
-                        enabled,
-                        strict,
+                        validationLevel,
                         current.exporterEnabled(),
                         current.traceControlHeadersEnabled(),
                         current.diagnosticsLogLevel()
@@ -74,8 +72,7 @@ public final class AcceptedPolicyMutationAccess {
                         current.samplingEnabled(),
                         current.samplingRatio(),
                         current.samplingRouteRatios(),
-                        current.validationEnabled(),
-                        current.validationStrict(),
+                        current.validationLevel(),
                         enabled,
                         current.traceControlHeadersEnabled(),
                         current.diagnosticsLogLevel()
@@ -91,8 +88,7 @@ public final class AcceptedPolicyMutationAccess {
                         current.samplingEnabled(),
                         current.samplingRatio(),
                         current.samplingRouteRatios(),
-                        current.validationEnabled(),
-                        current.validationStrict(),
+                        current.validationLevel(),
                         current.exporterEnabled(),
                         enabled,
                         current.diagnosticsLogLevel()

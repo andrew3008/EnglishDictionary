@@ -51,8 +51,7 @@ public final class ValidationObservationSource {
         values.put(JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT, snapshot.ownerPresent());
         values.put(JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_GENERATION, state.generation());
         values.put(JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_CAPTURED_OFFSET_NANOS, offsetNanos);
-        values.put(JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_ENABLED, snapshot.enabled());
-        values.put(JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT, snapshot.strict());
+        values.put(JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_LEVEL, snapshot.validationLevel());
         values.put(JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_VIOLATIONS_TOTAL, snapshot.violationsTotal());
         values.put(JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_VERSION, snapshot.configVersion());
         values.put(JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_LAST_UPDATED_SOURCE, snapshot.configSource());
@@ -60,13 +59,12 @@ public final class ValidationObservationSource {
     }
 
     private record ValidationSnapshot(boolean ownerPresent,
-                                      boolean enabled,
-                                      boolean strict,
+                                      String validationLevel,
                                       long violationsTotal,
                                       long configVersion,
                                       String configSource) {
 
-        private static final ValidationSnapshot ABSENT = new ValidationSnapshot(false, false, false, 0L, 0L, "");
+        private static final ValidationSnapshot ABSENT = new ValidationSnapshot(false, "", 0L, 0L, "");
 
         static ValidationSnapshot absent() {
             return ABSENT;
@@ -75,8 +73,7 @@ public final class ValidationObservationSource {
         static ValidationSnapshot from(ValidatingSpanProcessor validating) {
             return new ValidationSnapshot(
                     true,
-                    validating.isEnabled(),
-                    validating.isStrict(),
+                    validating.validationLevel().name(),
                     validating.getValidationViolationsTotal(),
                     validating.getPolicyVersion(),
                     validating.getPolicySource()

@@ -26,7 +26,6 @@ final class ConfigurationFingerprint {
             ExtensionPropertyNames.SCRUBBING_RULES_EXTENSIONS,
             ExtensionPropertyNames.SCRUBBING_RULES_VALIDATION_MODE,
             ExtensionPropertyNames.METRICS_ENABLED,
-            ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_ENABLED,
             ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
             ExtensionPropertyNames.RESOURCE_NORMALIZE_ENVIRONMENT,
             ExtensionPropertyNames.RESOURCE_VALIDATION_MODE,

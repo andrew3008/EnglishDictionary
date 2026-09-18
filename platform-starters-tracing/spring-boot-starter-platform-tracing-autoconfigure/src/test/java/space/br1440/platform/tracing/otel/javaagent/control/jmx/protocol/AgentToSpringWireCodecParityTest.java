@@ -30,6 +30,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevis
 import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.PlatformSettingsStatusMBean;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsStatusSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
@@ -41,22 +42,19 @@ class AgentToSpringWireCodecParityTest {
     @Test
     void defaultPolicyRoundTrips() {
         assertRoundTrip(envelope(0L, uuid(), TracingSettings.of(
-                true, 1.0, Map.of(),
-                true, false, true, true, TracingLogLevel.INFO)));
+                true, 1.0, Map.of(), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO)));
     }
 
     @Test
     void nonEmptyRouteRatiosRoundTrip() {
         assertRoundTrip(envelope(42L, uuid(), TracingSettings.of(
-                true, 0.25, Map.of("/checkout", 0.5, "/search", 0.3, "/health", 0.0),
-                true, true, false, false, TracingLogLevel.DEBUG)));
+                true, 0.25, Map.of("/checkout", 0.5, "/search", 0.3, "/health", 0.0), SpanAttributeValidationLevel.ERROR, false, false, TracingLogLevel.DEBUG)));
     }
 
     @Test
     void emptyRouteRatiosRoundTrip() {
         assertRoundTrip(envelope(7L, uuid(), TracingSettings.of(
-                false, 0.0, Map.of(),
-                false, false, false, false, TracingLogLevel.OFF)));
+                false, 0.0, Map.of(), SpanAttributeValidationLevel.DISABLED, false, false, TracingLogLevel.OFF)));
     }
 
     @Test
@@ -64,22 +62,20 @@ class AgentToSpringWireCodecParityTest {
         for (TracingLogLevel level : TracingLogLevel.values()) {
             assertRoundTrip(envelope(1L, uuid(), TracingSettings.of(
                     true, 0.5, Map.of("/a", 0.1),
-                    true, false, true, false, level)));
+                    SpanAttributeValidationLevel.WARNING, true, false, level)));
         }
     }
 
     @Test
     void minimumSequenceRoundTrips() {
         assertRoundTrip(envelope(0L, uuid(), TracingSettings.of(
-                true, 1.0, Map.of(),
-                true, false, true, true, TracingLogLevel.WARN)));
+                true, 1.0, Map.of(), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.WARN)));
     }
 
     @Test
     void nonZeroSequenceRoundTrips() {
         assertRoundTrip(envelope(9_223_372_036L, uuid(), TracingSettings.of(
-                true, 1.0, Map.of(),
-                true, false, true, true, TracingLogLevel.WARN)));
+                true, 1.0, Map.of(), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.WARN)));
     }
 
     @Test
@@ -87,23 +83,21 @@ class AgentToSpringWireCodecParityTest {
         String runtimeId = uuid();
         AcceptedSettingsWithSequence decoded = roundTrip(
                 envelope(3L, runtimeId, TracingSettings.of(
-                        true, 1.0, Map.of(), true, false, true, true, TracingLogLevel.INFO)));
+                        true, 1.0, Map.of(), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO)));
         assertThat(decoded.runtimeInstanceId()).isEqualTo(runtimeId);
     }
 
     @Test
     void allEightPolicyLeavesRoundTripIndependently() {
         TracingSettings policy = TracingSettings.of(
-                false, 0.73, Map.of("/x", 0.9),
-                false, true, false, true, TracingLogLevel.TRACE);
+                false, 0.73, Map.of("/x", 0.9), SpanAttributeValidationLevel.DISABLED, false, true, TracingLogLevel.TRACE);
         AcceptedSettingsWithSequence decoded = roundTrip(envelope(5L, uuid(), policy));
         CompleteTracingSettings snapshot = decoded.snapshot();
 
         assertThat(snapshot.samplingEnabled()).isEqualTo(policy.samplingEnabled());
         assertThat(snapshot.samplingRatio()).isEqualTo(policy.samplingRatio());
         assertThat(snapshot.samplingRouteRatios()).isEqualTo(policy.samplingRouteRatios());
-        assertThat(snapshot.validationEnabled()).isEqualTo(policy.validationEnabled());
-        assertThat(snapshot.validationStrict()).isEqualTo(policy.validationStrict());
+        assertThat(snapshot.validationLevel()).isEqualTo(policy.validationLevel().name());
         assertThat(snapshot.exporterEnabled()).isEqualTo(policy.exporterEnabled());
         assertThat(snapshot.traceControlHeadersEnabled()).isEqualTo(policy.traceControlHeadersEnabled());
         assertThat(snapshot.diagnosticsLogLevel()).isEqualTo(policy.diagnosticsLogLevel().name());
@@ -121,9 +115,9 @@ class AgentToSpringWireCodecParityTest {
         insertedDescending.put("/a", 0.1);
 
         AcceptedSettingsWithSequence first = roundTrip(envelope(1L, uuid(), TracingSettings.of(
-                true, 0.5, insertedAscending, true, false, true, true, TracingLogLevel.INFO)));
+                true, 0.5, insertedAscending, SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO)));
         AcceptedSettingsWithSequence second = roundTrip(envelope(1L, uuid(), TracingSettings.of(
-                true, 0.5, insertedDescending, true, false, true, true, TracingLogLevel.INFO)));
+                true, 0.5, insertedDescending, SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO)));
 
         assertThat(first.snapshot().samplingRouteRatios())
                 .isEqualTo(second.snapshot().samplingRouteRatios());
@@ -133,40 +127,45 @@ class AgentToSpringWireCodecParityTest {
 
     @Test
     void samplingEnabledOneHotRoundTripsThroughRealAgentEncoder() {
-        assertBooleanOneHot(true, false, false, false, false);
+        assertBooleanOneHot(true, SpanAttributeValidationLevel.DISABLED, false, false);
     }
 
     @Test
-    void validationEnabledOneHotRoundTripsThroughRealAgentEncoder() {
-        assertBooleanOneHot(false, true, false, false, false);
+    void validationLevelErrorOneHotRoundTripsThroughRealAgentEncoder() {
+        assertBooleanOneHot(false, SpanAttributeValidationLevel.ERROR, false, false);
     }
 
     @Test
-    void validationStrictOneHotRoundTripsThroughRealAgentEncoder() {
-        assertBooleanOneHot(false, false, true, false, false);
+    void validationLevelWarningOneHotRoundTripsThroughRealAgentEncoder() {
+        assertBooleanOneHot(false, SpanAttributeValidationLevel.WARNING, false, false);
+    }
+
+    @Test
+    void validationLevelDisabledOneHotRoundTripsThroughRealAgentEncoder() {
+        assertBooleanOneHot(false, SpanAttributeValidationLevel.DISABLED, false, false);
     }
 
     @Test
     void exporterEnabledOneHotRoundTripsThroughRealAgentEncoder() {
-        assertBooleanOneHot(false, false, false, true, false);
+        assertBooleanOneHot(false, SpanAttributeValidationLevel.DISABLED, true, false);
     }
 
     @Test
     void traceControlHeadersEnabledOneHotRoundTripsThroughRealAgentEncoder() {
-        assertBooleanOneHot(false, false, false, false, true);
+        assertBooleanOneHot(false, SpanAttributeValidationLevel.DISABLED, false, true);
     }
 
-    private static void assertBooleanOneHot(boolean samplingEnabled, boolean validationEnabled,
-            boolean validationStrict, boolean exporterEnabled, boolean traceControlHeadersEnabled) {
+    private static void assertBooleanOneHot(boolean samplingEnabled,
+            SpanAttributeValidationLevel validationLevel,
+            boolean exporterEnabled, boolean traceControlHeadersEnabled) {
         TracingSettings policy = TracingSettings.of(
                 samplingEnabled, 0.5, Map.of(),
-                validationEnabled, validationStrict, exporterEnabled, traceControlHeadersEnabled,
+                validationLevel, exporterEnabled, traceControlHeadersEnabled,
                 TracingLogLevel.INFO);
         CompleteTracingSettings snapshot = roundTrip(envelope(1L, uuid(), policy)).snapshot();
 
         assertThat(snapshot.samplingEnabled()).isEqualTo(samplingEnabled);
-        assertThat(snapshot.validationEnabled()).isEqualTo(validationEnabled);
-        assertThat(snapshot.validationStrict()).isEqualTo(validationStrict);
+        assertThat(snapshot.validationLevel()).isEqualTo(validationLevel.name());
         assertThat(snapshot.exporterEnabled()).isEqualTo(exporterEnabled);
         assertThat(snapshot.traceControlHeadersEnabled()).isEqualTo(traceControlHeadersEnabled);
     }
@@ -182,15 +181,24 @@ class AgentToSpringWireCodecParityTest {
 
     @Test
     void rejectsCompositeDataWithMissingField() {
-        String[] keys = {"acceptedSequence", "runtimeInstanceId", "samplingEnabled",
-                "samplingRatio", "samplingRouteRatios", "validationEnabled",
-                "validationStrict", "exporterEnabled", "traceControlHeadersEnabled"};
+        String[] keys = {
+                "acceptedSequence", "runtimeInstanceId", "acceptedPolicyDigest",
+                "lastApplyOutcome", "lastAttemptId", "failureCode",
+                "samplingEnabled", "samplingRatio", "samplingRouteRatios",
+                "validationLevel", "exporterEnabled", "traceControlHeadersEnabled"
+        };
         // Поле diagnosticsLogLevel полностью отсутствует.
-        OpenType<?>[] types = {SimpleType.LONG, SimpleType.STRING, SimpleType.BOOLEAN,
-                SimpleType.DOUBLE, routeTableType(), SimpleType.BOOLEAN,
-                SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.BOOLEAN};
+        OpenType<?>[] types = {
+                SimpleType.LONG, SimpleType.STRING, SimpleType.STRING,
+                SimpleType.STRING, SimpleType.STRING, SimpleType.STRING,
+                SimpleType.BOOLEAN, SimpleType.DOUBLE, routeTableType(),
+                SimpleType.STRING, SimpleType.BOOLEAN, SimpleType.BOOLEAN
+        };
         CompositeType missingField = composite("AcceptedCompleteSnapshot/v1", keys, types);
-        Object[] values = {0L, uuid(), true, 0.5, routeTable(Map.of()), true, false, true, true};
+        Object[] values = {
+                0L, uuid(), "a".repeat(64), "", "", "",
+                true, 0.5, routeTable(Map.of()), "WARNING", true, true
+        };
         assertRejected(compositeData(missingField, keys, values));
     }
 
@@ -208,10 +216,10 @@ class AgentToSpringWireCodecParityTest {
         // Поле samplingRatio объявлено как STRING вместо DOUBLE.
         String[] keys = validCompleteKeys();
         OpenType<?>[] types = validCompleteOpenTypes().clone();
-        types[3] = SimpleType.STRING;
+        types[7] = SimpleType.STRING;
         CompositeType wrongScalar = composite("AcceptedCompleteSnapshot/v1", keys, types);
         Object[] values = validCompleteValues(routeTable(Map.of()));
-        values[3] = "0.5";
+        values[7] = "0.5";
         assertRejected(compositeData(wrongScalar, keys, values));
     }
 
@@ -227,7 +235,7 @@ class AgentToSpringWireCodecParityTest {
                     "wrong", wrongRouteRow, new String[]{"prefixOnly"});
             String[] keys = validCompleteKeys();
             OpenType<?>[] types = validCompleteOpenTypes().clone();
-            types[4] = wrongTabular;
+            types[8] = wrongTabular;
             CompositeType wrongRouteContainer = composite("AcceptedCompleteSnapshot/v1", keys, types);
             TabularDataSupport badTable = new TabularDataSupport(wrongTabular);
             badTable.put(new CompositeDataSupport(wrongRouteRow, new String[]{"prefixOnly"}, new Object[]{"/x"}));
@@ -344,8 +352,7 @@ class AgentToSpringWireCodecParityTest {
         assertThat(snapshot.samplingEnabled()).isEqualTo(envelope.samplingEnabled());
         assertThat(snapshot.samplingRatio()).isEqualTo(envelope.samplingRatio());
         assertThat(snapshot.samplingRouteRatios()).isEqualTo(envelope.samplingRouteRatios());
-        assertThat(snapshot.validationEnabled()).isEqualTo(envelope.validationEnabled());
-        assertThat(snapshot.validationStrict()).isEqualTo(envelope.validationStrict());
+        assertThat(snapshot.validationLevel()).isEqualTo(envelope.validationLevel().name());
         assertThat(snapshot.exporterEnabled()).isEqualTo(envelope.exporterEnabled());
         assertThat(snapshot.traceControlHeadersEnabled()).isEqualTo(envelope.traceControlHeadersEnabled());
         assertThat(snapshot.diagnosticsLogLevel()).isEqualTo(envelope.diagnosticsLogLevel());
@@ -409,11 +416,8 @@ class AgentToSpringWireCodecParityTest {
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS,
                 contractRouteTable(Map.of()));
         fields.put(
-                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_ENABLED,
-                true);
-        fields.put(
-                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_STRICT,
-                false);
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_LEVEL,
+                "WARNING");
         fields.put(
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_EXPORTER_ENABLED,
                 true);
@@ -429,23 +433,28 @@ class AgentToSpringWireCodecParityTest {
 
     private static String[] validCompleteKeys() {
         return new String[]{
-                "acceptedSequence", "runtimeInstanceId", "samplingEnabled", "samplingRatio",
-                "samplingRouteRatios", "validationEnabled", "validationStrict",
-                "exporterEnabled", "traceControlHeadersEnabled", "diagnosticsLogLevel"
+                "acceptedSequence", "runtimeInstanceId", "acceptedPolicyDigest",
+                "lastApplyOutcome", "lastAttemptId", "failureCode",
+                "samplingEnabled", "samplingRatio", "samplingRouteRatios",
+                "validationLevel", "exporterEnabled", "traceControlHeadersEnabled",
+                "diagnosticsLogLevel"
         };
     }
 
     private static OpenType<?>[] validCompleteOpenTypes() {
         return new OpenType<?>[]{
-                SimpleType.LONG, SimpleType.STRING, SimpleType.BOOLEAN, SimpleType.DOUBLE,
-                routeTableType(), SimpleType.BOOLEAN, SimpleType.BOOLEAN,
-                SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.STRING
+                SimpleType.LONG, SimpleType.STRING, SimpleType.STRING,
+                SimpleType.STRING, SimpleType.STRING, SimpleType.STRING,
+                SimpleType.BOOLEAN, SimpleType.DOUBLE, routeTableType(),
+                SimpleType.STRING, SimpleType.BOOLEAN, SimpleType.BOOLEAN,
+                SimpleType.STRING
         };
     }
 
     private static Object[] validCompleteValues(TabularData routes) {
         return new Object[]{
-                0L, uuid(), true, 0.5, routes, true, false, true, true, "INFO"
+                0L, uuid(), "a".repeat(64), "", "", "",
+                true, 0.5, routes, "WARNING", true, true, "INFO"
         };
     }
 

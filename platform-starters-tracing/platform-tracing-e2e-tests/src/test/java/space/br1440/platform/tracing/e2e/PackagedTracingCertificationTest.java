@@ -251,7 +251,7 @@ class PackagedTracingCertificationTest {
         properties.put("platform.tracing.service.name", "packaged-tracing-certification");
         properties.put("platform.tracing.service.version", "1.0.0");
         properties.put("platform.tracing.service.environment", "test");
-        properties.put("platform.tracing.resource.validation-mode", "STRICT");
+        properties.put("platform.tracing.resource.validation-mode", "ERROR");
         properties.put("platform.tracing.jmx.remote.mode", "REMOTE_PROHIBITED");
         properties.put("platform.tracing.jmx.remote.listener-confirmed", "false");
         properties.put("platform.tracing.jmx.remote.authorization-forwarder-installed", "false");

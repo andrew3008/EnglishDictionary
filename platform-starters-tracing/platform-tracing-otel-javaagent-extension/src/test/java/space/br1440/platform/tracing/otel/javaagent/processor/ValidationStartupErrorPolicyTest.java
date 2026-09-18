@@ -1,26 +1,28 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+
+import io.opentelemetry.sdk.resources.Resource;
+
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
-
-import io.opentelemetry.sdk.resources.Resource;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-class ValidationStartupStrictPolicyTest {
+class ValidationStartupErrorPolicyTest {
 
     @RegisterExtension
     AgentLogCapture capture = new AgentLogCapture();
 
     @Test
-    void strict_violation_emits_sanitized_error() {
+    void error_violation_emits_sanitized_error() {
         // given
-        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true));
+        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.ERROR));
 
         // when
         try (SpanProcessorHarness harness = SpanProcessorHarness.of(processor, Resource.empty())) {
@@ -40,9 +42,9 @@ class ValidationStartupStrictPolicyTest {
     }
 
     @Test
-    void warn_level_violation_emits_warn_instead_of_error() {
+    void warning_level_violation_emits_warn_instead_of_error() {
         // given
-        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false));
+        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING));
 
         // when
         try (SpanProcessorHarness harness = SpanProcessorHarness.of(processor, Resource.empty())) {
@@ -59,11 +61,11 @@ class ValidationStartupStrictPolicyTest {
     }
 
     @Test
-    void startup_strict_true_preserves_strict_behavior() {
+    void startup_error_preserves_error_behavior() {
         // given/when
-        try (ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true))) {
+        try (ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.ERROR))) {
             // then
-            assertThat(processor.isStrict()).isTrue();
+            assertThat(processor.validationLevel()).isEqualTo(SpanAttributeValidationLevel.ERROR);
         }
     }
 }

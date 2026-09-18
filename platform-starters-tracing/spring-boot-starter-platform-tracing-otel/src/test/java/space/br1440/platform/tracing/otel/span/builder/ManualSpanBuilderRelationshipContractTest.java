@@ -34,12 +34,12 @@ class ManualSpanBuilderRelationshipContractTest {
     @BeforeEach
     void setUp() {
         recording = new RecordingTracingRuntime();
-        policy = new SpanAttributeValidator(SpanAttributeValidationLevel.WARN, SpanAttributeValidationMetrics.NOOP);
+        policy = new SpanAttributeValidator(SpanAttributeValidationLevel.WARNING, SpanAttributeValidationMetrics.NOOP);
     }
 
     static Stream<ManualSpanBuilder<?>> builders() {
         RecordingTracingRuntime impl = new RecordingTracingRuntime();
-        SpanAttributeValidator policy = new SpanAttributeValidator(SpanAttributeValidationLevel.WARN, SpanAttributeValidationMetrics.NOOP);
+        SpanAttributeValidator policy = new SpanAttributeValidator(SpanAttributeValidationLevel.WARNING, SpanAttributeValidationMetrics.NOOP);
         DefaultSpanFactory manual = new DefaultSpanFactory(impl, policy);
         var transport = manual.transport();
         var rpc = transport.rpc();

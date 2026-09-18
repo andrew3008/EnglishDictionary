@@ -61,12 +61,8 @@ public final class ValidationJmxView {
     }
 
     private static ValidationValues decodeValues(CompositeData composite) {
-        boolean enabled = JmxObservationCodec.getBoolean(
-                composite, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_ENABLED
-        );
-
-        boolean strict = JmxObservationCodec.getBoolean(
-                composite, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT
+        String validationLevel = JmxObservationCodec.getString(
+                composite, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_LEVEL
         );
 
         long violationsTotal = JmxObservationCodec.getLong(
@@ -82,7 +78,7 @@ public final class ValidationJmxView {
         );
 
         return new ValidationValues(
-                enabled, strict, violationsTotal, configVersion, configSource
+                validationLevel, violationsTotal, configVersion, configSource
         );
     }
 }

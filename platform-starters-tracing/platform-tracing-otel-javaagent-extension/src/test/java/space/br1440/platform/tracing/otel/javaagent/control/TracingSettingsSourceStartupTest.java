@@ -13,13 +13,14 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
 class TracingSettingsSourceStartupTest {
 
     @Test
-    void processErrorStartsEnabledAndStrict() {
+    void processErrorStartsError() {
         // given/when
         TracingSettingsSource source = TracingSettingsSource.fromStartup(config(Map.of(
                 ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
@@ -27,12 +28,11 @@ class TracingSettingsSourceStartupTest {
         )));
 
         // then
-        assertThat(source.current().validationEnabled()).isTrue();
-        assertThat(source.current().validationStrict()).isTrue();
+        assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.ERROR);
     }
 
     @Test
-    void processDisabledStartsWithValidationOff() {
+    void processDisabledStartsDisabled() {
         // given/when
         TracingSettingsSource source = TracingSettingsSource.fromStartup(config(Map.of(
                 ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
@@ -40,48 +40,16 @@ class TracingSettingsSourceStartupTest {
         )));
 
         // then
-        assertThat(source.current().validationEnabled()).isFalse();
-        assertThat(source.current().validationStrict()).isFalse();
+        assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.DISABLED);
     }
 
     @Test
-    void enabledFalseKeepsValidationOffEvenWhenLevelIsError() {
-        // given/when
-        TracingSettingsSource source = TracingSettingsSource.fromStartup(config(Map.of(
-                ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_ENABLED,
-                "false",
-                ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
-                "ERROR"
-        )));
-
-        // then
-        assertThat(source.current().validationEnabled()).isFalse();
-        assertThat(source.current().validationStrict()).isTrue();
-    }
-
-    @Test
-    void disabledLevelTurnsValidationOffEvenWhenEnabledRemainsTrue() {
-        // given/when
-        TracingSettingsSource source = TracingSettingsSource.fromStartup(config(Map.of(
-                ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_ENABLED,
-                "true",
-                ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
-                "DISABLED"
-        )));
-
-        // then
-        assertThat(source.current().validationEnabled()).isFalse();
-        assertThat(source.current().validationStrict()).isFalse();
-    }
-
-    @Test
-    void absentLevelStartsWarnNotStrict() {
+    void absentLevelStartsWarning() {
         // given/when
         TracingSettingsSource source = TracingSettingsSource.fromStartup(config(Map.of()));
 
         // then
-        assertThat(source.current().validationEnabled()).isTrue();
-        assertThat(source.current().validationStrict()).isFalse();
+        assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.WARNING);
     }
 
     @Test
@@ -95,8 +63,7 @@ class TracingSettingsSourceStartupTest {
         )));
 
         // then
-        assertThat(source.current().validationEnabled()).isTrue();
-        assertThat(source.current().validationStrict()).isTrue();
+        assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.ERROR);
     }
 
     @Test
@@ -108,12 +75,12 @@ class TracingSettingsSourceStartupTest {
         )));
 
         // when
-        SettingsUpdateStatus outcome = AcceptedPolicyMutationAccess.applyValidation(source, true, true);
+        SettingsUpdateStatus outcome = AcceptedPolicyMutationAccess.applyValidation(
+                source, SpanAttributeValidationLevel.ERROR);
 
         // then
         assertThat(outcome).isEqualTo(SettingsUpdateStatus.APPLIED);
-        assertThat(source.current().validationEnabled()).isTrue();
-        assertThat(source.current().validationStrict()).isTrue();
+        assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.ERROR);
     }
 
     @Test
@@ -128,23 +95,21 @@ class TracingSettingsSourceStartupTest {
     }
 
     @Test
-    void isolatedDisabledStateStartsWithValidationOff() {
+    void isolatedDisabledStateStartsDisabled() {
         // given/when
-        TracingSettingsSource source = TracingSettingsSource.isolatedValidation(false, false);
+        TracingSettingsSource source = TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.DISABLED);
 
         // then
-        assertThat(source.current().validationEnabled()).isFalse();
-        assertThat(source.current().validationStrict()).isFalse();
+        assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.DISABLED);
     }
 
     @Test
     void isolatedErrorStateIsNotBlockedByRemovedEnvironmentGate() {
         // given/when
-        TracingSettingsSource source = TracingSettingsSource.isolatedValidation(true, true);
+        TracingSettingsSource source = TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.ERROR);
 
         // then
-        assertThat(source.current().validationEnabled()).isTrue();
-        assertThat(source.current().validationStrict()).isTrue();
+        assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.ERROR);
     }
 
     private static ExtensionConfig config(Map<String, String> values) {

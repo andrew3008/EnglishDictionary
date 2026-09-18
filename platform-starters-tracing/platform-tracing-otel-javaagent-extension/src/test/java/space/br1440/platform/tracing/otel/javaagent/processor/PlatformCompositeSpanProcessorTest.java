@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
@@ -269,7 +270,7 @@ class PlatformCompositeSpanProcessorTest {
     void validationViolationUsesValidatorDiagnosticsWithoutCompositeError() {
         // given
         AtomicInteger followingDelegateCalls = new AtomicInteger();
-        ValidatingSpanProcessor validator = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true));
+        ValidatingSpanProcessor validator = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.ERROR));
 
         try (PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(
                 validator,
@@ -299,7 +300,7 @@ class PlatformCompositeSpanProcessorTest {
     @Test
     void validSpanDoesNotIncrementValidationViolationCounter() {
         // given
-        ValidatingSpanProcessor validator = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true));
+        ValidatingSpanProcessor validator = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.ERROR));
 
         try (PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(validator))) {
             try (SpanProcessorHarness harness = SpanProcessorHarness.of(composite)) {

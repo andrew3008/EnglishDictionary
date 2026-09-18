@@ -31,12 +31,8 @@ public final class TracingSettingsMutationService {
         return applyChange(s -> s.withSamplingRouteRatios(routeRatios));
     }
 
-    public TracingSettingsDeliveryResult setValidationEnabled(boolean value) {
-        return applyChange(s -> s.withValidationEnabled(value));
-    }
-
-    public TracingSettingsDeliveryResult setValidationStrict(boolean value) {
-        return applyChange(s -> s.withValidationStrict(value));
+    public TracingSettingsDeliveryResult setValidationLevel(String value) {
+        return applyChange(s -> s.withValidationLevel(value));
     }
 
     public TracingSettingsDeliveryResult setExporterEnabled(boolean value) {

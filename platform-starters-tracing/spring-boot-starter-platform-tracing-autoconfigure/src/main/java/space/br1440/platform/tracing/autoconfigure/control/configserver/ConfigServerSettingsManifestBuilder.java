@@ -21,8 +21,7 @@ public final class ConfigServerSettingsManifestBuilder {
     private static final Set<String> REQUIRED_KEYS = Set.of(
             "platform.tracing.policy.sampling.enabled",
             "platform.tracing.policy.sampling.ratio",
-            "platform.tracing.policy.validation.enabled",
-            "platform.tracing.policy.validation.strict",
+            "platform.tracing.policy.validation.level",
             "platform.tracing.policy.exporter.enabled",
             "platform.tracing.policy.propagation.trace-control-headers.enabled",
             "platform.tracing.policy.diagnostics.log-level"
@@ -56,8 +55,7 @@ public final class ConfigServerSettingsManifestBuilder {
         double samplingRatio = environment.getRequiredProperty("platform.tracing.policy.sampling.ratio", Double.class);
 
         Map<String, Double> routeRatios = parseRouteRatios();
-        boolean validationEnabled = environment.getRequiredProperty("platform.tracing.policy.validation.enabled", Boolean.class);
-        boolean validationStrict = environment.getRequiredProperty("platform.tracing.policy.validation.strict", Boolean.class);
+        String validationLevel = environment.getRequiredProperty("platform.tracing.policy.validation.level");
         boolean exporterEnabled = environment.getRequiredProperty("platform.tracing.policy.exporter.enabled", Boolean.class);
         boolean traceControlHeaders = environment.getRequiredProperty("platform.tracing.policy.propagation.trace-control-headers.enabled", Boolean.class);
         String logLevel = environment.getRequiredProperty("platform.tracing.policy.diagnostics.log-level");
@@ -66,8 +64,7 @@ public final class ConfigServerSettingsManifestBuilder {
                 .samplingEnabled(samplingEnabled)
                 .samplingRatio(samplingRatio)
                 .samplingRouteRatios(routeRatios)
-                .validationEnabled(validationEnabled)
-                .validationStrict(validationStrict)
+                .validationLevel(validationLevel)
                 .exporterEnabled(exporterEnabled)
                 .traceControlHeadersEnabled(traceControlHeaders)
                 .diagnosticsLogLevel(logLevel)

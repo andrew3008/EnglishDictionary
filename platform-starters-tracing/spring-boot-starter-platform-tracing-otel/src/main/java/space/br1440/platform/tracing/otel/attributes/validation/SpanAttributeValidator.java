@@ -37,7 +37,7 @@ public final class SpanAttributeValidator {
     }
 
     public SpanAttributeValidator() {
-        this(SpanAttributeValidationLevel.WARN, SpanAttributeValidationMetrics.NOOP);
+        this(SpanAttributeValidationLevel.WARNING, SpanAttributeValidationMetrics.NOOP);
     }
 
     @Nonnull
@@ -56,7 +56,7 @@ public final class SpanAttributeValidator {
         CategoryContract contract = CategoryContracts.of(category);
         List<SpanAttributeViolation> violations = collectViolations(category, accumulated, builderName, contract);
 
-        if (level == SpanAttributeValidationLevel.STRICT && !violations.isEmpty()) {
+        if (level == SpanAttributeValidationLevel.ERROR && !violations.isEmpty()) {
             throw new SpanAttributeViolationException(violations.getFirst());
         }
 

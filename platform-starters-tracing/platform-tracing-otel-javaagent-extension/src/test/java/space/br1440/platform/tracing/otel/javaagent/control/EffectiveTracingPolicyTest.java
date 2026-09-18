@@ -11,12 +11,13 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 
 class EffectiveTracingPolicyTest {
 
     @Test
-    void declaresExactlyEightCategoryALeaves() {
+    void declaresExactlySevenCategoryALeaves() {
         // given/when/then
         assertThat(TracingSettings.class.getRecordComponents())
                 .extracting(RecordComponent::getName)
@@ -24,8 +25,7 @@ class EffectiveTracingPolicyTest {
                         "samplingEnabled",
                         "samplingRatio",
                         "samplingRouteRatios",
-                        "validationEnabled",
-                        "validationStrict",
+                        "validationLevel",
                         "exporterEnabled",
                         "traceControlHeadersEnabled",
                         "diagnosticsLogLevel");
@@ -57,12 +57,7 @@ class EffectiveTracingPolicyTest {
         TracingSettings policy = TracingSettings.of(
                 true,
                 -0.0d,
-                Map.of("/zero", -0.0d),
-                true,
-                false,
-                true,
-                true,
-                TracingLogLevel.INFO);
+                Map.of("/zero", -0.0d), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO);
 
         // then
         assertThat(Double.doubleToLongBits(policy.samplingRatio()))
@@ -110,11 +105,6 @@ class EffectiveTracingPolicyTest {
         return TracingSettings.of(
                 true,
                 0.5d,
-                routeRatios,
-                true,
-                false,
-                true,
-                true,
-                TracingLogLevel.INFO);
+                routeRatios, SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO);
     }
 }

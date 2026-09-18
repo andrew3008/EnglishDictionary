@@ -28,7 +28,7 @@ public final class SafeResourceCustomizer {
             return delegate.customize(existing, config);
         } catch (Throwable failure) {
             PlatformThrowables.propagateIfFatal(failure);
-            if (isStrictMode(config)) {
+            if (isErrorMode(config)) {
                 throw (failure instanceof RuntimeException runtimeFailure)
                         ? runtimeFailure
                         : new IllegalStateException("Resource customization failed", failure);
@@ -39,10 +39,10 @@ public final class SafeResourceCustomizer {
         }
     }
 
-    private static boolean isStrictMode(ConfigProperties config) {
+    private static boolean isErrorMode(ConfigProperties config) {
         ResourceValidationMode mode = ResourceValidationMode.fromConfig(
                 config.getString(ExtensionPropertyNames.RESOURCE_VALIDATION_MODE)
         );
-        return (mode == ResourceValidationMode.STRICT);
+        return (mode == ResourceValidationMode.ERROR);
     }
 }

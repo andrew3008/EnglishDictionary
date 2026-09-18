@@ -25,6 +25,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Setti
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
@@ -141,11 +142,8 @@ class PlatformSettingsStatusMBeanTest {
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO))
                 .isEqualTo(0.25d);
         assertThat(snapshot.get(
-                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_ENABLED))
-                .isEqualTo(true);
-        assertThat(snapshot.get(
-                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_STRICT))
-                .isEqualTo(false);
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_LEVEL))
+                .isEqualTo(SpanAttributeValidationLevel.WARNING.name());
         assertThat(snapshot.get(
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_EXPORTER_ENABLED))
                 .isEqualTo(true);
@@ -184,12 +182,7 @@ class PlatformSettingsStatusMBeanTest {
         return TracingSettings.of(
                 true,
                 samplingRatio,
-                routes,
-                true,
-                false,
-                true,
-                true,
-                TracingLogLevel.INFO);
+                routes, SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO);
     }
 
     private static final class ForeignStatusFailure extends RuntimeException {

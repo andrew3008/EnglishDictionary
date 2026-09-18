@@ -13,6 +13,7 @@ import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
@@ -51,7 +52,7 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
     private static final long NEVER_WARNED = (Long.MIN_VALUE / 2);
 
     private final AtomicLong lastWarnDiagnosticAt = new AtomicLong(NEVER_WARNED);
-    private final AtomicLong lastStrictDiagnosticAt = new AtomicLong(NEVER_WARNED);
+    private final AtomicLong lastErrorDiagnosticAt = new AtomicLong(NEVER_WARNED);
     private final LongAdder validationViolationsTotal = new LongAdder();
     private final LongSupplier clock;
 
@@ -78,7 +79,8 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
     @Override
     public void onEnding(ReadWriteSpan span) {
         TracingSettingsRevision policy = acceptedPolicy.current();
-        if (!policy.validationEnabled()) {
+        SpanAttributeValidationLevel level = policy.validationLevel();
+        if (level.isDisabled()) {
             return;
         }
 
@@ -90,13 +92,13 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
         if (!missing.isEmpty()) {
             span.setAttribute(VALIDATION_MISSING_KEY, missing);
             validationViolationsTotal.increment();
-            recordDiagnostic(policy.validationStrict());
+            recordDiagnostic(level);
         }
     }
 
-    private void recordDiagnostic(boolean strict) {
+    private void recordDiagnostic(SpanAttributeValidationLevel level) {
         long now = clock.getAsLong();
-        AtomicLong lastDiagnosticAt = strict ? lastStrictDiagnosticAt : lastWarnDiagnosticAt;
+        AtomicLong lastDiagnosticAt = level.isError() ? lastErrorDiagnosticAt : lastWarnDiagnosticAt;
         long previous = lastDiagnosticAt.get();
         long thresholdMs = MISSING_ATTRIBUTES_DIAGNOSTIC_THROTTLE_INTERVAL.toMillis();
 
@@ -104,7 +106,7 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
             return;
         }
 
-        if (strict) {
+        if (level.isError()) {
             log.error(AgentEventCodes.VALID_MISSING_ATTRIBUTES, "Required span attributes are missing");
         } else {
             log.warn(AgentEventCodes.VALID_MISSING_ATTRIBUTES, "Required span attributes are missing");
@@ -125,12 +127,8 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
         return false;
     }
 
-    public boolean isEnabled() {
-        return acceptedPolicy.current().validationEnabled();
-    }
-
-    public boolean isStrict() {
-        return acceptedPolicy.current().validationStrict();
+    public SpanAttributeValidationLevel validationLevel() {
+        return acceptedPolicy.current().validationLevel();
     }
 
     public long getPolicyVersion() {
@@ -145,8 +143,8 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
         return validationViolationsTotal.sum();
     }
 
-    long lastDiagnosticTimestampForTesting(boolean strict) {
-        AtomicLong lastDiagnosticAt = strict ? lastStrictDiagnosticAt : lastWarnDiagnosticAt;
+    long lastDiagnosticTimestampForTesting(SpanAttributeValidationLevel level) {
+        AtomicLong lastDiagnosticAt = level.isError() ? lastErrorDiagnosticAt : lastWarnDiagnosticAt;
         return lastDiagnosticAt.get();
     }
 }

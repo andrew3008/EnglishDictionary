@@ -4,11 +4,11 @@ import java.io.Serial;
 import jakarta.annotation.Nonnull;
 
 /**
- * Нарушение платформенного контракта атрибутов, обнаруженное в режиме {@link SpanAttributeValidationLevel#STRICT}.
+ * Нарушение платформенного контракта атрибутов, обнаруженное в режиме {@link SpanAttributeValidationLevel#ERROR}.
  * <p>
- * Бросается ТОЛЬКО в режиме {@link SpanAttributeValidationLevel#STRICT} (CI/test).
- * В {@link SpanAttributeValidationLevel#WARN} и {@link SpanAttributeValidationLevel#DISABLED}
- * нарушения не приводят к исключению.
+ * Бросается ТОЛЬКО в прикладном режиме {@link SpanAttributeValidationLevel#ERROR} (CI/test)
+ * до {@code startSpan()}. В {@link SpanAttributeValidationLevel#WARNING} и
+ * {@link SpanAttributeValidationLevel#DISABLED} нарушения не приводят к исключению.
  */
 public final class SpanAttributeViolationException extends RuntimeException {
 

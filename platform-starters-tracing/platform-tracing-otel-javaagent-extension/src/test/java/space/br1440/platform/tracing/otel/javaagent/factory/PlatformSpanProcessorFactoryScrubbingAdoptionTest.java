@@ -28,6 +28,7 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFa
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.loader.ExtensionRuleLoader;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
@@ -328,22 +329,22 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         }
 
         @Test
-        void rulesValidationMode_default_is_LENIENT() {
+        void rulesValidationMode_default_is_WARNING() {
             // given/when/then
             ExtensionConfig cfg = configWithStringProperty("unused.key", null);
             assertThat(cfg.scrubbing().rulesValidationMode())
-                    .as("rulesValidationMode default = 'LENIENT'")
-                    .isEqualToIgnoringCase(ExtensionDefaults.DEFAULT_SCRUBBING_VALIDATION_MODE);
+                    .as("rulesValidationMode default = WARNING")
+                    .isEqualTo(ExtensionRuleLoader.ValidationMode.WARNING);
         }
 
         @Test
-        void rulesValidationMode_override_STRICT() {
+        void rulesValidationMode_override_ERROR() {
             // given/when/then
             ExtensionConfig cfg = configWithStringProperty(
-                    "platform.tracing.scrubbing.rules.validation-mode", "STRICT");
+                    "platform.tracing.scrubbing.rules.validation-mode", "ERROR");
             assertThat(cfg.scrubbing().rulesValidationMode())
-                    .as("rulesValidationMode override = 'STRICT'")
-                    .isEqualToIgnoringCase("STRICT");
+                    .as("rulesValidationMode override = ERROR")
+                    .isEqualTo(ExtensionRuleLoader.ValidationMode.ERROR);
         }
 
         @Test

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.test.assertions.EnrichmentAssertions;
@@ -47,7 +48,7 @@ class PipelinePolicyCharacterizationTest {
     void validation_runs_before_enrichment_in_composite_onEnding() {
         // given
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(
-                new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false)),
+                new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING)),
                 new EnrichingSpanProcessor(),
                 ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
                         List.of(BuiltInSpanAttributeScrubbingRules.resolve("oauth-header"))))
@@ -72,7 +73,7 @@ class PipelinePolicyCharacterizationTest {
     void validation_marker_absent_whenValidationDisabled() {
         // given
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(
-                new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(false, false)),
+                new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.DISABLED)),
                 new EnrichingSpanProcessor(),
                 ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
                         List.of(BuiltInSpanAttributeScrubbingRules.resolve("oauth-header"))))

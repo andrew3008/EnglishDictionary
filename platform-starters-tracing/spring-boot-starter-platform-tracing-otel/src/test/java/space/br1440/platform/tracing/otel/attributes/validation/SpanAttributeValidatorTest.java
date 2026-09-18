@@ -32,7 +32,7 @@ class SpanAttributeValidatorTest {
     void warn_whenRequiredAbsent_doesNotThrow_appliesSafeDefault_andWritesMetric() {
         // given
         CapturingMetrics metrics = new CapturingMetrics();
-        SpanAttributeValidator validator = new SpanAttributeValidator(SpanAttributeValidationLevel.WARN, metrics);
+        SpanAttributeValidator validator = new SpanAttributeValidator(SpanAttributeValidationLevel.WARNING, metrics);
 
         // when
         ValidatedAttributes result = validator.validateAndNormalize(
@@ -50,7 +50,7 @@ class SpanAttributeValidatorTest {
     void strict_whenRequiredAbsent_throwsSpanAttributeViolationException() {
         // given
         SpanAttributeValidator validator = new SpanAttributeValidator(
-                SpanAttributeValidationLevel.STRICT, SpanAttributeValidationMetrics.NOOP);
+                SpanAttributeValidationLevel.ERROR, SpanAttributeValidationMetrics.NOOP);
 
         // when / then
         assertThatExceptionOfType(SpanAttributeViolationException.class)
@@ -78,7 +78,7 @@ class SpanAttributeValidatorTest {
     void warn_onForbiddenAttribute_recordsForbiddenViolation() {
         // given
         CapturingMetrics metrics = new CapturingMetrics();
-        SpanAttributeValidator validator = new SpanAttributeValidator(SpanAttributeValidationLevel.WARN, metrics);
+        SpanAttributeValidator validator = new SpanAttributeValidator(SpanAttributeValidationLevel.WARNING, metrics);
         Attributes attrs = Attributes.builder()
                 .put(SemconvKeys.PLATFORM_TYPE, "internal")
                 .put(SemconvKeys.HTTP_REQUEST_METHOD, "GET")
@@ -99,7 +99,7 @@ class SpanAttributeValidatorTest {
     void warn_dbWithoutDbSystem_recordsRequiredAnyOf_andPassesWithIt() {
         // given
         SpanAttributeValidator validator = new SpanAttributeValidator(
-                SpanAttributeValidationLevel.WARN, SpanAttributeValidationMetrics.NOOP);
+                SpanAttributeValidationLevel.WARNING, SpanAttributeValidationMetrics.NOOP);
 
         // when
         ValidatedAttributes missing = validator.validateAndNormalize(
@@ -133,6 +133,6 @@ class SpanAttributeValidatorTest {
                 "default"
         ));
 
-        assertThat(new SpanAttributeValidator().level()).isEqualTo(SpanAttributeValidationLevel.WARN);
+        assertThat(new SpanAttributeValidator().level()).isEqualTo(SpanAttributeValidationLevel.WARNING);
     }
 }

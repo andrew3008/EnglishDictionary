@@ -383,7 +383,7 @@ final class JavaContractRenderer {
                 .append("    private static void writeAsciiToken(DataOutputStream output, int fieldId, String token) throws IOException {\n")
                 .append("        if (!StandardCharsets.US_ASCII.newEncoder().canEncode(token)) {\n")
                 .append("            throw new IllegalArgumentException(")
-                .append(quoted("Diagnostics log level must be an ASCII token")).append(");\n")
+                    .append(quoted("Value must be an ASCII token")).append(");\n")
                 .append("        }\n")
                 .append("        output.writeByte(fieldId);\n")
                 .append("        byte[] encoded = token.getBytes(StandardCharsets.US_ASCII);\n")

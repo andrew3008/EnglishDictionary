@@ -5,6 +5,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCom
 import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -77,8 +78,7 @@ class AcceptedPolicyPublicationTest {
                 true,
                 0.5d,
                 Map.of("/" + sequence, 0.5d),
-                true,
-                false,
+                SpanAttributeValidationLevel.WARNING,
                 true,
                 true,
                 TracingLogLevel.INFO

@@ -32,7 +32,6 @@ public final class TracingControlEndpoint {
                                                            @Nullable Boolean enabled,
                                                            @Nullable Double ratio,
                                                            @Nullable String routeRatios,
-                                                           @Nullable Boolean strict,
                                                            @Nullable String level) {
         return switch (group + "/" + setting) {
             case "sampling/enabled" -> apply(
@@ -47,14 +46,9 @@ public final class TracingControlEndpoint {
 
             case "sampling/route-ratios" -> applyRouteRatios(routeRatios);
 
-            case "validation/enabled" -> apply(
-                    "validation.enabled", "enabled", enabled,
-                    mutationService::setValidationEnabled, value -> value
-            );
-
-            case "validation/strict" -> apply(
-                    "validation.strict", "strict", strict,
-                    mutationService::setValidationStrict, value -> value
+            case "validation/level" -> apply(
+                    "validation.level", "level", level,
+                    mutationService::setValidationLevel, value -> value
             );
 
             case "exporter/enabled" -> apply(

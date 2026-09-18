@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -119,7 +120,7 @@ class DomainAbsentOwnerEncodingRoundTripTest {
     void validationViolationCounterRoundTripsFromAgentOwner() throws Exception {
         OwnerRegistrationSlot<ValidatingSpanProcessor> slot = new OwnerRegistrationSlot<>();
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(
-                TracingSettingsSource.isolatedValidation(true, false));
+                TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING));
         slot.replace(processor);
         processor.onEnding(mock(ReadWriteSpan.class));
         ValidationObservationSource validation = new ValidationObservationSource(slot, agentInstanceId);
