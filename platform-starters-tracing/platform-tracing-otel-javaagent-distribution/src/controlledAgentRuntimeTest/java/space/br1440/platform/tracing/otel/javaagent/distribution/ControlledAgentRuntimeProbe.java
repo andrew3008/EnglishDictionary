@@ -136,7 +136,6 @@ public final class ControlledAgentRuntimeProbe {
         }
     }
 
-    /** Проверяет identity-ресурс дистрибутива и возвращает версию upstream-агента. */
     private static String verifyDistributionIdentity(ProbeArguments arguments) throws IOException {
         Properties identity = readIdentityProperties(arguments.controlledAgent());
         if (identity.stringPropertyNames().size() != EXPECTED_IDENTITY_KEY_COUNT) {
@@ -192,8 +191,7 @@ public final class ControlledAgentRuntimeProbe {
         }
     }
 
-    private static void verifyReadiness(String expectedExtensionVersion, String expectedUpstreamVersion)
-            throws Exception {
+    private static void verifyReadiness(String expectedExtensionVersion, String expectedUpstreamVersion) throws Exception {
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         long deadlineNanos = System.nanoTime() + READINESS_TIMEOUT.toNanos();
 
@@ -204,8 +202,7 @@ public final class ControlledAgentRuntimeProbe {
             }
 
             CompositeData snapshot = readinessSnapshot(server);
-            String lifecycle = value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE,
-                    String.class);
+            String lifecycle = value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE, String.class);
             if (LIFECYCLE_FAILED.equals(lifecycle)) {
                 throw new IllegalStateException("Platform extension readiness failed: code=%s".formatted(
                         value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE,
@@ -216,7 +213,6 @@ public final class ControlledAgentRuntimeProbe {
                 verifyReadinessMetadata(server);
                 verifyReadySnapshot(snapshot, expectedExtensionVersion, expectedUpstreamVersion);
 
-                // Повторное чтение доказывает, что снимок опубликован, а не собирается на каждый вызов.
                 CompositeData repeated = readinessSnapshot(server);
                 verifyReadySnapshot(repeated, expectedExtensionVersion, expectedUpstreamVersion);
                 require(snapshot.equals(repeated), "Readiness snapshot changed between consecutive reads");
@@ -239,20 +235,17 @@ public final class ControlledAgentRuntimeProbe {
 
         Object raw = server.getAttribute(
                 JmxWireContract.VALIDATION_OBSERVATION_OBJECT_NAME,
-                JmxWireContract.ATTRIBUTE_VALIDATION_OBSERVATION_VALIDATION_OBSERVATION);
-        require(raw instanceof CompositeData,
-                "ValidationObservation must be CompositeData, got " + typeName(raw));
+                JmxWireContract.ATTRIBUTE_VALIDATION_OBSERVATION_VALIDATION_OBSERVATION
+        );
+        require(raw instanceof CompositeData, "ValidationObservation must be CompositeData, got " + typeName(raw));
 
         CompositeData observation = (CompositeData) raw;
         require(JmxOpenTypes.VALIDATION_OBSERVATION.equals(observation.getCompositeType()),
                 "ValidationObservation OpenType differs from the generated application contract");
 
-        boolean ownerPresent = value(observation,
-                JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT, Boolean.class);
-        boolean enabled = value(observation,
-                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_ENABLED, Boolean.class);
-        boolean strict = value(observation,
-                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT, Boolean.class);
+        boolean ownerPresent = value(observation, JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT, Boolean.class);
+        boolean enabled = value(observation, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_ENABLED, Boolean.class);
+        boolean strict = value(observation, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_STRICT, Boolean.class);
         require(ownerPresent, "Validation owner is absent after agent readiness");
 
         System.out.printf("CONTROLLED_AGENT_VALIDATION enabled=%s strict=%s%n", enabled, strict);
@@ -284,10 +277,12 @@ public final class ControlledAgentRuntimeProbe {
         require(JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT
                         .equals(attribute.getName()),
                 "Readiness MBean exposes an unexpected attribute: " + attribute.getName());
+
         require(CompositeData.class.getName().equals(attribute.getType())
                         && attribute.isReadable()
                         && !attribute.isWritable(),
                 "ReadinessSnapshot metadata is incompatible");
+
         require(info.getOperations().length == 0, "Readiness MBean must not expose operations");
     }
 
@@ -304,27 +299,26 @@ public final class ControlledAgentRuntimeProbe {
 
     private static void verifySchemaIdentity(CompositeData snapshot) {
         require(JmxWireContract.SCHEMA_ID.equals(
-                        value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_CONTRACT_ID,
-                                String.class)),
-                "Readiness contractId mismatch");
+                value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_CONTRACT_ID, String.class)
+        ), "Readiness contractId mismatch");
+
         require(JmxWireContract.SCHEMA_DIGEST_SHA256.equals(
-                        value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_DIGEST,
-                                String.class)),
-                "Readiness schema digest mismatch");
+                value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_DIGEST, String.class)
+        ), "Readiness schema digest mismatch");
     }
 
     private static void verifyNoFailureData(CompositeData snapshot) {
-        require(value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE, String.class)
-                        .isEmpty(),
+        require(value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE, String.class).isEmpty(),
                 "READY snapshot contains a failure code");
-        require(value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_MISSING_REQUIRED,
-                        String[].class).length == 0,
-                "READY snapshot reports missing required capabilities");
+
+        require(value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_MISSING_REQUIRED, String[].class).length == 0,
+                "READY snapshot reports missing required capabilities"
+        );
     }
 
     private static void verifyCapabilities(CompositeData snapshot) {
-        String[] capabilities = value(snapshot,
-                JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES, String[].class);
+        String[] capabilities = value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES, String[].class);
+
         Set<String> actualCapabilities = new HashSet<>(Arrays.asList(capabilities));
         require(capabilities.length == EXPECTED_CAPABILITIES.size()
                         && actualCapabilities.equals(EXPECTED_CAPABILITIES),
@@ -334,44 +328,50 @@ public final class ControlledAgentRuntimeProbe {
     private static void verifyVersions(CompositeData snapshot,
                                        String expectedExtensionVersion,
                                        String expectedUpstreamVersion) {
-        String extensionVersion = value(snapshot,
-                JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_VERSION, String.class);
+        String extensionVersion = value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_VERSION, String.class);
+
         require(expectedExtensionVersion.equals(extensionVersion)
                         && !DEVELOPMENT_VERSION_MARKER.equalsIgnoreCase(extensionVersion),
                 "Unexpected extension version: " + extensionVersion);
+
         require(expectedUpstreamVersion.equals(value(snapshot,
                         JmxWireContract.FIELD_READINESS_SNAPSHOT_UPSTREAM_AGENT_VERSION,
                         String.class)),
-                "Unexpected upstream agent version");
+                "Unexpected upstream agent version"
+        );
+
         require(requiredProperty(EXPECTED_AGENT_SHA256_PROPERTY).equals(value(snapshot,
                         JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_DISTRIBUTION_SHA256,
                         String.class)),
-                "Readiness distribution SHA-256 mismatch");
+                "Readiness distribution SHA-256 mismatch"
+        );
     }
 
     private static void verifyLoaderIsolation(CompositeData snapshot) {
         String applicationLoader = loaderDescription(ControlledAgentRuntimeProbe.class.getClassLoader());
-        String extensionLoader = value(snapshot,
-                JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_DEFINING_LOADER, String.class);
-        String sdkLoader = value(snapshot,
-                JmxWireContract.FIELD_READINESS_SNAPSHOT_SDK_DEFINING_LOADER, String.class);
+        String extensionLoader = value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_DEFINING_LOADER, String.class);
+        String sdkLoader = value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_SDK_DEFINING_LOADER, String.class);
 
         require(!extensionLoader.isBlank() && !extensionLoader.equals(applicationLoader),
                 "Extension defining loader is not isolated from the application loader");
+
         require(!sdkLoader.isBlank() && !sdkLoader.equals(applicationLoader),
                 "OpenTelemetry SDK defining loader is not isolated from the application loader");
     }
 
     private static void verifyEvidenceIdentity(CompositeData snapshot) {
-        require(!value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_RUNTIME_EPOCH,
-                        String.class).isBlank(),
-                "Readiness runtimeEpoch is blank");
-        require(!value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID,
-                        String.class).isBlank(),
-                "Readiness batchId is blank");
-        require(number(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION)
-                        .longValue() > 0L,
-                "Readiness evidenceGeneration must be positive");
+        requireNotBlank(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_RUNTIME_EPOCH, "Readiness runtimeEpoch");
+        requireNotBlank(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID, "Readiness batchId");
+        requirePositive(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION, "Readiness evidenceGeneration");
+    }
+
+    private static void requireNotBlank(CompositeData snapshot, String field, String label) {
+        require(!value(snapshot, field, String.class).isBlank(), label + " is blank");
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    private static void requirePositive(CompositeData snapshot, String field, String label) {
+        require(number(snapshot, field).longValue() > 0L, label + " must be positive");
     }
 
     private static String loaderDescription(ClassLoader loader) {
@@ -393,7 +393,8 @@ public final class ControlledAgentRuntimeProbe {
         Object raw = snapshot.get(field);
         require(expectedType.isInstance(raw),
                 "Readiness field has an unexpected type: field=%s, expected=%s, actual=%s"
-                        .formatted(field, expectedType.getName(), typeName(raw)));
+                        .formatted(field, expectedType.getName(), typeName(raw))
+        );
         return expectedType.cast(raw);
     }
 
@@ -423,8 +424,7 @@ public final class ControlledAgentRuntimeProbe {
                                   String extensionSha256) {
         static ProbeArguments parse(String[] arguments) {
             if (arguments.length != 4) {
-                throw new IllegalArgumentException(
-                        "Expected version, agent path, upstream SHA-256 and extension SHA-256");
+                throw new IllegalArgumentException("Expected version, agent path, upstream SHA-256 and extension SHA-256");
             }
 
             return new ProbeArguments(

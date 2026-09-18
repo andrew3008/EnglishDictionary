@@ -64,10 +64,6 @@ final class ConfigurationFingerprint {
         return new ConfigurationFingerprint(sha256Hex(canonical.toString()));
     }
 
-    String value() {
-        return value;
-    }
-
     @Override
     public boolean equals(Object other) {
         return (other instanceof ConfigurationFingerprint that) && value.equals(that.value);

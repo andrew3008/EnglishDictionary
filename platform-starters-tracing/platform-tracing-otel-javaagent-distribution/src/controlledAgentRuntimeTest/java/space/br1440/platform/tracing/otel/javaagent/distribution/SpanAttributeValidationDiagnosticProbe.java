@@ -52,9 +52,13 @@ public final class SpanAttributeValidationDiagnosticProbe {
         SpanIdentity stimulus = emitInvalidSpan();
         long violationsAfter = waitForViolationGrowth(server, violationsBefore);
 
-        System.out.printf(Locale.ROOT,
-                "SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_OK enabled=%s strict=%s "
-                        + "violationsBefore=%d violationsAfter=%d traceId=%s spanId=%s%n",
+        String message = """
+                SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_OK enabled=%s strict=%s \
+                violationsBefore=%d violationsAfter=%d traceId=%s spanId=%s%n\
+                """;
+        System.out.printf(
+                Locale.ROOT,
+                message,
                 enabled,
                 strict,
                 violationsBefore,
@@ -81,11 +85,12 @@ public final class SpanAttributeValidationDiagnosticProbe {
             lastViolations = (Long) validationObservation(server).get(
                     JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_VIOLATIONS_TOTAL
             );
+
             if (lastViolations > violationsBefore) {
                 return lastViolations;
             }
 
-            Thread.sleep(POLL_INTERVAL.toMillis());
+            awaitNextPoll();
         }
 
         throw new IllegalStateException("""
@@ -97,6 +102,7 @@ public final class SpanAttributeValidationDiagnosticProbe {
 
     private static void waitForReady(MBeanServer server) throws Exception {
         long deadlineNanos = System.nanoTime() + READY_TIMEOUT.toNanos();
+
         while (System.nanoTime() < deadlineNanos) {
             if (server.isRegistered(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME)) {
                 CompositeData snapshot = (CompositeData) server.getAttribute(
@@ -110,17 +116,22 @@ public final class SpanAttributeValidationDiagnosticProbe {
                 }
 
                 if (LIFECYCLE_FAILED.equals(lifecycle)) {
-                    throw new IllegalStateException("Platform extension readiness failed before the diagnostic scenario could run");
+                    throw new IllegalStateException(
+                            "Platform extension readiness failed before the diagnostic scenario could run");
                 }
             }
 
-            Thread.sleep(POLL_INTERVAL.toMillis());
+            awaitNextPoll();
         }
 
         throw new IllegalStateException(
                 "Platform extension did not become READY within %d seconds"
                         .formatted(READY_TIMEOUT.toSeconds())
         );
+    }
+
+    private static void awaitNextPoll() throws InterruptedException {
+        Thread.sleep(POLL_INTERVAL.toMillis());
     }
 
     private static CompositeData validationObservation(MBeanServer server) throws Exception {
