@@ -42,12 +42,15 @@ class TraceControlPropagatorTest {
     @Test
     @DisplayName("extract кладёт InboundTraceControl в Context")
     void extractStoresControl() {
+        // given
         Map<String, String> carrier = new HashMap<>();
         carrier.put("X-Trace-On", "on");
         carrier.put("X-Request-Id", "req-1");
 
+        // when
         Context ctx = propagator.extract(Context.root(), carrier, MAP_GETTER);
 
+        // then
         InboundTraceControl control = ctx.get(PlatformTraceContextKeys.TRACE_CONTROL);
         assertThat(control).isNotNull();
         assertThat(control.forceTrace()).isTrue();
@@ -57,7 +60,10 @@ class TraceControlPropagatorTest {
     @Test
     @DisplayName("extract без платформенных заголовков не меняет Context")
     void extractNoHeadersKeepsContext() {
+        // when
         Context ctx = propagator.extract(Context.root(), new HashMap<>(), MAP_GETTER);
+
+        // then
         assertThat(ctx.get(PlatformTraceContextKeys.TRACE_CONTROL)).isNull();
     }
 
@@ -78,19 +84,22 @@ class TraceControlPropagatorTest {
     @Test
     @DisplayName("inject — intentional no-op: outbound-инъекция принадлежит app-plane порту, не пропагатору")
     void injectIsIntentionalNoOp() {
+        // given
         Context ctx = Context.root().with(PlatformTraceContextKeys.TRACE_CONTROL,
                 InboundTraceControls.of(true, true, "req-1"));
         Map<String, String> carrier = new HashMap<>();
 
+        // when
         propagator.inject(ctx, carrier, MAP_SETTER);
 
+        // then
         assertThat(carrier).isEmpty();
     }
 
     @Test
     @DisplayName("Gate выключен (Фаза 14): extract не извлекает — propagation no-op")
     void disabledGateMakesExtractNoOp() {
-        // given: gate отключён через настоящий accepted-policy update, а не test-only setEnabled(...)
+        // given
         PlatformPropagationGate gate = new PlatformPropagationGate();
         TracingSettingsSource policy = TracingSettingsSource.isolatedDefaults();
         gate.bindAcceptedPolicy(policy);
@@ -106,7 +115,7 @@ class TraceControlPropagatorTest {
         inbound.put("X-Request-Id", "req-1");
         Context input = Context.root();
 
-        // when/then: disabled extract возвращает ИМЕННО тот же экземпляр Context и не читает carrier
+        // when/then
         AtomicInteger getterCalls = new AtomicInteger();
         TextMapGetter<Map<String, String>> countingGetter = new TextMapGetter<>() {
             @Override
@@ -128,6 +137,7 @@ class TraceControlPropagatorTest {
     @Test
     @DisplayName("fields() не зависит от текущего gate value")
     void fields_doesNotDependOnGateValue() {
+        // given
         PlatformPropagationGate gate = new PlatformPropagationGate();
         TracingSettingsSource policy = TracingSettingsSource.isolatedDefaults();
         gate.bindAcceptedPolicy(policy);
@@ -135,6 +145,7 @@ class TraceControlPropagatorTest {
         TraceControlPropagator gated =
                 new TraceControlPropagator("X-Trace-On", "X-QA-Trace", "X-Request-Id", gate);
 
+        // when/then
         assertThat(gated.fields()).containsExactlyInAnyOrder("X-Trace-On", "X-QA-Trace", "X-Request-Id");
     }
 }

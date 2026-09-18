@@ -18,12 +18,14 @@ class ProcessorMetricsObservationSourceTest {
 
     @Test
     void allThreeOwnersAbsentEncodePresenceFalse() {
+        // given
         ProcessorMetricsObservationSource source = new ProcessorMetricsObservationSource(
                 new OwnerRegistrationSlot<>(),
                 new OwnerRegistrationSlot<>(),
                 new OwnerRegistrationSlot<>(),
                 AGENT_INSTANCE_ID);
 
+        // when
         CompositeData observation = source.getProcessorMetricsObservation();
         CompositeData watchdog = (CompositeData) observation.get(
                 JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG);
@@ -32,6 +34,7 @@ class ProcessorMetricsObservationSourceTest {
         CompositeData metrics = (CompositeData) observation.get(
                 JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_METRICS);
 
+        // then
         assertThat((Boolean) watchdog.get(
                 JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_PRESENT)).isFalse();
         assertThat((Boolean) composite.get(

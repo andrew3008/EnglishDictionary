@@ -5,15 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
 
-import io.opentelemetry.sdk.trace.export.SpanExporter;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/**
- * Builder validation: production-safe — невалидные значения откатываются на безопасные дефолты,
- * вместо fail-fast. Это политика agent extension'а: опечатка в конфиге не должна ронять JVM.
- */
+import io.opentelemetry.sdk.trace.export.SpanExporter;
+
 class PlatformDropOldestExportSpanProcessorBuilderValidationTest {
 
     private static final SpanExporter NOOP = SpanExporter.noop();
@@ -21,6 +17,7 @@ class PlatformDropOldestExportSpanProcessorBuilderValidationTest {
     @Test
     @DisplayName("Null exporter обязателен — единственный fail-fast случай")
     void nullExporterIsRejectedAtBuildTime() {
+        // given/when/then
         assertThatThrownBy(() -> PlatformDropOldestExportSpanProcessor.builder(null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("exporter");
@@ -29,10 +26,12 @@ class PlatformDropOldestExportSpanProcessorBuilderValidationTest {
     @Test
     @DisplayName("maxQueueSize <= 0 → fallback на DEFAULT_BSP_MAX_QUEUE_SIZE")
     void zeroQueueSizeFallsBackToDefault() {
+        // given/when
         PlatformDropOldestExportSpanProcessor p = PlatformDropOldestExportSpanProcessor.builder(NOOP)
                 .maxQueueSize(0)
                 .build();
         try {
+            // then
             assertThat(p.metricsSnapshot().queueCapacity()).isEqualTo(2048);
         } finally {
             p.shutdown().join(2, java.util.concurrent.TimeUnit.SECONDS);
@@ -42,11 +41,13 @@ class PlatformDropOldestExportSpanProcessorBuilderValidationTest {
     @Test
     @DisplayName("maxExportBatchSize > maxQueueSize → clamp до maxQueueSize")
     void batchSizeGreaterThanQueueClampsToQueue() {
+        // given/when
         PlatformDropOldestExportSpanProcessor p = PlatformDropOldestExportSpanProcessor.builder(NOOP)
                 .maxQueueSize(16)
                 .maxExportBatchSize(64)
                 .build();
         try {
+            // then
             assertThat(p.metricsSnapshot().queueCapacity()).isEqualTo(16);
             // Внутренний batch size не выставлен наружу, поэтому проверяем косвенно: процессор
             // строится без ошибки, не виснет, queueSize=0.
@@ -59,12 +60,14 @@ class PlatformDropOldestExportSpanProcessorBuilderValidationTest {
     @Test
     @DisplayName("Negative durations → fallback на платформенные дефолты")
     void negativeDurationsFallBackToDefaults() {
+        // given/when
         PlatformDropOldestExportSpanProcessor p = PlatformDropOldestExportSpanProcessor.builder(NOOP)
                 .scheduleDelay(Duration.ofMillis(-1))
                 .exportTimeout(Duration.ofSeconds(0))
                 .shutdownTimeout(Duration.ofSeconds(-10))
                 .build();
         try {
+            // then
             // Все три должны были откатиться без падения.
             assertThat(p.metricsSnapshot().queueCapacity()).isPositive();
         } finally {
@@ -75,11 +78,13 @@ class PlatformDropOldestExportSpanProcessorBuilderValidationTest {
     @Test
     @DisplayName("Маленький, но валидный maxQueueSize (например, 4 для тестов) принимается без подъёма")
     void smallValidQueueSizeIsAccepted() {
+        // given/when
         PlatformDropOldestExportSpanProcessor p = PlatformDropOldestExportSpanProcessor.builder(NOOP)
                 .maxQueueSize(4)
                 .maxExportBatchSize(2)
                 .build();
         try {
+            // then
             assertThat(p.metricsSnapshot().queueCapacity())
                     .as("маленький capacity не должен молча подменяться — обоснование см. в Builder")
                     .isEqualTo(4);

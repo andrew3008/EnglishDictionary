@@ -62,6 +62,7 @@ class SpanDataBoundaryScrubberTest {
     @Test
     @DisplayName("Event attributes: MASK is applied using the same effective ruleset as span attributes")
     void eventAttributesAreScrubbedWithTheSharedRuleset() {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
         EventData event = EventData.create(5L, "db.query",
                 Attributes.of(AttributeKey.stringKey("db.password"), "supersecret"));
@@ -69,16 +70,19 @@ class SpanDataBoundaryScrubberTest {
                 .setEvents(List.of(event))
                 .build();
 
+        // when
         SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(input);
 
+        // then
         assertThat(outcome.changed()).isTrue();
-        EventData scrubbed = outcome.spanData().getEvents().get(0);
+        EventData scrubbed = outcome.spanData().getEvents().getFirst();
         assertThat(scrubbed.getAttributes().get(AttributeKey.stringKey("db.password"))).isNull();
     }
 
     @Test
     @DisplayName("Link attributes: DROP removes the key entirely (unlike span-attribute DROP, which uses \"\")")
     void linkAttributeDropRemovesTheKey() {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
         LinkData link = LinkData.create(ExporterBoundaryTestSupport.LINK_TARGET,
                 Attributes.of(AttributeKey.stringKey("db.password"), "supersecret"));
@@ -86,16 +90,19 @@ class SpanDataBoundaryScrubberTest {
                 .setLinks(List.of(link))
                 .build();
 
+        // when
         SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(input);
 
+        // then
         assertThat(outcome.changed()).isTrue();
-        LinkData scrubbed = outcome.spanData().getLinks().get(0);
+        LinkData scrubbed = outcome.spanData().getLinks().getFirst();
         assertThat(scrubbed.getAttributes().asMap()).doesNotContainKey(AttributeKey.stringKey("db.password"));
     }
 
     @Test
     @DisplayName("ExceptionEventData is canonicalized: no Throwable side-channel in type, attributes, toString, logging or OTLP-visible fields")
     void exceptionEventsLoseTheThrowableSideChannel() {
+        // given
         String secret = "boom with secret token=abc123";
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of());
         ExceptionEventData exceptionEvent = ExceptionEventData.create(
@@ -104,10 +111,12 @@ class SpanDataBoundaryScrubberTest {
                 .setEvents(List.of(exceptionEvent))
                 .build();
 
+        // when
         SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(input);
 
+        // then
         assertThat(outcome.changed()).as("canonicalization must count as a change even without rules").isTrue();
-        EventData resultEvent = outcome.spanData().getEvents().get(0);
+        EventData resultEvent = outcome.spanData().getEvents().getFirst();
         assertThat(resultEvent).isNotInstanceOf(ExceptionEventData.class);
         assertThat(resultEvent.getEpochNanos()).isEqualTo(7L);
         assertThat(resultEvent.getName()).isEqualTo(exceptionEvent.getName());
@@ -172,11 +181,14 @@ class SpanDataBoundaryScrubberTest {
     @Test
     @DisplayName("Span name: forbidden HASH downgrades to <redacted>, never the raw HMAC digest or KEEP")
     void hashOnSpanNameDowngradesToRedacted() {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL), "some-hmac-key");
         SpanData input = ExporterBoundaryTestSupport.baseSpan("contact ivan@example.com now").build();
 
+        // when
         SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(input);
 
+        // then
         assertThat(outcome.changed()).isTrue();
         assertThat(outcome.spanData().getName()).isEqualTo("<redacted>");
         assertThat(runtime.boundaryMetrics().hashDowngradedToMask()).isEqualTo(1L);
@@ -185,6 +197,7 @@ class SpanDataBoundaryScrubberTest {
     @Test
     @DisplayName("Status description: DROP becomes empty string, not <redacted>")
     void dropOnStatusDescriptionBecomesEmptyString() {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(
                 List.of(BuiltInSpanAttributeScrubbingRules.resolve("jwt")));
         SpanData input = ExporterBoundaryTestSupport.baseSpan("op")
@@ -192,8 +205,10 @@ class SpanDataBoundaryScrubberTest {
                         "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.signature"))
                 .build();
 
+        // when
         SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(input);
 
+        // then
         assertThat(outcome.changed()).isTrue();
         assertThat(outcome.spanData().getStatus().getDescription()).isEmpty();
     }
@@ -201,14 +216,17 @@ class SpanDataBoundaryScrubberTest {
     @Test
     @DisplayName("attributesVerified=false: span attributes collapse to sentinels, span not dropped")
     void unverifiedAttributesCollapseToSentinelsInsteadOfLeaking() {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of());
         runtime.markAttributesUnverified();
         SpanData input = ExporterBoundaryTestSupport.baseSpan("op")
                 .setAttributes(Attributes.of(AttributeKey.stringKey("raw.secret"), "leaked-value"))
                 .build();
 
+        // when
         SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(input);
 
+        // then
         assertThat(outcome.dropSpan()).as("collapse keeps the span, only sanitizes it").isFalse();
         assertThat(outcome.spanData().getAttributes().get(AttributeKey.stringKey("raw.secret")))
                 .isNotEqualTo("leaked-value");
@@ -219,11 +237,14 @@ class SpanDataBoundaryScrubberTest {
     @Test
     @DisplayName("Fail-closed: an exception while scrubbing drops only that span, never throws")
     void aThrowingSpanDataIsDroppedNotPropagated() {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL));
         SpanData poisoned = new ThrowingSpanData();
 
+        // when
         SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(poisoned);
 
+        // then
         assertThat(outcome.dropSpan()).isTrue();
         assertThat(runtime.boundaryMetrics().collapseFailures()).isEqualTo(1L);
     }
@@ -231,11 +252,14 @@ class SpanDataBoundaryScrubberTest {
     @Test
     @DisplayName("Identity fast-path: nothing to scrub returns the exact same SpanData instance")
     void noChangesReturnsTheSameInstance() {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL));
         SpanData input = ExporterBoundaryTestSupport.baseSpan("op").build();
 
+        // when
         SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(input);
 
+        // then
         assertThat(outcome.changed()).isFalse();
         assertThat(outcome.spanData()).isSameAs(input);
     }
@@ -243,16 +267,19 @@ class SpanDataBoundaryScrubberTest {
     @Test
     @DisplayName("Event name: email HASH downgrades to <redacted>, never raw and never HMAC")
     void hashOnEventNameDowngradesToRedacted() {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL), "some-hmac-key");
         EventData event = EventData.create(5L, "contact ivan@example.com now", Attributes.empty());
         SpanData input = ExporterBoundaryTestSupport.baseSpan("op")
                 .setEvents(List.of(event))
                 .build();
 
+        // when
         SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(input);
 
-        assertThat(outcome.spanData().getEvents().get(0).getName()).isEqualTo("<redacted>");
-        assertThat(outcome.spanData().getEvents().get(0).getName())
+        // then
+        assertThat(outcome.spanData().getEvents().getFirst().getName()).isEqualTo("<redacted>");
+        assertThat(outcome.spanData().getEvents().getFirst().getName())
                 .isNotEqualTo(runtime.hmacHex("contact ivan@example.com now"));
         assertThat(runtime.boundaryMetrics().hashDowngradedToMask()).isEqualTo(1L);
     }
@@ -260,6 +287,7 @@ class SpanDataBoundaryScrubberTest {
     @Test
     @DisplayName("DROP on event attributes removes the key but preserves totalAttributeCount and timestamp")
     void eventDropPreservesTotalAttributeCountAndTimestamp() {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
         EventData event = EventData.create(
                 11L,
@@ -272,8 +300,10 @@ class SpanDataBoundaryScrubberTest {
                 .setEvents(List.of(event))
                 .build();
 
-        EventData scrubbed = new SpanDataBoundaryScrubber(runtime).scrub(input).spanData().getEvents().get(0);
+        // when
+        EventData scrubbed = new SpanDataBoundaryScrubber(runtime).scrub(input).spanData().getEvents().getFirst();
 
+        // then
         assertThat(scrubbed.getEpochNanos()).isEqualTo(11L);
         assertThat(scrubbed.getAttributes().asMap()).doesNotContainKey(AttributeKey.stringKey("db.password"));
         assertThat(scrubbed.getAttributes().get(AttributeKey.stringKey("db.statement"))).isEqualTo("SELECT 1");
@@ -283,6 +313,7 @@ class SpanDataBoundaryScrubberTest {
     @Test
     @DisplayName("DROP on link attributes removes the key but preserves SpanContext and totalAttributeCount")
     void linkDropPreservesContextAndTotalAttributeCount() {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
         LinkData link = LinkData.create(
                 ExporterBoundaryTestSupport.LINK_TARGET,
@@ -292,8 +323,10 @@ class SpanDataBoundaryScrubberTest {
                 .setLinks(List.of(link))
                 .build();
 
-        LinkData scrubbed = new SpanDataBoundaryScrubber(runtime).scrub(input).spanData().getLinks().get(0);
+        // when
+        LinkData scrubbed = new SpanDataBoundaryScrubber(runtime).scrub(input).spanData().getLinks().getFirst();
 
+        // then
         assertThat(scrubbed.getSpanContext()).isEqualTo(ExporterBoundaryTestSupport.LINK_TARGET);
         assertThat(scrubbed.getAttributes().asMap()).doesNotContainKey(AttributeKey.stringKey("db.password"));
         assertThat(scrubbed.getTotalAttributeCount()).isEqualTo(1);
@@ -302,6 +335,7 @@ class SpanDataBoundaryScrubberTest {
     @Test
     @DisplayName("SPI-projection: an EXTERNAL_EXTENSION spy never sees span.name / event.name / status.description")
     void externalRulesDoNotSeeStructuralTextKeys() {
+        // given
         RecordingRule spy = new RecordingRule();
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(
                 List.of(EMAIL), List.of(spy), "some-hmac-key");
@@ -312,8 +346,10 @@ class SpanDataBoundaryScrubberTest {
                         io.opentelemetry.api.trace.StatusCode.ERROR, "failed for ivan@example.com"))
                 .build();
 
+        // when
         new SpanDataBoundaryScrubber(runtime).scrub(input);
 
+        // then
         assertThat(spy.keys)
                 .doesNotContain("span.name", "event.name", "status.description");
     }

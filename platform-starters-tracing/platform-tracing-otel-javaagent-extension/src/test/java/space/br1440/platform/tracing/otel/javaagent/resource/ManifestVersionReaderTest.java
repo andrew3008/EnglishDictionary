@@ -20,22 +20,29 @@ class ManifestVersionReaderTest {
 
     @Test
     void reads_implementation_version() {
-        ClasspathResourceLoader loader = loaderOf(Map.of(
-                "META-INF/MANIFEST.MF", "Manifest-Version: 1.0\r\nImplementation-Version: 1.0.0\r\n\r\n"));
+        // given
+        ClasspathResourceLoader loader = loaderOf(
+                Map.of("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\r\nImplementation-Version: 1.0.0\r\n\r\n")
+        );
 
+        // when/then
         assertThat(new ManifestVersionReader(loader).readVersion()).contains("1.0.0");
     }
 
     @Test
     void empty_when_manifest_absent() {
+        // given/when/then
         assertThat(new ManifestVersionReader(loaderOf(Map.of())).readVersion()).isEqualTo(Optional.empty());
     }
 
     @Test
     void empty_when_key_absent() {
-        ClasspathResourceLoader loader = loaderOf(Map.of(
-                "META-INF/MANIFEST.MF", "Manifest-Version: 1.0\r\n\r\n"));
+        // given
+        ClasspathResourceLoader loader = loaderOf(
+                Map.of("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\r\n\r\n")
+        );
 
+        // when/then
         assertThat(new ManifestVersionReader(loader).readVersion()).isEqualTo(Optional.empty());
     }
 }

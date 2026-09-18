@@ -1,23 +1,21 @@
 package space.br1440.platform.tracing.otel.javaagent.configuration;
 
-import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.common.util.StringUtils;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
-// Тест живёт в том же пакете (configuration), что и тестируемые классы, чтобы иметь доступ
-// к package-private ExtensionEnvironmentVariables без расширения его видимости.
+import space.br1440.platform.common.util.StringUtils;
+
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
+
 class JavaAgentExtensionPathsTest {
 
     private static final String PROP_KEY = ExtensionPropertyNames.OTEL_JAVAAGENT_EXTENSIONS;
-    // ExtensionEnvironmentVariables — package-private, доступен без импорта (тот же пакет .configuration)
-    private static final String ENV_KEY  = ExtensionEnvironmentVariables.OTEL_JAVAAGENT_EXTENSIONS;
 
     @AfterEach
     void clearSystemProperty() {
@@ -26,54 +24,66 @@ class JavaAgentExtensionPathsTest {
 
     @Test
     void resolveRawValue_returnsConfigValueWhenPresent() {
+        // given
         ConfigProperties config = stringConfig(PROP_KEY, "/opt/ext/platform.jar");
 
+        // when
         String result = JavaAgentExtensionPaths.resolveRawValue(config);
 
+        // then
         assertThat(result).isEqualTo("/opt/ext/platform.jar");
     }
 
     @Test
     void resolveRawValue_returnsSystemPropertyWhenConfigAbsent() {
+        // given
         System.setProperty(PROP_KEY, "/opt/ext/via-sysprop.jar");
         ConfigProperties config = emptyConfig();
 
+        // when
         String result = JavaAgentExtensionPaths.resolveRawValue(config);
 
+        // then
         assertThat(result).isEqualTo("/opt/ext/via-sysprop.jar");
     }
 
     @Test
     void resolveRawValue_configValueWinsOverSystemProperty() {
+        // given
         System.setProperty(PROP_KEY, "/opt/ext/sysprop.jar");
         ConfigProperties config = stringConfig(PROP_KEY, "/opt/ext/config.jar");
 
+        // when
         String result = JavaAgentExtensionPaths.resolveRawValue(config);
 
+        // then
         assertThat(result).isEqualTo("/opt/ext/config.jar");
     }
 
     @Test
     void resolveRawValue_returnsNullWhenAllSourcesAbsent() {
+        // given
         ConfigProperties config = emptyConfig();
 
+        // when
         String result = JavaAgentExtensionPaths.resolveRawValue(config);
 
-        // env var OTEL_JAVAAGENT_EXTENSIONS отсутствует в тестовой JVM; ожидаем null или blank.
+        // then
         assertThat(StringUtils.isNullOrBlank(result)).isTrue();
     }
 
     @Test
     void resolveRawValue_treatsBlankConfigAsAbsent() {
+        // given
         System.setProperty(PROP_KEY, "/opt/ext/fallback.jar");
         ConfigProperties config = stringConfig(PROP_KEY, "   ");
 
+        // when
         String result = JavaAgentExtensionPaths.resolveRawValue(config);
 
+        // then
         assertThat(result).isEqualTo("/opt/ext/fallback.jar");
     }
-
-    // -- Стабы ------------------------------------------------------------------------------------
 
     private static ConfigProperties emptyConfig() {
         return new ConfigProperties() {

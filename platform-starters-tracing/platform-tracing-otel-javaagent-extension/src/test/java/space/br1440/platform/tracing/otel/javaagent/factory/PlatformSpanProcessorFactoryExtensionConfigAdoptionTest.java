@@ -179,17 +179,21 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void composite_contains_only_passive_validation_carrier() throws Exception {
+            // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = configWithAllDisabled();
+
+            // when
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
                     scrubbingDisabledConfig(),
                     TracingSettingsSource.fromStartup(extensionConfig));
 
+            // then
             assertThat(getComposite(registrar).getProcessorErrorCounts().keySet())
                     .as("runtime validation policy requires a permanently installed processor")
                     .containsExactly("validation");
@@ -197,17 +201,21 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void validation_owner_is_the_processor_installed_in_composite() throws Exception {
+            // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = configWithAllDisabled();
+
+            // when
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
                     scrubbingDisabledConfig(),
                     TracingSettingsSource.fromStartup(extensionConfig));
 
+            // then
             ValidatingSpanProcessor validating = getValidating(registrar);
             assertThat(validating).isNotNull();
             assertThat(firstCompositeDelegate(getComposite(registrar))).isSameAs(validating);
@@ -215,33 +223,41 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void no_metrics_set_when_all_disabled() throws Exception {
+            // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = configWithAllDisabled();
+
+            // when
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
                     scrubbingDisabledConfig(),
                     TracingSettingsSource.fromStartup(extensionConfig));
 
+            // then
             assertThat(getMetrics(registrar)).as("no metrics when all disabled").isNull();
         }
 
         @Test
         void no_watchdog_set_when_all_disabled() throws Exception {
+            // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = configWithAllDisabled();
+
+            // when
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
                     scrubbingDisabledConfig(),
                     TracingSettingsSource.fromStartup(extensionConfig));
 
+            // then
             assertThat(getWatchdog(registrar)).as("no watchdog when all disabled").isNull();
         }
     }
@@ -368,17 +384,21 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void metrics_enabled_registers_metrics_processor() throws Exception {
+            // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = configWithMetricsEnabled();
+
+            // when
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
                     scrubbingDisabledConfig(),
                     TracingSettingsSource.fromStartup(extensionConfig));
 
+            // then
             assertThat(getMetrics(registrar))
                     .as("metrics enabled → SpanLimitsMetricsProcessor set on registrar")
                     .isNotNull()
@@ -387,17 +407,21 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void metrics_enabled_registers_composite() throws Exception {
+            // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = configWithMetricsEnabled();
+
+            // when
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
                     scrubbingDisabledConfig(),
                     TracingSettingsSource.fromStartup(extensionConfig));
 
+            // then
             assertThat(getComposite(registrar))
                     .as("at least one processor → composite set on registrar")
                     .isNotNull();
@@ -405,17 +429,21 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void watchdog_enabled_registers_watchdog_processor() throws Exception {
+            // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = configWithWatchdogEnabled();
+
+            // when
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
                     scrubbingDisabledConfig(),
                     TracingSettingsSource.fromStartup(extensionConfig));
 
+            // then
             assertThat(getWatchdog(registrar))
                     .as("watchdog enabled → SpanWatchdogProcessor set on registrar")
                     .isNotNull()
@@ -424,17 +452,21 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void validation_enabled_registers_validating_processor() throws Exception {
+            // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = configWithValidationEnabled();
+
+            // when
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
                     scrubbingDisabledConfig(),
                     TracingSettingsSource.fromStartup(extensionConfig));
 
+            // then
             assertThat(getValidating(registrar))
                     .as("validation enabled → ValidatingSpanProcessor set on registrar")
                     .isNotNull()
@@ -448,6 +480,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         void factoryAddsBaggageProcessorWithCanonicalDefaults() throws Exception {
+            // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
@@ -465,18 +498,21 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                 @Override public Map<String, String> getMap(String name) { return null; }
             });
 
+            // when
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     defaultConfig,
                     scrubbingDisabledConfig(),
                     TracingSettingsSource.fromStartup(defaultConfig));
 
+            // then
             assertThat(getComposite(registrar).getProcessorErrorCounts())
                     .containsKey("baggage");
         }
 
         @Test
         void factoryDoesNotAddWatchdogProcessorByDefault() throws Exception {
+            // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled()
@@ -499,12 +535,14 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                 @Override public Map<String, String> getMap(String name) { return null; }
             });
 
+            // when
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     defaultConfig,
                     scrubbingDisabledConfig(),
                     TracingSettingsSource.fromStartup(defaultConfig));
 
+            // then
             assertThat(getWatchdog(registrar))
                     .as("watchdog must not be registered with default config (SP-01 default-off)")
                     .isNull();
@@ -518,6 +556,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         @DisplayName("Default ExtensionConfig has same effective defaults as old ExtensionDefaults")
         void default_watchdog_timeouts_match_extension_defaults() {
+            // given
             ExtensionConfig cfg = new ExtensionConfig(new ConfigProperties() {
                 @Override public String getString(String n) { return null; }
                 @Override public Boolean getBoolean(String n) { return null; }
@@ -529,6 +568,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                 @Override public Map<String, String> getMap(String n) { return null; }
             });
 
+            // then
             assertThat(cfg.watchdog().spanTimeout())
                     .as("watchdog spanTimeout default")
                     .isEqualTo(Duration.ofSeconds(30));
@@ -552,6 +592,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         @DisplayName("Enriching remoteServicePriority default matches old ExtensionDefaults")
         void default_enriching_priority_matches_extension_defaults() {
+            // given
             ExtensionConfig cfg = new ExtensionConfig(new ConfigProperties() {
                 @Override public String getString(String n) { return null; }
                 @Override public Boolean getBoolean(String n) { return null; }
@@ -563,6 +604,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                 @Override public Map<String, String> getMap(String n) { return null; }
             });
 
+            // then
             assertThat(cfg.enriching().remoteServicePriority())
                     .as("enriching.remoteServicePriority default")
                     .containsExactly("peer.service", "rpc.service", "server.address");
@@ -571,6 +613,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         @DisplayName("Baggage defaults: enabled with canonical allowlist and deny patterns")
         void default_baggage_matches_extension_defaults() {
+            // given
             ExtensionConfig cfg = new ExtensionConfig(new ConfigProperties() {
                 @Override public String getString(String n) { return null; }
                 @Override public Boolean getBoolean(String n) { return null; }
@@ -582,6 +625,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                 @Override public Map<String, String> getMap(String n) { return null; }
             });
 
+            // then
             assertThat(cfg.baggage().processorEnabled()).as("baggage.processor.enabled default").isTrue();
             assertThat(cfg.baggage().processorAllowedKeys())
                     .as("baggage.processor.allowedKeys default")

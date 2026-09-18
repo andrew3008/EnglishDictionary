@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
 import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
 import javax.management.MBeanServer;
@@ -58,11 +57,12 @@ class DomainMBeanJmxComplianceTest {
 
     @Test
     void liveManagementContractMatchesCommittedBaseline() throws Exception {
+        // given
         registrar = new PlatformTracingMBeanRegistrar();
         wireRequiredComponents(registrar, samplingPolicy());
 
-        JmxManagementContractSnapshot.Snapshot snapshot =
-                JmxManagementContractSnapshot.capture(server, OBJECT_NAMES);
+        // when
+        JmxManagementContractSnapshot.Snapshot snapshot = JmxManagementContractSnapshot.capture(server, OBJECT_NAMES);
         String baseline = readBaseline();
         Metadata metadata = metadata(baseline);
         String actual = JmxManagementContractSnapshot.toJson(
@@ -76,11 +76,13 @@ class DomainMBeanJmxComplianceTest {
             String updated = JmxManagementContractSnapshot.toJson(
                     snapshot,
                     requiredProperty("jmx.contract.baseline.commit"),
-                    System.getProperty("java.version"));
+                    System.getProperty("java.version")
+            );
             Files.writeString(output, updated, StandardCharsets.UTF_8);
             return;
         }
 
+        // then
         assertThat(normalizeLineEndings(actual))
                 .withFailMessage(() -> actionableDiff(normalizeLineEndings(baseline), normalizeLineEndings(actual)))
                 .isEqualTo(normalizeLineEndings(baseline));
@@ -88,9 +90,11 @@ class DomainMBeanJmxComplianceTest {
 
     @Test
     void platformDomainMBeansExposeNoMutatingOperations() throws Exception {
+        // given
         registrar = new PlatformTracingMBeanRegistrar();
         wireRequiredComponents(registrar, samplingPolicy());
 
+        // when/then
         for (ObjectName name : List.of(
                 DomainObjectNames.SAMPLING,
                 DomainObjectNames.SCRUBBING,
@@ -107,9 +111,8 @@ class DomainMBeanJmxComplianceTest {
         }
     }
 
-    private void wireRequiredComponents(
-            PlatformTracingMBeanRegistrar registrar,
-            TracingSettingsSource acceptedPolicy) {
+    private void wireRequiredComponents(PlatformTracingMBeanRegistrar registrar,
+                                        TracingSettingsSource acceptedPolicy) {
         CompositeSampler sampler = new CompositeSampler(
                 acceptedPolicy, CategoryBSamplingAccess.snapshot(Collections.emptyList(), Collections.emptyList()));
         ValidatingSpanProcessor validating = new ValidatingSpanProcessor(acceptedPolicy);

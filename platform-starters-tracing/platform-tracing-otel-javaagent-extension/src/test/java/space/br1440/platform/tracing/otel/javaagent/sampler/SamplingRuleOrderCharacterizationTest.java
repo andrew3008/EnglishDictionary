@@ -28,10 +28,12 @@ class SamplingRuleOrderCharacterizationTest {
 
     @Test
     void policy_engine_order_matches_prior_composite_rule_chain() {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, java.util.Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
 
+        // when/then
         assertThat(sampler.policyEngine().ruleCount()).isEqualTo(7);
         for (int i = 0; i < EXPECTED_RULE_NAMES.size(); i++) {
             assertThat(sampler.policyEngine().ruleNameAt(i))

@@ -40,7 +40,8 @@ class ControlPlaneBoundaryArchTest {
     private static final Set<String> MUTATION_METHODS = Set.of(
             "apply",
             "rejectBeforeApply",
-            "failBeforeApply");
+            "failBeforeApply"
+    );
 
     @ArchTest
     static final ArchRule controlRootDoesNotDependOnJmx =

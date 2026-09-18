@@ -9,12 +9,14 @@ class ScrubbingMissingKeyPolicyTest {
 
     @Test
     void values_match_contract_strings() {
+        // given/when/then
         assertThat(ScrubbingMissingKeyPolicy.MASK.value()).isEqualTo("mask");
         assertThat(ScrubbingMissingKeyPolicy.FAIL_FAST.value()).isEqualTo("fail-fast");
     }
 
     @Test
     void MASK_equals_platform_default() {
+        // given/when/then
         assertThat(ScrubbingMissingKeyPolicy.MASK.value())
                 .isEqualTo(ExtensionDefaults.DEFAULT_SCRUBBING_MISSING_KEY_POLICY);
     }

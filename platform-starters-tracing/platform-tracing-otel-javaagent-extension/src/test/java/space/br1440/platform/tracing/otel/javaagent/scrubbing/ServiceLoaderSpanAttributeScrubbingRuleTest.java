@@ -21,10 +21,13 @@ class ServiceLoaderSpanAttributeScrubbingRuleTest {
 
     @Test
     void serviceLoader_finds_rule_from_test_classpath_via_autoservice() {
+        // given
         List<SpanAttributeScrubbingRule> rules = new ArrayList<>();
+        // when
         ServiceLoader.load(SpanAttributeScrubbingRule.class, getClass().getClassLoader())
                 .forEach(rules::add);
 
+        // then
         boolean foundExample = rules.stream()
                 .anyMatch(r -> r instanceof ExampleMerchantAccountRule);
 
@@ -36,6 +39,7 @@ class ServiceLoaderSpanAttributeScrubbingRuleTest {
 
     @Test
     void rules_are_sorted_by_priority_independently_of_load_order() {
+        // given
         SpanAttributeScrubbingRule highPriorityRule = new TestRule("high-priority", 5);
         SpanAttributeScrubbingRule mediumPriorityRule = new TestRule("medium-priority", 50);
         SpanAttributeScrubbingRule lowPriorityRule = new ExampleMerchantAccountRule(); // priority = 2000
@@ -47,8 +51,10 @@ class ServiceLoaderSpanAttributeScrubbingRuleTest {
         ));
 
         // ScrubbingSpanProcessor производит именно такую сортировку в конструкторе
+        // when
         unorderedList.sort(Comparator.comparingInt(SpanAttributeScrubbingRule::priority));
 
+        // then
         assertThat(unorderedList).containsExactly(
                 highPriorityRule,
                 mediumPriorityRule,

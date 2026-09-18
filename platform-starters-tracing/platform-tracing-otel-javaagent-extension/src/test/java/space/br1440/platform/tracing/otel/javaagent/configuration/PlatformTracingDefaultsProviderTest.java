@@ -61,7 +61,7 @@ class PlatformTracingDefaultsProviderTest {
         // when
         Map<String, String> defaults = new PlatformTracingDefaultsProvider().supply();
 
-        // then: все значения непустые.
+        // then
         assertThat(defaults).isNotEmpty();
         defaults.forEach((key, value) ->
                 assertThat(value).as("значение для ключа '%s' не должно быть пустым", key).isNotBlank());
@@ -69,20 +69,25 @@ class PlatformTracingDefaultsProviderTest {
 
     @Test
     void supply_without_env_var_does_not_override_overflow_policy() {
+        // when
         Map<String, String> defaults = new PlatformTracingDefaultsProvider().supply();
 
+        // then
         assertThat(defaults).doesNotContainKey(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY);
         assertThat(ExtensionDefaults.DEFAULT_QUEUE_OVERFLOW_POLICY).isEqualTo("DROP_OLDEST");
     }
 
     @Test
     void supply_env_var_overrides_default_overflow_policy() {
+        // given
         PlatformTracingDefaultsProvider provider =
                 new PlatformTracingDefaultsProvider(name ->
                         ExtensionEnvironmentVariables.QUEUE_OVERFLOW_POLICY.equals(name) ? "UPSTREAM" : null);
 
+        // when
         Map<String, String> defaults = provider.supply();
 
+        // then
         assertThat(defaults)
                 .containsEntry(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY, "UPSTREAM");
     }
@@ -92,7 +97,7 @@ class PlatformTracingDefaultsProviderTest {
         // given
         PlatformTracingDefaultsProvider provider = new PlatformTracingDefaultsProvider();
 
-        // when: модификация результата первого вызова не должна повлиять на следующий вызов.
+        // when
         Map<String, String> first = provider.supply();
         first.put("otel.injected", "yes");
         Map<String, String> second = provider.supply();

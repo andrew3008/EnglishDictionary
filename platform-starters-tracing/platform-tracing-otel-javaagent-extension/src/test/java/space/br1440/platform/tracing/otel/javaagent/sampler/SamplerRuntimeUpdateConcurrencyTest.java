@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 
@@ -25,14 +26,14 @@ class SamplerRuntimeUpdateConcurrencyTest {
 
     @Test
     void acceptedSequenceEqualsSuccessfulCommitsWithoutHiddenRetry() throws Exception {
+        // given
         TracingSettingsSource policy =
                 TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5d);
         int writers = 16;
-        ExecutorService pool = Executors.newFixedThreadPool(writers);
         CountDownLatch start = new CountDownLatch(1);
         List<Future<SettingsUpdateStatus>> results = new ArrayList<>(writers);
 
-        try {
+        try (ExecutorService pool = Executors.newFixedThreadPool(writers)) {
             for (int index = 0; index < writers; index++) {
                 double ratio = (index + 1.0d) / (writers + 1.0d);
                 results.add(pool.submit(() -> {
@@ -42,6 +43,7 @@ class SamplerRuntimeUpdateConcurrencyTest {
             }
             start.countDown();
 
+            // when
             long applied = 0L;
             long stale = 0L;
             for (Future<SettingsUpdateStatus> result : results) {
@@ -53,23 +55,25 @@ class SamplerRuntimeUpdateConcurrencyTest {
                 }
             }
 
+            // then
             assertThat(applied).isPositive();
             assertThat(applied + stale).isEqualTo(writers);
             assertThat(policy.current().acceptedSequence()).isEqualTo(applied);
-        } finally {
-            pool.shutdownNow();
         }
     }
 
     @Test
     void invalidCandidateKeepsLogicalLastKnownGood() {
+        // given
         TracingSettingsSource policy =
                 TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5d);
-        var before = policy.current();
+        TracingSettingsRevision before = policy.current();
 
+        // when
         SettingsUpdateStatus outcome =
                 AcceptedPolicyMutationAccess.applySampling(policy, true, 5.0d, Map.of());
 
+        // then
         assertThat(outcome).isEqualTo(SettingsUpdateStatus.REJECTED);
         assertThat(policy.current()).isSameAs(before);
         assertThat(policy.current().acceptedSequence()).isZero();

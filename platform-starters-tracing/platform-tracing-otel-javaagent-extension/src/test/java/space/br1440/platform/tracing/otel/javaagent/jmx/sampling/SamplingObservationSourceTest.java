@@ -23,12 +23,15 @@ class SamplingObservationSourceTest {
 
     @Test
     void samplingRatioAndEnabledReflectAcceptedPolicy() {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.42d);
         SamplingObservationSource source = new SamplingObservationSource(
                 holder, new OwnerRegistrationSlot<>(), AGENT_INSTANCE_ID);
 
+        // when
         CompositeData observation = source.getSamplingObservation();
 
+        // then
         assertThat((Double) observation.get(
                 JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO)).isEqualTo(0.42d);
         assertThat((Boolean) observation.get(
@@ -37,9 +40,11 @@ class SamplingObservationSourceTest {
 
     @Test
     void samplerEnabledReflectsAcceptedPolicyToggle() {
+        // given
         TracingSettingsSource enabled = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5d);
         TracingSettingsSource disabled = TracingSettingsSource.isolatedSampling(false, Map.of(), 0.5d);
 
+        // when/then
         assertThat((Boolean) new SamplingObservationSource(enabled, new OwnerRegistrationSlot<>(), AGENT_INSTANCE_ID)
                 .getSamplingObservation()
                 .get(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_ENABLED)).isTrue();
@@ -50,28 +55,34 @@ class SamplingObservationSourceTest {
 
     @Test
     void routeRatiosReflectAcceptedPolicy() {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(
                 true, Map.of("/api", 0.2d), 0.5d);
         SamplingObservationSource source = new SamplingObservationSource(
                 holder, new OwnerRegistrationSlot<>(), AGENT_INSTANCE_ID);
 
+        // when
         TabularData routeRatios = (TabularData) source.getSamplingObservation()
                 .get(JmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIOS);
         CompositeData row = routeRatios.get(new Object[]{"/api"});
 
+        // then
         assertThat((Double) row.get("value")).isEqualTo(0.2d);
     }
 
     @Test
     void decisionCountsAreEmptyAndOwnerAbsentWhenCompositeSamplerOwnerAbsent() {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5d);
         SamplingObservationSource source = new SamplingObservationSource(
                 holder, new OwnerRegistrationSlot<>(), AGENT_INSTANCE_ID);
 
+        // when
         CompositeData observation = source.getSamplingObservation();
         TabularData decisionCounts = (TabularData) observation
                 .get(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_DECISION_COUNTS);
 
+        // then
         assertThat(decisionCounts.size()).isZero();
         assertThat((Boolean) observation.get(
                 JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_PRESENT)).isFalse();
@@ -79,18 +90,19 @@ class SamplingObservationSourceTest {
 
     @Test
     void decisionCountsReflectCompositeSamplerOwnerWhenPresent() {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5d);
         OwnerRegistrationSlot<CompositeSampler> slot = new OwnerRegistrationSlot<>();
         CompositeSampler sampler = new CompositeSampler(holder, CategoryBSamplingAccess.snapshot(List.of(), List.of()));
         slot.replace(sampler);
         SamplingObservationSource source = new SamplingObservationSource(holder, slot, AGENT_INSTANCE_ID);
 
+        // when
         CompositeData observation = source.getSamplingObservation();
         TabularData decisionCounts = (TabularData) observation
                 .get(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_DECISION_COUNTS);
 
-        // Владелец подключён — decode должен пройти без ContractViolation; конкретных решений
-        // без реальных span'ов не будет, но карта обязана быть валидной TabularData того же типа.
+        // then
         assertThat(decisionCounts.getTabularType().getTypeName())
                 .isEqualTo("space.br1440.platform.tracing.SamplerDecisionCounts");
         assertThat((Boolean) observation.get(
@@ -101,10 +113,12 @@ class SamplingObservationSourceTest {
 
     @Test
     void configLastUpdatedSourceIsAcceptedState() {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5d);
         SamplingObservationSource source = new SamplingObservationSource(
                 holder, new OwnerRegistrationSlot<>(), AGENT_INSTANCE_ID);
 
+        // when/then
         assertThat((String) source.getSamplingObservation()
                 .get(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_CONFIG_LAST_UPDATED_SOURCE))
                 .isEqualTo("accepted-state");
@@ -112,6 +126,7 @@ class SamplingObservationSourceTest {
 
     @Test
     void nullAcceptedPolicyIsRejectedAtConstruction() {
+        // given/when/then
         assertThatThrownBy(() -> new SamplingObservationSource(null, new OwnerRegistrationSlot<>(), AGENT_INSTANCE_ID))
                 .isInstanceOf(NullPointerException.class);
     }

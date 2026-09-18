@@ -23,6 +23,7 @@ class DiagnosticsObservationSourceTest {
 
     @Test
     void observationEncodesCompleteDiagnosticsSnapshot() {
+        // given
         long beforeCapture = System.currentTimeMillis();
         LongAdder invalidConfigCounter = new LongAdder();
         invalidConfigCounter.add(3L);
@@ -31,6 +32,8 @@ class DiagnosticsObservationSourceTest {
         Map<String, Long> expectedSafeWrapperMetrics = TracingDiagnostics.shared().snapshot();
         String expectedLogLevel = PlatformLogControl.shared().getLevel().name();
         boolean expectedPropagationEnabled = PlatformPropagationGate.shared().isEnabled();
+
+        // when
         CompositeData observation = source.getDiagnosticsObservation();
 
         long afterCapture = System.currentTimeMillis();
@@ -39,6 +42,7 @@ class DiagnosticsObservationSourceTest {
         long completedAt = (Long) observation.get(
                 JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_CAPTURE_COMPLETED_AT);
 
+        // then
         assertThat(observation.getCompositeType().getTypeName())
                 .isEqualTo(JmxWireContract.OPEN_TYPE_DIAGNOSTICS_OBSERVATION_TYPE_NAME);
         assertThat((Long) observation.get(
@@ -82,6 +86,7 @@ class DiagnosticsObservationSourceTest {
 
     @Test
     void constructorRejectsMissingDependencies() {
+        // given/when/then
         assertThatThrownBy(() -> new DiagnosticsObservationSource(null, AGENT_INSTANCE_ID))
                 .isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> new DiagnosticsObservationSource(new LongAdder(), null))

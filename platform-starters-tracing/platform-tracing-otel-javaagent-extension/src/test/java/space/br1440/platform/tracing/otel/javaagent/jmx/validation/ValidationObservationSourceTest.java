@@ -20,12 +20,15 @@ class ValidationObservationSourceTest {
 
     @Test
     void ownerAbsentGivesPlaceholderValuesNotSentinel() {
+        // given
         ValidationObservationSource source = new ValidationObservationSource(
                 new OwnerRegistrationSlot<>(), AGENT_INSTANCE_ID
         );
 
+        // when
         CompositeData observation = source.getValidationObservation();
 
+        // then
         assertThat((Boolean) observation.get(
                 JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT)).isFalse();
 
@@ -45,6 +48,7 @@ class ValidationObservationSourceTest {
 
     @Test
     void ownerPresentReflectsProcessorStateAndPositiveGeneration() {
+        // given
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(
                 TracingSettingsSource.isolatedValidation(true, true)
         );
@@ -57,8 +61,11 @@ class ValidationObservationSourceTest {
         slot.replace(processor);
 
         ValidationObservationSource source = new ValidationObservationSource(slot, AGENT_INSTANCE_ID);
+
+        // when
         CompositeData observation = source.getValidationObservation();
 
+        // then
         assertThat((Boolean) observation.get(
                 JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT)).isTrue();
 

@@ -24,46 +24,58 @@ class ResourceAttributeResolverTest {
 
     @Test
     void otel_service_name_omit() {
+        // when
         Attributes attrs = resolve(Map.of(
                 "otel.service.name", "otel-svc",
                 PlatformResourceCustomizer.PROP_SERVICE_NAME, "platform-svc")
         );
 
+        // then
         assertThat(attrs.get(key(PlatformAttributes.SERVICE_NAME))).isNull();
     }
 
     @Test
     void platform_service_name_when_otel_empty() {
+        // when
         Attributes attrs = resolve(Map.of(PlatformResourceCustomizer.PROP_SERVICE_NAME, "platform-svc"));
 
+        // then
         assertThat(attrs.get(key(PlatformAttributes.SERVICE_NAME))).isEqualTo("platform-svc");
     }
 
     @Test
     void spring_application_name_fallback() {
+        // when
         Attributes attrs = resolve(Map.of("spring.application.name", "spring-svc"));
 
+        // then
         assertThat(attrs.get(key(PlatformAttributes.SERVICE_NAME))).isEqualTo("spring-svc");
     }
 
     @Test
     void version_from_platform_config() {
+        // when
         Attributes attrs = resolve(Map.of(PlatformResourceCustomizer.PROP_SERVICE_VERSION, "1.0"));
 
+        // then
         assertThat(attrs.get(key(PlatformAttributes.SERVICE_VERSION))).isEqualTo("1.0");
     }
 
     @Test
     void version_from_build_info_when_platform_empty() {
+        // when
         Attributes attrs = resolver.resolve(new TestConfigProperties(Map.of()), Resource.empty(), "2.0", null);
 
+        // then
         assertThat(attrs.get(key(PlatformAttributes.SERVICE_VERSION))).isEqualTo("2.0");
     }
 
     @Test
     void environment_is_normalized() {
+        // when
         Attributes attrs = resolve(Map.of(PlatformResourceCustomizer.PROP_ENVIRONMENT, "prod"));
 
+        // then
         assertThat(attrs.get(key(PlatformAttributes.PLATFORM_ENVIRONMENT))).isEqualTo("production");
     }
 
@@ -82,12 +94,15 @@ class ResourceAttributeResolverTest {
 
     @Test
     void existing_non_default_service_name_omit() {
+        // given
         Resource existing = Resource.create(Attributes.of(key(PlatformAttributes.SERVICE_NAME), "from-detector"));
+
+        // when
         Attributes attrs = resolver.resolve(new TestConfigProperties(
                         Map.of(PlatformResourceCustomizer.PROP_SERVICE_NAME, "platform-svc")),
                 existing, null, null);
 
-        // existing уже содержит не-дефолтный service.name → platform омитит
+        // then
         assertThat(attrs.get(key(PlatformAttributes.SERVICE_NAME))).isNull();
     }
 }

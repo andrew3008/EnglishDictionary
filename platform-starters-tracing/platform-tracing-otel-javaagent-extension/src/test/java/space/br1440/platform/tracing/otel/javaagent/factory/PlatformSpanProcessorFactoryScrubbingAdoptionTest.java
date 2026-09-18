@@ -120,17 +120,21 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void scrubbing_disabled_ext_config_no_scrubbing_processor() throws Exception {
+            // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = scrubbingDisabledExtConfig();
+
+            // when
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
                     otelOnlyConfig(),
                     TracingSettingsSource.fromStartup(extensionConfig));
 
+            // then
             assertThat(getScrubbing(registrar))
                     .as("scrubbing.enabled = false → no scrubbing owner registered")
                     .isNull();
@@ -143,17 +147,21 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void scrubbing_enabled_default_rules_registers_processor() throws Exception {
+            // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             ExtensionConfig extensionConfig = scrubbingEnabledDefaultsExtConfig();
             ConfigProperties config = otelOnlyConfig();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, new PlatformScrubberFactory().buildRuntime(extensionConfig, config));
+
+            // when
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
                     config,
                     TracingSettingsSource.fromStartup(extensionConfig));
 
+            // then
             assertThat(getScrubbing(registrar))
                     .as("scrubbing.enabled = true with default rules → session runtime registered for JMX")
                     .isNotNull()
@@ -165,9 +173,11 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void empty_effective_rule_set_fails_secure_profile() {
+            // given
             ExtensionConfig extensionConfig = scrubbingEnabledWithoutBuiltInsExtConfig();
             PlatformScrubberFactory factory = ScrubbingRuntimeTestFixtures.factory(List::of);
 
+            // when/then
             assertThatThrownBy(() -> factory.buildRuntime(extensionConfig, otelOnlyConfig()))
                     .isInstanceOf(SanitizerBootstrapException.class)
                     .hasMessage("Scrubbing is enabled, but no effective sanitizing rules were loaded")
@@ -178,6 +188,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void bundled_rule_metadata_failure_does_not_expose_exception_message() {
+            // given
             SpanAttributeScrubbingRule unsafeRule = new SpanAttributeScrubbingRule() {
                 @Nonnull
                 @Override public String name() { return "unsafe"; }
@@ -191,6 +202,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
                     () -> List.of(unsafeRule));
             ExtensionConfig extensionConfig = scrubbingEnabledDefaultsExtConfig();
 
+            // when/then
             assertThatThrownBy(() -> factory.buildRuntime(extensionConfig, otelOnlyConfig()))
                     .isInstanceOf(SanitizerBootstrapException.class)
                     .hasMessage("Bundled scrubbing rule metadata validation failed "
@@ -240,6 +252,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void hmacKey_null_when_not_configured() {
+            // given/when/then
             ExtensionConfig cfg = configWithStringProperty("platform.tracing.scrubbing.hmac-key", null);
             assertThat(cfg.scrubbing().hmacKey().isPresent())
                     .as("hmacKey is absent when SCRUBBING_HMAC_KEY not set")
@@ -248,6 +261,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void hmacKey_passthrough_when_configured() {
+            // given/when/then
             ExtensionConfig cfg = configWithStringProperty(
                     "platform.tracing.scrubbing.hmac-key", "my-secret-key");
             byte[] hmacKeyBytes = Objects.requireNonNull(cfg.scrubbing().hmacKey().copyBytes());
@@ -258,6 +272,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void missingKeyPolicy_default_is_mask() {
+            // given/when/then
             ExtensionConfig cfg = configWithStringProperty("unused.key", null);
             assertThat(cfg.scrubbing().missingKeyPolicy())
                     .as("missingKeyPolicy default = 'mask'")
@@ -266,6 +281,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void missingKeyPolicy_override_fail_fast() {
+            // given/when/then
             ExtensionConfig cfg = configWithStringProperty(
                     "platform.tracing.scrubbing.missing-key-policy", "fail_fast");
             assertThat(cfg.scrubbing().missingKeyPolicy())
@@ -275,6 +291,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void rulesConfig_null_when_not_configured() {
+            // given/when/then
             ExtensionConfig cfg = configWithStringProperty("unused.key", null);
             assertThat(cfg.scrubbing().rulesConfig())
                     .as("rulesConfig is null when SCRUBBING_RULES_CONFIG not set")
@@ -283,6 +300,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void rulesConfig_passthrough_when_configured() {
+            // given/when/then
             ExtensionConfig cfg = configWithStringProperty(
                     "platform.tracing.scrubbing.rules-config", "classpath:tracing/custom-rules.properties");
             assertThat(cfg.scrubbing().rulesConfig())
@@ -292,6 +310,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void rulesExtensions_null_when_not_configured() {
+            // given/when/then
             ExtensionConfig cfg = configWithStringProperty("unused.key", null);
             assertThat(cfg.scrubbing().rulesExtensions())
                     .as("rulesExtensions is null when SCRUBBING_RULES_EXTENSIONS not set")
@@ -300,6 +319,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void rulesExtensions_passthrough_when_configured() {
+            // given/when/then
             ExtensionConfig cfg = configWithStringProperty(
                     "platform.tracing.scrubbing.rules.extensions", "/opt/app/rules.jar");
             assertThat(cfg.scrubbing().rulesExtensions())
@@ -309,6 +329,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void rulesValidationMode_default_is_LENIENT() {
+            // given/when/then
             ExtensionConfig cfg = configWithStringProperty("unused.key", null);
             assertThat(cfg.scrubbing().rulesValidationMode())
                     .as("rulesValidationMode default = 'LENIENT'")
@@ -317,6 +338,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void rulesValidationMode_override_STRICT() {
+            // given/when/then
             ExtensionConfig cfg = configWithStringProperty(
                     "platform.tracing.scrubbing.rules.validation-mode", "STRICT");
             assertThat(cfg.scrubbing().rulesValidationMode())
@@ -326,6 +348,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void builtInRules_default_non_empty() {
+            // given/when/then
             ExtensionConfig cfg = configWithListProperty("unused.key", null);
             assertThat(cfg.scrubbing().builtInRules())
                     .as("builtInRules default is non-empty (from BuiltInSpanAttributeScrubbingRules.defaultConfigNames())")
@@ -335,6 +358,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void builtInRules_override_preserved() {
+            // given/when/then
             ExtensionConfig cfg = configWithListProperty("platform.tracing.javaagent.scrubbing.built-in-rules", List.of("password", "jwt"));
             assertThat(cfg.scrubbing().builtInRules())
                     .as("builtInRules override preserved")

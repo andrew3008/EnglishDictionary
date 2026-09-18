@@ -35,6 +35,7 @@ class ConfigurationOwnershipArchTest {
 
     @Test
     void extensionPropertyNames_referenced_only_by_documented_owners() {
+        // given
         ArchRule rule = noClasses()
                 .that().resideOutsideOfPackages(CONFIGURATION, RESOURCE)
                 .and().doNotHaveSimpleName("AutoconfigureSessionFactory")
@@ -46,13 +47,16 @@ class ConfigurationOwnershipArchTest {
                         + "messages and content hashing only; other packages must not become "
                         + "second readers (S7 G-S7-1 / r5 S6 rename)");
 
+        // when/then
         rule.check(EXTENSION_PRODUCTION_CLASSES);
     }
 
     @Test
     void supply_without_env_does_not_write_extension_property_names_platform_keys() throws Exception {
+        // given
         Map<String, String> supplied = new PlatformTracingDefaultsProvider(name -> null).supply();
 
+        // when/then
         for (Field field : ExtensionPropertyNames.class.getFields()) {
             if (!Modifier.isStatic(field.getModifiers()) || field.getType() != String.class) {
                 continue;
@@ -75,6 +79,7 @@ class ConfigurationOwnershipArchTest {
 
     @Test
     void secret_shaped_fields_are_not_raw_string() {
+        // given
         ArchRule rule = noFields()
                 .that().haveNameMatching("(?i).*(hmac|secret|password|token|credential).*")
                 .and().areNotStatic()
@@ -83,11 +88,13 @@ class ConfigurationOwnershipArchTest {
                 .because("secret-shaped configuration fields must use MaskedSecret (or equivalent), "
                         + "not raw String (S7 G-S7-4)");
 
+        // when/then
         rule.check(EXTENSION_PRODUCTION_CLASSES);
     }
 
     @Test
     void secret_shaped_public_accessors_do_not_return_raw_string() {
+        // given
         ArchRule rule = noMethods()
                 .that().haveNameMatching("(?i).*(hmacKey|hmac|secret|password|token|credential).*")
                 .and().arePublic()
@@ -95,11 +102,13 @@ class ConfigurationOwnershipArchTest {
                 .should().haveRawReturnType(String.class)
                 .because("public accessors must not expose secret material as String (S7 G-S7-4)");
 
+        // when/then
         rule.check(EXTENSION_PRODUCTION_CLASSES);
     }
 
     @Test
     void long_lived_runtime_types_do_not_hold_config_properties() {
+        // given
         ArchRule rule = noFields()
                 .that().haveRawType(ConfigProperties.class)
                 .should().beDeclaredInClassesThat()
@@ -117,11 +126,13 @@ class ConfigurationOwnershipArchTest {
                         + "samplers and exporters must not retain it (S7 G-S7-5). "
                         + "ExtensionConfigReader in configuration is the only allowed holder.");
 
+        // when/then
         rule.check(EXTENSION_PRODUCTION_CLASSES);
     }
 
     @Test
     void control_nested_packages_do_not_depend_on_configuration() {
+        // given
         ArchRule rule = noClasses()
                 .that().resideInAnyPackage(
                         ROOT + ".control.settings..",
@@ -130,11 +141,13 @@ class ConfigurationOwnershipArchTest {
                 .because("accepted settings and JMX adapters must not reference startup "
                         + "ExtensionConfig after bootstrap (S7 G-S7-6)");
 
+        // when/then
         rule.check(EXTENSION_PRODUCTION_CLASSES);
     }
 
     @Test
     void control_root_only_tracing_settings_source_depends_on_configuration() {
+        // given
         ArchRule rule = noClasses()
                 .that().resideInAPackage(ROOT + ".control")
                 .and().doNotHaveSimpleName("TracingSettingsSource")
@@ -142,6 +155,7 @@ class ConfigurationOwnershipArchTest {
                 .because("TracingSettingsSource is the sole bootstrap bridge from ExtensionConfig "
                         + "into the control plane (S7 G-S7-6)");
 
+        // when/then
         rule.check(EXTENSION_PRODUCTION_CLASSES);
     }
 }

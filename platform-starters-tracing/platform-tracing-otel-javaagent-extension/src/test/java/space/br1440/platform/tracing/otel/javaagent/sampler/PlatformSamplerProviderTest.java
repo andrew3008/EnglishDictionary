@@ -39,9 +39,11 @@ class PlatformSamplerProviderTest {
     @Test
     @DisplayName("createSampler строит платформенный CompositeSampler (тот же builder, что и inline)")
     void createSampler_builds_composite() {
+        // when
         Sampler sampler = new PlatformSamplerProvider().createSampler(
                 config(Map.of("platform.tracing.sampling.ratio", "0.42")));
 
+        // then
         assertThat(sampler).isInstanceOf(SafeSampler.class);
         assertThat(sampler).isInstanceOf(PlatformManagedSampler.class);
         assertThat(sampler.getDescription())
@@ -54,23 +56,27 @@ class PlatformSamplerProviderTest {
     @Test
     @DisplayName("getName == platform → активирует otel.traces.sampler=platform")
     void getName_is_platform() {
+        // when/then
         assertThat(new PlatformSamplerProvider().getName()).isEqualTo("platform");
     }
 
     @Test
     @DisplayName("inline-customizer идемпотентен: existing уже платформенный → нет повторной обёртки")
     void inline_customizer_idempotent_when_existing_is_platform() {
+        // given
         PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
         PlatformSamplerFactory factory = new PlatformSamplerFactory(registrar);
 
         Sampler platform = new PlatformSamplerProvider().createSampler(config(Map.of()));
         SamplingExtensionConfig sampling = sampling(Map.of());
         TracingSettingsSource compositionPolicy = TracingSettingsSource.fromSampling(sampling);
+        // when
         Sampler result = factory.buildSampler(
                 platform,
                 sampling,
                 compositionPolicy);
 
+        // then
         assertThat(result).isSameAs(platform);
         assertThat(((PlatformManagedSampler) result).platformCompositeSampler().acceptedPolicy())
                 .isSameAs(compositionPolicy);
@@ -79,16 +85,19 @@ class PlatformSamplerProviderTest {
     @Test
     @DisplayName("absent force-record-values keeps default ['on'] for named platform sampler")
     void absent_force_record_values_uses_default_on() {
+        // given
         Sampler sampler = new PlatformSamplerProvider().createSampler(
                 config(Map.of("platform.tracing.sampling.ratio", "0")));
         Context forceContext = Context.root().with(
                 PlatformTraceContextKeys.TRACE_CONTROL,
                 new DefaultInboundTraceControlExtractor().fromHeaders("on", null, null));
 
+        // when
         SamplingResult result = sampler.shouldSample(
                 forceContext, "00000000000000000000000000000001", "GET", SpanKind.SERVER,
                 Attributes.empty(), List.of());
 
+        // then
         assertThat(result.getDecision()).isEqualTo(SamplingDecision.RECORD_AND_SAMPLE);
         assertThat(result.getAttributes().get(io.opentelemetry.api.common.AttributeKey.stringKey(
                 "platform.sampling.reason"))).isEqualTo(PlatformSamplingReasons.FORCE_HEADER);
@@ -97,11 +106,13 @@ class PlatformSamplerProviderTest {
     @Test
     @DisplayName("регресс: повторная autoconfigure-сборка в одном JVM снова поднимает платформенный sampler")
     void idempotent_double_build_does_not_skip() {
+        // given
         PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
         PlatformSamplerFactory factory = new PlatformSamplerFactory(registrar);
 
         // Дважды строим поверх не-платформенного existing — защита против статического флага «уже применён».
         SamplingExtensionConfig sampling = sampling(Map.of());
+        // when
         Sampler first = factory.buildSampler(
                 Sampler.alwaysOn(),
                 sampling,
@@ -111,6 +122,7 @@ class PlatformSamplerProviderTest {
                 sampling,
                 TracingSettingsSource.fromSampling(sampling));
 
+        // then
         assertThat(first).isInstanceOf(SafeSampler.class);
         assertThat(second).isInstanceOf(SafeSampler.class);
         assertThat(first.getDescription()).contains("PlatformRuleBasedSampler");

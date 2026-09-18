@@ -25,9 +25,12 @@ class ValidationRuntimeFoundationTest {
 
     @Test
     void processor_uses_updated_snapshot_without_reconstruct() {
+        // given
         TracingSettingsSource access = TracingSettingsSource.isolatedValidation(true, false);
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access);
+        // when
         long initialSequence = processor.getPolicyVersion();
+        // then
         assertThat(initialSequence).isZero();
         assertThat(processor.getPolicySource()).isEqualTo("accepted-state");
 
@@ -65,13 +68,16 @@ class ValidationRuntimeFoundationTest {
 
     @Test
     void warn_level_validation_failure_still_exports_span_not_dropped() {
+        // given
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(
                 TracingSettingsSource.isolatedValidation(true, false));
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
             Tracer tracer = h.tracer("t");
+            // when
             tracer.spanBuilder("op").startSpan().end();
 
+            // then
             assertThat(h.exporter().getFinishedSpanItems()).hasSize(1);
             ValidationAssertions.assertMissingRecorded(
                     h.exporter().getFinishedSpanItems().getFirst(),
@@ -82,6 +88,7 @@ class ValidationRuntimeFoundationTest {
 
     @Test
     void concurrent_updateValidation_and_onEnding_never_throws() throws Exception {
+        // given
         TracingSettingsSource access = TracingSettingsSource.isolatedValidation(true, false);
         int threads = 6;
         CountDownLatch start = new CountDownLatch(1);
@@ -134,7 +141,9 @@ class ValidationRuntimeFoundationTest {
                     });
                 }
 
+                // when
                 start.countDown();
+                // then
                 assertThat(writersDone.await(30, TimeUnit.SECONDS)).isTrue();
             } finally {
                 stopReaders.set(true);

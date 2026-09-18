@@ -74,6 +74,7 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
     @Test
     @DisplayName("Default (overflow-policy не задан): платформенный DROP_OLDEST processor")
     void defaultIsPlatformDropOldestWhenOverflowPolicyNotSet() {
+        // given
         // Без supplier'а свойство не задано → isExplicitUpstream() = false → DROP_OLDEST.
         AtomicReference<SpanProcessor> observedFinalProcessor = new AtomicReference<>();
         AutoConfiguredOpenTelemetrySdkBuilder builder = baseBuilder();
@@ -83,8 +84,10 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
             return processor;
         });
 
+        // when
         AutoConfiguredOpenTelemetrySdk sdk = builder.build();
         try {
+            // then
             assertThat(observedFinalProcessor.get())
                     .as("default v1.x: финальный processor — платформенный DROP_OLDEST")
                     .isInstanceOf(PlatformDropOldestExportSpanProcessor.class);
@@ -100,6 +103,7 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
     @Test
     @DisplayName("Явный DROP_OLDEST + single OTLP exporter → замена на платформенный processor")
     void explicitDropOldestReplacesBspWithPlatformProcessor() {
+        // given
         AtomicReference<SpanProcessor> observedFinalProcessor = new AtomicReference<>();
         AutoConfiguredOpenTelemetrySdkBuilder builder = baseBuilder()
                 .addPropertiesSupplier(() -> Map.of(
@@ -111,8 +115,10 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
             return processor;
         });
 
+        // when
         AutoConfiguredOpenTelemetrySdk sdk = builder.build();
         try {
+            // then
             assertThat(observedFinalProcessor.get())
                     .as("opt-in: финальный processor — платформенный DROP_OLDEST")
                     .isInstanceOf(PlatformDropOldestExportSpanProcessor.class);
@@ -128,6 +134,7 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
     @Test
     @DisplayName("DROP_OLDEST + multi-exporter → fallback на stock BSP (без замены)")
     void dropOldestFallsBackToStockOnMultiExporter() {
+        // given
         AtomicReference<SpanProcessor> firstObservedProcessor = new AtomicReference<>();
         // Подменяем otel.traces.exporter на multi-список через addPropertiesCustomizer.
         // Платформенный extension увидит exporter customizer дважды и не сделает замену.
@@ -155,8 +162,10 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
             return processor;
         });
 
+        // when
         AutoConfiguredOpenTelemetrySdk sdk = builder.build();
         try {
+            // then
             // Замена была бы только если platform увидел single exporter. Поскольку наш
             // wrapper-customizer регистрируется после платформенного, он не увеличит
             // exporterCount, который видит платформенный код (он считает в captureExporter).
@@ -178,6 +187,7 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
     @Test
     @DisplayName("DROP_OLDEST + два exporter'а до платформенного → multi-exporter fallback")
     void dropOldestWithTwoExportersBeforePlatformFallsBack() {
+        // given
         AtomicReference<SpanProcessor> observedFinalProcessor = new AtomicReference<>();
         AutoConfiguredOpenTelemetrySdkBuilder builder = baseBuilder()
                 .addPropertiesSupplier(() -> Map.of(
@@ -197,8 +207,10 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
             return processor;
         });
 
+        // when
         AutoConfiguredOpenTelemetrySdk sdk = builder.build();
         try {
+            // then
             // Если platform увидел count > 1 — замены нет.
             // Если count == 1 — замена должна была произойти.
             // Тест фиксирует наблюдаемое поведение: при одном зарегистрированном exporter
@@ -218,6 +230,7 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
     @Test
     @DisplayName("Unknown overflow-policy значение → WARN + DROP_OLDEST (безопасный fallback)")
     void unknownPolicyValueFallsBackToDropOldest() {
+        // given
         AtomicReference<SpanProcessor> observedFinalProcessor = new AtomicReference<>();
         AutoConfiguredOpenTelemetrySdkBuilder builder = baseBuilder()
                 .addPropertiesSupplier(() -> Map.of(
@@ -228,8 +241,10 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
             observedFinalProcessor.set(processor);
             return processor;
         });
+        // when
         AutoConfiguredOpenTelemetrySdk sdk = builder.build();
         try {
+            // then
             // Неизвестное значение трактуется как DROP_OLDEST (не UPSTREAM):
             // isExplicitUpstream() возвращает false для нераспознанных значений.
             assertThat(observedFinalProcessor.get())
@@ -244,6 +259,7 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
     @Test
     @DisplayName("UPSTREAM явно — оператор отключил DROP_OLDEST, stock BSP сохраняется")
     void explicitUpstreamLeavesStockBspIntact() {
+        // given
         // UPSTREAM задаётся через System property — highest priority в OTel SDK ConfigProperties.
         // addPropertiesSupplier — lowest priority и может быть перекрыт платформенным default'ом.
         String propKey = "platform.tracing.queue.overflow-policy";
@@ -257,8 +273,10 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
                 observedFinalProcessor.set(processor);
                 return processor;
             });
+            // when
             AutoConfiguredOpenTelemetrySdk sdk = builder.build();
             try {
+                // then
                 assertThat(observedFinalProcessor.get())
                         .as("UPSTREAM явный (System property) — stock BatchSpanProcessor сохраняется")
                         .isInstanceOf(BatchSpanProcessor.class);

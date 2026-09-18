@@ -37,17 +37,19 @@ class PlatformSpiAutoconfigureIntegrationTest {
                         "otel.traces.exporter", "none"));
     }
 
-    // ---- PR-1: named sampler ------------------------------------------------------------------
-
     @Test
     @DisplayName("otel.traces.sampler=platform резолвится в платформенный CompositeSampler (без ConfigurationException)")
     void otel_traces_sampler_platform_resolves() {
+        // given
         AutoConfiguredOpenTelemetrySdk sdk = baseBuilder()
                 .addPropertiesSupplier(() -> Map.of("otel.traces.sampler", "platform"))
                 .build();
         try {
+            // when
             // SdkTracerProvider.toString() печатает sampler=<getDescription()> (мы добавили toString).
             String description = sdk.getOpenTelemetrySdk().getSdkTracerProvider().toString();
+
+            // then
             assertThat(description)
                     .as("named platform sampler должен примениться без двойной обёртки")
                     .contains("PlatformRuleBasedSampler");
@@ -61,9 +63,13 @@ class PlatformSpiAutoconfigureIntegrationTest {
     @Test
     @DisplayName("default: otel.propagators не задан → platform-trace-control добавлен")
     void default_propagators_include_platform() {
+        // given
         AutoConfiguredOpenTelemetrySdk sdk = baseBuilder().build();
         try {
+            // when
             TextMapPropagator root = sdk.getOpenTelemetrySdk().getPropagators().getTextMapPropagator();
+
+            // then
             // Платформенные заголовки должны участвовать в fields() (X-Trace-On и др.).
             assertThat(root.fields())
                     .as("platform-trace-control дописан в otel.propagators по умолчанию")
@@ -76,13 +82,17 @@ class PlatformSpiAutoconfigureIntegrationTest {
     @Test
     @DisplayName("ENV-aware: otel.propagators задан через property-source → platform всё равно добавлен")
     void env_propagators_still_get_platform() {
+        // given
         // Имитация ENV/sysprop: значение приходит из property-source (не из нашего supplier'а дефолтов).
         // addPropertiesSupplier здесь моделирует пользовательский ввод otel.propagators.
         AutoConfiguredOpenTelemetrySdk sdk = baseBuilder()
                 .addPropertiesSupplier(() -> Map.of("otel.propagators", "tracecontext,baggage"))
                 .build();
         try {
+            // when
             TextMapPropagator root = sdk.getOpenTelemetrySdk().getPropagators().getTextMapPropagator();
+
+            // then
             assertThat(root.fields())
                     .as("addPropertiesCustomizer (ENV-aware) дописывает platform даже при заданном otel.propagators")
                     .contains("X-Trace-On", "X-QA-Trace", "X-Request-Id")
@@ -95,12 +105,16 @@ class PlatformSpiAutoconfigureIntegrationTest {
     @Test
     @DisplayName("явный otel.propagators=...,platform-trace-control → без дубля (fields стабильны)")
     void explicit_propagators_no_duplicate() {
+        // given
         AutoConfiguredOpenTelemetrySdk sdk = baseBuilder()
                 .addPropertiesSupplier(() -> Map.of(
                         "otel.propagators", "tracecontext,baggage,platform-trace-control"))
                 .build();
         try {
+            // when
             TextMapPropagator root = sdk.getOpenTelemetrySdk().getPropagators().getTextMapPropagator();
+
+            // then
             assertThat(root.fields()).contains("X-Trace-On", "X-QA-Trace", "X-Request-Id");
             // fields() — это набор: дубликат platform-trace-control не добавил бы лишних полей,
             // но и не сломал бы composite. Проверяем, что W3C сохранён.
@@ -110,12 +124,10 @@ class PlatformSpiAutoconfigureIntegrationTest {
         }
     }
 
-    // ---- Slice 1 (характеризация): pinned OTel 1.64.0 composition lifecycle -------------------
-
     @Test
     @DisplayName("characterization: tracecontext,baggage,platform-trace-control → final fields без дублей")
     void finalFields_containAllExpectedHeaders_withoutDuplicates_characterization() {
-        // given: явный набор из трёх named propagator'ов, как это будет собрано real autoconfigure
+        // given
         AutoConfiguredOpenTelemetrySdk sdk = baseBuilder()
                 .addPropertiesSupplier(() -> Map.of(
                         "otel.propagators", "tracecontext,baggage,platform-trace-control"))
@@ -137,8 +149,6 @@ class PlatformSpiAutoconfigureIntegrationTest {
         }
     }
 
-    // ---- Slice 2 (§6.3 плана): W3C outbound baggage через реальный autoconfigure/customizer -----
-
     @Test
     @DisplayName("integration: outbound baggage через final SDK propagator фильтрует allowlist, "
             + "кодирует %20 и проходит stock round-trip")
@@ -151,7 +161,7 @@ class PlatformSpiAutoconfigureIntegrationTest {
         try {
             TextMapPropagator root = sdk.getOpenTelemetrySdk().getPropagators().getTextMapPropagator();
 
-            // given: allowlisted key с пробелом и metadata + denied key
+            // given
             io.opentelemetry.context.Context ctx = io.opentelemetry.context.Context.root().with(
                     io.opentelemetry.api.baggage.Baggage.builder()
                             .put("tenant_class", "DF 28",
@@ -160,11 +170,10 @@ class PlatformSpiAutoconfigureIntegrationTest {
                             .build());
             Map<String, String> carrier = new java.util.HashMap<>();
 
-            // when: inject через реальный final composite propagator, полученный из autoconfigure
+            // when
             root.inject(ctx, carrier, (c, k, v) -> c.put(k, v));
 
-            // then: реальный autoconfigure callback применил customizer к direct W3CBaggagePropagator
-            // (а не к обёрнутому composite) — заголовок использует stock %20, а не ручной '+'
+            // then
             String header = carrier.get("baggage");
             assertThat(header)
                     .as("итоговый final SDK propagator обязан кодировать пробел как %%20")
@@ -196,11 +205,15 @@ class PlatformSpiAutoconfigureIntegrationTest {
     @Test
     @DisplayName("otel.propagators=none → платформенный пропагатор НЕ добавляется")
     void propagators_none_excludes_platform() {
+        // given
         AutoConfiguredOpenTelemetrySdk sdk = baseBuilder()
                 .addPropertiesSupplier(() -> Map.of("otel.propagators", "none"))
                 .build();
         try {
+            // when
             TextMapPropagator root = sdk.getOpenTelemetrySdk().getPropagators().getTextMapPropagator();
+
+            // then
             assertThat(root.fields())
                     .as("none отключает всю пропагацию — платформенные заголовки не участвуют")
                     .doesNotContain("X-Trace-On", "X-QA-Trace", "X-Request-Id");

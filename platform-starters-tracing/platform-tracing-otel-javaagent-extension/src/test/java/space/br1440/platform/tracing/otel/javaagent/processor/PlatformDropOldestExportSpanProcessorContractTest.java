@@ -48,8 +48,7 @@ class PlatformDropOldestExportSpanProcessorContractTest {
 
     @BeforeEach
     void suppressExpectedUncaughtErrorNoise() {
-        // given: тест намеренно провоцирует Error на daemon-потоке worker'а; подавляем шумный
-        // stacktrace дефолтного обработчика, чтобы не засорять вывод прогона тестов
+        // given
         previousDefaultHandler = Thread.getDefaultUncaughtExceptionHandler();
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> { });
     }
@@ -61,8 +60,7 @@ class PlatformDropOldestExportSpanProcessorContractTest {
 
     @Test
     void backgroundScheduleDelayExportsWithoutExplicitForceFlush() {
-        // given: короткий scheduleDelay и batch size больше числа спанов, чтобы export
-        // мог случиться только по фоновому таймеру, а не по переполнению batch'а
+        // given
         CountingExporter exporter = new CountingExporter();
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)
                 .maxQueueSize(64)
@@ -73,8 +71,8 @@ class PlatformDropOldestExportSpanProcessorContractTest {
             Tracer tracer = tp.get("schedule-delay-test");
             tracer.spanBuilder("scheduled").startSpan().end();
 
-            // when: явный forceFlush/shutdown не вызывается — ждём только фоновый таймер
-            // then: worker самостоятельно экспортирует спан по истечении scheduleDelay
+            // when
+            // then
             awaitTrue(() -> exporter.exported.size() == 1, Duration.ofSeconds(2),
                     "background scheduleDelay export did not happen");
         }
@@ -82,7 +80,7 @@ class PlatformDropOldestExportSpanProcessorContractTest {
 
     @Test
     void forceFlushDuringConcurrentShutdownStillCompletes() throws InterruptedException {
-        // given: forceFlush регистрирует flush generation, пока shutdown() выполняется параллельно
+        // given
         CountingExporter exporter = new CountingExporter();
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)
                 .maxQueueSize(64)
@@ -99,21 +97,24 @@ class PlatformDropOldestExportSpanProcessorContractTest {
         ExecutorService racers = Executors.newFixedThreadPool(2);
         try {
             CountDownLatch startSignal = new CountDownLatch(1);
+
             Future<CompletableResultCode> flushFuture = racers.submit(() -> {
                 await(startSignal);
                 return processor.forceFlush();
             });
+
             Future<CompletableResultCode> shutdownFuture = racers.submit(() -> {
                 await(startSignal);
                 return processor.shutdown();
             });
+
             startSignal.countDown();
 
-            // when: forceFlush() и shutdown() гонятся за общим queueLock конкурентно
+            // when
             CompletableResultCode flush = flushFuture.get(5, TimeUnit.SECONDS);
             CompletableResultCode shutdown = shutdownFuture.get(5, TimeUnit.SECONDS);
 
-            // then: ни один promise не зависает — их завершает failPendingFlushesLocked()
+            // then
             assertThat(flush.join(5, TimeUnit.SECONDS).isDone()).isTrue();
             assertThat(shutdown.join(5, TimeUnit.SECONDS).isDone()).isTrue();
             assertThat(shutdown.isSuccess()).isTrue();
@@ -127,7 +128,7 @@ class PlatformDropOldestExportSpanProcessorContractTest {
 
     @Test
     void manyParallelForceFlushCallsAllCompleteWithoutHangOrException() throws InterruptedException {
-        // given: несколько потоков одновременно вызывают forceFlush() на общей очереди
+        // given
         CountingExporter exporter = new CountingExporter();
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)
                 .maxQueueSize(256)
@@ -153,8 +154,8 @@ class PlatformDropOldestExportSpanProcessorContractTest {
             }
             startSignal.countDown();
 
-            // when: все forceFlush() завершаются
-            // then: ни один результат не зависает, очередь дренирована полностью
+            // when
+            // then
             for (Future<CompletableResultCode> future : futures) {
                 CompletableResultCode result = future.get(5, TimeUnit.SECONDS);
                 assertThat(result.join(5, TimeUnit.SECONDS).isSuccess())
@@ -172,7 +173,7 @@ class PlatformDropOldestExportSpanProcessorContractTest {
 
     @Test
     void toSpanDataFailureIsIsolatedAndSpanIsSilentlyDropped() {
-        // given: ReadableSpan, у которого toSpanData() бросает RuntimeException
+        // given
         CountingExporter exporter = new CountingExporter();
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)
                 .maxQueueSize(16)
@@ -186,11 +187,10 @@ class PlatformDropOldestExportSpanProcessorContractTest {
                     TraceFlags.getSampled(), TraceState.getDefault()));
             when(poisoned.toSpanData()).thenThrow(new RuntimeException("simulated toSpanData failure"));
 
-            // when: onEnd() получает span, снимок которого недоступен
+            // when
             processor.onEnd(poisoned);
 
-            // then: span молча теряется (не попадает в очередь), процессор не падает,
-            // отдельного счётчика этой потери не существует — характеризация текущего пробела
+            // then
             assertThat(processor.metricsSnapshot().queueSize()).isZero();
             assertThat(processor.metricsSnapshot().droppedOverflowTotal()).isZero();
             assertThat(processor.metricsSnapshot().droppedAfterShutdownTotal()).isZero();
@@ -201,7 +201,7 @@ class PlatformDropOldestExportSpanProcessorContractTest {
 
     @Test
     void forceFlushAfterCompletedShutdownReturnsNewIndependentFailureResult() {
-        // given: shutdown полностью завершён
+        // given
         CountingExporter exporter = new CountingExporter();
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)
                 .build();
@@ -209,11 +209,10 @@ class PlatformDropOldestExportSpanProcessorContractTest {
         shutdown.join(5, TimeUnit.SECONDS);
         assertThat(shutdown.isDone()).isTrue();
 
-        // when: forceFlush() вызывается после завершённого shutdown
+        // when
         CompletableResultCode flushAfterShutdown = processor.forceFlush();
 
-        // then: возвращается новый, немедленно завершённый failure result — не shutdownResult
-        // и не незавершённый promise (см. ADR-drop-oldest-export-processor-v2 §2)
+        // then
         assertThat(flushAfterShutdown).isNotSameAs(shutdown);
         assertThat(flushAfterShutdown.isDone()).isTrue();
         assertThat(flushAfterShutdown.isSuccess()).isFalse();
@@ -221,8 +220,7 @@ class PlatformDropOldestExportSpanProcessorContractTest {
 
     @Test
     void nonRuntimeExceptionExporterFailureIsAlreadyIsolatedInsideExportBatch() {
-        // given: exporter, который бросает обычный RuntimeException — этот путь уже перехватывается
-        // внутри exportBatch() до достижения top-level catch(RuntimeException) в workerLoop
+        // given
         AtomicInteger calls = new AtomicInteger();
         SpanExporter throwsRuntimeExceptionOnce = new SpanExporter() {
             @Override
@@ -246,15 +244,11 @@ class PlatformDropOldestExportSpanProcessorContractTest {
             tracer.spanBuilder("first").startSpan().end();
             tracer.spanBuilder("second").startSpan().end();
 
-            // when: первый batch бросает RuntimeException; forceFlush падает сразу же на первом
-            // неуспехе в пределах watermark, не дожидаясь второго batch'а (см. collectTerminalFlushesLocked)
+            // when
             CompletableResultCode flush = processor.forceFlush();
             assertThat(flush.join(5, TimeUnit.SECONDS).isSuccess()).isFalse();
 
-            // then: worker продолжает работать независимо от исхода flush (isolation внутри
-            // exportBatch, а не top-level catch); второй export происходит по следующему
-            // scheduleDelay-циклу. В production коде реальный worker-death воспроизводим
-            // только через Error, не RuntimeException
+            // then
             awaitTrue(() -> calls.get() >= 2, Duration.ofSeconds(2),
                     "worker did not continue exporting after an isolated RuntimeException");
             assertThat(processor.metricsSnapshot().failuresTotal()).isEqualTo(1);
@@ -263,9 +257,7 @@ class PlatformDropOldestExportSpanProcessorContractTest {
 
     @Test
     void nonfatalErrorEscapingWorkerLoopTransitionsToFailedAndClosesAdmission() throws InterruptedException {
-        // given: exporter бросает AssertionError (Error, не RuntimeException) — не перехватывается
-        // экспортным catch(Throwable) внутри TimedSpanExporter.export() (nonfatal), но при этом
-        // не должен уйти дальше вверх мимо ExportWorker.run()
+        // given
         CountDownLatch exportEntered = new CountDownLatch(1);
         AtomicInteger calls = new AtomicInteger();
         SpanExporter throwsErrorForever = new SpanExporter() {
@@ -288,16 +280,14 @@ class PlatformDropOldestExportSpanProcessorContractTest {
             Tracer tracer = tp.get("worker-death-test");
             tracer.spanBuilder("poisoned").startSpan().end();
 
-            // when: TimedSpanExporter уже перехватывает AssertionError как обычный failure —
-            // worker продолжает жить и повторяет export по следующему batch'у
+            // when
             assertThat(exportEntered.await(5, TimeUnit.SECONDS)).isTrue();
             awaitTrue(() -> calls.get() >= 1, Duration.ofSeconds(2),
                     "expected at least one export attempt");
             awaitTrue(() -> processor.metricsSnapshot().failuresTotal() >= 1, Duration.ofSeconds(2),
                     "nonfatal Error escaping exporter.export() must be counted as a failure, not silently swallowed");
 
-            // then: admission остаётся открытым — export() продолжает вызываться для новых спанов,
-            // lifecycleState остаётся ACTIVE (никакого worker death для обычного nonfatal Error)
+            // then
             tracer.spanBuilder("after-death").startSpan().end();
             awaitTrue(() -> calls.get() >= 2, Duration.ofSeconds(2),
                     "worker must keep retrying export after a nonfatal Error instead of dying silently");
@@ -307,7 +297,7 @@ class PlatformDropOldestExportSpanProcessorContractTest {
 
     @Test
     void forceFlushDuringNonfatalExporterErrorAlwaysCompletesWithFailure() throws InterruptedException {
-        // given: тот же nonfatal Error, но с активным forceFlush() ровно во время неуспешного export()
+        // given
         CountDownLatch exportEntered = new CountDownLatch(1);
         SpanExporter throwsErrorForever = new SpanExporter() {
             @Override
@@ -329,12 +319,11 @@ class PlatformDropOldestExportSpanProcessorContractTest {
             Tracer tracer = tp.get("stuck-flush-promise-test");
             tracer.spanBuilder("poisoned").startSpan().end();
 
-            // when: forceFlush() регистрирует flush generation ровно перед неуспешным export()
+            // when
             CompletableResultCode flush = processor.forceFlush();
             assertThat(exportEntered.await(5, TimeUnit.SECONDS)).isTrue();
 
-            // then: TimedSpanExporter поглощает nonfatal Error как обычный failure — ExportBuffer
-            // помечает flush-generation неуспешной и завершает promise сразу после unlock, без утечки
+            // then
             CompletableResultCode joined = flush.join(5, TimeUnit.SECONDS);
             assertThat(joined.isDone())
                     .as("flush promise must complete even when the batch export fails with a nonfatal Error")
@@ -345,8 +334,7 @@ class PlatformDropOldestExportSpanProcessorContractTest {
 
     @Test
     void oneFailedExportBatchNoLongerPoisonsFutureShutdownResult() {
-        // given: ровно один export бросает RuntimeException, все последующие — успешны,
-        // очередь полностью дренирована до shutdown
+        // given
         AtomicInteger calls = new AtomicInteger();
         SpanExporter failsOnceThenAlwaysSucceeds = new SpanExporter() {
             @Override
@@ -374,7 +362,7 @@ class PlatformDropOldestExportSpanProcessorContractTest {
         awaitTrue(() -> processor.metricsSnapshot().queueSize() == 0, Duration.ofSeconds(2),
                 "queue did not drain before shutdown");
 
-        // when: shutdown вызывается значительно позже, очередь пуста, exporter.shutdown() исправен
+        // when
         CompletableResultCode shutdown = tp.shutdown();
         shutdown.join(5, TimeUnit.SECONDS);
 
@@ -385,7 +373,7 @@ class PlatformDropOldestExportSpanProcessorContractTest {
 
     @Test
     void exportFailureLogThrottleRecoversViaRateLimitedLoggerInsteadOfPermanentOneShot() {
-        // given: exporter, который никогда не перестаёт бросать исключение
+        // given
         SpanExporter alwaysThrows = new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> batch) {

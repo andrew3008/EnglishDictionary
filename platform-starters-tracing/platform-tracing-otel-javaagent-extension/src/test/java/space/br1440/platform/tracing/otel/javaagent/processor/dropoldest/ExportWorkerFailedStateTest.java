@@ -15,17 +15,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-/**
- * Hardening-тесты терминального состояния {@code FAILED}: fatal/nonfatal bookkeeping и
- * propagation ровно на границе {@link ExportWorker} / {@link ExportBuffer}
- * (см. ADR-drop-oldest-export-processor-v2 §2).
- */
 class ExportWorkerFailedStateTest {
 
     @Test
     @SuppressWarnings("removal")
     void fatalThreadDeathPerformsBookkeepingThenRethrowsOriginalThrowable() {
-        // given: worker с зарегистрированным pending flush и exporter'ом, симулирующим fatal ThreadDeath
+        // given
         DropOldestExportMetrics metrics = new DropOldestExportMetrics();
         ExportBuffer buffer = new ExportBuffer(16, 4, metrics);
         buffer.admit(spanData());
@@ -35,10 +30,10 @@ class ExportWorkerFailedStateTest {
         when(exporter.export(any())).thenThrow(new ThreadDeath());
         ExportWorker worker = new ExportWorker(buffer, exporter, Duration.ofMinutes(10).toNanos());
 
-        // when: run() выполняется синхронно на текущем потоке (без start()), чтобы поймать rethrow
+        // when
         assertThatThrownBy(worker::run).isInstanceOf(ThreadDeath.class);
 
-        // then: bookkeeping выполнен до rethrow — FAILED, pending flush завершён failure, latch освобождён
+        // then
         assertThat(buffer.lifecycleState()).isEqualTo(LifecycleState.FAILED);
         assertThat(flush.isDone()).isTrue();
         assertThat(flush.isSuccess()).isFalse();
@@ -47,7 +42,7 @@ class ExportWorkerFailedStateTest {
 
     @Test
     void fatalLinkageErrorPerformsBookkeepingThenRethrowsOriginalThrowable() {
-        // given: NoClassDefFoundError — конкретный LinkageError, воспроизводимый без ThreadDeath
+        // given
         DropOldestExportMetrics metrics = new DropOldestExportMetrics();
         ExportBuffer buffer = new ExportBuffer(16, 4, metrics);
         buffer.admit(spanData());
@@ -68,9 +63,7 @@ class ExportWorkerFailedStateTest {
 
     @Test
     void nonfatalThrowableEscapingExporterTransitionsToFailedWithoutRethrow() {
-        // given: гипотетический баг в collaborator'е — обычный RuntimeException, сбежавший из exporter
-        // (в production exporter.export() уже перехватывается TimedSpanExporter; здесь мокается сама
-        // граница ExportWorker/TimedSpanExporter, чтобы проверить defensive nonfatal-ветвь)
+        // given
         DropOldestExportMetrics metrics = new DropOldestExportMetrics();
         ExportBuffer buffer = new ExportBuffer(16, 4, metrics);
         buffer.admit(spanData());
@@ -80,7 +73,7 @@ class ExportWorkerFailedStateTest {
         when(exporter.export(any())).thenThrow(new IllegalStateException("simulated unexpected bug"));
         ExportWorker worker = new ExportWorker(buffer, exporter, Duration.ofMinutes(10).toNanos());
 
-        // when: run() не пробрасывает nonfatal Throwable дальше — поглощается как terminal bookkeeping
+        // when
         AtomicBoolean escaped = new AtomicBoolean(true);
         try {
             worker.run();
@@ -98,17 +91,17 @@ class ExportWorkerFailedStateTest {
 
     @Test
     void failedStateClosesAdmissionAndDiscardsQueuedSpansExactlyOnce() {
-        // given: очередь с непереданными exporter'у спанами на момент терминального failure
+        // given
         DropOldestExportMetrics metrics = new DropOldestExportMetrics();
         ExportBuffer buffer = new ExportBuffer(16, 4, metrics);
         buffer.admit(spanData());
         buffer.admit(spanData());
         buffer.admit(spanData());
 
-        // when: worker переходит в FAILED напрямую (симулируем bookkeeping без реального потока)
+        // when
         buffer.failTerminal();
 
-        // then: admission закрыт, вся ранее принятая (не в-полёте) очередь учтена как discardedQueuedTotal
+        // then
         assertThat(buffer.isAdmissionOpen()).isFalse();
         assertThat(metrics.discardedQueuedTotal()).isEqualTo(3);
         assertThat(buffer.snapshot().queueSize()).isZero();

@@ -16,12 +16,14 @@ class ScrubbingAssemblySurfaceTest {
     @Test
     @DisplayName("PlatformExportProcessorFactory: публичен только конструктор с session runtime")
     void exportFactoryExposesOnlyTheRuntimeAwareConstructor() {
+        // given/when/then
         assertOnlyRuntimeAwareConstructorIsPublic(PlatformExportProcessorFactory.class);
     }
 
     @Test
     @DisplayName("PlatformSpanProcessorFactory: публичен только конструктор с session runtime")
     void spanProcessorFactoryExposesOnlyTheRuntimeAwareConstructor() {
+        // given/when/then
         assertOnlyRuntimeAwareConstructorIsPublic(PlatformSpanProcessorFactory.class);
     }
 

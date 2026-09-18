@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p><b>Механизм:</b> используем custom {@link SpanExporter} (in-memory счётчик) вместо
  * Collector'а — это даёт точное наблюдение, не зависящее от сетевой доступности OTLP
- * (в smoke-тесте {@link space.br1440.platform.tracing.e2e.smoke.BspDropOldestSafetyAgentSmokeTest}
+ * (в smoke-тесте {@code space.br1440.platform.tracing.e2e.smoke.BspDropOldestSafetyAgentSmokeTest}
  * OTLP заведомо unreachable, что делает double-export невозможным к измерению через
  * collector).</p>
  *
@@ -44,6 +44,7 @@ class BspDropOldestNoDoubleExportTest {
     @Test
     @DisplayName("opt-in DROP_OLDEST: каждый span экспортируется ровно один раз")
     void everySpanExportedExactlyOnceUnderOptIn() {
+        // given
         CountingExporter counting = new CountingExporter();
 
         // ВАЖНО: подмена exporter'а через customizer должна быть зарегистрирована ДО
@@ -70,6 +71,7 @@ class BspDropOldestNoDoubleExportTest {
                 .addSpanExporterCustomizer((existing, cfg) -> counting);
         new BootstrapAutoConfigurationCustomizerProvider(BootstrapCoordinator.create()).customize(builder);
 
+        // when
         AutoConfiguredOpenTelemetrySdk sdk = builder.build();
         int totalSpans = 50;
         try {
@@ -85,8 +87,7 @@ class BspDropOldestNoDoubleExportTest {
             sdk.getOpenTelemetrySdk().close();
         }
 
-        // Каждый spanId должен встретиться ровно один раз: отсутствие дубликатов = нет
-        // утечки стокового BSP с тем же exporter'ом.
+        // then
         Map<String, Long> spanIdCounts = counting.exported.stream()
                 .collect(java.util.stream.Collectors.groupingBy(
                         s -> s.getSpanContext().getSpanId(),
@@ -102,9 +103,6 @@ class BspDropOldestNoDoubleExportTest {
                 .isEqualTo(totalSpans);
     }
 
-    // ---------------------------------------------------------------------------------------------
-
-    /** Exporter с счётчиком вызовов export() и накопленными span'ами. */
     private static final class CountingExporter implements SpanExporter {
         final AtomicInteger exportCalls = new AtomicInteger();
         final List<SpanData> exported = new CopyOnWriteArrayList<>();

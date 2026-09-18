@@ -42,7 +42,7 @@ class FilteringBaggagePropagatorInjectionTest {
     @Test
     @DisplayName("characterization: полностью отфильтрованный baggage не вызывает setter.set ни разу")
     void fullyFilteredBaggage_neverCallsSetter_characterization() {
-        // given: baggage содержит только deny-ключи, ни один allowlisted key не проходит фильтр
+        // given
         Context ctx = Context.root().with(Baggage.builder()
                 .put("password", "secret123")
                 .put("token", "jwt-abc")
@@ -57,7 +57,7 @@ class FilteringBaggagePropagatorInjectionTest {
         // when
         newPropagator().inject(ctx, carrier, countingSetter);
 
-        // then: единственная точка цепочки, где no-partial-state гарантирован структурой кода
+        // then
         assertThat(setterCalls.get()).isZero();
         assertThat(carrier).isEmpty();
     }
@@ -65,13 +65,16 @@ class FilteringBaggagePropagatorInjectionTest {
     @Test
     @DisplayName("characterization: пустой (без entries) baggage не вызывает setter.set ни разу")
     void emptyBaggage_neverCallsSetter_characterization() {
+        // given
         Context ctx = Context.root();
         AtomicInteger setterCalls = new AtomicInteger();
         TextMapSetter<Map<String, String>> countingSetter = (carrier, key, value) -> setterCalls.incrementAndGet();
         Map<String, String> carrier = new HashMap<>();
 
+        // when
         newPropagator().inject(ctx, carrier, countingSetter);
 
+        // then
         assertThat(setterCalls.get()).isZero();
         assertThat(carrier).isEmpty();
     }
@@ -86,8 +89,7 @@ class FilteringBaggagePropagatorInjectionTest {
     @Test
     @DisplayName("extract не фильтрует входящий baggage вообще — намеренная асимметрия с inject")
     void extract_isUnfilteredPassthrough_byDesign() {
-        // given: allowlist разрешает только tenant_class, но входящий carrier содержит denied
-        // и не-allowlisted ключи
+        // given
         Map<String, String> carrier = new HashMap<>();
         Context outboundCtx = Context.root().with(Baggage.builder()
                 .put("password", "leak")
@@ -131,14 +133,14 @@ class FilteringBaggagePropagatorInjectionTest {
     @Test
     @DisplayName("conformance: ASCII space кодируется как %20 (не '+') и проходит stock round-trip")
     void spaceEncodedAsPercent20_stockRoundTrip_conformance() {
-        // given: значение с пробелом ("source value: DF 28" из §6.1)
+        // given
         Context ctx = Context.root().with(Baggage.builder().put("tenant_class", "DF 28").build());
         Map<String, String> carrier = new HashMap<>();
 
         // when
         newPropagator().inject(ctx, carrier, (c, k, v) -> c.put(k, v));
 
-        // then: заголовок использует W3C/OTel-корректный %20, а не '+'
+        // then
         String header = carrier.get("baggage");
         assertThat(header).contains("tenant_class=DF%2028");
         assertThat(header).doesNotContain("DF+28");
@@ -151,19 +153,23 @@ class FilteringBaggagePropagatorInjectionTest {
     @Test
     @DisplayName("conformance: UTF-8 Unicode проходит stock inject/extract round-trip без изменения значения")
     void unicodeValue_stockRoundTrip_conformance() {
+        // given
         String original = "тест-значение-Ω";
         Context ctx = Context.root().with(Baggage.builder().put("tenant_class", original).build());
         Map<String, String> carrier = new HashMap<>();
 
+        // when
         newPropagator().inject(ctx, carrier, (c, k, v) -> c.put(k, v));
-
         Context extracted = W3CBaggagePropagator.getInstance().extract(Context.root(), carrier, MAP_GETTER);
+
+        // then
         assertThat(Baggage.fromContext(extracted).getEntryValue("tenant_class")).isEqualTo(original);
     }
 
     @Test
     @DisplayName("conformance: denied/non-allowlisted ключи отсутствуют в заголовке целиком")
     void deniedKeys_absentFromHeader_conformance() {
+        // given
         Context ctx = Context.root().with(Baggage.builder()
                 .put("password", "leak")
                 .put("tenant_class", "gold")
@@ -171,8 +177,10 @@ class FilteringBaggagePropagatorInjectionTest {
                 .build());
         Map<String, String> carrier = new HashMap<>();
 
+        // when
         newPropagator().inject(ctx, carrier, (c, k, v) -> c.put(k, v));
 
+        // then
         String header = carrier.get("baggage");
         assertThat(header).doesNotContain("password").doesNotContain("leak").doesNotContain("not_allowlisted");
         assertThat(header).contains("tenant_class=gold");
@@ -181,14 +189,17 @@ class FilteringBaggagePropagatorInjectionTest {
     @Test
     @DisplayName("conformance: BaggageEntryMetadata сохраняется и кодируется штатным delegate")
     void metadataPreserved_encodedByStockDelegate_conformance() {
+        // given
         Context ctx = Context.root().with(Baggage.builder()
                 .put("tenant_class", "gold", BaggageEntryMetadata.create("verified=true"))
                 .build());
         Map<String, String> carrier = new HashMap<>();
 
+        // when
         newPropagator().inject(ctx, carrier, (c, k, v) -> c.put(k, v));
-
         Context extracted = W3CBaggagePropagator.getInstance().extract(Context.root(), carrier, MAP_GETTER);
+
+        // then
         Baggage baggage = Baggage.fromContext(extracted);
         assertThat(baggage.getEntryValue("tenant_class")).isEqualTo("gold");
         assertThat(baggage.asMap().get("tenant_class").getMetadata().getValue()).isEqualTo("verified=true");
@@ -197,7 +208,7 @@ class FilteringBaggagePropagatorInjectionTest {
     @Test
     @DisplayName("conformance: свыше 64 entries и заголовок свыше 8192 байт ограничены stock OTel contract")
     void overLimitEntries_boundedByStockContract_conformance() {
-        // given: allowlist и baggage со 100 разрешёнными записями (заведомо больше лимита 64)
+        // given
         java.util.Set<String> allowedKeys = new java.util.HashSet<>();
         BaggageBuilder builder = Baggage.builder();
         for (int i = 0; i < 100; i++) {
@@ -213,9 +224,7 @@ class FilteringBaggagePropagatorInjectionTest {
         // when
         propagator.inject(ctx, carrier, (c, k, v) -> c.put(k, v));
 
-        // then: итоговый заголовок не превышает stock byte-лимит, а извлечённый baggage —
-        // stock entry-лимит (проверяем upper bound, а не конкретный набор из 64 ключей — порядок
-        // immutable Baggage не гарантирован)
+        // then
         String header = carrier.get("baggage");
         assertThat(header).isNotNull();
         assertThat(header.getBytes(StandardCharsets.UTF_8).length).isLessThanOrEqualTo(8192);
@@ -227,6 +236,7 @@ class FilteringBaggagePropagatorInjectionTest {
     @Test
     @DisplayName("conformance: исходный Context/Baggage не мутируются inject-ом")
     void originalContextAndBaggage_notMutated_conformance() {
+        // given
         Baggage original = Baggage.builder()
                 .put("password", "leak")
                 .put("tenant_class", "gold")
@@ -234,8 +244,10 @@ class FilteringBaggagePropagatorInjectionTest {
         Context ctx = Context.root().with(original);
         Map<String, String> carrier = new HashMap<>();
 
+        // when
         newPropagator().inject(ctx, carrier, (c, k, v) -> c.put(k, v));
 
+        // then
         Baggage stillOriginal = Baggage.fromContext(ctx);
         assertThat(stillOriginal.getEntryValue("password")).isEqualTo("leak");
         assertThat(stillOriginal.size()).isEqualTo(2);

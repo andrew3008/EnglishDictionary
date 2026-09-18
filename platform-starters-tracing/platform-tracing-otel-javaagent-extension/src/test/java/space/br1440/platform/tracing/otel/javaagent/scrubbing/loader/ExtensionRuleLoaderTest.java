@@ -17,10 +17,6 @@ import java.util.jar.JarOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Тесты загрузчика внешних правил (PR-2): пустое свойство, отсутствующий путь, JAR hygiene по
- * {@code *.class}, режим валидации (LENIENT/STRICT), дедупликация canonical-путей.
- */
 class ExtensionRuleLoaderTest {
 
     private static ExtensionRuleLoader loader() {
@@ -29,6 +25,7 @@ class ExtensionRuleLoaderTest {
 
     @Test
     void empty_property_yields_zero_rules_without_errors() {
+        // when/then
         try (ExtensionRuleLoader loader = loader()) {
             assertThat(loader.load(null)).isEmpty();
             assertThat(loader.load("   ")).isEmpty();
@@ -39,6 +36,7 @@ class ExtensionRuleLoaderTest {
 
     @Test
     void nonexistent_path_is_recorded_as_MISSING_PATH() {
+        // when/then
         try (ExtensionRuleLoader loader = loader()) {
             assertThat(loader.load("/no/such/path/rules.jar")).isEmpty();
             assertThat(loader.getFailedEntries())
@@ -49,11 +47,13 @@ class ExtensionRuleLoaderTest {
 
     @Test
     void jar_with_forbidden_class_is_rejected_by_hygiene(@TempDir Path dir) throws IOException {
+        // given
         Path jar = dir.resolve("dirty.jar");
         writeJar(jar, Map.of(
                 "io/opentelemetry/Foo.class", "x",
                 "space/br1440/platform/tracing/api/spi/SpanAttributeScrubbingRule.class", "y"));
 
+        // when/then
         try (ExtensionRuleLoader loader = loader()) {
             assertThat(loader.load(jar.toString())).isEmpty();
             assertThat(loader.getFailedEntries())
@@ -66,12 +66,14 @@ class ExtensionRuleLoaderTest {
     void non_class_entries_with_forbidden_prefix_do_not_trigger_hygiene(@TempDir Path dir) throws IOException {
         // Записи с префиксом space/br1440 и io/opentelemetry, но НЕ *.class, не должны давать
         // ложного hygiene-отказа (Javadoc, POM, package-info.html и т.п.).
+        // given
         Path jar = dir.resolve("clean.jar");
         writeJar(jar, Map.of(
                 "space/br1440/platform/tracing/api/spi/package-info.html", "<html/>",
                 "io/opentelemetry/notes.txt", "doc",
                 "META-INF/maven/space/br1440/pom.xml", "<project/>"));
 
+        // when/then
         try (ExtensionRuleLoader loader = loader()) {
             // Провайдеров нет (нет META-INF/services), но и hygiene-отказа быть не должно.
             assertThat(loader.load(jar.toString())).isEmpty();
@@ -82,11 +84,13 @@ class ExtensionRuleLoaderTest {
     @Test
     void corrupt_services_file_is_recorded_as_SERVICE_CONFIGURATION_ERROR(@TempDir Path dir) throws IOException {
         // META-INF/services ссылается на несуществующий класс — JAR не должен валить старт.
+        // given
         Path jar = dir.resolve("broken.jar");
         writeJar(jar, Map.of(
                 "META-INF/services/space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule",
                 "com.example.DoesNotExist"));
 
+        // when/then
         try (ExtensionRuleLoader loader = loader()) {
             assertThat(loader.load(jar.toString())).isEmpty();
             assertThat(loader.getFailedEntries())
@@ -97,10 +101,12 @@ class ExtensionRuleLoaderTest {
 
     @Test
     void duplicate_jar_in_LENIENT_is_skipped_with_DUPLICATE_CONFIG(@TempDir Path dir) throws IOException {
+        // given
         Path jar = dir.resolve("rules.jar");
         writeJar(jar, Map.of("com/example/Marker.txt", "x"));
         String canonical = jar.toFile().getCanonicalPath();
 
+        // when/then
         try (ExtensionRuleLoader loader =
                      new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.LENIENT, Set.of(canonical))) {
             assertThat(loader.load(jar.toString())).isEmpty();
@@ -112,10 +118,12 @@ class ExtensionRuleLoaderTest {
 
     @Test
     void duplicate_jar_in_STRICT_throws(@TempDir Path dir) throws IOException {
+        // given
         Path jar = dir.resolve("rules.jar");
         writeJar(jar, Map.of("com/example/Marker.txt", "x"));
         String canonical = jar.toFile().getCanonicalPath();
 
+        // when/then
         try (ExtensionRuleLoader loader =
                      new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.STRICT, Set.of(canonical))) {
             org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
@@ -125,9 +133,11 @@ class ExtensionRuleLoaderTest {
 
     @Test
     void STRICT_mode_throws_on_hygiene_violation(@TempDir Path dir) throws IOException {
+        // given
         Path jar = dir.resolve("dirty.jar");
         writeJar(jar, Map.of("io/opentelemetry/Foo.class", "x"));
 
+        // when/then
         try (ExtensionRuleLoader loader =
                      new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.STRICT, Set.of())) {
             org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
@@ -139,10 +149,12 @@ class ExtensionRuleLoaderTest {
     void same_jar_listed_twice_is_deduplicated_by_canonical_path(@TempDir Path dir) throws IOException {
         // Один и тот же JAR передан и как файл, и через директорию: должен учитываться один раз
         // и не попадать в failed (это не ошибка, а штатная дедупликация).
+        // given
         Path jar = dir.resolve("rules.jar");
         writeJar(jar, Map.of("com/example/Marker.txt", "x"));
 
         String property = jar.toString() + "," + dir.toString();
+        // when/then
         try (ExtensionRuleLoader loader = loader()) {
             assertThat(loader.load(property)).isEmpty();
             assertThat(loader.getFailedProviders()).isZero();
@@ -151,22 +163,27 @@ class ExtensionRuleLoaderTest {
 
     @Test
     void linkage_error_is_rethrown_as_fatal_and_not_classified_as_sanitizer_failure() {
+        // given
         NoClassDefFoundError linkage = new NoClassDefFoundError("company/MandatoryRule");
+        // when/then
         org.junit.jupiter.api.Assertions.assertThrows(NoClassDefFoundError.class,
                 () -> PlatformThrowables.propagateFatalCauseChain(linkage));
     }
 
     @Test
     void linkage_error_wrapped_as_ServiceConfigurationError_cause_is_still_fatal() {
+        // given
         NoClassDefFoundError linkage = new NoClassDefFoundError("company/MandatoryRule");
         ServiceConfigurationError wrapper = new ServiceConfigurationError("provider init failed", linkage);
 
+        // when/then
         org.junit.jupiter.api.Assertions.assertThrows(NoClassDefFoundError.class,
                 () -> PlatformThrowables.propagateFatalCauseChain(wrapper));
     }
 
     @Test
     void ordinary_RuntimeException_in_LENIENT_mode_is_still_skipped() {
+        // given/when
         PlatformThrowables.propagateFatalCauseChain(new IllegalStateException("provider misbehaved"));
     }
 

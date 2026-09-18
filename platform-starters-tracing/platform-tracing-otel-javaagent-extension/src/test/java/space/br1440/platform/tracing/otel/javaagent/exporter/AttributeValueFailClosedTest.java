@@ -84,11 +84,14 @@ class AttributeValueFailClosedTest {
     @ParameterizedTest(name = "DROP removes the whole VALUE attribute: {0}")
     @MethodSource("valueShapes")
     void dropRemovesTheWholeValueAttribute(String shape, Value<?> value) {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
         Attributes input = Attributes.of(SENSITIVE, value);
 
+        // when
         AttributesScrubber.Result result = AttributesScrubber.scrub(input, runtime);
 
+        // then
         assertThat(result.changed()).as(shape).isTrue();
         assertThat(result.attributes().asMap()).as(shape).doesNotContainKey(SENSITIVE);
         assertThat(renderedPayload(result.attributes())).as(shape).doesNotContain("supersecret");
@@ -97,11 +100,14 @@ class AttributeValueFailClosedTest {
     @ParameterizedTest(name = "MASK also removes the whole VALUE attribute: {0}")
     @MethodSource("valueShapes")
     void maskRemovesTheWholeValueAttribute(String shape, Value<?> value) {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(alwaysMask()));
         Attributes input = Attributes.of(NEUTRAL, value);
 
+        // when
         AttributesScrubber.Result result = AttributesScrubber.scrub(input, runtime);
 
+        // then
         assertThat(result.changed()).as(shape).isTrue();
         assertThat(result.attributes().asMap()).as(shape).doesNotContainKey(NEUTRAL);
     }
@@ -109,11 +115,14 @@ class AttributeValueFailClosedTest {
     @ParameterizedTest(name = "HASH also removes the whole VALUE attribute: {0}")
     @MethodSource("valueShapes")
     void hashRemovesTheWholeValueAttribute(String shape, Value<?> value) {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(alwaysHash()), "test-hmac-key");
         Attributes input = Attributes.of(NEUTRAL, value);
 
+        // when
         AttributesScrubber.Result result = AttributesScrubber.scrub(input, runtime);
 
+        // then
         assertThat(result.changed()).as(shape).isTrue();
         assertThat(result.attributes().asMap()).as(shape).doesNotContainKey(NEUTRAL);
     }
@@ -121,12 +130,15 @@ class AttributeValueFailClosedTest {
     @ParameterizedTest(name = "TRUNCATE is not a KEEP-equivalent for VALUE: {0}")
     @MethodSource("valueShapes")
     void truncateRemovesTheWholeValueAttribute(String shape, Value<?> value) {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(IP));
         AttributeKey<Value<?>> key = AttributeKey.valueKey("client.address");
         Attributes input = Attributes.of(key, value);
 
+        // when
         AttributesScrubber.Result result = AttributesScrubber.scrub(input, runtime);
 
+        // then
         assertThat(result.changed()).as(shape).isTrue();
         assertThat(result.attributes().asMap()).as(shape).doesNotContainKey(key);
     }
@@ -134,10 +146,13 @@ class AttributeValueFailClosedTest {
     @ParameterizedTest(name = "collapse replaces VALUE with the sentinel: {0}")
     @MethodSource("valueShapes")
     void collapseReplacesValueWithTheSentinel(String shape, Value<?> value) {
+        // given
         Attributes input = Attributes.of(SENSITIVE, value);
 
+        // when
         Attributes collapsed = AttributesScrubber.collapseToSentinel(input);
 
+        // then
         assertThat(collapsed.get(SENSITIVE))
                 .as(shape)
                 .isEqualTo(Value.of(ScrubbingDecision.SCRUBBING_FAILED_REASON));
@@ -147,11 +162,14 @@ class AttributeValueFailClosedTest {
     @ParameterizedTest(name = "KEEP from the legacy rule engine does not authorize a VALUE attribute: {0}")
     @MethodSource("valueShapes")
     void keepCannotAuthorizeComplexValue(String shape, Value<?> value) {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD, IP));
         Attributes input = Attributes.of(NEUTRAL, value);
 
+        // when
         AttributesScrubber.Result result = AttributesScrubber.scrub(input, runtime);
 
+        // then
         assertThat(result.changed()).as(shape).isTrue();
         assertThat(result.attributes().asMap()).as(shape).doesNotContainKey(NEUTRAL);
         assertThat(renderedPayload(result.attributes())).as(shape).doesNotContain("supersecret");
@@ -160,6 +178,7 @@ class AttributeValueFailClosedTest {
     @Test
     @DisplayName("Neighbouring attributes survive the removal regardless of the position of the VALUE key")
     void neighbouringAttributesSurviveTheRemoval() {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
         Attributes input = Attributes.builder()
                 .put(AttributeKey.stringKey("a.first"), "keep-me")
@@ -167,8 +186,10 @@ class AttributeValueFailClosedTest {
                 .put(AttributeKey.stringKey("z.last"), "keep-me-too")
                 .build();
 
+        // when
         AttributesScrubber.Result result = AttributesScrubber.scrub(input, runtime);
 
+        // then
         assertThat(result.attributes().asMap()).doesNotContainKey(SENSITIVE);
         assertThat(result.attributes().get(AttributeKey.stringKey("a.first"))).isEqualTo("keep-me");
         assertThat(result.attributes().get(AttributeKey.stringKey("z.last"))).isEqualTo("keep-me-too");

@@ -24,16 +24,19 @@ class EnvironmentNormalizerTest {
             "weird-env,weird-env"
     })
     void normalize_enabled(String raw, String expected) {
+        // given/when/then
         assertThat(EnvironmentNormalizer.normalize(raw, true)).isEqualTo(expected);
     }
 
     @Test
     void normalize_disabled_does_not_replace_aliases() {
+        // given/when/then
         assertThat(EnvironmentNormalizer.normalize("prod", false)).isEqualTo("prod");
     }
 
     @Test
     void null_and_blank_yield_unknown() {
+        // given/when/then
         assertThat(EnvironmentNormalizer.normalize(null, true)).isEqualTo(EnvironmentNormalizer.UNKNOWN);
         assertThat(EnvironmentNormalizer.normalize("  ", true)).isEqualTo(EnvironmentNormalizer.UNKNOWN);
     }

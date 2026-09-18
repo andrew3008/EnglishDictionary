@@ -41,12 +41,6 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * P5 evidence на реальном выходе, а не на перечислении полей {@code SpanData}: OTLP-сериализация
- * (binary + JSON), отрендеренный вывод {@link LoggingSpanExporter} и настоящий
- * {@code Span.recordException}. Проверяется отсутствие сырых значений в том виде, в каком они
- * действительно покидают процесс.
- */
 class ExporterBoundaryRealPayloadTest {
 
     private static final String EMAIL_CANARY = "canary@example.com";
@@ -54,7 +48,8 @@ class ExporterBoundaryRealPayloadTest {
 
     private static final List<SpanAttributeScrubbingRule> RULES = List.of(
             BuiltInSpanAttributeScrubbingRules.resolve("email"),
-            BuiltInSpanAttributeScrubbingRules.resolve("password"));
+            BuiltInSpanAttributeScrubbingRules.resolve("password")
+    );
 
     private static SpanData spanWithSecretsEverywhere() {
         return ExporterBoundaryTestSupport.baseSpan("GET /login " + EMAIL_CANARY)
@@ -88,20 +83,10 @@ class ExporterBoundaryRealPayloadTest {
         };
     }
 
-    private static List<SpanData> exportThroughBoundary(SpanData spanData) {
-        InMemorySpanExporter delegate = InMemorySpanExporter.create();
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(RULES);
-        SpanExporter exporter = new SafeSpanExporter(
-                delegate, TracingSettingsSource.isolatedDefaults(), runtime);
-
-        exporter.export(List.of(spanData));
-
-        return delegate.getFinishedSpanItems();
-    }
-
     @Test
     @DisplayName("Реальный OTLP payload не содержит сырых значений")
     void otlpPayloadCarriesNoRawSecrets() {
+        // given
         List<String> rendered = new CopyOnWriteArrayList<>();
         Logger julLogger = Logger.getLogger(OtlpJsonLoggingSpanExporter.class.getName());
         Handler capture = capturingHandler(rendered);
@@ -114,12 +99,14 @@ class ExporterBoundaryRealPayloadTest {
             SpanExporter exporter = new SafeSpanExporter(
                     delegate, TracingSettingsSource.isolatedDefaults(), runtime);
 
+            // when
             exporter.export(List.of(spanWithSecretsEverywhere()));
         } finally {
             julLogger.removeHandler(capture);
             julLogger.setLevel(previousLevel);
         }
 
+        // then
         String payload = String.join("\n", rendered);
         assertThat(payload)
                 .as("payload не пустой — иначе проверка отсутствия секретов ничего не значит")
@@ -130,6 +117,7 @@ class ExporterBoundaryRealPayloadTest {
     @Test
     @DisplayName("Отрендеренный вывод LoggingSpanExporter (сообщение + параметры) не содержит секретов")
     void loggingExporterRenderedOutputCarriesNoRawSecrets() {
+        // given
         Logger julLogger = Logger.getLogger(LoggingSpanExporter.class.getName());
         List<String> rendered = new CopyOnWriteArrayList<>();
         Handler capture = capturingHandler(rendered);
@@ -142,12 +130,14 @@ class ExporterBoundaryRealPayloadTest {
             SpanExporter exporter = new SafeSpanExporter(
                     delegate, TracingSettingsSource.isolatedDefaults(), runtime);
 
+            // when
             exporter.export(List.of(spanWithSecretsEverywhere()));
         } finally {
             julLogger.removeHandler(capture);
             julLogger.setLevel(previousLevel);
         }
 
+        // then
         assertThat(rendered).isNotEmpty();
         assertThat(String.join("\n", rendered))
                 .doesNotContain(EMAIL_CANARY)
@@ -157,6 +147,7 @@ class ExporterBoundaryRealPayloadTest {
     @Test
     @DisplayName("Настоящий Span.recordException канонизируется без Throwable и без исходного сообщения")
     void realRecordExceptionIsCanonicalizedAtTheBoundary() {
+        // given
         InMemorySpanExporter delegate = InMemorySpanExporter.create();
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(RULES);
         SpanExporter exporter = new SafeSpanExporter(
@@ -168,17 +159,19 @@ class ExporterBoundaryRealPayloadTest {
                 .build()) {
             Tracer tracer = provider.get("test");
             Span span = tracer.spanBuilder("checkout").startSpan();
+            // when
             span.recordException(new IllegalStateException("login failed for " + EMAIL_CANARY));
             span.end();
 
             finished = List.copyOf(delegate.getFinishedSpanItems());
         }
 
+        // then
         assertThat(finished).hasSize(1);
-        List<EventData> events = finished.get(0).getEvents();
+        List<EventData> events = finished.getFirst().getEvents();
         assertThat(events).hasSize(1);
 
-        EventData exceptionEvent = events.get(0);
+        EventData exceptionEvent = events.getFirst();
         assertThat(exceptionEvent)
                 .as("ExceptionEventData удерживает исходный Throwable — на boundary он обязан исчезнуть")
                 .isNotInstanceOf(ExceptionEventData.class);
@@ -190,6 +183,7 @@ class ExporterBoundaryRealPayloadTest {
     @Test
     @DisplayName("Span.recordException -> boundary -> реальный OTLP JSON: сырых значений нет в сериализованном виде")
     void realRecordExceptionIsAbsentFromTheSerializedJsonPayload() {
+        // given
         List<String> rendered = new CopyOnWriteArrayList<>();
         Logger julLogger = Logger.getLogger(OtlpJsonLoggingSpanExporter.class.getName());
         Handler capture = capturingHandler(rendered);
@@ -198,12 +192,14 @@ class ExporterBoundaryRealPayloadTest {
         julLogger.setLevel(Level.ALL);
 
         try (SpanExporter delegate = OtlpJsonLoggingSpanExporter.create()) {
+            // when
             recordExceptionThrough(delegate);
         } finally {
             julLogger.removeHandler(capture);
             julLogger.setLevel(previousLevel);
         }
 
+        // then
         String payload = String.join("\n", rendered);
         assertThat(payload)
                 .as("payload не пустой — иначе проверка отсутствия секретов ничего не значит")
@@ -218,6 +214,7 @@ class ExporterBoundaryRealPayloadTest {
     @Test
     @DisplayName("Span.recordException -> boundary -> реальный бинарный OTLP: канарейки нет в байтах запроса")
     void realRecordExceptionIsAbsentFromTheSerializedBinaryPayload() throws Exception {
+        // given
         List<byte[]> bodies = new CopyOnWriteArrayList<>();
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/v1/traces", exchange -> {
@@ -233,11 +230,13 @@ class ExporterBoundaryRealPayloadTest {
                 .setEndpoint("http://127.0.0.1:" + server.getAddress().getPort() + "/v1/traces")
                 .setCompression("none")
                 .build()) {
+            // when
             recordExceptionThrough(delegate);
         } finally {
             server.stop(0);
         }
 
+        // then
         assertThat(bodies).isNotEmpty();
         String wire = new String(concat(bodies), StandardCharsets.UTF_8);
         assertThat(wire)

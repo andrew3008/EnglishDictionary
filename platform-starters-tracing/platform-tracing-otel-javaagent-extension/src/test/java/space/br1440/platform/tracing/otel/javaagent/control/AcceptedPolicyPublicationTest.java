@@ -24,6 +24,7 @@ class AcceptedPolicyPublicationTest {
 
     @Test
     void readersObserveCompleteImmutablePublishedState() throws Exception {
+        // given
         TracingSettingsStore store = new TracingSettingsStore(
                 AcceptedPolicyTestFixtures.RUNTIME_INSTANCE_ID,
                 sequencePolicy(0L));
@@ -58,6 +59,7 @@ class AcceptedPolicyPublicationTest {
                 return null;
             });
 
+            // when
             start.countDown();
             writer.get();
             for (Future<?> reader : readers) {
@@ -65,6 +67,7 @@ class AcceptedPolicyPublicationTest {
             }
         }
 
+        // then
         assertThat(violations.get()).isZero();
         assertThat(store.current().acceptedSequence()).isEqualTo(20_000L);
     }
@@ -78,6 +81,7 @@ class AcceptedPolicyPublicationTest {
                 false,
                 true,
                 true,
-                TracingLogLevel.INFO);
+                TracingLogLevel.INFO
+        );
     }
 }

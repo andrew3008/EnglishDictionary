@@ -11,16 +11,19 @@ import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.resources.Resource;
+import io.opentelemetry.sdk.trace.data.SpanData;
 
 class ValidatingSpanProcessorCharacterizationTest {
 
     @Test
     void runtime_policy_update_disables_subsequent_validation() {
+        // given
         TracingSettingsSource access = TracingSettingsSource.isolatedValidation(false, false);
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access);
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
             Tracer tracer = h.tracer("t");
+            // when
             tracer.spanBuilder("op").startSpan().end();
 
             ValidationAssertions.assertMissingAbsent(h.exporter().getFinishedSpanItems().getFirst());
@@ -29,20 +32,23 @@ class ValidatingSpanProcessorCharacterizationTest {
 
     @Test
     void warn_level_records_missing_but_export_continues() {
+        // given
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(
                 TracingSettingsSource.isolatedValidation(true, false)
         );
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
             Tracer tracer = h.tracer("t");
+            // when
             tracer.spanBuilder("op").startSpan().end();
 
-            var data = h.exporter().getFinishedSpanItems().getFirst();
+            SpanData data = h.exporter().getFinishedSpanItems().getFirst();
             ValidationAssertions.assertMissingRecorded(
                     data,
                     PlatformAttributes.PLATFORM_TYPE,
                     PlatformAttributes.PLATFORM_RESULT
             );
+            // then
             assertThat(data.getName()).isEqualTo("op");
         }
     }

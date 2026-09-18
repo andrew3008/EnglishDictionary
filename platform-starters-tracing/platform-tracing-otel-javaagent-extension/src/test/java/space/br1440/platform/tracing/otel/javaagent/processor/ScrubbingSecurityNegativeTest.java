@@ -14,16 +14,11 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Security-negative проверки: гарантии того, что секреты не утекают в экспортированную SpanData,
- * детерминизм HMAC, разрешение конфликтов правил и честная граница scope (events не чистятся).
- */
 class ScrubbingSecurityNegativeTest {
 
     @Test
     void rule_priority_conflict_authorization_is_dropped_not_hashed() {
-        // authorization матчит и OAuthHeaderRule (DROP, priority 10), и EmailRule по значению
-        // (HASH, priority 130). Должен победить DROP независимо от порядка регистрации.
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("email"),
                 BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")
@@ -31,9 +26,11 @@ class ScrubbingSecurityNegativeTest {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("http.request.header.authorization", "user@example.com");
+            // when
             span.end();
 
-            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes()
+            // then
+            assertThat(h.exporter().getFinishedSpanItems().getFirst().getAttributes()
                     .get(AttributeKey.stringKey("http.request.header.authorization")))
                     .isEmpty();
         }
@@ -41,22 +38,26 @@ class ScrubbingSecurityNegativeTest {
 
     @Test
     void drop_integration_secret_absent_from_exported_SpanData() {
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")
         )))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("http.request.header.authorization", "Bearer super-secret-token");
+            // when
             span.end();
 
-            Attributes attributes = h.exporter().getFinishedSpanItems().get(0).getAttributes();
+            Attributes attributes = h.exporter().getFinishedSpanItems().getFirst().getAttributes();
             attributes.forEach((k, v) ->
+                    // then
                     assertThat(String.valueOf(v)).doesNotContain("super-secret-token"));
         }
     }
 
     @Test
     void mixed_ip_header_masks_entire_value_in_exported_span() {
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("ip-address")
         )))) {
@@ -64,9 +65,11 @@ class ScrubbingSecurityNegativeTest {
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("http.request.header.x-forwarded-for", "1.2.3.4, attacker.example");
             span.setAttribute("client.ip", "2001:db8::1");
+            // when
             span.end();
 
             Attributes attributes = h.exporter().getFinishedSpanItems().getFirst().getAttributes();
+            // then
             assertThat(attributes.get(AttributeKey.stringKey("http.request.header.x-forwarded-for")))
                     .isEqualTo("***")
                     .doesNotContain("attacker.example");
@@ -77,25 +80,29 @@ class ScrubbingSecurityNegativeTest {
 
     @Test
     void hmac_determinism_same_key_yields_same_hash() {
+        // given
         String h1 = hashEmail("secret-key");
         String h2 = hashEmail("secret-key");
         String h3 = hashEmail("another-key");
 
+        // then
         assertThat(h1).isEqualTo(h2);
         assertThat(h1).isNotEqualTo(h3);
     }
 
     @Test
     void fail_fast_without_key_throws_at_startup() {
+        // given
+        // then
         org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
                 () -> ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
-                        List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")), null, true));
+                        List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")), null, true)
+        );
     }
 
     @Test
     void event_scope_token_in_event_is_not_scrubbed_by_SDK_processor() {
-        // Документируем честную границу: ScrubbingSpanProcessor мутирует только span attributes.
-        // Атрибуты событий через ReadWriteSpan не модифицируются — это safety net Collector'а.
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")
         )))) {
@@ -103,11 +110,13 @@ class ScrubbingSecurityNegativeTest {
             Span span = tracer.spanBuilder("op").startSpan();
             span.addEvent("auth", Attributes.of(
                     AttributeKey.stringKey("http.request.header.authorization"), "Bearer secret"));
+            // when
             span.end();
 
-            String eventAttr = h.exporter().getFinishedSpanItems().get(0).getEvents().get(0)
+            String eventAttr = h.exporter().getFinishedSpanItems().getFirst().getEvents().getFirst()
                     .getAttributes().get(AttributeKey.stringKey("http.request.header.authorization"));
-            assertThat(eventAttr).isEqualTo("Bearer secret"); // НЕ вычищено — ожидаемое поведение
+            // then
+            assertThat(eventAttr).isEqualTo("Bearer secret");
         }
     }
 
@@ -119,7 +128,7 @@ class ScrubbingSecurityNegativeTest {
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("user.email", "ivan@example.com");
             span.end();
-            return h.exporter().getFinishedSpanItems().get(0).getAttributes()
+            return h.exporter().getFinishedSpanItems().getFirst().getAttributes()
                     .get(AttributeKey.stringKey("user.email"));
         }
     }

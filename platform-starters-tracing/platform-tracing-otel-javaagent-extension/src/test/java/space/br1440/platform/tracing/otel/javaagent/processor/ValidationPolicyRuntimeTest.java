@@ -12,8 +12,10 @@ class ValidationPolicyRuntimeTest {
 
     @Test
     void updateValidation_atomically_changes_enabled_without_strict() {
+        // given
         TracingSettingsSource access = TracingSettingsSource.isolatedValidation(true, false);
         try (ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access)) {
+        // then
             assertThat(processor.isEnabled()).isTrue();
             assertThat(processor.isStrict()).isFalse();
             long versionBefore = processor.getPolicyVersion();

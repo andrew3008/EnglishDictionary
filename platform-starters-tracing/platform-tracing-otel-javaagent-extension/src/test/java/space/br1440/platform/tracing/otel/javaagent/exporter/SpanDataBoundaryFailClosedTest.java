@@ -27,7 +27,7 @@ import io.opentelemetry.sdk.trace.data.StatusData;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * P5: нормативная таблица ошибок ADR-scrubbing-hybrid-processor-export-boundary.md.
+ * Нормативная таблица ошибок ADR-scrubbing-hybrid-processor-export-boundary.md.
  * Critical rule failure и infrastructure failure обязаны схлопывать <b>весь</b> слой boundary,
  * а не отдельное значение; span удаляется только тогда, когда сам collapse завершился ошибкой.
  */
@@ -87,20 +87,23 @@ class SpanDataBoundaryFailClosedTest {
     @Test
     @DisplayName("Critical rule failure collapses every boundary surface, not just the failing value")
     void criticalFailureCollapsesTheWholeBoundaryLayer() {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(CRITICAL_THROWING));
         SpanDataBoundaryScrubber scrubber = new SpanDataBoundaryScrubber(runtime);
 
+        // when
         SpanBoundaryOutcome outcome = scrubber.scrub(richSpan());
 
+        // then
         assertThat(outcome.dropSpan()).isFalse();
         assertThat(outcome.changed()).isTrue();
 
         SpanData result = outcome.spanData();
         assertThat(result.getName()).isEqualTo(BoundaryTextPolicy.REDACTED);
-        assertThat(result.getEvents().get(0).getName()).isEqualTo(BoundaryTextPolicy.REDACTED);
-        assertThat(result.getEvents().get(0).getAttributes().get(EVENT_ATTR))
+        assertThat(result.getEvents().getFirst().getName()).isEqualTo(BoundaryTextPolicy.REDACTED);
+        assertThat(result.getEvents().getFirst().getAttributes().get(EVENT_ATTR))
                 .isEqualTo(ScrubbingDecision.SCRUBBING_FAILED_REASON);
-        assertThat(result.getLinks().get(0).getAttributes().get(LINK_ATTR))
+        assertThat(result.getLinks().getFirst().getAttributes().get(LINK_ATTR))
                 .isEqualTo(ScrubbingDecision.SCRUBBING_FAILED_REASON);
         assertThat(result.getStatus().getDescription()).isEqualTo(BoundaryTextPolicy.REDACTED);
 
@@ -116,11 +119,14 @@ class SpanDataBoundaryFailClosedTest {
     @Test
     @DisplayName("Non-critical rule failure is counted at the boundary and leaves other surfaces intact")
     void nonCriticalFailureDoesNotCollapseTheLayer() {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(NON_CRITICAL_THROWING));
         SpanDataBoundaryScrubber scrubber = new SpanDataBoundaryScrubber(runtime);
 
+        // when
         SpanBoundaryOutcome outcome = scrubber.scrub(richSpan());
 
+        // then
         assertThat(outcome.dropSpan()).isFalse();
         assertThat(outcome.spanData().getName()).isEqualTo("op");
         assertThat(runtime.boundaryMetrics().nonCriticalFailures()).isPositive();
@@ -131,11 +137,14 @@ class SpanDataBoundaryFailClosedTest {
     @Test
     @DisplayName("Infrastructure failure collapses the boundary first; the span is still exported")
     void infrastructureFailureCollapsesBeforeDropping() {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(INERT));
         SpanDataBoundaryScrubber scrubber = new SpanDataBoundaryScrubber(runtime);
 
+        // when
         SpanBoundaryOutcome outcome = scrubber.scrub(new FlakySpanData(richSpan(), 1));
 
+        // then
         assertThat(outcome.dropSpan()).isFalse();
         assertThat(outcome.spanData().getName()).isEqualTo(BoundaryTextPolicy.REDACTED);
         assertThat(runtime.boundaryMetrics().collapseFailures()).isEqualTo(1L);
@@ -147,11 +156,14 @@ class SpanDataBoundaryFailClosedTest {
     @Test
     @DisplayName("Only a failing collapse drops the span, and the drop is counted")
     void failingCollapseDropsTheSpanAndIncrementsTheCounter() {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(INERT));
         SpanDataBoundaryScrubber scrubber = new SpanDataBoundaryScrubber(runtime);
 
+        // when
         SpanBoundaryOutcome outcome = scrubber.scrub(new FlakySpanData(richSpan(), Integer.MAX_VALUE));
 
+        // then
         assertThat(outcome.dropSpan()).isTrue();
         assertThat(runtime.boundaryMetrics().collapseFailures()).isEqualTo(1L);
         assertThat(runtime.boundaryMetrics().spansDroppedFailClosed())

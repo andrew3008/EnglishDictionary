@@ -16,8 +16,10 @@ class ScrubbingRulesLoaderTest {
 
     @Test
     void loadsAdditionalRulesFromClasspathProperties() {
+        // when
         List<String> rules = ScrubbingRulesLoader.load("classpath:tracing/scrubbing-rules-test.properties", cl);
 
+        // then
         assertThat(rules).containsExactly("iban", "inn", "snils");
     }
 
@@ -27,38 +29,48 @@ class ScrubbingRulesLoaderTest {
         // на уровне PlatformAutoConfigurationCustomizer; здесь проверяем сам loader на
         // нормализацию whitespace и устойчивость к неизвестным именам (loader сам их не валидирует —
         // resolution делает BuiltInSpanAttributeScrubbingRules.resolve, неизвестные станут warning'ом выше).
+        // when
         List<String> rules = ScrubbingRulesLoader.load("classpath:tracing/scrubbing-rules-with-unknown.properties", cl);
 
+        // then
         assertThat(rules).containsExactly("iban", "unknown-rule", "snils");
     }
 
     @Test
     void emptyPropertiesFileReturnsEmptyList() {
+        // when
         List<String> rules = ScrubbingRulesLoader.load("classpath:tracing/scrubbing-rules-empty.properties", cl);
 
+        // then
         assertThat(rules).isEmpty();
     }
 
     @Test
     void missingClasspathResourceReturnsEmptyListWithoutThrowing() {
         // Файл отсутствует — loader возвращает пустой список и пишет WARN в лог, но не бросает.
+        // when
         List<String> rules = ScrubbingRulesLoader.load("classpath:tracing/no-such-file.properties", cl);
 
+        // then
         assertThat(rules).isEmpty();
     }
 
     @Test
     void blankPathConfigReturnsEmptyList() {
         // Эмулируем отсутствие свойства через пустой путь без префикса.
+        // when
         List<String> rules = ScrubbingRulesLoader.load("", cl);
+        // then
         assertThat(rules).isEmpty();
     }
 
     @Test
     void nullPathReturnsEmptyList() {
-        // PR-4B: ScrubbingExtensionConfig.rulesConfig() returns null when property is absent.
+        // ScrubbingExtensionConfig.rulesConfig() returns null when property is absent.
         // load(String, ClassLoader) must handle null without NPE.
+        // when
         List<String> rules = ScrubbingRulesLoader.load((String) null, cl);
+        // then
         assertThat(rules).isEmpty();
     }
 }

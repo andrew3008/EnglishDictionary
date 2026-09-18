@@ -21,8 +21,10 @@ class SpanPermitTrackerTest {
 
     @Test
     void tryAcquireRejectsAtCapacity() {
+        // given
         SpanPermitTracker permitTracker = new SpanPermitTracker(3);
 
+        // when/then
         assertThat(permitTracker.tryAcquire()).isTrue();
         assertThat(permitTracker.tryAcquire()).isTrue();
         assertThat(permitTracker.tryAcquire()).isTrue();
@@ -34,12 +36,15 @@ class SpanPermitTrackerTest {
 
     @Test
     void releaseRestoresAvailableCapacity() {
+        // given
         SpanPermitTracker permitTracker = new SpanPermitTracker(2);
         assertThat(permitTracker.tryAcquire()).isTrue();
         assertThat(permitTracker.tryAcquire()).isTrue();
 
+        // when
         permitTracker.release(1, "test-release", "trace-1");
 
+        // then
         assertThat(permitTracker.acquiredPermitCount()).isEqualTo(1);
         assertThat(permitTracker.tryAcquire()).isTrue();
         assertThat(permitTracker.tryAcquire()).isFalse();
@@ -48,12 +53,15 @@ class SpanPermitTrackerTest {
 
     @Test
     void releaseIgnoresNonPositiveCount() {
+        // given
         SpanPermitTracker permitTracker = new SpanPermitTracker(1);
         assertThat(permitTracker.tryAcquire()).isTrue();
 
+        // when
         permitTracker.release(0, "test-release", null);
         permitTracker.release(-1, "test-release", null);
 
+        // then
         assertThat(permitTracker.acquiredPermitCount()).isEqualTo(1);
         assertThat(permitTracker.invariantViolationTotal()).isZero();
     }
@@ -78,11 +86,14 @@ class SpanPermitTrackerTest {
 
     @Test
     void recordInvariantViolationIncrementsTotal() {
+        // given
         SpanPermitTracker permitTracker = new SpanPermitTracker(1);
 
+        // when
         permitTracker.recordInvariantViolation();
         permitTracker.recordInvariantViolation();
 
+        // then
         assertThat(permitTracker.invariantViolationTotal()).isEqualTo(2);
         assertThat(permitTracker.acquiredPermitCount()).isZero();
     }

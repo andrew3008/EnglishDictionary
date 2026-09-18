@@ -16,8 +16,10 @@ class ObservationCaptureEnvelopeTest {
 
     @Test
     void captureSequenceIsMonotonicPerEnvelopeAndStartsAtOne() {
+        // given
         ObservationCaptureEnvelope envelope = new ObservationCaptureEnvelope(UUID.randomUUID());
 
+        // when/then
         assertThat(List.of(
                 sealedSequence(envelope),
                 sealedSequence(envelope),
@@ -27,10 +29,12 @@ class ObservationCaptureEnvelopeTest {
 
     @Test
     void envelopesKeepIndependentSequences() {
+        // given
         UUID agentInstanceId = UUID.randomUUID();
         ObservationCaptureEnvelope first = new ObservationCaptureEnvelope(agentInstanceId);
         ObservationCaptureEnvelope second = new ObservationCaptureEnvelope(agentInstanceId);
 
+        // when/then
         assertThat(sealedSequence(first)).isEqualTo(1L);
         assertThat(sealedSequence(second)).isEqualTo(1L);
         assertThat(sealedSequence(first)).isEqualTo(2L);
@@ -38,10 +42,14 @@ class ObservationCaptureEnvelopeTest {
 
     @Test
     void sealWritesSharedEnvelopeFields() {
+        // given
         UUID agentInstanceId = UUID.randomUUID();
         Map<String, Object> values = new LinkedHashMap<>();
+
+        // when
         new ObservationCaptureEnvelope(agentInstanceId).open().sealInto(values);
 
+        // then
         assertThat(values.keySet()).containsExactly(
                 JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE,
                 JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID,
@@ -57,18 +65,22 @@ class ObservationCaptureEnvelopeTest {
 
     @Test
     void completionIsMeasuredAtSealTimeNotAtOpenTime() throws InterruptedException {
+        // given
         ObservationCaptureEnvelope.OpenCapture openCapture = new ObservationCaptureEnvelope(UUID.randomUUID()).open();
         Thread.sleep(10L);
 
         Map<String, Object> values = new LinkedHashMap<>();
+        // when
         openCapture.sealInto(values);
 
+        // then
         assertThat((Long) values.get(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_COMPLETED_AT))
                 .isGreaterThan((Long) values.get(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_STARTED_AT));
     }
 
     @Test
     void constructorRejectsMissingAgentInstanceId() {
+        // given/when/then
         assertThatThrownBy(() -> new ObservationCaptureEnvelope(null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("agentInstanceId");
@@ -76,6 +88,7 @@ class ObservationCaptureEnvelopeTest {
 
     @Test
     void sealRejectsMissingValues() {
+        // given/when/then
         assertThatThrownBy(() -> new ObservationCaptureEnvelope(UUID.randomUUID()).open().sealInto(null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("values");
@@ -83,6 +96,7 @@ class ObservationCaptureEnvelopeTest {
 
     @Test
     void observationEnvelopeItemNamesAreSharedAcrossContracts() {
+        // given/when/then
         assertThat(List.of(
                 JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE,
                 JmxWireContract.FIELD_SCRUBBING_OBSERVATION_CAPTURE_SEQUENCE,

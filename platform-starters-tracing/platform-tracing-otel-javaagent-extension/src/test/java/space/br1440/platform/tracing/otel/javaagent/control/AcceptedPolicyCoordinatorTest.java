@@ -29,11 +29,14 @@ class AcceptedPolicyCoordinatorTest {
 
     @Test
     void exposesAllApplyOutcomesWithoutHiddenRetry() throws Exception {
+        // given
         TracingSettingsStore store = store();
         LastSettingsUpdate diagnostics = new LastSettingsUpdate();
         TracingSettingsUpdater updater = new TracingSettingsUpdater(store, diagnostics);
 
         ExpectedSettingsRevision initialBase = store.current().base();
+
+        // when
         SettingsUpdateResult applied = updater.apply(
                 AcceptedPolicyTestFixtures.attempt(1L),
                 initialBase,
@@ -57,6 +60,7 @@ class AcceptedPolicyCoordinatorTest {
                 store.current().base(),
                 AcceptedPolicyTestFixtures.policy(0.4d));
 
+        // then
         assertThat(applied.outcome()).isEqualTo(SettingsUpdateStatus.APPLIED);
         assertThat(applied.accepted().acceptedSequence()).isEqualTo(1L);
         assertThat(unchanged.outcome()).isEqualTo(SettingsUpdateStatus.UNCHANGED);
@@ -89,11 +93,13 @@ class AcceptedPolicyCoordinatorTest {
 
     @Test
     void runtimeMismatchIsReportedSeparately() {
+        // given
         TracingSettingsStore store = store();
         TracingSettingsUpdater updater = new TracingSettingsUpdater(
                 store,
                 new LastSettingsUpdate());
 
+        // when
         SettingsUpdateResult result = updater.apply(
                 AcceptedPolicyTestFixtures.attempt(1L),
                 new ExpectedSettingsRevision(
@@ -101,6 +107,7 @@ class AcceptedPolicyCoordinatorTest {
                         0L),
                 AcceptedPolicyTestFixtures.policy(0.2d));
 
+        // then
         assertThat(result.outcome()).isEqualTo(SettingsUpdateStatus.STALE);
         assertThat(result.messageCode()).isEqualTo(SettingsRejectionReason.RUNTIME_INSTANCE_MISMATCH);
         assertThat(store.current().acceptedSequence()).isZero();

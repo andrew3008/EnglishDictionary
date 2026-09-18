@@ -22,13 +22,16 @@ class PlatformExportProcessorFactorySafeWrapTest {
     @Test
     @DisplayName("captureExporter сохраняет safe export path за replacement-aware границей")
     void captureExporterKeepsSafeExportPathBehindReplacementBoundary() {
+        // given
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
                 null, ScrubbingRuntimeTestFixtures.disabled());
         CountingExporter delegate = new CountingExporter();
 
+        // when
         SpanExporter result = factory.captureExporter(delegate);
         result.export(java.util.List.of()).join(1, java.util.concurrent.TimeUnit.SECONDS);
 
+        // then
         assertThat(delegate.exportCalls).hasValue(1);
         assertThat(result).isNotInstanceOf(SafeSpanExporter.class);
     }
@@ -36,12 +39,15 @@ class PlatformExportProcessorFactorySafeWrapTest {
     @Test
     @DisplayName("Повторный проход не создаёт вторую replacement-aware границу")
     void captureExporterDoesNotDoubleWrap() {
+        // given
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
                 null, ScrubbingRuntimeTestFixtures.disabled());
 
+        // when
         SpanExporter once = factory.captureExporter(SpanExporter.noop());
         SpanExporter twice = factory.captureExporter(once);
 
+        // then
         assertThat(twice).isSameAs(once);
     }
 

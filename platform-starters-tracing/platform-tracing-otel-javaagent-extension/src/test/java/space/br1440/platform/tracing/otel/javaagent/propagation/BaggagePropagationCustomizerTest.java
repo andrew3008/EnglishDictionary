@@ -29,45 +29,62 @@ class BaggagePropagationCustomizerTest {
     @Test
     @DisplayName("W3C baggage + baggage enabled → возвращает единственную F0-границу")
     void w3cBaggage_enabled_returnsWrapped() {
+        // given
         TextMapPropagator propagator = W3CBaggagePropagator.getInstance();
+
+        // when
         TextMapPropagator result = customizer.apply(propagator, configWithBaggageEnabled(true));
 
+        // then
         assertThat(result).isInstanceOf(FailClosedCorrelationBaggagePropagator.class);
     }
 
     @Test
     @DisplayName("W3C baggage + baggage disabled → сохраняет обязательную F0-границу")
     void w3cBaggage_disabled_keepsFailClosedBoundary() {
+        // given
         TextMapPropagator propagator = W3CBaggagePropagator.getInstance();
+
+        // when
         TextMapPropagator result = customizer.apply(propagator, configWithBaggageEnabled(false));
 
+        // then
         assertThat(result).isInstanceOf(FailClosedCorrelationBaggagePropagator.class);
     }
 
     @Test
     @DisplayName("non-baggage propagator + baggage enabled → возвращает тот же экземпляр")
     void nonBaggage_enabled_returnsSameInstance() {
+        // given
         TextMapPropagator propagator = W3CTraceContextPropagator.getInstance();
+
+        // when
         TextMapPropagator result = customizer.apply(propagator, configWithBaggageEnabled(true));
 
+        // then
         assertThat(result).isSameAs(propagator);
     }
 
     @Test
     @DisplayName("composite propagator + baggage enabled → возвращает тот же экземпляр")
     void composite_enabled_returnsSameInstance() {
+        // given
         TextMapPropagator composite = TextMapPropagator.composite(
                 W3CBaggagePropagator.getInstance(),
                 W3CTraceContextPropagator.getInstance()
         );
+
+        // when
         TextMapPropagator result = customizer.apply(composite, configWithBaggageEnabled(true));
 
+        // then
         assertThat(result).isSameAs(composite);
     }
 
     @Test
     @DisplayName("произвольный TextMapPropagator + baggage enabled → возвращает тот же экземпляр")
     void customPropagator_enabled_returnsSameInstance() {
+        // given
         TextMapPropagator dummy = new TextMapPropagator() {
             @Override
             public Collection<String> fields() {
@@ -83,15 +100,18 @@ class BaggagePropagationCustomizerTest {
                 return context;
             }
         };
+
+        // when
         TextMapPropagator result = customizer.apply(dummy, configWithBaggageEnabled(true));
 
+        // then
         assertThat(result).isSameAs(dummy);
     }
 
     @Test
     @DisplayName("характеризация: собранная цепочка фильтрует allowlist и убирает platform.correlation.id одновременно")
     void assembledChain_filtersAllowlistAndStripsCorrelation_characterization() {
-        // given: enabled-цепочка, собранная customizer'ом поверх реального W3CBaggagePropagator
+        // given
         TextMapPropagator chain = customizer.apply(W3CBaggagePropagator.getInstance(), configWithBaggageEnabled(true));
         io.opentelemetry.context.Context ctx = io.opentelemetry.context.Context.root().with(
                 io.opentelemetry.api.baggage.Baggage.builder()
@@ -104,7 +124,7 @@ class BaggagePropagationCustomizerTest {
         // when
         chain.inject(ctx, carrier, (c, k, v) -> c.put(k, v));
 
-        // then: deny/non-allowlisted и unverified correlation отсутствуют, allowlisted-ключ проходит
+        // then
         String header = carrier.get("baggage");
         assertThat(header)
                 .doesNotContain("password")

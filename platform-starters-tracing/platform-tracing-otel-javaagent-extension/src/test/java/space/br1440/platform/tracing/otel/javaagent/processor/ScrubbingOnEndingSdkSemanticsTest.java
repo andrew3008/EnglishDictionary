@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import jakarta.annotation.Nonnull;
@@ -27,14 +29,6 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.sdk.trace.internal.ExtendedSpanProcessor;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * P5, pinned SDK: фиксирует те свойства {@code onEnding}, на которые опирается гибридная схема —
- * span ещё изменяем в {@code onEnding}, все {@code onEnding}-делегаты завершаются до первого
- * {@code onEnd}, и потому scrubbing, стоящий последним в списке onEnding, действительно видит
- * записи всех предыдущих делегатов.
- */
 class ScrubbingOnEndingSdkSemanticsTest {
 
     private static final AttributeKey<String> PASSWORD = AttributeKey.stringKey("db.password");
@@ -42,6 +36,7 @@ class ScrubbingOnEndingSdkSemanticsTest {
     @Test
     @DisplayName("Span written by a preceding onEnding delegate is still scrubbed before any onEnd runs")
     void onEndingIsMutableAndCompletesBeforeOnEnd() {
+        // given
         List<String> callOrder = new CopyOnWriteArrayList<>();
         List<String> passwordSeenAtOnEnd = new CopyOnWriteArrayList<>();
 
@@ -56,15 +51,16 @@ class ScrubbingOnEndingSdkSemanticsTest {
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build()) {
             Tracer tracer = provider.get("onending-semantics");
+            // when
             tracer.spanBuilder("op").startSpan().end();
-            // InMemorySpanExporter.shutdown() очищает буфер, поэтому снимок берётся до close().
             finished = List.copyOf(exporter.getFinishedSpanItems());
         }
 
+        // then
         assertThat(callOrder).containsExactly("writer.onEnding", "observer.onEnd");
 
         assertThat(finished).hasSize(1);
-        assertThat(finished.get(0).getAttributes().get(PASSWORD))
+        assertThat(finished.getFirst().getAttributes().get(PASSWORD))
                 .as("an attribute written during onEnding must still be scrubbed before export")
                 .isEmpty();
         assertThat(passwordSeenAtOnEnd)
@@ -80,7 +76,6 @@ class ScrubbingOnEndingSdkSemanticsTest {
                 1L, "test", null, false);
     }
 
-    /** Пишет чувствительный атрибут в {@code onEnding} — до scrubbing-делегата. */
     private static final class LateWriter implements ExtendedSpanProcessor {
 
         private final List<String> callOrder;

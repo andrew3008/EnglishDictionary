@@ -14,26 +14,37 @@ class TokenBucketRateLimiterTest {
 
     @Test
     void debits_until_exhausted_then_rejects() {
+        // given
         AtomicLong clock = new AtomicLong(0);
-        // 3 токена за минуту, ёмкость 3, время не идёт.
         TokenBucketRateLimiter limiter = TokenBucketRateLimiter.perInterval(3, 1, TimeUnit.MINUTES, clock::get);
 
-        assertThat(limiter.trySpend(1.0)).isTrue();
-        assertThat(limiter.trySpend(1.0)).isTrue();
-        assertThat(limiter.trySpend(1.0)).isTrue();
-        assertThat(limiter.trySpend(1.0)).as("ведро пусто").isFalse();
+        // when
+        boolean first = limiter.trySpend(1.0);
+        boolean second = limiter.trySpend(1.0);
+        boolean third = limiter.trySpend(1.0);
+        boolean fourth = limiter.trySpend(1.0);
+
+        // then
+        assertThat(first).isTrue();
+        assertThat(second).isTrue();
+        assertThat(third).isTrue();
+        assertThat(fourth).as("ведро пусто").isFalse();
     }
 
     @Test
     void refills_over_time() {
+        // given
         AtomicLong clock = new AtomicLong(0);
         TokenBucketRateLimiter limiter = TokenBucketRateLimiter.perInterval(1, 1, TimeUnit.MINUTES, clock::get);
 
         assertThat(limiter.trySpend(1.0)).isTrue();
         assertThat(limiter.trySpend(1.0)).isFalse();
 
-        // Прошла минута — пополнился один токен.
+        // when
         clock.addAndGet(TimeUnit.MINUTES.toNanos(1));
-        assertThat(limiter.trySpend(1.0)).isTrue();
+        boolean afterRefill = limiter.trySpend(1.0);
+
+        // then
+        assertThat(afterRefill).isTrue();
     }
 }

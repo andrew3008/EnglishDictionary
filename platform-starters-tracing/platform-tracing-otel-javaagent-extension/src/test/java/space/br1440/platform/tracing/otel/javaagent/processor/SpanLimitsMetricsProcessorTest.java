@@ -10,13 +10,14 @@ class SpanLimitsMetricsProcessorTest {
 
     @Test
     void exposesOnlySpanLimitDropCountersAndStableDiagnosticIdentity() {
-        SpanLimitsMetricsProcessor processor = new SpanLimitsMetricsProcessor();
-
-        assertThat(processor.diagnosticId()).isEqualTo("span_limits_metrics");
-        assertThat(Modifier.isFinal(SpanLimitsMetricsProcessor.class.getModifiers())).isTrue();
-        assertThat(SpanLimitsMetricsProcessor.class.getDeclaredMethods())
-                .extracting(java.lang.reflect.Method::getName)
-                .doesNotContain("getEndedSpans", "getErrorSpans", "getTimeoutSpans")
-                .contains("getDroppedAttributes", "getDroppedEvents", "getDroppedLinks");
+        try (SpanLimitsMetricsProcessor processor = new SpanLimitsMetricsProcessor()) {
+            // then
+            assertThat(processor.diagnosticId()).isEqualTo("span_limits_metrics");
+            assertThat(Modifier.isFinal(SpanLimitsMetricsProcessor.class.getModifiers())).isTrue();
+            assertThat(SpanLimitsMetricsProcessor.class.getDeclaredMethods())
+                    .extracting(java.lang.reflect.Method::getName)
+                    .doesNotContain("getEndedSpans", "getErrorSpans", "getTimeoutSpans")
+                    .contains("getDroppedAttributes", "getDroppedEvents", "getDroppedLinks");
+        }
     }
 }

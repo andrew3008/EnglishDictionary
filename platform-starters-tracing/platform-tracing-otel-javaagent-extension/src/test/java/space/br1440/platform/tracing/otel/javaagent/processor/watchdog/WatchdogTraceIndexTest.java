@@ -161,7 +161,7 @@ class WatchdogTraceIndexTest {
         index.onEnd("t1", "s1", first);
         index.admit("t2", "s1", WatchdogTestSpans.span(2, 1), clock.get(), () -> true);
 
-        // then: the released permit is reused, otherwise trackedSpanCount would stay at 0
+        // then
         assertThat(index.trackedSpanCount()).isEqualTo(1);
         assertThat(index.rejectedGlobalTotal()).isZero();
     }

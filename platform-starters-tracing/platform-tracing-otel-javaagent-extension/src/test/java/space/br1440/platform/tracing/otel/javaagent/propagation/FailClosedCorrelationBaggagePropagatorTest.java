@@ -31,12 +31,14 @@ class FailClosedCorrelationBaggagePropagatorTest {
 
     @Test
     void stripsCanonicalCorrelationOnExtractAndPreservesUnrelatedBaggage() {
+        // when
         Context extracted = propagator.extract(
                 Context.root(),
                 Map.of("baggage", "platform.correlation.id=spoofed,tenant_class=internal"),
                 GETTER
         );
 
+        // then
         Baggage baggage = Baggage.fromContext(extracted);
         assertThat(baggage.getEntryValue(FailClosedCorrelationBaggagePropagator.CORRELATION_BAGGAGE_KEY))
                 .isNull();
@@ -45,6 +47,7 @@ class FailClosedCorrelationBaggagePropagatorTest {
 
     @Test
     void stripsCanonicalCorrelationOnInjectAndPreservesUnrelatedBaggage() {
+        // given
         Context context = Baggage.builder()
                 .put(FailClosedCorrelationBaggagePropagator.CORRELATION_BAGGAGE_KEY, "workflow-42")
                 .put("tenant_class", "internal")
@@ -52,16 +55,17 @@ class FailClosedCorrelationBaggagePropagatorTest {
                 .storeInContext(Context.root());
         Map<String, String> carrier = new ConcurrentHashMap<>();
 
+        // when
         propagator.inject(context, carrier, Map::put);
 
+        // then
         assertThat(carrier.get("baggage"))
                 .contains("tenant_class=internal")
                 .doesNotContain(FailClosedCorrelationBaggagePropagator.CORRELATION_BAGGAGE_KEY);
     }
 
     @Test
-    // given: F0 не содержит catch-блока — исключение из его собственной pre-processing логики
-    // (Baggage.fromContext на null-context, до вызова delegate.inject) должно пробрасываться
+    // given
     void injectWithNullContextPropagatesExceptionBeforeDelegateIsInvoked() {
         Map<String, String> carrier = new ConcurrentHashMap<>();
 
@@ -72,8 +76,7 @@ class FailClosedCorrelationBaggagePropagatorTest {
     }
 
     @Test
-    // given: F0 не содержит catch-блока — исключение из его собственной post-processing логики
-    // (Baggage.fromContext на null-результате delegate.extract) должно пробрасываться
+    // given
     void extractWithDelegateReturningNullPropagatesException() {
         FailClosedCorrelationBaggagePropagator propagatorOverNullDelegate =
                 new FailClosedCorrelationBaggagePropagator(new io.opentelemetry.context.propagation.TextMapPropagator() {
@@ -98,14 +101,17 @@ class FailClosedCorrelationBaggagePropagatorTest {
 
     @Test
     void removesCanonicalCorrelationAlreadyPresentInInputContext() {
+        // given
         Context input = Baggage.builder()
                 .put(FailClosedCorrelationBaggagePropagator.CORRELATION_BAGGAGE_KEY, "preexisting")
                 .put("tenant_class", "internal")
                 .build()
                 .storeInContext(Context.root());
 
+        // when
         Context extracted = propagator.extract(input, Map.of(), GETTER);
 
+        // then
         Baggage baggage = Baggage.fromContext(extracted);
         assertThat(baggage.getEntryValue(FailClosedCorrelationBaggagePropagator.CORRELATION_BAGGAGE_KEY))
                 .isNull();

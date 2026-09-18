@@ -18,14 +18,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ExtensionConfigTest {
 
-    // -- Construction ----------------------------------------------------------------------------
-
     @Test
     void constructor_rejects_null_config() {
+        // when/then
         assertThatNullPointerException().isThrownBy(() -> new ExtensionConfig(null));
     }
-
-    // -- Cached instances (final fields) ---------------------------------------------------------
 
     @Nested
     @DisplayName("Accessors return cached final-field instances")
@@ -33,65 +30,92 @@ class ExtensionConfigTest {
 
         @Test
         void sampling_returns_same_instance() {
+            // given
             ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
+
+            // when/then
             assertThat(cfg.sampling()).isSameAs(cfg.sampling());
         }
 
         @Test
         void enriching_returns_same_instance() {
+            // given
             ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
+
+            // when/then
             assertThat(cfg.enriching()).isSameAs(cfg.enriching());
         }
 
         @Test
         void scrubbing_returns_same_instance() {
+            // given
             ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
+
+            // when/then
             assertThat(cfg.scrubbing()).isSameAs(cfg.scrubbing());
         }
 
         @Test
         void metrics_returns_same_instance() {
+            // given
             ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
+
+            // when/then
             assertThat(cfg.metrics()).isSameAs(cfg.metrics());
         }
 
         @Test
         void validation_returns_same_instance() {
+            // given
             ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
+
+            // when/then
             assertThat(cfg.validation()).isSameAs(cfg.validation());
         }
 
         @Test
         void classification_returns_same_instance() {
+            // given
             ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
+
+            // when/then
             assertThat(cfg.classification()).isSameAs(cfg.classification());
         }
 
         @Test
         void watchdog_returns_same_instance() {
+            // given
             ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
+
+            // when/then
             assertThat(cfg.watchdog()).isSameAs(cfg.watchdog());
         }
 
         @Test
         void queue_returns_same_instance() {
+            // given
             ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
+
+            // when/then
             assertThat(cfg.queue()).isSameAs(cfg.queue());
         }
 
         @Test
         void baggage_returns_same_instance() {
+            // given
             ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
+
+            // when/then
             assertThat(cfg.baggage()).isSameAs(cfg.baggage());
         }
     }
 
-    // -- Defaults from empty config --------------------------------------------------------------
-
     @Test
     void sampling_returns_defaults_when_config_is_empty() {
+        // given
         ExtensionConfig config = new ExtensionConfig(emptyConfig());
 
+        // then
         assertThat(config.sampling().enabled()).isTrue();
         assertThat(config.sampling().ratio()).isEqualTo(0.1d);
         assertThat(config.sampling().forceRecordValues()).containsExactly("on");
@@ -102,8 +126,10 @@ class ExtensionConfigTest {
 
     @Test
     void enriching_returns_defaults_when_config_is_empty() {
+        // given
         ExtensionConfig config = new ExtensionConfig(emptyConfig());
 
+        // then
         assertThat(config.enriching().enabled()).isTrue();
         assertThat(config.enriching().remoteServicePriority())
                 .containsExactly("peer.service", "rpc.service", "server.address");
@@ -111,8 +137,10 @@ class ExtensionConfigTest {
 
     @Test
     void scrubbing_returns_defaults_when_config_is_empty() {
+        // given
         ExtensionConfig config = new ExtensionConfig(emptyConfig());
 
+        // then
         assertThat(config.scrubbing().enabled()).isTrue();
         assertThat(config.scrubbing().hmacKey().isPresent()).isFalse();
         assertThat(config.scrubbing().missingKeyPolicy()).isEqualTo("mask");
@@ -123,8 +151,10 @@ class ExtensionConfigTest {
 
     @Test
     void validation_returns_defaults_when_config_is_empty() {
+        // given
         ExtensionConfig config = new ExtensionConfig(emptyConfig());
 
+        // then
         assertThat(config.validation().enabled()).isTrue();
         assertThat(config.validation().requestedLevel()).isEqualTo(SpanAttributeValidationLevel.WARN);
     }
@@ -155,8 +185,10 @@ class ExtensionConfigTest {
 
     @Test
     void classification_returns_defaults_when_config_is_empty() {
+        // given
         ExtensionConfig config = new ExtensionConfig(emptyConfig());
 
+        // then
         assertThat(config.classification().enabled()).isTrue();
         assertThat(config.classification().slowThreshold()).isEqualTo(Duration.ofSeconds(5));
         assertThat(config.classification().normalThreshold()).isEqualTo(Duration.ofSeconds(1));
@@ -164,9 +196,10 @@ class ExtensionConfigTest {
 
     @Test
     void watchdog_returns_defaults_when_config_is_empty() {
+        // given
         ExtensionConfig config = new ExtensionConfig(emptyConfig());
 
-        // SP-01: Watchdog is disabled by default.
+        // then
         assertThat(config.watchdog().enabled()).isFalse();
         assertThat(config.watchdog().spanTimeout()).isEqualTo(Duration.ofSeconds(30));
         assertThat(config.watchdog().traceTimeout()).isEqualTo(Duration.ofSeconds(60));
@@ -176,44 +209,50 @@ class ExtensionConfigTest {
         assertThat(config.watchdog().maxTrackedSpans()).isEqualTo(60_000);
     }
 
-    // -------------------------------------------------------------------------
-    // SP-01 — Watchdog default-off characterization
-    // -------------------------------------------------------------------------
-
-    /** SP-01 / Test 1. No watchdog property → disabled by default. */
     @Test
     void watchdogIsDisabledByDefault() {
+        // given
         ExtensionConfig config = new ExtensionConfig(emptyConfig());
+
+        // then
         assertThat(config.watchdog().enabled()).isFalse();
     }
 
-    /** SP-01 / Test 2. Explicit enabled=true → watchdog is enabled. */
     @Test
     void watchdogCanBeExplicitlyEnabled() {
+        // given
         ExtensionConfig config = new ExtensionConfig(
                 booleanConfig(ExtensionPropertyNames.WATCHDOG_ENABLED, true));
+
+        // then
         assertThat(config.watchdog().enabled()).isTrue();
     }
 
-    /** SP-01 / Test 3. Explicit enabled=false → watchdog is disabled. */
     @Test
     void watchdogCanBeExplicitlyDisabled() {
+        // given
         ExtensionConfig config = new ExtensionConfig(
                 booleanConfig(ExtensionPropertyNames.WATCHDOG_ENABLED, false));
+
+        // then
         assertThat(config.watchdog().enabled()).isFalse();
     }
 
     @Test
     void queue_returns_default_overflow_policy_when_config_is_empty() {
+        // given
         ExtensionConfig config = new ExtensionConfig(emptyConfig());
 
+        // then
         assertThat(config.queue().overflowPolicy()).isEqualTo("DROP_OLDEST");
     }
 
     @Test
     void baggage_returns_defaults_when_config_is_empty() {
+        // given
         ExtensionConfig config = new ExtensionConfig(emptyConfig());
 
+        // then
         assertThat(config.baggage().propagationEnabled()).isTrue();
         assertThat(config.baggage().propagationOutboundAllowedKeys())
                 .containsExactly("traffic_source", "tenant_class", "platform.correlation.id");
@@ -225,32 +264,37 @@ class ExtensionConfigTest {
         assertThat(config.baggage().processorDenyPatterns()).containsExactly("password", "secret", "token");
     }
 
-    // -- Explicit overrides ----------------------------------------------------------------------
-
     @Test
     void sampling_reads_explicit_ratio() {
+        // given
         ExtensionConfig config = new ExtensionConfig(doubleConfig(ExtensionPropertyNames.SAMPLING_RATIO, 0.5d));
 
+        // then
         assertThat(config.sampling().ratio()).isEqualTo(0.5d);
     }
 
     @Test
     void sampling_reads_explicit_enabled_false() {
+        // given
         ExtensionConfig config = new ExtensionConfig(booleanConfig(ExtensionPropertyNames.SAMPLING_ENABLED, false));
 
+        // then
         assertThat(config.sampling().enabled()).isFalse();
     }
 
     @Test
     void watchdog_reads_explicit_span_timeout() {
+        // given
         ExtensionConfig config = new ExtensionConfig(
                 durationConfig(ExtensionPropertyNames.WATCHDOG_SPAN_TIMEOUT, Duration.ofSeconds(10)));
 
+        // then
         assertThat(config.watchdog().spanTimeout()).isEqualTo(Duration.ofSeconds(10));
     }
 
     @Test
     void watchdog_rejects_non_positive_scan_interval() {
+        // when/then
         assertThatThrownBy(() -> new ExtensionConfig(
                 durationConfig(ExtensionPropertyNames.WATCHDOG_SCAN_INTERVAL, Duration.ZERO)))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -352,6 +396,7 @@ class ExtensionConfigTest {
 
     @Test
     void watchdog_rejects_trace_timeout_shorter_than_span_timeout() {
+        // when/then
         assertThatThrownBy(() -> new ExtensionConfig(durationsConfig(Map.of(
                 ExtensionPropertyNames.WATCHDOG_SPAN_TIMEOUT, Duration.ofSeconds(10),
                 ExtensionPropertyNames.WATCHDOG_TRACE_TIMEOUT, Duration.ofSeconds(5)))))
@@ -362,6 +407,7 @@ class ExtensionConfigTest {
 
     @Test
     void classification_rejects_non_positive_threshold() {
+        // when/then
         assertThatThrownBy(() -> new ExtensionConfig(
                 durationConfig(ExtensionPropertyNames.CLASSIFICATION_NORMAL_THRESHOLD, Duration.ofSeconds(-1))))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -370,6 +416,7 @@ class ExtensionConfigTest {
 
     @Test
     void classification_rejects_slow_threshold_below_normal_threshold() {
+        // when/then
         assertThatThrownBy(() -> new ExtensionConfig(durationsConfig(Map.of(
                 ExtensionPropertyNames.CLASSIFICATION_SLOW_THRESHOLD, Duration.ofSeconds(1),
                 ExtensionPropertyNames.CLASSIFICATION_NORMAL_THRESHOLD, Duration.ofSeconds(2)))))
@@ -380,38 +427,48 @@ class ExtensionConfigTest {
 
     @Test
     void queue_reads_explicit_upstream_policy() {
+        // given
         ExtensionConfig config = new ExtensionConfig(
                 stringConfig(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY, "UPSTREAM"));
 
+        // then
         assertThat(config.queue().overflowPolicy()).isEqualTo("UPSTREAM");
     }
 
     @Test
     void baggage_reads_explicit_propagation_allowlist() {
+        // given
         ExtensionConfig config = new ExtensionConfig(listConfig(
                 ExtensionPropertyNames.BAGGAGE_PROPAGATION_OUTBOUND_ALLOWED_KEYS,
                 List.of("x-tenant-id", "x-request-id")));
 
+        // then
         assertThat(config.baggage().propagationOutboundAllowedKeys())
                 .containsExactly("x-tenant-id", "x-request-id");
     }
 
     @Test
     void baggage_reads_explicit_processor_allowlist() {
+        // given
         ExtensionConfig config = new ExtensionConfig(listConfig(
                 ExtensionPropertyNames.BAGGAGE_PROCESSOR_ALLOWED_KEYS,
                 List.of("x-tenant-id", "x-request-id")));
 
+        // then
         assertThat(config.baggage().processorAllowedKeys())
                 .containsExactly("x-tenant-id", "x-request-id");
     }
 
     @Test
     void scrubbing_reads_explicit_hmac_key() {
+        // given
         ExtensionConfig config = new ExtensionConfig(
                 stringConfig(ExtensionPropertyNames.SCRUBBING_HMAC_KEY, "secret-key-value"));
 
+        // when
         MaskedSecret hmacKey = config.scrubbing().hmacKey();
+
+        // then
         assertThat(hmacKey.isPresent()).isTrue();
         assertThat(new String(hmacKey.copyBytes(), StandardCharsets.UTF_8))
                 .isEqualTo("secret-key-value");
@@ -420,44 +477,52 @@ class ExtensionConfigTest {
                 .doesNotContain("secret-key-value");
     }
 
-    // -- Collection immutability -----------------------------------------------------------------
-
     @Nested
     @DisplayName("Collections returned from domain configs are unmodifiable")
     class CollectionImmutability {
 
         @Test
         void sampling_forceRecordValues_is_unmodifiable_when_provided() {
+            // given
             ExtensionConfig cfg = new ExtensionConfig(
                     listConfig(ExtensionPropertyNames.SAMPLING_FORCE_RECORD_VALUES, List.of("on", "yes")));
 
+            // when
             List<String> result = cfg.sampling().forceRecordValues();
+
+            // then
             assertThatThrownBy(() -> result.add("extra"))
                     .isInstanceOf(UnsupportedOperationException.class);
         }
 
         @Test
         void sampling_dropPaths_is_unmodifiable_when_provided() {
+            // given
             ExtensionConfig cfg = new ExtensionConfig(
                     listConfig(ExtensionPropertyNames.SAMPLING_DROP_PATHS, List.of("/health")));
 
+            // when
             List<String> result = cfg.sampling().dropPaths();
+
+            // then
             assertThatThrownBy(() -> result.add("/extra"))
                     .isInstanceOf(UnsupportedOperationException.class);
         }
 
         @Test
         void baggage_allowlistKeys_is_unmodifiable_when_provided() {
+            // given
             ExtensionConfig cfg = new ExtensionConfig(listConfig(
                     ExtensionPropertyNames.BAGGAGE_PROPAGATION_OUTBOUND_ALLOWED_KEYS, List.of("x-tenant")));
 
+            // when
             List<String> result = cfg.baggage().propagationOutboundAllowedKeys();
+
+            // then
             assertThatThrownBy(() -> result.add("extra"))
                     .isInstanceOf(UnsupportedOperationException.class);
         }
     }
-
-    // -- Nullable passthrough preservation -------------------------------------------------------
 
     @Nested
     @DisplayName("Nullable values remain null when not configured")
@@ -465,22 +530,23 @@ class ExtensionConfigTest {
 
         @Test
         void scrubbing_hmacKey_null_when_absent() {
+            // when/then
             assertThat(new ExtensionConfig(emptyConfig()).scrubbing().hmacKey().isPresent()).isFalse();
         }
 
         @Test
         void scrubbing_rulesConfig_null_when_absent() {
+            // when/then
             assertThat(new ExtensionConfig(emptyConfig()).scrubbing().rulesConfig()).isNull();
         }
 
         @Test
         void scrubbing_rulesExtensions_null_when_absent() {
+            // when/then
             assertThat(new ExtensionConfig(emptyConfig()).scrubbing().rulesExtensions()).isNull();
         }
 
     }
-
-    // -- Stub helpers ----------------------------------------------------------------------------
 
     static ConfigProperties emptyConfig() {
         return new ConfigProperties() {

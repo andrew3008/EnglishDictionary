@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * SP-05 — Queue full / drop-oldest characterization.
+ * Queue full / drop-oldest characterization.
  * <p>
  * Дополнительные тесты к уже существующим
  * {@link PlatformDropOldestExportSpanProcessorOverflowPolicyTest} (полный drop-oldest контракт)
@@ -40,20 +40,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
 
-    // -------------------------------------------------------------------------
-    // SP-05 / Test 1
-    // -------------------------------------------------------------------------
-
     /**
-     * SP-05 / Test 1.
      * Минимальный identity-proof drop-oldest: при переполнении вытесняется именно старый спан,
      * а не новый. Спан-0 уходит в первый batch (до блокировки), спан-1 ставится в очередь,
      * затем спан-2 вытесняет спан-1 (oldest) — очередь содержит только спан-2.
      * После снятия блокировки: span-0 и span-2 экспортированы, span-1 — нет.
      */
     @Test
-    @DisplayName("SP-05 / Test 1: при overflow вытесняется oldest span; newest принимается в очередь")
+    @DisplayName("Test 1: при overflow вытесняется oldest span; newest принимается в очередь")
     void dropsOldestPendingSpanWhenQueueIsFull() throws InterruptedException {
+        // given
         BlockingExporter exporter = new BlockingExporter();
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)
                 .maxQueueSize(1)
@@ -66,9 +62,10 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
                 .setSampler(Sampler.alwaysOn())
                 .addSpanProcessor(processor)
                 .build();
-        Tracer tracer = tp.get("sp05-identity");
 
-        try {
+        // when
+        try (tp) {
+            Tracer tracer = tp.get("sp05-identity");
             // Фаза 1: span-0 → queue=[span-0], size(1)>=maxExportBatchSize(1) → signal.
             // Worker просыпается, дренирует [span-0], уходит в exporter.export() (блокируется).
             tracer.spanBuilder("span-0").startSpan().end();
@@ -83,6 +80,7 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
             // span.end() → onEnd() → enqueueWithDropOldest() — всё в calling thread, синхронно.
             tracer.spanBuilder("span-2").startSpan().end();
 
+            // then
             // Детерминированная проверка до снятия блокировки (счётчик уже обновлён).
             assertThat(processor.metricsSnapshot().droppedOverflowTotal())
                     .as("span-1 вытеснен как oldest: droppedSpansOverflow должен быть 1")
@@ -91,9 +89,9 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
         } finally {
             exporter.exporterReleaseLatch.countDown();
             processor.forceFlush().join(5, TimeUnit.SECONDS);
-            tp.close();
         }
 
+        // then
         List<String> names = exporter.exported.stream().map(SpanData::getName).toList();
         assertThat(names).as("span-0 экспортирован (первый batch до блокировки)")
                 .contains("span-0");
@@ -104,11 +102,11 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
     }
 
     // -------------------------------------------------------------------------
-    // SP-05 / Test 2
+    // Test 2
     // -------------------------------------------------------------------------
 
     /**
-     * SP-05 / Test 2.
+     * Test 2.
      * {@code onEnd} не блокирует calling thread даже когда очередь полна и exporter заблокирован.
      * <p>
      * Доказательство детерминировано через {@link CountDownLatch}: если {@code onEnd}
@@ -117,8 +115,9 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
      * вызывается <em>вне</em> lock'а.
      */
     @Test
-    @DisplayName("SP-05 / Test 2: onEnd не блокирует caller, даже если exporter заблокирован и очередь полна")
+    @DisplayName("Test 2: onEnd не блокирует caller, даже если exporter заблокирован и очередь полна")
     void onEndDoesNotBlockWhenQueueIsFull() throws InterruptedException {
+        // given
         BlockingExporter exporter = new BlockingExporter();
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)
                 .maxQueueSize(1)
@@ -131,9 +130,10 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
                 .setSampler(Sampler.alwaysOn())
                 .addSpanProcessor(processor)
                 .build();
-        Tracer tracer = tp.get("sp05-nonblocking");
 
-        try {
+        // when
+        try (tp) {
+            Tracer tracer = tp.get("sp05-nonblocking");
             // Блокируем worker
             tracer.spanBuilder("fill-0").startSpan().end();
             assertThat(exporter.exporterEnteredLatch.await(5, TimeUnit.SECONDS)).isTrue();
@@ -149,6 +149,7 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
             }, "sp05-onend-caller");
             caller.start();
 
+            // then
             // Если onEnd блокирует — latch не защёлкнется за 2 секунды
             assertThat(onEndCompleted.await(2, TimeUnit.SECONDS))
                     .as("onEnd обязан вернуться немедленно: worker не держит queueLock во время export()")
@@ -157,25 +158,20 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
 
         } finally {
             exporter.exporterReleaseLatch.countDown();
-            tp.close();
         }
     }
 
-    // -------------------------------------------------------------------------
-    // SP-05 / Test 3
-    // -------------------------------------------------------------------------
-
     /**
-     * SP-05 / Test 3.
-     * Счётчик {@link PlatformDropOldestExportSpanProcessor#getDroppedSpansOverflow()}
+     * Счётчик {@code PlatformDropOldestExportSpanProcessor#getDroppedSpansOverflow()}
      * инкрементируется ровно по одному на каждый вытесненный спан.
      * <p>
      * Доказательство детерминировано: worker заблокирован в exporter, producer переполняет
      * очередь из calling thread — все операции синхронны, к моменту assert счётчик уже обновлён.
      */
     @Test
-    @DisplayName("SP-05 / Test 3: droppedSpansOverflow инкрементируется ровно N раз при N overflow'ах")
+    @DisplayName("Test 3: droppedSpansOverflow инкрементируется ровно N раз при N overflow'ах")
     void incrementsDroppedSpanCounterWhenQueueIsFull() throws InterruptedException {
+        // given
         BlockingExporter exporter = new BlockingExporter();
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)
                 .maxQueueSize(2)
@@ -188,9 +184,10 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
                 .setSampler(Sampler.alwaysOn())
                 .addSpanProcessor(processor)
                 .build();
-        Tracer tracer = tp.get("sp05-counter");
 
-        try {
+        // when
+        try (tp) {
+            Tracer tracer = tp.get("sp05-counter");
             // Заполняем первый batch (size==maxExportBatchSize=2) → worker дренирует, блокируется
             tracer.spanBuilder("b-0").startSpan().end();
             tracer.spanBuilder("b-1").startSpan().end();
@@ -204,6 +201,7 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
             tracer.spanBuilder("q-2").startSpan().end(); // drop q-0 → droppedSpansOverflow=1, queue=[q-1, q-2]
             tracer.spanBuilder("q-3").startSpan().end(); // drop q-1 → droppedSpansOverflow=2, queue=[q-2, q-3]
 
+            // then
             // Все вызовы span.end() — синхронные, счётчик уже обновлён к этому моменту
             assertThat(processor.metricsSnapshot().droppedOverflowTotal())
                     .as("два overflow → droppedSpansOverflow == 2")
@@ -215,22 +213,22 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
 
         } finally {
             exporter.exporterReleaseLatch.countDown();
-            tp.close();
         }
     }
 
     // -------------------------------------------------------------------------
-    // SP-05 / Test 4
+    // Test 4
     // -------------------------------------------------------------------------
 
     /**
-     * SP-05 / Test 4.
+     * Test 4.
      * После снятия queue-нагрузки принятые (newest) спаны доходят до exporter'а.
      * Вытесненные спаны в экспорте отсутствуют.
      */
     @Test
-    @DisplayName("SP-05 / Test 4: принятые спаны экспортируются после снятия очередной нагрузки")
+    @DisplayName("Test 4: принятые спаны экспортируются после снятия очередной нагрузки")
     void exportsAcceptedSpansAfterQueuePressureIsReleased() throws InterruptedException {
+        // given
         BlockingExporter exporter = new BlockingExporter();
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)
                 .maxQueueSize(2)
@@ -243,9 +241,10 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
                 .setSampler(Sampler.alwaysOn())
                 .addSpanProcessor(processor)
                 .build();
-        Tracer tracer = tp.get("sp05-post-pressure");
 
-        try {
+        // when
+        try (tp) {
+            Tracer tracer = tp.get("sp05-post-pressure");
             // Блокируем worker первым batch'ем
             tracer.spanBuilder("first-0").startSpan().end();
             tracer.spanBuilder("first-1").startSpan().end();
@@ -268,9 +267,9 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
 
         } finally {
             exporter.exporterReleaseLatch.countDown(); // defensive release
-            tp.close();
         }
 
+        // then
         List<String> names = exporter.exported.stream().map(SpanData::getName).toList();
         assertThat(names)
                 .as("первый batch доходит до exporter (был в обработке в момент блокировки)")
@@ -284,18 +283,19 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
     }
 
     // -------------------------------------------------------------------------
-    // SP-05 / Test 5
+    // Test 5
     // -------------------------------------------------------------------------
 
     /**
-     * SP-05 / Test 5.
+     * Test 5.
      * {@link PlatformDropOldestExportSpanProcessor#shutdown()} возвращает не-null
      * {@link CompletableResultCode} и завершается после сценария с переполнением очереди.
      * Счётчик {@code droppedSpansOverflow} отражает реальные потери.
      */
     @Test
-    @DisplayName("SP-05 / Test 5: shutdown завершается после сценария переполнения очереди")
+    @DisplayName("Test 5: shutdown завершается после сценария переполнения очереди")
     void shutdownCompletesAfterQueuePressureScenario() throws InterruptedException {
+        // given
         BlockingExporter exporter = new BlockingExporter();
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)
                 .maxQueueSize(2)
@@ -304,12 +304,12 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
                 .exportTimeout(Duration.ofSeconds(5))
                 .shutdownTimeout(Duration.ofSeconds(5))
                 .build();
-        SdkTracerProvider tp = SdkTracerProvider.builder()
+
+        // when
+        try (SdkTracerProvider tp = SdkTracerProvider.builder()
                 .setSampler(Sampler.alwaysOn())
                 .addSpanProcessor(processor)
-                .build();
-
-        try {
+                .build()) {
             Tracer tracer = tp.get("sp05-shutdown");
 
             // Блокируем worker
@@ -327,11 +327,10 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
             // Снимаем нагрузку до shutdown
             exporter.exporterReleaseLatch.countDown();
 
-        } finally {
-            // tp.close() вызывает processor.shutdown()
-            tp.close();
         }
+        // tp.close() вызывает processor.shutdown()
 
+        // then
         // shutdown() идемпотентен — возвращает тот же shutdownResult
         CompletableResultCode sd = processor.shutdown();
         assertThat(sd).isNotNull();
@@ -343,10 +342,6 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
                 .as("один overflow был зафиксирован и остаётся актуальным после shutdown")
                 .isEqualTo(1);
     }
-
-    // -------------------------------------------------------------------------
-    // Test helpers
-    // -------------------------------------------------------------------------
 
     /**
      * Блокирующий exporter: первый вызов {@code export()} фиксирует вход worker'а через
@@ -374,6 +369,7 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
                     return CompletableResultCode.ofFailure();
                 }
             }
+
             exported.addAll(batch);
             return CompletableResultCode.ofSuccess();
         }

@@ -53,12 +53,14 @@ class ScrubbingRuntimeTest {
     @Test
     @DisplayName("SPI-projection: builtInTextRules() excludes BUNDLED_SPI and EXTERNAL_EXTENSION rules")
     void builtInTextRulesExcludeNonBuiltInOrigins() {
+        // given
         SpanAttributeScrubbingRule builtIn = new MatchEverythingRule();
         SpanAttributeScrubbingRule external = new MatchEverythingRule();
         ScrubbingRuntime runtime = ScrubbingRuntime.create(
                 List.of(runtimeRule(builtIn, RuleOrigin.BUILT_IN), runtimeRule(external, RuleOrigin.EXTERNAL_EXTENSION)),
                 1L, "test", null, false);
 
+        // then
         assertThat(runtime.attributeExecutableRules()).hasSize(2);
         assertThat(runtime.builtInTextRules()).hasSize(1);
     }
@@ -66,6 +68,7 @@ class ScrubbingRuntimeTest {
     @Test
     @DisplayName("Attribute plane sees BUILT_IN + BUNDLED_SPI + EXTERNAL_EXTENSION rules")
     void attributeExecutableRulesIncludeEveryOrigin() {
+        // given
         ScrubbingRuntime runtime = ScrubbingRuntime.create(
                 List.of(
                         runtimeRule(new MatchEverythingRule(), RuleOrigin.BUILT_IN),
@@ -73,6 +76,7 @@ class ScrubbingRuntimeTest {
                         runtimeRule(new MatchEverythingRule(), RuleOrigin.EXTERNAL_EXTENSION)),
                 1L, "test", null, false);
 
+        // then
         assertThat(runtime.attributeExecutableRules()).hasSize(3);
     }
 
@@ -115,8 +119,10 @@ class ScrubbingRuntimeTest {
     @Test
     @DisplayName("Disabled runtime is inert: no rules, no HMAC, boundary calls are no-ops")
     void disabledRuntimeIsInert() {
+        // given
         ScrubbingRuntime runtime = ScrubbingRuntime.disabled();
 
+        // then
         assertThat(runtime.enabled()).isFalse();
         assertThat(runtime.attributeExecutableRules()).isEmpty();
         assertThat(runtime.builtInTextRules()).isEmpty();
@@ -142,18 +148,29 @@ class ScrubbingRuntimeTest {
     @Test
     @DisplayName("attributesVerified is monotonic: cannot be set back to true once cleared")
     void attributesVerifiedIsMonotonicallyOneWay() {
+        // given
         ScrubbingRuntime runtime = ScrubbingRuntime.create(List.of(), 1L, "test", null, false);
 
+        // then
         assertThat(runtime.attributesVerified()).isTrue();
+
+        // when
         runtime.markAttributesUnverified();
+
+        // then
         assertThat(runtime.attributesVerified()).isFalse();
+
+        // when
         runtime.markAttributesUnverified();
+
+        // then
         assertThat(runtime.attributesVerified()).as("still false, and only counted once as an activation event").isFalse();
     }
 
     @Test
     @DisplayName("SKIPPED_CIRCUIT_OPEN does not increment failures; a new non-critical exception does")
     void skippedCircuitOpenDoesNotIncrementFailures() {
+        // given
         SpanAttributeScrubbingRule throwing = new SpanAttributeScrubbingRule() {
             @Nonnull
             @Override
@@ -178,19 +195,23 @@ class ScrubbingRuntimeTest {
                         RuleOrigin.BUILT_IN)),
                 1L, "test", null, false);
 
+        // when
         try (SpanProcessorHarness harness = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {
             Tracer tracer = harness.tracer("t");
             Span first = tracer.spanBuilder("op-1").startSpan();
             first.setAttribute("any.key", "value");
             first.end();
 
+            // then
             assertThat(runtime.failures()).isEqualTo(1L);
             assertThat(runtime.totalBreakerFailures()).isEqualTo(1L);
 
+            // when
             Span second = tracer.spanBuilder("op-2").startSpan();
             second.setAttribute("any.key", "value");
             second.end();
 
+            // then
             assertThat(runtime.failures())
                     .as("open breaker skip must not keep incrementing the failure counter")
                     .isEqualTo(1L);

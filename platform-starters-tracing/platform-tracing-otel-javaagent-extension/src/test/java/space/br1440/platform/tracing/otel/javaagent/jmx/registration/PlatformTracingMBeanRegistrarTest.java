@@ -60,10 +60,14 @@ class PlatformTracingMBeanRegistrarTest {
 
     @Test
     void authorizedRuntimeRegistrationRegistersDomainMBeans() {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         PlatformTracingMBeanRegistrar registrar = registrar();
+
+        // when
         wireRequiredComponents(registrar, holder);
 
+        // then
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
         assertThat(server.isRegistered(DomainObjectNames.SCRUBBING)).isTrue();
         assertThat(server.isRegistered(DomainObjectNames.VALIDATION)).isTrue();
@@ -91,19 +95,25 @@ class PlatformTracingMBeanRegistrarTest {
 
     @Test
     void runtimeMBeansRemainAbsentBeforeAuthorizedRegistration() {
+        // given
         PlatformTracingMBeanRegistrar registrar = registrar();
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
+
+        // when
         wireComponentsExceptAcceptedPolicy(registrar, holder);
 
+        // then
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isFalse();
     }
 
     @Test
     void activeRuntimeRegistrationRejectsRepeatedAuthorizedCall() {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         PlatformTracingMBeanRegistrar registrar = registrar();
         wireRequiredComponents(registrar, holder);
 
+        // when/then
         assertThatThrownBy(() -> registrar.registerRuntimeControls(holder))
                 .isInstanceOf(IllegalStateException.class);
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
@@ -111,11 +121,13 @@ class PlatformTracingMBeanRegistrarTest {
 
     @Test
     void secondRegistrarFailsClosedOnExistingOwnedObjectNames() {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         PlatformTracingMBeanRegistrar first = registrar();
         wireRequiredComponents(first, holder);
-
         PlatformTracingMBeanRegistrar second = registrar();
+
+        // when/then
         assertThatThrownBy(() -> wireRequiredComponents(second, holder))
                 .isInstanceOf(JmxRegistrationException.class)
                 .hasMessageContaining("JMX ObjectName ownership collision");
@@ -124,13 +136,16 @@ class PlatformTracingMBeanRegistrarTest {
 
     @Test
     void closingRuntimeRegistrationRemovesCompleteRuntimeBatch() {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         PlatformTracingMBeanRegistrar registrar = registrar();
         PlatformTracingMBeanRegistrar.RuntimeRegistration runtimeRegistration = wireRequiredComponents(registrar, holder);
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
 
+        // when
         runtimeRegistration.close();
 
+        // then
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isFalse();
         assertThat(server.isRegistered(DomainObjectNames.SCRUBBING)).isFalse();
         assertThat(server.isRegistered(DomainObjectNames.VALIDATION)).isFalse();
@@ -164,6 +179,7 @@ class PlatformTracingMBeanRegistrarTest {
 
     @Test
     void concurrentAuthorizedCallsDoNotBreakActiveRegistration() throws Exception {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         PlatformTracingMBeanRegistrar registrar = registrar();
         wireRequiredComponents(registrar, holder);
@@ -188,16 +204,19 @@ class PlatformTracingMBeanRegistrarTest {
             });
         }
 
+        // when
         start.countDown();
         assertThat(done.await(10, TimeUnit.SECONDS)).isTrue();
         pool.shutdownNow();
 
+        // then
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
         assertThat(server.isRegistered(DomainObjectNames.DIAGNOSTICS)).isTrue();
     }
 
     @Test
     void exactlyOneConcurrentCallerRegistersCompleteRuntimeBatch() throws Exception {
+        // given
         AtomicInteger registerCallCount = new AtomicInteger();
         MBeanServer countingSpy = new DelegatingMBeanServer(server) {
             @Override
@@ -237,10 +256,12 @@ class PlatformTracingMBeanRegistrarTest {
             });
         }
 
+        // when
         start.countDown();
         assertThat(done.await(10, TimeUnit.SECONDS)).isTrue();
         pool.shutdownNow();
 
+        // then
         assertThat(successCount.get())
                 .as("ровно один вызов registerRuntimeControls должен выиграть generation-scoped регистрацию")
                 .isEqualTo(1);

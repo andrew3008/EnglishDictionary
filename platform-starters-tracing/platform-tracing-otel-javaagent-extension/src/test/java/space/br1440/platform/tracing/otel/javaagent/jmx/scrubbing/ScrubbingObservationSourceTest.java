@@ -29,11 +29,14 @@ class ScrubbingObservationSourceTest {
 
     @Test
     void ownerAbsentGivesPlaceholderValuesNotSentinel() {
+        // given
         ScrubbingObservationSource source = new ScrubbingObservationSource(
                 new OwnerRegistrationSlot<>(), AGENT_INSTANCE_ID);
 
+        // when
         CompositeData observation = source.getScrubbingObservation();
 
+        // then
         assertThat((Boolean) observation.get(
                 JmxWireContract.FIELD_SCRUBBING_OBSERVATION_OWNER_PRESENT)).isFalse();
         assertThat((Long) observation.get(
@@ -49,12 +52,15 @@ class ScrubbingObservationSourceTest {
 
     @Test
     void ownerPresentReflectsRuntimeStateAndPositiveGeneration() {
+        // given
         OwnerRegistrationSlot<ScrubbingRuntime> slot = new OwnerRegistrationSlot<>();
         slot.replace(enabledRuntime());
         ScrubbingObservationSource source = new ScrubbingObservationSource(slot, AGENT_INSTANCE_ID);
 
+        // when
         CompositeData observation = source.getScrubbingObservation();
 
+        // then
         assertThat((Boolean) observation.get(
                 JmxWireContract.FIELD_SCRUBBING_OBSERVATION_OWNER_PRESENT)).isTrue();
         assertThat((Long) observation.get(
@@ -65,15 +71,18 @@ class ScrubbingObservationSourceTest {
 
     @Test
     void collapseModeIsVisibleInLiveMetricsWithoutRevokingInstallation() {
+        // given
         OwnerRegistrationSlot<ScrubbingRuntime> slot = new OwnerRegistrationSlot<>();
         ScrubbingRuntime runtime = enabledRuntime();
         runtime.markAttributesUnverified();
         slot.replace(runtime);
         ScrubbingObservationSource source = new ScrubbingObservationSource(slot, AGENT_INSTANCE_ID);
 
+        // when
         TabularData metrics = (TabularData) source.getScrubbingObservation()
                 .get(JmxWireContract.FIELD_SCRUBBING_OBSERVATION_SCRUBBING_METRICS);
 
+        // then
         assertThat((Long) metrics.get(new Object[]{"attributes_verified"}).get("value")).isEqualTo(0L);
         assertThat((Long) metrics.get(new Object[]{"runtime_state"}).get("value"))
                 .as("1 = DEGRADED_FAIL_CLOSED")
@@ -86,6 +95,7 @@ class ScrubbingObservationSourceTest {
 
     @Test
     void repeatedDegradationDoesNotInflateTheActivationCounter() {
+        // given
         OwnerRegistrationSlot<ScrubbingRuntime> slot = new OwnerRegistrationSlot<>();
         ScrubbingRuntime runtime = enabledRuntime();
         for (int i = 0; i < 5; i++) {
@@ -96,9 +106,11 @@ class ScrubbingObservationSourceTest {
         slot.replace(runtime);
         ScrubbingObservationSource source = new ScrubbingObservationSource(slot, AGENT_INSTANCE_ID);
 
+        // when
         TabularData metrics = (TabularData) source.getScrubbingObservation()
                 .get(JmxWireContract.FIELD_SCRUBBING_OBSERVATION_SCRUBBING_METRICS);
 
+        // then
         assertThat((Long) metrics.get(new Object[]{"collapse_mode_activations"}).get("value")).isEqualTo(1L);
         assertThat((Long) metrics.get(new Object[]{"collapsed_spans"}).get("value")).isEqualTo(2L);
     }

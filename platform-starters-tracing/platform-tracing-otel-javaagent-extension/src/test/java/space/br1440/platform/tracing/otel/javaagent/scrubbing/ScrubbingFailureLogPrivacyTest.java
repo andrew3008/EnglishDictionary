@@ -41,12 +41,15 @@ class ScrubbingFailureLogPrivacyTest {
     @Test
     @DisplayName("Neither ERROR nor DEBUG publishes the exception message, its cause or a rendered stack trace")
     void debugChannelNeverCarriesTheSensitiveInput() {
+        // given
         Throwable failure = new IllegalStateException(
                 "rule failed on " + SECRET,
                 new IllegalArgumentException("nested " + SECRET));
 
+        // when
         ScrubbingFailureLog.error(new RateLimitedLogger(getClass()), "test.rule_failed", failure);
 
+        // then
         List<AgentLogEvent> events = capture.events();
         assertThat(events).isNotEmpty();
         assertThat(events).allSatisfy(event -> {
@@ -71,11 +74,14 @@ class ScrubbingFailureLogPrivacyTest {
     @Test
     @DisplayName("Detail is skipped entirely when the DEBUG channel is disabled")
     void detailIsNotRenderedWhenDebugIsDisabled() {
+        // given
         PlatformLogControl.shared().setLevel(AgentLogLevel.WARN);
 
+        // when
         ScrubbingFailureLog.warn(new RateLimitedLogger(getClass()),
                 "test.rule_failed", new IllegalStateException(SECRET));
 
+        // then
         assertThat(capture.events())
                 .noneMatch(event -> event.level() == AgentLogLevel.DEBUG);
     }
@@ -83,14 +89,17 @@ class ScrubbingFailureLogPrivacyTest {
     @Test
     @DisplayName("The digest bounds the cause chain and never reads getMessage()")
     void digestIsBoundedAndMessageFree() {
+        // given
         Throwable deepest = new IllegalStateException(SECRET);
         Throwable current = deepest;
         for (int i = 0; i < 10; i++) {
             current = new IllegalStateException(SECRET, current);
         }
 
+        // when
         String rendered = BoundedThrowableRenderer.render(current);
 
+        // then
         assertThat(rendered).doesNotContain(SECRET);
         assertThat(rendered).contains("cause chain truncated");
         assertThat(rendered.lines().filter(line -> line.contains("caused by"))).hasSize(4);
@@ -99,6 +108,7 @@ class ScrubbingFailureLogPrivacyTest {
     @Test
     @DisplayName("A throwable that fails to render is still reported by class name only")
     void hostileThrowableDoesNotBreakTheFailClosedPath() {
+        // given
         Throwable hostile = new IllegalStateException(SECRET) {
             @Override
             public StackTraceElement[] getStackTrace() {
@@ -106,8 +116,10 @@ class ScrubbingFailureLogPrivacyTest {
             }
         };
 
+        // when
         String rendered = BoundedThrowableRenderer.render(hostile);
 
+        // then
         assertThat(rendered).doesNotContain(SECRET);
         assertThat(rendered).contains("detail rendering failed");
     }
@@ -115,13 +127,16 @@ class ScrubbingFailureLogPrivacyTest {
     @Test
     @DisplayName("A synthetic external stack frame carrying a secret in its method/file/class name is never logged")
     void syntheticStackFrameContainingSecretIsNeverLogged() {
+        // given
         Throwable failure = new IllegalStateException("boom");
         failure.setStackTrace(new StackTraceElement[] {
                 new StackTraceElement("com.attacker." + SECRET, "call", "leak-" + SECRET + ".java", 1)
         });
 
+        // when
         String rendered = BoundedThrowableRenderer.render(failure);
 
+        // then
         assertThat(rendered).doesNotContain(SECRET);
         assertThat(rendered).contains("<external-frame>");
     }
@@ -129,13 +144,16 @@ class ScrubbingFailureLogPrivacyTest {
     @Test
     @DisplayName("A synthetic frame whose class name merely starts with the platform prefix never leaks its suffix")
     void platformPrefixSpoofedFrameNeverLeaksSecretSuffix() {
+        // given
         Throwable failure = new IllegalStateException("boom");
         failure.setStackTrace(new StackTraceElement[] {
                 new StackTraceElement("space.br1440.platform.tracing." + SECRET, "call", "leak.java", 1)
         });
 
+        // when
         String rendered = BoundedThrowableRenderer.render(failure);
 
+        // then
         assertThat(rendered).doesNotContain(SECRET);
         assertThat(rendered).contains("<platform-frame>");
     }
@@ -143,14 +161,17 @@ class ScrubbingFailureLogPrivacyTest {
     @Test
     @DisplayName("A secret placed in the module name of a synthetic frame is never logged")
     void secretInModuleNameIsNeverLogged() {
+        // given
         Throwable failure = new IllegalStateException("boom");
         failure.setStackTrace(new StackTraceElement[] {
                 new StackTraceElement("module-" + SECRET, "1.0", null,
                         "com.attacker.Caller", "call", "Caller.java", 1)
         });
 
+        // when
         String rendered = BoundedThrowableRenderer.render(failure);
 
+        // then
         assertThat(rendered).doesNotContain(SECRET);
         assertThat(rendered).contains("<external-frame>");
     }
@@ -158,6 +179,7 @@ class ScrubbingFailureLogPrivacyTest {
     @Test
     @DisplayName("A fatal error raised while reading a hostile stack trace is propagated, not swallowed")
     void fatalFailureFromGetStackTraceIsPropagated() {
+        // given
         Throwable hostile = new IllegalStateException(SECRET) {
             @Override
             public StackTraceElement[] getStackTrace() {
@@ -165,6 +187,7 @@ class ScrubbingFailureLogPrivacyTest {
             }
         };
 
+        // when/then
         assertThrows(OutOfMemoryError.class, () -> BoundedThrowableRenderer.render(hostile));
     }
 }

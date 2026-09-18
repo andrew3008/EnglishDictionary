@@ -28,6 +28,7 @@ class ProcessorDefaultLifecycleContractTest {
 
     @Test
     void statelessProcessorsInheritSuccessfulOtelLifecycleDefaults() throws NoSuchMethodException {
+        // given/when/then
         for (SpanProcessor processor : STATELESS_LIFECYCLE_PROCESSORS) {
             Class<?> processorType = processor.getClass();
 
@@ -48,11 +49,13 @@ class ProcessorDefaultLifecycleContractTest {
 
     @Test
     void classificationProcessorIsFinal() {
+        // given/when/then
         assertThat(Modifier.isFinal(ClassificationSpanProcessor.class.getModifiers())).isTrue();
     }
 
     @Test
     void ipPrefixTruncatorResidesInScrubbingEnginePackage() {
+        // given/when/then
         assertThat(IpPrefixTruncator.class.getPackageName())
                 .isEqualTo("space.br1440.platform.tracing.otel.javaagent.scrubbing.engine");
         assertThatThrownBy(() -> Class.forName(

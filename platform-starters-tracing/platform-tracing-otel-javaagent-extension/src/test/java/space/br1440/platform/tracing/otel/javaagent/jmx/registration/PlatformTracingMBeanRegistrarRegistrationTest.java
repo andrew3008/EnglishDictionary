@@ -39,12 +39,15 @@ class PlatformTracingMBeanRegistrarRegistrationTest {
 
     @Test
     void constructorDoesNotRegisterReadinessMBean() {
+        // given/when
         registrar = new PlatformTracingMBeanRegistrar();
+        // then
         assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isFalse();
     }
 
     @Test
     void diagnosticAndRuntimeRegistrationsAreGenerationSafe() throws Exception {
+        // given
         registrar = new PlatformTracingMBeanRegistrar();
         TracingSettingsSource policyA = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.1d);
         TracingSettingsSource policyB = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.9d);
@@ -54,6 +57,7 @@ class PlatformTracingMBeanRegistrarRegistrationTest {
         assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isTrue();
 
         wireOwners(registrar, policyA);
+        // when
         AutoCloseable runtime1 = trackRegistration(registrar.registerRuntimeControls(policyA));
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
 
@@ -71,6 +75,7 @@ class PlatformTracingMBeanRegistrarRegistrationTest {
                 .as("stale runtime close must not clear newer registration")
                 .isTrue();
 
+        // then
         assertThatThrownBy(() -> registrar.registerDiagnosticReadiness(initializingReadinessProjection()))
                 .isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> registrar.registerRuntimeControls(policyA))
@@ -84,11 +89,13 @@ class PlatformTracingMBeanRegistrarRegistrationTest {
 
     @Test
     void closedRuntimeGenerationAllowsNewRegistrationWithoutOwners() throws Exception {
+        // given
         registrar = new PlatformTracingMBeanRegistrar();
         trackRegistration(registrar.registerDiagnosticReadiness(initializingReadinessProjection()));
 
         TracingSettingsSource policy = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.2d);
         AutoCloseable runtime = trackRegistration(registrar.registerRuntimeControls(policy));
+        // when/then
         assertThatThrownBy(() -> registrar.registerRuntimeControls(policy))
                 .isInstanceOf(IllegalStateException.class);
         runtime.close();

@@ -33,16 +33,20 @@ class ScrubbingEngineCharacterizationTest {
 
     @Test
     void keep_never_weakens_drop() {
-        var drop = wrap(rule(true, 10, ScrubbingDecision.drop("oauth")));
-        var keep = wrap(rule(false, 900, ScrubbingDecision.keep()));
+        // given
+        ExecutableRule drop = wrap(rule(true, 10, ScrubbingDecision.drop("oauth")));
+        ExecutableRule keep = wrap(rule(false, 900, ScrubbingDecision.keep()));
+        // when/then
         assertThat(MergeEngine.evaluate(List.of(drop, keep), "k", "v").action())
                 .isEqualTo(ScrubbingAction.DROP);
     }
 
     @Test
     void all_keep_yields_keep() {
-        var a = wrap(rule(false, 900, ScrubbingDecision.keep()));
-        var b = wrap(rule(true, 10, ScrubbingDecision.keep()));
+        // given
+        ExecutableRule a = wrap(rule(false, 900, ScrubbingDecision.keep()));
+        ExecutableRule b = wrap(rule(true, 10, ScrubbingDecision.keep()));
+        // when/then
         assertThat(MergeEngine.evaluate(List.of(a, b), "k", "v").action())
                 .isEqualTo(ScrubbingAction.KEEP);
     }

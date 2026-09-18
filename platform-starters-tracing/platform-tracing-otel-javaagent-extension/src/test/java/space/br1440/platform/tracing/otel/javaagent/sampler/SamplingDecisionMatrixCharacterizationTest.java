@@ -18,6 +18,7 @@ class SamplingDecisionMatrixCharacterizationTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("characterizedCases")
     void matrix_case(SamplingDecisionCase c) {
+        // given/when/then
         SamplingCharacterizationSupport.assertCharacterizedCase(c);
     }
 }

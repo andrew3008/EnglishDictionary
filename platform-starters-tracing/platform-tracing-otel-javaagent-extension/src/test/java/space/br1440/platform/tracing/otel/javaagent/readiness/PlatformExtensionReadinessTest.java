@@ -10,6 +10,7 @@ class PlatformExtensionReadinessTest {
 
     @Test
     void readyRequiresEverySecureProfileCapability() {
+        // given
         PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
 
         for (PlatformExtensionCapability capability : PlatformExtensionCapability.values()) {
@@ -18,10 +19,13 @@ class PlatformExtensionReadinessTest {
             }
         }
 
+        // then
         assertThat(readiness.lifecycle()).isEqualTo(PlatformExtensionLifecycle.INITIALIZING);
 
+        // when
         readiness.markInstalled(PlatformExtensionCapability.EXPORT_PATH_PROTECTED);
 
+        // then
         assertThat(readiness.lifecycle()).isEqualTo(PlatformExtensionLifecycle.READY);
         assertThat(readiness.capabilities()).containsExactlyInAnyOrder(
                 "CONFIGURATION_LOADED",
@@ -35,11 +39,14 @@ class PlatformExtensionReadinessTest {
 
     @Test
     void failedStateIsStickyAndMessageIsSafeAndBounded() {
+        // given
         PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
 
+        // when
         readiness.fail("SANITIZER_INIT_FAILED", new IllegalStateException("rule load failed"));
         readiness.markInstalled(PlatformExtensionCapability.SANITIZER_INSTALLED);
 
+        // then
         assertThat(readiness.lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
         assertThat(readiness.failureCode()).isEqualTo("SANITIZER_INIT_FAILED");
         assertThat(readiness.failureMessage()).isEqualTo("IllegalStateException: rule load failed");
@@ -48,11 +55,14 @@ class PlatformExtensionReadinessTest {
 
     @Test
     void failIsWriteOnceAndPreservesTheOriginalRootCause() {
+        // given
         PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
 
+        // when
         readiness.fail("FIRST_FAILURE", new IllegalStateException("first cause"));
         readiness.fail("SECOND_FAILURE", new IllegalArgumentException("second cause"));
 
+        // then
         assertThat(readiness.lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
         assertThat(readiness.failureCode()).isEqualTo("FIRST_FAILURE");
         assertThat(readiness.failureMessage()).isEqualTo("IllegalStateException: first cause");
@@ -82,8 +92,10 @@ class PlatformExtensionReadinessTest {
 
     @Test
     void markInstalledAndHasRejectNullCapability() {
+        // given
         PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
 
+        // when/then
         assertThatThrownBy(() -> readiness.markInstalled(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> readiness.has(null)).isInstanceOf(NullPointerException.class);
     }
@@ -96,6 +108,7 @@ class PlatformExtensionReadinessTest {
      */
     @Test
     void requireReadyThrowsWhileAnySingleCapabilityIsMissing() {
+        // given
         PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
 
         for (PlatformExtensionCapability capability : PlatformExtensionCapability.values()) {
@@ -104,25 +117,31 @@ class PlatformExtensionReadinessTest {
             }
         }
 
+        // when/then
         assertThatThrownBy(readiness::requireReady)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("EXPORT_PATH_PROTECTED");
 
+        // when
         readiness.markInstalled(PlatformExtensionCapability.EXPORT_PATH_PROTECTED);
 
+        // then
         assertThatCode(readiness::requireReady).doesNotThrowAnyException();
     }
 
     @Test
     void requireReadyThrowsAfterFailEvenIfCapabilitiesWerePreviouslyComplete() {
+        // given
         PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
         for (PlatformExtensionCapability capability : PlatformExtensionCapability.values()) {
             readiness.markInstalled(capability);
         }
         assertThat(readiness.lifecycle()).isEqualTo(PlatformExtensionLifecycle.READY);
 
+        // when
         readiness.fail("LATE_FAILURE", new IllegalStateException("late failure"));
 
+        // then
         assertThatThrownBy(readiness::requireReady).isInstanceOf(IllegalStateException.class);
     }
 }

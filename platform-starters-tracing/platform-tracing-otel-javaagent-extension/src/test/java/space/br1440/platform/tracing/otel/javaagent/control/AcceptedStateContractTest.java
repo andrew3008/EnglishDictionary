@@ -14,16 +14,11 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 
-/**
- * Поведенческие инварианты accepted-state store/revision.
- * <p>
- * Пакетный allowlist, запрет {@code control.state}, словарь и единственный авторитет
- * изменения закреплены в {@code ControlPlaneArchTest} (срез S8).
- */
 class AcceptedStateContractTest {
 
     @Test
     void acceptedRevisionCarriesOnlyLogicalAcceptedState() {
+        // given/when/then
         assertThat(TracingSettingsRevision.class.getRecordComponents())
                 .extracting(RecordComponent::getName)
                 .containsExactly("runtimeInstanceId", "acceptedSequence", "policy");
@@ -31,11 +26,13 @@ class AcceptedStateContractTest {
 
     @Test
     void storeCannotAcceptGenericMapOrRebaseFunction() {
+        // given
         Method commit = Arrays.stream(TracingSettingsStore.class.getDeclaredMethods())
                 .filter(method -> method.getName().equals("commit"))
                 .findFirst()
                 .orElseThrow();
 
+        // then
         assertThat(commit.getParameterTypes())
                 .containsExactly(ExpectedSettingsRevision.class, TracingSettings.class)
                 .doesNotContain(Map.class, UnaryOperator.class);

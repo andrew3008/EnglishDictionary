@@ -48,6 +48,7 @@ class PlatformDropOldestExportSpanProcessorOverflowPolicyTest {
     @Test
     @DisplayName("Drop-oldest: после переполнения экспортируется хвост последовательности, ранние ID отсутствуют")
     void dropOldestPreservesNewestSpans() throws InterruptedException {
+        // given
         BlockingExporter exporter = new BlockingExporter();
 
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)
@@ -65,9 +66,10 @@ class PlatformDropOldestExportSpanProcessorOverflowPolicyTest {
                 .setSampler(Sampler.alwaysOn())
                 .addSpanProcessor(processor)
                 .build();
-        Tracer tracer = tp.get("drop-oldest-contract-test");
 
-        try {
+        // when
+        try (tp) {
+            Tracer tracer = tp.get("drop-oldest-contract-test");
             // Фаза 1: выпускаем первые BATCH_SIZE span'ов, чтобы worker заблокировался в exporter.
             for (int i = 0; i < BATCH_SIZE; i++) {
                 tracer.spanBuilder("probe-" + i)
@@ -94,10 +96,9 @@ class PlatformDropOldestExportSpanProcessorOverflowPolicyTest {
             // Освобождаем exporter и форсируем дренаж.
             exporter.exporterReleaseLatch.countDown();
             tp.forceFlush().join(5, TimeUnit.SECONDS);
-        } finally {
-            tp.close();
         }
 
+        // then
         List<Long> exportedSeq = new ArrayList<>();
         for (SpanData s : exporter.exported) {
             Long seq = s.getAttributes().get(SEQ);
@@ -150,6 +151,7 @@ class PlatformDropOldestExportSpanProcessorOverflowPolicyTest {
     @Test
     @DisplayName("Queue size getter отражает текущее количество спанов в очереди")
     void queueSizeReflectsState() {
+        // given
         BlockingExporter exporter = new BlockingExporter();
         PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(exporter)
                 .maxQueueSize(MAX_QUEUE)
@@ -157,17 +159,18 @@ class PlatformDropOldestExportSpanProcessorOverflowPolicyTest {
                 .scheduleDelay(Duration.ofMinutes(10))
                 .exportTimeout(Duration.ofSeconds(30))
                 .build();
-        SdkTracerProvider tp = SdkTracerProvider.builder()
+        try (SdkTracerProvider tp = SdkTracerProvider.builder()
                 .setSampler(Sampler.alwaysOn())
                 .addSpanProcessor(processor)
-                .build();
-        try {
+                .build()) {
             Tracer tracer = tp.get("queue-size-test");
-            assertThat(processor.metricsSnapshot().queueCapacity()).isEqualTo(MAX_QUEUE);
+            // when
             // Выпускаем больше спанов, чем capacity — overflow гарантирован.
             for (int i = 0; i < 10; i++) {
                 tracer.spanBuilder("s-" + i).startSpan().end();
             }
+            // then
+            assertThat(processor.metricsSnapshot().queueCapacity()).isEqualTo(MAX_QUEUE);
             // queueSize ограничен capacity сверху (worker может постепенно вычитывать, но мы
             // блокируем exporter ⇒ ожидаем равенство capacity на стабильном состоянии).
             // Worker мог попасть в exporter с первыми BATCH_SIZE спанами, тогда в очереди
@@ -177,7 +180,6 @@ class PlatformDropOldestExportSpanProcessorOverflowPolicyTest {
                     .isLessThanOrEqualTo(processor.metricsSnapshot().queueCapacity());
         } finally {
             exporter.exporterReleaseLatch.countDown();
-            tp.close();
         }
     }
 

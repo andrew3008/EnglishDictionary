@@ -16,6 +16,7 @@ import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyDecision;
 import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyReason;
+import space.br1440.platform.tracing.test.harness.SamplerHarness;
 import space.br1440.platform.tracing.test.harness.SamplingDecisionCase;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -30,33 +31,42 @@ class SamplingPolicyDecisionOtelAdapterTest {
 
     @Test
     void killSwitchDrop_hasNoSpanReasonAttribute() {
+        // given
         SamplingPolicyDecision decision = SamplingPolicyDecision.drop(
                 SamplingPolicyReason.KILL_SWITCH, PlatformSamplingReasons.KILL_SWITCH);
 
+        // when
         SamplingResult result = SamplingPolicyOtelAdapter.toSamplingResult(decision);
 
+        // then
         assertThat(result.getDecision()).isEqualTo(SamplingDecision.DROP);
         assertThat(result.getAttributes().get(REASON)).isNull();
     }
 
     @Test
     void hardDrop_mapsReasonAttribute() {
+        // given
         SamplingPolicyDecision decision = SamplingPolicyDecision.drop(
                 SamplingPolicyReason.HARD_DROP, "hard_drop");
 
+        // when
         SamplingResult result = SamplingPolicyOtelAdapter.toSamplingResult(decision);
 
+        // then
         assertThat(result.getDecision()).isEqualTo(SamplingDecision.DROP);
         assertThat(result.getAttributes().get(REASON)).isEqualTo(PlatformSamplingReasons.DROP_PATH);
     }
 
     @Test
     void routeRatioSample_usesForwardingResult() {
+        // given
         SamplingPolicyDecision decision = SamplingPolicyDecision.recordAndSample(
                 SamplingPolicyReason.ROUTE_RATIO, PlatformSamplingReasons.ROUTE_RATIO);
 
+        // when
         SamplingResult result = SamplingPolicyOtelAdapter.toSamplingResult(decision);
 
+        // then
         assertThat(result).isInstanceOf(ForwardingSamplingResult.class);
         assertThat(result.getDecision()).isEqualTo(SamplingDecision.RECORD_AND_SAMPLE);
         assertThat(result.getAttributes().get(REASON)).isEqualTo(PlatformSamplingReasons.ROUTE_RATIO);
@@ -64,8 +74,10 @@ class SamplingPolicyDecisionOtelAdapterTest {
 
     @Test
     void abstain_mapsToFallbackDrop() {
+        // when
         SamplingResult result = SamplingPolicyOtelAdapter.toSamplingResult(SamplingPolicyDecision.abstain());
 
+        // then
         assertThat(result.getDecision()).isEqualTo(SamplingDecision.DROP);
         assertThat(SamplingPolicyOtelAdapter.metricReasonCode(SamplingPolicyDecision.abstain()))
                 .isEqualTo(PlatformSamplingReasons.FALLBACK_DROP);
@@ -82,11 +94,13 @@ class SamplingPolicyDecisionOtelAdapterTest {
     @ParameterizedTest(name = "{0} -> {1}")
     @MethodSource("allReasonCodeMappings")
     void metricKeyCoversAllElevenWireKeys(SamplingPolicyDecision decision, String expectedWireKey) {
+        // when
         SamplingResult result = SamplingPolicyOtelAdapter.toSamplingResult(decision);
         String actualWireKey = result.getDecision().name()
                 + ":"
                 + SamplingPolicyOtelAdapter.metricReasonCode(decision);
 
+        // then
         assertThat(actualWireKey).isEqualTo(expectedWireKey);
     }
 
@@ -130,6 +144,7 @@ class SamplingPolicyDecisionOtelAdapterTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("characterizedCases")
     void adapterRequest_producesSameDecisionAsComposite(SamplingDecisionCase c) {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(
                 c.enabled(),
                 c.routeRatios(),
@@ -137,6 +152,7 @@ class SamplingPolicyDecisionOtelAdapterTest {
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(c.droppedRoutes(), c.forceRecordValues()));
 
+        // when
         SamplingResult compositeResult = sampleViaComposite(sampler, c);
         SamplingResult adapterResult = SamplingPolicyOtelAdapter.toSamplingResult(
                 sampler.policyEngine().evaluate(
@@ -153,13 +169,14 @@ class SamplingPolicyDecisionOtelAdapterTest {
                         holder.current().samplingRatio(),
                         sampler.categoryBOverrides()));
 
+        // then
         assertThat(adapterResult.getDecision()).isEqualTo(compositeResult.getDecision());
         assertThat(adapterResult.getAttributes().get(REASON))
                 .isEqualTo(compositeResult.getAttributes().get(REASON));
     }
 
     private static SamplingResult sampleViaComposite(CompositeSampler sampler, SamplingDecisionCase c) {
-        var harness = space.br1440.platform.tracing.test.harness.SamplerHarness.of(sampler)
+        SamplerHarness harness = SamplerHarness.of(sampler)
                 .spanKind(SpanKind.SERVER)
                 .traceId(c.traceId())
                 .parentContext(c.parentContext());

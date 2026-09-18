@@ -25,6 +25,7 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 )
 class ScrubbingBoundaryOwnershipArchTest {
 
+    // given/when/then
     @ArchTest
     static final ArchRule boundaryComponentsDoNotUseStandardStreams =
             noClasses()
@@ -38,6 +39,7 @@ class ScrubbingBoundaryOwnershipArchTest {
                     .should(ACCESS_STANDARD_STREAMS)
                     .because("tracing failures must use controlled logging instead of standard streams");
 
+    // given/when/then
     @ArchTest
     static final ArchRule productionExporterIsAssembledOnlyByExportFactory =
             noClasses()
@@ -50,6 +52,7 @@ class ScrubbingBoundaryOwnershipArchTest {
                             ScrubbingRuntime.class)
                     .because("only PlatformExportProcessorFactory may assemble the protected exporter");
 
+    // given/when/then
     @ArchTest
     static final ArchRule installationBarrierIsAcknowledgedOnlyByPipelineAssembly =
             noClasses()
@@ -61,6 +64,7 @@ class ScrubbingBoundaryOwnershipArchTest {
                                     .and(target(nameStartingWith("acknowledge"))))
                     .because("only pipeline assembly may acknowledge scrubbing installation");
 
+    // given/when/then
     @ArchTest
     static final ArchRule boundaryMetricsAreRecordedOnlyByBoundaryOwners =
             noClasses()
@@ -76,6 +80,7 @@ class ScrubbingBoundaryOwnershipArchTest {
                                     .and(target(nameStartingWith("recordBoundary"))))
                     .because("only exporter boundary owners may update scrubbing boundary metrics");
 
+    // given/when/then
     @ArchTest
     static final ArchRule processorsDoNotWriteResourceIdentityAttributes =
             noClasses()

@@ -30,6 +30,7 @@ class TraceIdRatioParityTest {
 
     @Test
     void coreDefaultRatio_matchesOtelTraceIdRatioBased() {
+        // given
         double ratio = 0.5;
         String traceId = "0af7651916cd43dd8448eb211c80319c";
         SamplingPolicyEngine engine = SamplingPolicyEngine.productionEngine();
@@ -38,11 +39,13 @@ class TraceIdRatioParityTest {
         SamplingPolicyRequest request = new SamplingPolicyRequest(
                 null, traceId, null, false, ParentContextState.ABSENT);
 
+        // when
         SamplingPolicyDecision coreDecision = engine.evaluate(request, snapshot);
         SamplingDecision otelDecision = Sampler.traceIdRatioBased(ratio).shouldSample(
                 Context.root(), traceId, "span", SpanKind.SERVER, null, null).getDecision();
 
         // Snapshot/Request подобраны так, что решает именно default_ratio (предыдущие правила воздержались).
+        // then
         assertThat(coreDecision.reason()).isIn(
                 SamplingPolicyReason.DEFAULT_RATIO, SamplingPolicyReason.DEFAULT_RATIO_DROP);
         if (otelDecision == SamplingDecision.RECORD_AND_SAMPLE) {

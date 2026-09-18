@@ -17,23 +17,27 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.resources.Resource;
+import io.opentelemetry.sdk.trace.data.SpanData;
 
 class PipelinePolicyCharacterizationTest {
 
     @Test
     void enriching_runs_before_scrubbing_in_composite_onEnding() {
+        // given
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(
                 new EnrichingSpanProcessor(),
                 ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
                         List.of(BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")))));
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(composite)) {
+            // when
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("server-op").setSpanKind(SpanKind.SERVER).startSpan();
             span.setAttribute("http.request.header.authorization", "Bearer secret");
             span.end();
 
-            var data = h.exporter().getFinishedSpanItems().getFirst();
+            // then
+            SpanData data = h.exporter().getFinishedSpanItems().getFirst();
             EnrichmentAssertions.assertPlatformType(data, "http_server");
             ScrubbingAssertions.assertStringAttributeEmpty(data, "http.request.header.authorization");
         }
@@ -57,7 +61,7 @@ class PipelinePolicyCharacterizationTest {
             span.end();
 
             // then
-            var data = h.exporter().getFinishedSpanItems().getFirst();
+            SpanData data = h.exporter().getFinishedSpanItems().getFirst();
             ValidationAssertions.assertMissingRecorded(data, PlatformAttributes.PLATFORM_RESULT);
             EnrichmentAssertions.assertPlatformResult(data, "success");
             ScrubbingAssertions.assertStringAttributeEmpty(data, "http.request.header.authorization");
@@ -81,7 +85,7 @@ class PipelinePolicyCharacterizationTest {
             span.end();
 
             // then
-            var data = h.exporter().getFinishedSpanItems().getFirst();
+            SpanData data = h.exporter().getFinishedSpanItems().getFirst();
             ValidationAssertions.assertMissingAbsent(data);
         }
     }

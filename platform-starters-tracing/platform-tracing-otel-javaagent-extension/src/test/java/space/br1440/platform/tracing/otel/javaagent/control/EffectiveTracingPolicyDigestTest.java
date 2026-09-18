@@ -15,6 +15,7 @@ class EffectiveTracingPolicyDigestTest {
 
     @Test
     void matchesGoldenVector() {
+        // given
         TracingSettings policy = TracingSettings.of(
                 true,
                 0.25d,
@@ -25,12 +26,14 @@ class EffectiveTracingPolicyDigestTest {
                 true,
                 TracingLogLevel.INFO);
 
+        // when/then
         assertThat(TracingSettingsDigest.sha256(policy))
                 .isEqualTo("32f8d43cea97ff26a36b47374314ff8df8d14366e6449a3fe89699d963afdaf1");
     }
 
     @Test
     void matchesGoldenVectorWithEmptyRouteRatios() {
+        // given
         TracingSettings policy = TracingSettings.of(
                 true,
                 0.25d,
@@ -41,12 +44,14 @@ class EffectiveTracingPolicyDigestTest {
                 true,
                 TracingLogLevel.INFO);
 
+        // when/then
         assertThat(TracingSettingsDigest.sha256(policy))
                 .isEqualTo("5c7749beaa1333762487aafe8103a92f68c2757186aa944b756025a0696c2993");
     }
 
     @Test
     void ignoresInputMapOrderAndNormalizesNegativeZero() {
+        // given
         Map<String, Double> first = new LinkedHashMap<>();
         first.put("/z", -0.0d);
         first.put("/a", 0.5d);
@@ -54,18 +59,22 @@ class EffectiveTracingPolicyDigestTest {
         second.put("/a", 0.5d);
         second.put("/z", 0.0d);
 
+        // when
         TracingSettings left = policy(-0.0d, first);
         TracingSettings right = policy(0.0d, second);
 
+        // then
         assertThat(TracingSettingsDigest.sha256(left))
                 .isEqualTo(TracingSettingsDigest.sha256(right));
     }
 
     @Test
     void changesWhenAnyCategoryALeafChanges() {
+        // given
         TracingSettings baseline = AcceptedPolicyTestFixtures.policy(0.1d);
         TracingSettings changed = AcceptedPolicyTestFixtures.policy(0.2d);
 
+        // when/then
         assertThat(TracingSettingsDigest.sha256(baseline))
                 .hasSize(64)
                 .matches("[0-9a-f]{64}")
@@ -74,6 +83,7 @@ class EffectiveTracingPolicyDigestTest {
 
     @Test
     void utf8OrderingIsIndependentFromPolicyMapNaturalOrdering() {
+        // given
         String supplementary = "\uD800\uDC00";
         String privateUse = "\uE000";
         TracingSettings first = policy(
@@ -84,6 +94,7 @@ class EffectiveTracingPolicyDigestTest {
         reversed.put(supplementary, 0.2d);
         TracingSettings second = policy(0.1d, reversed);
 
+        // when/then
         assertThat(first.samplingRouteRatios().firstKey()).isEqualTo(supplementary);
         assertThat(TracingSettingsDigest.sha256(first))
                 .isEqualTo(TracingSettingsDigest.sha256(second));

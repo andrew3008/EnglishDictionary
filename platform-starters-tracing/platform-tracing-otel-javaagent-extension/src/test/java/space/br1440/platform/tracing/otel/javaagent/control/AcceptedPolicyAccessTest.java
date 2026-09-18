@@ -17,12 +17,14 @@ class AcceptedPolicyAccessTest {
 
     @Test
     void allCategoryALeavesArePublishedThroughOneAcceptedEnvelope() {
+        // given
         TracingSettingsSource access = TracingSettingsSource.isolatedSampling(
                 true,
                 Map.of("/initial", 0.1d),
                 0.2d);
         TracingSettingsRevision initial = access.current();
 
+        // when/then
         assertThat(AcceptedPolicyMutationAccess.applySampling(access, false, 0.3d, Map.of("/orders", 0.4d)))
                 .isEqualTo(SettingsUpdateStatus.APPLIED);
         assertThat(AcceptedPolicyMutationAccess.applyValidation(access, true, true))
@@ -33,6 +35,7 @@ class AcceptedPolicyAccessTest {
                 .isEqualTo(SettingsUpdateStatus.APPLIED);
         assertThat(access.applyLogLevel("DEBUG")).isTrue();
 
+        // then
         TracingSettingsRevision accepted = access.current();
         assertThat(accepted.runtimeInstanceId()).isEqualTo(initial.runtimeInstanceId());
         assertThat(accepted.acceptedSequence()).isEqualTo(initial.acceptedSequence() + 5L);
@@ -48,9 +51,11 @@ class AcceptedPolicyAccessTest {
 
     @Test
     void unchangedAndRejectedCandidatesDoNotPublishNewState() {
+        // given
         TracingSettingsSource access = TracingSettingsSource.isolatedDefaults();
         TracingSettingsRevision initial = access.current();
 
+        // when/then
         assertThat(AcceptedPolicyMutationAccess.applyExporter(access, initial.exporterEnabled()))
                 .isEqualTo(SettingsUpdateStatus.UNCHANGED);
         assertThat(access.current()).isSameAs(initial);
@@ -69,17 +74,20 @@ class AcceptedPolicyAccessTest {
 
     @Test
     void routeRatiosRemainImmutableAfterPublication() {
+        // given
         TracingSettingsSource access = TracingSettingsSource.isolatedSampling(
                 true,
                 Map.of("/orders", 0.4d),
                 0.2d);
 
+        // when/then
         assertThatThrownBy(() -> access.current().samplingRouteRatios().put("/payments", 0.5d))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
     void acceptedPolicyReadPathDoesNotAllocatePerReadOnHotSpot() {
+        // given
         java.lang.management.ThreadMXBean standardBean = ManagementFactory.getThreadMXBean();
         Assumptions.assumeTrue(standardBean instanceof com.sun.management.ThreadMXBean);
         com.sun.management.ThreadMXBean allocationBean =
@@ -95,6 +103,7 @@ class AcceptedPolicyAccessTest {
             sum += Double.doubleToRawLongBits(policy.samplingRatio());
         }
 
+        // when
         long threadId = Thread.currentThread().threadId();
         long before = allocationBean.getThreadAllocatedBytes(threadId);
         for (int index = 0; index < 2_000_000; index++) {
@@ -105,8 +114,7 @@ class AcceptedPolicyAccessTest {
         long allocated = allocationBean.getThreadAllocatedBytes(threadId) - before;
         allocationSink = sum;
 
-        // ThreadMXBean может учитывать небольшую фиксированную стоимость самого измерения.
-        // Допуск не зависит от числа чтений и по-прежнему выявляет создание объектов в hot path.
+        // then
         assertThat(allocated).isLessThanOrEqualTo(1_024L);
     }
 }

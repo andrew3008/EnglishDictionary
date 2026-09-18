@@ -30,6 +30,7 @@ class PlatformCompositeSpanProcessorTest {
     @SuppressWarnings("resource")
     void rejectsMissingBlankAndDuplicateDiagnosticIdentity() {
 
+        // given
         @SuppressWarnings("resource")
         SpanProcessor missing = new SpanProcessor() {
             @Override
@@ -51,6 +52,7 @@ class PlatformCompositeSpanProcessorTest {
             }
         };
 
+        // given/when
         assertThatThrownBy(() -> new PlatformCompositeSpanProcessor(List.of(missing)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("does not declare");
@@ -68,6 +70,7 @@ class PlatformCompositeSpanProcessorTest {
 
     @Test
     void empty_delegate_list_does_not_crash_composite() {
+        // given/when/then
         try (PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of())) {
             assertThat(composite.isStartRequired()).isFalse();
             assertThat(composite.isEndRequired()).isFalse();
@@ -79,6 +82,7 @@ class PlatformCompositeSpanProcessorTest {
 
     @Test
     void exception_in_one_delegate_does_not_stop_others_and_increments_counter() {
+        // given
         AtomicInteger okCalls = new AtomicInteger();
 
         SpanProcessor faulty = new NamedFaultyProcessor("faulty-onstart");
@@ -107,8 +111,10 @@ class PlatformCompositeSpanProcessorTest {
             try (SpanProcessorHarness h = SpanProcessorHarness.of(composite)) {
                 Tracer tracer = h.tracer("t");
                 Span span = tracer.spanBuilder("op").startSpan();
+                // when
                 span.end();
 
+                // then
                 assertThat(h.exporter().getFinishedSpanItems()).hasSize(1);
             }
 
@@ -120,6 +126,7 @@ class PlatformCompositeSpanProcessorTest {
 
     @Test
     void onEnding_is_called_only_for_ExtendedSpanProcessor() {
+        // given
         AtomicInteger onEndingCalls = new AtomicInteger();
 
         SpanProcessor plain = identified("test_plain", new SpanProcessor() {
@@ -180,6 +187,7 @@ class PlatformCompositeSpanProcessorTest {
         try (PlatformCompositeSpanProcessor composite =
                      new PlatformCompositeSpanProcessor(List.of(plain, extended))) {
 
+            // then
             assertThat(composite.isOnEndingRequired()).isTrue();
 
             try (SpanProcessorHarness h = SpanProcessorHarness.of(composite)) {
@@ -193,6 +201,7 @@ class PlatformCompositeSpanProcessorTest {
 
     @Test
     void phaseParticipationIsSnapshotAtConstructionAndIgnoresLaterPredicateChanges() {
+        // given
         MutablePredicateProcessor mutable = new MutablePredicateProcessor("mutable_predicate");
 
         try (PlatformCompositeSpanProcessor composite =
@@ -203,9 +212,11 @@ class PlatformCompositeSpanProcessorTest {
             mutable.onEndingRequired = false;
 
             try (SpanProcessorHarness h = SpanProcessorHarness.of(composite)) {
+                // when
                 h.tracer("t").spanBuilder("op").startSpan().end();
             }
 
+            // then
             assertThat(mutable.onStartCalls.get()).isEqualTo(1);
             assertThat(mutable.onEndCalls.get()).isEqualTo(1);
             assertThat(mutable.onEndingCalls.get()).isEqualTo(1);
@@ -214,10 +225,12 @@ class PlatformCompositeSpanProcessorTest {
 
     @Test
     void getProcessorErrorCounts_returns_immutable_snapshot() {
+        // given
         SpanProcessor faulty = new NamedFaultyProcessor("faulty");
 
         try (PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(faulty))) {
 
+            // then
             assertThat(composite.getProcessorErrorCounts())
                     .containsEntry("test_faulty", 0L);
 
@@ -229,6 +242,7 @@ class PlatformCompositeSpanProcessorTest {
 
     @Test
     void isolatesRuntimeExceptionFromOnEndingAndContinuesPipeline() {
+        // given
         AtomicInteger secondDelegateCalls = new AtomicInteger();
         OnEndingThrowsRuntime faultyDelegate = new OnEndingThrowsRuntime();
         RecordingOnEndingProcessor recordingDelegate = new RecordingOnEndingProcessor(secondDelegateCalls);
@@ -238,9 +252,11 @@ class PlatformCompositeSpanProcessorTest {
 
             try (SpanProcessorHarness h = SpanProcessorHarness.of(composite)) {
                 Tracer tracer = h.tracer("t");
+                // when
                 tracer.spanBuilder("op").startSpan().end();
             }
 
+            // then
             assertThat(secondDelegateCalls.get()).isEqualTo(1);
             assertThat(composite.getProcessorErrorCounts())
                     .containsEntry("test_on_ending_failure", 1L);
@@ -251,6 +267,7 @@ class PlatformCompositeSpanProcessorTest {
 
     @Test
     void validationViolationUsesValidatorDiagnosticsWithoutCompositeError() {
+        // given
         AtomicInteger followingDelegateCalls = new AtomicInteger();
         ValidatingSpanProcessor validator = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true));
 
@@ -262,8 +279,10 @@ class PlatformCompositeSpanProcessorTest {
                 harness.tracer("validation-gate")
                         .spanBuilder("intentional-invalid-span")
                         .startSpan()
+                        // when
                         .end();
 
+                // then
                 assertThat(harness.exporter().getFinishedSpanItems()).hasSize(1);
                 assertThat(harness.exporter().getFinishedSpanItems().getFirst().getAttributes()
                         .get(AttributeKey.stringKey("platform.validation.missing")))
@@ -279,6 +298,7 @@ class PlatformCompositeSpanProcessorTest {
 
     @Test
     void validSpanDoesNotIncrementValidationViolationCounter() {
+        // given
         ValidatingSpanProcessor validator = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true));
 
         try (PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(validator))) {
@@ -288,7 +308,9 @@ class PlatformCompositeSpanProcessorTest {
                         .setAttribute(PlatformAttributes.PLATFORM_TYPE, "http_server")
                         .setAttribute(PlatformAttributes.PLATFORM_RESULT, "success")
                         .startSpan()
+                        // when
                         .end();
+                // then
                 assertThat(harness.exporter().getFinishedSpanItems()).hasSize(1);
             }
 
@@ -300,6 +322,7 @@ class PlatformCompositeSpanProcessorTest {
 
     @Test
     void isolatesRuntimeExceptionFromOnStartAndContinuesPipeline() {
+        // given
         AtomicInteger secondDelegateCalls = new AtomicInteger();
 
         SpanProcessor faultyOnStart = identified("test_anonymous_start_failure", new SpanProcessor() {
@@ -347,9 +370,11 @@ class PlatformCompositeSpanProcessorTest {
         try (PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(faultyOnStart, okOnStart))) {
             try (SpanProcessorHarness h = SpanProcessorHarness.of(composite)) {
                 Tracer tracer = h.tracer("t");
+                // when
                 tracer.spanBuilder("op").startSpan().end();
             }
 
+            // then
             assertThat(secondDelegateCalls.get()).isEqualTo(1);
 
             long totalOnStartErrors = composite.getProcessorErrorCounts().values().stream()
@@ -361,6 +386,7 @@ class PlatformCompositeSpanProcessorTest {
 
     @Test
     void isolatesRuntimeExceptionFromOnEndAndContinuesPipeline() {
+        // given
         AtomicInteger secondDelegateCalls = new AtomicInteger();
         OnEndThrowsRuntime faultyDelegate = new OnEndThrowsRuntime();
 
@@ -390,9 +416,11 @@ class PlatformCompositeSpanProcessorTest {
 
             try (SpanProcessorHarness h = SpanProcessorHarness.of(composite)) {
                 Tracer tracer = h.tracer("t");
+                // when
                 tracer.spanBuilder("op").startSpan().end();
             }
 
+            // then
             assertThat(secondDelegateCalls.get()).isEqualTo(1);
             assertThat(composite.getProcessorErrorCounts())
                     .containsEntry("test_on_end_failure", 1L);

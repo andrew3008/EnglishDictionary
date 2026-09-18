@@ -1,12 +1,13 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.rules;
 
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.spi.ScrubbingAction;
-import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import space.br1440.platform.tracing.api.spi.ScrubbingAction;
+import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 
 /**
  * Unit-тесты встроенных правил scrubbing'а на API {@code evaluate(String key, Object value)}.
@@ -17,6 +18,7 @@ class BuiltInRulesTest {
     class Registry {
         @Test
         void resolve_returns_correct_types() {
+            // when/then
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve("email")).isInstanceOf(EmailRule.class);
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve("jwt")).isInstanceOf(JwtRule.class);
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve("password")).isInstanceOf(PasswordKeyRule.class);
@@ -33,6 +35,7 @@ class BuiltInRulesTest {
 
         @Test
         void resolve_is_case_insensitive_and_returns_null_for_unknown() {
+            // when/then
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve("EMAIL")).isInstanceOf(EmailRule.class);
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve("unknown")).isNull();
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve(null)).isNull();
@@ -41,6 +44,7 @@ class BuiltInRulesTest {
         @Test
         void priorities_are_defined_in_enum_and_increase_from_strict_to_soft_actions() {
             // Единый источник истины — BuiltInSpanAttributeScrubbingRules enum.
+            // when/then
             assertThat(BuiltInSpanAttributeScrubbingRules.OAUTH_HEADER.priority())
                     .isLessThan(BuiltInSpanAttributeScrubbingRules.X_AUTH_HEADER.priority());
             assertThat(BuiltInSpanAttributeScrubbingRules.X_AUTH_HEADER.priority())
@@ -61,7 +65,9 @@ class BuiltInRulesTest {
 
     @Test
     void password_key_rule_drops_by_name() {
+        // given
         SpanAttributeScrubbingRule rule = new PasswordKeyRule();
+        // when/then
         assertThat(rule.evaluate("db.password", "x").action()).isEqualTo(ScrubbingAction.DROP);
         assertThat(rule.evaluate("app.client-secret", "x").action()).isEqualTo(ScrubbingAction.DROP);
         assertThat(rule.evaluate("user.name", "ivan").action()).isEqualTo(ScrubbingAction.KEEP);
@@ -69,7 +75,9 @@ class BuiltInRulesTest {
 
     @Test
     void jwt_rule_drops_only_string_value_starting_with_eyJ() {
+        // given
         SpanAttributeScrubbingRule rule = new JwtRule();
+        // when/then
         assertThat(rule.evaluate("v", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.sig").action())
                 .isEqualTo(ScrubbingAction.DROP);
         assertThat(rule.evaluate("v", "просто текст").action()).isEqualTo(ScrubbingAction.KEEP);
@@ -78,14 +86,18 @@ class BuiltInRulesTest {
 
     @Test
     void email_rule_hashes_string_with_email() {
+        // given
         SpanAttributeScrubbingRule rule = new EmailRule();
+        // when/then
         assertThat(rule.evaluate("c", "ivan@example.com").action()).isEqualTo(ScrubbingAction.HASH);
         assertThat(rule.evaluate("c", "no email here").action()).isEqualTo(ScrubbingAction.KEEP);
     }
 
     @Test
     void user_identity_drops_full_name_and_hashes_login() {
+        // given
         SpanAttributeScrubbingRule rule = new UserIdentityRule();
+        // when/then
         assertThat(rule.evaluate("user.firstName", "Иван").action()).isEqualTo(ScrubbingAction.DROP);
         assertThat(rule.evaluate("user.family_name", "Петров").action()).isEqualTo(ScrubbingAction.DROP);
         assertThat(rule.evaluate("preferred_username", "ipetrov").action()).isEqualTo(ScrubbingAction.HASH);
@@ -93,7 +105,9 @@ class BuiltInRulesTest {
 
     @Test
     void location_drops_geocoordinates() {
+        // given
         SpanAttributeScrubbingRule rule = new LocationRule();
+        // when/then
         assertThat(rule.evaluate("geo.latitude", 55.7).action())
                 .isEqualTo(ScrubbingAction.DROP);
         assertThat(rule.evaluate("geo.speed", 10.0).action())
@@ -102,14 +116,18 @@ class BuiltInRulesTest {
 
     @Test
     void ip_address_returns_truncate_with_marker() {
+        // given
         SpanAttributeScrubbingRule rule = new IpAddressRule();
-        var decision = rule.evaluate("client.address", "10.1.2.3");
+        // when
+        ScrubbingDecision decision = rule.evaluate("client.address", "10.1.2.3");
+        // then
         assertThat(decision.action()).isEqualTo(ScrubbingAction.TRUNCATE);
         assertThat(decision.reason()).isEqualTo(IpAddressRule.REASON);
     }
 
     @Test
     void critical_flag_true_for_security_rules_false_for_others() {
+        // when/then
         assertThat(new OAuthHeaderRule().critical()).isTrue();
         assertThat(new PasswordKeyRule().critical()).isTrue();
         assertThat(new JwtRule().critical()).isTrue();

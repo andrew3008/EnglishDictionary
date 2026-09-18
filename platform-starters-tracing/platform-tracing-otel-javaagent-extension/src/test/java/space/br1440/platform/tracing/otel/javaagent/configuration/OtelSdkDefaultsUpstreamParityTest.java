@@ -5,25 +5,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.lang.reflect.Field;
 import java.time.Duration;
 
-import io.opentelemetry.sdk.trace.SpanLimits;
-import io.opentelemetry.sdk.trace.export.BatchSpanProcessorBuilder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/**
- * Executable parity gate for {@link OtelSdkDefaults} against the pinned OpenTelemetry BOM
- * (currently 1.64.0). Closes the {@code NOT_PROVEN} finding from the OTel autoconfigure source
- * audit (report 02 / S7).
- * <p>
- * Two categories are asserted separately so an intentional platform override cannot silently
- * drift into a false "match" claim, and a match cannot silently become an undeclared override.
- */
+import io.opentelemetry.sdk.trace.SpanLimits;
+import io.opentelemetry.sdk.trace.export.BatchSpanProcessorBuilder;
+
 @DisplayName("OtelSdkDefaults ↔ upstream OTel SDK parity")
 class OtelSdkDefaultsUpstreamParityTest {
 
     @Test
     @DisplayName("BSP queue/batch/schedule match BatchSpanProcessorBuilder defaults")
     void bsp_matching_defaults_equal_upstream_builder() throws Exception {
+        // given/when/then
         assertThat(OtelSdkDefaults.DEFAULT_BSP_MAX_QUEUE_SIZE)
                 .as("otel.bsp.max.queue.size")
                 .isEqualTo(upstreamInt(BatchSpanProcessorBuilder.class, "DEFAULT_MAX_QUEUE_SIZE"));
@@ -39,8 +33,10 @@ class OtelSdkDefaultsUpstreamParityTest {
     @Test
     @DisplayName("BSP export timeout is a documented platform override of upstream 30s")
     void bsp_export_timeout_is_documented_platform_override() throws Exception {
+        // given
         int upstreamMillis = upstreamInt(BatchSpanProcessorBuilder.class, "DEFAULT_EXPORT_TIMEOUT_MILLIS");
 
+        // when/then
         assertThat(upstreamMillis)
                 .as("upstream BatchSpanProcessorBuilder.DEFAULT_EXPORT_TIMEOUT_MILLIS")
                 .isEqualTo(30_000);
@@ -53,8 +49,10 @@ class OtelSdkDefaultsUpstreamParityTest {
     @Test
     @DisplayName("span limits are documented platform overrides of SpanLimits.getDefault()")
     void span_limits_are_documented_platform_overrides() {
+        // given
         SpanLimits upstream = SpanLimits.getDefault();
 
+        // when/then
         assertThat(upstream.getMaxNumberOfAttributes()).isEqualTo(128);
         assertThat(upstream.getMaxNumberOfEvents()).isEqualTo(128);
         assertThat(upstream.getMaxNumberOfLinks()).isEqualTo(128);
@@ -84,10 +82,13 @@ class OtelSdkDefaultsUpstreamParityTest {
         if (value instanceof Integer integer) {
             return integer;
         }
+
         if (value instanceof Long longValue) {
             return Math.toIntExact(longValue);
         }
+
         throw new IllegalStateException(
-                type.getName() + '.' + fieldName + " has unexpected type " + value.getClass());
+                type.getName() + '.' + fieldName + " has unexpected type " + value.getClass()
+        );
     }
 }

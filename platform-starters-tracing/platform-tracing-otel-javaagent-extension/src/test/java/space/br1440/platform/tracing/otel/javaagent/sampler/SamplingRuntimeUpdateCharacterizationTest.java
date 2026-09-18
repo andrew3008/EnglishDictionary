@@ -6,6 +6,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutati
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 
 import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
@@ -31,29 +32,35 @@ class SamplingRuntimeUpdateCharacterizationTest {
 
     @Test
     void route_ratio_update_changes_reason_from_global_to_route() throws Exception {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
         String urlPath = "/api/v1/orders";
 
-        var globalResult = SamplerHarness.of(sampler)
+        // when
+        SamplingResult globalResult = SamplerHarness.of(sampler)
                 .spanKind(SpanKind.SERVER)
                 .putStringAttribute("url.path", urlPath)
                 .sample();
+        // then
         SamplingAssertions.assertSamplingReason(globalResult, PlatformSamplingReasons.GLOBAL_RATIO);
 
+        // when
         AcceptedPolicyMutationAccess.applySampling(holder, true, 1.0d, Map.of("/api/v1/orders", 0.0d));
 
-        var routeDrop = SamplerHarness.of(sampler)
+        SamplingResult routeDrop = SamplerHarness.of(sampler)
                 .spanKind(SpanKind.SERVER)
                 .putStringAttribute("url.path", urlPath)
                 .sample();
+        // then
         SamplerDecisionAssert.assertThat(routeDrop).isDrop();
         SamplingAssertions.assertSamplingReason(routeDrop, PlatformSamplingReasons.ROUTE_RATIO_DROP);
     }
 
     @Test
     void parallel_read_after_valid_update_does_not_see_invalid_ratio() throws Exception {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
@@ -64,6 +71,7 @@ class SamplingRuntimeUpdateCharacterizationTest {
         java.util.concurrent.atomic.AtomicBoolean stopReader = new java.util.concurrent.atomic.AtomicBoolean(false);
         AtomicReference<String> violation = new AtomicReference<>();
 
+        // when
         try {
             pool.submit(() -> {
                 await(start);
@@ -102,6 +110,7 @@ class SamplingRuntimeUpdateCharacterizationTest {
             assertThat(pool.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
         }
 
+        // then
         assertThat(violation.get()).isNull();
     }
 

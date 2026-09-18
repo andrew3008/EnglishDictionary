@@ -55,11 +55,13 @@ class BootstrapCoordinatorTest {
 
     @Test
     void activate_without_prior_prepare_classified_as_PLATFORM_ACP_NOT_EXECUTED() {
+        // given
         BootstrapCoordinator coordinator = BootstrapCoordinator.create(
                 new PlatformScrubberFactory(),
                 RuntimeEvidenceTestFixtures.trustedAttestor()
         );
 
+        // when/then
         assertThatThrownBy(coordinator::activate)
                 .isInstanceOf(BootstrapException.class)
                 .extracting(failure -> ((BootstrapException) failure).failure().code())
@@ -211,9 +213,11 @@ class BootstrapCoordinatorTest {
 
     @Test
     void second_prepare_with_identical_configuration_classified_as_SECOND_SDK_BUILD() {
+        // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
         coordinator.prepare(config(Map.of()));
 
+        // when/then
         assertThatThrownBy(() -> coordinator.prepare(config(Map.of())))
                 .isInstanceOf(BootstrapException.class)
                 .extracting(failure -> ((BootstrapException) failure).failure().code())
@@ -222,9 +226,11 @@ class BootstrapCoordinatorTest {
 
     @Test
     void second_prepare_with_different_configuration_classified_as_CONFIGURATION_SPLIT_BRAIN() {
+        // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
         coordinator.prepare(config(Map.of()));
 
+        // when/then
         assertThatThrownBy(() -> coordinator.prepare(config(Map.of(ExtensionPropertyNames.SAMPLING_RATIO, "0.42"))))
                 .isInstanceOf(BootstrapException.class)
                 .extracting(failure -> ((BootstrapException) failure).failure().code())
@@ -284,9 +290,11 @@ class BootstrapCoordinatorTest {
 
     @Test
     void terminal_coordinator_repeats_same_code_for_any_subsequent_operation() {
+        // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
         assertThatThrownBy(coordinator::activate);
 
+        // when/then
         assertThatThrownBy(() -> coordinator.prepare(config(Map.of())))
                 .isInstanceOf(BootstrapException.class)
                 .extracting(failure -> ((BootstrapException) failure).failure().code())
@@ -416,6 +424,7 @@ class BootstrapCoordinatorTest {
 
     @Test
     void missing_processor_acknowledgement_fails_activation_and_never_publishes_READY() {
+        // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
         this.ownedCoordinator = coordinator;
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
@@ -424,6 +433,7 @@ class BootstrapCoordinatorTest {
         session.scrubbingRuntime().acknowledgeExporterWrapped();
         session.scrubbingRuntime().acknowledgeExportPathProtected();
 
+        // when/then
         assertThatThrownBy(coordinator::activate)
                 .isInstanceOf(BootstrapException.class)
                 .extracting(failure -> ((BootstrapException) failure).failure().code())
@@ -437,6 +447,7 @@ class BootstrapCoordinatorTest {
 
     @Test
     void zero_wrapped_exporters_fails_activation_and_never_publishes_READY() {
+        // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
         this.ownedCoordinator = coordinator;
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
@@ -445,17 +456,20 @@ class BootstrapCoordinatorTest {
         session.scrubbingRuntime().acknowledgeExportModeResolved();
         session.scrubbingRuntime().acknowledgeExportPathProtected();
 
+        // when/then
         assertThatThrownBy(coordinator::activate)
                 .isInstanceOf(BootstrapException.class)
                 .extracting(failure -> ((BootstrapException) failure).failure().code())
                 .isEqualTo("ACTIVATION_FAILED");
 
+        // then
         assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
         assertThat(session.readiness().has(PlatformExtensionCapability.SANITIZER_INSTALLED)).isFalse();
     }
 
     @Test
     void unprotected_export_path_fails_activation_and_never_publishes_READY() {
+        // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
         this.ownedCoordinator = coordinator;
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
@@ -464,16 +478,19 @@ class BootstrapCoordinatorTest {
         session.scrubbingRuntime().acknowledgeExportModeResolved();
         session.scrubbingRuntime().acknowledgeExporterWrapped();
 
+        // when/then
         assertThatThrownBy(coordinator::activate)
                 .isInstanceOf(BootstrapException.class)
                 .extracting(failure -> ((BootstrapException) failure).failure().code())
                 .isEqualTo("ACTIVATION_FAILED");
 
+        // then
         assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
     }
 
     @Test
     void missing_non_sanitizer_capability_fails_activation_after_barrier() {
+        // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
         this.ownedCoordinator = coordinator;
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
@@ -488,11 +505,13 @@ class BootstrapCoordinatorTest {
         session.scrubbingRuntime().acknowledgeExporterWrapped();
         session.scrubbingRuntime().acknowledgeExportPathProtected();
 
+        // when/then
         assertThatThrownBy(coordinator::activate)
                 .isInstanceOf(BootstrapException.class)
                 .extracting(failure -> ((BootstrapException) failure).failure().code())
                 .isEqualTo("ACTIVATION_FAILED");
 
+        // then
         assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
         assertThat(session.readiness().has(PlatformExtensionCapability.SANITIZER_INSTALLED)).isTrue();
         assertThat(session.readiness().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
@@ -516,10 +535,12 @@ class BootstrapCoordinatorTest {
 
     @Test
     void empty_built_in_rule_set_preserves_SANITIZER_RULE_SET_EMPTY() {
+        // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator(
                 ScrubbingRuntimeTestFixtures.factory(List::of)
         );
 
+        // when/then
         assertThatThrownBy(() -> coordinator.prepare(emptyBuiltInRulesConfig()))
                 .isInstanceOf(BootstrapException.class)
                 .extracting(failure -> ((BootstrapException) failure).failure().code())
@@ -528,8 +549,10 @@ class BootstrapCoordinatorTest {
 
     @Test
     void fail_fast_missing_hmac_key_preserves_SANITIZER_HMAC_INITIALIZATION_FAILED() {
+        // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
 
+        // when/then
         assertThatThrownBy(() -> coordinator.prepare(config(Map.of(
                 ExtensionPropertyNames.SCRUBBING_MISSING_KEY_POLICY, "fail-fast"))))
                 .isInstanceOf(BootstrapException.class)
@@ -539,10 +562,12 @@ class BootstrapCoordinatorTest {
 
     @Test
     void rule_source_failure_preserves_SANITIZER_RULE_LOADING_FAILED() {
+        // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator(ScrubbingRuntimeTestFixtures.factory(() -> {
             throw new IllegalStateException("rule source unavailable");
         }));
 
+        // when/then
         assertThatThrownBy(() -> coordinator.prepare(config(Map.of())))
                 .isInstanceOf(BootstrapException.class)
                 .extracting(failure -> ((BootstrapException) failure).failure().code())
@@ -551,6 +576,7 @@ class BootstrapCoordinatorTest {
 
     @Test
     void invalid_bundled_rule_metadata_preserves_SANITIZER_RULE_METADATA_INVALID() {
+        // given
         SpanAttributeScrubbingRule brokenMetadata = new SpanAttributeScrubbingRule() {
             @Nonnull
             @Override
@@ -567,6 +593,7 @@ class BootstrapCoordinatorTest {
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator(
                 ScrubbingRuntimeTestFixtures.factory(() -> List.of(brokenMetadata)));
 
+        // when/then
         assertThatThrownBy(() -> coordinator.prepare(config(Map.of())))
                 .isInstanceOf(BootstrapException.class)
                 .extracting(failure -> ((BootstrapException) failure).failure().code())
@@ -575,10 +602,12 @@ class BootstrapCoordinatorTest {
 
     @Test
     void linkage_error_from_rule_source_is_not_classified_as_a_sanitizer_failure() {
+        // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator(ScrubbingRuntimeTestFixtures.factory(() -> {
             throw new NoClassDefFoundError("simulated missing SPI class");
         }));
 
+        // when/then
         assertThatThrownBy(() -> coordinator.prepare(config(Map.of())))
                 .isInstanceOf(NoClassDefFoundError.class)
                 .hasMessage("simulated missing SPI class");
@@ -586,9 +615,11 @@ class BootstrapCoordinatorTest {
 
     @Test
     void execute_preserves_SANITIZER_FOREIGN_SAFE_EXPORTER_and_fails_readiness() {
+        // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
 
+        // when/then
         assertThatThrownBy(() -> coordinator.execute("EXPORTER_INITIALIZATION_FAILED", () -> {
             throw new SanitizerBootstrapException(
                     SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER,
@@ -599,6 +630,7 @@ class BootstrapCoordinatorTest {
                 .extracting(failure -> ((BootstrapException) failure).failure().code())
                 .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER);
 
+        // then
         assertThat(session.readiness().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
         assertThat(session.readiness().failureCode())
                 .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER);

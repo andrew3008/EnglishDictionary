@@ -22,35 +22,43 @@ class BuildInfoReaderTest {
 
     @Test
     void reads_build_version_from_root() {
+        // given
         ClasspathResourceLoader loader = loaderOf(Map.of(
                 "META-INF/build-info.properties", "build.version=2.17.4\nbuild.name=demo\n"));
 
+        // when/then
         assertThat(new BuildInfoReader(loader).readVersion()).contains("2.17.4");
     }
 
     @Test
     void fallback_to_BOOT_INF_classes() {
+        // given
         ClasspathResourceLoader loader = loaderOf(Map.of(
                 "BOOT-INF/classes/META-INF/build-info.properties", "build.version=3.0.0\n"));
 
+        // when/then
         assertThat(new BuildInfoReader(loader).readVersion()).contains("3.0.0");
     }
 
     @Test
     void empty_when_file_absent() {
+        // given/when/then
         assertThat(new BuildInfoReader(loaderOf(Map.of())).readVersion()).isEqualTo(Optional.empty());
     }
 
     @Test
     void empty_when_key_absent() {
+        // given
         ClasspathResourceLoader loader = loaderOf(Map.of(
                 "META-INF/build-info.properties", "build.name=demo\n"));
 
+        // when/then
         assertThat(new BuildInfoReader(loader).readVersion()).isEqualTo(Optional.empty());
     }
 
     @Test
     void empty_on_read_error() {
+        // given
         ClasspathResourceLoader broken = path -> new InputStream() {
             @Override
             public int read() {
@@ -58,6 +66,7 @@ class BuildInfoReaderTest {
             }
         };
 
+        // when/then
         assertThat(new BuildInfoReader(broken).readVersion()).isEqualTo(Optional.empty());
     }
 }

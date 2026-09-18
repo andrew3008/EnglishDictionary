@@ -25,6 +25,7 @@ class PlatformExtensionReadinessIntegrationTest {
 
     @Test
     void completeUnpackagedPipelineFailsAttestationBeforePublishingReady() {
+        // given
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         ClassLoader isolatedLoader = BootstrapIsolatedClassLoader.freshBootstrapClassLoader();
         AutoConfiguredOpenTelemetrySdk sdk = AutoConfiguredOpenTelemetrySdk.builder()
@@ -43,6 +44,7 @@ class PlatformExtensionReadinessIntegrationTest {
             Object listener = listenerClass.getDeclaredConstructor().newInstance();
 
             try (AutoCloseable ignored = bootstrapOwner(isolatedLoader)) {
+                // when
                 assertThatThrownBy(() -> listenerClass
                         .getMethod("afterAgent", AutoConfiguredOpenTelemetrySdk.class)
                         .invoke(listener, sdk))
@@ -50,6 +52,7 @@ class PlatformExtensionReadinessIntegrationTest {
                         .cause()
                         .hasMessageContaining("DEVELOPMENT_VERSION_FORBIDDEN");
 
+                // then
                 CompositeData readiness = readinessSnapshot(server);
                 assertThat(readiness.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE))
                         .isEqualTo("FAILED");
@@ -74,6 +77,7 @@ class PlatformExtensionReadinessIntegrationTest {
 
     @Test
     void secureProfileWithExporterNoneFailsActivationAndNeverPublishesReady() throws Exception {
+        // given
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         ClassLoader isolatedLoader = BootstrapIsolatedClassLoader.freshBootstrapClassLoader();
         AutoConfiguredOpenTelemetrySdk sdk = AutoConfiguredOpenTelemetrySdk.builder()
@@ -91,6 +95,7 @@ class PlatformExtensionReadinessIntegrationTest {
             Object listener = listenerClass.getDeclaredConstructor().newInstance();
 
             try (AutoCloseable ignored = bootstrapOwner(isolatedLoader)) {
+                // when
                 assertThatThrownBy(() -> listenerClass
                         .getMethod("afterAgent", AutoConfiguredOpenTelemetrySdk.class)
                         .invoke(listener, sdk))
@@ -98,6 +103,7 @@ class PlatformExtensionReadinessIntegrationTest {
                         .cause()
                         .hasMessageContaining("DEVELOPMENT_VERSION_FORBIDDEN");
 
+                // then
                 CompositeData readiness = readinessSnapshot(server);
                 assertThat(readiness.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE))
                         .isEqualTo("FAILED");

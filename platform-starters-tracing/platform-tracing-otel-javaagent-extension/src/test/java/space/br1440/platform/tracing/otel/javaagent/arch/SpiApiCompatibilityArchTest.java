@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
- * PR-1 API Compatibility Guard: публичный SPI-контракт scrubbing'а должен быть полностью
+ * API Compatibility Guard: публичный SPI-контракт scrubbing'а должен быть полностью
  * платформенным и не зависеть от {@code io.opentelemetry.*}.
  * <p>
  * Это прямой урок инцидента с {@code AbstractMethodError}: когда сигнатура SPI зависела от
@@ -20,6 +20,7 @@ class SpiApiCompatibilityArchTest {
 
     @Test
     void spi_contract_does_not_depend_on_opentelemetry() {
+        // given
         JavaClasses spiClasses = new ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages("space.br1440.platform.tracing.api.spi");
@@ -30,6 +31,7 @@ class SpiApiCompatibilityArchTest {
                         + "shaded/unshaded io.opentelemetry.* приводит к AbstractMethodError в "
                         + "рантайме OTel Java Agent");
 
+        // when/then
         rule.check(spiClasses);
     }
 }

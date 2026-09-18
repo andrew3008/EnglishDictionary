@@ -13,14 +13,17 @@ class TracingDiagnosticsTest {
 
     @Test
     void counters_and_snapshot_are_consistent() {
+        // given
         TracingDiagnostics d = new TracingDiagnostics();
 
+        // when
         d.recordSamplerFailure();
         d.recordPropagatorFailure();
         d.recordResourceFailure();
         d.recordScopeFailure();
         d.setDegradedMode(true);
 
+        // then
         assertThat(d.getSamplerFailures()).isEqualTo(1);
         assertThat(d.getPropagatorFailures()).isEqualTo(1);
         assertThat(d.getResourceFailures()).isEqualTo(1);

@@ -33,6 +33,7 @@ class EnrichingSpanProcessorAdvancedTest {
 
     @Test
     void custom_attribute_priority_is_passed_via_constructor() {
+        // given
         // Меняем порядок: сначала server.address, потом peer.service. Должны получить server.address.
         try (SpanProcessorHarness h = SpanProcessorHarness.of(
                 new EnrichingSpanProcessor(List.of("server.address", "peer.service")))) {
@@ -41,60 +42,74 @@ class EnrichingSpanProcessorAdvancedTest {
             span.setAttribute("peer.service", "billing");
             span.setAttribute("server.address", "billing.example.com");
             span.setStatus(StatusCode.ERROR, "boom");
+            // when
             span.end();
 
-            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY))
+            // then
+            assertThat(h.exporter().getFinishedSpanItems().getFirst().getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY))
                     .isEqualTo("billing.example.com");
         }
     }
 
     @Test
     void blank_and_null_attribute_names_are_filtered_at_construction() {
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(
                 new EnrichingSpanProcessor(Arrays.asList(null, "", "  ", "peer.service")))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("client").setSpanKind(SpanKind.CLIENT).startSpan();
             span.setAttribute("peer.service", "orders");
             span.setStatus(StatusCode.ERROR, "boom");
+            // when
             span.end();
 
-            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY))
+            // then
+            assertThat(h.exporter().getFinishedSpanItems().getFirst().getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY))
                     .isEqualTo("orders");
         }
     }
 
     @Test
     void attribute_names_are_trimmed_before_use() {
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(
                 new EnrichingSpanProcessor(List.of("  peer.service  ")))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("client").setSpanKind(SpanKind.CLIENT).startSpan();
             span.setAttribute("peer.service", "trim-test");
             span.setStatus(StatusCode.ERROR, "boom");
+            // when
             span.end();
 
-            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY))
+            // then
+            assertThat(h.exporter().getFinishedSpanItems().getFirst().getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY))
                     .isEqualTo("trim-test");
         }
     }
 
     @Test
     void INTERNAL_kind_gets_internal_category() {
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new EnrichingSpanProcessor())) {
+            // when
             h.tracer("t").spanBuilder("internal-op").setSpanKind(SpanKind.INTERNAL).startSpan().end();
-            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(PLATFORM_TYPE_KEY))
+            // then
+            assertThat(h.exporter().getFinishedSpanItems().getFirst().getAttributes().get(PLATFORM_TYPE_KEY))
                     .isEqualTo("internal");
         }
     }
 
     @Test
     void PRODUCER_and_CONSUMER_kind_get_kafka_categories() {
+        // given
         // Фаза 13: единая категория rpc разделена — PRODUCER→kafka_producer, CONSUMER→kafka_consumer.
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new EnrichingSpanProcessor())) {
             Tracer tracer = h.tracer("t");
             tracer.spanBuilder("p").setSpanKind(SpanKind.PRODUCER).startSpan().end();
+            // when
             tracer.spanBuilder("c").setSpanKind(SpanKind.CONSUMER).startSpan().end();
 
+            // then
             assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(PLATFORM_TYPE_KEY)).isEqualTo("kafka_producer");
             assertThat(h.exporter().getFinishedSpanItems().get(1).getAttributes().get(PLATFORM_TYPE_KEY)).isEqualTo("kafka_consumer");
         }
@@ -102,49 +117,59 @@ class EnrichingSpanProcessorAdvancedTest {
 
     @Test
     void platform_remote_service_does_not_overwrite_pre_set_value() {
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new EnrichingSpanProcessor())) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("client").setSpanKind(SpanKind.CLIENT).startSpan();
             span.setAttribute("peer.service", "auto-extracted");
             span.setAttribute(PlatformAttributes.PLATFORM_REMOTE_SERVICE, "manual-override");
             span.setStatus(StatusCode.ERROR, "boom");
+            // when
             span.end();
 
-            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY))
+            // then
+            assertThat(h.exporter().getFinishedSpanItems().getFirst().getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY))
                     .isEqualTo("manual-override");
         }
     }
 
     @Test
     void platform_result_is_not_overwritten_if_already_set_by_application() {
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new EnrichingSpanProcessor())) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").setSpanKind(SpanKind.SERVER).startSpan();
             span.setAttribute(PlatformAttributes.PLATFORM_RESULT, "partial");
             span.setStatus(StatusCode.ERROR, "boom");
+            // when
             span.end();
 
-            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(PLATFORM_RESULT_KEY))
+            // then
+            assertThat(h.exporter().getFinishedSpanItems().getFirst().getAttributes().get(PLATFORM_RESULT_KEY))
                     .isEqualTo("partial");
         }
     }
 
     @Test
     void DEFAULT_REMOTE_SERVICE_PRIORITY_matches_semantic_conventions_contract() {
+        // given/when/then
         assertThat(EnrichingSpanProcessor.DEFAULT_REMOTE_SERVICE_PRIORITY)
                 .containsExactly("peer.service", "rpc.service", "server.address");
     }
 
     @Test
     void empty_priority_results_in_no_name_extraction() {
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new EnrichingSpanProcessor(List.of()))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("client").setSpanKind(SpanKind.CLIENT).startSpan();
             span.setAttribute("peer.service", "billing");
             span.setStatus(StatusCode.ERROR, "boom");
+            // when
             span.end();
 
-            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY))
+            // then
+            assertThat(h.exporter().getFinishedSpanItems().getFirst().getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY))
                     .isNull();
         }
     }

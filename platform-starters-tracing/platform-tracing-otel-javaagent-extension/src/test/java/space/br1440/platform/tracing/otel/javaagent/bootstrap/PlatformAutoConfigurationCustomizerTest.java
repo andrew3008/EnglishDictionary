@@ -28,8 +28,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Регрессионные тесты точки входа платформенного расширения ({@link BootstrapAutoConfigurationCustomizerProvider}).
  * <p>
- * Каждый тест использует свежий {@link BootstrapCoordinator} (test-only конструктор,
- * r5 plan &sect;3): классoloader-static {@link ExtensionRuntime#bootstrap()} допускает
+ * Каждый тест использует свежий {@link BootstrapCoordinator}:
+ * классoloader-static {@link ExtensionRuntime#bootstrap()} допускает
  * ровно один {@code prepare()} за JVM/classloader, поэтому прямые unit-тесты не должны делить
  * общий coordinator между тестовыми методами.
  * <p>
@@ -47,24 +47,31 @@ class PlatformAutoConfigurationCustomizerTest {
 
     @Test
     void customize_registers_sampler_and_tracer_provider_customizer() {
+        // given
         Recorder recorder = new Recorder();
+
+        // when
         newProvider().customize(recorder.proxy());
 
+        // then
         assertThat(recorder.samplerCustomizer).isNotNull();
         assertThat(recorder.tracerProviderCustomizer).isNotNull();
     }
 
     @Test
     void customize_registers_propertiesSupplier_with_platform_OTel_SDK_defaults() {
+        // given
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
+        // when
         assertThat(recorder.propertiesSupplier)
                 .as("addPropertiesSupplier должен быть вызван в customize()")
                 .isNotNull();
 
         Map<String, String> defaults = recorder.propertiesSupplier.get();
 
+        // then
         // BSP-дефолты: соответствуют требованиям §3.2 «локальная буферизация» и §3 «таймауты».
         // Длительности — в integer-ms согласно OTel SPEC.
         assertThat(defaults)
@@ -83,13 +90,14 @@ class PlatformAutoConfigurationCustomizerTest {
 
     @Test
     void propertiesSupplier_returns_only_string_values_for_all_keys() {
-        // Контракт OTel SDK: addPropertiesSupplier поставляет Map<String, String>; любое значение,
-        // не приводимое к строке, привело бы к ClassCastException на стороне ConfigProperties.
+        // given
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
+        // when
         Map<String, String> defaults = recorder.propertiesSupplier.get();
 
+        // then
         assertThat(defaults).isNotEmpty();
         defaults.forEach((key, value) -> {
             assertThat(key).isNotBlank();
@@ -105,50 +113,61 @@ class PlatformAutoConfigurationCustomizerTest {
 
     @Test
     void sampler_by_default_is_wrapped_in_PlatformCompositeSampler() {
+        // given
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
         // PR-5: addPropertiesCustomizer должен отработать до samplerCustomizer, чтобы
         // extensionConfig был инициализирован. Прайминг с пустым конфигом → defaultRatio=0.1.
         recorder.primeWithConfig(new MapConfigProperties(Map.of()));
+
+        // when
         Sampler produced = recorder.samplerCustomizer
                 .apply(Sampler.alwaysOn(), new MapConfigProperties(Map.of()));
 
-        // Фаза 11: платформенный CompositeSampler оборачивается в SafeSampler (изоляция hot-path).
+        // then
         assertThat(produced).isInstanceOf(SafeSampler.class);
         assertThat(produced.getDescription()).contains("PlatformRuleBasedSampler");
     }
 
     @Test
     void sampler_uses_custom_ratio_from_property() {
+        // given
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
-        // PR-5: ratio поступает из addPropertiesCustomizer (extensionConfig), не из samplerCustomizer config.
+        // ratio поступает из addPropertiesCustomizer (extensionConfig), не из samplerCustomizer config.
         recorder.primeWithConfig(new MapConfigProperties(Map.of("platform.tracing.sampling.ratio", "0.42")));
+
+        // when
         Sampler produced = recorder.samplerCustomizer
                 .apply(Sampler.alwaysOn(), new MapConfigProperties(Map.of()));
 
+        // then
         assertThat(produced.getDescription()).contains("defaultRatio=0.42");
     }
 
     @Test
     void sampler_without_explicit_ratio_delegates_to_existing() {
+        // given
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
         recorder.primeWithConfig(new MapConfigProperties(Map.of()));
         Sampler existing = Sampler.alwaysOff();
+
+        // when
         Sampler produced = recorder.samplerCustomizer
                 .apply(existing, new MapConfigProperties(Map.of()));
 
-        // Фаза 11: внешняя обёртка — SafeSampler; внутри остаётся CompositeSampler (PlatformRuleBasedSampler).
+        // then
         assertThat(produced).isInstanceOf(SafeSampler.class);
         assertThat(produced.getDescription()).contains("PlatformRuleBasedSampler");
     }
 
     @Test
     void sampler_existing_alwaysOff_with_force_header_records_span() {
+        // given
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
@@ -156,11 +175,13 @@ class PlatformAutoConfigurationCustomizerTest {
         Sampler produced = recorder.samplerCustomizer
                 .apply(Sampler.alwaysOff(), new MapConfigProperties(Map.of()));
 
+        // when
         space.br1440.platform.tracing.api.propagation.control.InboundTraceControl control =
                 new space.br1440.platform.tracing.api.propagation.control.InboundTraceControl(true, false, null, "x_trace_on", "on");
         io.opentelemetry.context.Context parentContext = io.opentelemetry.context.Context.root()
                 .with(space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys.TRACE_CONTROL, control);
 
+        // then
         SamplerDecisionAssert.assertThat(
                         space.br1440.platform.tracing.test.harness.SamplerHarness.of(produced)
                                 .spanKind(io.opentelemetry.api.trace.SpanKind.SERVER)
@@ -171,19 +192,24 @@ class PlatformAutoConfigurationCustomizerTest {
 
     @Test
     void sampler_explicit_ratio_0_creates_PlatformRuleBasedSampler() {
+        // given
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
         // PR-5: ratio поступает из addPropertiesCustomizer (extensionConfig), не из samplerCustomizer config.
         recorder.primeWithConfig(new MapConfigProperties(Map.of("platform.tracing.sampling.ratio", "0")));
+
+        // when
         Sampler produced = recorder.samplerCustomizer
                 .apply(Sampler.alwaysOn(), new MapConfigProperties(Map.of()));
 
+        // then
         assertThat(produced.getDescription()).contains("defaultRatio=0.00");
     }
 
     @Test
     void disabling_all_processors_does_not_touch_tracer_provider_builder() {
+        // given
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
@@ -196,6 +222,7 @@ class PlatformAutoConfigurationCustomizerTest {
                 "platform.tracing.metrics.enabled", "false"
         ));
 
+        // when/then
         assertThatThrownBy(() -> recorder.primeWithConfig(props))
                 .isInstanceOf(BootstrapException.class)
                 .hasMessageContaining("scrubbing.enabled=false is forbidden");
@@ -245,20 +272,24 @@ class PlatformAutoConfigurationCustomizerTest {
                                         (BiFunction<Sampler, ConfigProperties, Sampler>) args[0];
                                 this.samplerCustomizer = sc;
                                 return proxyObj;
+
                             case "addTracerProviderCustomizer":
                                 BiFunction<SdkTracerProviderBuilder, ConfigProperties, SdkTracerProviderBuilder> tpc =
                                         (BiFunction<SdkTracerProviderBuilder, ConfigProperties, SdkTracerProviderBuilder>) args[0];
                                 this.tracerProviderCustomizer = tpc;
                                 return proxyObj;
+
                             case "addPropertiesSupplier":
                                 Supplier<Map<String, String>> ps =
                                         (Supplier<Map<String, String>>) args[0];
                                 this.propertiesSupplier = ps;
                                 return proxyObj;
+
                             case "addPropertiesCustomizer":
                                 propertiesCustomizers.add(
                                         (Function<ConfigProperties, Map<String, String>>) args[0]);
                                 return proxyObj;
+
                             default:
                                 // Все прочие методы fluent-API возвращают сам customizer.
                                 return proxyObj;

@@ -1,5 +1,14 @@
 package space.br1440.platform.tracing.otel.javaagent.control.settings.update;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
@@ -7,15 +16,6 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Setti
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
-
-import org.junit.jupiter.api.Test;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class SecretCanaryAuditTest {
 
@@ -31,6 +31,7 @@ class SecretCanaryAuditTest {
 
     @Test
     void diagnosticsSnapshot_afterApplyWithRouteCanary_containsOnlyMetadata() {
+        // given
         TracingSettings policy = TracingSettings.of(
                 true,
                 0.5d,
@@ -64,7 +65,10 @@ class SecretCanaryAuditTest {
         );
         diagnostics.record(attempt, result);
 
+        // when
         String rendered = diagnostics.snapshot().toString();
+
+        // then
         for (String canary : ALL_CANARIES) {
             assertThat(rendered)
                     .as("diagnostics snapshot must not contain canary %s", canary)

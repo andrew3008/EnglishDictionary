@@ -17,6 +17,7 @@ class EffectiveTracingPolicyTest {
 
     @Test
     void declaresExactlyEightCategoryALeaves() {
+        // given/when/then
         assertThat(TracingSettings.class.getRecordComponents())
                 .extracting(RecordComponent::getName)
                 .containsExactly(
@@ -32,13 +33,16 @@ class EffectiveTracingPolicyTest {
 
     @Test
     void defensivelyCopiesAndSortsRouteRatios() {
+        // given
         Map<String, Double> source = new LinkedHashMap<>();
         source.put("/z", 0.9d);
         source.put("/a", 0.1d);
 
+        // when
         TracingSettings policy = policy(source);
         source.put("/later", 0.7d);
 
+        // then
         assertThat(policy.samplingRouteRatios())
                 .containsExactly(
                         Map.entry("/a", 0.1d),
@@ -49,6 +53,7 @@ class EffectiveTracingPolicyTest {
 
     @Test
     void normalizesNegativeZeroAcrossAllRatios() {
+        // given/when
         TracingSettings policy = TracingSettings.of(
                 true,
                 -0.0d,
@@ -59,6 +64,7 @@ class EffectiveTracingPolicyTest {
                 true,
                 TracingLogLevel.INFO);
 
+        // then
         assertThat(Double.doubleToLongBits(policy.samplingRatio()))
                 .isEqualTo(Double.doubleToLongBits(0.0d));
         assertThat(Double.doubleToLongBits(policy.samplingRouteRatios().get("/zero")))
@@ -67,6 +73,7 @@ class EffectiveTracingPolicyTest {
 
     @Test
     void rejectsNonFiniteAndOutOfRangeRatios() {
+        // when/then
         assertThatThrownBy(() -> policy(Map.of("/route", Double.NaN)))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> policy(Map.of("/route", Double.POSITIVE_INFINITY)))
@@ -77,11 +84,13 @@ class EffectiveTracingPolicyTest {
 
     @Test
     void enforcesRouteCollectionAndKeyBounds() {
+        // given
         Map<String, Double> tooMany = new LinkedHashMap<>();
         for (int index = 0; index <= JmxWireContract.MAX_ROUTE_ENTRIES; index++) {
             tooMany.put("/route/" + index, 0.5d);
         }
 
+        // when/then
         assertThatThrownBy(() -> policy(tooMany))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("at most 100");

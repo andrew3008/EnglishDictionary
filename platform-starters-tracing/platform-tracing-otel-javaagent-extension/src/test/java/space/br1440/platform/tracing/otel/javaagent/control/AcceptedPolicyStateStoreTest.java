@@ -27,6 +27,7 @@ class AcceptedPolicyStateStoreTest {
 
     @Test
     void admitsExactlyOneWinnerForTheSameExpectedBase() throws Exception {
+        // given/when/then
         try (ExecutorService executor = Executors.newFixedThreadPool(8)) {
             for (int round = 0; round < 100; round++) {
                 TracingSettingsStore store = new TracingSettingsStore(
@@ -61,11 +62,13 @@ class AcceptedPolicyStateStoreTest {
 
     @Test
     void runtimeAndSequenceMismatchAreStaleWithoutMutation() {
+        // given
         TracingSettingsStore store = new TracingSettingsStore(
                 AcceptedPolicyTestFixtures.RUNTIME_INSTANCE_ID,
                 AcceptedPolicyTestFixtures.policy(0.1d));
         TracingSettingsRevision initial = store.current();
 
+        // when
         SettingsCommitResult runtimeMismatch = store.commit(
                 new ExpectedSettingsRevision(
                         "00000000-0000-0000-0000-000000000002",
@@ -75,6 +78,7 @@ class AcceptedPolicyStateStoreTest {
                 new ExpectedSettingsRevision(AcceptedPolicyTestFixtures.RUNTIME_INSTANCE_ID, 1L),
                 AcceptedPolicyTestFixtures.policy(0.3d));
 
+        // then
         assertThat(runtimeMismatch.outcome()).isEqualTo(SettingsCommitOutcome.STALE);
         assertThat(sequenceMismatch.outcome()).isEqualTo(SettingsCommitOutcome.STALE);
         assertThat(store.current()).isSameAs(initial);
@@ -82,8 +86,10 @@ class AcceptedPolicyStateStoreTest {
 
     @Test
     void storeHasOneAtomicOwnerAndNoGenericPayload() {
+        // given/when
         Set<Field> instanceFields = Set.of(TracingSettingsStore.class.getDeclaredFields());
 
+        // then
         assertThat(instanceFields).hasSize(1);
         assertThat(instanceFields.iterator().next().getType()).isEqualTo(AtomicReference.class);
         assertThat(TracingSettingsStore.class.getTypeParameters()).isEmpty();
@@ -91,6 +97,7 @@ class AcceptedPolicyStateStoreTest {
 
     @Test
     void currentReadAllocatesNoMemoryOnHotSpot() {
+        // given
         java.lang.management.ThreadMXBean standardBean = ManagementFactory.getThreadMXBean();
         Assumptions.assumeTrue(standardBean instanceof com.sun.management.ThreadMXBean);
         com.sun.management.ThreadMXBean allocationBean =
@@ -106,6 +113,7 @@ class AcceptedPolicyStateStoreTest {
             sum += store.current().acceptedSequence();
         }
 
+        // when
         long threadId = Thread.currentThread().threadId();
         long before = allocationBean.getThreadAllocatedBytes(threadId);
         for (int index = 0; index < 2_000_000; index++) {
@@ -114,6 +122,7 @@ class AcceptedPolicyStateStoreTest {
         long allocated = allocationBean.getThreadAllocatedBytes(threadId) - before;
         allocationSink = sum;
 
+        // then
         assertThat(allocated).isZero();
     }
 }

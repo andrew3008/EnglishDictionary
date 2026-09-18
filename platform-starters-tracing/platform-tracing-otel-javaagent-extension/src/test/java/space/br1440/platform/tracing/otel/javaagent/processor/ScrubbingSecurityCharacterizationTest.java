@@ -27,29 +27,33 @@ class ScrubbingSecurityCharacterizationTest {
 
     @Test
     void merge_precedence_drop_beats_hash_on_authorization_key() {
-        var drop = new ExecutableRule(
+        // given
+        ExecutableRule drop = new ExecutableRule(
                 BuiltInSpanAttributeScrubbingRules.resolve("oauth-header"),
                 new RuleCircuitBreaker("oauth-header"));
-        var hash = new ExecutableRule(
+        ExecutableRule hash = new ExecutableRule(
                 BuiltInSpanAttributeScrubbingRules.resolve("email"),
                 new RuleCircuitBreaker("email"));
 
-        var decision = MergeEngine.evaluate(
+        ScrubbingDecision decision = MergeEngine.evaluate(
                 List.of(hash, drop),
                 "http.request.header.authorization",
                 "user@example.com");
 
+        // then
         assertThat(decision.action().name()).isEqualTo("DROP");
         assertThat(decision.reason()).isEqualTo("oauth-header");
     }
 
     @Test
     void prefixed_password_key_is_scrubbed() {
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
                 ScrubbingCharacterizationSupport.resolveRules(List.of("password"))))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("app.client-secret", "abc");
+            // when
             span.end();
 
             ScrubbingAssertions.assertStringAttributeEmpty(
@@ -59,22 +63,26 @@ class ScrubbingSecurityCharacterizationTest {
 
     @Test
     void event_attributes_not_scrubbed_by_span_processor_observed_behavior() {
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
                 ScrubbingCharacterizationSupport.resolveRules(List.of("oauth-header"))))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
             span.addEvent("auth", Attributes.of(
                     AttributeKey.stringKey("http.request.header.authorization"), "Bearer secret"));
+            // when
             span.end();
 
             String eventValue = h.exporter().getFinishedSpanItems().get(0).getEvents().get(0)
                     .getAttributes().get(AttributeKey.stringKey("http.request.header.authorization"));
+            // then
             assertThat(eventValue).isEqualTo("Bearer secret");
         }
     }
 
     @Test
     void fatal_rule_failure_propagates_before_circuit_breaker() {
+        // given
         StackOverflowError fatal = new StackOverflowError("simulated");
         SpanAttributeScrubbingRule redosLike = new SpanAttributeScrubbingRule() {
             @Nonnull
@@ -93,6 +101,7 @@ class ScrubbingSecurityCharacterizationTest {
                 redosLike,
                 new RuleCircuitBreaker("redos-like"));
 
+        // then
         assertThatThrownBy(() -> executable.execute("bad", "trigger")).isSameAs(fatal);
     }
 }

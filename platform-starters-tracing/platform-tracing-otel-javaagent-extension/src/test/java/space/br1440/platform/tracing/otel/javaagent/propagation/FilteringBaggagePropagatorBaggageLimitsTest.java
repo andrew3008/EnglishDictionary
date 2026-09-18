@@ -57,7 +57,7 @@ class FilteringBaggagePropagatorBaggageLimitsTest {
     @Test
     @DisplayName("extract: входящий заголовок свыше 64 записей урезается до лимита W3C (наследуется от stock)")
     void extract_cappedAtMaxEntries() {
-        // given: заголовок с числом записей заметно больше лимита
+        // given
         int oversized = MAX_BAGGAGE_ENTRIES + 36; // 100 записей
         StringBuilder header = new StringBuilder();
         for (int i = 0; i < oversized; i++) {
@@ -69,10 +69,10 @@ class FilteringBaggagePropagatorBaggageLimitsTest {
         Map<String, String> carrier = new HashMap<>();
         carrier.put("baggage", header.toString());
 
-        // when: extract делегируется штатному W3CBaggagePropagator
+        // when
         Context extracted = newPropagator().extract(Context.root(), carrier, MAP_GETTER);
 
-        // then: число записей ограничено лимитом — защита от unbounded-парсинга активна
+        // then
         Baggage baggage = Baggage.fromContext(extracted);
         assertThat(baggage.size())
                 .as("extract должен наследовать лимит MAX_BAGGAGE_ENTRIES от stock W3CBaggagePropagator")
@@ -82,7 +82,7 @@ class FilteringBaggagePropagatorBaggageLimitsTest {
     @Test
     @DisplayName("extract: входящий заголовок свыше 8192 байт целиком отбрасывается (защита от DoS)")
     void extract_oversizedHeaderDropped() {
-        // given: единственный заголовок, превышающий байтовый лимит
+        // given
         String hugeValue = "a".repeat(MAX_BAGGAGE_BYTES + 1000);
         Map<String, String> carrier = new HashMap<>();
         carrier.put("baggage", "k=" + hugeValue);
@@ -90,7 +90,7 @@ class FilteringBaggagePropagatorBaggageLimitsTest {
         // when
         Context extracted = newPropagator().extract(Context.root(), carrier, MAP_GETTER);
 
-        // then: заголовок сверх байтового лимита не парсится — baggage пуст
+        // then
         assertThat(Baggage.fromContext(extracted).isEmpty())
                 .as("заголовок свыше MAX_BAGGAGE_BYTES должен отбрасываться целиком")
                 .isTrue();
@@ -99,7 +99,7 @@ class FilteringBaggagePropagatorBaggageLimitsTest {
     @Test
     @DisplayName("inject: allowlist-фильтрация исходящего baggage не регрессировала")
     void inject_allowlistFilteringStillWorks() {
-        // given: контекст с deny-ключом (password) и разрешённым ключом
+        // given
         Context ctx = Context.root().with(Baggage.builder()
                 .put("password", "secret123")
                 .put("traffic_source", "qa")
@@ -109,7 +109,7 @@ class FilteringBaggagePropagatorBaggageLimitsTest {
         // when
         newPropagator().inject(ctx, carrier, (c, k, v) -> c.put(k, v));
 
-        // then: deny-ключ не утёк, разрешённый ключ присутствует
+        // then
         String baggage = carrier.get("baggage");
         assertThat(baggage)
                 .doesNotContain("password")

@@ -39,7 +39,7 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * P5: HMAC, circuit breakers и счётчики принадлежат сессии. Проверяется, что параллельное
+ * HMAC, circuit breakers и счётчики принадлежат сессии. Проверяется, что параллельное
  * использование одного runtime детерминировано, а два runtime полностью изолированы.
  */
 class ScrubbingRuntimeConcurrencyTest {
@@ -50,11 +50,13 @@ class ScrubbingRuntimeConcurrencyTest {
     @Test
     @DisplayName("HMAC is stable across threads: the thread-local Mac never leaks state")
     void hmacIsDeterministicUnderConcurrency() throws Exception {
+        // given
         ScrubbingRuntime runtime = runtimeOf("shared-hmac-key");
         String expected = runtime.hmacHex("ivan@example.com");
 
         Set<String> observed = ConcurrentHashMap.newKeySet();
         AtomicReference<Throwable> failure = new AtomicReference<>();
+        // when
         runConcurrently(() -> {
             try {
                 observed.add(runtime.hmacHex("ivan@example.com"));
@@ -63,6 +65,7 @@ class ScrubbingRuntimeConcurrencyTest {
             }
         });
 
+        // then
         assertThat(failure.get()).isNull();
         assertThat(observed).containsExactly(expected);
     }
@@ -70,15 +73,18 @@ class ScrubbingRuntimeConcurrencyTest {
     @Test
     @DisplayName("Two sessions are isolated: different HMAC keys, independent counters and state flags")
     void sessionsDoNotShareHmacCountersOrState() {
+        // given
         ScrubbingRuntime first = runtimeOf("key-one");
         ScrubbingRuntime second = runtimeOf("key-two");
 
+        // when
         assertThat(first.hmacHex("value")).isNotEqualTo(second.hmacHex("value"));
 
         first.recordBoundaryInputSpan();
         first.recordCollapsedSpan();
         first.markAttributesUnverified();
 
+        // then
         assertThat(second.boundaryMetrics().inputSpans()).isZero();
         assertThat(second.collapsedSpans()).isZero();
         assertThat(second.attributesVerified()).isTrue();
@@ -88,9 +94,11 @@ class ScrubbingRuntimeConcurrencyTest {
     @Test
     @DisplayName("Concurrent span scrubbing counts every action exactly once")
     void concurrentScrubbingProducesExactCounters() throws Exception {
+        // given
         ScrubbingRuntime runtime = runtimeOf(null);
         ScrubbingSpanProcessor processor = new ScrubbingSpanProcessor(runtime);
 
+        // when
         try (SdkTracerProvider provider = SdkTracerProvider.builder().addSpanProcessor(processor).build()) {
             Tracer tracer = provider.get("concurrency-test");
             runConcurrently(() -> tracer.spanBuilder("op")
@@ -99,6 +107,7 @@ class ScrubbingRuntimeConcurrencyTest {
                     .end());
         }
 
+        // then
         assertThat(runtime.droppedActions()).isEqualTo((long) THREADS * ITERATIONS);
         assertThat(runtime.failures()).isZero();
         assertThat(runtime.openBreakerCount()).isZero();
@@ -107,6 +116,7 @@ class ScrubbingRuntimeConcurrencyTest {
     @Test
     @DisplayName("Обе плоскости на одном runtime: processor и exporter-boundary считают точно и не мешают друг другу")
     void processorAndBoundaryPlanesShareOneRuntimeWithoutInterference() throws Exception {
+        // given
         ScrubbingRuntime runtime = runtimeOf("shared-hmac-key");
         ScrubbingSpanProcessor processor = new ScrubbingSpanProcessor(runtime);
         InMemorySpanExporter delegate = InMemorySpanExporter.create();
@@ -124,6 +134,7 @@ class ScrubbingRuntimeConcurrencyTest {
                         1L, "login", Attributes.of(AttributeKey.stringKey("db.password"), "supersecret"))))
                 .build();
 
+        // when
         try (SdkTracerProvider provider = SdkTracerProvider.builder().addSpanProcessor(processor).build()) {
             Tracer tracer = provider.get("concurrency-test");
             runConcurrently(
@@ -134,6 +145,7 @@ class ScrubbingRuntimeConcurrencyTest {
                     () -> boundaryExporter.export(List.of(eventCarryingSpan)));
         }
 
+        // then
         long perPlane = (long) (THREADS / 2) * ITERATIONS;
         assertThat(runtime.droppedActions())
                 .as("processor-плоскость: одно DROP на span")

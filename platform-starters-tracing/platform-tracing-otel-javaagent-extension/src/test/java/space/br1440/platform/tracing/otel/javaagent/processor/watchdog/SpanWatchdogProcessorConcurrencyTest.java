@@ -13,17 +13,19 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.junit.jupiter.api.Test;
+
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.TraceFlags;
 import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
-import org.junit.jupiter.api.Test;
 
 class SpanWatchdogProcessorConcurrencyTest {
 
     @Test
     void scanner_and_onEnd_are_serialized_on_trace_state() throws Exception {
+        // given
         AtomicLong clock = new AtomicLong();
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
                 Duration.ofNanos(1), Duration.ofHours(1), clock::get, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
@@ -32,7 +34,8 @@ class SpanWatchdogProcessorConcurrencyTest {
                 "00000000000000000000000000000001",
                 "0000000000000001",
                 TraceFlags.getSampled(),
-                TraceState.getDefault());
+                TraceState.getDefault()
+        );
         when(span.getSpanContext()).thenReturn(spanContext);
 
         CountDownLatch scannerEnteredState = new CountDownLatch(1);
@@ -45,6 +48,7 @@ class SpanWatchdogProcessorConcurrencyTest {
         watchdog.onStart(Context.root(), span);
         clock.set(2L);
 
+        // when
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             Future<?> scan = executor.submit(watchdog::scanForTesting);
@@ -55,6 +59,7 @@ class SpanWatchdogProcessorConcurrencyTest {
             scan.get(5, TimeUnit.SECONDS);
             end.get(5, TimeUnit.SECONDS);
 
+            // then
             assertThat(watchdog.getActiveSpanCount()).isZero();
             assertThat(watchdog.getActiveTraceCount()).isZero();
             assertThat(watchdog.getForcedSpanCloses()).isEqualTo(1);

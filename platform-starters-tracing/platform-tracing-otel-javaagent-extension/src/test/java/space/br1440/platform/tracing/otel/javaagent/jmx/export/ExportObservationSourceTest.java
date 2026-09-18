@@ -16,15 +16,18 @@ class ExportObservationSourceTest {
 
     @Test
     void bothOwnersAbsentEncodePresenceFalseWithoutSentinelNegatives() {
+        // given
         ExportObservationSource source = new ExportObservationSource(
                 new OwnerRegistrationSlot<>(), new OwnerRegistrationSlot<>(), AGENT_INSTANCE_ID);
 
+        // when
         CompositeData observation = source.getExportObservation();
         CompositeData processor = (CompositeData) observation.get(
                 JmxWireContract.FIELD_EXPORT_OBSERVATION_PROCESSOR);
         CompositeData exporter = (CompositeData) observation.get(
                 JmxWireContract.FIELD_EXPORT_OBSERVATION_EXPORTER);
 
+        // then
         assertThat((String) observation.get(JmxWireContract.FIELD_EXPORT_OBSERVATION_AGENT_INSTANCE_ID))
                 .isEqualTo(AGENT_INSTANCE_ID.toString());
         assertThat((Boolean) processor.get(

@@ -25,6 +25,8 @@ class ProcessorDiagnosticIdentityContractTest {
 
     @Test
     void identityContractIsOwnedByExactlySevenDomainProcessorsAndNotAnExternalSpi() {
+        // given
+        // then
         assertThat(Modifier.isPublic(ProcessorDiagnosticIdentity.class.getModifiers())).isTrue();
 
         List<ProcessorDiagnosticIdentity> processors = List.of(
@@ -52,6 +54,8 @@ class ProcessorDiagnosticIdentityContractTest {
 
     @Test
     void infrastructureProcessorsAreNotDiagnosticDelegates() {
+        // given
+        // then
         assertThat(ProcessorDiagnosticIdentity.class.isAssignableFrom(PlatformCompositeSpanProcessor.class)).isFalse();
         assertThat(ProcessorDiagnosticIdentity.class.isAssignableFrom(
                 PlatformDropOldestExportSpanProcessor.class
@@ -60,6 +64,8 @@ class ProcessorDiagnosticIdentityContractTest {
 
     @Test
     void noOtherProductionClassImplementsDiagnosticIdentity() {
+        // given
+        // then
         assertThat(new ClassFileImporter()
                 .withImportOption(new ImportOption.DoNotIncludeTests())
                 .importPackages(PROCESSOR_PACKAGE)

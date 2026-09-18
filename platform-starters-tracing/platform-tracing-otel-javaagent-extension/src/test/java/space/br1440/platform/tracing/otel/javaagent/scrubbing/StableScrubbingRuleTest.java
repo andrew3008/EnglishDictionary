@@ -15,6 +15,7 @@ class StableScrubbingRuleTest {
 
     @Test
     void external_metadata_is_captured_once() {
+        // given
         AtomicInteger nameCalls = new AtomicInteger();
         AtomicInteger priorityCalls = new AtomicInteger();
         AtomicInteger criticalCalls = new AtomicInteger();
@@ -38,8 +39,10 @@ class StableScrubbingRuleTest {
             }
         };
 
+        // when
         StableScrubbingRule stable = StableScrubbingRule.captureExternal(delegate);
 
+        // then
         assertThat(stable.name()).isEqualTo("external-rule");
         assertThat(stable.name()).isEqualTo("external-rule");
         assertThat(stable.priority()).isEqualTo(950);
@@ -54,6 +57,7 @@ class StableScrubbingRuleTest {
 
     @Test
     void external_rule_cannot_claim_platform_critical_ownership() {
+        // given
         SpanAttributeScrubbingRule delegate = new SpanAttributeScrubbingRule() {
             @Nonnull
             @Override public String name() { return "external-critical"; }
@@ -64,6 +68,7 @@ class StableScrubbingRuleTest {
             }
         };
 
+        // when/then
         assertThatThrownBy(() -> StableScrubbingRule.captureExternal(delegate))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("External scrubbing rule must not be critical");

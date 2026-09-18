@@ -30,13 +30,16 @@ class TracingSettingsUpdaterPreApplyTest {
 
     @Test
     void rejectBeforeApply_withCanonicalAttemptId_recordsAttemptAndDoesNotCommit() {
+        // given
         TracingSettingsRevision before = store.current();
         String attemptId = UUID.randomUUID().toString();
 
+        // when
         SettingsUpdateResult result = updater.rejectBeforeApply(
                 attemptId,
                 SettingsRejectionReason.TYPE_MISMATCH);
 
+        // then
         assertThat(result.outcome()).isEqualTo(SettingsUpdateStatus.REJECTED);
         assertThat(result.messageCode()).isEqualTo(SettingsRejectionReason.TYPE_MISMATCH);
         assertThat(store.current()).isSameAs(before);
@@ -48,10 +51,12 @@ class TracingSettingsUpdaterPreApplyTest {
 
     @Test
     void rejectBeforeApply_withEmptyAttemptId_leavesLatestAttemptNull() {
+        // when
         SettingsUpdateResult result = updater.rejectBeforeApply(
                 "",
                 SettingsRejectionReason.MISSING_REQUIRED_FIELD);
 
+        // then
         assertThat(result.outcome()).isEqualTo(SettingsUpdateStatus.REJECTED);
         assertThat(diagnostics.snapshot().latestAttempt()).isNull();
         assertThat(diagnostics.snapshot().latestOutcome()).isEqualTo(SettingsUpdateStatus.REJECTED);
@@ -61,12 +66,15 @@ class TracingSettingsUpdaterPreApplyTest {
 
     @Test
     void failBeforeApply_recordsFailedWithoutCommit() {
+        // given
         TracingSettingsRevision before = store.current();
 
+        // when
         SettingsUpdateResult result = updater.failBeforeApply(
                 "not-a-uuid",
                 SettingsRejectionReason.INTERNAL_FAILURE);
 
+        // then
         assertThat(result.outcome()).isEqualTo(SettingsUpdateStatus.FAILED);
         assertThat(result.messageCode()).isEqualTo(SettingsRejectionReason.INTERNAL_FAILURE);
         assertThat(store.current()).isSameAs(before);

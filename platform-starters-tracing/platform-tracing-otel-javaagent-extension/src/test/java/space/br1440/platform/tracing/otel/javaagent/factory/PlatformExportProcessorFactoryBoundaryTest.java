@@ -45,6 +45,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
     @Test
     @DisplayName("captureExporter wraps every exporter; UPSTREAM keeps the wrapped path")
     void upstreamModeExportsThroughTheBoundaryWrap() {
+        // given
         ScrubbingRuntime runtime = runtimeOfPassword();
         PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(registrar, runtime);
@@ -56,10 +57,14 @@ class PlatformExportProcessorFactoryBoundaryTest {
         SpanProcessor result = factory.maybeReplaceExportProcessor(
                 stock, upstream.queue(), stringConfig("UPSTREAM"));
 
+        // then
         assertThat(result).isSameAs(stock);
         assertThat(registrar.extensionReadiness().has(PlatformExtensionCapability.EXPORT_PATH_PROTECTED)).isTrue();
 
+        // when
         wrapped.export(List.of(spanWithPasswordEvent()));
+
+        // then
         assertThat(captured).hasSize(1);
         assertThat(captured.getFirst().getEvents().getFirst().getAttributes().get(AttributeKey.stringKey("db.password")))
                 .isNull();
@@ -68,6 +73,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
     @Test
     @DisplayName("DROP_OLDEST still acknowledges export mode after a single wrapped exporter")
     void dropOldestResolvesExportModeThroughTheSameWrap() {
+        // given
         ScrubbingRuntime runtime = runtimeOfPassword();
         PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(registrar, runtime);
@@ -83,11 +89,14 @@ class PlatformExportProcessorFactoryBoundaryTest {
         }, TracingSettingsSource.isolatedDefaults());
 
         ExtensionConfig dropOldest = new ExtensionConfig(stringConfig("DROP_OLDEST"));
+
+        // when
         factory.maybeReplaceExportProcessor(
                 SimpleSpanProcessor.create(wrapped),
                 dropOldest.queue(),
                 stringConfig("DROP_OLDEST"));
 
+        // then
         assertThat(registrar.extensionReadiness().has(PlatformExtensionCapability.EXPORT_PATH_PROTECTED)
                 || registrar.extensionReadiness().has(PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED))
                 .isTrue();
@@ -96,6 +105,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
     @Test
     @DisplayName("Foreign SafeSpanExporter is rejected at startup instead of being wrapped twice")
     void foreignSafeSpanExporterIsRejectedAtStartup() {
+        // given
         ScrubbingRuntime session = runtimeOfPassword();
         List<SpanData> captured = new ArrayList<>();
         SafeSpanExporter foreign = new SafeSpanExporter(
@@ -106,9 +116,11 @@ class PlatformExportProcessorFactoryBoundaryTest {
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
                 new PlatformTracingMBeanRegistrar(), session);
 
+        // when
         Throwable failure = catchThrowable(
                 () -> factory.captureExporter(foreign, TracingSettingsSource.isolatedDefaults()));
 
+        // then
         assertThat(failure)
                 .isInstanceOf(SanitizerBootstrapException.class)
                 .extracting(t -> ((SanitizerBootstrapException) t).code())
@@ -121,6 +133,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
     @DisplayName("Same-runtime identity alone does not prove factory provenance: a manually-built "
             + "SafeSpanExporter is rejected even when it shares the session runtime (H-4)")
     void manuallyBuiltSameRuntimeExporterIsRejectedDespiteMatchingRuntimeIdentity() {
+        // given
         ScrubbingRuntime session = runtimeOfPassword();
         List<SpanData> captured = new ArrayList<>();
         SafeSpanExporter lookalike = new SafeSpanExporter(
@@ -132,9 +145,11 @@ class PlatformExportProcessorFactoryBoundaryTest {
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
                 new PlatformTracingMBeanRegistrar(), session);
 
+        // when
         Throwable failure = catchThrowable(
                 () -> factory.captureExporter(lookalike, TracingSettingsSource.isolatedDefaults()));
 
+        // then
         assertThat(failure)
                 .isInstanceOf(SanitizerBootstrapException.class)
                 .extracting(t -> ((SanitizerBootstrapException) t).code())
@@ -145,6 +160,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
     @DisplayName("Re-entry with this factory's own ReplacementAwareSpanExporter output does not re-wrap "
             + "or run the boundary a second time")
     void ownReplacementAwareOutputIsShortCircuitedOnReentry() {
+        // given
         ScrubbingRuntime session = runtimeOfPassword();
         List<SpanData> captured = new ArrayList<>();
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
@@ -153,9 +169,13 @@ class PlatformExportProcessorFactoryBoundaryTest {
         SpanExporter firstCapture = factory.captureExporter(capturing(captured), TracingSettingsSource.isolatedDefaults());
         SpanExporter secondCapture = factory.captureExporter(firstCapture, TracingSettingsSource.isolatedDefaults());
 
+        // then
         assertThat(secondCapture).isSameAs(firstCapture);
+
+        // when
         secondCapture.export(List.of(spanWithPasswordEvent()));
 
+        // then
         assertThat(captured).hasSize(1);
         assertThat(captured.getFirst().getEvents().getFirst().getAttributes().get(AttributeKey.stringKey("db.password")))
                 .isNull();

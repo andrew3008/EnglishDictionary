@@ -13,30 +13,31 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Покрывает адверсариально найденный блокер: раздельная аллокация generation и публикация
- * владельца допускала reverse publication (опубликованная generation уменьшалась). Здесь
- * generation выдаётся внутри той же атомарной операции, что публикует владельца.
- */
 class OwnerRegistrationSlotTest {
 
     @Test
     void initialStateIsAbsentWithZeroGeneration() {
+        // given
         OwnerRegistrationSlot<String> slot = new OwnerRegistrationSlot<>();
 
+        // when
         OwnerRegistrationState<String> state = slot.capture();
 
+        // then
         assertThat(state).isInstanceOf(OwnerRegistrationState.Absent.class);
         assertThat(state.generation()).isZero();
     }
 
     @Test
     void replaceProducesStrictlyIncreasingGeneration() {
+        // given
         OwnerRegistrationSlot<String> slot = new OwnerRegistrationSlot<>();
 
+        // when
         OwnerRegistrationState<String> first = slot.replace("owner-1");
         OwnerRegistrationState<String> second = slot.replace("owner-2");
 
+        // then
         assertThat(first.generation()).isEqualTo(1L);
         assertThat(second.generation()).isEqualTo(2L);
         assertThat(((OwnerRegistrationState.Present<String>) second).owner()).isEqualTo("owner-2");
@@ -44,19 +45,23 @@ class OwnerRegistrationSlotTest {
 
     @Test
     void removePreservesGenerationForStrictlyIncreasingReattachment() {
+        // given
         OwnerRegistrationSlot<String> slot = new OwnerRegistrationSlot<>();
         slot.replace("owner-1");
 
+        // when
         OwnerRegistrationState<String> absent = slot.remove();
+        OwnerRegistrationState<String> reattached = slot.replace("owner-2");
+
+        // then
         assertThat(absent).isInstanceOf(OwnerRegistrationState.Absent.class);
         assertThat(absent.generation()).isEqualTo(1L);
-
-        OwnerRegistrationState<String> reattached = slot.replace("owner-2");
         assertThat(reattached.generation()).isEqualTo(2L);
     }
 
     @Test
     void concurrentReplacementsNeverPublishDecreasingGenerationAndEachGetsUniqueGeneration() throws Exception {
+        // given
         OwnerRegistrationSlot<Long> slot = new OwnerRegistrationSlot<>();
         int threads = 16;
         AtomicLong ownerCounter = new AtomicLong();
@@ -66,18 +71,18 @@ class OwnerRegistrationSlotTest {
             for (int i = 0; i < threads; i++) {
                 futures.add(pool.submit(() -> slot.replace(ownerCounter.incrementAndGet()).generation()));
             }
+            // when
             List<Long> observedGenerations = new java.util.ArrayList<>();
             for (Future<Long> future : futures) {
                 observedGenerations.add(future.get(5, TimeUnit.SECONDS));
             }
 
-            // Каждая успешная замена получила уникальную generation — не потеряно и не задвоено.
+            // then
             Set<Long> distinct = observedGenerations.stream().collect(Collectors.toSet());
             assertThat(distinct).hasSize(threads);
             assertThat(distinct).containsExactlyInAnyOrderElementsOf(
                     java.util.stream.LongStream.rangeClosed(1, threads).boxed().toList());
 
-            // Reverse publication невозможен: финальная generation равна максимальной выданной.
             assertThat(slot.capture().generation()).isEqualTo(threads);
         } finally {
             pool.shutdown();
@@ -86,6 +91,7 @@ class OwnerRegistrationSlotTest {
 
     @Test
     void captureNeverObservesTornPairOfOwnerAndGeneration() throws Exception {
+        // given
         OwnerRegistrationSlot<Long> slot = new OwnerRegistrationSlot<>();
         int writers = 8;
         int iterationsPerWriter = 500;
@@ -106,12 +112,10 @@ class OwnerRegistrationSlotTest {
                 for (int i = 0; i < 5000; i++) {
                     OwnerRegistrationState<Long> state = slot.capture();
                     if (state.generation() < lastSeenGeneration) {
-                        return false; // наблюдали убывание — reverse publication
+                        return false;
                     }
                     lastSeenGeneration = state.generation();
                     if (state instanceof OwnerRegistrationState.Present<Long> present) {
-                        // owner и generation должны быть парой, зафиксированной одной атомарной операцией:
-                        // owner ненулевой и generation положительна одновременно.
                         if (present.owner() == null || present.generation() <= 0) {
                             return false;
                         }
@@ -123,6 +127,7 @@ class OwnerRegistrationSlotTest {
             for (Future<Void> future : writerFutures) {
                 future.get(10, TimeUnit.SECONDS);
             }
+            // when/then
             assertThat(readerFuture.get(10, TimeUnit.SECONDS)).isTrue();
         } finally {
             pool.shutdown();

@@ -42,6 +42,7 @@ class SpanLimitsVerificationTest {
 
     @Test
     void attribute_limit_exceeded_is_counted_as_dropped() {
+        // given
         SpanLimitsMetricsProcessor metrics = new SpanLimitsMetricsProcessor();
         SpanLimits limits = SpanLimits.builder().setMaxNumberOfAttributes(2).build();
         Tracer tracer = tracerWithLimits(metrics, limits);
@@ -51,13 +52,16 @@ class SpanLimitsVerificationTest {
         span.setAttribute("b", "2");
         span.setAttribute("c", "3"); // сверх лимита → drop
         span.setAttribute("d", "4"); // сверх лимита → drop
+        // when
         span.end();
 
+        // then
         assertThat(metrics.getDroppedAttributes()).isEqualTo(2);
     }
 
     @Test
     void event_limit_exceeded_is_counted_as_dropped() {
+        // given
         SpanLimitsMetricsProcessor metrics = new SpanLimitsMetricsProcessor();
         SpanLimits limits = SpanLimits.builder().setMaxNumberOfEvents(1).build();
         Tracer tracer = tracerWithLimits(metrics, limits);
@@ -66,13 +70,16 @@ class SpanLimitsVerificationTest {
         span.addEvent("e1");
         span.addEvent("e2");
         span.addEvent("e3");
+        // when
         span.end();
 
+        // then
         assertThat(metrics.getDroppedEvents()).isEqualTo(2);
     }
 
     @Test
     void link_limit_exceeded_is_counted_as_dropped() {
+        // given
         SpanLimitsMetricsProcessor metrics = new SpanLimitsMetricsProcessor();
         SpanLimits limits = SpanLimits.builder().setMaxNumberOfLinks(1).build();
         Tracer tracer = tracerWithLimits(metrics, limits);
@@ -82,22 +89,27 @@ class SpanLimitsVerificationTest {
                 .addLink(remoteContext("00000000000000000000000000000002"))
                 .addLink(remoteContext("00000000000000000000000000000003"))
                 .startSpan();
+        // when
         span.end();
 
+        // then
         assertThat(metrics.getDroppedLinks()).isEqualTo(2);
     }
 
     @Test
     void attribute_value_is_truncated_by_character_count() {
+        // given
         SpanLimitsMetricsProcessor metrics = new SpanLimitsMetricsProcessor();
         SpanLimits limits = SpanLimits.builder().setMaxAttributeValueLength(5).build();
         Tracer tracer = tracerWithLimits(metrics, limits);
 
         Span span = tracer.spanBuilder("op").startSpan();
         span.setAttribute("k", "abcdefghij");
+        // when
         span.end();
 
         // Лимит — character-based: ровно 5 первых символов сохраняются.
+        // then
         assertThat(((io.opentelemetry.sdk.trace.ReadableSpan) span)
                 .toSpanData().getAttributes()
                 .get(io.opentelemetry.api.common.AttributeKey.stringKey("k")))
@@ -106,13 +118,16 @@ class SpanLimitsVerificationTest {
 
     @Test
     void no_limit_exceeded_does_not_yield_negative_counters() {
+        // given
         SpanLimitsMetricsProcessor metrics = new SpanLimitsMetricsProcessor();
         Tracer tracer = tracerWithLimits(metrics, SpanLimits.getDefault());
 
         Span span = tracer.spanBuilder("op").startSpan();
         span.setAttribute("a", "1");
+        // when
         span.end();
 
+        // then
         assertThat(metrics.getDroppedAttributes()).isZero();
         assertThat(metrics.getDroppedEvents()).isZero();
         assertThat(metrics.getDroppedLinks()).isZero();

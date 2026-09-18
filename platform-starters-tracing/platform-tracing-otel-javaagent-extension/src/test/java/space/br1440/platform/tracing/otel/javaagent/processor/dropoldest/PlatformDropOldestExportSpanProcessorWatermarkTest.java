@@ -22,11 +22,13 @@ class PlatformDropOldestExportSpanProcessorWatermarkTest {
 
     @Test
     void concurrentFlushRequestsUseAtMostTwoCoalescedGenerations() throws InterruptedException {
+        // given
         ControlledExporter exporter = new ControlledExporter();
         PlatformDropOldestExportSpanProcessor processor = processor(exporter, 16, 2);
         SdkTracerProvider provider = provider(processor);
         try {
             Tracer tracer = provider.get("two-generations");
+            // when
             endSpans(tracer, "first", 2);
             CompletableResultCode active = processor.forceFlush();
             assertThat(exporter.firstExportStarted.await(5, TimeUnit.SECONDS)).isTrue();
@@ -36,6 +38,7 @@ class PlatformDropOldestExportSpanProcessorWatermarkTest {
             endSpans(tracer, "third", 2);
             CompletableResultCode coalesced = processor.forceFlush();
 
+            // then
             assertThat(coalesced).isSameAs(queued);
             assertThat(queued).isNotSameAs(active);
             assertThat(processor.pendingFlushGenerationCount()).isEqualTo(2);
@@ -53,11 +56,13 @@ class PlatformDropOldestExportSpanProcessorWatermarkTest {
 
     @Test
     void overflowOfProtectedEntryFailsOwningFlush() throws InterruptedException {
+        // given
         ControlledExporter exporter = new ControlledExporter();
         PlatformDropOldestExportSpanProcessor processor = processor(exporter, 2, 1);
         SdkTracerProvider provider = provider(processor);
         try {
             Tracer tracer = provider.get("protected-drop");
+            // when
             endSpans(tracer, "in-flight", 1);
             assertThat(exporter.firstExportStarted.await(5, TimeUnit.SECONDS)).isTrue();
 
@@ -65,6 +70,7 @@ class PlatformDropOldestExportSpanProcessorWatermarkTest {
             CompletableResultCode flush = processor.forceFlush();
             endSpans(tracer, "overflow", 1);
 
+            // then
             assertThat(flush.join(5, TimeUnit.SECONDS).isSuccess()).isFalse();
             assertThat(processor.metricsSnapshot().droppedOverflowTotal()).isEqualTo(1);
         } finally {

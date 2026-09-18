@@ -9,6 +9,7 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
+import io.opentelemetry.sdk.trace.data.SpanData;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
@@ -40,7 +41,7 @@ class EnrichingSpanProcessorTest {
         span.end();
 
         // then
-        var data = exporter.getFinishedSpanItems().getFirst();
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().asMap())
                 .containsEntry(PLATFORM_TYPE_KEY, "http_server")
                 .containsEntry(PLATFORM_RESULT_KEY, "success");
@@ -56,7 +57,7 @@ class EnrichingSpanProcessorTest {
         span.end();
 
         // then
-        var data = exporter.getFinishedSpanItems().getFirst();
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_HOST_KEY)).isNull();
     }
 
@@ -71,7 +72,7 @@ class EnrichingSpanProcessorTest {
         span.end();
 
         // then
-        var data = exporter.getFinishedSpanItems().getFirst();
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_TYPE_KEY)).isEqualTo("database");
     }
 
@@ -86,7 +87,7 @@ class EnrichingSpanProcessorTest {
         span.end();
 
         // then
-        var data = exporter.getFinishedSpanItems().getFirst();
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_RESULT_KEY)).isEqualTo("failure");
     }
 
@@ -103,7 +104,7 @@ class EnrichingSpanProcessorTest {
         span.end();
 
         // then
-        var data = exporter.getFinishedSpanItems().getFirst();
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY)).isEqualTo("order-service");
     }
 
@@ -119,7 +120,7 @@ class EnrichingSpanProcessorTest {
         span.end();
 
         // then
-        var data = exporter.getFinishedSpanItems().getFirst();
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY)).isEqualTo("io.platform.OrderService");
     }
 
@@ -134,7 +135,7 @@ class EnrichingSpanProcessorTest {
         span.end();
 
         // then
-        var data = exporter.getFinishedSpanItems().getFirst();
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY)).isNull();
     }
 
@@ -150,7 +151,7 @@ class EnrichingSpanProcessorTest {
         span.end();
 
         // then
-        var data = exporter.getFinishedSpanItems().getFirst();
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY)).isNull();
     }
 
@@ -166,7 +167,7 @@ class EnrichingSpanProcessorTest {
         span.end();
 
         // then
-        var data = exporter.getFinishedSpanItems().getFirst();
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY)).isNull();
     }
 
@@ -182,7 +183,7 @@ class EnrichingSpanProcessorTest {
         span.end();
 
         // then
-        var data = exporter.getFinishedSpanItems().getFirst();
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY))
                 .isEqualTo("billing.svc.cluster.local:8080");
     }
@@ -199,7 +200,7 @@ class EnrichingSpanProcessorTest {
         span.end();
 
         // then
-        var data = exporter.getFinishedSpanItems().getFirst();
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY)).isNull();
     }
 
@@ -215,7 +216,7 @@ class EnrichingSpanProcessorTest {
         span.end();
 
         // then
-        var data = exporter.getFinishedSpanItems().getFirst();
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY)).isEqualTo("billing");
     }
 
@@ -231,7 +232,7 @@ class EnrichingSpanProcessorTest {
         span.end();
 
         // then
-        var data = exporter.getFinishedSpanItems().getFirst();
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY))
                 .isEqualTo("billing.svc.cluster.local");
     }
@@ -239,7 +240,7 @@ class EnrichingSpanProcessorTest {
     @Test
     void overridesPlatformTypeToDatabaseWhenStableDbSystemNamePresent(
             OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
-        // given: авто-инструментованный JDBC-span (semconv 1.28+ — стабильный db.system.name)
+        // given
         Tracer tracer = sdk.getTracer("test");
 
         // when
@@ -247,16 +248,15 @@ class EnrichingSpanProcessorTest {
         span.setAttribute("db.system.name", "postgresql");
         span.end();
 
-        // then: онStart выставил http_client (для CLIENT по умолчанию), onEnding должен
-        // переопределить platform.type на database по факту наличия db.system.name.
-        var data = exporter.getFinishedSpanItems().getFirst();
+        // then
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_TYPE_KEY)).isEqualTo("database");
     }
 
     @Test
     void overridesPlatformTypeToDatabaseWhenLegacyDbSystemPresent(
             OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
-        // given: авто-инструментованный JDBC-span (Agent 2.28.x пишет legacy db.system)
+        // given
         Tracer tracer = sdk.getTracer("test");
 
         // when
@@ -265,15 +265,14 @@ class EnrichingSpanProcessorTest {
         span.end();
 
         // then
-        var data = exporter.getFinishedSpanItems().getFirst();
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_TYPE_KEY)).isEqualTo("database");
     }
 
     @Test
     void overridesPlatformTypeToDatabaseWhenBothDbSystemAttributesPresent(
             OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
-        // given: dual-emission mode (OTEL_SEMCONV_STABILITY_OPT_IN=database/dup):
-        // Agent writes both db.system.name (stable) and db.system (legacy) on the same span.
+        // given
         Tracer tracer = sdk.getTracer("test");
 
         // when
@@ -282,15 +281,15 @@ class EnrichingSpanProcessorTest {
         span.setAttribute("db.system", "mysql");
         span.end();
 
-        // then: presence of either attribute is sufficient; platform.type must be database.
-        var data = exporter.getFinishedSpanItems().getFirst();
+        // then
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_TYPE_KEY)).isEqualTo("database");
     }
 
     @Test
     void doesNotOverridePlatformTypeWhenSetExplicitlyByApplication(
             OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
-        // given: прикладной код вручную выставил platform.type, отличный от http_client
+        // given
         Tracer tracer = sdk.getTracer("test");
 
         // when
@@ -299,15 +298,15 @@ class EnrichingSpanProcessorTest {
         span.setAttribute("db.system.name", "postgresql");
         span.end();
 
-        // then: явно выставленное значение rpc сохраняется, переопределения на database не происходит.
-        var data = exporter.getFinishedSpanItems().getFirst();
+        // then
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_TYPE_KEY)).isEqualTo("rpc");
     }
 
     @Test
     void doesNotOverridePlatformTypeForServerSpanWithDbAttributes(
             OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
-        // given: серверный span с (искусственными) db-атрибутами не должен ломаться на database
+        // given
         Tracer tracer = sdk.getTracer("test");
 
         // when
@@ -315,8 +314,8 @@ class EnrichingSpanProcessorTest {
         span.setAttribute("db.system.name", "postgresql");
         span.end();
 
-        // then: SERVER остаётся http_server, db-уточнение применимо только к CLIENT.
-        var data = exporter.getFinishedSpanItems().getFirst();
+        // then
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_TYPE_KEY)).isEqualTo("http_server");
     }
 
@@ -338,7 +337,7 @@ class EnrichingSpanProcessorTest {
         }
 
         // then
-        var data = exporter.getFinishedSpanItems().getFirst();
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_REQUEST_ID))).isNull();
         assertThat(data.getAttributes().get(AttributeKey.stringKey("platform.policy.version"))).isNull();
     }

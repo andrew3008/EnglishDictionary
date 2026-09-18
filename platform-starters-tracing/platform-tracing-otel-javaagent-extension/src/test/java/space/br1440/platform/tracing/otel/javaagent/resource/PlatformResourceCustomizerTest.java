@@ -73,92 +73,109 @@ class PlatformResourceCustomizerTest {
 
     @Test
     void otel_service_name_blocks_platform_override() {
-        // OTEL_SERVICE_NAME задан → provider ОМИТИТ service.name (его допишет EnvironmentResourceProvider).
+        // given
         Map<String, String> values = Map.of(
                 "otel.service.name", "otel-svc",
                 PlatformResourceCustomizer.PROP_SERVICE_NAME, "platform-svc");
 
+        // when
         Resource resource = customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(values));
 
+        // then
         assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isNull();
     }
 
     @Test
     void service_version_from_build_info_when_explicit_not_set() {
+        // when
         Resource resource = customizer(NO_ENV, () -> Optional.of("2.17.4"), Optional::empty, NO_CONTAINER, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(Map.of()));
 
+        // then
         assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_VERSION))).isEqualTo("2.17.4");
     }
 
     @Test
     void service_version_explicit_wins_over_build_info() {
+        // given
         Map<String, String> values = Map.of(PlatformResourceCustomizer.PROP_SERVICE_VERSION, "9.9.9");
 
+        // when
         Resource resource = customizer(NO_ENV, () -> Optional.of("2.17.4"), Optional::empty, NO_CONTAINER, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(values));
 
+        // then
         assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_VERSION))).isEqualTo("9.9.9");
     }
 
     @Test
     void host_name_omit_when_undefined() {
+        // when
         Resource resource = customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(Map.of()));
 
-        // omit-if-unknown: фейковый "unknown" не пишется
+        // then
         assertThat(resource.getAttribute(key(PlatformAttributes.PLATFORM_HOST))).isNull();
     }
 
     @Test
     void host_name_from_HOSTNAME_env() {
+        // given
         HostNameResolver host = new HostNameResolver(
                 name -> "HOSTNAME".equals(name) ? "pod-billing-7f9c" : null,
                 () -> {
                     throw new AssertionError("InetAddress must not be called when HOSTNAME is present");
                 });
 
+        // when
         Resource resource = customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, host)
                 .customize(Resource.empty(), new TestConfigProperties(Map.of()));
 
+        // then
         assertThat(resource.getAttribute(key(PlatformAttributes.PLATFORM_HOST))).isEqualTo("pod-billing-7f9c");
     }
 
     @Test
     void container_id_explicit_config() {
+        // given
         Map<String, String> values = Map.of(PlatformResourceCustomizer.PROP_CONTAINER_ID, "docker-abc123");
 
+        // when
         Resource resource = customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(values));
 
+        // then
         assertThat(resource.getAttribute(key(PlatformAttributes.CONTAINER_ID))).isEqualTo("docker-abc123");
     }
 
     @Test
     void container_id_procfs_only_with_opt_in() {
+        // given
         Supplier<Optional<String>> procfs = () -> Optional.of("procfs-id");
 
-        // detect-container-id не задан (default false) → procfs НЕ вызывается, container.id отсутствует
+        // when
         Resource off = customizer(NO_ENV, Optional::empty, Optional::empty, procfs, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(Map.of()));
-        assertThat(off.getAttribute(key(PlatformAttributes.CONTAINER_ID))).isNull();
-
-        // detect-container-id=true → procfs подхватывается
         Resource on = customizer(NO_ENV, Optional::empty, Optional::empty, procfs, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(
                         Map.of(ExtensionPropertyNames.RESOURCE_DETECT_CONTAINER_ID, "true")));
+
+        // then
+        assertThat(off.getAttribute(key(PlatformAttributes.CONTAINER_ID))).isNull();
         assertThat(on.getAttribute(key(PlatformAttributes.CONTAINER_ID))).isEqualTo("procfs-id");
     }
 
     @Test
     void k8s_pod_uid_is_no_longer_written() {
-        // Ключ k8s.pod.uid удалён из провайдера (зона Collector). Даже при заданном старом свойстве — absent.
+        // given
         Map<String, String> values = Map.of("platform.tracing.service.k8s-pod-uid", "pod-uid-123");
 
+        // when
         Resource resource = customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(values));
 
+        // then
         assertThat(resource.getAttribute(key("k8s.pod.uid"))).isNull();
     }
 
@@ -187,11 +204,12 @@ class PlatformResourceCustomizerTest {
 
     @Test
     void strict_fails_when_required_keys_absent() {
+        // given
         Map<String, String> values = Map.of(ExtensionPropertyNames.RESOURCE_VALIDATION_MODE, "STRICT");
-
         PlatformResourceCustomizer customizer =
                 customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost());
 
+        // when/then
         assertThatThrownBy(() -> customizer.customize(Resource.empty(), new TestConfigProperties(values)))
                 .isInstanceOf(IllegalStateException.class);
     }

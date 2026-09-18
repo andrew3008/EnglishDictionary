@@ -37,23 +37,29 @@ class SafeSamplerTest {
 
     @Test
     void delegate_failure_is_not_thrown_and_falls_back_to_drop() {
+        // given
         TracingDiagnostics diagnostics = new TracingDiagnostics();
         SafeSampler safe = new SafeSampler(ALWAYS_THROWS, diagnostics);
 
+        // when
         SamplingResult result = SamplerHarness.of(safe).sample();
 
+        // then
         assertThat(result.getDecision()).isEqualTo(SamplingDecision.DROP);
         assertThat(diagnostics.getSamplerFailures()).isGreaterThanOrEqualTo(1);
     }
 
     @Test
     void getDescription_is_safe_when_delegate_fails() {
+        // given
         SafeSampler safe = new SafeSampler(ALWAYS_THROWS, new TracingDiagnostics());
+        // when/then
         assertThat(safe.getDescription()).isEqualTo("SafeSampler{description_unavailable}");
     }
 
     @Test
     void null_delegate_result_is_treated_as_failure() {
+        // given
         Sampler returnsNull = new Sampler() {
             @Override
             public SamplingResult shouldSample(Context parentContext, String traceId, String name,
@@ -69,14 +75,17 @@ class SafeSamplerTest {
         TracingDiagnostics diagnostics = new TracingDiagnostics();
         SafeSampler safe = new SafeSampler(returnsNull, diagnostics);
 
+        // when
         SamplingResult result = SamplerHarness.of(safe).sample();
 
+        // then
         assertThat(result.getDecision()).isEqualTo(SamplingDecision.DROP);
         assertThat(diagnostics.getSamplerFailures()).isGreaterThanOrEqualTo(1);
     }
 
     @Test
     void degraded_mode_stops_calling_consistently_failing_delegate() {
+        // given
         AtomicInteger delegateCalls = new AtomicInteger();
         Sampler counting = new Sampler() {
             @Override
@@ -95,11 +104,13 @@ class SafeSamplerTest {
         SafeSampler safe = new SafeSampler(counting, new TracingDiagnostics());
         SamplerHarness harness = SamplerHarness.of(safe);
 
+        // when/then
         for (int i = 0; i < 10; i++) {
             assertThat(harness.sample().getDecision()).isEqualTo(SamplingDecision.DROP);
         }
 
         // После 5 сбоев breaker OPEN — делегат больше не вызывается (защита hot-path от лишней работы).
+        // then
         assertThat(delegateCalls.get())
                 .as("делегат вызывался не более порога открытия breaker")
                 .isLessThanOrEqualTo(5);

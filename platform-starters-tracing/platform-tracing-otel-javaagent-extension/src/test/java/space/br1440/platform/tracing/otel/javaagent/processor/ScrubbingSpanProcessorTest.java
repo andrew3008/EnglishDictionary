@@ -1,64 +1,75 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
+import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opentelemetry.api.common.AttributeKey;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.Tracer;
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
+
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.Tracer;
 
 class ScrubbingSpanProcessorTest {
 
     @Test
     void drop_by_password_key_name_overwrites_with_empty_string() {
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("password")
         )))) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("db.password", "supersecret");
-            span.setAttribute("just.text", "ничего интересного");
+            span.setAttribute("just.text", "Ð½Ð¸Ñ‡ÐµÐ³Ð¾ Ð¸Ð½Ñ‚ÐµÑ€ÐµÑÐ½Ð¾Ð³Ð¾");
+            // when
             span.end();
 
-            var attributes = h.exporter().getFinishedSpanItems().get(0).getAttributes();
+            Attributes attributes = h.exporter().getFinishedSpanItems().get(0).getAttributes();
+            // then
             assertThat(attributes.get(AttributeKey.stringKey("db.password"))).isEmpty();
-            assertThat(attributes.get(AttributeKey.stringKey("just.text"))).isEqualTo("ничего интересного");
+            assertThat(attributes.get(AttributeKey.stringKey("just.text"))).isEqualTo("Ð½Ð¸Ñ‡ÐµÐ³Ð¾ Ð¸Ð½Ñ‚ÐµÑ€ÐµÑÐ½Ð¾Ð³Ð¾");
         }
     }
 
     @Test
     void jwt_value_is_fully_removed() {
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("jwt")
         )))) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("token.value", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.signature");
+            // when
             span.end();
 
-            var attributes = h.exporter().getFinishedSpanItems().get(0).getAttributes();
+            Attributes attributes = h.exporter().getFinishedSpanItems().get(0).getAttributes();
+            // then
             assertThat(attributes.get(AttributeKey.stringKey("token.value"))).isEmpty();
         }
     }
 
     @Test
     void email_is_hashed_when_hmac_key_is_set() {
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("email")
         ), MaskedSecret.of("secret-key"), false))) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("user.email", "ivan.petrov@example.com");
+            // when
             span.end();
 
-            String value = h.exporter().getFinishedSpanItems().get(0).getAttributes()
+            String value = h.exporter().getFinishedSpanItems().getFirst().getAttributes()
                     .get(AttributeKey.stringKey("user.email"));
+            // then
             assertThat(value)
                     .doesNotContain("ivan.petrov@example.com")
                     .hasSize(64) // HMAC-SHA256 hex
@@ -68,15 +79,18 @@ class ScrubbingSpanProcessorTest {
 
     @Test
     void email_degrades_to_mask_without_hmac_key() {
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("email")
         )))) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("user.email", "ivan.petrov@example.com");
+            // when
             span.end();
 
-            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes()
+            // then
+            assertThat(h.exporter().getFinishedSpanItems().getFirst().getAttributes()
                     .get(AttributeKey.stringKey("user.email")))
                     .isEqualTo("***")
                     .doesNotContain("ivan");
@@ -85,15 +99,18 @@ class ScrubbingSpanProcessorTest {
 
     @Test
     void oauth_authorization_header_is_removed() {
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")
         )))) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("http.request.header.authorization", "Bearer super-secret-token");
+            // when
             span.end();
 
-            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes()
+            // then
+            assertThat(h.exporter().getFinishedSpanItems().getFirst().getAttributes()
                     .get(AttributeKey.stringKey("http.request.header.authorization")))
                     .isEmpty();
         }

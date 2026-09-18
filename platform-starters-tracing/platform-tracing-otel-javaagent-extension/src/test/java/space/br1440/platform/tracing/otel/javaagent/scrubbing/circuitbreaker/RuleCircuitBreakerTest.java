@@ -12,11 +12,16 @@ class RuleCircuitBreakerTest {
 
     @Test
     void opens_after_error_threshold() {
-        var breaker = new RuleCircuitBreaker("r", 3, 60_000L, 60_000L);
+        // given
+        RuleCircuitBreaker breaker = new RuleCircuitBreaker("r", 3, 60_000L, 60_000L);
+        // when
         breaker.recordFailure(new RuntimeException());
         breaker.recordFailure(new RuntimeException());
+        // then
         assertThat(breaker.isOpen()).isFalse();
+        // when
         breaker.recordFailure(new RuntimeException());
+        // then
         assertThat(breaker.isOpen()).isTrue();
         assertThat(breaker.getTotalFailures()).isEqualTo(3);
     }
@@ -24,27 +29,36 @@ class RuleCircuitBreakerTest {
     @Test
     void half_open_issues_probe_to_only_one_thread() {
         // cooldown=0 → сразу после OPEN первый вызов получает HALF_OPEN, второй — OPEN.
-        var breaker = new RuleCircuitBreaker("r", 1, 0L, 0L);
+        // given
+        RuleCircuitBreaker breaker = new RuleCircuitBreaker("r", 1, 0L, 0L);
+        // when
         breaker.recordFailure(new RuntimeException());
+        // then
         assertThat(breaker.acquireExecutionState()).isEqualTo(RuleCircuitBreaker.State.HALF_OPEN);
         assertThat(breaker.acquireExecutionState()).isEqualTo(RuleCircuitBreaker.State.OPEN);
     }
 
     @Test
     void successful_probe_closes_breaker() {
-        var breaker = new RuleCircuitBreaker("r", 1, 0L, 0L);
+        // given
+        RuleCircuitBreaker breaker = new RuleCircuitBreaker("r", 1, 0L, 0L);
+        // when
         breaker.recordFailure(new RuntimeException());
         assertThat(breaker.acquireExecutionState()).isEqualTo(RuleCircuitBreaker.State.HALF_OPEN);
         breaker.recordSuccess();
+        // then
         assertThat(breaker.getState()).isEqualTo(RuleCircuitBreaker.State.CLOSED);
     }
 
     @Test
     void failed_probe_returns_to_open() {
-        var breaker = new RuleCircuitBreaker("r", 1, 0L, 0L);
+        // given
+        RuleCircuitBreaker breaker = new RuleCircuitBreaker("r", 1, 0L, 0L);
+        // when
         breaker.recordFailure(new RuntimeException());
         assertThat(breaker.acquireExecutionState()).isEqualTo(RuleCircuitBreaker.State.HALF_OPEN);
         breaker.recordFailure(new RuntimeException());
+        // then
         assertThat(breaker.getState()).isEqualTo(RuleCircuitBreaker.State.OPEN);
     }
 }

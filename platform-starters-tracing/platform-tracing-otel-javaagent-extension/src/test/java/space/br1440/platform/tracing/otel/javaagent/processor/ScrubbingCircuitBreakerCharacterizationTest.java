@@ -24,20 +24,23 @@ class ScrubbingCircuitBreakerCharacterizationTest {
 
     @Test
     void critical_rule_open_returns_scrubbing_failed_in_merge_engine() {
+        // given
         SpanAttributeScrubbingRule criticalFaulty = criticalThrowingRule("critical-open");
-        var wrapper = new ExecutableRule(
+        ExecutableRule wrapper = new ExecutableRule(
                 criticalFaulty,
                 new RuleCircuitBreaker("critical-open", 1, 0L, 0L));
 
         wrapper.execute("secret.key", "value");
-        var openDecision = wrapper.execute("secret.key", "value");
+        ScrubbingDecision openDecision = wrapper.execute("secret.key", "value");
 
+        // then
         assertThat(openDecision.action().name()).isEqualTo("MASK");
         assertThat(openDecision.reason()).isEqualTo(SCRUBBING_FAILED_REASON);
     }
 
     @Test
     void critical_rule_failure_masks_attribute_with_scrubbing_failed() {
+        // given
         SpanAttributeScrubbingRule criticalFaulty = criticalThrowingRule("critical-boom");
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(
@@ -45,8 +48,10 @@ class ScrubbingCircuitBreakerCharacterizationTest {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("secret.key", "leak-me");
+            // when
             span.end();
 
+            // then
             assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes()
                     .get(AttributeKey.stringKey("secret.key")))
                     .isEqualTo(SCRUBBING_FAILED_REASON);
@@ -55,6 +60,7 @@ class ScrubbingCircuitBreakerCharacterizationTest {
 
     @Test
     void custom_rule_open_is_skipped_by_merge_engine() {
+        // given
         SpanAttributeScrubbingRule customFaulty = new SpanAttributeScrubbingRule() {
             @Nonnull
             @Override public String name() { return "custom-open"; }
@@ -64,12 +70,13 @@ class ScrubbingCircuitBreakerCharacterizationTest {
                 throw new RuntimeException("boom");
             }
         };
-        var wrapper = new ExecutableRule(
+        ExecutableRule wrapper = new ExecutableRule(
                 customFaulty,
                 new RuleCircuitBreaker("custom-open", 1, 0L, 0L));
         wrapper.execute("k", "v");
-        var openResult = wrapper.execute("k", "v");
+        ScrubbingDecision openResult = wrapper.execute("k", "v");
 
+        // then
         assertThat(openResult).isNull();
         assertThat(MergeEngine.evaluate(List.of(wrapper), "k", "v").action().name()).isEqualTo("KEEP");
     }

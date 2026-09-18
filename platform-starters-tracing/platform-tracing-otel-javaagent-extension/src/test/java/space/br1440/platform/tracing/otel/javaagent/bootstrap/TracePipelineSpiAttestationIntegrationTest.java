@@ -37,15 +37,17 @@ class TracePipelineSpiAttestationIntegrationTest {
     }
 
     @Test
-    void realBuildFailsBeforeConfigureSdk_whenLowerOrderProviderDelaysExporterMutation(@TempDir Path overlayDir)
-            throws IOException {
+    void realBuildFailsBeforeConfigureSdk_whenLowerOrderProviderDelaysExporterMutation(@TempDir Path overlayDir) throws IOException {
+        // given
         ClassLoader serviceClassLoader = isolatedClassLoaderWithOverlay(
                 overlayDir, AutoConfigurationCustomizerProvider.class.getName(),
                 LowerOrderDelayedMutationProvider.class
         );
 
+        // when
         Throwable failure = catchThrowable(() -> buildSdk(serviceClassLoader).getOpenTelemetrySdk().close());
 
+        // then
         assertAttestationFailed(failure);
         assertThat(TracePipelineAttackProbe.ACP_EXPORTER_CUSTOMIZER_CALLED)
                 .as("the attacker's addSpanExporterCustomizer callback must never actually run")
@@ -53,8 +55,8 @@ class TracePipelineSpiAttestationIntegrationTest {
     }
 
     @Test
-    void isolatedServiceClassLoaderRejectsLegacyTracerProviderConfigurerDescriptorWithoutLoadingProvider(
-            @TempDir Path overlayDir) throws IOException {
+    void isolatedServiceClassLoaderRejectsLegacyTracerProviderConfigurerDescriptorWithoutLoadingProvider(@TempDir Path overlayDir) throws IOException {
+        // given
         ClassLoader serviceClassLoader = isolatedClassLoaderWithOverlay(
                 overlayDir,
                 TracePipelineSpiAttestation.LEGACY_TRACER_PROVIDER_CONFIGURER_SPI,
@@ -64,9 +66,11 @@ class TracePipelineSpiAttestationIntegrationTest {
 
         assertThat(serviceClassLoader.getResources(serviceResource).hasMoreElements()).isTrue();
 
+        // when
         Throwable failure = catchThrowable(() -> TracePipelineSpiAttestation.attest(
                 PLATFORM_ORDER, BootstrapAutoConfigurationCustomizerProvider.class, serviceClassLoader));
 
+        // then
         assertAttestationFailed(failure);
         assertThat(TracePipelineAttackProbe.LEGACY_TRACER_CONFIGURER_CONSTRUCTED)
                 .as("the forbidden legacy provider must never be loaded")
@@ -106,14 +110,16 @@ class TracePipelineSpiAttestationIntegrationTest {
                 .build();
     }
 
-    private static ClassLoader isolatedClassLoaderWithOverlay(
-            Path overlayDir, String spiName, Class<?> providerType) throws IOException {
+    private static ClassLoader isolatedClassLoaderWithOverlay(Path overlayDir,
+                                                              String spiName,
+                                                              Class<?> providerType) throws IOException {
         Path servicesDir = overlayDir.resolve("META-INF").resolve("services");
         Files.createDirectories(servicesDir);
         Files.writeString(
                 servicesDir.resolve(spiName),
                 providerType.getName(),
-                StandardCharsets.UTF_8);
+                StandardCharsets.UTF_8
+        );
 
         ClassLoader realClassLoader = TracePipelineSpiAttestationIntegrationTest.class.getClassLoader();
         ClassLoader overlay = new URLClassLoader(new URL[] {overlayDir.toUri().toURL()}, realClassLoader);

@@ -5,6 +5,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 
 import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
@@ -24,17 +25,20 @@ class SamplingRuleChainCharacterizationTest {
 
     @Test
     void kill_switch_blocks_force_qa_route_and_global_ratio() {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(false, Map.of("/api", 1.0), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
         sampler.resetCounters();
 
-        var result = SamplerHarness.of(sampler)
+        // when
+        SamplingResult result = SamplerHarness.of(sampler)
                 .spanKind(SpanKind.SERVER)
                 .parentContext(SamplingContextFactory.withForceAndQa("on"))
                 .putStringAttribute("url.path", "/api/orders")
                 .sample();
 
+        // then
         SamplerDecisionAssert.assertThat(result).isDrop();
         SamplingAssertions.assertSamplingReason(result, null);
         assertThat(sampler.getDecisionCount("DROP", PlatformSamplingReasons.KILL_SWITCH)).isEqualTo(1L);
@@ -42,77 +46,94 @@ class SamplingRuleChainCharacterizationTest {
 
     @Test
     void hard_drop_before_force_header_and_qa() {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of("/internal", 1.0), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("/internal"), List.of("on")));
 
-        var forceResult = SamplerHarness.of(sampler)
+        // when
+        SamplingResult forceResult = SamplerHarness.of(sampler)
                 .parentContext(SamplingContextFactory.withForceHeader("on"))
                 .putStringAttribute("url.path", "/internal/metrics")
                 .sample();
+        // then
         SamplingAssertions.assertDecision(forceResult, io.opentelemetry.sdk.trace.samplers.SamplingDecision.DROP);
         SamplingAssertions.assertSamplingReason(forceResult, PlatformSamplingReasons.DROP_PATH);
 
-        var qaResult = SamplerHarness.of(sampler)
+        // when
+        SamplingResult qaResult = SamplerHarness.of(sampler)
                 .parentContext(SamplingContextFactory.withQaTrace())
                 .putStringAttribute("url.path", "/internal/metrics")
                 .sample();
+        // then
         SamplingAssertions.assertDecision(qaResult, io.opentelemetry.sdk.trace.samplers.SamplingDecision.DROP);
         SamplingAssertions.assertSamplingReason(qaResult, PlatformSamplingReasons.DROP_PATH);
     }
 
     @Test
     void force_header_before_parent_decision() {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
 
-        var result = SamplerHarness.of(sampler)
+        // when
+        SamplingResult result = SamplerHarness.of(sampler)
                 .parentContext(SamplingContextFactory.withNotSampledParentAndForceHeader("on"))
                 .putStringAttribute("url.path", "/api/orders")
                 .sample();
 
+        // then
         SamplerDecisionAssert.assertThat(result).isRecordAndSample();
         SamplingAssertions.assertSamplingReason(result, PlatformSamplingReasons.FORCE_HEADER);
     }
 
     @Test
     void qa_trace_before_parent_decision() {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
 
-        var result = SamplerHarness.of(sampler)
+        // when
+        SamplingResult result = SamplerHarness.of(sampler)
                 .parentContext(SamplingContextFactory.withNotSampledParentAndQaTrace())
                 .putStringAttribute("url.path", "/api/orders")
                 .sample();
 
+        // then
         SamplerDecisionAssert.assertThat(result).isRecordAndSample();
         SamplingAssertions.assertSamplingReason(result, PlatformSamplingReasons.QA_TRACE);
     }
 
     @Test
     void absent_url_path_skips_hard_drop_and_route_ratio() {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of("/api", 0.0), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("/actuator"), List.of("on")));
 
-        var result = SamplerHarness.of(sampler).sample();
+        // when
+        SamplingResult result = SamplerHarness.of(sampler).sample();
 
+        // then
         SamplerDecisionAssert.assertThat(result).isRecordAndSample();
         SamplingAssertions.assertSamplingReason(result, PlatformSamplingReasons.GLOBAL_RATIO);
     }
 
     @Test
     void custom_force_value_fires_when_forceRecordValues_match() {
+        // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("custom-force")));
 
-        var result = SamplerHarness.of(sampler)
+        // when
+        SamplingResult result = SamplerHarness.of(sampler)
                 .parentContext(SamplingContextFactory.withForceHeader("custom-force"))
                 .sample();
 
+        // then
         SamplerDecisionAssert.assertThat(result).isRecordAndSample();
         SamplingAssertions.assertSamplingReason(result, PlatformSamplingReasons.FORCE_HEADER);
     }

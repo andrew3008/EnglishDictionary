@@ -26,6 +26,7 @@ class PlatformCompositeLifecycleTest {
 
     @Test
     void repeatedAndConcurrentShutdownUsesOneSharedResultAndInvokesDelegateOnce() throws Exception {
+        // given
         AtomicInteger shutdownCalls = new AtomicInteger();
         CompletableResultCode delegateShutdown = new CompletableResultCode();
         TestProcessor delegate = processor("one_shot", null, () -> {
@@ -49,9 +50,11 @@ class PlatformCompositeLifecycleTest {
 
             List<CompletableResultCode> results = new ArrayList<>(callerCount);
             for (Future<CompletableResultCode> future : futures) {
+                // when
                 results.add(future.get(5, TimeUnit.SECONDS));
             }
 
+            // then
             assertThat(results).allMatch(result -> result == results.getFirst());
             assertThat(shutdownCalls).hasValue(1);
             assertThat(results.getFirst().isDone()).isFalse();
@@ -66,6 +69,7 @@ class PlatformCompositeLifecycleTest {
 
     @Test
     void shutdownWaitsForRegisteredFlushBeforeInvokingDelegates() {
+        // given
         AtomicInteger flushCalls = new AtomicInteger();
         AtomicInteger shutdownCalls = new AtomicInteger();
         CompletableResultCode delegateFlush = new CompletableResultCode();
@@ -80,8 +84,10 @@ class PlatformCompositeLifecycleTest {
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(delegate));
 
         CompletableResultCode flush = composite.forceFlush();
+        // when
         CompletableResultCode shutdown = composite.shutdown();
 
+        // then
         assertThat(flushCalls).hasValue(1);
         assertThat(shutdownCalls).hasValue(0);
         assertThat(shutdown.isDone()).isFalse();
@@ -97,6 +103,7 @@ class PlatformCompositeLifecycleTest {
 
     @Test
     void flushIsRegisteredBeforeDelegateInvocationCompletes() throws Exception {
+        // given
         CountDownLatch flushEntered = new CountDownLatch(1);
         CountDownLatch allowFlushReturn = new CountDownLatch(1);
         AtomicInteger shutdownCalls = new AtomicInteger();
@@ -112,7 +119,9 @@ class PlatformCompositeLifecycleTest {
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(delegate));
         ExecutorService caller = Executors.newSingleThreadExecutor();
         try {
+        // when
             Future<CompletableResultCode> flushFuture = caller.submit(composite::forceFlush);
+            // then
             assertThat(flushEntered.await(5, TimeUnit.SECONDS)).isTrue();
 
             CompletableResultCode shutdown = composite.shutdown();
@@ -133,6 +142,7 @@ class PlatformCompositeLifecycleTest {
 
     @Test
     void forceFlushAfterShutdownReturnsSharedResultWithoutCallingDelegate() {
+        // given
         AtomicInteger flushCalls = new AtomicInteger();
         CompletableResultCode delegateShutdown = new CompletableResultCode();
         TestProcessor delegate = processor("shutdown_first", () -> {
@@ -142,8 +152,10 @@ class PlatformCompositeLifecycleTest {
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(delegate));
 
         CompletableResultCode shutdown = composite.shutdown();
+        // when
         CompletableResultCode flushAfterShutdown = composite.forceFlush();
 
+        // then
         assertThat(flushAfterShutdown).isSameAs(shutdown);
         assertThat(flushCalls).hasValue(0);
 
@@ -153,6 +165,7 @@ class PlatformCompositeLifecycleTest {
 
     @Test
     void shutdownPublishesSharedResultBeforeDelegateInvocationCompletes() throws Exception {
+        // given
         CountDownLatch shutdownEntered = new CountDownLatch(1);
         CountDownLatch allowShutdownReturn = new CountDownLatch(1);
         AtomicInteger flushCalls = new AtomicInteger();
@@ -167,7 +180,9 @@ class PlatformCompositeLifecycleTest {
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(delegate));
         ExecutorService caller = Executors.newSingleThreadExecutor();
         try {
+        // when
             Future<CompletableResultCode> shutdownFuture = caller.submit(composite::shutdown);
+            // then
             assertThat(shutdownEntered.await(5, TimeUnit.SECONDS)).isTrue();
 
             CompletableResultCode shared = composite.shutdown();
@@ -186,6 +201,7 @@ class PlatformCompositeLifecycleTest {
 
     @Test
     void reentrantShutdownFailsClosedWithoutDeadlock() {
+        // given
         AtomicReference<PlatformCompositeSpanProcessor> compositeRef = new AtomicReference<>();
         AtomicInteger shutdownCalls = new AtomicInteger();
         TestProcessor delegate = processor("reentrant", null, () -> {
@@ -195,8 +211,10 @@ class PlatformCompositeLifecycleTest {
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(delegate));
         compositeRef.set(composite);
 
+        // when
         CompletableResultCode result = composite.shutdown();
 
+        // then
         assertThat(result.isDone()).isTrue();
         assertThat(result.isSuccess()).isFalse();
         assertThat(shutdownCalls).hasValue(1);
@@ -206,6 +224,7 @@ class PlatformCompositeLifecycleTest {
 
     @Test
     void malformedAndFailedResultsDoNotPreventLaterDelegateShutdown() {
+        // given
         AtomicInteger laterCalls = new AtomicInteger();
         TestProcessor nullResult = processor("null_result", null, () -> null);
         TestProcessor throwing = processor("throwing", null, () -> {
@@ -219,8 +238,10 @@ class PlatformCompositeLifecycleTest {
         PlatformCompositeSpanProcessor composite =
                 new PlatformCompositeSpanProcessor(List.of(nullResult, throwing, failed, later));
 
+        // when
         CompletableResultCode result = composite.shutdown();
 
+        // then
         assertThat(result.isDone()).isTrue();
         assertThat(result.isSuccess()).isFalse();
         assertThat(laterCalls).hasValue(1);
@@ -233,12 +254,15 @@ class PlatformCompositeLifecycleTest {
 
     @Test
     void pendingDelegateFailureIsObservedAndCounted() {
+        // given
         CompletableResultCode delegateShutdown = new CompletableResultCode();
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(
                 processor("pending_failure", null, () -> delegateShutdown)
         ));
 
+        // when
         CompletableResultCode result = composite.shutdown();
+        // then
         assertThat(result.isDone()).isFalse();
 
         delegateShutdown.fail();
@@ -249,14 +273,17 @@ class PlatformCompositeLifecycleTest {
 
     @Test
     void fatalFailureCompletesSharedResultBeforePropagation() {
+        // given
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(
                 processor("fatal", null, () -> {
                     throw new LinkageError("fatal test failure");
                 })
         ));
 
+        // given/when
         assertThatThrownBy(composite::shutdown).isInstanceOf(LinkageError.class);
 
+        // then
         CompletableResultCode sharedResult = composite.shutdown();
         assertThat(sharedResult.isDone()).isTrue();
         assertThat(sharedResult.isSuccess()).isFalse();
@@ -264,6 +291,7 @@ class PlatformCompositeLifecycleTest {
 
     @Test
     void closeUsesOtelDefaultImplementation() throws NoSuchMethodException {
+        // given/when/then
         assertThat(PlatformCompositeSpanProcessor.class.getMethod("close").getDeclaringClass())
                 .isEqualTo(SpanProcessor.class);
     }

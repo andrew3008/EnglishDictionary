@@ -19,34 +19,42 @@ class ScrubbingLoaderCharacterizationTest {
 
     @Test
     void loader_missing_resource_returns_empty_without_throw() {
+        // when
         List<String> rules = ScrubbingRulesLoader.load(
                 "classpath:tracing/no-such-scrubbing-rules.properties",
                 ScrubbingLoaderCharacterizationTest.class.getClassLoader());
+        // then
         assertThat(rules).isEmpty();
     }
 
     @Test
     void loader_classpath_properties_preserves_order() {
+        // when
         List<String> rules = ScrubbingRulesLoader.load(
                 "classpath:tracing/scrubbing-rules-test.properties",
                 ScrubbingLoaderCharacterizationTest.class.getClassLoader());
+        // then
         assertThat(rules).containsExactly("iban", "inn", "snils");
     }
 
     @Test
     void startup_policy_is_immutable_and_scrubs_password() {
+        // given
         ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
                 List.of(BuiltInSpanAttributeScrubbingRules.resolve("password")), null, false);
+        // then
         assertThat(runtime.enabled()).isTrue();
         assertThat(runtime.policyVersion()).isEqualTo(1L);
         assertThat(runtime.policySource()).isEqualTo("startup");
 
+        // when
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("db.password", "supersecret");
             span.end();
 
+            // then
             ScrubbingAssertions.assertStringAttributeEmpty(
                     h.exporter().getFinishedSpanItems().get(0), "db.password");
         }

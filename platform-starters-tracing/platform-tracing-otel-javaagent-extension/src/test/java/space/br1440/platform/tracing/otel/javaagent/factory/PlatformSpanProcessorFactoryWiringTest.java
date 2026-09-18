@@ -67,6 +67,7 @@ class PlatformSpanProcessorFactoryWiringTest {
 
     @Test
     void allDomainMBeansRegisteredByFactory() {
+        // given
         PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar, ScrubbingRuntimeTestFixtures.disabled());
         factory.registerSpanProcessors(
                 SdkTracerProvider.builder(),
@@ -75,6 +76,7 @@ class PlatformSpanProcessorFactoryWiringTest {
                 samplerHolder
         );
 
+        // when/then
         try (PlatformTracingMBeanRegistrar.RuntimeRegistration ignored = registrar.registerRuntimeControls(samplerHolder)) {
             for (javax.management.ObjectName name : List.of(
                     DomainObjectNames.SAMPLING,
@@ -94,11 +96,13 @@ class PlatformSpanProcessorFactoryWiringTest {
 
     @Test
     void registeredDomainMBeansExposeNoMutatingOperations() throws Exception {
+        // given
         PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                 registrar, ScrubbingRuntimeTestFixtures.disabled());
         factory.registerSpanProcessors(
                 SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig(), samplerHolder);
 
+        // when/then
         try (PlatformTracingMBeanRegistrar.RuntimeRegistration ignored =
                      registrar.registerRuntimeControls(samplerHolder)) {
             for (javax.management.ObjectName name : List.of(
@@ -120,11 +124,13 @@ class PlatformSpanProcessorFactoryWiringTest {
 
     @Test
     void samplingMBeanReflectsAcceptedPolicy() throws Exception {
+        // given
         PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                 registrar, ScrubbingRuntimeTestFixtures.disabled());
         factory.registerSpanProcessors(
                 SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig(), samplerHolder);
 
+        // when/then
         try (PlatformTracingMBeanRegistrar.RuntimeRegistration ignored =
                      registrar.registerRuntimeControls(samplerHolder)) {
             CompositeData observation = (CompositeData) server.getAttribute(

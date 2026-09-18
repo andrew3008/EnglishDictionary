@@ -23,11 +23,14 @@ class LastSettingsUpdateSnapshotTest {
 
     @Test
     void next_afterEmpty_doesNotThrowAndRecordsFirstOutcome() {
+        // given
         LastSettingsUpdateSnapshot initial = LastSettingsUpdateSnapshot.empty();
         SettingsUpdateResult applied = result(SettingsUpdateStatus.APPLIED);
 
+        // when
         LastSettingsUpdateSnapshot afterFirstUpdate = initial.next(attempt(1L), applied);
 
+        // then
         assertThat(afterFirstUpdate.countOf(SettingsUpdateStatus.APPLIED)).isEqualTo(1L);
         assertThat(afterFirstUpdate.countOf(SettingsUpdateStatus.REJECTED)).isEqualTo(0L);
         assertThat(afterFirstUpdate.latestOutcome()).isEqualTo(SettingsUpdateStatus.APPLIED);
@@ -36,6 +39,7 @@ class LastSettingsUpdateSnapshotTest {
 
     @Test
     void constructor_throwsNullPointerException_whenOutcomeCountsIsNull() {
+        // when/then
         assertThatThrownBy(() -> new LastSettingsUpdateSnapshot(null, null, null, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("outcomeCounts");
@@ -43,10 +47,12 @@ class LastSettingsUpdateSnapshotTest {
 
     @Test
     void next_throwsNullPointerException_whenAttemptOrResultIsNull() {
+        // given
         LastSettingsUpdateSnapshot initial = LastSettingsUpdateSnapshot.empty();
         SettingsUpdateResult applied = result(SettingsUpdateStatus.APPLIED);
         SettingsUpdateAttempt attempt = attempt(1L);
 
+        // when/then
         assertThatThrownBy(() -> initial.next(null, applied))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("attempt");
@@ -57,6 +63,7 @@ class LastSettingsUpdateSnapshotTest {
 
     @Test
     void outcomeCounts_iterationOrder_matchesEnumDeclarationOrder() {
+        // given
         Map<SettingsUpdateStatus, Long> scrambled = new LinkedHashMap<>();
         scrambled.put(SettingsUpdateStatus.FAILED, 5L);
         scrambled.put(SettingsUpdateStatus.REJECTED, 4L);
@@ -70,6 +77,7 @@ class LastSettingsUpdateSnapshotTest {
                 SettingsRejectionReason.INTERNAL_FAILURE,
                 scrambled);
 
+        // then
         assertThat(new ArrayList<>(snapshot.outcomeCounts().keySet()))
                 .containsExactly(SettingsUpdateStatus.values());
         assertThat(new ArrayList<>(snapshot.outcomeCounts().values()))
@@ -104,6 +112,7 @@ class LastSettingsUpdateSnapshotTest {
 
     @Test
     void next_interleavedOutcomes_keepsCountsExact() {
+        // when
         LastSettingsUpdateSnapshot snapshot = LastSettingsUpdateSnapshot.empty()
                 .next(attempt(1L), result(SettingsUpdateStatus.APPLIED))
                 .next(attempt(2L), result(SettingsUpdateStatus.REJECTED))
@@ -111,6 +120,7 @@ class LastSettingsUpdateSnapshotTest {
                 .next(attempt(4L), result(SettingsUpdateStatus.STALE))
                 .next(attempt(5L), result(SettingsUpdateStatus.APPLIED));
 
+        // then
         assertThat(snapshot.countOf(SettingsUpdateStatus.APPLIED)).isEqualTo(3L);
         assertThat(snapshot.countOf(SettingsUpdateStatus.REJECTED)).isEqualTo(1L);
         assertThat(snapshot.countOf(SettingsUpdateStatus.STALE)).isEqualTo(1L);
@@ -140,8 +150,10 @@ class LastSettingsUpdateSnapshotTest {
 
     @Test
     void nextWithoutAttempt_throwsNullPointerException_whenResultIsNull() {
+        // given
         LastSettingsUpdateSnapshot initial = LastSettingsUpdateSnapshot.empty();
 
+        // when/then
         assertThatThrownBy(() -> initial.nextWithoutAttempt(null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("result");

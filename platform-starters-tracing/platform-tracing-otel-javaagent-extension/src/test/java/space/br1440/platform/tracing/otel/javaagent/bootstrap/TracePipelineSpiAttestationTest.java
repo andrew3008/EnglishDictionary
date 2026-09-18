@@ -45,31 +45,47 @@ class TracePipelineSpiAttestationTest {
 
     @Test
     void platformProviderAlonePasses() {
+        // when/then
         TracePipelineSpiAttestation.attest(PLATFORM_ORDER, BootstrapAutoConfigurationCustomizerProvider.class);
     }
 
     @Test
     void foreignAcpProviderLowerOrderFails(@TempDir Path overlayDir) throws IOException {
-        assertAttestationFails(withOverlayAcpProvider(overlayDir, LowerOrderStaticProvider.class));
+        // given
+        ClassLoader overlay = withOverlayAcpProvider(overlayDir, LowerOrderStaticProvider.class);
+
+        // when/then
+        assertAttestationFails(overlay);
     }
 
     @Test
     void foreignAcpProviderSameOrderFails(@TempDir Path overlayDir) throws IOException {
-        assertAttestationFails(withOverlayAcpProvider(overlayDir, SameOrderProvider.class));
+        // given
+        ClassLoader overlay = withOverlayAcpProvider(overlayDir, SameOrderProvider.class);
+
+        // when/then
+        assertAttestationFails(overlay);
     }
 
     @Test
     void foreignAcpProviderHigherOrderFails(@TempDir Path overlayDir) throws IOException {
-        assertAttestationFails(withOverlayAcpProvider(overlayDir, HigherOrderProvider.class));
+        // given
+        ClassLoader overlay = withOverlayAcpProvider(overlayDir, HigherOrderProvider.class);
+
+        // when/then
+        assertAttestationFails(overlay);
     }
 
     @Test
     void lowerOrderDelayedAcpMutationFails(@TempDir Path overlayDir) throws IOException {
+        // given
         ClassLoader overlay = withOverlayAcpProvider(overlayDir, LowerOrderDelayedMutationProvider.class);
         LowerOrderDelayedMutationProvider.RAW_EXPORTER_ACTIVATED.set(false);
 
+        // when/then
         assertAttestationFails(overlay);
 
+        // then
         assertThat(LowerOrderDelayedMutationProvider.RAW_EXPORTER_ACTIVATED)
                 .as("attestation must fail before OTel getConfig()/configureSdk() could ever invoke "
                         + "this provider's exporter customizer")
@@ -78,11 +94,14 @@ class TracePipelineSpiAttestationTest {
 
     @Test
     void unknownProviderConstructorIsNotInvokedByAttestation(@TempDir Path overlayDir) throws IOException {
+        // given
         ClassLoader overlay = withOverlayAcpProvider(overlayDir, ConstructorSideEffectProvider.class);
         ConstructorSideEffectProvider.CONSTRUCTED.set(false);
 
+        // when/then
         assertAttestationFails(overlay);
 
+        // then
         assertThat(ConstructorSideEffectProvider.CONSTRUCTED)
                 .as("closed-allowlist rejection is based on FQN only; the foreign provider's "
                         + "constructor must never run")
@@ -91,10 +110,12 @@ class TracePipelineSpiAttestationTest {
 
     @Test
     void missingPlatformProviderFails() {
+        // given
         String acpServiceName = "META-INF/services/" + AutoConfigurationCustomizerProvider.class.getName();
         ClassLoader hidingRealPlatformRegistration = new ServiceHidingClassLoader(
                 TracePipelineSpiAttestationTest.class.getClassLoader(), acpServiceName);
 
+        // when/then
         assertThatThrownBy(() -> TracePipelineSpiAttestation.attest(
                 PLATFORM_ORDER, BootstrapAutoConfigurationCustomizerProvider.class, hidingRealPlatformRegistration))
                 .isInstanceOf(SanitizerBootstrapException.class)
@@ -104,7 +125,10 @@ class TracePipelineSpiAttestationTest {
 
     @Test
     void platformProviderWrongOrderFails() {
+        // given
         int wrongExpectedOrder = PLATFORM_ORDER + 1;
+
+        // when/then
         assertThatThrownBy(() -> TracePipelineSpiAttestation.attest(
                 wrongExpectedOrder, BootstrapAutoConfigurationCustomizerProvider.class))
                 .isInstanceOf(SanitizerBootstrapException.class)
@@ -115,11 +139,14 @@ class TracePipelineSpiAttestationTest {
     @Test
     void legacyTracerProviderConfigurerDescriptorFailsWithoutLoadingProvider(@TempDir Path overlayDir)
             throws IOException {
+        // given
         ClassLoader overlay = withOverlayConfigurer(overlayDir, LegacyConfigurerDescriptorProbe.class);
         LegacyConfigurerDescriptorProbe.CONSTRUCTED.set(false);
 
+        // when/then
         assertAttestationFails(overlay);
 
+        // then
         assertThat(LegacyConfigurerDescriptorProbe.CONSTRUCTED)
                 .as("attestation must reject the legacy service descriptor without loading its provider")
                 .isFalse();

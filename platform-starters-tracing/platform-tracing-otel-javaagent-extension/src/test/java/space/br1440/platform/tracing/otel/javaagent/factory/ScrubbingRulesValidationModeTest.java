@@ -9,12 +9,14 @@ class ScrubbingRulesValidationModeTest {
 
     @Test
     void values_match_contract_strings() {
+        // given/when/then
         assertThat(ScrubbingRulesValidationMode.LENIENT.value()).isEqualTo("LENIENT");
         assertThat(ScrubbingRulesValidationMode.STRICT.value()).isEqualTo("STRICT");
     }
 
     @Test
     void LENIENT_equals_platform_default() {
+        // given/when/then
         assertThat(ScrubbingRulesValidationMode.LENIENT.value())
                 .isEqualTo(ExtensionDefaults.DEFAULT_SCRUBBING_VALIDATION_MODE);
     }

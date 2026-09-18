@@ -68,8 +68,10 @@ class PlatformTracingMBeanRegistrarIntegrationTest {
 
     @Test
     void allDomainMBeansRegisteredAfterWiring() {
+        // given/when
         wireMinimal();
 
+        // then
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
         assertThat(server.isRegistered(DomainObjectNames.SCRUBBING)).isTrue();
         assertThat(server.isRegistered(DomainObjectNames.VALIDATION)).isTrue();
@@ -82,8 +84,10 @@ class PlatformTracingMBeanRegistrarIntegrationTest {
 
     @Test
     void registeredDomainMBeansExposeNoMutatingOperations() throws Exception {
+        // given/when
         wireMinimal();
 
+        // then
         for (javax.management.ObjectName name : List.of(
                 DomainObjectNames.SAMPLING,
                 DomainObjectNames.SCRUBBING,
@@ -174,8 +178,10 @@ class PlatformTracingMBeanRegistrarIntegrationTest {
 
     @Test
     void samplingMBeanReflectsAcceptedPolicy() throws Exception {
+        // given
         wireMinimal();
 
+        // when
         CompositeData observation = (CompositeData) server.getAttribute(
                 DomainObjectNames.SAMPLING, "SamplingObservation"
         );
@@ -184,15 +190,19 @@ class PlatformTracingMBeanRegistrarIntegrationTest {
                 JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO
         );
 
+        // then
         assertThat(ratio).isEqualTo(0.2d);
     }
 
     @Test
     void closingRuntimeRegistrationRemovesAllDomainMBeans() {
+        // given
         PlatformTracingMBeanRegistrar.RuntimeRegistration runtimeRegistration = wireMinimal();
 
+        // when
         runtimeRegistration.close();
 
+        // then
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isFalse();
         assertThat(server.isRegistered(DomainObjectNames.SCRUBBING)).isFalse();
         assertThat(server.isRegistered(DomainObjectNames.VALIDATION)).isFalse();
@@ -205,8 +215,10 @@ class PlatformTracingMBeanRegistrarIntegrationTest {
 
     @Test
     void secondRegisterRuntimeControlsWhileActiveIsRejected() {
+        // given
         wireMinimal();
 
+        // when/then
         assertThatThrownBy(() -> registrar.registerRuntimeControls(samplerHolder))
                 .as("re-bind while active is an error (§9 registration contract)")
                 .isInstanceOf(IllegalStateException.class);
@@ -218,10 +230,12 @@ class PlatformTracingMBeanRegistrarIntegrationTest {
 
     @Test
     void noMBeansRegisteredBeforeRuntimeControlsAreRegistered() {
+        // given/when
         registrar.setValidating(validatingProcessor);
         registrar.setCompositeSampler(
                 new CompositeSampler(samplerHolder, CategoryBSamplingAccess.snapshot(List.of(), List.of())));
 
+        // then
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isFalse();
         assertThat(server.isRegistered(DomainObjectNames.SETTINGS_STATUS)).isFalse();
         assertThat(server.isRegistered(DomainObjectNames.SETTINGS_MUTATION)).isFalse();

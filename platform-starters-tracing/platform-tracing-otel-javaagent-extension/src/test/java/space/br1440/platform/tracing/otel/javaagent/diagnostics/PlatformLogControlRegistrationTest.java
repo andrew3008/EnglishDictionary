@@ -13,15 +13,19 @@ class PlatformLogControlRegistrationTest {
 
     @Test
     void bindCloseRestoresPreviousAndStaleCloseDoesNotClearNewerBinding() throws Exception {
+        // given
         PlatformLogControl control = new PlatformLogControl();
         TracingSettingsSource policyA = TracingSettingsSource.isolatedDefaults();
         TracingSettingsSource policyB = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5d);
 
+        // when
         AutoCloseable token1 = control.bindAcceptedPolicy(policyA);
         token1.close();
 
         AutoCloseable token2 = control.bindAcceptedPolicy(policyB);
         token1.close();
+
+        // then
         assertThat(control.getLevel()).isNotNull();
 
         token2.close();
@@ -30,8 +34,11 @@ class PlatformLogControlRegistrationTest {
 
     @Test
     void rebindWhileActiveFails() throws Exception {
+        // given
         PlatformLogControl control = new PlatformLogControl();
         AutoCloseable token1 = control.bindAcceptedPolicy(TracingSettingsSource.isolatedDefaults());
+
+        // when/then
         assertThatThrownBy(() -> control.bindAcceptedPolicy(TracingSettingsSource.isolatedDefaults()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("already has an active");

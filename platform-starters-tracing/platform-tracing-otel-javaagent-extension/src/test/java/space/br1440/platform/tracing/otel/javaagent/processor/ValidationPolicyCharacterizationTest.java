@@ -1,20 +1,23 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import java.util.stream.Stream;
 
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.sdk.resources.Resource;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.test.assertions.ValidationAssertions;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 import space.br1440.platform.tracing.test.harness.ValidationDecisionCase;
 
-import java.util.stream.Stream;
+import io.opentelemetry.api.trace.SpanBuilder;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.sdk.resources.Resource;
+import io.opentelemetry.sdk.trace.data.SpanData;
 
 /**
- * Characterization validation policy modes (PR-5B).
+ * Characterization validation policy modes.
  */
 class ValidationPolicyCharacterizationTest {
 
@@ -34,12 +37,13 @@ class ValidationPolicyCharacterizationTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("characterizedCases")
     void matrix_case(ValidationDecisionCase c) {
+        // given
         TracingSettingsSource access = TracingSettingsSource.isolatedValidation(c.enabled(), c.strict());
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access);
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
             Tracer tracer = h.tracer("validation-characterization");
-            var builder = tracer.spanBuilder("op");
+            SpanBuilder builder = tracer.spanBuilder("op");
             if (c.hasPlatformType()) {
                 builder.setAttribute(PlatformAttributes.PLATFORM_TYPE, "HTTP");
             }
@@ -47,8 +51,9 @@ class ValidationPolicyCharacterizationTest {
                 builder.setAttribute(PlatformAttributes.PLATFORM_RESULT, "success");
             }
 
+            // when
             builder.startSpan().end();
-            var data = h.exporter().getFinishedSpanItems().getFirst();
+            SpanData data = h.exporter().getFinishedSpanItems().getFirst();
 
             if (c.expectMissingAttribute()) {
                 ValidationAssertions.assertMissingRecorded(

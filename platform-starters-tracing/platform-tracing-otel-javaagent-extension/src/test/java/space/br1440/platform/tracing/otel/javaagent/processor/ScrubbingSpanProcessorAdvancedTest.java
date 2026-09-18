@@ -1,46 +1,45 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
+import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opentelemetry.api.common.AttributeKey;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.Tracer;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import jakarta.annotation.Nonnull;
+
 import org.junit.jupiter.api.Test;
+
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.Tracer;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * Дополнительные кейсы {@link ScrubbingSpanProcessor}: пустой набор правил, приоритет правил
- * (выигрывает первое сматчившееся в порядке возрастания priority), нестроковый DROP через
- * sentinel, изоляция исключений правила.
- */
 class ScrubbingSpanProcessorAdvancedTest {
 
     @Test
     void empty_rule_list_does_not_crash_processor_and_does_not_change_attributes() {
+        // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(
                 ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of()))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("user.email", "ivan@example.com");
+            // when
             span.end();
 
-            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes()
+            // then
+            assertThat(h.exporter().getFinishedSpanItems().getFirst().getAttributes()
                     .get(AttributeKey.stringKey("user.email"))).isEqualTo("ivan@example.com");
         }
     }
 
     @Test
     void merge_strict_action_wins_over_soft() {
-        // Merge-движок (PR-3) обходит ВСЕ правила и сводит решения по строгости:
-        // оба custom-правила вызываются, побеждает более строгое DROP над MASK.
+        // given
         AtomicInteger dropInvocations = new AtomicInteger();
         AtomicInteger maskInvocations = new AtomicInteger();
 
@@ -70,10 +69,11 @@ class ScrubbingSpanProcessorAdvancedTest {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("any", "x");
+            // when
             span.end();
 
-            // DROP строже MASK → итог пустая строка. Оба custom-правила вызваны (нет early-return).
-            assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(AttributeKey.stringKey("any")))
+            // then
+            assertThat(h.exporter().getFinishedSpanItems().getFirst().getAttributes().get(AttributeKey.stringKey("any")))
                     .isEmpty();
             assertThat(dropInvocations.get()).isEqualTo(1);
             assertThat(maskInvocations.get()).isEqualTo(1);
@@ -82,6 +82,7 @@ class ScrubbingSpanProcessorAdvancedTest {
 
     @Test
     void non_string_DROP_overwrites_type_neutral_sentinel() {
+        // given
         SpanAttributeScrubbingRule dropDoubles = new SpanAttributeScrubbingRule() {
             @Nonnull
             @Override public String name() { return "geo"; }
@@ -100,9 +101,11 @@ class ScrubbingSpanProcessorAdvancedTest {
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("geo.lat", 55.751244d);
             span.setAttribute("geo.other", 1.5d);
+            // when
             span.end();
 
-            var attributes = h.exporter().getFinishedSpanItems().get(0).getAttributes();
+            Attributes attributes = h.exporter().getFinishedSpanItems().get(0).getAttributes();
+            // then
             assertThat(attributes.get(AttributeKey.doubleKey("geo.lat"))).isEqualTo(0.0d);
             assertThat(attributes.get(AttributeKey.doubleKey("geo.other"))).isEqualTo(1.5d);
         }
@@ -110,9 +113,7 @@ class ScrubbingSpanProcessorAdvancedTest {
 
     @Test
     void exception_in_custom_rule_is_isolated_by_circuit_breaker_without_crashing_processor() {
-        // PR-4/PR-5: сбой custom-правила теперь перехватывается в ExecutableRule и считается
-        // в circuit breaker — он НЕ всплывает в PlatformCompositeSpanProcessor. Для custom-правила
-        // (critical=false) поведение при сбое — skip: атрибут остаётся нетронутым, остальные целы.
+        // given
         SpanAttributeScrubbingRule faulty = new SpanAttributeScrubbingRule() {
             @Nonnull
             @Override public String name() { return "boom"; }
@@ -133,13 +134,13 @@ class ScrubbingSpanProcessorAdvancedTest {
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("ok", "fine");
             span.setAttribute("bad", "explodes");
+            // when
             span.end();
 
-            var attributes = h.exporter().getFinishedSpanItems().get(0).getAttributes();
-            // Span экспортирован, оба атрибута на месте: сбой правила изолирован, без краха процессора.
+            Attributes attributes = h.exporter().getFinishedSpanItems().get(0).getAttributes();
+            // then
             assertThat(attributes.get(AttributeKey.stringKey("ok"))).isEqualTo("fine");
             assertThat(attributes.get(AttributeKey.stringKey("bad"))).isEqualTo("explodes");
-            // Ошибка НЕ всплыла в composite (счётчик 0) — изоляция теперь внутри circuit breaker.
             assertThat(composite.getProcessorErrorCounts())
                     .containsEntry("scrubbing", 0L);
         }

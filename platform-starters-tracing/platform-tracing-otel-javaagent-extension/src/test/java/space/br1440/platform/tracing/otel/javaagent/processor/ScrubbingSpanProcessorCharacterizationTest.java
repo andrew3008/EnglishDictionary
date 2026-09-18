@@ -19,21 +19,25 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 
 /**
- * Characterization {@link ScrubbingSpanProcessor} integration behavior (PR-5B).
+ * Characterization {@link ScrubbingSpanProcessor} integration behavior.
  */
 class ScrubbingSpanProcessorCharacterizationTest {
 
     @Test
     void mandatory_scrubbing_enabled_by_default() {
+        // given
         ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
-                ScrubbingCharacterizationSupport.resolveRules(List.of("password")));
+                ScrubbingCharacterizationSupport.resolveRules(List.of("password"))
+        );
         new ScrubbingSpanProcessor(runtime);
 
+        // then
         assertThat(runtime.enabled()).isTrue();
     }
 
     @Test
     void custom_rule_hash_is_applied_on_processor_path() {
+        // given
         SpanAttributeScrubbingRule customHash = new SpanAttributeScrubbingRule() {
             @Nonnull
             @Override public String name() { return "custom-hash"; }
@@ -51,20 +55,24 @@ class ScrubbingSpanProcessorCharacterizationTest {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("my.secret.token", "value");
+            // when
             span.end();
 
             String out = h.exporter().getFinishedSpanItems().getFirst().getAttributes()
                     .get(io.opentelemetry.api.common.AttributeKey.stringKey("my.secret.token"));
+            // then
             assertThat(out).matches("[0-9a-f]{64}");
         }
     }
 
     @Test
     void built_in_email_with_hmac_produces_deterministic_hash() {
+        // given
         String first;
         String second;
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
-                List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")), MaskedSecret.of("secret-key"), false))) {
+                List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")), MaskedSecret.of("secret-key"), false))
+        ) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("user.email", "ivan@example.com");
@@ -73,14 +81,17 @@ class ScrubbingSpanProcessorCharacterizationTest {
                     .get(io.opentelemetry.api.common.AttributeKey.stringKey("user.email"));
         }
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
-                List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")), MaskedSecret.of("secret-key"), false))) {
+                List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")), MaskedSecret.of("secret-key"), false))
+        ) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("user.email", "ivan@example.com");
+            // when
             span.end();
             second = h.exporter().getFinishedSpanItems().getFirst().getAttributes()
                     .get(io.opentelemetry.api.common.AttributeKey.stringKey("user.email"));
         }
+        // then
         assertThat(first).isEqualTo(second).matches("[0-9a-f]{64}");
     }
 }

@@ -70,13 +70,17 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
     @Test
     void all_enabled_subsystems_are_added_to_tracer_provider_builder() {
+        // given
         Recorder recorder = new Recorder();
         newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
 
         recorder.primeWithConfig(new MapConfigProperties(Map.of()));
         SdkTracerProviderBuilder builder = SdkTracerProvider.builder();
+
+        // when
         SdkTracerProviderBuilder result = recorder.tracerProviderCustomizer.apply(builder, new MapConfigProperties(Map.of()));
 
+        // then
         assertThat(result).isSameAs(builder);
 
         SdkTracerProvider provider = builder.build();
@@ -89,13 +93,17 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
     @Test
     void disabling_one_subsystem_does_not_break_others() {
+        // given
         Recorder recorder = new Recorder();
         newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
 
         recorder.primeWithConfig(new MapConfigProperties(Map.of("platform.tracing.enriching.enabled", "false")));
         SdkTracerProviderBuilder builder = SdkTracerProvider.builder();
+
+        // when
         recorder.tracerProviderCustomizer.apply(builder, new MapConfigProperties(Map.of("platform.tracing.enriching.enabled", "false")));
 
+        // then
         try (SdkTracerProvider provider = builder.build()) {
             assertThat(provider).isNotNull();
         }
@@ -103,6 +111,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
     @Test
     void custom_remote_service_priority_is_passed_to_EnrichingSpanProcessor() {
+        // given
         Recorder recorder = new Recorder();
         newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
 
@@ -114,11 +123,14 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
                 List.of("rpc.service", "peer.service"))
         );
         SdkTracerProviderBuilder builder = SdkTracerProvider.builder();
+
+        // when
         recorder.tracerProviderCustomizer.apply(builder, new MapConfigPropertiesWithList(props,
                 "platform.tracing.enriching.remote-service-priority",
                 List.of("rpc.service", "peer.service"))
         );
 
+        // then
         try (SdkTracerProvider provider = builder.build()) {
             assertThat(provider).isNotNull();
         }
@@ -126,13 +138,17 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
     @Test
     void sampler_customizer_creates_PlatformRuleBasedSampler() {
+        // given
         Recorder recorder = new Recorder();
         newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
 
         recorder.primeWithConfig(new MapConfigProperties(Map.of()));
+
+        // when
         Sampler produced = recorder.samplerCustomizer
                 .apply(Sampler.alwaysOn(), new MapConfigProperties(Map.of()));
 
+        // then
         assertThat(produced).isInstanceOf(SafeSampler.class);
         assertThat(produced.getDescription())
                 .contains("PlatformRuleBasedSampler");
@@ -140,13 +156,17 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
     @Test
     void sampler_customizer_with_explicit_ratio_creates_accepted_policy_with_default_ratio() {
+        // given
         Recorder recorder = new Recorder();
         newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
 
         recorder.primeWithConfig(new MapConfigProperties(Map.of("platform.tracing.sampling.ratio", "0.1")));
+
+        // when
         Sampler produced = recorder.samplerCustomizer
                 .apply(Sampler.alwaysOn(), new MapConfigProperties(Map.of()));
 
+        // then
         assertThat(produced.getDescription())
                 .contains("PlatformRuleBasedSampler")
                 .contains("defaultRatio=0.10");
@@ -154,6 +174,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
     @Test
     void MBean_registration_runs_after_activation() {
+        // given
         BootstrapCoordinator coordinator = trackActiveCoordinator(RuntimeEvidenceTestFixtures.coordinator());
         Recorder recorder = new Recorder();
         newProvider(coordinator).customize(recorder.proxy());
@@ -161,18 +182,22 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         recorder.primeWithConfig(new MapConfigProperties(Map.of()));
         recorder.samplerCustomizer.apply(Sampler.alwaysOn(), new MapConfigProperties(Map.of()));
 
+        // then
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING))
                 .as("до activation() MBean ещё не зарегистрирован (BLOCKER-3, PREPARED owns no MBean)")
                 .isFalse();
 
+        // when
         satisfyReadinessBarrier(coordinator);
         coordinator.activate();
 
+        // then
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
     }
 
     @Test
     void custom_sampling_ratio_is_reflected_in_registered_MBean() throws Exception {
+        // given
         BootstrapCoordinator coordinator = trackActiveCoordinator(RuntimeEvidenceTestFixtures.coordinator());
         Recorder recorder = new Recorder();
         newProvider(coordinator).customize(recorder.proxy());
@@ -183,8 +208,11 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         coordinator.activate();
 
         ObjectName objectName = DomainObjectNames.SAMPLING;
+
+        // then
         assertThat(samplingRatioFromObservation(objectName)).isEqualTo(0.42d);
 
+        // when/then
         org.junit.jupiter.api.Assertions.assertThrows(Exception.class,
                 () -> server.setAttribute(objectName,
                         new javax.management.Attribute("SamplingObservation", null)));
@@ -198,24 +226,30 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
     @Test
     void extension_order_equals_100_priority_over_default() {
+        // given/when/then
         assertThat(newProvider(BootstrapCoordinator.create()).order()).isEqualTo(100);
     }
 
     @Test
     void without_explicit_ratio_default_ratio_is_used() {
+        // given
         Recorder recorder = new Recorder();
         newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
 
         recorder.primeWithConfig(new MapConfigProperties(Map.of()));
+
+        // when
         Sampler produced = recorder.samplerCustomizer
                 .apply(Sampler.alwaysOn(), new MapConfigProperties(Map.of()));
 
+        // then
         assertThat(produced).isNotNull();
         assertThat(produced.getDescription()).contains("defaultRatio=0.10");
     }
 
     @Test
     void unknown_scrubbing_rule_name_does_not_crash_configuration() {
+        // given
         Recorder recorder = new Recorder();
         newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
 
@@ -224,11 +258,14 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         recorder.primeWithConfig(new MapConfigPropertiesWithList(props,
                 "platform.tracing.javaagent.scrubbing.built-in-rules",
                 List.of("unknown-rule-x", "email")));
+
+        // when
         SdkTracerProviderBuilder result = recorder.tracerProviderCustomizer.apply(builder,
                 new MapConfigPropertiesWithList(props,
                         "platform.tracing.javaagent.scrubbing.built-in-rules",
                         List.of("unknown-rule-x", "email")));
 
+        // then
         assertThat(result).isSameAs(builder);
         try (SdkTracerProvider provider = builder.build()) {
             assertThat(provider).isNotNull();
@@ -237,6 +274,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
     @Test
     void disabling_all_subsystems_does_not_create_MBean_before_sampler_creation() {
+        // given
         Recorder recorder = new Recorder();
         newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
 
@@ -247,6 +285,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
                 "platform.tracing.watchdog.enabled", "false"
         );
 
+        // when/then
         assertThatThrownBy(() -> recorder.primeWithConfig(new MapConfigProperties(disableAll)))
                 .isInstanceOf(BootstrapException.class)
                 .hasMessageContaining("scrubbing.enabled=false is forbidden");
@@ -352,12 +391,14 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
     @Test
     void object_name_sampling_MBean_matches_public_contract() {
+        // given/when/then
         assertThat(JmxWireContract.SAMPLING_OBSERVATION_OBJECT_NAME_STR)
                 .isEqualTo("space.br1440.platform.tracing:type=Sampling,name=PlatformSamplingControl");
     }
 
     @Test
     void setSamplingRatio_via_platform_JMX_is_rejected() throws Exception {
+        // given
         BootstrapCoordinator coordinator = trackActiveCoordinator(RuntimeEvidenceTestFixtures.coordinator());
         Recorder recorder = new Recorder();
         newProvider(coordinator).customize(recorder.proxy());
@@ -370,9 +411,11 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
         ObjectName objectName = DomainObjectNames.SAMPLING;
 
+        // when/then
         org.junit.jupiter.api.Assertions.assertThrows(Exception.class,
                 () -> server.setAttribute(objectName, new javax.management.Attribute("SamplingObservation", null)));
 
+        // then
         assertThat(samplingRatioFromObservation(objectName)).isEqualTo(0.1d);
     }
 }

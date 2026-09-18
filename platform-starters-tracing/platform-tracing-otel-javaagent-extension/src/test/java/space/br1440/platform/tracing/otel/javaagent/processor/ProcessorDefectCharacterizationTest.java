@@ -12,6 +12,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
+
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.TraceFlags;
 import io.opentelemetry.api.trace.TraceState;
@@ -24,14 +33,6 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
-
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
-import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
 
 class ProcessorDefectCharacterizationTest {
 
@@ -40,17 +41,21 @@ class ProcessorDefectCharacterizationTest {
 
     @Test
     void compositeDiagnosticsDoNotDiscloseRawSpanOrExceptionText() {
-        PlatformCompositeSpanProcessor composite =
-                new PlatformCompositeSpanProcessor(List.of(new SensitiveFailureProcessor()));
-        SdkTracerProvider provider = SdkTracerProvider.builder()
+        // given
+        PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(
+                List.of(new SensitiveFailureProcessor())
+        );
+
+        try (SdkTracerProvider provider = SdkTracerProvider.builder()
                 .addSpanProcessor(composite)
-                .build();
-        try {
+                .build()) {
             provider.get("characterization")
                     .spanBuilder("customer-secret-span-name")
                     .startSpan()
+                    // when
                     .end();
 
+            // then
             assertThat(capture.events())
                     .anySatisfy(event -> assertThat(event.eventCode())
                             .isEqualTo(AgentEventCodes.EXPORT_CALLBACK));
@@ -64,13 +69,12 @@ class ProcessorDefectCharacterizationTest {
                             .doesNotContain("customer-secret-span-name", "customer-secret-exception");
                 }
             });
-        } finally {
-            provider.close();
         }
     }
 
     @Test
     void watchdogKeepsSameSpanIdIsolatedByTrace() {
+        // given
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(Duration.ofHours(1), Duration.ofHours(2),
                 Duration.ofDays(365), 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
         ReadWriteSpan first = span(
@@ -79,8 +83,10 @@ class ProcessorDefectCharacterizationTest {
                 "00000000000000000000000000000002", "0000000000000001");
         try {
             watchdog.onStart(Context.root(), first);
+            // when
             watchdog.onStart(Context.root(), second);
 
+            // then
             assertThat(watchdog.getActiveSpanCount()).isEqualTo(2);
             assertThat(watchdog.getActiveTraceCount()).isEqualTo(2);
 
@@ -98,6 +104,7 @@ class ProcessorDefectCharacterizationTest {
     @Test
     void dropOldestDefersExporterShutdownUntilTimedOutExportCompletes()
             throws InterruptedException {
+        // given
         PendingExporter exporter = new PendingExporter();
         PlatformDropOldestExportSpanProcessor processor =
                 PlatformDropOldestExportSpanProcessor.builder(exporter)
@@ -112,7 +119,9 @@ class ProcessorDefectCharacterizationTest {
                 .build();
         try {
             Tracer tracer = provider.get("characterization");
+            // when
             tracer.spanBuilder("pending-export").startSpan().end();
+            // then
             assertThat(exporter.exportStarted.await(5, TimeUnit.SECONDS)).isTrue();
             awaitExportTimeout(processor);
 
