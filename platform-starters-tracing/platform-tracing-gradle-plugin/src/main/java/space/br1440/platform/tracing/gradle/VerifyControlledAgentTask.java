@@ -4,8 +4,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
@@ -13,6 +15,7 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
@@ -22,7 +25,7 @@ public abstract class VerifyControlledAgentTask extends DefaultTask {
     private static final int BUFFER_SIZE = 64 * 1024;
 
     @InputFile
-    @PathSensitive(PathSensitivity.NONE)
+    @PathSensitive(PathSensitivity.ABSOLUTE)
     public abstract RegularFileProperty getAgentJar();
 
     @Input
@@ -30,6 +33,9 @@ public abstract class VerifyControlledAgentTask extends DefaultTask {
 
     @Input
     public abstract Property<String> getExpectedSha256();
+
+    @OutputFile
+    public abstract RegularFileProperty getArgsFile();
 
     @TaskAction
     public void verify() {
@@ -52,6 +58,23 @@ public abstract class VerifyControlledAgentTask extends DefaultTask {
                     )
             );
         }
+
+        writeArgsFile(agentJar, actual);
+    }
+
+    private void writeArgsFile(File agentJar, String verifiedSha256) {
+        Path target = getArgsFile().get().getAsFile().toPath();
+        List<String> flags = ManagedAgentJvmFlags.forAgentPath(agentJar.getAbsolutePath(), verifiedSha256);
+        String content = JavaArgFileFormat.render(flags);
+
+        try {
+            Files.createDirectories(target.getParent());
+            Files.writeString(target, content);
+        } catch (IOException failure) {
+            throw new GradleException("Cannot write " + target, failure);
+        }
+
+        getLogger().lifecycle("Platform tracing: local agent argfile is ready at {}", target.toAbsolutePath());
     }
 
     private static String sha256Hex(File file) {

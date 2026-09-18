@@ -36,6 +36,7 @@ public final class PlatformTracingJavaAgentPlugin implements Plugin<Project> {
     private static final String TASK_GENERATE_AGENT_DOCKER_BUILD_ARGS = "generateAgentDockerBuildArgs";
     private static final String TASK_PREPARE_CONTROLLED_AGENT = "prepareControlledAgent";
     private static final String TASK_VERIFY_AGENT_NOT_ON_APPLICATION_CLASSPATH = "verifyAgentNotOnApplicationClasspath";
+    private static final String LOCAL_AGENT_ARGS_FILE = "platform-tracing/idea-run/local-agent.args";
 
     @Override
     public void apply(@NotNull Project project) {
@@ -104,6 +105,9 @@ public final class PlatformTracingJavaAgentPlugin implements Plugin<Project> {
                     task.getAgentJar().set(agentArtifact.jar());
                     task.getAgentVersion().set(pin.version());
                     task.getExpectedSha256().set(pin.sha256());
+                    task.getArgsFile().set(
+                            project.getLayout().getBuildDirectory().file(LOCAL_AGENT_ARGS_FILE)
+                    );
                 });
     }
 

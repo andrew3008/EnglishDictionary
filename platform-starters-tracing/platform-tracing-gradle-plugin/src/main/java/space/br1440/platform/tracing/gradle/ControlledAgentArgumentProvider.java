@@ -1,7 +1,5 @@
 package space.br1440.platform.tracing.gradle;
 
-import java.util.List;
-
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
@@ -21,9 +19,9 @@ public abstract class ControlledAgentArgumentProvider implements CommandLineArgu
 
     @Override
     public Iterable<String> asArguments() {
-        return List.of(
-                "-javaagent:" + getAgentJar().get().getAsFile().getAbsolutePath(),
-                "-D" + ControlledAgentSystemProperties.EXPECTED_SHA256_PROPERTY + "=" + getExpectedSha256().get()
+        return ManagedAgentJvmFlags.forAgentPath(
+                getAgentJar().get().getAsFile().getAbsolutePath(),
+                getExpectedSha256().get()
         );
     }
 }

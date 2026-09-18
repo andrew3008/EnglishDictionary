@@ -4,14 +4,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.GradleRunner;
@@ -52,6 +56,9 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
     private static final String CLASSPATH_GUARD_TASK = ":verifyAgentNotOnApplicationClasspath";
     private static final String AGENT_DIRECTORY = "build/platform-tracing/agent";
     private static final String DOCKER_BUILD_ARGS_FILE = "build/platform-tracing/docker-build-args.env";
+    private static final String LOCAL_AGENT_ARGS_FILE = "build/platform-tracing/idea-run/local-agent.args";
+
+    private static final Duration LAUNCHER_PROBE_TIMEOUT = Duration.ofSeconds(30);
 
     private static final String PLUGIN_VERSION = requiredProperty("platformTracing.pluginVersion");
     private static final Path PLUGIN_JAR = requiredPath("platformTracing.pluginJar");
@@ -121,6 +128,7 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
                 .contains("does not match the SHA-256 pinned")
                 .contains("expected: " + loadPin().getProperty("agent.sha256"));
         assertThat(project.resolve(DOCKER_BUILD_ARGS_FILE)).doesNotExist();
+        assertThat(project.resolve(LOCAL_AGENT_ARGS_FILE)).doesNotExist();
     }
 
     @Test
@@ -248,11 +256,156 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
                         """
                         -javaagent:%s
                         -Dplatform.tracing.controlled-agent.expected-sha256=%s
+                        -Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED
+                        -Dplatform.tracing.jmx.remote.listener-confirmed=false
+                        -Dplatform.tracing.jmx.remote.authorization-forwarder-installed=false
+                        -XX:+DisableAttachMechanism
                         """.formatted(
                                 agentJarIn(project).toRealPath(),
                                 loadPin().getProperty("agent.sha256")
                         )
                 );
+    }
+
+    @Test
+    void boot_run_preserves_user_supplied_jvm_arguments() throws IOException {
+        // given
+        Path project = consumer("boot-run-user-args", springBootConsumer() + """
+                bootRun {
+                    jvmArgs '-Xmx256m'
+                }
+                tasks.register('captureBootRunAgent') {
+                    dependsOn 'verifyControlledAgent'
+                    doLast {
+                        def bootRun = tasks.named('bootRun', JavaExec).get()
+                        def arguments = bootRun.jvmArgumentProviders.collectMany { it.asArguments() } + bootRun.jvmArgs
+                        file('build/boot-run-args.txt').text = arguments.join('\\n')
+                    }
+                }
+                """, true);
+
+        // when
+        run(project, "captureBootRunAgent");
+
+        // then
+        assertThat(project.resolve("build/boot-run-args.txt"))
+                .content(StandardCharsets.UTF_8)
+                .contains("-Xmx256m", "-XX:+DisableAttachMechanism", "-javaagent:" + agentJarIn(project).toRealPath());
+    }
+
+    @Test
+    void local_agent_args_file_is_written_after_a_successful_verify() throws IOException {
+        // given
+        Path project = consumer("idea-args-created", javaConsumer());
+
+        // when
+        run(project, "verifyControlledAgent");
+
+        // then
+        assertThat(project.resolve(LOCAL_AGENT_ARGS_FILE))
+                .hasContent(
+                        """
+                        -javaagent:%s
+                        -Dplatform.tracing.controlled-agent.expected-sha256=%s
+                        -Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED
+                        -Dplatform.tracing.jmx.remote.listener-confirmed=false
+                        -Dplatform.tracing.jmx.remote.authorization-forwarder-installed=false
+                        -XX:+DisableAttachMechanism
+                        """.formatted(
+                                agentJarIn(project).toRealPath(),
+                                loadPin().getProperty("agent.sha256")
+                        )
+                );
+    }
+
+    @Test
+    void local_agent_args_file_is_restored_after_manual_deletion() throws IOException {
+        // given
+        Path project = consumer("idea-args-restored", javaConsumer());
+        run(project, "verifyControlledAgent");
+        Path argsFile = project.resolve(LOCAL_AGENT_ARGS_FILE);
+        String originalContent = Files.readString(argsFile, StandardCharsets.UTF_8);
+        Files.delete(argsFile);
+
+        // when
+        run(project, "verifyControlledAgent");
+
+        // then
+        assertThat(argsFile).exists().hasContent(originalContent);
+    }
+
+    @Test
+    void local_agent_args_file_is_interpreted_correctly_by_a_real_java_launcher()
+            throws IOException, InterruptedException, URISyntaxException {
+        // given
+        Path project = consumer("idea args path with space & sign", javaConsumer());
+        run(project, "verifyControlledAgent");
+        Path argsFile = project.resolve(LOCAL_AGENT_ARGS_FILE).toRealPath();
+
+        // when
+        ChildProcessResult result = runLauncherProbe(argsFile);
+
+        // then
+        assertThat(result.exitCode())
+                .as("probe must terminate normally; stdout=%s, stderr=%s", result.stdout(), result.stderr())
+                .isZero();
+        assertThat(result.stdout())
+                .contains("MANAGED_AGENT_PROBE_PROPERTY platform.tracing.controlled-agent.expected-sha256="
+                        + loadPin().getProperty("agent.sha256"))
+                .contains("MANAGED_AGENT_PROBE_PROPERTY platform.tracing.jmx.remote.mode=REMOTE_PROHIBITED")
+                .contains("MANAGED_AGENT_PROBE_PROPERTY platform.tracing.jmx.remote.listener-confirmed=false")
+                .contains("MANAGED_AGENT_PROBE_PROPERTY platform.tracing.jmx.remote.authorization-forwarder-installed=false")
+                .contains("MANAGED_AGENT_PROBE_INPUT_ARGUMENT -XX:+DisableAttachMechanism");
+
+        List<String> javaAgentInputArguments = result.stdout().lines()
+                .filter(line -> line.startsWith("MANAGED_AGENT_PROBE_INPUT_ARGUMENT -javaagent:"))
+                .toList();
+        assertThat(javaAgentInputArguments).hasSize(1);
+    }
+
+    private ChildProcessResult runLauncherProbe(Path argsFile) throws IOException, InterruptedException, URISyntaxException {
+        List<String> command = List.of(
+                javaExecutable().toString(),
+                "@" + argsFile,
+                "-cp", probeClassPath().toString(),
+                ManagedAgentJvmFlagsLauncherProbe.class.getName()
+        );
+
+        Path stdoutFile = temporaryDirectory.resolve("launcher-probe.stdout.log");
+        Path stderrFile = temporaryDirectory.resolve("launcher-probe.stderr.log");
+
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
+        processBuilder.redirectOutput(stdoutFile.toFile());
+        processBuilder.redirectError(stderrFile.toFile());
+
+        Process process = processBuilder.start();
+        boolean finished = process.waitFor(LAUNCHER_PROBE_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        if (!finished) {
+            process.destroyForcibly().waitFor(LAUNCHER_PROBE_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        }
+
+        String stdout = Files.readString(stdoutFile, StandardCharsets.UTF_8);
+        String stderr = Files.readString(stderrFile, StandardCharsets.UTF_8);
+        Integer exitCode = finished ? process.exitValue() : null;
+        return new ChildProcessResult(finished, exitCode, stdout, stderr);
+    }
+
+    private static Path javaExecutable() {
+        String javaCommand = System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win")
+                ? "java.exe"
+                : "java";
+        return Path.of(System.getProperty("java.home"), "bin", javaCommand);
+    }
+
+    private static Path probeClassPath() throws URISyntaxException {
+        return Path.of(ManagedAgentJvmFlagsLauncherProbe.class
+                .getProtectionDomain()
+                .getCodeSource()
+                .getLocation()
+                .toURI());
+    }
+
+    private record ChildProcessResult(boolean finished, Integer exitCode, String stdout, String stderr) {
     }
 
     private String javaConsumer() {
