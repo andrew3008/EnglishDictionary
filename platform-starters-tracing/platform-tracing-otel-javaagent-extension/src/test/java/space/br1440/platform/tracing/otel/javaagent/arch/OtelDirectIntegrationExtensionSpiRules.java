@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.arch;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.constructors;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.lang.ArchRule;
@@ -25,6 +26,12 @@ public final class OtelDirectIntegrationExtensionSpiRules {
             .that().haveSimpleName("EnrichingSpanProcessor")
             .and().resideInAPackage("space.br1440.platform.tracing..")
             .should().beAssignableTo(SpanProcessor.class);
+
+    public static final ArchRule ENRICHING_SPAN_PROCESSOR_HAS_SINGLE_NO_ARG_CONSTRUCTOR = constructors()
+            .that().areDeclaredInClassesThat().haveSimpleName("EnrichingSpanProcessor")
+            .and().areDeclaredInClassesThat().resideInAPackage("space.br1440.platform.tracing..")
+            .should().haveRawParameterTypes(new Class<?>[0])
+            .because("remote-service priority is an ADR constant, not a constructor SPI");
 
     public static final ArchRule SCRUBBING_SPAN_PROCESSOR_IMPLEMENTS_SPI = classes()
             .that().haveSimpleName("ScrubbingSpanProcessor")

@@ -48,15 +48,6 @@ class ExtensionConfigTest {
         }
 
         @Test
-        void enriching_returns_same_instance() {
-            // given
-            ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
-
-            // when/then
-            assertThat(cfg.enriching()).isSameAs(cfg.enriching());
-        }
-
-        @Test
         void scrubbing_returns_same_instance() {
             // given
             ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
@@ -132,17 +123,6 @@ class ExtensionConfigTest {
         assertThat(config.sampling().dropPaths())
                 .containsExactly("/actuator/health", "/actuator/prometheus", "/actuator/info");
         assertThat(config.sampling().routeRatios()).isEmpty();
-    }
-
-    @Test
-    void enriching_returns_defaults_when_config_is_empty() {
-        // given
-        ExtensionConfig config = new ExtensionConfig(emptyConfig());
-
-        // then
-        assertThat(config.enriching().enabled()).isTrue();
-        assertThat(config.enriching().remoteServicePriority())
-                .containsExactly("peer.service", "rpc.service", "server.address");
     }
 
     @Test

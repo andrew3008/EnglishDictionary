@@ -1,6 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
-import java.util.ArrayList;
 import java.util.List;
 import jakarta.annotation.Nonnull;
 
@@ -53,25 +52,13 @@ public final class EnrichingSpanProcessor implements PlatformEndingSpanProcessor
         }
     }
 
-    public static final List<String> DEFAULT_REMOTE_SERVICE_PRIORITY = List.of(
-            "peer.service", "rpc.service", "server.address"
+    private static final List<AttributeKey<String>> REMOTE_SERVICE_PRIORITY = List.of(
+            AttributeKey.stringKey("peer.service"),
+            AttributeKey.stringKey("rpc.service"),
+            AttributeKey.stringKey("server.address")
     );
 
-    private final List<AttributeKey<String>> remoteServicePriority;
-
     public EnrichingSpanProcessor() {
-        this(DEFAULT_REMOTE_SERVICE_PRIORITY);
-    }
-
-    public EnrichingSpanProcessor(List<String> remoteServicePriority) {
-        List<AttributeKey<String>> keys = new ArrayList<>(remoteServicePriority.size());
-        for (String name : remoteServicePriority) {
-            if (StringUtils.hasText(name)) {
-                keys.add(AttributeKey.stringKey(name.trim()));
-            }
-        }
-
-        this.remoteServicePriority = List.copyOf(keys);
     }
 
     @Override
@@ -173,7 +160,7 @@ public final class EnrichingSpanProcessor implements PlatformEndingSpanProcessor
 
     private String extractRemoteService(ReadableSpan span) {
         try {
-            for (AttributeKey<String> key : remoteServicePriority) {
+            for (AttributeKey<String> key : REMOTE_SERVICE_PRIORITY) {
                 String value = span.getAttribute(key);
                 if (StringUtils.isNullOrBlank(value)) {
                     continue;

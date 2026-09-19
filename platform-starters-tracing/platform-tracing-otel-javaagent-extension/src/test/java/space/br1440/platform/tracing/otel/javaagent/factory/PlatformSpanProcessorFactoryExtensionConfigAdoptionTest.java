@@ -178,11 +178,11 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
     }
 
     @Nested
-    @DisplayName("Optional subsystems disabled → passive validation carrier remains")
+    @DisplayName("Optional subsystems disabled → validation and enrichment remain")
     class AllDisabled {
 
         @Test
-        void composite_contains_only_passive_validation_carrier() throws Exception {
+        void composite_contains_validation_and_enrichment() throws Exception {
             // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
@@ -199,8 +199,8 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
             // then
             assertThat(getComposite(registrar).getProcessorErrorCounts().keySet())
-                    .as("runtime validation policy requires a permanently installed processor")
-                    .containsExactly("validation");
+                    .as("validation and enrichment are mandatory factory delegates")
+                    .containsExactly("validation", "enrichment");
         }
 
         @Test
@@ -591,27 +591,6 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             assertThat(cfg.classification().normalThreshold())
                     .as("classification normalThreshold default")
                     .isEqualTo(Duration.ofSeconds(1));
-        }
-
-        @Test
-        @DisplayName("Enriching remoteServicePriority default matches old ExtensionDefaults")
-        void default_enriching_priority_matches_extension_defaults() {
-            // given
-            ExtensionConfig cfg = new ExtensionConfig(new ConfigProperties() {
-                @Override public String getString(String n) { return null; }
-                @Override public Boolean getBoolean(String n) { return null; }
-                @Override public Integer getInt(String n) { return null; }
-                @Override public Long getLong(String n) { return null; }
-                @Override public Double getDouble(String n) { return null; }
-                @Override public Duration getDuration(String n) { return null; }
-                @Override public List<String> getList(String n) { return null; }
-                @Override public Map<String, String> getMap(String n) { return null; }
-            });
-
-            // then
-            assertThat(cfg.enriching().remoteServicePriority())
-                    .as("enriching.remoteServicePriority default")
-                    .containsExactly("peer.service", "rpc.service", "server.address");
         }
 
         @Test

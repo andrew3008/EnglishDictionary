@@ -11,9 +11,6 @@ public final class ExtensionPropertyNames {
     public static final String SAMPLING_FORCE_RECORD_VALUES = "platform.tracing.javaagent.sampling.force-record-values";
     public static final String SAMPLING_DROP_PATHS = "platform.tracing.javaagent.sampling.drop-paths";
 
-    public static final String ENRICHING_ENABLED = "platform.tracing.enriching.enabled";
-    public static final String ENRICHING_REMOTE_SERVICE_PRIORITY = "platform.tracing.enriching.remote-service-priority";
-
     public static final String SCRUBBING_ENABLED = "platform.tracing.javaagent.scrubbing.enabled";
     public static final String SCRUBBING_BUILT_IN_RULES = "platform.tracing.javaagent.scrubbing.built-in-rules";
     public static final String SCRUBBING_HMAC_KEY = "platform.tracing.scrubbing.hmac-key";

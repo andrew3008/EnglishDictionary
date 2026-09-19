@@ -62,7 +62,7 @@ public final class PlatformSpanProcessorFactory {
         List<SpanProcessor> delegates = new ArrayList<>();
         baggageProcessor(extConfig).ifPresent(delegates::add);
         validatingProcessor(acceptedPolicy, delegates);
-        enrichingProcessor(extConfig).ifPresent(delegates::add);
+        delegates.add(new EnrichingSpanProcessor());
         classificationProcessor(extConfig).ifPresent(delegates::add);
         watchdogProcessor(extConfig).ifPresent(delegates::add);
         metricsProcessor(extConfig).ifPresent(delegates::add);
@@ -85,15 +85,6 @@ public final class PlatformSpanProcessorFactory {
                 new HashSet<>(allowlist),
                 new ArrayList<>(denyPatterns)
         );
-        return Optional.of(processor);
-    }
-
-    private Optional<SpanProcessor> enrichingProcessor(ExtensionConfig extConfig) {
-        if (!extConfig.enriching().enabled()) {
-            return Optional.empty();
-        }
-
-        EnrichingSpanProcessor processor = new EnrichingSpanProcessor(extConfig.enriching().remoteServicePriority());
         return Optional.of(processor);
     }
 

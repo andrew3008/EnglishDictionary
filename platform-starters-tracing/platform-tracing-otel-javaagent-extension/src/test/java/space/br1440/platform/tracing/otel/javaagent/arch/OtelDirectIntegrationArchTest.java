@@ -44,6 +44,11 @@ class OtelDirectIntegrationArchTest {
 
     // given/when/then
     @ArchTest
+    static final ArchRule enrichingSpanProcessorHasSingleNoArgConstructor =
+            OtelDirectIntegrationExtensionSpiRules.ENRICHING_SPAN_PROCESSOR_HAS_SINGLE_NO_ARG_CONSTRUCTOR;
+
+    // given/when/then
+    @ArchTest
     static final ArchRule scrubbingSpanProcessorImplementsSpi =
             OtelDirectIntegrationExtensionSpiRules.SCRUBBING_SPAN_PROCESSOR_IMPLEMENTS_SPI;
 

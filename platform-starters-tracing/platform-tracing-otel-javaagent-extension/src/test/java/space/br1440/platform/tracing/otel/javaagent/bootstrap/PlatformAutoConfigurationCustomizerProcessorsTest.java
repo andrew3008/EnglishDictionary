@@ -92,51 +92,6 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     }
 
     @Test
-    void disabling_one_subsystem_does_not_break_others() {
-        // given
-        Recorder recorder = new Recorder();
-        newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
-
-        recorder.primeWithConfig(new MapConfigProperties(Map.of("platform.tracing.enriching.enabled", "false")));
-        SdkTracerProviderBuilder builder = SdkTracerProvider.builder();
-
-        // when
-        recorder.tracerProviderCustomizer.apply(builder, new MapConfigProperties(Map.of("platform.tracing.enriching.enabled", "false")));
-
-        // then
-        try (SdkTracerProvider provider = builder.build()) {
-            assertThat(provider).isNotNull();
-        }
-    }
-
-    @Test
-    void custom_remote_service_priority_is_passed_to_EnrichingSpanProcessor() {
-        // given
-        Recorder recorder = new Recorder();
-        newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
-
-        Map<String, String> props = new HashMap<>();
-        props.put("platform.tracing.enriching.remote-service-priority", "rpc.service,peer.service");
-
-        recorder.primeWithConfig(new MapConfigPropertiesWithList(props,
-                "platform.tracing.enriching.remote-service-priority",
-                List.of("rpc.service", "peer.service"))
-        );
-        SdkTracerProviderBuilder builder = SdkTracerProvider.builder();
-
-        // when
-        recorder.tracerProviderCustomizer.apply(builder, new MapConfigPropertiesWithList(props,
-                "platform.tracing.enriching.remote-service-priority",
-                List.of("rpc.service", "peer.service"))
-        );
-
-        // then
-        try (SdkTracerProvider provider = builder.build()) {
-            assertThat(provider).isNotNull();
-        }
-    }
-
-    @Test
     void sampler_customizer_creates_PlatformRuleBasedSampler() {
         // given
         Recorder recorder = new Recorder();
@@ -279,7 +234,6 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
 
         Map<String, String> disableAll = Map.of(
-                "platform.tracing.enriching.enabled", "false",
                 "platform.tracing.javaagent.scrubbing.enabled", "false",
                 "platform.tracing.javaagent.span-attributes.validation.level", "DISABLED",
                 "platform.tracing.watchdog.enabled", "false"

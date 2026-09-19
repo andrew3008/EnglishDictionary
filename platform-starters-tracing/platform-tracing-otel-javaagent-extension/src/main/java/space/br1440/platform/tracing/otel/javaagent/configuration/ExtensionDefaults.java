@@ -16,10 +16,6 @@ public final class ExtensionDefaults {
             "/actuator/health", "/actuator/prometheus", "/actuator/info"
     );
 
-    public static final List<String> DEFAULT_REMOTE_SERVICE_PRIORITY = List.of(
-            "peer.service", "rpc.service", "server.address"
-    );
-
     public static final String DEFAULT_SCRUBBING_MISSING_KEY_POLICY = "mask";
     public static final List<String> DEFAULT_BUILT_IN_RULES = BuiltInSpanAttributeScrubbingRules.defaultConfigNames();
 

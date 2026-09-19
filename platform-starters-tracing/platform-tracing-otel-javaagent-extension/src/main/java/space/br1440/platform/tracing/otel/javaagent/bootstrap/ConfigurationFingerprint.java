@@ -17,8 +17,6 @@ final class ConfigurationFingerprint {
             ExtensionPropertyNames.SAMPLING_ROUTE_RATIOS,
             ExtensionPropertyNames.SAMPLING_FORCE_RECORD_VALUES,
             ExtensionPropertyNames.SAMPLING_DROP_PATHS,
-            ExtensionPropertyNames.ENRICHING_ENABLED,
-            ExtensionPropertyNames.ENRICHING_REMOTE_SERVICE_PRIORITY,
             ExtensionPropertyNames.SCRUBBING_ENABLED,
             ExtensionPropertyNames.SCRUBBING_BUILT_IN_RULES,
             ExtensionPropertyNames.SCRUBBING_MISSING_KEY_POLICY,
