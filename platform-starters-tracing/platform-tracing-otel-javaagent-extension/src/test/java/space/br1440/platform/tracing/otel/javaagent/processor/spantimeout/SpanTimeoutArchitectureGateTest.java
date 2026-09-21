@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
+package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -15,26 +15,26 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
 
-class SpanWatchdogArchitectureGateTest {
+class SpanTimeoutArchitectureGateTest {
 
     @Test
     void facadeDoesNotOwnTraceMapOrSpanPermitFieldsDirectly() {
         // given/when
-        List<Field> facadeMaps = Arrays.stream(SpanWatchdogProcessor.class.getDeclaredFields())
+        List<Field> facadeMaps = Arrays.stream(SpanTimeoutProcessor.class.getDeclaredFields())
                 .filter(field -> Map.class.isAssignableFrom(field.getType()))
                 .toList();
         // then
         assertThat(facadeMaps).as("facade must not hold the trace map directly").isEmpty();
 
         // given/when
-        List<Field> facadePermitCounters = Arrays.stream(SpanWatchdogProcessor.class.getDeclaredFields())
+        List<Field> facadePermitCounters = Arrays.stream(SpanTimeoutProcessor.class.getDeclaredFields())
                 .filter(field -> AtomicInteger.class.isAssignableFrom(field.getType()))
                 .toList();
         // then
         assertThat(facadePermitCounters).as("facade must not hold the span permit tracker directly").isEmpty();
 
         // given/when
-        List<String> facadeAtomicLongs = Arrays.stream(SpanWatchdogProcessor.class.getDeclaredFields())
+        List<String> facadeAtomicLongs = Arrays.stream(SpanTimeoutProcessor.class.getDeclaredFields())
                 .filter(field -> AtomicLong.class.isAssignableFrom(field.getType()))
                 .map(Field::getName)
                 .toList();
@@ -45,9 +45,9 @@ class SpanWatchdogArchitectureGateTest {
     }
 
     @Test
-    void watchdogTraceIndexIsTheSingleAuthoritativeTraceOwner() {
+    void inFlightTraceIndexIsTheSingleAuthoritativeTraceOwner() {
         // given/when
-        List<Field> outerMaps = Arrays.stream(WatchdogTraceIndex.class.getDeclaredFields())
+        List<Field> outerMaps = Arrays.stream(InFlightTraceIndex.class.getDeclaredFields())
                 .filter(field -> ConcurrentHashMap.class.isAssignableFrom(field.getType()))
                 .toList();
 
@@ -55,13 +55,13 @@ class SpanWatchdogArchitectureGateTest {
         assertThat(outerMaps).extracting(Field::getName).containsExactly("traces");
         assertThat(outerMaps.getFirst().getGenericType()).isInstanceOf(ParameterizedType.class);
         assertThat(outerMaps.getFirst().getGenericType().getTypeName())
-                .contains("java.lang.String", "TraceWatchdogState");
+                .contains("java.lang.String", "InFlightTraceState");
     }
 
     @Test
-    void watchdogTraceIndexNeverLeaksTheRawMapThroughItsPublicSurface() {
+    void inFlightTraceIndexNeverLeaksTheRawMapThroughItsPublicSurface() {
         // when/then
-        for (Method method : WatchdogTraceIndex.class.getDeclaredMethods()) {
+        for (Method method : InFlightTraceIndex.class.getDeclaredMethods()) {
             assertThat(Map.class.isAssignableFrom(method.getReturnType()))
                     .as("method %s must not return the raw trace map", method.getName())
                     .isFalse();
@@ -71,7 +71,7 @@ class SpanWatchdogArchitectureGateTest {
     @Test
     void spanPermitTrackerIsTheSingleOwnerOfThePermitState() {
         // given/when
-        List<String> atomicIntegers = Arrays.stream(SpanPermitTracker.class.getDeclaredFields())
+        List<String> atomicIntegers = Arrays.stream(PermitTracker.class.getDeclaredFields())
                 .filter(field -> AtomicInteger.class.isAssignableFrom(field.getType()))
                 .map(Field::getName)
                 .toList();
@@ -79,7 +79,7 @@ class SpanWatchdogArchitectureGateTest {
         assertThat(atomicIntegers).containsExactly("acquiredPermitCount");
 
         // given/when
-        List<String> atomicLongs = Arrays.stream(SpanPermitTracker.class.getDeclaredFields())
+        List<String> atomicLongs = Arrays.stream(PermitTracker.class.getDeclaredFields())
                 .filter(field -> AtomicLong.class.isAssignableFrom(field.getType()))
                 .map(Field::getName)
                 .toList();
@@ -90,9 +90,9 @@ class SpanWatchdogArchitectureGateTest {
     @Test
     void supportTypesAreNotPublic() {
         // when/then
-        assertThat(Modifier.isPublic(SpanPermitTracker.class.getModifiers())).isFalse();
-        assertThat(Modifier.isPublic(TraceWatchdogState.class.getModifiers())).isFalse();
-        assertThat(Modifier.isPublic(WatchdogTraceIndex.class.getModifiers())).isFalse();
-        assertThat(Modifier.isPublic(SpanWatchdogProcessor.class.getModifiers())).isTrue();
+        assertThat(Modifier.isPublic(PermitTracker.class.getModifiers())).isFalse();
+        assertThat(Modifier.isPublic(InFlightTraceState.class.getModifiers())).isFalse();
+        assertThat(Modifier.isPublic(InFlightTraceIndex.class.getModifiers())).isFalse();
+        assertThat(Modifier.isPublic(SpanTimeoutProcessor.class.getModifiers())).isTrue();
     }
 }

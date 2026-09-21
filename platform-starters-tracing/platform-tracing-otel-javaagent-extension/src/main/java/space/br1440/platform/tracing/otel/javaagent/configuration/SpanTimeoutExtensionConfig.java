@@ -10,9 +10,9 @@ import lombok.experimental.Accessors;
 
 @Getter
 @Accessors(fluent = true)
-public final class WatchdogExtensionConfig {
+public final class SpanTimeoutExtensionConfig {
 
-    private static final PlatformAgentLogger log = PlatformAgentLogger.get(WatchdogExtensionConfig.class);
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(SpanTimeoutExtensionConfig.class);
 
     private final boolean enabled;
     private final Duration spanTimeout;
@@ -22,63 +22,63 @@ public final class WatchdogExtensionConfig {
     private final int maxTrackedSpansPerTrace;
     private final int maxTrackedSpans;
 
-    WatchdogExtensionConfig(ExtensionConfigReader reader) {
+    SpanTimeoutExtensionConfig(ExtensionConfigReader reader) {
         this.enabled = reader.booleanValue(
-                ExtensionPropertyNames.WATCHDOG_ENABLED,
-                ExtensionDefaults.DEFAULT_WATCHDOG_ENABLED
+                ExtensionPropertyNames.SPAN_TIMEOUT_ENABLED,
+                ExtensionDefaults.DEFAULT_SPAN_TIMEOUT_ENABLED
         );
 
         this.spanTimeout = requirePositive(
                 reader.durationValue(
-                        ExtensionPropertyNames.WATCHDOG_SPAN_TIMEOUT,
-                        ExtensionDefaults.DEFAULT_WATCHDOG_SPAN_TIMEOUT
+                        ExtensionPropertyNames.SPAN_TIMEOUT_SPAN_TIMEOUT,
+                        ExtensionDefaults.DEFAULT_SPAN_TIMEOUT_SPAN_TIMEOUT
                 ),
-                ExtensionPropertyNames.WATCHDOG_SPAN_TIMEOUT
+                ExtensionPropertyNames.SPAN_TIMEOUT_SPAN_TIMEOUT
         );
 
         this.traceTimeout = requirePositive(
                 reader.durationValue(
-                        ExtensionPropertyNames.WATCHDOG_TRACE_TIMEOUT,
-                        ExtensionDefaults.DEFAULT_WATCHDOG_TRACE_TIMEOUT
+                        ExtensionPropertyNames.SPAN_TIMEOUT_TRACE_TIMEOUT,
+                        ExtensionDefaults.DEFAULT_SPAN_TIMEOUT_TRACE_TIMEOUT
                 ),
-                ExtensionPropertyNames.WATCHDOG_TRACE_TIMEOUT);
+                ExtensionPropertyNames.SPAN_TIMEOUT_TRACE_TIMEOUT);
 
         this.scanInterval = requirePositive(
                 reader.durationValue(
-                        ExtensionPropertyNames.WATCHDOG_SCAN_INTERVAL,
-                        ExtensionDefaults.DEFAULT_WATCHDOG_SCAN_INTERVAL
+                        ExtensionPropertyNames.SPAN_TIMEOUT_SCAN_INTERVAL,
+                        ExtensionDefaults.DEFAULT_SPAN_TIMEOUT_SCAN_INTERVAL
                 ),
-                ExtensionPropertyNames.WATCHDOG_SCAN_INTERVAL
+                ExtensionPropertyNames.SPAN_TIMEOUT_SCAN_INTERVAL
         );
 
         this.maxTrackedTraces = requirePositive(
                 reader.intValue(
-                        ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_TRACES,
-                        ExtensionDefaults.DEFAULT_WATCHDOG_MAX_TRACKED_TRACES
+                        ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_TRACES,
+                        ExtensionDefaults.DEFAULT_SPAN_TIMEOUT_MAX_TRACKED_TRACES
                 ),
-                ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_TRACES
+                ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_TRACES
         );
 
         this.maxTrackedSpansPerTrace = requirePositive(
                 reader.intValue(
-                        ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_SPANS_PER_TRACE,
-                        ExtensionDefaults.DEFAULT_WATCHDOG_MAX_TRACKED_SPANS_PER_TRACE
+                        ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_SPANS_PER_TRACE,
+                        ExtensionDefaults.DEFAULT_SPAN_TIMEOUT_MAX_TRACKED_SPANS_PER_TRACE
                 ),
-                ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_SPANS_PER_TRACE
+                ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_SPANS_PER_TRACE
         );
 
         this.maxTrackedSpans = requirePositive(
                 reader.intValue(
-                        ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_SPANS,
-                        ExtensionDefaults.DEFAULT_WATCHDOG_MAX_TRACKED_SPANS
+                        ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_SPANS,
+                        ExtensionDefaults.DEFAULT_SPAN_TIMEOUT_MAX_TRACKED_SPANS
                 ),
-                ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_SPANS
+                ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_SPANS
         );
 
         if (traceTimeout.compareTo(spanTimeout) < 0) {
             throw new IllegalArgumentException(
-                    ExtensionPropertyNames.WATCHDOG_TRACE_TIMEOUT + " must be greater than or equal to "
-                            + ExtensionPropertyNames.WATCHDOG_SPAN_TIMEOUT
+                    ExtensionPropertyNames.SPAN_TIMEOUT_TRACE_TIMEOUT + " must be greater than or equal to "
+                            + ExtensionPropertyNames.SPAN_TIMEOUT_SPAN_TIMEOUT
             );
         }
 

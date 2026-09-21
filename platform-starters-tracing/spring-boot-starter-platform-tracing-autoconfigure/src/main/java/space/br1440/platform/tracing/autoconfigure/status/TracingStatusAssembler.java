@@ -24,7 +24,7 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.Export
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.SafeExporterValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorCompositeValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorMetricsObservation;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorWatchdogValues;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorSpanTimeoutValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.sampling.SamplingObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.scrubbing.ScrubbingValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxDiagnosticSnapshot;
@@ -165,7 +165,7 @@ public final class TracingStatusAssembler {
         runtime.put("validation", validationSection());
         runtime.put("scrubbing", scrubbingSection());
         runtime.put("export", exportSection());
-        runtime.put("watchdog", watchdogSection());
+        runtime.put("watchdog", spanTimeoutSection());
         runtime.put("processorErrorsTotal", processorErrorsTotal());
         runtime.put("processorErrorsByName", processorErrorsByName());
         return runtime;
@@ -236,27 +236,27 @@ public final class TracingStatusAssembler {
         }).orElseGet(Map::of);
     }
 
-    private Map<String, Object> watchdogSection() {
+    private Map<String, Object> spanTimeoutSection() {
         Optional<ProcessorMetricsObservation> observation = jmxClient.processorMetrics().observation();
-        Optional<ProcessorWatchdogValues> values = observation
-                .flatMap(processorMetrics -> presentValues(processorMetrics.watchdog()));
+        Optional<ProcessorSpanTimeoutValues> values = observation
+                .flatMap(processorMetrics -> presentValues(processorMetrics.spanTimeout()));
 
-        Map<String, Object> watchdog = new LinkedHashMap<>();
-        watchdog.put("capture", captureSection(observation.map(ProcessorMetricsObservation::capture).orElse(null)));
-        watchdog.put("present", values.isPresent());
-        watchdog.put("forcedSpanCloses", values.map(ProcessorWatchdogValues::forcedSpanCloses).orElse(null));
-        watchdog.put("forcedTraceCloses", values.map(ProcessorWatchdogValues::forcedTraceCloses).orElse(null));
-        watchdog.put("activeSpanCount", values.map(ProcessorWatchdogValues::activeSpanCount).orElse(null));
-        watchdog.put("activeTraceCount", values.map(ProcessorWatchdogValues::activeTraceCount).orElse(null));
-        watchdog.put("trackedTraceCount", values.map(ProcessorWatchdogValues::trackedTraceCount).orElse(null));
-        watchdog.put("trackedTraceCapacity", values.map(ProcessorWatchdogValues::trackedTraceCapacity).orElse(null));
-        watchdog.put("trackingEvictedTotal", values.map(ProcessorWatchdogValues::trackingEvictedTotal).orElse(null));
-        watchdog.put("trackedSpanCapacity", values.map(ProcessorWatchdogValues::trackedSpanCapacity).orElse(null));
-        watchdog.put("trackedSpanPerTraceCapacity", values.map(ProcessorWatchdogValues::trackedSpanPerTraceCapacity).orElse(null));
-        watchdog.put("spansRejectedPerTraceTotal", values.map(ProcessorWatchdogValues::spansRejectedPerTraceTotal).orElse(null));
-        watchdog.put("spansRejectedGlobalTotal", values.map(ProcessorWatchdogValues::spansRejectedGlobalTotal).orElse(null));
-        watchdog.put("spanLedgerInvariantViolationTotal", values.map(ProcessorWatchdogValues::spanLedgerInvariantViolationTotal).orElse(null));
-        return watchdog;
+        Map<String, Object> spanTimeout = new LinkedHashMap<>();
+        spanTimeout.put("capture", captureSection(observation.map(ProcessorMetricsObservation::capture).orElse(null)));
+        spanTimeout.put("present", values.isPresent());
+        spanTimeout.put("forcedSpanCloses", values.map(ProcessorSpanTimeoutValues::forcedSpanCloses).orElse(null));
+        spanTimeout.put("forcedTraceCloses", values.map(ProcessorSpanTimeoutValues::forcedTraceCloses).orElse(null));
+        spanTimeout.put("activeSpanCount", values.map(ProcessorSpanTimeoutValues::activeSpanCount).orElse(null));
+        spanTimeout.put("activeTraceCount", values.map(ProcessorSpanTimeoutValues::activeTraceCount).orElse(null));
+        spanTimeout.put("trackedTraceCount", values.map(ProcessorSpanTimeoutValues::trackedTraceCount).orElse(null));
+        spanTimeout.put("trackedTraceCapacity", values.map(ProcessorSpanTimeoutValues::trackedTraceCapacity).orElse(null));
+        spanTimeout.put("trackingEvictedTotal", values.map(ProcessorSpanTimeoutValues::trackingEvictedTotal).orElse(null));
+        spanTimeout.put("trackedSpanCapacity", values.map(ProcessorSpanTimeoutValues::trackedSpanCapacity).orElse(null));
+        spanTimeout.put("trackedSpanPerTraceCapacity", values.map(ProcessorSpanTimeoutValues::trackedSpanPerTraceCapacity).orElse(null));
+        spanTimeout.put("spansRejectedPerTraceTotal", values.map(ProcessorSpanTimeoutValues::spansRejectedPerTraceTotal).orElse(null));
+        spanTimeout.put("spansRejectedGlobalTotal", values.map(ProcessorSpanTimeoutValues::spansRejectedGlobalTotal).orElse(null));
+        spanTimeout.put("spanLedgerInvariantViolationTotal", values.map(ProcessorSpanTimeoutValues::spanLedgerInvariantViolationTotal).orElse(null));
+        return spanTimeout;
     }
 
     private static Map<String, Object> captureSection(ObservationCapture capture) {

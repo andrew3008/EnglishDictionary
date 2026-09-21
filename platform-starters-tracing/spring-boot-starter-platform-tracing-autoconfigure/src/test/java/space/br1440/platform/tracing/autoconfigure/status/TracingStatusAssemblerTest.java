@@ -29,7 +29,7 @@ import space.br1440.platform.tracing.autoconfigure.control.settings.read.Accepte
 import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsReadModel;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorMetricsObservation;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorWatchdogValues;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorSpanTimeoutValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
@@ -166,10 +166,10 @@ class TracingStatusAssemblerTest {
     }
 
     @Test
-    void runtimeWatchdogSectionExposesLiveAndBoundedState() {
+    void runtimeSpanTimeoutSectionExposesLiveAndBoundedState() {
         // given
         PlatformTracingJmxClient jmxClient = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
-        ProcessorWatchdogValues values = new ProcessorWatchdogValues(11L, 4L, 3, 1, 7, 10_000, 9L, 60_000, 1_024, 5L, 2L, 0L);
+        ProcessorSpanTimeoutValues values = new ProcessorSpanTimeoutValues(11L, 4L, 3, 1, 7, 10_000, 9L, 60_000, 1_024, 5L, 2L, 0L);
         when(jmxClient.processorMetrics().observation()).thenReturn(Optional.of(
                         new ProcessorMetricsObservation(
                                 new ObservationCapture("agent-instance", 17L, 1_700_000_000_000L, 1_700_000_000_005L),
@@ -197,8 +197,8 @@ class TracingStatusAssemblerTest {
         // then
         assertThat(snapshot.schemaVersion()).isEqualTo(TracingStatusSnapshot.CURRENT_SCHEMA_VERSION);
         @SuppressWarnings("unchecked")
-        Map<String, Object> watchdog = (Map<String, Object>) snapshot.runtime().get("watchdog");
-        assertThat(watchdog)
+        Map<String, Object> spanTimeout = (Map<String, Object>) snapshot.runtime().get("watchdog");
+        assertThat(spanTimeout)
                 .containsEntry("present", true)
                 .containsEntry("forcedSpanCloses", 11L)
                 .containsEntry("forcedTraceCloses", 4L)
@@ -212,7 +212,7 @@ class TracingStatusAssemblerTest {
                 .containsEntry("spansRejectedPerTraceTotal", 5L)
                 .containsEntry("spansRejectedGlobalTotal", 2L)
                 .containsEntry("spanLedgerInvariantViolationTotal", 0L);
-        assertThat(captureOf(watchdog))
+        assertThat(captureOf(spanTimeout))
                 .containsEntry("agentInstanceId", "agent-instance")
                 .containsEntry("sequence", 17L)
                 .containsEntry("startedAt", 1_700_000_000_000L)
@@ -220,7 +220,7 @@ class TracingStatusAssemblerTest {
     }
 
     @Test
-    void watchdogCaptureIsPublishedWhenOwnerIsAbsentAndBlankWhenObservationIsUnreadable() {
+    void spanTimeoutCaptureIsPublishedWhenOwnerIsAbsentAndBlankWhenObservationIsUnreadable() {
         // given
         PlatformTracingJmxClient absentOwner = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
         when(absentOwner.processorMetrics().observation()).thenReturn(Optional.of(
@@ -234,26 +234,26 @@ class TracingStatusAssemblerTest {
         when(unreadable.processorMetrics().observation()).thenReturn(Optional.empty());
 
         // when
-        Map<String, Object> absentOwnerWatchdog = watchdogSectionOf(absentOwner);
-        Map<String, Object> unreadableWatchdog = watchdogSectionOf(unreadable);
+        Map<String, Object> absentOwnerSpanTimeout = spanTimeoutSectionOf(absentOwner);
+        Map<String, Object> unreadableSpanTimeout = spanTimeoutSectionOf(unreadable);
 
         // then
-        assertThat(absentOwnerWatchdog).containsEntry("present", false);
-        assertThat(captureOf(absentOwnerWatchdog))
+        assertThat(absentOwnerSpanTimeout).containsEntry("present", false);
+        assertThat(captureOf(absentOwnerSpanTimeout))
                 .containsEntry("agentInstanceId", "agent-instance")
                 .containsEntry("sequence", 5L)
                 .containsEntry("startedAt", 1_700_000_000_000L)
                 .containsEntry("completedAt", 1_700_000_000_002L);
 
-        assertThat(unreadableWatchdog).containsEntry("present", false);
-        assertThat(captureOf(unreadableWatchdog))
+        assertThat(unreadableSpanTimeout).containsEntry("present", false);
+        assertThat(captureOf(unreadableSpanTimeout))
                 .containsEntry("agentInstanceId", null)
                 .containsEntry("sequence", null)
                 .containsEntry("startedAt", null)
                 .containsEntry("completedAt", null);
     }
 
-    private static Map<String, Object> watchdogSectionOf(PlatformTracingJmxClient jmxClient) {
+    private static Map<String, Object> spanTimeoutSectionOf(PlatformTracingJmxClient jmxClient) {
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 true,
                 TracingControlChannel.STATIC);
@@ -267,13 +267,13 @@ class TracingStatusAssemblerTest {
                 stableCoherenceGuard());
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> watchdog = (Map<String, Object>) assembler.assemble().runtime().get("watchdog");
-        return watchdog;
+        Map<String, Object> spanTimeout = (Map<String, Object>) assembler.assemble().runtime().get("watchdog");
+        return spanTimeout;
     }
 
-    private static Map<String, Object> captureOf(Map<String, Object> watchdogSection) {
+    private static Map<String, Object> captureOf(Map<String, Object> spanTimeoutSection) {
         @SuppressWarnings("unchecked")
-        Map<String, Object> capture = (Map<String, Object>) watchdogSection.get("capture");
+        Map<String, Object> capture = (Map<String, Object>) spanTimeoutSection.get("capture");
         return capture;
     }
 

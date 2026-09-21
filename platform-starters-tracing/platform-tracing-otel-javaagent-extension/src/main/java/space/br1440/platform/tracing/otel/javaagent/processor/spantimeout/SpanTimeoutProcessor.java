@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
+package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
 import java.time.Duration;
 import java.util.List;
@@ -25,7 +25,7 @@ import io.opentelemetry.sdk.trace.ReadableSpan;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 
 /**
- * Сторожевой процессор, принудительно завершающий «зависшие» span'ы и trace'ы.
+ * Процессор span timeout, принудительно завершающий «зависшие» span'ы и trace'ы.
  * <p>
  * По SRE ADR устанавливается два таймаута:
  * <ul>
@@ -38,9 +38,9 @@ import io.opentelemetry.sdk.trace.SpanProcessor;
  * статус {@link StatusCode#ERROR} с описанием. Затем выполняется {@code span.end()}; экспорт идёт
  * по обычной цепочке процессоров.
  */
-public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiagnosticIdentity {
+public final class SpanTimeoutProcessor implements SpanProcessor, ProcessorDiagnosticIdentity {
 
-    private static final PlatformAgentLogger log = PlatformAgentLogger.get(SpanWatchdogProcessor.class);
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(SpanTimeoutProcessor.class);
 
     private static final String DIAGNOSTIC_ID = "watchdog";
     private static final Runnable NO_BEFORE_COMPUTE_HOOK = () -> { };
@@ -48,13 +48,13 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
 
     private final ScheduledExecutorService scheduler;
     private final LongSupplier nanoTime;
-    private final WatchdogTraceIndex index;
+    private final InFlightTraceIndex index;
     private final AtomicLong forcedSpanCloses = new AtomicLong();
     private final AtomicLong forcedTraceCloses = new AtomicLong();
     private final AtomicBoolean admissionOpen = new AtomicBoolean(true);
     private final Runnable beforeComputeForTesting;
 
-    public SpanWatchdogProcessor(Duration spanTimeout,
+    public SpanTimeoutProcessor(Duration spanTimeout,
                                  Duration traceTimeout,
                                  Duration scanInterval,
                                  int maxTrackedTraces,
@@ -64,7 +64,7 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
                 NO_BEFORE_COMPUTE_HOOK, Objects.requireNonNull(scanInterval, "scanInterval"));
     }
 
-    SpanWatchdogProcessor(Duration spanTimeout,
+    SpanTimeoutProcessor(Duration spanTimeout,
                           Duration traceTimeout,
                           LongSupplier nanoTime,
                           int maxTrackedTraces,
@@ -74,7 +74,7 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
                 NO_BEFORE_COMPUTE_HOOK);
     }
 
-    SpanWatchdogProcessor(Duration spanTimeout,
+    SpanTimeoutProcessor(Duration spanTimeout,
                           Duration traceTimeout,
                           LongSupplier nanoTime,
                           int maxTrackedTraces,
@@ -85,7 +85,7 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
                 beforeComputeForTesting, null);
     }
 
-    private SpanWatchdogProcessor(Duration spanTimeout,
+    private SpanTimeoutProcessor(Duration spanTimeout,
                                   Duration traceTimeout,
                                   LongSupplier nanoTime,
                                   int maxTrackedTraces,
@@ -98,13 +98,13 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
         int trueMaxTrackedSpans = requirePositiveCapacity(maxTrackedSpans, "maxTrackedSpans");
         this.nanoTime = Objects.requireNonNull(nanoTime, "nanoTime");
         this.beforeComputeForTesting = Objects.requireNonNull(beforeComputeForTesting, "beforeComputeForTesting");
-        this.index = new WatchdogTraceIndex(
+        this.index = new InFlightTraceIndex(
                 spanTimeout.toNanos(),
                 traceTimeout.toNanos(),
                 trueMaxTrackedTraces,
                 trueMaxTrackedSpansPerTrace,
                 this.nanoTime,
-                new SpanPermitTracker(trueMaxTrackedSpans)
+                new PermitTracker(trueMaxTrackedSpans)
         );
 
         if (scanInterval != null) {
@@ -274,13 +274,13 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
 
     private void scan() {
         long now = nanoTime.getAsLong();
-        List<WatchdogTraceIndex.ExpiredSpan> expired = index.collectExpired(now);
-        for (WatchdogTraceIndex.ExpiredSpan candidate : expired) {
+        List<InFlightTraceIndex.ExpiredSpan> expired = index.collectExpired(now);
+        for (InFlightTraceIndex.ExpiredSpan candidate : expired) {
             closeTimedOutSpan(candidate);
         }
     }
 
-    private void closeTimedOutSpan(WatchdogTraceIndex.ExpiredSpan candidate) {
+    private void closeTimedOutSpan(InFlightTraceIndex.ExpiredSpan candidate) {
         ReadWriteSpan span = candidate.span();
         try {
             span.setAttribute(PlatformAttributes.PLATFORM_TIMEOUT, candidate.reason().value());
@@ -288,7 +288,7 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
             span.setStatus(StatusCode.ERROR, "watchdog: " + candidate.reason().value() + " timeout");
             span.end();
 
-            if (candidate.reason() == WatchdogTraceIndex.TimeoutReason.SPAN) {
+            if (candidate.reason() == InFlightTraceIndex.TimeoutReason.SPAN) {
                 forcedSpanCloses.incrementAndGet();
             } else {
                 forcedTraceCloses.incrementAndGet();

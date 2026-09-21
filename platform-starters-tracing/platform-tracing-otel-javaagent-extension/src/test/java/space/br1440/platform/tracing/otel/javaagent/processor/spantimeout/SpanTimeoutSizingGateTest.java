@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
+package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,11 +28,11 @@ import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 
-class SpanWatchdogSizingGateTest {
+class SpanTimeoutSizingGateTest {
 
     private static final int SAMPLE_SPANS = 10_000;
-    private static final int MAX_TRACKED_TRACES = ExtensionDefaults.DEFAULT_WATCHDOG_MAX_TRACKED_TRACES;
-    private static final long SCAN_INTERVAL_NANOS = ExtensionDefaults.DEFAULT_WATCHDOG_SCAN_INTERVAL.toNanos();
+    private static final int MAX_TRACKED_TRACES = ExtensionDefaults.DEFAULT_SPAN_TIMEOUT_MAX_TRACKED_TRACES;
+    private static final long SCAN_INTERVAL_NANOS = ExtensionDefaults.DEFAULT_SPAN_TIMEOUT_SCAN_INTERVAL.toNanos();
     private static final long SCAN_P99_BUDGET_NANOS = SCAN_INTERVAL_NANOS / 10;
     private static final long ABSOLUTE_HEAP_CEILING_BYTES = 32L * 1024 * 1024;
     private static final int SCAN_WARMUP = 5;
@@ -98,7 +98,7 @@ class SpanWatchdogSizingGateTest {
 
     private static void printObjectLayouts() {
         List<Class<?>> layoutTargets = List.of(
-                TraceWatchdogState.class, TraceWatchdogState.Tracked.class, SpanPermitTracker.class);
+                InFlightTraceState.class, InFlightTraceState.Tracked.class, PermitTracker.class);
         for (Class<?> target : layoutTargets) {
             try {
                 System.out.println("SIZING layout " + target.getSimpleName() + "="
@@ -113,26 +113,26 @@ class SpanWatchdogSizingGateTest {
     private static Profile measureProfile(String name, int traces, int spansPerTrace) throws Exception {
         int maxTraces = Math.max(MAX_TRACKED_TRACES, traces);
         AtomicLong clock = new AtomicLong();
-        try (SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+        try (SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
                 Duration.ofHours(1), Duration.ofHours(1), clock::get, maxTraces, Integer.MAX_VALUE, Integer.MAX_VALUE)) {
             int spanOrdinal = 0;
             for (int traceIndex = 0; traceIndex < traces; traceIndex++) {
                 for (int spanIndex = 0; spanIndex < spansPerTrace; spanIndex++) {
-                    startSpan(watchdog, traceIndex + 1, ++spanOrdinal);
+                    startSpan(spanTimeout, traceIndex + 1, ++spanOrdinal);
                 }
             }
-            assertThat(watchdog.getTrackingEvictedTotal()).isZero();
-            assertThat(watchdog.getActiveSpanCount()).isEqualTo(traces * spansPerTrace);
+            assertThat(spanTimeout.getTrackingEvictedTotal()).isZero();
+            assertThat(spanTimeout.getActiveSpanCount()).isEqualTo(traces * spansPerTrace);
 
             forceGc();
-            Object index = activeTraces(watchdog);
+            Object index = activeTraces(spanTimeout);
             long retained = GraphLayout.parseInstance(index).totalSize();
             long heapUsed = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getUsed();
-            long scanP99 = scanP99(watchdog);
+            long scanP99 = scanP99(spanTimeout);
             System.out.println("SIZING profile=" + name
                     + " traces=" + traces
                     + " spans=" + (traces * spansPerTrace)
-                    + " trackedTraces=" + watchdog.getTrackedTraceCount()
+                    + " trackedTraces=" + spanTimeout.getTrackedTraceCount()
                     + " jolRetainedBytes=" + retained
                     + " heapUsedBytes=" + heapUsed
                     + " scanP99Nanos=" + scanP99);
@@ -147,7 +147,7 @@ class SpanWatchdogSizingGateTest {
         CountDownLatch start = new CountDownLatch(1);
         CountDownLatch done = new CountDownLatch(threads);
         long[] samples = new long[threads * perThread];
-        try (SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+        try (SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
                 Duration.ofHours(1), Duration.ofHours(1), clock::get,
                 MAX_TRACKED_TRACES, Integer.MAX_VALUE, Integer.MAX_VALUE);
              ExecutorService executor = Executors.newFixedThreadPool(threads)) {
@@ -159,7 +159,7 @@ class SpanWatchdogSizingGateTest {
                         for (int index = 0; index < perThread; index++) {
                             int ordinal = threadIndex * perThread + index + 1;
                             long began = System.nanoTime();
-                            startSpan(watchdog, ordinal, ordinal);
+                            startSpan(spanTimeout, ordinal, ordinal);
                             samples[ordinal - 1] = System.nanoTime() - began;
                         }
                     } catch (InterruptedException interrupted) {
@@ -216,7 +216,7 @@ class SpanWatchdogSizingGateTest {
         }
     }
 
-    private static void startSpan(SpanWatchdogProcessor watchdog, int traceOrdinal, int spanOrdinal) {
+    private static void startSpan(SpanTimeoutProcessor spanTimeout, int traceOrdinal, int spanOrdinal) {
         SpanContext context = SpanContext.create(
                 String.format("%032x", traceOrdinal),
                 String.format("%016x", spanOrdinal),
@@ -225,17 +225,17 @@ class SpanWatchdogSizingGateTest {
         ReadWriteSpan span = Mockito.mock(ReadWriteSpan.class);
         Mockito.when(span.getSpanContext()).thenReturn(context);
         Mockito.when(span.hasEnded()).thenReturn(false);
-        watchdog.onStart(Context.root(), span);
+        spanTimeout.onStart(Context.root(), span);
     }
 
-    private static long scanP99(SpanWatchdogProcessor watchdog) {
+    private static long scanP99(SpanTimeoutProcessor spanTimeout) {
         for (int index = 0; index < SCAN_WARMUP; index++) {
-            watchdog.scanForTesting();
+            spanTimeout.scanForTesting();
         }
         long[] samples = new long[SCAN_SAMPLES];
         for (int index = 0; index < SCAN_SAMPLES; index++) {
             long began = System.nanoTime();
-            watchdog.scanForTesting();
+            spanTimeout.scanForTesting();
             samples[index] = System.nanoTime() - began;
         }
         return p99(samples);
@@ -273,19 +273,19 @@ class SpanWatchdogSizingGateTest {
         return Math.min(ABSOLUTE_HEAP_CEILING_BYTES, twoPercent);
     }
 
-    private static Object activeTraces(SpanWatchdogProcessor watchdog) throws Exception {
-        WatchdogTraceIndex index = index(watchdog);
-        Field field = WatchdogTraceIndex.class.getDeclaredField("traces");
+    private static Object activeTraces(SpanTimeoutProcessor spanTimeout) throws Exception {
+        InFlightTraceIndex index = index(spanTimeout);
+        Field field = InFlightTraceIndex.class.getDeclaredField("traces");
         field.setAccessible(true);
         Object value = field.get(index);
         assertThat(value).isInstanceOf(ConcurrentHashMap.class);
         return value;
     }
 
-    private static WatchdogTraceIndex index(SpanWatchdogProcessor watchdog) throws Exception {
-        Field field = SpanWatchdogProcessor.class.getDeclaredField("index");
+    private static InFlightTraceIndex index(SpanTimeoutProcessor spanTimeout) throws Exception {
+        Field field = SpanTimeoutProcessor.class.getDeclaredField("index");
         field.setAccessible(true);
-        return (WatchdogTraceIndex) field.get(watchdog);
+        return (InFlightTraceIndex) field.get(spanTimeout);
     }
 
     private static void forceGc() throws InterruptedException {

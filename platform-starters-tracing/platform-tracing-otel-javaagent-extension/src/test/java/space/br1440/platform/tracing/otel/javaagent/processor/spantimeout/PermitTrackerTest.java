@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
+package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -14,7 +14,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 
-class SpanPermitTrackerTest {
+class PermitTrackerTest {
 
     @RegisterExtension
     final AgentLogCapture logCapture = new AgentLogCapture();
@@ -22,7 +22,7 @@ class SpanPermitTrackerTest {
     @Test
     void tryAcquireRejectsAtCapacity() {
         // given
-        SpanPermitTracker permitTracker = new SpanPermitTracker(3);
+        PermitTracker permitTracker = new PermitTracker(3);
 
         // when/then
         assertThat(permitTracker.tryAcquire()).isTrue();
@@ -37,7 +37,7 @@ class SpanPermitTrackerTest {
     @Test
     void releaseRestoresAvailableCapacity() {
         // given
-        SpanPermitTracker permitTracker = new SpanPermitTracker(2);
+        PermitTracker permitTracker = new PermitTracker(2);
         assertThat(permitTracker.tryAcquire()).isTrue();
         assertThat(permitTracker.tryAcquire()).isTrue();
 
@@ -54,7 +54,7 @@ class SpanPermitTrackerTest {
     @Test
     void releaseIgnoresNonPositiveCount() {
         // given
-        SpanPermitTracker permitTracker = new SpanPermitTracker(1);
+        PermitTracker permitTracker = new PermitTracker(1);
         assertThat(permitTracker.tryAcquire()).isTrue();
 
         // when
@@ -68,7 +68,7 @@ class SpanPermitTrackerTest {
 
     @Test
     void releaseRejectsOverReleaseAndRecordsViolation() {
-        SpanPermitTracker permitTracker = new SpanPermitTracker(5);
+        PermitTracker permitTracker = new PermitTracker(5);
         assertThat(permitTracker.tryAcquire()).isTrue();
 
         // when
@@ -87,7 +87,7 @@ class SpanPermitTrackerTest {
     @Test
     void recordInvariantViolationIncrementsTotal() {
         // given
-        SpanPermitTracker permitTracker = new SpanPermitTracker(1);
+        PermitTracker permitTracker = new PermitTracker(1);
 
         // when
         permitTracker.recordInvariantViolation();
@@ -102,7 +102,7 @@ class SpanPermitTrackerTest {
     void concurrentAcquireDoesNotExceedCapacity() throws Exception {
         // given
         int maxPermitCount = 200;
-        SpanPermitTracker permitTracker = new SpanPermitTracker(maxPermitCount);
+        PermitTracker permitTracker = new PermitTracker(maxPermitCount);
         int threadCount = 8;
         int attemptsPerThread = 1_000;
         AtomicInteger acquiredPermitCount = new AtomicInteger();

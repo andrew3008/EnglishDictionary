@@ -84,12 +84,12 @@ class ExtensionConfigTest {
         }
 
         @Test
-        void watchdog_returns_same_instance() {
+        void spanTimeout_returns_same_instance() {
             // given
             ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
 
             // when/then
-            assertThat(cfg.watchdog()).isSameAs(cfg.watchdog());
+            assertThat(cfg.spanTimeout()).isSameAs(cfg.spanTimeout());
         }
 
         @Test
@@ -183,47 +183,47 @@ class ExtensionConfigTest {
     }
 
     @Test
-    void watchdog_returns_defaults_when_config_is_empty() {
+    void spanTimeout_returns_defaults_when_config_is_empty() {
         // given
         ExtensionConfig config = new ExtensionConfig(emptyConfig());
 
         // then
-        assertThat(config.watchdog().enabled()).isFalse();
-        assertThat(config.watchdog().spanTimeout()).isEqualTo(Duration.ofSeconds(30));
-        assertThat(config.watchdog().traceTimeout()).isEqualTo(Duration.ofSeconds(60));
-        assertThat(config.watchdog().scanInterval()).isEqualTo(Duration.ofSeconds(5));
-        assertThat(config.watchdog().maxTrackedTraces()).isEqualTo(10_000);
-        assertThat(config.watchdog().maxTrackedSpansPerTrace()).isEqualTo(1_024);
-        assertThat(config.watchdog().maxTrackedSpans()).isEqualTo(60_000);
+        assertThat(config.spanTimeout().enabled()).isFalse();
+        assertThat(config.spanTimeout().spanTimeout()).isEqualTo(Duration.ofSeconds(30));
+        assertThat(config.spanTimeout().traceTimeout()).isEqualTo(Duration.ofSeconds(60));
+        assertThat(config.spanTimeout().scanInterval()).isEqualTo(Duration.ofSeconds(5));
+        assertThat(config.spanTimeout().maxTrackedTraces()).isEqualTo(10_000);
+        assertThat(config.spanTimeout().maxTrackedSpansPerTrace()).isEqualTo(1_024);
+        assertThat(config.spanTimeout().maxTrackedSpans()).isEqualTo(60_000);
     }
 
     @Test
-    void watchdogIsDisabledByDefault() {
+    void spanTimeoutIsDisabledByDefault() {
         // given
         ExtensionConfig config = new ExtensionConfig(emptyConfig());
 
         // then
-        assertThat(config.watchdog().enabled()).isFalse();
+        assertThat(config.spanTimeout().enabled()).isFalse();
     }
 
     @Test
-    void watchdogCanBeExplicitlyEnabled() {
+    void spanTimeoutCanBeExplicitlyEnabled() {
         // given
         ExtensionConfig config = new ExtensionConfig(
-                booleanConfig(ExtensionPropertyNames.WATCHDOG_ENABLED, true));
+                booleanConfig(ExtensionPropertyNames.SPAN_TIMEOUT_ENABLED, true));
 
         // then
-        assertThat(config.watchdog().enabled()).isTrue();
+        assertThat(config.spanTimeout().enabled()).isTrue();
     }
 
     @Test
-    void watchdogCanBeExplicitlyDisabled() {
+    void spanTimeoutCanBeExplicitlyDisabled() {
         // given
         ExtensionConfig config = new ExtensionConfig(
-                booleanConfig(ExtensionPropertyNames.WATCHDOG_ENABLED, false));
+                booleanConfig(ExtensionPropertyNames.SPAN_TIMEOUT_ENABLED, false));
 
         // then
-        assertThat(config.watchdog().enabled()).isFalse();
+        assertThat(config.spanTimeout().enabled()).isFalse();
     }
 
     @Test
@@ -271,28 +271,28 @@ class ExtensionConfigTest {
     }
 
     @Test
-    void watchdog_reads_explicit_span_timeout() {
+    void spanTimeout_reads_explicit_span_timeout() {
         // given
         ExtensionConfig config = new ExtensionConfig(
-                durationConfig(ExtensionPropertyNames.WATCHDOG_SPAN_TIMEOUT, Duration.ofSeconds(10)));
+                durationConfig(ExtensionPropertyNames.SPAN_TIMEOUT_SPAN_TIMEOUT, Duration.ofSeconds(10)));
 
         // then
-        assertThat(config.watchdog().spanTimeout()).isEqualTo(Duration.ofSeconds(10));
+        assertThat(config.spanTimeout().spanTimeout()).isEqualTo(Duration.ofSeconds(10));
     }
 
     @Test
-    void watchdog_rejects_non_positive_scan_interval() {
+    void spanTimeout_rejects_non_positive_scan_interval() {
         // when/then
         assertThatThrownBy(() -> new ExtensionConfig(
-                durationConfig(ExtensionPropertyNames.WATCHDOG_SCAN_INTERVAL, Duration.ZERO)))
+                durationConfig(ExtensionPropertyNames.SPAN_TIMEOUT_SCAN_INTERVAL, Duration.ZERO)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("platform.tracing.watchdog.scan-interval must be greater than zero");
     }
 
     @Test
-    void watchdog_rejects_non_positive_span_timeout() {
+    void spanTimeout_rejects_non_positive_span_timeout() {
         // given
-        ConfigProperties config = durationConfig(ExtensionPropertyNames.WATCHDOG_SPAN_TIMEOUT, Duration.ZERO);
+        ConfigProperties config = durationConfig(ExtensionPropertyNames.SPAN_TIMEOUT_SPAN_TIMEOUT, Duration.ZERO);
 
         // when / then
         assertThatThrownBy(() -> new ExtensionConfig(config))
@@ -301,9 +301,9 @@ class ExtensionConfigTest {
     }
 
     @Test
-    void watchdog_rejects_zero_trace_timeout() {
+    void spanTimeout_rejects_zero_trace_timeout() {
         // given
-        ConfigProperties config = durationConfig(ExtensionPropertyNames.WATCHDOG_TRACE_TIMEOUT, Duration.ZERO);
+        ConfigProperties config = durationConfig(ExtensionPropertyNames.SPAN_TIMEOUT_TRACE_TIMEOUT, Duration.ZERO);
 
         // when / then
         assertThatThrownBy(() -> new ExtensionConfig(config))
@@ -312,10 +312,10 @@ class ExtensionConfigTest {
     }
 
     @Test
-    void watchdog_rejects_negative_trace_timeout() {
+    void spanTimeout_rejects_negative_trace_timeout() {
         // given
         ConfigProperties config = durationConfig(
-                ExtensionPropertyNames.WATCHDOG_TRACE_TIMEOUT, Duration.ofSeconds(-1));
+                ExtensionPropertyNames.SPAN_TIMEOUT_TRACE_TIMEOUT, Duration.ofSeconds(-1));
 
         // when / then
         assertThatThrownBy(() -> new ExtensionConfig(config))
@@ -324,9 +324,9 @@ class ExtensionConfigTest {
     }
 
     @Test
-    void watchdog_rejects_zero_max_tracked_traces() {
+    void spanTimeout_rejects_zero_max_tracked_traces() {
         // given
-        ConfigProperties config = intConfig(ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_TRACES, 0);
+        ConfigProperties config = intConfig(ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_TRACES, 0);
 
         // when / then
         assertThatThrownBy(() -> new ExtensionConfig(config))
@@ -335,9 +335,9 @@ class ExtensionConfigTest {
     }
 
     @Test
-    void watchdog_rejects_negative_max_tracked_traces() {
+    void spanTimeout_rejects_negative_max_tracked_traces() {
         // given
-        ConfigProperties config = intConfig(ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_TRACES, -1);
+        ConfigProperties config = intConfig(ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_TRACES, -1);
 
         // when / then
         assertThatThrownBy(() -> new ExtensionConfig(config))
@@ -346,9 +346,9 @@ class ExtensionConfigTest {
     }
 
     @Test
-    void watchdog_rejects_zero_max_tracked_spans_per_trace() {
+    void spanTimeout_rejects_zero_max_tracked_spans_per_trace() {
         // given
-        ConfigProperties config = intConfig(ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_SPANS_PER_TRACE, 0);
+        ConfigProperties config = intConfig(ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_SPANS_PER_TRACE, 0);
 
         // when / then
         assertThatThrownBy(() -> new ExtensionConfig(config))
@@ -357,9 +357,9 @@ class ExtensionConfigTest {
     }
 
     @Test
-    void watchdog_rejects_negative_max_tracked_spans() {
+    void spanTimeout_rejects_negative_max_tracked_spans() {
         // given
-        ConfigProperties config = intConfig(ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_SPANS, -1);
+        ConfigProperties config = intConfig(ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_SPANS, -1);
 
         // when / then
         assertThatThrownBy(() -> new ExtensionConfig(config))
@@ -368,26 +368,26 @@ class ExtensionConfigTest {
     }
 
     @Test
-    void watchdog_allows_global_span_budget_below_per_trace_budget() {
+    void spanTimeout_allows_global_span_budget_below_per_trace_budget() {
         // given
         ConfigProperties config = intsConfig(Map.of(
-                ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_SPANS_PER_TRACE, 1_024,
-                ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_SPANS, 500));
+                ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_SPANS_PER_TRACE, 1_024,
+                ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_SPANS, 500));
 
         // when
         ExtensionConfig parsed = new ExtensionConfig(config);
 
         // then
-        assertThat(parsed.watchdog().maxTrackedSpansPerTrace()).isEqualTo(1_024);
-        assertThat(parsed.watchdog().maxTrackedSpans()).isEqualTo(500);
+        assertThat(parsed.spanTimeout().maxTrackedSpansPerTrace()).isEqualTo(1_024);
+        assertThat(parsed.spanTimeout().maxTrackedSpans()).isEqualTo(500);
     }
 
     @Test
-    void watchdog_rejects_trace_timeout_shorter_than_span_timeout() {
+    void spanTimeout_rejects_trace_timeout_shorter_than_span_timeout() {
         // when/then
         assertThatThrownBy(() -> new ExtensionConfig(durationsConfig(Map.of(
-                ExtensionPropertyNames.WATCHDOG_SPAN_TIMEOUT, Duration.ofSeconds(10),
-                ExtensionPropertyNames.WATCHDOG_TRACE_TIMEOUT, Duration.ofSeconds(5)))))
+                ExtensionPropertyNames.SPAN_TIMEOUT_SPAN_TIMEOUT, Duration.ofSeconds(10),
+                ExtensionPropertyNames.SPAN_TIMEOUT_TRACE_TIMEOUT, Duration.ofSeconds(5)))))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("platform.tracing.watchdog.trace-timeout must be greater than or equal to "
                         + "platform.tracing.watchdog.span-timeout");

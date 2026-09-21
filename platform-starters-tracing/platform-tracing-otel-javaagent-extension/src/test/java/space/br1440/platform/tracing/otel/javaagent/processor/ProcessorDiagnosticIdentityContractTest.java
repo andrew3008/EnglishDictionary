@@ -17,7 +17,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.SpanTimeoutProcessor;
 
 class ProcessorDiagnosticIdentityContractTest {
 
@@ -36,7 +36,7 @@ class ProcessorDiagnosticIdentityContractTest {
                 ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of()),
                 new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING)),
                 new ClassificationSpanProcessor(Duration.ofSeconds(5), Duration.ofSeconds(1)),
-                new SpanWatchdogProcessor(Duration.ofSeconds(5), Duration.ofSeconds(30), Duration.ofDays(365),
+                new SpanTimeoutProcessor(Duration.ofSeconds(5), Duration.ofSeconds(30), Duration.ofDays(365),
                         10_000, Integer.MAX_VALUE, Integer.MAX_VALUE),
                 new SpanLimitsMetricsProcessor()
         );
@@ -96,7 +96,7 @@ class ProcessorDiagnosticIdentityContractTest {
                         "ScrubbingSpanProcessor",
                         "ValidatingSpanProcessor",
                         "ClassificationSpanProcessor",
-                        "SpanWatchdogProcessor",
+                        "SpanTimeoutProcessor",
                         "SpanLimitsMetricsProcessor"
                 );
     }

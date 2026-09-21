@@ -93,7 +93,7 @@ final class PlatformTracingJmxDomainHealthMetricsBinder implements MeterBinder {
                         .orElse(Double.NaN));
         bindOwner(registry, "processor_metrics", "watchdog",
                 c -> c.processorMetrics().observation()
-                        .map(ProcessorMetricsObservation::watchdog)
+                        .map(ProcessorMetricsObservation::spanTimeout)
                         .map(PlatformTracingJmxDomainHealthMetricsBinder::ownerPresentValue)
                         .orElse(Double.NaN));
         bindOwner(registry, "processor_metrics", "composite",

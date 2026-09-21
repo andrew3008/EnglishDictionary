@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
+package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -6,15 +6,15 @@ import java.util.concurrent.atomic.AtomicLong;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
-final class SpanPermitTracker {
+final class PermitTracker {
 
-    private static final PlatformAgentLogger log = PlatformAgentLogger.get(SpanPermitTracker.class);
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(PermitTracker.class);
 
     private final int maxPermitCount;
     private final AtomicInteger acquiredPermitCount = new AtomicInteger();
     private final AtomicLong invariantViolationTotal = new AtomicLong();
 
-    SpanPermitTracker(int maxPermitCount) {
+    PermitTracker(int maxPermitCount) {
         this.maxPermitCount = maxPermitCount;
     }
 

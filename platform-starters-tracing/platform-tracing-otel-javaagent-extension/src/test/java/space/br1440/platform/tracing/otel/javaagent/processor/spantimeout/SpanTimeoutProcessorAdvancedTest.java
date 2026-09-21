@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
+package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -20,67 +20,67 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 
 /**
- * Дополнительные кейсы {@link SpanWatchdogProcessor}: краевые операции жизненного цикла
+ * Дополнительные кейсы {@link SpanTimeoutProcessor}: краевые операции жизненного цикла
  * (повторный shutdown, forceFlush на пустом наборе, поведение dec'ов с уже отсутствующим
  * traceId), наблюдаемость через accessor'ы.
  */
-class SpanWatchdogProcessorAdvancedTest {
+class SpanTimeoutProcessorAdvancedTest {
 
     @Test
     void getActiveSpanCount_reflects_live_span_count_before_close() {
         // given
-        SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+        SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
                 Duration.ofMinutes(1), Duration.ofMinutes(1), System::nanoTime,
                 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
-                .addSpanProcessor(watchdog)
+                .addSpanProcessor(spanTimeout)
                 .build();
         try (OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()) {
             Tracer tracer = sdk.getTracer("t");
 
             // when/then
-            assertThat(watchdog.getActiveSpanCount()).isZero();
+            assertThat(spanTimeout.getActiveSpanCount()).isZero();
 
             Span s1 = tracer.spanBuilder("op-1").startSpan();
             Span s2 = tracer.spanBuilder("op-2").startSpan();
-            assertThat(watchdog.getActiveSpanCount()).isEqualTo(2);
+            assertThat(spanTimeout.getActiveSpanCount()).isEqualTo(2);
             // span'ы из разных startSpan() могут оказаться в одной/разных трассах в зависимости от parent ctx;
             // на bare tracer они стартуют без явного родителя — каждая trace отдельная.
-            assertThat(watchdog.getActiveTraceCount()).isEqualTo(2);
+            assertThat(spanTimeout.getActiveTraceCount()).isEqualTo(2);
 
             s1.end();
-            assertThat(watchdog.getActiveSpanCount()).isEqualTo(1);
+            assertThat(spanTimeout.getActiveSpanCount()).isEqualTo(1);
             s2.end();
-            assertThat(watchdog.getActiveSpanCount()).isZero();
-            assertThat(watchdog.getActiveTraceCount()).isZero();
+            assertThat(spanTimeout.getActiveSpanCount()).isZero();
+            assertThat(spanTimeout.getActiveTraceCount()).isZero();
 
-            watchdog.shutdown();
+            spanTimeout.shutdown();
             tracerProvider.shutdown();
         }
     }
 
     @Test
     void repeated_shutdown_does_not_throw_and_keeps_counters_at_zero() {
-        try (SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+        try (SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
                 Duration.ofMinutes(1), Duration.ofMinutes(1), System::nanoTime,
                 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE)) {
             // when/then
-            assertThat(watchdog.shutdown().isSuccess()).isTrue();
-            assertThatCode(watchdog::shutdown).doesNotThrowAnyException();
-            assertThat(watchdog.getActiveSpanCount()).isZero();
-            assertThat(watchdog.getActiveTraceCount()).isZero();
+            assertThat(spanTimeout.shutdown().isSuccess()).isTrue();
+            assertThatCode(spanTimeout::shutdown).doesNotThrowAnyException();
+            assertThat(spanTimeout.getActiveSpanCount()).isZero();
+            assertThat(spanTimeout.getActiveTraceCount()).isZero();
         }
     }
 
     @Test
     void forceFlush_on_empty_set_does_not_crash_and_returns_success() {
-        try (SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+        try (SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
                 Duration.ofMillis(1), Duration.ofMillis(1), System::nanoTime,
                 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE)) {
             // when/then
-            assertThat(watchdog.forceFlush().isSuccess()).isTrue();
-            assertThat(watchdog.getForcedSpanCloses()).isZero();
-            assertThat(watchdog.getForcedTraceCloses()).isZero();
+            assertThat(spanTimeout.forceFlush().isSuccess()).isTrue();
+            assertThat(spanTimeout.getForcedSpanCloses()).isZero();
+            assertThat(spanTimeout.getForcedTraceCloses()).isZero();
         }
     }
 
@@ -89,10 +89,10 @@ class SpanWatchdogProcessorAdvancedTest {
         // given
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
         AtomicLong clock = new AtomicLong();
-        SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+        SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
                 Duration.ofMillis(20), Duration.ofMinutes(1), clock::get, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
-                .addSpanProcessor(watchdog)
+                .addSpanProcessor(spanTimeout)
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
         try (OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()) {
@@ -101,7 +101,7 @@ class SpanWatchdogProcessorAdvancedTest {
             // when
             tracer.spanBuilder("hung").startSpan();
             clock.addAndGet(Duration.ofMillis(21).toNanos());
-            watchdog.scanForTesting();
+            spanTimeout.scanForTesting();
 
             // then
             assertThat(exporter.getFinishedSpanItems()).hasSize(1);
@@ -109,7 +109,7 @@ class SpanWatchdogProcessorAdvancedTest {
             assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TIMEOUT)))
                     .isEqualTo("span");
 
-            watchdog.shutdown();
+            spanTimeout.shutdown();
             tracerProvider.shutdown();
         }
     }
@@ -121,10 +121,10 @@ class SpanWatchdogProcessorAdvancedTest {
         // тест документирует фактическое поведение реализации (spanExpired->span; иначе trace).
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
         AtomicLong clock = new AtomicLong();
-        SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+        SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
                 Duration.ofMillis(20), Duration.ofMillis(20), clock::get, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
-                .addSpanProcessor(watchdog)
+                .addSpanProcessor(spanTimeout)
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
         try (OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()) {
@@ -133,16 +133,16 @@ class SpanWatchdogProcessorAdvancedTest {
             // when
             tracer.spanBuilder("op").startSpan();
             clock.addAndGet(Duration.ofMillis(21).toNanos());
-            watchdog.scanForTesting();
+            spanTimeout.scanForTesting();
 
             // then
             SpanData data = exporter.getFinishedSpanItems().getFirst();
             assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TIMEOUT)))
                     .isEqualTo("span");
-            assertThat(watchdog.getForcedSpanCloses()).isEqualTo(1);
-            assertThat(watchdog.getForcedTraceCloses()).isZero();
+            assertThat(spanTimeout.getForcedSpanCloses()).isEqualTo(1);
+            assertThat(spanTimeout.getForcedTraceCloses()).isZero();
 
-            watchdog.shutdown();
+            spanTimeout.shutdown();
             tracerProvider.shutdown();
         }
     }

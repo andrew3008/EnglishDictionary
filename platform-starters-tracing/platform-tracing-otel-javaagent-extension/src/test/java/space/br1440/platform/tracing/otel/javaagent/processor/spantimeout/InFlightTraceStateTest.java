@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
+package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -9,14 +9,14 @@ import org.junit.jupiter.api.Test;
 
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 
-/** Прямая характеризация single/multiple promotion-collapse в {@link TraceWatchdogState}. */
-class TraceWatchdogStateTest {
+/** Прямая характеризация single/multiple promotion-collapse в {@link InFlightTraceState}. */
+class InFlightTraceStateTest {
 
     @Test
     void singleTrackedSpanIsReportedWithoutPromotion() {
         // given
-        TraceWatchdogState state = new TraceWatchdogState(1L);
-        TraceWatchdogState.Tracked tracked = tracked("span-1", mock(ReadWriteSpan.class));
+        InFlightTraceState state = new InFlightTraceState(1L);
+        InFlightTraceState.Tracked tracked = tracked("span-1", mock(ReadWriteSpan.class));
 
         // when
         assertThat(state.addIfAbsent(tracked)).isTrue();
@@ -31,7 +31,7 @@ class TraceWatchdogStateTest {
     @Test
     void duplicateSpanIdIsRejectedInSingleMode() {
         // given
-        TraceWatchdogState state = new TraceWatchdogState(1L);
+        InFlightTraceState state = new InFlightTraceState(1L);
         state.addIfAbsent(tracked("span-1", mock(ReadWriteSpan.class)));
 
         // when
@@ -45,7 +45,7 @@ class TraceWatchdogStateTest {
     @Test
     void secondDistinctSpanIdPromotesToMultipleMode() {
         // given
-        TraceWatchdogState state = new TraceWatchdogState(1L);
+        InFlightTraceState state = new InFlightTraceState(1L);
         state.addIfAbsent(tracked("span-1", mock(ReadWriteSpan.class)));
 
         // when
@@ -61,7 +61,7 @@ class TraceWatchdogStateTest {
     @Test
     void duplicateSpanIdIsRejectedInMultipleModeToo() {
         // given
-        TraceWatchdogState state = new TraceWatchdogState(1L);
+        InFlightTraceState state = new InFlightTraceState(1L);
         state.addIfAbsent(tracked("span-1", mock(ReadWriteSpan.class)));
         state.addIfAbsent(tracked("span-2", mock(ReadWriteSpan.class)));
 
@@ -76,7 +76,7 @@ class TraceWatchdogStateTest {
     @Test
     void removeIfPresentRequiresIdentityMatchOnSpanReference() {
         // given
-        TraceWatchdogState state = new TraceWatchdogState(1L);
+        InFlightTraceState state = new InFlightTraceState(1L);
         ReadWriteSpan realSpan = mock(ReadWriteSpan.class);
         state.addIfAbsent(tracked("span-1", realSpan));
 
@@ -96,7 +96,7 @@ class TraceWatchdogStateTest {
     @Test
     void removeIfPresentInMultipleModeCollapsesBackToSingleWhenOneRemains() {
         // given
-        TraceWatchdogState state = new TraceWatchdogState(1L);
+        InFlightTraceState state = new InFlightTraceState(1L);
         ReadWriteSpan first = mock(ReadWriteSpan.class);
         ReadWriteSpan second = mock(ReadWriteSpan.class);
         state.addIfAbsent(tracked("span-1", first));
@@ -116,9 +116,9 @@ class TraceWatchdogStateTest {
     @Test
     void removeByReferenceCollapsesMultipleBackToSingle() {
         // given
-        TraceWatchdogState state = new TraceWatchdogState(1L);
-        TraceWatchdogState.Tracked first = tracked("span-1", mock(ReadWriteSpan.class));
-        TraceWatchdogState.Tracked second = tracked("span-2", mock(ReadWriteSpan.class));
+        InFlightTraceState state = new InFlightTraceState(1L);
+        InFlightTraceState.Tracked first = tracked("span-1", mock(ReadWriteSpan.class));
+        InFlightTraceState.Tracked second = tracked("span-2", mock(ReadWriteSpan.class));
         state.addIfAbsent(first);
         state.addIfAbsent(second);
 
@@ -134,9 +134,9 @@ class TraceWatchdogStateTest {
     @Test
     void removeUnknownTrackedReturnsFalseAndDoesNotMutateState() {
         // given
-        TraceWatchdogState state = new TraceWatchdogState(1L);
+        InFlightTraceState state = new InFlightTraceState(1L);
         state.addIfAbsent(tracked("span-1", mock(ReadWriteSpan.class)));
-        TraceWatchdogState.Tracked foreign = tracked("span-1", mock(ReadWriteSpan.class));
+        InFlightTraceState.Tracked foreign = tracked("span-1", mock(ReadWriteSpan.class));
 
         // when
         // identity-based equals/hashCode: a distinct Tracked instance with the same fields
@@ -151,7 +151,7 @@ class TraceWatchdogStateTest {
     @Test
     void drainClearsSingleModeAndReportsOneRemoved() {
         // given
-        TraceWatchdogState state = new TraceWatchdogState(1L);
+        InFlightTraceState state = new InFlightTraceState(1L);
         state.addIfAbsent(tracked("span-1", mock(ReadWriteSpan.class)));
 
         // when
@@ -166,7 +166,7 @@ class TraceWatchdogStateTest {
     @Test
     void drainClearsMultipleModeAndReportsExactCount() {
         // given
-        TraceWatchdogState state = new TraceWatchdogState(1L);
+        InFlightTraceState state = new InFlightTraceState(1L);
         state.addIfAbsent(tracked("span-1", mock(ReadWriteSpan.class)));
         state.addIfAbsent(tracked("span-2", mock(ReadWriteSpan.class)));
         state.addIfAbsent(tracked("span-3", mock(ReadWriteSpan.class)));
@@ -183,7 +183,7 @@ class TraceWatchdogStateTest {
     @Test
     void drainOnEmptyStateReportsZero() {
         // given
-        TraceWatchdogState state = new TraceWatchdogState(1L);
+        InFlightTraceState state = new InFlightTraceState(1L);
 
         // when/then
         assertThat(state.drain()).isZero();
@@ -192,7 +192,7 @@ class TraceWatchdogStateTest {
     @Test
     void startNanosIsImmutableAcrossMutations() {
         // given/when
-        TraceWatchdogState state = new TraceWatchdogState(42L);
+        InFlightTraceState state = new InFlightTraceState(42L);
         state.addIfAbsent(tracked("span-1", mock(ReadWriteSpan.class)));
         state.drain();
 
@@ -200,7 +200,7 @@ class TraceWatchdogStateTest {
         assertThat(state.startNanos()).isEqualTo(42L);
     }
 
-    private static TraceWatchdogState.Tracked tracked(String spanId, ReadWriteSpan span) {
-        return new TraceWatchdogState.Tracked(spanId, new WeakReference<>(span), 0L);
+    private static InFlightTraceState.Tracked tracked(String spanId, ReadWriteSpan span) {
+        return new InFlightTraceState.Tracked(spanId, new WeakReference<>(span), 0L);
     }
 }

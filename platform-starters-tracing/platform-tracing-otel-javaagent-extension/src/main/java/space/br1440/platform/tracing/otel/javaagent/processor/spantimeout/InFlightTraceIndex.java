@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
+package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -19,9 +19,9 @@ import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 import io.opentelemetry.sdk.trace.ReadableSpan;
 
-final class WatchdogTraceIndex {
+final class InFlightTraceIndex {
 
-    private static final PlatformAgentLogger log = PlatformAgentLogger.get(WatchdogTraceIndex.class);
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(InFlightTraceIndex.class);
     private static final long EVICTION_LOG_INTERVAL_NANOS = TimeUnit.SECONDS.toNanos(1);
     private static final long NEVER_LOGGED_NANOS = Long.MIN_VALUE;
     private static final Runnable NO_EVICTION_PLAN_HOOK = () -> {
@@ -40,9 +40,9 @@ final class WatchdogTraceIndex {
     private final int maxTrackedTraces;
     private final int maxTrackedSpansPerTrace;
     private final LongSupplier nanoTime;
-    private final SpanPermitTracker permitTracker;
+    private final PermitTracker permitTracker;
     private final Runnable afterFirstEvictionPlan;
-    private final ConcurrentHashMap<String, TraceWatchdogState> traces = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, InFlightTraceState> traces = new ConcurrentHashMap<>();
     private final AtomicLong trackingEvictedTotal = new AtomicLong();
     private final AtomicLong liveTracesEvictedTotal = new AtomicLong();
     private final AtomicBoolean evicting = new AtomicBoolean();
@@ -53,21 +53,21 @@ final class WatchdogTraceIndex {
     private final AtomicLong lastPerTraceRejectionLogNanos = new AtomicLong(NEVER_LOGGED_NANOS);
     private final AtomicLong lastGlobalRejectionLogNanos = new AtomicLong(NEVER_LOGGED_NANOS);
 
-    WatchdogTraceIndex(long spanTimeoutNanos,
+    InFlightTraceIndex(long spanTimeoutNanos,
                        long traceTimeoutNanos,
                        int maxTrackedTraces,
                        int maxTrackedSpansPerTrace,
                        LongSupplier nanoTime,
-                       SpanPermitTracker permitTracker) {
+                       PermitTracker permitTracker) {
         this(spanTimeoutNanos, traceTimeoutNanos, maxTrackedTraces, maxTrackedSpansPerTrace, nanoTime, permitTracker, NO_EVICTION_PLAN_HOOK);
     }
 
-    WatchdogTraceIndex(long spanTimeoutNanos,
+    InFlightTraceIndex(long spanTimeoutNanos,
                        long traceTimeoutNanos,
                        int maxTrackedTraces,
                        int maxTrackedSpansPerTrace,
                        LongSupplier nanoTime,
-                       SpanPermitTracker permitTracker,
+                       PermitTracker permitTracker,
                        Runnable afterFirstEvictionPlan) {
         this.spanTimeoutNanos = spanTimeoutNanos;
         this.traceTimeoutNanos = traceTimeoutNanos;
@@ -86,7 +86,7 @@ final class WatchdogTraceIndex {
             }
 
             boolean isNewTrace = (current == null);
-            TraceWatchdogState state = isNewTrace ? new TraceWatchdogState(now) : current;
+            InFlightTraceState state = isNewTrace ? new InFlightTraceState(now) : current;
 
             if (state.contains(spanId)) {
                 return state;
@@ -104,7 +104,7 @@ final class WatchdogTraceIndex {
                 return isNewTrace ? null : state;
             }
 
-            TraceWatchdogState.Tracked tracked = new TraceWatchdogState.Tracked(spanId, new WeakReference<>(span), now);
+            InFlightTraceState.Tracked tracked = new InFlightTraceState.Tracked(spanId, new WeakReference<>(span), now);
             if (!state.addIfAbsent(tracked)) {
                 permitTracker.release(1, "onstart-defect", traceId);
                 permitTracker.recordInvariantViolation();
@@ -172,7 +172,7 @@ final class WatchdogTraceIndex {
 
     int nonEmptyTraceCount() {
         int count = 0;
-        for (TraceWatchdogState state : traces.values()) {
+        for (InFlightTraceState state : traces.values()) {
             if (!state.isEmpty()) {
                 count++;
             }
@@ -218,11 +218,11 @@ final class WatchdogTraceIndex {
     }
 
     private void collectTimedOutSpans(String traceId,
-                                      TraceWatchdogState state,
+                                      InFlightTraceState state,
                                       long now,
                                       List<ExpiredSpan> timedOut) {
         boolean traceExpired = (now - state.startNanos()) > traceTimeoutNanos;
-        for (TraceWatchdogState.Tracked tracked : state.records()) {
+        for (InFlightTraceState.Tracked tracked : state.records()) {
             ReadWriteSpan span = tracked.spanRef().get();
             if (span == null || span.hasEnded()) {
                 if (state.remove(tracked)) {
@@ -252,7 +252,7 @@ final class WatchdogTraceIndex {
         }
 
         int observedSum = 0;
-        for (TraceWatchdogState state : traces.values()) {
+        for (InFlightTraceState state : traces.values()) {
             observedSum += state.size();
         }
 
@@ -383,8 +383,8 @@ final class WatchdogTraceIndex {
         PriorityQueue<EvictionCandidate> empty = new PriorityQueue<>(emptyBatch, NEWEST_FIRST);
         PriorityQueue<EvictionCandidate> nonEmpty = new PriorityQueue<>(Math.max(1, overflow), NEWEST_FIRST);
 
-        for (Map.Entry<String, TraceWatchdogState> entry : traces.entrySet()) {
-            TraceWatchdogState state = entry.getValue();
+        for (Map.Entry<String, InFlightTraceState> entry : traces.entrySet()) {
+            InFlightTraceState state = entry.getValue();
             boolean isEmpty = state.isEmpty();
             EvictionCandidate candidate = new EvictionCandidate(
                     entry.getKey(),
@@ -459,7 +459,7 @@ final class WatchdogTraceIndex {
     }
 
     private record EvictionCandidate(String traceId,
-                                     TraceWatchdogState expectedState,
+                                     InFlightTraceState expectedState,
                                      long startNanos,
                                      CandidateKind kind) {
     }

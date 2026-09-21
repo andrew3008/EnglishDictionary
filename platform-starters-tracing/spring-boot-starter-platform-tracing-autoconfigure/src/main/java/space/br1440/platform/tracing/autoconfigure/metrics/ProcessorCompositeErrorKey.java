@@ -8,7 +8,7 @@ enum ProcessorCompositeErrorKey {
     SCRUBBING("scrubbing"),
     VALIDATION("validation"),
     CLASSIFICATION("classification"),
-    WATCHDOG("watchdog"),
+    SPAN_TIMEOUT("watchdog"),
     SPAN_LIMITS_METRICS("span_limits_metrics");
 
     private final String processorName;

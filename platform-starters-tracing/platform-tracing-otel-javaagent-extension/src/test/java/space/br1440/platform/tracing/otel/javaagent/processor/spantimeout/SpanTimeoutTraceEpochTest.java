@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
+package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -13,42 +13,42 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
-class SpanWatchdogTraceEpochTest {
+class SpanTimeoutTraceEpochTest {
 
     @Test
     void intermittentTraceKeepsEpochAndClosesByTraceTimeout() {
         // given
         AtomicLong clock = new AtomicLong();
         Duration timeout = Duration.ofMillis(20);
-        SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+        SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
                 timeout, timeout, clock::get, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
-                .addSpanProcessor(watchdog)
+                .addSpanProcessor(spanTimeout)
                 .build();
         Tracer tracer = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build().getTracer("epoch");
         Span first = tracer.spanBuilder("first").startSpan();
         first.end();
-        watchdog.scanForTesting();
-        assertThat(watchdog.getActiveTraceCount()).isZero();
-        assertThat(watchdog.getTrackedTraceCount()).isEqualTo(1);
+        spanTimeout.scanForTesting();
+        assertThat(spanTimeout.getActiveTraceCount()).isZero();
+        assertThat(spanTimeout.getTrackedTraceCount()).isEqualTo(1);
 
         clock.set(Duration.ofMillis(8).toNanos());
         Span second = tracer.spanBuilder("second")
                 .setParent(Context.root().with(first))
                 .startSpan();
-        assertThat(watchdog.getActiveTraceCount()).isEqualTo(1);
-        assertThat(watchdog.getTrackedTraceCount()).isEqualTo(1);
+        assertThat(spanTimeout.getActiveTraceCount()).isEqualTo(1);
+        assertThat(spanTimeout.getTrackedTraceCount()).isEqualTo(1);
 
         // when
         clock.set(timeout.toNanos() + 1L);
-        watchdog.scanForTesting();
+        spanTimeout.scanForTesting();
 
         // then
-        assertThat(watchdog.getForcedTraceCloses()).isEqualTo(1);
-        assertThat(watchdog.getForcedSpanCloses()).isZero();
-        assertThat(watchdog.getActiveTraceCount()).isZero();
+        assertThat(spanTimeout.getForcedTraceCloses()).isEqualTo(1);
+        assertThat(spanTimeout.getForcedSpanCloses()).isZero();
+        assertThat(spanTimeout.getActiveTraceCount()).isZero();
         second.end();
-        watchdog.shutdown();
+        spanTimeout.shutdown();
         tracerProvider.shutdown();
     }
 
@@ -57,30 +57,30 @@ class SpanWatchdogTraceEpochTest {
         // given
         AtomicLong clock = new AtomicLong();
         Duration timeout = Duration.ofMillis(10);
-        SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+        SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
                 timeout, timeout, clock::get, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
-                .addSpanProcessor(watchdog)
+                .addSpanProcessor(spanTimeout)
                 .build();
         Tracer tracer = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build().getTracer("tombstone");
         Span span = tracer.spanBuilder("ended").startSpan();
         span.end();
-        watchdog.scanForTesting();
-        assertThat(watchdog.getTrackedTraceCount()).isEqualTo(1);
-        assertThat(watchdog.getActiveTraceCount()).isZero();
+        spanTimeout.scanForTesting();
+        assertThat(spanTimeout.getTrackedTraceCount()).isEqualTo(1);
+        assertThat(spanTimeout.getActiveTraceCount()).isZero();
 
         // when
         clock.set(timeout.toNanos());
-        watchdog.scanForTesting();
+        spanTimeout.scanForTesting();
 
         // then
-        assertThat(watchdog.getTrackedTraceCount()).isEqualTo(1);
+        assertThat(spanTimeout.getTrackedTraceCount()).isEqualTo(1);
         clock.addAndGet(1L);
-        watchdog.scanForTesting();
-        assertThat(watchdog.getTrackedTraceCount()).isZero();
-        assertThat(watchdog.getForcedSpanCloses()).isZero();
-        assertThat(watchdog.getForcedTraceCloses()).isZero();
-        watchdog.shutdown();
+        spanTimeout.scanForTesting();
+        assertThat(spanTimeout.getTrackedTraceCount()).isZero();
+        assertThat(spanTimeout.getForcedSpanCloses()).isZero();
+        assertThat(spanTimeout.getForcedTraceCloses()).isZero();
+        spanTimeout.shutdown();
         tracerProvider.shutdown();
     }
 }

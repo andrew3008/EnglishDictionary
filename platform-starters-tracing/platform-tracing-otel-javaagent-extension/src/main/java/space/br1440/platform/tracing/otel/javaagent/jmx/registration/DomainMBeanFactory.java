@@ -33,7 +33,7 @@ final class DomainMBeanFactory {
         ValidationObservationSource validation = new ValidationObservationSource(slots.validating(), agentInstanceId);
         ExportObservationSource export = new ExportObservationSource(slots.exportProcessor(), slots.safeExporter(), agentInstanceId);
         ProcessorMetricsObservationSource processorMetrics = new ProcessorMetricsObservationSource(
-                slots.watchdog(), slots.composite(), slots.metrics(), agentInstanceId);
+                slots.spanTimeout(), slots.composite(), slots.metrics(), agentInstanceId);
         DiagnosticsObservationSource diagnostics = new DiagnosticsObservationSource(sharedInvalidConfigCounter, agentInstanceId);
 
         List<MBeanBatchRegistrar.Registration> registrations = List.of(

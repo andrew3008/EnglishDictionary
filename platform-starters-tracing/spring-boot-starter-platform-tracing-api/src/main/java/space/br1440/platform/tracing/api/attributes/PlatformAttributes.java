@@ -40,7 +40,7 @@ public final class PlatformAttributes {
      */
     public static final String PLATFORM_ENVIRONMENT = "deployment.environment.name";
 
-    /** Признак принудительного завершения span'а watchdog timer'ом: {@code span} или {@code trace}. */
+    /** Признак принудительного завершения span'а по span timeout: {@code span} или {@code trace}. */
     public static final String PLATFORM_TIMEOUT = "platform.trace.timeout";
 
     /**

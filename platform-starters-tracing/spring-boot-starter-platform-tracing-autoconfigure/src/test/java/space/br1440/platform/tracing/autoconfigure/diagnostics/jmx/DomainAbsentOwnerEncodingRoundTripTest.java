@@ -98,7 +98,7 @@ class DomainAbsentOwnerEncodingRoundTripTest {
 
         assertThat(client.processorMetrics().observation()).isPresent();
         ProcessorMetricsObservation processor = client.processorMetrics().observation().orElseThrow();
-        assertThat(processor.watchdog()).isInstanceOf(JmxOwnerState.Absent.class);
+        assertThat(processor.spanTimeout()).isInstanceOf(JmxOwnerState.Absent.class);
         assertThat(processor.composite()).isInstanceOf(JmxOwnerState.Absent.class);
         assertThat(processor.metrics()).isInstanceOf(JmxOwnerState.Absent.class);
         assertThat(processor.capture().agentInstanceId()).isEqualTo(expectedAgentInstanceId);

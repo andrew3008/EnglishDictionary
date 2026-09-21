@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
+package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -21,13 +21,13 @@ import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 
-class SpanWatchdogProcessorConcurrencyTest {
+class SpanTimeoutProcessorConcurrencyTest {
 
     @Test
     void scanner_and_onEnd_are_serialized_on_trace_state() throws Exception {
         // given
         AtomicLong clock = new AtomicLong();
-        SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+        SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
                 Duration.ofNanos(1), Duration.ofHours(1), clock::get, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
         ReadWriteSpan span = mock(ReadWriteSpan.class);
         SpanContext spanContext = SpanContext.create(
@@ -45,29 +45,29 @@ class SpanWatchdogProcessorConcurrencyTest {
             assertThat(releaseScanner.await(5, TimeUnit.SECONDS)).isTrue();
             return false;
         });
-        watchdog.onStart(Context.root(), span);
+        spanTimeout.onStart(Context.root(), span);
         clock.set(2L);
 
         // when
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
-            Future<?> scan = executor.submit(watchdog::scanForTesting);
+            Future<?> scan = executor.submit(spanTimeout::scanForTesting);
             assertThat(scannerEnteredState.await(5, TimeUnit.SECONDS)).isTrue();
-            Future<?> end = executor.submit(() -> watchdog.onEnd(span));
+            Future<?> end = executor.submit(() -> spanTimeout.onEnd(span));
 
             releaseScanner.countDown();
             scan.get(5, TimeUnit.SECONDS);
             end.get(5, TimeUnit.SECONDS);
 
             // then
-            assertThat(watchdog.getActiveSpanCount()).isZero();
-            assertThat(watchdog.getActiveTraceCount()).isZero();
-            assertThat(watchdog.getForcedSpanCloses()).isEqualTo(1);
+            assertThat(spanTimeout.getActiveSpanCount()).isZero();
+            assertThat(spanTimeout.getActiveTraceCount()).isZero();
+            assertThat(spanTimeout.getForcedSpanCloses()).isEqualTo(1);
             verify(span).end();
         } finally {
             releaseScanner.countDown();
             executor.shutdownNow();
-            watchdog.shutdown();
+            spanTimeout.shutdown();
         }
     }
 }

@@ -22,7 +22,7 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTra
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.SpanTimeoutProcessor;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
 
@@ -85,7 +85,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         });
     }
 
-    private static ExtensionConfig configWithWatchdogEnabled() {
+    private static ExtensionConfig configWithSpanTimeoutEnabled() {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) { return null; }
             @Override public Boolean getBoolean(String name) {
@@ -154,8 +154,8 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         return registrarSlotOwner(r, "metrics");
     }
 
-    private static SpanWatchdogProcessor getWatchdog(PlatformTracingMBeanRegistrar r) throws Exception {
-        return registrarSlotOwner(r, "watchdog");
+    private static SpanTimeoutProcessor getSpanTimeout(PlatformTracingMBeanRegistrar r) throws Exception {
+        return registrarSlotOwner(r, "spanTimeout");
     }
 
     private static ValidatingSpanProcessor getValidating(PlatformTracingMBeanRegistrar r) throws Exception {
@@ -246,7 +246,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         }
 
         @Test
-        void no_watchdog_set_when_all_disabled() throws Exception {
+        void no_span_timeout_set_when_all_disabled() throws Exception {
             // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
@@ -262,7 +262,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                     TracingSettingsSource.fromStartup(extensionConfig));
 
             // then
-            assertThat(getWatchdog(registrar)).as("no watchdog when all disabled").isNull();
+            assertThat(getSpanTimeout(registrar)).as("no watchdog when all disabled").isNull();
         }
     }
 
@@ -432,13 +432,13 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         }
 
         @Test
-        void watchdog_enabled_registers_watchdog_processor() throws Exception {
+        void span_timeout_enabled_registers_span_timeout_processor() throws Exception {
             // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
-            ExtensionConfig extensionConfig = configWithWatchdogEnabled();
+            ExtensionConfig extensionConfig = configWithSpanTimeoutEnabled();
 
             // when
             factory.registerSpanProcessors(
@@ -448,10 +448,10 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                     TracingSettingsSource.fromStartup(extensionConfig));
 
             // then
-            assertThat(getWatchdog(registrar))
-                    .as("watchdog enabled → SpanWatchdogProcessor set on registrar")
+            assertThat(getSpanTimeout(registrar))
+                    .as("span-timeout enabled → SpanTimeoutProcessor set on registrar")
                     .isNotNull()
-                    .isInstanceOf(SpanWatchdogProcessor.class);
+                    .isInstanceOf(SpanTimeoutProcessor.class);
         }
 
         @Test
@@ -515,7 +515,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         }
 
         @Test
-        void factoryDoesNotAddWatchdogProcessorByDefault() throws Exception {
+        void factoryDoesNotAddSpanTimeoutProcessorByDefault() throws Exception {
             // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
@@ -547,7 +547,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                     TracingSettingsSource.fromStartup(defaultConfig));
 
             // then
-            assertThat(getWatchdog(registrar))
+            assertThat(getSpanTimeout(registrar))
                     .as("watchdog must not be registered with default config (SP-01 default-off)")
                     .isNull();
         }
@@ -559,7 +559,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
         @Test
         @DisplayName("Default ExtensionConfig has same effective defaults as old ExtensionDefaults")
-        void default_watchdog_timeouts_match_extension_defaults() {
+        void default_span_timeout_timeouts_match_extension_defaults() {
             // given
             ExtensionConfig cfg = new ExtensionConfig(new ConfigProperties() {
                 @Override public String getString(String n) { return null; }
@@ -573,16 +573,16 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             });
 
             // then
-            assertThat(cfg.watchdog().spanTimeout())
+            assertThat(cfg.spanTimeout().spanTimeout())
                     .as("watchdog spanTimeout default")
                     .isEqualTo(Duration.ofSeconds(30));
-            assertThat(cfg.watchdog().traceTimeout())
+            assertThat(cfg.spanTimeout().traceTimeout())
                     .as("watchdog traceTimeout default")
                     .isEqualTo(Duration.ofSeconds(60));
-            assertThat(cfg.watchdog().scanInterval())
+            assertThat(cfg.spanTimeout().scanInterval())
                     .as("watchdog scanInterval default")
                     .isEqualTo(Duration.ofSeconds(5));
-            assertThat(cfg.watchdog().maxTrackedTraces())
+            assertThat(cfg.spanTimeout().maxTrackedTraces())
                     .as("watchdog maxTrackedTraces default")
                     .isEqualTo(10_000);
             assertThat(cfg.classification().slowThreshold())

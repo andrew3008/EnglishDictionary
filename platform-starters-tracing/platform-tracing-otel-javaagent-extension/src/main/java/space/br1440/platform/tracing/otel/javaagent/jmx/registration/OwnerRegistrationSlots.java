@@ -6,14 +6,14 @@ import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsP
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.SpanTimeoutProcessor;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 
 final class OwnerRegistrationSlots {
 
     private final OwnerRegistrationSlot<CompositeSampler> compositeSampler = new OwnerRegistrationSlot<>();
-    private final OwnerRegistrationSlot<SpanWatchdogProcessor> watchdog = new OwnerRegistrationSlot<>();
+    private final OwnerRegistrationSlot<SpanTimeoutProcessor> spanTimeout = new OwnerRegistrationSlot<>();
     private final OwnerRegistrationSlot<PlatformCompositeSpanProcessor> composite = new OwnerRegistrationSlot<>();
     private final OwnerRegistrationSlot<SpanLimitsMetricsProcessor> metrics = new OwnerRegistrationSlot<>();
     private final OwnerRegistrationSlot<ScrubbingRuntime> scrubbing = new OwnerRegistrationSlot<>();
@@ -25,8 +25,8 @@ final class OwnerRegistrationSlots {
         return compositeSampler;
     }
 
-    OwnerRegistrationSlot<SpanWatchdogProcessor> watchdog() {
-        return watchdog;
+    OwnerRegistrationSlot<SpanTimeoutProcessor> spanTimeout() {
+        return spanTimeout;
     }
 
     OwnerRegistrationSlot<PlatformCompositeSpanProcessor> composite() {

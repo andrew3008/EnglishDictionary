@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
+package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,17 +17,17 @@ import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 
-class SpanWatchdogSchedulerLiveTest {
+class SpanTimeoutSchedulerLiveTest {
 
     @Test
     void realSchedulerForceClosesHungSpanAndStopsAfterShutdown() {
         // given
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
-        SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+        SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
                 Duration.ofMillis(80), Duration.ofSeconds(2), Duration.ofMillis(20), 10_000,
                 Integer.MAX_VALUE, Integer.MAX_VALUE);
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
-                .addSpanProcessor(watchdog)
+                .addSpanProcessor(spanTimeout)
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
         Tracer tracer = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build().getTracer("scheduler");
@@ -36,16 +36,16 @@ class SpanWatchdogSchedulerLiveTest {
         Span hung = tracer.spanBuilder("hung").startSpan();
         awaitCondition(
                 Duration.ofSeconds(2),
-                () -> !exporter.getFinishedSpanItems().isEmpty() && watchdog.getForcedSpanCloses() == 1L);
+                () -> !exporter.getFinishedSpanItems().isEmpty() && spanTimeout.getForcedSpanCloses() == 1L);
 
         // then
         assertThat(exporter.getFinishedSpanItems()).isNotEmpty();
-        assertThat(watchdog.getForcedSpanCloses()).isEqualTo(1);
-        Thread watchdogThread = threadNamed("platform-tracing-watchdog");
-        assertThat(watchdogThread).isNotNull();
-        assertThat(watchdogThread.isDaemon()).isTrue();
+        assertThat(spanTimeout.getForcedSpanCloses()).isEqualTo(1);
+        Thread spanTimeoutThread = threadNamed("platform-tracing-watchdog");
+        assertThat(spanTimeoutThread).isNotNull();
+        assertThat(spanTimeoutThread.isDaemon()).isTrue();
 
-        assertThat(watchdog.shutdown().isSuccess()).isTrue();
+        assertThat(spanTimeout.shutdown().isSuccess()).isTrue();
         int afterShutdown = exporter.getFinishedSpanItems().size();
         Span another = tracer.spanBuilder("after-shutdown").startSpan();
         sleep(Duration.ofMillis(200));
@@ -60,7 +60,7 @@ class SpanWatchdogSchedulerLiveTest {
         // given
         AtomicLong clock = new AtomicLong();
         AtomicInteger failNextScan = new AtomicInteger(1);
-        SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+        SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
                 Duration.ofMillis(10), Duration.ofMinutes(1), () -> {
                     if (failNextScan.get() == 0) {
                         throw new IllegalStateException("injected scan failure");
@@ -68,22 +68,22 @@ class SpanWatchdogSchedulerLiveTest {
                     return clock.get();
                 }, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
-                .addSpanProcessor(watchdog)
+                .addSpanProcessor(spanTimeout)
                 .build();
         Tracer tracer = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build().getTracer("scan");
         Span hung = tracer.spanBuilder("hung").startSpan();
         failNextScan.set(0);
 
         // when
-        watchdog.scanForTesting();
+        spanTimeout.scanForTesting();
         failNextScan.set(-1);
         clock.set(Duration.ofMillis(20).toNanos());
-        watchdog.scanForTesting();
+        spanTimeout.scanForTesting();
 
         // then
-        assertThat(watchdog.getForcedSpanCloses()).isEqualTo(1);
+        assertThat(spanTimeout.getForcedSpanCloses()).isEqualTo(1);
         hung.end();
-        watchdog.shutdown();
+        spanTimeout.shutdown();
         tracerProvider.shutdown();
     }
 

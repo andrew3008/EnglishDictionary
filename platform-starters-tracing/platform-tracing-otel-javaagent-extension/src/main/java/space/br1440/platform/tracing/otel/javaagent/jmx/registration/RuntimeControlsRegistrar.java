@@ -12,7 +12,7 @@ import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsP
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.SpanTimeoutProcessor;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 
@@ -50,8 +50,8 @@ final class RuntimeControlsRegistrar {
         attachOwner(slots.compositeSampler(), compositeSampler);
     }
 
-    void setWatchdog(SpanWatchdogProcessor watchdog) {
-        attachOwner(slots.watchdog(), watchdog);
+    void setSpanTimeout(SpanTimeoutProcessor spanTimeout) {
+        attachOwner(slots.spanTimeout(), spanTimeout);
     }
 
     void setComposite(PlatformCompositeSpanProcessor composite) {

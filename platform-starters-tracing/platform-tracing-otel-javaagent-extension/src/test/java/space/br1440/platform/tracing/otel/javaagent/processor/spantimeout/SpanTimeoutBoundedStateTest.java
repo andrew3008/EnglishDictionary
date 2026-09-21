@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
+package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -14,16 +14,16 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
-class SpanWatchdogBoundedStateTest {
+class SpanTimeoutBoundedStateTest {
 
     @Test
     void overflowingTracesEvictOldestWithoutForceClose() {
         // given
         AtomicLong clock = new AtomicLong();
-        SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+        SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
                 Duration.ofMinutes(1), Duration.ofMinutes(1), clock::get, 3, Integer.MAX_VALUE, Integer.MAX_VALUE);
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
-                .addSpanProcessor(watchdog)
+                .addSpanProcessor(spanTimeout)
                 .build();
         Tracer tracer = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build().getTracer("bound");
         List<Span> spans = new ArrayList<>();
@@ -33,22 +33,22 @@ class SpanWatchdogBoundedStateTest {
         }
 
         // when
-        watchdog.scanForTesting();
+        spanTimeout.scanForTesting();
 
         // then
-        assertThat(watchdog.getTrackedTraceCapacity()).isEqualTo(3);
-        assertThat(watchdog.getTrackedTraceCount()).isLessThanOrEqualTo(3);
-        assertThat(watchdog.getTrackingEvictedTotal()).isEqualTo(2);
-        assertThat(watchdog.getForcedSpanCloses()).isZero();
-        assertThat(watchdog.getForcedTraceCloses()).isZero();
+        assertThat(spanTimeout.getTrackedTraceCapacity()).isEqualTo(3);
+        assertThat(spanTimeout.getTrackedTraceCount()).isLessThanOrEqualTo(3);
+        assertThat(spanTimeout.getTrackingEvictedTotal()).isEqualTo(2);
+        assertThat(spanTimeout.getForcedSpanCloses()).isZero();
+        assertThat(spanTimeout.getForcedTraceCloses()).isZero();
         clock.set(Duration.ofMinutes(2).toNanos());
-        watchdog.scanForTesting();
-        assertThat(watchdog.getForcedSpanCloses() + watchdog.getForcedTraceCloses()).isEqualTo(3);
+        spanTimeout.scanForTesting();
+        assertThat(spanTimeout.getForcedSpanCloses() + spanTimeout.getForcedTraceCloses()).isEqualTo(3);
         for (Span span : spans) {
             span.end();
         }
 
-        watchdog.shutdown();
+        spanTimeout.shutdown();
         tracerProvider.shutdown();
     }
 }

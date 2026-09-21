@@ -18,7 +18,7 @@ import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProce
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.SpanTimeoutProcessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 
@@ -64,7 +64,7 @@ public final class PlatformSpanProcessorFactory {
         validatingProcessor(acceptedPolicy, delegates);
         delegates.add(new EnrichingSpanProcessor());
         classificationProcessor(extConfig).ifPresent(delegates::add);
-        watchdogProcessor(extConfig).ifPresent(delegates::add);
+        spanTimeoutProcessor(extConfig).ifPresent(delegates::add);
         metricsProcessor(extConfig).ifPresent(delegates::add);
         scrubbingProcessor(extConfig).ifPresent(delegates::add);
         return delegates;
@@ -117,21 +117,21 @@ public final class PlatformSpanProcessorFactory {
         );
     }
 
-    private Optional<SpanProcessor> watchdogProcessor(ExtensionConfig extConfig) {
-        if (!extConfig.watchdog().enabled()) {
+    private Optional<SpanProcessor> spanTimeoutProcessor(ExtensionConfig extConfig) {
+        if (!extConfig.spanTimeout().enabled()) {
             return Optional.empty();
         }
 
-        SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
-                extConfig.watchdog().spanTimeout(),
-                extConfig.watchdog().traceTimeout(),
-                extConfig.watchdog().scanInterval(),
-                extConfig.watchdog().maxTrackedTraces(),
-                extConfig.watchdog().maxTrackedSpansPerTrace(),
-                extConfig.watchdog().maxTrackedSpans()
+        SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
+                extConfig.spanTimeout().spanTimeout(),
+                extConfig.spanTimeout().traceTimeout(),
+                extConfig.spanTimeout().scanInterval(),
+                extConfig.spanTimeout().maxTrackedTraces(),
+                extConfig.spanTimeout().maxTrackedSpansPerTrace(),
+                extConfig.spanTimeout().maxTrackedSpans()
         );
-        jmxRegistrar.setWatchdog(watchdog);
-        return Optional.of(watchdog);
+        jmxRegistrar.setSpanTimeout(spanTimeout);
+        return Optional.of(spanTimeout);
     }
 
     private Optional<SpanProcessor> metricsProcessor(ExtensionConfig extConfig) {

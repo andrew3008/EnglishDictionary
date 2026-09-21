@@ -15,7 +15,7 @@ public final class ExtensionConfig {
     private final MetricsExtensionConfig metrics;
     private final ValidationExtensionConfig validation;
     private final ClassificationExtensionConfig classification;
-    private final WatchdogExtensionConfig watchdog;
+    private final SpanTimeoutExtensionConfig spanTimeout;
     private final QueueExtensionConfig queue;
     private final BaggageExtensionConfig baggage;
 
@@ -28,7 +28,7 @@ public final class ExtensionConfig {
         this.metrics = new MetricsExtensionConfig(reader);
         this.validation = new ValidationExtensionConfig(reader);
         this.classification = new ClassificationExtensionConfig(reader);
-        this.watchdog = new WatchdogExtensionConfig(reader);
+        this.spanTimeout = new SpanTimeoutExtensionConfig(reader);
         this.queue = new QueueExtensionConfig(reader);
         this.baggage = new BaggageExtensionConfig(reader);
     }

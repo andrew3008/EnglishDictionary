@@ -43,13 +43,13 @@ public final class OtelDirectIntegrationExtensionSpiRules {
             .and().resideInAPackage("space.br1440.platform.tracing..")
             .should().beAssignableTo(SpanProcessor.class);
 
-    public static final ArchRule SPAN_WATCHDOG_PROCESSOR_IMPLEMENTS_SPI = classes()
-            .that().haveSimpleName("SpanWatchdogProcessor")
+    public static final ArchRule SPAN_TIMEOUT_PROCESSOR_IMPLEMENTS_SPI = classes()
+            .that().haveSimpleName("SpanTimeoutProcessor")
             .and().resideInAPackage("space.br1440.platform.tracing..")
             .should().beAssignableTo(SpanProcessor.class);
 
-    public static final ArchRule SPAN_WATCHDOG_PROCESSOR_DOES_NOT_USE_INTERNAL_SPI = classes()
-            .that().haveSimpleName("SpanWatchdogProcessor")
+    public static final ArchRule SPAN_TIMEOUT_PROCESSOR_DOES_NOT_USE_INTERNAL_SPI = classes()
+            .that().haveSimpleName("SpanTimeoutProcessor")
             .and().resideInAPackage("space.br1440.platform.tracing..")
             .should().notBeAssignableTo(ExtendedSpanProcessor.class);
 

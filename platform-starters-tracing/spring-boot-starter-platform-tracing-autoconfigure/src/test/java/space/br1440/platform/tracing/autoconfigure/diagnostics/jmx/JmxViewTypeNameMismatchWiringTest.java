@@ -136,11 +136,11 @@ class JmxViewTypeNameMismatchWiringTest {
     }
 
     @Test
-    void processorMetricsWatchdogNestedMismatchIsContractViolation() throws Exception {
-        CompositeData watchdog = compositeNamed("space.br1440.platform.tracing.NotProcessorWatchdogValues");
+    void processorMetricsSpanTimeoutNestedMismatchIsContractViolation() throws Exception {
+        CompositeData spanTimeout = compositeNamed("space.br1440.platform.tracing.NotProcessorWatchdogValues");
         CompositeData compositeValues = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_COMPOSITE_VALUES_TYPE_NAME);
         CompositeData metrics = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_VALUES_TYPE_NAME);
-        registerFakeMBean("ProcessorMetricsObservation", name -> processorMetricsFrame(watchdog, compositeValues, metrics));
+        registerFakeMBean("ProcessorMetricsObservation", name -> processorMetricsFrame(spanTimeout, compositeValues, metrics));
         JmxReadExecutor executor = new JmxReadExecutor(server);
         ProcessorMetricsJmxView view = new ProcessorMetricsJmxView(executor, registeredName);
 
@@ -150,10 +150,10 @@ class JmxViewTypeNameMismatchWiringTest {
 
     @Test
     void processorMetricsCompositeNestedMismatchIsContractViolation() throws Exception {
-        CompositeData watchdog = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_WATCHDOG_VALUES_TYPE_NAME);
+        CompositeData spanTimeout = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_WATCHDOG_VALUES_TYPE_NAME);
         CompositeData compositeValues = compositeNamed("space.br1440.platform.tracing.NotProcessorCompositeValues");
         CompositeData metrics = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_VALUES_TYPE_NAME);
-        registerFakeMBean("ProcessorMetricsObservation", name -> processorMetricsFrame(watchdog, compositeValues, metrics));
+        registerFakeMBean("ProcessorMetricsObservation", name -> processorMetricsFrame(spanTimeout, compositeValues, metrics));
         JmxReadExecutor executor = new JmxReadExecutor(server);
         ProcessorMetricsJmxView view = new ProcessorMetricsJmxView(executor, registeredName);
 
@@ -163,10 +163,10 @@ class JmxViewTypeNameMismatchWiringTest {
 
     @Test
     void processorMetricsMetricsNestedMismatchIsContractViolation() throws Exception {
-        CompositeData watchdog = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_WATCHDOG_VALUES_TYPE_NAME);
+        CompositeData spanTimeout = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_WATCHDOG_VALUES_TYPE_NAME);
         CompositeData compositeValues = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_COMPOSITE_VALUES_TYPE_NAME);
         CompositeData metrics = compositeNamed("space.br1440.platform.tracing.NotProcessorMetricsValues");
-        registerFakeMBean("ProcessorMetricsObservation", name -> processorMetricsFrame(watchdog, compositeValues, metrics));
+        registerFakeMBean("ProcessorMetricsObservation", name -> processorMetricsFrame(spanTimeout, compositeValues, metrics));
         JmxReadExecutor executor = new JmxReadExecutor(server);
         ProcessorMetricsJmxView view = new ProcessorMetricsJmxView(executor, registeredName);
 
@@ -206,9 +206,9 @@ class JmxViewTypeNameMismatchWiringTest {
                 JmxWireContract.FIELD_EXPORT_OBSERVATION_EXPORTER, exporter));
     }
 
-    private static CompositeData processorMetricsFrame(CompositeData watchdog, CompositeData compositeValues, CompositeData metrics) {
+    private static CompositeData processorMetricsFrame(CompositeData spanTimeout, CompositeData compositeValues, CompositeData metrics) {
         return frameOf(JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_OBSERVATION_TYPE_NAME, Map.of(
-                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG, watchdog,
+                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG, spanTimeout,
                 JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_COMPOSITE, compositeValues,
                 JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_METRICS, metrics));
     }

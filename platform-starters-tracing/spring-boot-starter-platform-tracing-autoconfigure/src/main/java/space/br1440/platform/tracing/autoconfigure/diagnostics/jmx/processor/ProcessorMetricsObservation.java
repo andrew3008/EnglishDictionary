@@ -4,7 +4,7 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwner
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.ObservationCapture;
 
 public record ProcessorMetricsObservation(ObservationCapture capture,
-                                          JmxOwnerState<ProcessorWatchdogValues> watchdog,
+                                          JmxOwnerState<ProcessorSpanTimeoutValues> spanTimeout,
                                           JmxOwnerState<ProcessorCompositeValues> composite,
                                           JmxOwnerState<ProcessorMetricsValues> metrics) {
 }

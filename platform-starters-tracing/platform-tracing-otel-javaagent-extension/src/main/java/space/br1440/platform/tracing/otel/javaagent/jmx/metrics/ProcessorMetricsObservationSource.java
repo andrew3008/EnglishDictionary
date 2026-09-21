@@ -16,22 +16,22 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistr
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.SpanTimeoutProcessor;
 
 public final class ProcessorMetricsObservationSource {
 
-    private final OwnerRegistrationSlot<SpanWatchdogProcessor> watchdogSlot;
+    private final OwnerRegistrationSlot<SpanTimeoutProcessor> spanTimeoutSlot;
     private final OwnerRegistrationSlot<PlatformCompositeSpanProcessor> compositeSlot;
     private final OwnerRegistrationSlot<SpanLimitsMetricsProcessor> metricsSlot;
     private final ObservationCaptureEnvelope envelope;
     private final ObservationSnapshotStore snapshotStore =
             new ObservationSnapshotStore(JmxOpenTypes.PROCESSOR_METRICS_OBSERVATION);
 
-    public ProcessorMetricsObservationSource(OwnerRegistrationSlot<SpanWatchdogProcessor> watchdogSlot,
+    public ProcessorMetricsObservationSource(OwnerRegistrationSlot<SpanTimeoutProcessor> spanTimeoutSlot,
                                    OwnerRegistrationSlot<PlatformCompositeSpanProcessor> compositeSlot,
                                    OwnerRegistrationSlot<SpanLimitsMetricsProcessor> metricsSlot,
                                    UUID agentInstanceId) {
-        this.watchdogSlot = Objects.requireNonNull(watchdogSlot, "watchdogSlot");
+        this.spanTimeoutSlot = Objects.requireNonNull(spanTimeoutSlot, "spanTimeoutSlot");
         this.compositeSlot = Objects.requireNonNull(compositeSlot, "compositeSlot");
         this.metricsSlot = Objects.requireNonNull(metricsSlot, "metricsSlot");
         this.envelope = new ObservationCaptureEnvelope(agentInstanceId);
@@ -45,27 +45,27 @@ public final class ProcessorMetricsObservationSource {
     public synchronized void publishObservationSnapshot() {
         ObservationCaptureEnvelope.OpenCapture openCapture = envelope.open();
 
-        OwnerCapture<SpanWatchdogProcessor> watchdogCapture = OwnerCapture.of(watchdogSlot);
+        OwnerCapture<SpanTimeoutProcessor> spanTimeoutCapture = OwnerCapture.of(spanTimeoutSlot);
         OwnerCapture<PlatformCompositeSpanProcessor> compositeCapture = OwnerCapture.of(compositeSlot);
         OwnerCapture<SpanLimitsMetricsProcessor> metricsCapture = OwnerCapture.of(metricsSlot);
 
-        CompositeData watchdogValues = buildWatchdogValues(watchdogCapture.state(), watchdogCapture.offsetNanos());
+        CompositeData spanTimeoutValues = buildSpanTimeoutValues(spanTimeoutCapture.state(), spanTimeoutCapture.offsetNanos());
         CompositeData compositeValues = buildCompositeValues(compositeCapture.state(), compositeCapture.offsetNanos());
         CompositeData metricsValues = buildMetricsValues(metricsCapture.state(), metricsCapture.offsetNanos());
 
         Map<String, Object> values = new LinkedHashMap<>();
         openCapture.sealInto(values);
-        values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG, watchdogValues);
+        values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG, spanTimeoutValues);
         values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_COMPOSITE, compositeValues);
         values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_METRICS, metricsValues);
         snapshotStore.publish(values);
     }
 
-    private static CompositeData buildWatchdogValues(OwnerRegistrationState<SpanWatchdogProcessor> state, long offsetNanos) {
-        if (state instanceof OwnerRegistrationState.Present<SpanWatchdogProcessor>(
-                SpanWatchdogProcessor owner, long generation
+    private static CompositeData buildSpanTimeoutValues(OwnerRegistrationState<SpanTimeoutProcessor> state, long offsetNanos) {
+        if (state instanceof OwnerRegistrationState.Present<SpanTimeoutProcessor>(
+                SpanTimeoutProcessor owner, long generation
         )) {
-            return watchdogValues(
+            return spanTimeoutValues(
                     true,
                     generation,
                     offsetNanos,
@@ -83,7 +83,7 @@ public final class ProcessorMetricsObservationSource {
                     owner.getSpanPermitInvariantViolationTotal());
         }
 
-        return watchdogValues(false, state.generation(), offsetNanos,
+        return spanTimeoutValues(false, state.generation(), offsetNanos,
                 0L, 0L, 0, 0, 0, 0, 0L, 0, 0, 0L, 0L, 0L);
     }
 
@@ -116,7 +116,7 @@ public final class ProcessorMetricsObservationSource {
         return metricsValues(false, state.generation(), offsetNanos, 0L, 0L, 0L);
     }
 
-    private static CompositeData watchdogValues(boolean present,
+    private static CompositeData spanTimeoutValues(boolean present,
                                                 long generation,
                                                 long offsetNanos,
                                                 long forcedSpanCloses,

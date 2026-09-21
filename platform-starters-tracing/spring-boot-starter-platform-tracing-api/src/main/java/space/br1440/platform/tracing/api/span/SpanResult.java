@@ -14,7 +14,7 @@ public enum SpanResult {
     /** Операция завершилась с ошибкой. */
     FAILURE("failure"),
 
-    /** Span принудительно закрыт watchdog'ом по таймауту. */
+    /** Span принудительно закрыт по span timeout. */
     TIMEOUT("timeout"),
 
     /** Операция отменена (например, {@code CancellationException}). */

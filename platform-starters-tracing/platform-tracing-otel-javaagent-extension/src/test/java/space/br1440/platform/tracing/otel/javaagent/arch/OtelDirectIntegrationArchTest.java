@@ -59,13 +59,13 @@ class OtelDirectIntegrationArchTest {
 
     // given/when/then
     @ArchTest
-    static final ArchRule spanWatchdogProcessorImplementsSpi =
-            OtelDirectIntegrationExtensionSpiRules.SPAN_WATCHDOG_PROCESSOR_IMPLEMENTS_SPI;
+    static final ArchRule spanTimeoutProcessorImplementsSpi =
+            OtelDirectIntegrationExtensionSpiRules.SPAN_TIMEOUT_PROCESSOR_IMPLEMENTS_SPI;
 
     // given/when/then
     @ArchTest
-    static final ArchRule spanWatchdogProcessorDoesNotUseInternalSpi =
-            OtelDirectIntegrationExtensionSpiRules.SPAN_WATCHDOG_PROCESSOR_DOES_NOT_USE_INTERNAL_SPI;
+    static final ArchRule spanTimeoutProcessorDoesNotUseInternalSpi =
+            OtelDirectIntegrationExtensionSpiRules.SPAN_TIMEOUT_PROCESSOR_DOES_NOT_USE_INTERNAL_SPI;
 
     // given/when/then
     @ArchTest

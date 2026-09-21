@@ -33,11 +33,11 @@ import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.SpanTimeoutProcessor;
 
 /**
  * Characterization-тесты для дефектов, ранее выявленных в pipeline процессоров:
- * утечка чувствительных данных в диагностику, изоляция watchdog по trace,
+ * утечка чувствительных данных в диагностику, изоляция spanTimeout по trace,
  * и корректность отложенного shutdown у drop-oldest экспортёра при зависшем export().
  */
 class ProcessorDefectCharacterizationTest {
@@ -90,11 +90,11 @@ class ProcessorDefectCharacterizationTest {
     }
 
     @Test
-    void watchdogKeepsSameSpanIdIsolatedByTrace() {
+    void spanTimeoutKeepsSameSpanIdIsolatedByTrace() {
         // given: лимиты по количеству спанов/трейсов не участвуют в этом сценарии,
         // поэтому выставлены заведомо недостижимыми — тест проверяет только
         // изоляцию по traceId при совпадающем spanId, а не поведение при переполнении.
-        try (SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+        try (SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
                 Duration.ofHours(1),
                 Duration.ofHours(2),
                 Duration.ofDays(365),
@@ -110,21 +110,21 @@ class ProcessorDefectCharacterizationTest {
                     "00000000000000000000000000000002", "0000000000000001"
             );
 
-            watchdog.onStart(Context.root(), first);
+            spanTimeout.onStart(Context.root(), first);
             // when
-            watchdog.onStart(Context.root(), second);
+            spanTimeout.onStart(Context.root(), second);
 
             // then
-            assertThat(watchdog.getActiveSpanCount()).isEqualTo(2);
-            assertThat(watchdog.getActiveTraceCount()).isEqualTo(2);
+            assertThat(spanTimeout.getActiveSpanCount()).isEqualTo(2);
+            assertThat(spanTimeout.getActiveTraceCount()).isEqualTo(2);
 
-            watchdog.onEnd(first);
-            assertThat(watchdog.getActiveSpanCount()).isEqualTo(1);
-            assertThat(watchdog.getActiveTraceCount()).isEqualTo(1);
+            spanTimeout.onEnd(first);
+            assertThat(spanTimeout.getActiveSpanCount()).isEqualTo(1);
+            assertThat(spanTimeout.getActiveTraceCount()).isEqualTo(1);
 
-            watchdog.onEnd(second);
-            assertThat(watchdog.getActiveSpanCount()).isZero();
-            assertThat(watchdog.getActiveTraceCount()).isZero();
+            spanTimeout.onEnd(second);
+            assertThat(spanTimeout.getActiveSpanCount()).isZero();
+            assertThat(spanTimeout.getActiveTraceCount()).isZero();
         }
     }
 

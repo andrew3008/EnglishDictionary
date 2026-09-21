@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
+package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -8,9 +8,9 @@ import io.opentelemetry.api.trace.TraceFlags;
 import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 
-final class WatchdogTestSpans {
+final class SpanTimeoutTestSpans {
 
-    private WatchdogTestSpans() {
+    private SpanTimeoutTestSpans() {
     }
 
     static ReadWriteSpan span(int traceOrdinal, int spanOrdinal) {

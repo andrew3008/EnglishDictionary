@@ -25,13 +25,13 @@ public final class ExtensionDefaults {
     public static final Duration DEFAULT_CLASSIFICATION_SLOW_THRESHOLD = Duration.ofSeconds(5);
     public static final Duration DEFAULT_CLASSIFICATION_NORMAL_THRESHOLD = Duration.ofSeconds(1);
 
-    public static final boolean DEFAULT_WATCHDOG_ENABLED = false;
-    public static final Duration DEFAULT_WATCHDOG_SPAN_TIMEOUT = Duration.ofSeconds(30);
-    public static final Duration DEFAULT_WATCHDOG_TRACE_TIMEOUT = Duration.ofSeconds(60);
-    public static final Duration DEFAULT_WATCHDOG_SCAN_INTERVAL = Duration.ofSeconds(5);
-    public static final int DEFAULT_WATCHDOG_MAX_TRACKED_TRACES = 10_000;
-    public static final int DEFAULT_WATCHDOG_MAX_TRACKED_SPANS_PER_TRACE = 1_024;
-    public static final int DEFAULT_WATCHDOG_MAX_TRACKED_SPANS = 60_000;
+    public static final boolean DEFAULT_SPAN_TIMEOUT_ENABLED = false;
+    public static final Duration DEFAULT_SPAN_TIMEOUT_SPAN_TIMEOUT = Duration.ofSeconds(30);
+    public static final Duration DEFAULT_SPAN_TIMEOUT_TRACE_TIMEOUT = Duration.ofSeconds(60);
+    public static final Duration DEFAULT_SPAN_TIMEOUT_SCAN_INTERVAL = Duration.ofSeconds(5);
+    public static final int DEFAULT_SPAN_TIMEOUT_MAX_TRACKED_TRACES = 10_000;
+    public static final int DEFAULT_SPAN_TIMEOUT_MAX_TRACKED_SPANS_PER_TRACE = 1_024;
+    public static final int DEFAULT_SPAN_TIMEOUT_MAX_TRACKED_SPANS = 60_000;
 
     public static final String DEFAULT_QUEUE_OVERFLOW_POLICY = "DROP_OLDEST";
     public static final Duration DEFAULT_DROP_OLDEST_SHUTDOWN_TIMEOUT = Duration.ofSeconds(10);

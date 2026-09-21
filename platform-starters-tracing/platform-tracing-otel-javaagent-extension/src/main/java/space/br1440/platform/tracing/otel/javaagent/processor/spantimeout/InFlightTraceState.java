@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
+package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -8,13 +8,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 import io.opentelemetry.sdk.trace.ReadableSpan;
 
-final class TraceWatchdogState {
+final class InFlightTraceState {
 
     private final long startNanos;
     private volatile Tracked single;
     private volatile ConcurrentHashMap<String, Tracked> multiple;
 
-    TraceWatchdogState(long startNanos) {
+    InFlightTraceState(long startNanos) {
         this.startNanos = startNanos;
     }
 

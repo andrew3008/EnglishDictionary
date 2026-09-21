@@ -13,7 +13,7 @@ import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsP
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.SpanTimeoutProcessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
@@ -59,8 +59,8 @@ public final class PlatformTracingMBeanRegistrar {
         runtimePlane.setCompositeSampler(compositeSampler);
     }
 
-    public void setWatchdog(SpanWatchdogProcessor watchdog) {
-        runtimePlane.setWatchdog(watchdog);
+    public void setSpanTimeout(SpanTimeoutProcessor spanTimeout) {
+        runtimePlane.setSpanTimeout(spanTimeout);
     }
 
     public void setComposite(PlatformCompositeSpanProcessor composite) {

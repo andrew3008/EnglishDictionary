@@ -14,7 +14,7 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTraci
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorCompositeValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorMetricsObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorMetricsValues;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorWatchdogValues;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorSpanTimeoutValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.ObservationCapture;
 
@@ -24,41 +24,41 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 class PlatformTracingProcessorMetricsBinderTest {
 
     @Test
-    void absentWatchdogOwnerPreservesGenerationWithoutMapping() {
-        JmxOwnerState<ProcessorWatchdogValues> absent = new JmxOwnerState.Absent<>(1L);
+    void absentSpanTimeoutOwnerPreservesGenerationWithoutMapping() {
+        JmxOwnerState<ProcessorSpanTimeoutValues> absent = new JmxOwnerState.Absent<>(1L);
 
-        JmxOwnerState<Map<ProcessorWatchdogMetricKey, Long>> mapped =
-                PlatformTracingProcessorMetricsBinder.toWatchdogKeyedState(absent);
+        JmxOwnerState<Map<ProcessorSpanTimeoutMetricKey, Long>> mapped =
+                PlatformTracingProcessorMetricsBinder.toSpanTimeoutKeyedState(absent);
 
         assertThat(mapped).isInstanceOf(JmxOwnerState.Absent.class);
         assertThat(mapped.generation()).isEqualTo(1L);
     }
 
     @Test
-    void presentWatchdogOwnerMapsCumulativeScalarsOnly() {
-        ProcessorWatchdogValues values = new ProcessorWatchdogValues(
+    void presentSpanTimeoutOwnerMapsCumulativeScalarsOnly() {
+        ProcessorSpanTimeoutValues values = new ProcessorSpanTimeoutValues(
                 11L, 4L, 3, 1, 7, 10_000, 9L, 60_000, 1_024, 2L, 5L, 0L);
-        JmxOwnerState<ProcessorWatchdogValues> present = new JmxOwnerState.Present<>(values, 2L);
+        JmxOwnerState<ProcessorSpanTimeoutValues> present = new JmxOwnerState.Present<>(values, 2L);
 
-        JmxOwnerState<Map<ProcessorWatchdogMetricKey, Long>> mapped =
-                PlatformTracingProcessorMetricsBinder.toWatchdogKeyedState(present);
+        JmxOwnerState<Map<ProcessorSpanTimeoutMetricKey, Long>> mapped =
+                PlatformTracingProcessorMetricsBinder.toSpanTimeoutKeyedState(present);
 
-        Map<ProcessorWatchdogMetricKey, Long> keyed = ((JmxOwnerState.Present<Map<ProcessorWatchdogMetricKey, Long>>) mapped).values();
+        Map<ProcessorSpanTimeoutMetricKey, Long> keyed = ((JmxOwnerState.Present<Map<ProcessorSpanTimeoutMetricKey, Long>>) mapped).values();
         assertThat(keyed)
-                .containsEntry(ProcessorWatchdogMetricKey.FORCED_SPAN_CLOSES, 11L)
-                .containsEntry(ProcessorWatchdogMetricKey.FORCED_TRACE_CLOSES, 4L)
-                .containsEntry(ProcessorWatchdogMetricKey.TRACKING_EVICTED, 9L)
-                .containsEntry(ProcessorWatchdogMetricKey.SPANS_REJECTED_PER_TRACE, 2L)
-                .containsEntry(ProcessorWatchdogMetricKey.SPANS_REJECTED_GLOBAL, 5L)
-                .containsEntry(ProcessorWatchdogMetricKey.SPAN_LEDGER_INVARIANT_VIOLATION, 0L)
+                .containsEntry(ProcessorSpanTimeoutMetricKey.FORCED_SPAN_CLOSES, 11L)
+                .containsEntry(ProcessorSpanTimeoutMetricKey.FORCED_TRACE_CLOSES, 4L)
+                .containsEntry(ProcessorSpanTimeoutMetricKey.TRACKING_EVICTED, 9L)
+                .containsEntry(ProcessorSpanTimeoutMetricKey.SPANS_REJECTED_PER_TRACE, 2L)
+                .containsEntry(ProcessorSpanTimeoutMetricKey.SPANS_REJECTED_GLOBAL, 5L)
+                .containsEntry(ProcessorSpanTimeoutMetricKey.SPAN_LEDGER_INVARIANT_VIOLATION, 0L)
                 .hasSize(6);
     }
 
     @Test
-    void presentWatchdogOwnerExposesActiveTrackedAndCapacityGauges() {
+    void presentSpanTimeoutOwnerExposesActiveTrackedAndCapacityGauges() {
         // given
         PlatformTracingJmxClient client = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
-        ProcessorWatchdogValues values = new ProcessorWatchdogValues(
+        ProcessorSpanTimeoutValues values = new ProcessorSpanTimeoutValues(
                 1L, 2L, 3, 4, 5, 10_000, 6L, 60_000, 1_024, 0L, 0L, 0L);
         when(client.processorMetrics().observation()).thenReturn(Optional.of(new ProcessorMetricsObservation(
                 new ObservationCapture("agent-1", 1L, 1_000L, 1_001L),
@@ -85,7 +85,7 @@ class PlatformTracingProcessorMetricsBinderTest {
     }
 
     @Test
-    void absentWatchdogOwnerYieldsNanGauges() {
+    void absentSpanTimeoutOwnerYieldsNanGauges() {
         // given
         PlatformTracingJmxClient client = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
         when(client.processorMetrics().observation()).thenReturn(Optional.of(new ProcessorMetricsObservation(
@@ -105,7 +105,7 @@ class PlatformTracingProcessorMetricsBinderTest {
     }
 
     @Test
-    void unreadableWatchdogObservationYieldsNanGauges() {
+    void unreadableSpanTimeoutObservationYieldsNanGauges() {
         // given
         PlatformTracingJmxClient client = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
         when(client.processorMetrics().observation()).thenReturn(Optional.empty());
@@ -170,7 +170,7 @@ class PlatformTracingProcessorMetricsBinderTest {
 
         Map<ProcessorCompositeErrorKey, Long> keyed = ((JmxOwnerState.Present<Map<ProcessorCompositeErrorKey, Long>>) mapped).values();
         assertThat(keyed.get(ProcessorCompositeErrorKey.TOTAL)).isEqualTo(4L);
-        assertThat(keyed.get(ProcessorCompositeErrorKey.WATCHDOG)).isEqualTo(3L);
+        assertThat(keyed.get(ProcessorCompositeErrorKey.SPAN_TIMEOUT)).isEqualTo(3L);
         assertThat(keyed.get(ProcessorCompositeErrorKey.SCRUBBING)).isEqualTo(1L);
         assertThat(keyed.get(ProcessorCompositeErrorKey.BAGGAGE)).isZero();
         assertThat(keyed.get(ProcessorCompositeErrorKey.ENRICHMENT)).isZero();

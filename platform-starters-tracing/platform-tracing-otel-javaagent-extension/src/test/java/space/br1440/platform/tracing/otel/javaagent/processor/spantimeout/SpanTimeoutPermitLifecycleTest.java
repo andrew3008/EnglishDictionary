@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
+package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -19,13 +19,13 @@ import org.junit.jupiter.api.Test;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 
-class SpanWatchdogPermitLifecycleTest {
+class SpanTimeoutPermitLifecycleTest {
 
     @Test
     void concurrentScanAndOnEndReleasePermitOnce() throws Exception {
         // given
         AtomicLong testNanoTime = new AtomicLong();
-        ReadWriteSpan span = WatchdogTestSpans.span(1, 1);
+        ReadWriteSpan span = SpanTimeoutTestSpans.span(1, 1);
         CountDownLatch spanStateCheckStarted = new CountDownLatch(1);
         CountDownLatch continueScanner = new CountDownLatch(1);
         when(span.hasEnded()).thenAnswer(ignored -> {
@@ -34,24 +34,24 @@ class SpanWatchdogPermitLifecycleTest {
             return false;
         });
 
-        try (SpanWatchdogProcessor watchdogProcessor = new SpanWatchdogProcessor(
+        try (SpanTimeoutProcessor spanTimeoutProcessor = new SpanTimeoutProcessor(
                 Duration.ofNanos(1), Duration.ofHours(1), testNanoTime::get, 10, 10, 10
         );
              ExecutorService executorService = Executors.newFixedThreadPool(2)) {
-            watchdogProcessor.onStart(Context.root(), span);
+            spanTimeoutProcessor.onStart(Context.root(), span);
             testNanoTime.set(2L);
 
             // when
-            Future<?> scanFuture = executorService.submit(watchdogProcessor::scanForTesting);
+            Future<?> scanFuture = executorService.submit(spanTimeoutProcessor::scanForTesting);
             assertThat(spanStateCheckStarted.await(5, TimeUnit.SECONDS)).isTrue();
-            Future<?> endFuture = executorService.submit(() -> watchdogProcessor.onEnd(span));
+            Future<?> endFuture = executorService.submit(() -> spanTimeoutProcessor.onEnd(span));
             continueScanner.countDown();
             scanFuture.get(5, TimeUnit.SECONDS);
             endFuture.get(5, TimeUnit.SECONDS);
 
             // then
-            assertThat(watchdogProcessor.getActiveSpanCount()).isZero();
-            assertThat(watchdogProcessor.getSpanPermitInvariantViolationTotal()).isZero();
+            assertThat(spanTimeoutProcessor.getActiveSpanCount()).isZero();
+            assertThat(spanTimeoutProcessor.getSpanPermitInvariantViolationTotal()).isZero();
         }
     }
 
@@ -61,27 +61,27 @@ class SpanWatchdogPermitLifecycleTest {
         List<ReadWriteSpan> spanIndex = new ArrayList<>();
         CyclicBarrier startBarrier = new CyclicBarrier(6);
 
-        try (SpanWatchdogProcessor watchdogProcessor = new SpanWatchdogProcessor(
+        try (SpanTimeoutProcessor spanTimeoutProcessor = new SpanTimeoutProcessor(
                 Duration.ofHours(1), Duration.ofHours(1), System::nanoTime, 10, 10, 10
         );
              ExecutorService executorService = Executors.newFixedThreadPool(6)) {
             for (int index = 1; index <= 5; index++) {
-                ReadWriteSpan span = WatchdogTestSpans.span(1, index);
+                ReadWriteSpan span = SpanTimeoutTestSpans.span(1, index);
                 spanIndex.add(span);
-                watchdogProcessor.onStart(Context.root(), span);
+                spanTimeoutProcessor.onStart(Context.root(), span);
             }
 
             // when
             Future<?> shutdownFuture = executorService.submit(() -> {
                 startBarrier.await(5, TimeUnit.SECONDS);
-                watchdogProcessor.shutdown();
+                spanTimeoutProcessor.shutdown();
                 return null;
             });
             List<Future<?>> endFutures = new ArrayList<>();
             for (ReadWriteSpan span : spanIndex) {
                 endFutures.add(executorService.submit(() -> {
                     startBarrier.await(5, TimeUnit.SECONDS);
-                    watchdogProcessor.onEnd(span);
+                    spanTimeoutProcessor.onEnd(span);
                     return null;
                 }));
             }
@@ -91,46 +91,46 @@ class SpanWatchdogPermitLifecycleTest {
             }
 
             // then
-            assertThat(watchdogProcessor.getActiveSpanCount()).isZero();
-            assertThat(watchdogProcessor.getSpanPermitInvariantViolationTotal()).isZero();
+            assertThat(spanTimeoutProcessor.getActiveSpanCount()).isZero();
+            assertThat(spanTimeoutProcessor.getSpanPermitInvariantViolationTotal()).isZero();
         }
     }
 
     @Test
     void shutdownClearsIndexAndReleasesAllPermits() {
         // given
-        try (SpanWatchdogProcessor watchdogProcessor = new SpanWatchdogProcessor(
+        try (SpanTimeoutProcessor spanTimeoutProcessor = new SpanTimeoutProcessor(
                 Duration.ofHours(1), Duration.ofHours(1), System::nanoTime, 10, 10, 10
         )) {
             for (int index = 1; index <= 4; index++) {
-                watchdogProcessor.onStart(Context.root(), WatchdogTestSpans.span(index, 1));
+                spanTimeoutProcessor.onStart(Context.root(), SpanTimeoutTestSpans.span(index, 1));
             }
 
             // when
-            watchdogProcessor.shutdown();
+            spanTimeoutProcessor.shutdown();
 
             // then
-            assertThat(watchdogProcessor.getActiveSpanCount()).isZero();
-            assertThat(watchdogProcessor.getTrackedTraceCount()).isZero();
-            assertThat(watchdogProcessor.getSpanPermitInvariantViolationTotal()).isZero();
+            assertThat(spanTimeoutProcessor.getActiveSpanCount()).isZero();
+            assertThat(spanTimeoutProcessor.getTrackedTraceCount()).isZero();
+            assertThat(spanTimeoutProcessor.getSpanPermitInvariantViolationTotal()).isZero();
         }
     }
 
     @Test
     void scanOfActiveSpansDoesNotRecordInvariantViolation() {
         // given
-        try (SpanWatchdogProcessor watchdogProcessor = new SpanWatchdogProcessor(
+        try (SpanTimeoutProcessor spanTimeoutProcessor = new SpanTimeoutProcessor(
                 Duration.ofHours(1), Duration.ofHours(1), System::nanoTime, 10, 10, 10
         )) {
-            watchdogProcessor.onStart(Context.root(), WatchdogTestSpans.span(1, 1));
-            watchdogProcessor.onStart(Context.root(), WatchdogTestSpans.span(2, 1));
+            spanTimeoutProcessor.onStart(Context.root(), SpanTimeoutTestSpans.span(1, 1));
+            spanTimeoutProcessor.onStart(Context.root(), SpanTimeoutTestSpans.span(2, 1));
 
             // when
-            watchdogProcessor.scanForTesting();
+            spanTimeoutProcessor.scanForTesting();
 
             // then
-            assertThat(watchdogProcessor.getSpanPermitInvariantViolationTotal()).isZero();
-            assertThat(watchdogProcessor.getActiveSpanCount()).isEqualTo(2);
+            assertThat(spanTimeoutProcessor.getSpanPermitInvariantViolationTotal()).isZero();
+            assertThat(spanTimeoutProcessor.getActiveSpanCount()).isEqualTo(2);
         }
     }
 }
