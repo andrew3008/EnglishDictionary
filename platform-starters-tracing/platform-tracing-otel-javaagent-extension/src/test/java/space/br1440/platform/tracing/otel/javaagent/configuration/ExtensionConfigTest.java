@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.loader.ExtensionRuleLoader;
@@ -458,8 +459,11 @@ class ExtensionConfigTest {
 
         // then
         assertThat(hmacKey.isPresent()).isTrue();
-        assertThat(new String(hmacKey.copyBytes(), StandardCharsets.UTF_8))
+
+        byte[] hmacKeyBytes = Objects.requireNonNull(hmacKey.copyBytes());
+        assertThat(new String(hmacKeyBytes, StandardCharsets.UTF_8))
                 .isEqualTo("secret-key-value");
+
         assertThat(hmacKey.toString())
                 .as("toString must never leak the raw secret value")
                 .doesNotContain("secret-key-value");
@@ -575,6 +579,7 @@ class ExtensionConfigTest {
         };
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static ConfigProperties doubleConfig(String key, double value) {
         return new ConfigProperties() {
             @Override public String getString(String name) { return null; }
