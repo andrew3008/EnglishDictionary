@@ -35,6 +35,7 @@ class ExtensionConfigTest {
      * Повторный разбор недопустим — accessor'ы вызываются при построении pipeline'а, а валидация
      * в конструкторах секций обязана выполняться однократно на старте агента.
      */
+    @SuppressWarnings("EqualsWithItself")
     @Nested
     @DisplayName("Accessors return cached final-field instances")
     class CachedInstances {
