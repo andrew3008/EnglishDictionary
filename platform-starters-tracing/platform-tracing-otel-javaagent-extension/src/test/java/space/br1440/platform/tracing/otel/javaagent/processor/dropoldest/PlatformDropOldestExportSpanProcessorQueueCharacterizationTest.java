@@ -44,7 +44,8 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
      * Минимальный identity-proof drop-oldest: при переполнении вытесняется именно старый спан,
      * а не новый. Спан-0 уходит в первый batch (до блокировки), спан-1 ставится в очередь,
      * затем спан-2 вытесняет спан-1 (oldest) — очередь содержит только спан-2.
-     * После снятия блокировки: span-0 и span-2 экспортированы, span-1 — нет.
+     * После снятия блокировки и {@code forceFlush()} (до shutdown провайдера):
+     * span-0 и span-2 экспортированы, span-1 — нет.
      */
     @Test
     @DisplayName("Test 1: при overflow вытесняется oldest span; newest принимается в очередь")
@@ -66,17 +67,17 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
         // when
         try (tp) {
             Tracer tracer = tp.get("sp05-identity");
-            // Фаза 1: span-0 → queue=[span-0], size(1)>=maxExportBatchSize(1) → signal.
+            // span-0 → queue=[span-0], size(1)>=maxExportBatchSize(1) → signal.
             // Worker просыпается, дренирует [span-0], уходит в exporter.export() (блокируется).
             tracer.spanBuilder("span-0").startSpan().end();
             assertThat(exporter.exporterEnteredLatch.await(5, TimeUnit.SECONDS))
                     .as("worker должен войти в export() и заблокироваться").isTrue();
 
-            // Фаза 2: queue пуста (worker дренировал span-0).
+            // queue пуста (worker дренировал span-0).
             // span-1 → queue=[span-1] (at capacity: size 1 == maxQueueSize 1).
             tracer.spanBuilder("span-1").startSpan().end();
 
-            // Фаза 3: span-2 → queue full → pollFirst(span-1), droppedSpansOverflow++, queue=[span-2].
+            // span-2 → queue full → pollFirst(span-1), droppedSpansOverflow++, queue=[span-2].
             // span.end() → onEnd() → enqueueWithDropOldest() — всё в calling thread, синхронно.
             tracer.spanBuilder("span-2").startSpan().end();
 
@@ -86,9 +87,16 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
                     .as("span-1 вытеснен как oldest: droppedSpansOverflow должен быть 1")
                     .isEqualTo(1);
 
-        } finally {
+            // Снимаем блокировку и дренируем ДО закрытия провайдера: shutdown при заблокированном
+            // exporter'е исчерпает shutdownTimeout и сбросит span-2 как discardedQueued.
             exporter.exporterReleaseLatch.countDown();
-            processor.forceFlush().join(5, TimeUnit.SECONDS);
+            CompletableResultCode flush = processor.forceFlush();
+            assertThat(flush.join(5, TimeUnit.SECONDS).isSuccess())
+                    .as("forceFlush должен дренировать span-2 после снятия блокировки")
+                    .isTrue();
+
+        } finally {
+            exporter.exporterReleaseLatch.countDown(); // defensive release
         }
 
         // then
@@ -156,8 +164,11 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
                     .isTrue();
             caller.join(2_000);
 
-        } finally {
+            // Снимаем блокировку до закрытия провайдера, иначе shutdown ждёт полный shutdownTimeout.
             exporter.exporterReleaseLatch.countDown();
+
+        } finally {
+            exporter.exporterReleaseLatch.countDown(); // defensive release
         }
     }
 
@@ -211,8 +222,11 @@ class PlatformDropOldestExportSpanProcessorQueueCharacterizationTest {
                     .isEqualTo(2);
             assertThat(processor.metricsSnapshot().queueCapacity()).isEqualTo(2);
 
-        } finally {
+            // Снимаем блокировку до закрытия провайдера, иначе shutdown ждёт полный shutdownTimeout.
             exporter.exporterReleaseLatch.countDown();
+
+        } finally {
+            exporter.exporterReleaseLatch.countDown(); // defensive release
         }
     }
 

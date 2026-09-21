@@ -1,11 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Deque;
 import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -15,6 +11,8 @@ import java.util.function.LongSupplier;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.AdmissionRejections.RejectionReason;
+import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.EmptyEvictionPlanner.EvictionCandidate;
 
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 import io.opentelemetry.sdk.trace.ReadableSpan;
@@ -23,135 +21,197 @@ final class InFlightTraceIndex {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(InFlightTraceIndex.class);
     private static final long EVICTION_LOG_INTERVAL_NANOS = TimeUnit.SECONDS.toNanos(1);
-    private static final long NEVER_LOGGED_NANOS = Long.MIN_VALUE;
     private static final Runnable NO_EVICTION_PLAN_HOOK = () -> {
     };
 
-    private static final int EMPTY_EVICTION_MIN_BATCH_DIVISOR = 10;
+    private static final int EMPTY_EVICTION_BATCH_DIVISOR = 10;
     private static final int MAX_EVICTION_PASSES = 3;
-
-    private static final Comparator<EvictionCandidate> OLDEST_FIRST = Comparator
-            .comparingLong(EvictionCandidate::startNanos)
-            .thenComparing(EvictionCandidate::traceId);
-    private static final Comparator<EvictionCandidate> NEWEST_FIRST = OLDEST_FIRST.reversed();
 
     private final long spanTimeoutNanos;
     private final long traceTimeoutNanos;
-    private final int maxTrackedTraces;
     private final int maxTrackedSpansPerTrace;
-    private final LongSupplier nanoTime;
-    private final PermitTracker permitTracker;
+    private final AdmissionBudget spanBudget;
+    private final AdmissionBudget traceBudget;
     private final Runnable afterFirstEvictionPlan;
     private final ConcurrentHashMap<String, InFlightTraceState> traces = new ConcurrentHashMap<>();
-    private final AtomicLong trackingEvictedTotal = new AtomicLong();
-    private final AtomicLong liveTracesEvictedTotal = new AtomicLong();
+    private final AtomicBoolean pressure = new AtomicBoolean();
     private final AtomicBoolean evicting = new AtomicBoolean();
-    private final AtomicLong lastEvictionLogNanos = new AtomicLong(NEVER_LOGGED_NANOS);
-    private final AtomicLong lastLiveEvictionLogNanos = new AtomicLong(NEVER_LOGGED_NANOS);
-    private final AtomicLong spansRejectedPerTraceTotal = new AtomicLong();
-    private final AtomicLong spansRejectedGlobalTotal = new AtomicLong();
-    private final AtomicLong lastPerTraceRejectionLogNanos = new AtomicLong(NEVER_LOGGED_NANOS);
-    private final AtomicLong lastGlobalRejectionLogNanos = new AtomicLong(NEVER_LOGGED_NANOS);
+    private final AtomicLong trackingEvictedTotal = new AtomicLong();
+    private final LogRateLimiter evictionLog;
+    private final AdmissionRejections rejections;
 
     InFlightTraceIndex(long spanTimeoutNanos,
                        long traceTimeoutNanos,
                        int maxTrackedTraces,
                        int maxTrackedSpansPerTrace,
-                       LongSupplier nanoTime,
-                       PermitTracker permitTracker) {
-        this(spanTimeoutNanos, traceTimeoutNanos, maxTrackedTraces, maxTrackedSpansPerTrace, nanoTime, permitTracker, NO_EVICTION_PLAN_HOOK);
+                       int maxTrackedSpans,
+                       LongSupplier nanoTime) {
+        this(spanTimeoutNanos, traceTimeoutNanos, maxTrackedTraces, maxTrackedSpansPerTrace, maxTrackedSpans,
+                nanoTime, NO_EVICTION_PLAN_HOOK);
     }
 
     InFlightTraceIndex(long spanTimeoutNanos,
                        long traceTimeoutNanos,
                        int maxTrackedTraces,
                        int maxTrackedSpansPerTrace,
+                       int maxTrackedSpans,
                        LongSupplier nanoTime,
-                       PermitTracker permitTracker,
                        Runnable afterFirstEvictionPlan) {
         this.spanTimeoutNanos = spanTimeoutNanos;
         this.traceTimeoutNanos = traceTimeoutNanos;
-        this.maxTrackedTraces = maxTrackedTraces;
         this.maxTrackedSpansPerTrace = maxTrackedSpansPerTrace;
-        this.nanoTime = nanoTime;
-        this.permitTracker = permitTracker;
+        this.spanBudget = new AdmissionBudget("span", maxTrackedSpans);
+        this.traceBudget = new AdmissionBudget("trace", maxTrackedTraces);
         this.afterFirstEvictionPlan = afterFirstEvictionPlan;
+        this.evictionLog = new LogRateLimiter(EVICTION_LOG_INTERVAL_NANOS, nanoTime);
+        this.rejections = new AdmissionRejections(maxTrackedSpansPerTrace, maxTrackedSpans, maxTrackedTraces, nanoTime);
     }
 
     void admit(String traceId, String spanId, ReadWriteSpan span, long now, BooleanSupplier admissionOpen) {
-        RejectionReason[] rejectionHolder = new RejectionReason[1];
+        AdmissionOutcome outcome = new AdmissionOutcome();
         traces.compute(traceId, (ignored, current) -> {
             if (!admissionOpen.getAsBoolean()) {
                 return current;
             }
 
-            boolean isNewTrace = (current == null);
-            InFlightTraceState state = isNewTrace ? new InFlightTraceState(now) : current;
-
-            if (state.contains(spanId)) {
-                return state;
+            if (current == null) {
+                return admitNewTrace(traceId, spanId, span, now, outcome);
             }
 
-            if (state.size() >= maxTrackedSpansPerTrace) {
-                spansRejectedPerTraceTotal.incrementAndGet();
-                rejectionHolder[0] = RejectionReason.PER_TRACE_CAPACITY;
-                return state;
-            }
-
-            if (!permitTracker.tryAcquire()) {
-                spansRejectedGlobalTotal.incrementAndGet();
-                rejectionHolder[0] = RejectionReason.GLOBAL_CAPACITY;
-                return isNewTrace ? null : state;
-            }
-
-            InFlightTraceState.Tracked tracked = new InFlightTraceState.Tracked(spanId, new WeakReference<>(span), now);
-            if (!state.addIfAbsent(tracked)) {
-                permitTracker.release(1, "onstart-defect", traceId);
-                permitTracker.recordInvariantViolation();
-            }
-
-            return state;
+            trackSpan(current, traceId, spanId, span, now, outcome);
+            return current;
         });
 
-        logRejectionIfAny(rejectionHolder[0]);
+        rejections.logIfAny(outcome.rejection);
+    }
+
+    private InFlightTraceState admitNewTrace(String traceId,
+                                             String spanId,
+                                             ReadWriteSpan span,
+                                             long now,
+                                             AdmissionOutcome outcome) {
+        if (!traceBudget.tryAcquire()) {
+            recordRejection(RejectionReason.TRACE_CAPACITY, outcome);
+            return null;
+        }
+
+        try {
+            InFlightTraceState state = new InFlightTraceState(now);
+            if (trackSpan(state, traceId, spanId, span, now, outcome)) {
+                return state;
+            }
+
+            traceBudget.release(1, "admit-rollback", traceId);
+            return null;
+        } catch (Throwable failure) {
+            traceBudget.release(1, "admit-failure", traceId);
+            throw failure;
+        }
+    }
+
+    private boolean trackSpan(InFlightTraceState state,
+                              String traceId,
+                              String spanId,
+                              ReadWriteSpan span,
+                              long now,
+                              AdmissionOutcome outcome) {
+        if (state.contains(spanId)) {
+            return true;
+        }
+
+        if (state.size() >= maxTrackedSpansPerTrace) {
+            recordRejection(RejectionReason.PER_TRACE_CAPACITY, outcome);
+            return false;
+        }
+
+        if (!spanBudget.tryAcquire()) {
+            recordRejection(RejectionReason.GLOBAL_CAPACITY, outcome);
+            return false;
+        }
+
+        boolean added;
+        try {
+            added = state.addIfAbsent(new InFlightTraceState.Tracked(spanId, span, now));
+        } catch (Throwable failure) {
+            spanBudget.release(1, "admit-failure", traceId);
+            throw failure;
+        }
+
+        if (!added) {
+            spanBudget.release(1, "onstart-defect", traceId);
+            spanBudget.recordInvariantViolation();
+        }
+
+        return added;
+    }
+
+    private void recordRejection(RejectionReason reason, AdmissionOutcome outcome) {
+        outcome.rejection = reason;
+        rejections.count(reason);
+
+        if (reason == RejectionReason.TRACE_CAPACITY) {
+            pressure.set(true);
+        }
     }
 
     void onEnd(String traceId, String spanId, ReadableSpan span) {
+        boolean[] removedHolder = new boolean[1];
         traces.computeIfPresent(traceId, (ignored, state) -> {
-            if (state.removeIfPresent(spanId, span)) {
-                permitTracker.release(1, "on-end", traceId);
-            }
-
+            removedHolder[0] = state.removeIfPresent(spanId, span);
             return state;
         });
+
+        if (removedHolder[0]) {
+            spanBudget.release(1, "on-end", traceId);
+        }
     }
 
     void drainAll() {
         for (String traceId : traces.keySet()) {
+            int[] drainedHolder = new int[1];
+            boolean[] removedHolder = new boolean[1];
             traces.computeIfPresent(traceId, (ignored, state) -> {
-                int drained = state.drain();
-                permitTracker.release(drained, "shutdown", traceId);
+                drainedHolder[0] = state.drain();
+                removedHolder[0] = true;
                 return null;
             });
+
+            spanBudget.release(drainedHolder[0], "shutdown", traceId);
+            if (removedHolder[0]) {
+                traceBudget.release(1, "shutdown", traceId);
+            }
         }
     }
 
-    List<ExpiredSpan> collectExpired(long now) {
-        List<ExpiredSpan> timedOut = new ArrayList<>();
+    void collectExpired(long now, Deque<ExpiredSpan> into) {
         for (String traceId : traces.keySet()) {
+            int[] purgedHolder = new int[1];
+            boolean[] removedHolder = new boolean[1];
             traces.computeIfPresent(traceId, (ignored, state) -> {
-                collectTimedOutSpans(traceId, state, now, timedOut);
-                boolean epochExpired = (now - state.startNanos()) > traceTimeoutNanos;
-                return (state.isEmpty() && epochExpired) ? null : state;
-            });
-        }
+                boolean epochExpired = traceEpochExpired(state, now);
+                purgedHolder[0] = collectTimedOutSpans(traceId, state, now, epochExpired, into);
+                if (state.isEmpty() && epochExpired) {
+                    removedHolder[0] = true;
+                    return null;
+                }
 
-        auditSpanPermitTracking();
-        return timedOut;
+                return state;
+            });
+
+            spanBudget.release(purgedHolder[0], "scan-purge", traceId);
+            if (removedHolder[0]) {
+                traceBudget.release(1, "epoch-expired", traceId);
+            }
+        }
     }
 
-    void evictOldestIfNeeded() {
-        if (traces.size() <= maxTrackedTraces) {
+    void releaseCandidatePermit(ExpiredSpan candidate, String operationName) {
+        spanBudget.release(1, operationName, candidate.traceId());
+    }
+
+    void relieveTracePressure() {
+        boolean pressureObserved = pressure.getAndSet(false);
+        if (!traceBudget.isFull() && !pressureObserved) {
             return;
         }
 
@@ -160,7 +220,7 @@ final class InFlightTraceIndex {
         }
 
         try {
-            evictOldestBatch();
+            evictEmptyStates();
         } finally {
             evicting.set(false);
         }
@@ -182,7 +242,11 @@ final class InFlightTraceIndex {
     }
 
     int traceCapacity() {
-        return maxTrackedTraces;
+        return traceBudget.capacity();
+    }
+
+    int acquiredTraceSlotCount() {
+        return traceBudget.used();
     }
 
     int perTraceCapacity() {
@@ -190,133 +254,81 @@ final class InFlightTraceIndex {
     }
 
     int spanCapacity() {
-        return permitTracker.maxPermitCount();
+        return spanBudget.capacity();
     }
 
     int trackedSpanCount() {
-        return permitTracker.acquiredPermitCount();
+        return spanBudget.used();
     }
 
     long trackingEvictedTotal() {
         return trackingEvictedTotal.get();
     }
 
-    long liveTracesEvictedTotal() {
-        return liveTracesEvictedTotal.get();
-    }
-
     long rejectedPerTraceTotal() {
-        return spansRejectedPerTraceTotal.get();
+        return rejections.perTraceTotal();
     }
 
     long rejectedGlobalTotal() {
-        return spansRejectedGlobalTotal.get();
+        return rejections.globalTotal();
+    }
+
+    long rejectedTraceCapacityTotal() {
+        return rejections.traceCapacityTotal();
     }
 
     long permitInvariantViolationTotal() {
-        return permitTracker.invariantViolationTotal();
+        return spanBudget.invariantViolationTotal();
     }
 
-    private void collectTimedOutSpans(String traceId,
-                                      InFlightTraceState state,
-                                      long now,
-                                      List<ExpiredSpan> timedOut) {
-        boolean traceExpired = (now - state.startNanos()) > traceTimeoutNanos;
+    long traceSlotInvariantViolationTotal() {
+        return traceBudget.invariantViolationTotal();
+    }
+
+    private int collectTimedOutSpans(String traceId,
+                                     InFlightTraceState state,
+                                     long now,
+                                     boolean traceExpired,
+                                     Deque<ExpiredSpan> into) {
+        int purged = 0;
         for (InFlightTraceState.Tracked tracked : state.records()) {
-            ReadWriteSpan span = tracked.spanRef().get();
-            if (span == null || span.hasEnded()) {
+            ReadWriteSpan span = tracked.span();
+            if (span.hasEnded()) {
                 if (state.remove(tracked)) {
-                    permitTracker.release(1, "scan-purge", traceId);
+                    purged++;
                 }
 
                 continue;
             }
 
-            boolean spanExpired = (now - tracked.startNanos()) > spanTimeoutNanos;
+            boolean spanExpired = spanExpired(tracked, now);
             if ((spanExpired || traceExpired) && state.remove(tracked)) {
-                permitTracker.release(1, "scan-timeout", traceId);
-
-                ExpiredSpan expiredSpan = new ExpiredSpan(
+                into.add(new ExpiredSpan(
                         span,
                         traceId,
+                        tracked.spanId(),
                         spanExpired ? TimeoutReason.SPAN : TimeoutReason.TRACE
-                );
-                timedOut.add(expiredSpan);
+                ));
             }
         }
+
+        return purged;
     }
 
-    private void auditSpanPermitTracking() {
-        if (!log.isDebugEnabled()) {
-            return;
-        }
-
-        int observedSum = 0;
-        for (InFlightTraceState state : traces.values()) {
-            observedSum += state.size();
-        }
-
-        int acquiredPermitCount = permitTracker.acquiredPermitCount();
-        if (observedSum != acquiredPermitCount) {
-            log.debug(AgentEventCodes.EXPORT_WATCHDOG,
-                    "Watchdog span permit audit observed a difference that is legal under concurrency",
-                    "acquiredPermitCount", String.valueOf(acquiredPermitCount),
-                    "observedSum", String.valueOf(observedSum)
-            );
-        }
+    private boolean traceEpochExpired(InFlightTraceState state, long now) {
+        return (now - state.startNanos()) > traceTimeoutNanos;
     }
 
-    private void logRejectionIfAny(RejectionReason reason) {
-        if (reason == null) {
-            return;
-        }
-
-        if (reason == RejectionReason.PER_TRACE_CAPACITY) {
-            logRejectionRateLimited(
-                    lastPerTraceRejectionLogNanos,
-                    "Watchdog rejected span registration: per-trace tracked-span capacity reached",
-                    spansRejectedPerTraceTotal.get(),
-                    maxTrackedSpansPerTrace
-            );
-        } else {
-            logRejectionRateLimited(
-                    lastGlobalRejectionLogNanos,
-                    "Watchdog rejected span registration: global tracked-span capacity reached",
-                    spansRejectedGlobalTotal.get(),
-                    permitTracker.maxPermitCount()
-            );
-        }
+    private boolean spanExpired(InFlightTraceState.Tracked tracked, long now) {
+        return (now - tracked.startNanos()) > spanTimeoutNanos;
     }
 
-    private void logRejectionRateLimited(AtomicLong lastLogNanos, String message, long rejectedTotal, int limit) {
-        long now = nanoTime.getAsLong();
-        long previous = lastLogNanos.get();
-        if ((previous != NEVER_LOGGED_NANOS) && ((now - previous) < EVICTION_LOG_INTERVAL_NANOS)) {
-            return;
-        }
-
-        if (!lastLogNanos.compareAndSet(previous, now)) {
-            return;
-        }
-
-        log.warn(AgentEventCodes.EXPORT_WATCHDOG, message,
-                "rejected", String.valueOf(rejectedTotal),
-                "limit", String.valueOf(limit)
-        );
-    }
-
-    private void evictOldestBatch() {
-        int evictedEmpty = 0;
-        int evictedLive = 0;
-        int releasedPermits = 0;
+    private void evictEmptyStates() {
+        int evicted = 0;
+        int batch = Math.max(1, traceBudget.capacity() / EMPTY_EVICTION_BATCH_DIVISOR);
 
         for (int pass = 1; pass <= MAX_EVICTION_PASSES; pass++) {
-            int size = traces.size();
-            if (size <= maxTrackedTraces) {
-                break;
-            }
-
-            List<EvictionCandidate> plan = planEviction(size);
+            List<EvictionCandidate> plan = EmptyEvictionPlanner.selectOldestEmpty(traces.entrySet(), batch);
             if (plan.isEmpty()) {
                 break;
             }
@@ -325,172 +337,54 @@ final class InFlightTraceIndex {
                 afterFirstEvictionPlan.run();
             }
 
-            EvictionPassOutcome outcome = commitEvictionPlan(plan);
-            permitTracker.release(outcome.releasedSpanPermits(), "eviction", null);
-            trackingEvictedTotal.addAndGet(outcome.evictedTotal());
-            liveTracesEvictedTotal.addAndGet(outcome.evictedLive());
-
-            evictedEmpty += outcome.evictedEmpty();
-            evictedLive += outcome.evictedLive();
-            releasedPermits += outcome.releasedSpanPermits();
+            int committed = commitEvictionPlan(plan);
+            evicted += committed;
+            if (committed == plan.size()) {
+                break;
+            }
         }
 
-        logEvictionRun(evictedEmpty, evictedLive, releasedPermits);
+        if (evicted > 0) {
+            trackingEvictedTotal.addAndGet(evicted);
+            logEvictionRun(evicted);
+        }
     }
 
-    private EvictionPassOutcome commitEvictionPlan(List<EvictionCandidate> plan) {
-        int evictedEmpty = 0;
-        int evictedLive = 0;
-        int releasedPermits = 0;
+    private int commitEvictionPlan(List<EvictionCandidate> plan) {
+        int evicted = 0;
 
         for (EvictionCandidate candidate : plan) {
-            int[] drainedHolder = new int[1];
             boolean[] removedHolder = new boolean[1];
             traces.computeIfPresent(candidate.traceId(), (ignored, current) -> {
-                if (current != candidate.expectedState()) {
-                    return current;
-                }
-
-                if ((candidate.kind() == CandidateKind.EMPTY) && !current.isEmpty()) {
+                if ((current != candidate.expectedState()) || !current.isEmpty()) {
                     return current;
                 }
 
                 removedHolder[0] = true;
-                drainedHolder[0] = current.drain();
                 return null;
             });
 
-            if (!removedHolder[0]) {
-                continue;
-            }
-
-            if (drainedHolder[0] > 0) {
-                evictedLive++;
-                releasedPermits += drainedHolder[0];
-            } else {
-                evictedEmpty++;
+            if (removedHolder[0]) {
+                traceBudget.release(1, "eviction", candidate.traceId());
+                evicted++;
             }
         }
 
-        return new EvictionPassOutcome(evictedEmpty, evictedLive, releasedPermits);
+        return evicted;
     }
 
-    private List<EvictionCandidate> planEviction(int size) {
-        int overflow = (size - maxTrackedTraces);
-        int emptyBatch = Math.max(overflow, Math.max(1, maxTrackedTraces / EMPTY_EVICTION_MIN_BATCH_DIVISOR));
-        emptyBatch = Math.min(emptyBatch, size);
-
-        PriorityQueue<EvictionCandidate> empty = new PriorityQueue<>(emptyBatch, NEWEST_FIRST);
-        PriorityQueue<EvictionCandidate> nonEmpty = new PriorityQueue<>(Math.max(1, overflow), NEWEST_FIRST);
-
-        for (Map.Entry<String, InFlightTraceState> entry : traces.entrySet()) {
-            InFlightTraceState state = entry.getValue();
-            boolean isEmpty = state.isEmpty();
-            EvictionCandidate candidate = new EvictionCandidate(
-                    entry.getKey(),
-                    state,
-                    state.startNanos(),
-                    isEmpty ? CandidateKind.EMPTY : CandidateKind.LIVE
-            );
-
-            if (isEmpty) {
-                offerBounded(empty, candidate, emptyBatch);
-            } else {
-                offerBounded(nonEmpty, candidate, overflow);
-            }
-        }
-
-        int neededFromNonEmpty = Math.max(0, overflow - empty.size());
-        while (nonEmpty.size() > neededFromNonEmpty) {
-            nonEmpty.poll();
-        }
-
-        List<EvictionCandidate> plan = new ArrayList<>(empty.size() + nonEmpty.size());
-        plan.addAll(empty);
-        plan.addAll(nonEmpty);
-        return List.copyOf(plan);
-    }
-
-    private static void offerBounded(PriorityQueue<EvictionCandidate> queue, EvictionCandidate candidate, int batch) {
-        if (queue.size() < batch) {
-            queue.offer(candidate);
+    private void logEvictionRun(int evicted) {
+        if (!evictionLog.tryAcquire()) {
             return;
         }
 
-        EvictionCandidate newestKept = queue.peek();
-        if ((newestKept != null) && (OLDEST_FIRST.compare(candidate, newestKept) < 0)) {
-            queue.poll();
-            queue.offer(candidate);
-        }
+        log.warn(AgentEventCodes.EXPORT_SPAN_TIMEOUT, "Span timeout evicted empty trace states under pressure",
+                "evicted", String.valueOf(evicted),
+                "capacity", String.valueOf(traceBudget.capacity()));
     }
 
-    private void logEvictionRun(int evictedEmpty, int evictedLive, int releasedPermits) {
-        int evictedTotal = (evictedEmpty + evictedLive);
-        if ((evictedTotal > 0) && acquireLogSlot(lastEvictionLogNanos)) {
-            log.warn(AgentEventCodes.EXPORT_WATCHDOG, "Watchdog evicted oldest tracked traces",
-                    "evicted", String.valueOf(evictedTotal),
-                    "capacity", String.valueOf(maxTrackedTraces),
-                    "releasedSpanPermits", String.valueOf(releasedPermits));
-        }
+    private static final class AdmissionOutcome {
 
-        if ((releasedPermits > 0) && acquireLogSlot(lastLiveEvictionLogNanos)) {
-            log.warn(AgentEventCodes.EXPORT_WATCHDOG_LIVE_EVICTION,
-                    "Watchdog evicted traces that still had tracked spans",
-                    "evictedLive", String.valueOf(evictedLive),
-                    "releasedSpanPermits", String.valueOf(releasedPermits),
-                    "liveTracesEvictedTotal", String.valueOf(liveTracesEvictedTotal.get()),
-                    "capacity", String.valueOf(maxTrackedTraces));
-        }
-    }
-
-    private boolean acquireLogSlot(AtomicLong lastLogNanos) {
-        long now = nanoTime.getAsLong();
-        long previous = lastLogNanos.get();
-        if ((previous != NEVER_LOGGED_NANOS) && ((now - previous) < EVICTION_LOG_INTERVAL_NANOS)) {
-            return false;
-        }
-
-        return lastLogNanos.compareAndSet(previous, now);
-    }
-
-    private enum CandidateKind {
-        EMPTY,
-        LIVE
-    }
-
-    private record EvictionCandidate(String traceId,
-                                     InFlightTraceState expectedState,
-                                     long startNanos,
-                                     CandidateKind kind) {
-    }
-
-    private record EvictionPassOutcome(int evictedEmpty, int evictedLive, int releasedSpanPermits) {
-
-        int evictedTotal() {
-            return (evictedEmpty + evictedLive);
-        }
-    }
-
-    enum RejectionReason {
-        PER_TRACE_CAPACITY,
-        GLOBAL_CAPACITY
-    }
-
-    enum TimeoutReason {
-        SPAN("span"),
-        TRACE("trace");
-
-        private final String value;
-
-        TimeoutReason(String value) {
-            this.value = value;
-        }
-
-        String value() {
-            return value;
-        }
-    }
-
-    record ExpiredSpan(ReadWriteSpan span, String traceId, TimeoutReason reason) {
+        private RejectionReason rejection;
     }
 }

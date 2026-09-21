@@ -1,10 +1,13 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.metrics;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
 import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.TabularData;
 
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
@@ -13,24 +16,72 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationC
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationSnapshotStore;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerCapture;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerValuesLayout;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerValuesLayout.Field;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerValuesLayout.OwnerHeader;
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.SpanTimeoutProcessor;
 
 public final class ProcessorMetricsObservationSource {
 
+    private static final OwnerValuesLayout<SpanTimeoutProcessor> SPAN_TIMEOUT_LAYOUT = OwnerValuesLayout.of(
+            JmxOpenTypes.PROCESSOR_SPAN_TIMEOUT_VALUES,
+            new OwnerHeader(
+                    JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_OWNER_PRESENT,
+                    JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_OWNER_GENERATION,
+                    JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_OWNER_CAPTURED_OFFSET_NANOS),
+            List.of(
+                    Field.ofLong(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_FORCED_SPAN_END_ATTEMPTS_TOTAL, SpanTimeoutProcessor::getForcedSpanEndAttemptsTotal),
+                    Field.ofLong(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_FORCED_TRACE_END_ATTEMPTS_TOTAL, SpanTimeoutProcessor::getForcedTraceEndAttemptsTotal),
+                    Field.ofInt(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_ACTIVE_SPAN_COUNT, SpanTimeoutProcessor::getActiveSpanCount),
+                    Field.ofInt(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_ACTIVE_TRACE_COUNT, SpanTimeoutProcessor::getActiveTraceCount),
+                    Field.ofInt(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_TRACKED_TRACE_COUNT, SpanTimeoutProcessor::getTrackedTraceCount),
+                    Field.ofInt(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_TRACKED_TRACE_CAPACITY, SpanTimeoutProcessor::getTrackedTraceCapacity),
+                    Field.ofLong(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_TRACKING_EVICTED_TOTAL, SpanTimeoutProcessor::getTrackingEvictedTotal),
+                    Field.ofInt(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_TRACKED_SPAN_CAPACITY, SpanTimeoutProcessor::getTrackedSpanCapacity),
+                    Field.ofInt(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_TRACKED_SPAN_PER_TRACE_CAPACITY, SpanTimeoutProcessor::getTrackedSpanPerTraceCapacity),
+                    Field.ofLong(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_SPANS_REJECTED_PER_TRACE_TOTAL, SpanTimeoutProcessor::getSpansRejectedPerTraceTotal),
+                    Field.ofLong(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_SPANS_REJECTED_GLOBAL_TOTAL, SpanTimeoutProcessor::getSpansRejectedGlobalTotal),
+                    Field.ofLong(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_SPANS_REJECTED_TRACE_CAPACITY_TOTAL, SpanTimeoutProcessor::getSpansRejectedTraceCapacityTotal),
+                    Field.ofLong(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_SPAN_LEDGER_INVARIANT_VIOLATION_TOTAL, SpanTimeoutProcessor::getSpanPermitInvariantViolationTotal),
+                    Field.ofLong(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_SCAN_FAILURES_TOTAL, SpanTimeoutProcessor::getScanFailuresTotal),
+                    Field.ofLong(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_FORCE_END_FAILURES_TOTAL, SpanTimeoutProcessor::getForceEndFailuresTotal),
+                    Field.ofLong(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_LAST_SUCCESSFUL_BACKGROUND_SCAN_EPOCH_MILLIS, SpanTimeoutProcessor::getLastSuccessfulBackgroundScanEpochMillis),
+                    Field.ofString(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_SCANNER_STATE, owner -> owner.getScannerState().name())));
+
+    private static final OwnerValuesLayout<Map<String, Long>> COMPOSITE_LAYOUT = OwnerValuesLayout.of(
+            JmxOpenTypes.PROCESSOR_COMPOSITE_VALUES,
+            new OwnerHeader(
+                    JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_PRESENT,
+                    JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_GENERATION,
+                    JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_CAPTURED_OFFSET_NANOS),
+            List.of(
+                    Field.ofLong(JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_PROCESSOR_ERRORS_TOTAL, ProcessorMetricsObservationSource::sumErrors),
+                    new Field<>(JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_PROCESSOR_ERRORS_BY_NAME,
+                            ProcessorMetricsObservationSource::errorsByNameTable, errorsByNameTable(Map.of()))));
+
+    private static final OwnerValuesLayout<SpanLimitsMetricsProcessor> METRICS_LAYOUT = OwnerValuesLayout.of(
+            JmxOpenTypes.PROCESSOR_METRICS_VALUES,
+            new OwnerHeader(
+                    JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_PRESENT,
+                    JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_GENERATION,
+                    JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_CAPTURED_OFFSET_NANOS),
+            List.of(
+                    Field.ofLong(JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_DROPPED_ATTRIBUTES_TOTAL, SpanLimitsMetricsProcessor::getDroppedAttributes),
+                    Field.ofLong(JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_DROPPED_EVENTS_TOTAL, SpanLimitsMetricsProcessor::getDroppedEvents),
+                    Field.ofLong(JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_DROPPED_LINKS_TOTAL, SpanLimitsMetricsProcessor::getDroppedLinks)));
+
     private final OwnerRegistrationSlot<SpanTimeoutProcessor> spanTimeoutSlot;
     private final OwnerRegistrationSlot<PlatformCompositeSpanProcessor> compositeSlot;
     private final OwnerRegistrationSlot<SpanLimitsMetricsProcessor> metricsSlot;
     private final ObservationCaptureEnvelope envelope;
-    private final ObservationSnapshotStore snapshotStore =
-            new ObservationSnapshotStore(JmxOpenTypes.PROCESSOR_METRICS_OBSERVATION);
+    private final ObservationSnapshotStore snapshotStore = new ObservationSnapshotStore(JmxOpenTypes.PROCESSOR_METRICS_OBSERVATION);
 
     public ProcessorMetricsObservationSource(OwnerRegistrationSlot<SpanTimeoutProcessor> spanTimeoutSlot,
-                                   OwnerRegistrationSlot<PlatformCompositeSpanProcessor> compositeSlot,
-                                   OwnerRegistrationSlot<SpanLimitsMetricsProcessor> metricsSlot,
-                                   UUID agentInstanceId) {
+                                             OwnerRegistrationSlot<PlatformCompositeSpanProcessor> compositeSlot,
+                                             OwnerRegistrationSlot<SpanLimitsMetricsProcessor> metricsSlot,
+                                             UUID agentInstanceId) {
         this.spanTimeoutSlot = Objects.requireNonNull(spanTimeoutSlot, "spanTimeoutSlot");
         this.compositeSlot = Objects.requireNonNull(compositeSlot, "compositeSlot");
         this.metricsSlot = Objects.requireNonNull(metricsSlot, "metricsSlot");
@@ -49,155 +100,37 @@ public final class ProcessorMetricsObservationSource {
         OwnerCapture<PlatformCompositeSpanProcessor> compositeCapture = OwnerCapture.of(compositeSlot);
         OwnerCapture<SpanLimitsMetricsProcessor> metricsCapture = OwnerCapture.of(metricsSlot);
 
-        CompositeData spanTimeoutValues = buildSpanTimeoutValues(spanTimeoutCapture.state(), spanTimeoutCapture.offsetNanos());
-        CompositeData compositeValues = buildCompositeValues(compositeCapture.state(), compositeCapture.offsetNanos());
-        CompositeData metricsValues = buildMetricsValues(metricsCapture.state(), metricsCapture.offsetNanos());
+        CompositeData spanTimeoutValues = SPAN_TIMEOUT_LAYOUT.encode(
+                spanTimeoutCapture.state(), spanTimeoutCapture.offsetNanos(), Function.identity());
+        CompositeData compositeValues = COMPOSITE_LAYOUT.encode(
+                compositeCapture.state(), compositeCapture.offsetNanos(), PlatformCompositeSpanProcessor::getProcessorErrorCounts);
+        CompositeData metricsValues = METRICS_LAYOUT.encode(
+                metricsCapture.state(), metricsCapture.offsetNanos(), Function.identity());
 
         Map<String, Object> values = new LinkedHashMap<>();
         openCapture.sealInto(values);
-        values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG, spanTimeoutValues);
+        values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_SPAN_TIMEOUT, spanTimeoutValues);
         values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_COMPOSITE, compositeValues);
         values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_METRICS, metricsValues);
         snapshotStore.publish(values);
     }
 
-    private static CompositeData buildSpanTimeoutValues(OwnerRegistrationState<SpanTimeoutProcessor> state, long offsetNanos) {
-        if (state instanceof OwnerRegistrationState.Present<SpanTimeoutProcessor>(
-                SpanTimeoutProcessor owner, long generation
-        )) {
-            return spanTimeoutValues(
-                    true,
-                    generation,
-                    offsetNanos,
-                    owner.getForcedSpanCloses(),
-                    owner.getForcedTraceCloses(),
-                    owner.getActiveSpanCount(),
-                    owner.getActiveTraceCount(),
-                    owner.getTrackedTraceCount(),
-                    owner.getTrackedTraceCapacity(),
-                    owner.getTrackingEvictedTotal(),
-                    owner.getTrackedSpanCapacity(),
-                    owner.getTrackedSpanPerTraceCapacity(),
-                    owner.getSpansRejectedPerTraceTotal(),
-                    owner.getSpansRejectedGlobalTotal(),
-                    owner.getSpanPermitInvariantViolationTotal());
-        }
-
-        return spanTimeoutValues(false, state.generation(), offsetNanos,
-                0L, 0L, 0, 0, 0, 0, 0L, 0, 0, 0L, 0L, 0L);
-    }
-
-    private static CompositeData buildCompositeValues(OwnerRegistrationState<PlatformCompositeSpanProcessor> state, long offsetNanos) {
-        if (state instanceof OwnerRegistrationState.Present<PlatformCompositeSpanProcessor>(
-                PlatformCompositeSpanProcessor owner, long generation
-        )) {
-            Map<String, Long> errorsByName = owner.getProcessorErrorCounts();
-            long total = 0L;
-            for (Long value : errorsByName.values()) {
-                if (value != null) {
-                    total += value;
-                }
+    private static long sumErrors(Map<String, Long> errorsByName) {
+        long total = 0L;
+        for (Long value : errorsByName.values()) {
+            if (value != null) {
+                total += value;
             }
-
-            return compositeValues(true, generation, offsetNanos, total, errorsByName);
         }
 
-        return compositeValues(false, state.generation(), offsetNanos, 0L, Map.of());
+        return total;
     }
 
-    private static CompositeData buildMetricsValues(OwnerRegistrationState<SpanLimitsMetricsProcessor> state, long offsetNanos) {
-        if (state instanceof OwnerRegistrationState.Present<SpanLimitsMetricsProcessor>(
-                SpanLimitsMetricsProcessor owner, long generation
-        )) {
-            return metricsValues(true, generation, offsetNanos,
-                    owner.getDroppedAttributes(), owner.getDroppedEvents(), owner.getDroppedLinks());
-        }
-
-        return metricsValues(false, state.generation(), offsetNanos, 0L, 0L, 0L);
-    }
-
-    private static CompositeData spanTimeoutValues(boolean present,
-                                                long generation,
-                                                long offsetNanos,
-                                                long forcedSpanCloses,
-                                                long forcedTraceCloses,
-                                                int activeSpanCount,
-                                                int activeTraceCount,
-                                                int trackedTraceCount,
-                                                int trackedTraceCapacity,
-                                                long trackingEvictedTotal,
-                                                int trackedSpanCapacity,
-                                                int trackedSpanPerTraceCapacity,
-                                                long spansRejectedPerTraceTotal,
-                                                long spansRejectedGlobalTotal,
-                                                long spanLedgerInvariantViolationTotal) {
-        Map<String, Object> values = new LinkedHashMap<>();
-        values.put(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_PRESENT, present);
-        values.put(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_GENERATION, generation);
-        values.put(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_CAPTURED_OFFSET_NANOS,
-                offsetNanos);
-        values.put(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_FORCED_SPAN_CLOSES,
-                forcedSpanCloses);
-        values.put(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_FORCED_TRACE_CLOSES,
-                forcedTraceCloses);
-        values.put(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_ACTIVE_SPAN_COUNT, activeSpanCount);
-        values.put(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_ACTIVE_TRACE_COUNT, activeTraceCount);
-        values.put(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKED_TRACE_COUNT, trackedTraceCount);
-        values.put(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKED_TRACE_CAPACITY,
-                trackedTraceCapacity);
-        values.put(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKING_EVICTED_TOTAL,
-                trackingEvictedTotal);
-        values.put(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKED_SPAN_CAPACITY,
-                trackedSpanCapacity);
-        values.put(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKED_SPAN_PER_TRACE_CAPACITY,
-                trackedSpanPerTraceCapacity);
-        values.put(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_SPANS_REJECTED_PER_TRACE_TOTAL,
-                spansRejectedPerTraceTotal);
-        values.put(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_SPANS_REJECTED_GLOBAL_TOTAL,
-                spansRejectedGlobalTotal);
-        values.put(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_SPAN_LEDGER_INVARIANT_VIOLATION_TOTAL,
-                spanLedgerInvariantViolationTotal);
-        return JmxOpenTypeSupport.compositeData(JmxOpenTypes.PROCESSOR_WATCHDOG_VALUES, values);
-    }
-
-    private static CompositeData compositeValues(boolean present,
-                                                 long generation,
-                                                 long offsetNanos,
-                                                 long processorErrorsTotal,
-                                                 Map<String, Long> errorsByName) {
-        Map<String, Object> values = new LinkedHashMap<>();
-        values.put(JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_PRESENT, present);
-        values.put(JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_GENERATION, generation);
-        values.put(JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_CAPTURED_OFFSET_NANOS,
-                offsetNanos);
-        values.put(JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_PROCESSOR_ERRORS_TOTAL,
-                processorErrorsTotal);
-        values.put(JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_PROCESSOR_ERRORS_BY_NAME,
-                JmxOpenTypeSupport.stringLongMap(
-                        JmxOpenTypes.PROCESSOR_ERRORS_BY_NAME,
-                        JmxWireContract.FIELD_PROCESSOR_ERRORS_BY_NAME_KEY,
-                        JmxWireContract.FIELD_PROCESSOR_ERRORS_BY_NAME_VALUE,
-                        errorsByName));
-        return JmxOpenTypeSupport.compositeData(JmxOpenTypes.PROCESSOR_COMPOSITE_VALUES, values);
-    }
-
-    private static CompositeData metricsValues(boolean present,
-                                               long generation,
-                                               long offsetNanos,
-                                               long droppedAttributesTotal,
-                                               long droppedEventsTotal,
-                                               long droppedLinksTotal) {
-        Map<String, Object> values = new LinkedHashMap<>();
-        values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_PRESENT, present);
-        values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_GENERATION, generation);
-        values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_CAPTURED_OFFSET_NANOS,
-                offsetNanos);
-        values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_DROPPED_ATTRIBUTES_TOTAL,
-                droppedAttributesTotal);
-        values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_DROPPED_EVENTS_TOTAL,
-                droppedEventsTotal);
-        values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_DROPPED_LINKS_TOTAL,
-                droppedLinksTotal);
-        return JmxOpenTypeSupport.compositeData(JmxOpenTypes.PROCESSOR_METRICS_VALUES, values);
+    private static TabularData errorsByNameTable(Map<String, Long> errorsByName) {
+        return JmxOpenTypeSupport.stringLongMap(
+                JmxOpenTypes.PROCESSOR_ERRORS_BY_NAME,
+                JmxWireContract.FIELD_PROCESSOR_ERRORS_BY_NAME_KEY,
+                JmxWireContract.FIELD_PROCESSOR_ERRORS_BY_NAME_VALUE,
+                errorsByName);
     }
 }

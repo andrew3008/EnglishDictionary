@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
@@ -40,8 +41,50 @@ class SpanTimeoutArchitectureGateTest {
                 .toList();
         // then
         assertThat(facadeAtomicLongs)
-                .as("facade keeps only its own OTel-side-effect counters")
-                .containsExactlyInAnyOrder("forcedSpanCloses", "forcedTraceCloses");
+                .as("scan counters belong to SpanTimeoutScan, heartbeat to SpanTimeoutScanner")
+                .isEmpty();
+    }
+
+    @Test
+    void scanOwnsForceEndCountersAndScannerOwnsHeartbeat() {
+        // given/when
+        List<String> scanAtomicLongs = Arrays.stream(SpanTimeoutScan.class.getDeclaredFields())
+                .filter(field -> AtomicLong.class.isAssignableFrom(field.getType()))
+                .map(Field::getName)
+                .toList();
+        List<String> scannerAtomicLongs = Arrays.stream(SpanTimeoutScanner.class.getDeclaredFields())
+                .filter(field -> AtomicLong.class.isAssignableFrom(field.getType()))
+                .map(Field::getName)
+                .toList();
+
+        // then
+        assertThat(scanAtomicLongs).containsExactlyInAnyOrder(
+                "forcedSpanEndAttemptsTotal",
+                "forcedTraceEndAttemptsTotal",
+                "scanFailuresTotal",
+                "forceEndFailuresTotal");
+        assertThat(scannerAtomicLongs).containsExactly("lastSuccessfulScanEpochMillis");
+    }
+
+    @Test
+    void logRateLimitingIsOwnedOnlyByLogRateLimiter() {
+        // given/when
+        List<String> rawLogClocks = Stream.concat(
+                        Stream.of(SpanTimeoutScan.class, SpanTimeoutScanner.class, InFlightTraceIndex.class,
+                                AdmissionRejections.class),
+                        Arrays.stream(AdmissionRejections.class.getDeclaredClasses()))
+                .flatMap(type -> Arrays.stream(type.getDeclaredFields()))
+                .filter(field -> AtomicLong.class.isAssignableFrom(field.getType()))
+                .map(Field::getName)
+                .filter(name -> name.endsWith("LogNanos"))
+                .toList();
+
+        // then
+        assertThat(rawLogClocks).as("no hand-rolled log clocks outside LogRateLimiter").isEmpty();
+        assertThat(Arrays.stream(LogRateLimiter.class.getDeclaredFields())
+                .filter(field -> AtomicLong.class.isAssignableFrom(field.getType()))
+                .map(Field::getName))
+                .containsExactly("lastAcquiredNanos");
     }
 
     @Test
@@ -56,6 +99,40 @@ class SpanTimeoutArchitectureGateTest {
         assertThat(outerMaps.getFirst().getGenericType()).isInstanceOf(ParameterizedType.class);
         assertThat(outerMaps.getFirst().getGenericType().getTypeName())
                 .contains("java.lang.String", "InFlightTraceState");
+
+        // given/when
+        List<String> indexAtomicLongs = Arrays.stream(InFlightTraceIndex.class.getDeclaredFields())
+                .filter(field -> AtomicLong.class.isAssignableFrom(field.getType()))
+                .map(Field::getName)
+                .toList();
+        // then
+        assertThat(indexAtomicLongs)
+                .as("rejection counters belong to AdmissionRejections; index keeps only the eviction counter")
+                .containsExactly("trackingEvictedTotal");
+    }
+
+    @Test
+    void admissionRejectionsOwnsRejectionCountersAndPlannerIsStateless() {
+        // given/when
+        List<Field> rejectionsMaps = Arrays.stream(AdmissionRejections.class.getDeclaredFields())
+                .filter(field -> Map.class.isAssignableFrom(field.getType()))
+                .toList();
+        long slotCounters = Arrays.stream(AdmissionRejections.class.getDeclaredClasses())
+                .filter(nested -> !nested.isEnum())
+                .flatMap(nested -> Arrays.stream(nested.getDeclaredFields()))
+                .filter(field -> AtomicLong.class.isAssignableFrom(field.getType()))
+                .count();
+        List<Field> plannerInstanceFields = Arrays.stream(EmptyEvictionPlanner.class.getDeclaredFields())
+                .filter(field -> !Modifier.isStatic(field.getModifiers()))
+                .toList();
+
+        // then
+        assertThat(rejectionsMaps).as("rejections ledger must not see the trace map").isEmpty();
+        assertThat(slotCounters).as("one AtomicLong per rejection slot").isEqualTo(1);
+        assertThat(plannerInstanceFields).as("planner is a pure function over entries").isEmpty();
+        assertThat(Arrays.stream(EmptyEvictionPlanner.class.getDeclaredFields())
+                .noneMatch(field -> Map.class.isAssignableFrom(field.getType())))
+                .isTrue();
     }
 
     @Test
@@ -69,17 +146,17 @@ class SpanTimeoutArchitectureGateTest {
     }
 
     @Test
-    void spanPermitTrackerIsTheSingleOwnerOfThePermitState() {
+    void admissionBudgetIsTheSingleOwnerOfTheBudgetState() {
         // given/when
-        List<String> atomicIntegers = Arrays.stream(PermitTracker.class.getDeclaredFields())
+        List<String> atomicIntegers = Arrays.stream(AdmissionBudget.class.getDeclaredFields())
                 .filter(field -> AtomicInteger.class.isAssignableFrom(field.getType()))
                 .map(Field::getName)
                 .toList();
         // then
-        assertThat(atomicIntegers).containsExactly("acquiredPermitCount");
+        assertThat(atomicIntegers).containsExactly("used");
 
         // given/when
-        List<String> atomicLongs = Arrays.stream(PermitTracker.class.getDeclaredFields())
+        List<String> atomicLongs = Arrays.stream(AdmissionBudget.class.getDeclaredFields())
                 .filter(field -> AtomicLong.class.isAssignableFrom(field.getType()))
                 .map(Field::getName)
                 .toList();
@@ -90,9 +167,16 @@ class SpanTimeoutArchitectureGateTest {
     @Test
     void supportTypesAreNotPublic() {
         // when/then
-        assertThat(Modifier.isPublic(PermitTracker.class.getModifiers())).isFalse();
+        assertThat(Modifier.isPublic(AdmissionBudget.class.getModifiers())).isFalse();
         assertThat(Modifier.isPublic(InFlightTraceState.class.getModifiers())).isFalse();
         assertThat(Modifier.isPublic(InFlightTraceIndex.class.getModifiers())).isFalse();
+        assertThat(Modifier.isPublic(SpanTimeoutScan.class.getModifiers())).isFalse();
+        assertThat(Modifier.isPublic(SpanTimeoutScanner.class.getModifiers())).isFalse();
+        assertThat(Modifier.isPublic(LogRateLimiter.class.getModifiers())).isFalse();
+        assertThat(Modifier.isPublic(AdmissionRejections.class.getModifiers())).isFalse();
+        assertThat(Modifier.isPublic(EmptyEvictionPlanner.class.getModifiers())).isFalse();
+        assertThat(Modifier.isPublic(ExpiredSpan.class.getModifiers())).isFalse();
+        assertThat(Modifier.isPublic(TimeoutReason.class.getModifiers())).isFalse();
         assertThat(Modifier.isPublic(SpanTimeoutProcessor.class.getModifiers())).isTrue();
     }
 }

@@ -137,7 +137,7 @@ class JmxViewTypeNameMismatchWiringTest {
 
     @Test
     void processorMetricsSpanTimeoutNestedMismatchIsContractViolation() throws Exception {
-        CompositeData spanTimeout = compositeNamed("space.br1440.platform.tracing.NotProcessorWatchdogValues");
+        CompositeData spanTimeout = compositeNamed("space.br1440.platform.tracing.NotProcessorSpanTimeoutValues");
         CompositeData compositeValues = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_COMPOSITE_VALUES_TYPE_NAME);
         CompositeData metrics = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_VALUES_TYPE_NAME);
         registerFakeMBean("ProcessorMetricsObservation", name -> processorMetricsFrame(spanTimeout, compositeValues, metrics));
@@ -150,7 +150,7 @@ class JmxViewTypeNameMismatchWiringTest {
 
     @Test
     void processorMetricsCompositeNestedMismatchIsContractViolation() throws Exception {
-        CompositeData spanTimeout = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_WATCHDOG_VALUES_TYPE_NAME);
+        CompositeData spanTimeout = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_SPAN_TIMEOUT_VALUES_TYPE_NAME);
         CompositeData compositeValues = compositeNamed("space.br1440.platform.tracing.NotProcessorCompositeValues");
         CompositeData metrics = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_VALUES_TYPE_NAME);
         registerFakeMBean("ProcessorMetricsObservation", name -> processorMetricsFrame(spanTimeout, compositeValues, metrics));
@@ -163,7 +163,7 @@ class JmxViewTypeNameMismatchWiringTest {
 
     @Test
     void processorMetricsMetricsNestedMismatchIsContractViolation() throws Exception {
-        CompositeData spanTimeout = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_WATCHDOG_VALUES_TYPE_NAME);
+        CompositeData spanTimeout = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_SPAN_TIMEOUT_VALUES_TYPE_NAME);
         CompositeData compositeValues = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_COMPOSITE_VALUES_TYPE_NAME);
         CompositeData metrics = compositeNamed("space.br1440.platform.tracing.NotProcessorMetricsValues");
         registerFakeMBean("ProcessorMetricsObservation", name -> processorMetricsFrame(spanTimeout, compositeValues, metrics));
@@ -208,7 +208,7 @@ class JmxViewTypeNameMismatchWiringTest {
 
     private static CompositeData processorMetricsFrame(CompositeData spanTimeout, CompositeData compositeValues, CompositeData metrics) {
         return frameOf(JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_OBSERVATION_TYPE_NAME, Map.of(
-                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG, spanTimeout,
+                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_SPAN_TIMEOUT, spanTimeout,
                 JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_COMPOSITE, compositeValues,
                 JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_METRICS, metrics));
     }

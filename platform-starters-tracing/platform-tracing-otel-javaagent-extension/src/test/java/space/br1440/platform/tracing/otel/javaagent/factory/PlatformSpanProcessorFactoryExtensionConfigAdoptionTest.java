@@ -89,7 +89,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) { return null; }
             @Override public Boolean getBoolean(String name) {
-                return "platform.tracing.watchdog.enabled".equals(name);
+                return "platform.tracing.span-timeout.enabled".equals(name);
             }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }
@@ -262,7 +262,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                     TracingSettingsSource.fromStartup(extensionConfig));
 
             // then
-            assertThat(getSpanTimeout(registrar)).as("no watchdog when all disabled").isNull();
+            assertThat(getSpanTimeout(registrar)).as("no span-timeout processor when all disabled").isNull();
         }
     }
 
@@ -302,10 +302,10 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
             List<String> order = List.copyOf(composite.getProcessorErrorCounts().keySet());
             assertThat(order.indexOf("classification"))
-                    .isLessThan(order.indexOf("watchdog"));
-            assertThat(order.indexOf("watchdog"))
+                    .isLessThan(order.indexOf("span_timeout"));
+            assertThat(order.indexOf("span_timeout"))
                     .isLessThan(order.indexOf("span_limits_metrics"));
-            assertThat(order.indexOf("watchdog"))
+            assertThat(order.indexOf("span_timeout"))
                     .isLessThan(order.indexOf("scrubbing"));
         } finally {
             composite.shutdown();
@@ -479,7 +479,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
     }
 
     @Nested
-    @DisplayName("Default config (no properties set) — watchdog not added")
+    @DisplayName("Default config (no properties set) — span-timeout processor not added")
     class DefaultConfig {
 
         @Test
@@ -548,7 +548,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
             // then
             assertThat(getSpanTimeout(registrar))
-                    .as("watchdog must not be registered with default config (SP-01 default-off)")
+                    .as("span-timeout processor must not be registered with default config (SP-01 default-off)")
                     .isNull();
         }
     }
@@ -574,16 +574,16 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
             // then
             assertThat(cfg.spanTimeout().spanTimeout())
-                    .as("watchdog spanTimeout default")
+                    .as("span-timeout span default")
                     .isEqualTo(Duration.ofSeconds(30));
             assertThat(cfg.spanTimeout().traceTimeout())
-                    .as("watchdog traceTimeout default")
+                    .as("span-timeout trace default")
                     .isEqualTo(Duration.ofSeconds(60));
             assertThat(cfg.spanTimeout().scanInterval())
-                    .as("watchdog scanInterval default")
+                    .as("span-timeout scanInterval default")
                     .isEqualTo(Duration.ofSeconds(5));
             assertThat(cfg.spanTimeout().maxTrackedTraces())
-                    .as("watchdog maxTrackedTraces default")
+                    .as("span-timeout maxTrackedTraces default")
                     .isEqualTo(10_000);
             assertThat(cfg.classification().slowThreshold())
                     .as("classification slowThreshold default")

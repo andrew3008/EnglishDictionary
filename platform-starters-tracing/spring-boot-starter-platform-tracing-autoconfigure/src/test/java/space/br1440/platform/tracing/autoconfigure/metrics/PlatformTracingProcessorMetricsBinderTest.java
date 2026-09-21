@@ -37,7 +37,11 @@ class PlatformTracingProcessorMetricsBinderTest {
     @Test
     void presentSpanTimeoutOwnerMapsCumulativeScalarsOnly() {
         ProcessorSpanTimeoutValues values = new ProcessorSpanTimeoutValues(
-                11L, 4L, 3, 1, 7, 10_000, 9L, 60_000, 1_024, 2L, 5L, 0L);
+                new ProcessorSpanTimeoutValues.ForceEnd(11L, 4L, 13L),
+                new ProcessorSpanTimeoutValues.Tracking(3, 1, 7, 10_000, 9L, 60_000, 1_024, 0L),
+                new ProcessorSpanTimeoutValues.Rejections(2L, 5L, 8L),
+                new ProcessorSpanTimeoutValues.Scanner(6L, 1_700_000_000_000L, "RUNNING")
+        );
         JmxOwnerState<ProcessorSpanTimeoutValues> present = new JmxOwnerState.Present<>(values, 2L);
 
         JmxOwnerState<Map<ProcessorSpanTimeoutMetricKey, Long>> mapped =
@@ -45,13 +49,16 @@ class PlatformTracingProcessorMetricsBinderTest {
 
         Map<ProcessorSpanTimeoutMetricKey, Long> keyed = ((JmxOwnerState.Present<Map<ProcessorSpanTimeoutMetricKey, Long>>) mapped).values();
         assertThat(keyed)
-                .containsEntry(ProcessorSpanTimeoutMetricKey.FORCED_SPAN_CLOSES, 11L)
-                .containsEntry(ProcessorSpanTimeoutMetricKey.FORCED_TRACE_CLOSES, 4L)
+                .containsEntry(ProcessorSpanTimeoutMetricKey.FORCED_SPAN_END_ATTEMPTS, 11L)
+                .containsEntry(ProcessorSpanTimeoutMetricKey.FORCED_TRACE_END_ATTEMPTS, 4L)
                 .containsEntry(ProcessorSpanTimeoutMetricKey.TRACKING_EVICTED, 9L)
                 .containsEntry(ProcessorSpanTimeoutMetricKey.SPANS_REJECTED_PER_TRACE, 2L)
                 .containsEntry(ProcessorSpanTimeoutMetricKey.SPANS_REJECTED_GLOBAL, 5L)
+                .containsEntry(ProcessorSpanTimeoutMetricKey.SPANS_REJECTED_TRACE_CAPACITY, 8L)
                 .containsEntry(ProcessorSpanTimeoutMetricKey.SPAN_LEDGER_INVARIANT_VIOLATION, 0L)
-                .hasSize(6);
+                .containsEntry(ProcessorSpanTimeoutMetricKey.SCAN_FAILURES, 6L)
+                .containsEntry(ProcessorSpanTimeoutMetricKey.FORCE_END_FAILURES, 13L)
+                .hasSize(9);
     }
 
     @Test
@@ -59,7 +66,10 @@ class PlatformTracingProcessorMetricsBinderTest {
         // given
         PlatformTracingJmxClient client = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
         ProcessorSpanTimeoutValues values = new ProcessorSpanTimeoutValues(
-                1L, 2L, 3, 4, 5, 10_000, 6L, 60_000, 1_024, 0L, 0L, 0L);
+                new ProcessorSpanTimeoutValues.ForceEnd(1L, 2L, 0L),
+                new ProcessorSpanTimeoutValues.Tracking(3, 4, 5, 10_000, 6L, 60_000, 1_024, 0L),
+                new ProcessorSpanTimeoutValues.Rejections(0L, 0L, 0L),
+                new ProcessorSpanTimeoutValues.Scanner(0L, 1_700_000_000_000L, "TERMINATED_ABNORMALLY"));
         when(client.processorMetrics().observation()).thenReturn(Optional.of(new ProcessorMetricsObservation(
                 new ObservationCapture("agent-1", 1L, 1_000L, 1_001L),
                 new JmxOwnerState.Present<>(values, 1L),
@@ -70,18 +80,28 @@ class PlatformTracingProcessorMetricsBinderTest {
         new PlatformTracingProcessorMetricsBinder(client).bindTo(registry);
 
         // when / then
-        assertThat(registry.find("platform.tracing.processor.watchdog.active")
+        assertThat(registry.find("platform.tracing.processor.span_timeout.active")
                 .tag("scope", "spans").gauge().value()).isEqualTo(3.0);
-        assertThat(registry.find("platform.tracing.processor.watchdog.active")
+        assertThat(registry.find("platform.tracing.processor.span_timeout.active")
                 .tag("scope", "traces").gauge().value()).isEqualTo(4.0);
-        assertThat(registry.find("platform.tracing.processor.watchdog.tracked")
+        assertThat(registry.find("platform.tracing.processor.span_timeout.tracked")
                 .tag("scope", "traces").gauge().value()).isEqualTo(5.0);
-        assertThat(registry.find("platform.tracing.processor.watchdog.capacity")
+        assertThat(registry.find("platform.tracing.processor.span_timeout.capacity")
                 .tag("scope", "traces").gauge().value()).isEqualTo(10_000.0);
-        assertThat(registry.find("platform.tracing.processor.watchdog.capacity")
+        assertThat(registry.find("platform.tracing.processor.span_timeout.capacity")
                 .tag("scope", "spans").gauge().value()).isEqualTo(60_000.0);
-        assertThat(registry.find("platform.tracing.processor.watchdog.capacity")
+        assertThat(registry.find("platform.tracing.processor.span_timeout.capacity")
                 .tag("scope", "spans_per_trace").gauge().value()).isEqualTo(1_024.0);
+        assertThat(registry.find("platform.tracing.processor.span_timeout.scanner")
+                .tag("state", "terminated_abnormally").gauge().value()).isEqualTo(1.0);
+        assertThat(registry.find("platform.tracing.processor.span_timeout.scanner")
+                .tag("state", "running").gauge().value()).isEqualTo(0.0);
+        assertThat(registry.find("platform.tracing.processor.span_timeout.scanner")
+                .tag("state", "disabled").gauge().value()).isEqualTo(0.0);
+        assertThat(registry.find("platform.tracing.processor.span_timeout.scanner")
+                .tag("state", "stopped").gauge().value()).isEqualTo(0.0);
+        assertThat(registry.find("platform.tracing.processor.span_timeout.scanner.last_success_epoch_millis")
+                .gauge().value()).isEqualTo(1_700_000_000_000.0);
     }
 
     @Test
@@ -98,10 +118,14 @@ class PlatformTracingProcessorMetricsBinderTest {
         new PlatformTracingProcessorMetricsBinder(client).bindTo(registry);
 
         // when / then
-        assertThat(registry.find("platform.tracing.processor.watchdog.active")
+        assertThat(registry.find("platform.tracing.processor.span_timeout.active")
                 .tag("scope", "spans").gauge().value()).isNaN();
-        assertThat(registry.find("platform.tracing.processor.watchdog.tracked")
+        assertThat(registry.find("platform.tracing.processor.span_timeout.tracked")
                 .tag("scope", "traces").gauge().value()).isNaN();
+        assertThat(registry.find("platform.tracing.processor.span_timeout.scanner")
+                .tag("state", "running").gauge().value()).isNaN();
+        assertThat(registry.find("platform.tracing.processor.span_timeout.scanner.last_success_epoch_millis")
+                .gauge().value()).isNaN();
     }
 
     @Test
@@ -113,9 +137,9 @@ class PlatformTracingProcessorMetricsBinderTest {
         new PlatformTracingProcessorMetricsBinder(client).bindTo(registry);
 
         // when / then
-        assertThat(registry.find("platform.tracing.processor.watchdog.active")
+        assertThat(registry.find("platform.tracing.processor.span_timeout.active")
                 .tag("scope", "traces").gauge().value()).isNaN();
-        assertThat(registry.find("platform.tracing.processor.watchdog.capacity")
+        assertThat(registry.find("platform.tracing.processor.span_timeout.capacity")
                 .tag("scope", "traces").gauge().value()).isNaN();
     }
 
@@ -159,7 +183,7 @@ class PlatformTracingProcessorMetricsBinderTest {
     @Test
     void presentCompositeOwnerCombinesTotalScalarWithSparseErrorsByName() {
         Map<String, Long> errorsByName = Map.of(
-                "watchdog", 3L,
+                "span_timeout", 3L,
                 "scrubbing", 1L
         );
         ProcessorCompositeValues values = new ProcessorCompositeValues(4L, errorsByName);

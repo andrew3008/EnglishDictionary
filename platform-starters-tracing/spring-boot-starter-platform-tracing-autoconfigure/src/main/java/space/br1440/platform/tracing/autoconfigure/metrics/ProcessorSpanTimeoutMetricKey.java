@@ -2,12 +2,15 @@ package space.br1440.platform.tracing.autoconfigure.metrics;
 
 enum ProcessorSpanTimeoutMetricKey {
 
-    FORCED_SPAN_CLOSES("forced_span_closes"),
-    FORCED_TRACE_CLOSES("forced_trace_closes"),
+    FORCED_SPAN_END_ATTEMPTS("forced_span_end_attempts"),
+    FORCED_TRACE_END_ATTEMPTS("forced_trace_end_attempts"),
     TRACKING_EVICTED("tracking_evicted"),
     SPANS_REJECTED_PER_TRACE("spans_rejected_per_trace"),
     SPANS_REJECTED_GLOBAL("spans_rejected_global"),
-    SPAN_LEDGER_INVARIANT_VIOLATION("span_ledger_invariant_violation");
+    SPANS_REJECTED_TRACE_CAPACITY("spans_rejected_trace_capacity"),
+    SPAN_LEDGER_INVARIANT_VIOLATION("span_ledger_invariant_violation"),
+    SCAN_FAILURES("scan_failures"),
+    FORCE_END_FAILURES("force_end_failures");
 
     private final String metricTag;
 

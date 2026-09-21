@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.distribution;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,6 +24,8 @@ import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
+import org.awaitility.core.ConditionTimeoutException;
+import org.awaitility.core.TerminalFailureException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -211,30 +214,31 @@ class ControlledAgentRuntimeTest {
         assertProcessCompletedSuccessfully(result);
     }
 
-    private static long awaitLateAttachProbePid(Process process, Path stdoutFile, Path stderrFile)
-            throws IOException, InterruptedException {
-        String readyPrefix = ControlledAgentLateAttachProbe.READY_LINE_PREFIX;
-        long deadlineNanos = System.nanoTime() + WAIT_TIMEOUT.toNanos();
-        while (System.nanoTime() < deadlineNanos) {
-            Optional<String> readyLine = Files.readString(stdoutFile, StandardCharsets.UTF_8)
-                    .lines()
-                    .filter(line -> line.startsWith(readyPrefix))
-                    .findFirst();
-            if (readyLine.isPresent()) {
-                return Long.parseLong(readyLine.get().substring(readyPrefix.length()).trim());
-            }
-            if (!process.isAlive()) {
-                break;
-            }
-
-            Thread.sleep(CHILD_READY_POLL_INTERVAL.toMillis());
+    private static long awaitLateAttachProbePid(Process process, Path stdoutFile, Path stderrFile) throws IOException {
+        try {
+            return await("late attach probe READY line")
+                    .atMost(WAIT_TIMEOUT)
+                    .pollInterval(CHILD_READY_POLL_INTERVAL)
+                    .failFast("late attach probe exited before reporting READY", () -> !process.isAlive())
+                    .until(() -> reportedPid(stdoutFile), Optional::isPresent)
+                    .orElseThrow();
+        } catch (ConditionTimeoutException | TerminalFailureException failure) {
+            throw new AssertionError(
+                    "Late attach probe never reported READY; stdout=%s, stderr=%s".formatted(
+                            Files.readString(stdoutFile, StandardCharsets.UTF_8),
+                            Files.readString(stderrFile, StandardCharsets.UTF_8)),
+                    failure
+            );
         }
+    }
 
-        throw new AssertionError(
-                "Late attach probe never reported READY; stdout=%s, stderr=%s".formatted(
-                        Files.readString(stdoutFile, StandardCharsets.UTF_8),
-                        Files.readString(stderrFile, StandardCharsets.UTF_8))
-        );
+    private static Optional<Long> reportedPid(Path stdoutFile) throws IOException {
+        String readyPrefix = ControlledAgentLateAttachProbe.READY_LINE_PREFIX;
+        return Files.readString(stdoutFile, StandardCharsets.UTF_8)
+                .lines()
+                .filter(line -> line.startsWith(readyPrefix))
+                .findFirst()
+                .map(line -> Long.parseLong(line.substring(readyPrefix.length()).trim()));
     }
 
     private static void assertMutationMBeanVisibleThroughLocalManagementConnector(long childPid)
@@ -394,8 +398,7 @@ class ControlledAgentRuntimeTest {
         return new StimulusSpan(matcher.group(4), matcher.group(5));
     }
 
-    private void assertInvalidSpanExportedWithViolationMarker(OtlpTraceCollector collector, StimulusSpan stimulus)
-            throws InterruptedException {
+    private void assertInvalidSpanExportedWithViolationMarker(OtlpTraceCollector collector, StimulusSpan stimulus) {
         OtlpTraceCollector.ReceivedSpan exported = awaitExportedSpan(collector, stimulus);
 
         assertThat(exported.traceId()).isEqualTo(stimulus.traceId());
@@ -408,29 +411,28 @@ class ControlledAgentRuntimeTest {
                 .contains("platform.trace.result");
     }
 
-    private OtlpTraceCollector.ReceivedSpan awaitExportedSpan(OtlpTraceCollector collector, StimulusSpan stimulus)
-            throws InterruptedException {
-        long deadlineNanos = System.nanoTime() + EXPORT_TIMEOUT.toNanos();
-        while (System.nanoTime() < deadlineNanos) {
-            Optional<OtlpTraceCollector.ReceivedSpan> exported = collector.receivedSpans()
-                    .stream()
-                    .filter(span -> span.spanId().equals(stimulus.spanId()))
-                    .findFirst();
-            if (exported.isPresent()) {
-                return exported.get();
-            }
-
-            sleepExportPollInterval();
+    private static OtlpTraceCollector.ReceivedSpan awaitExportedSpan(OtlpTraceCollector collector, StimulusSpan stimulus) {
+        try {
+            return await("export of span " + stimulus.spanId())
+                    .atMost(EXPORT_TIMEOUT)
+                    .pollInterval(EXPORT_POLL_INTERVAL)
+                    .until(() -> exportedSpan(collector, stimulus), Optional::isPresent)
+                    .orElseThrow();
+        } catch (ConditionTimeoutException timeout) {
+            throw new AssertionError(
+                    "The invalid span was never exported: spanId=%s receivedSpans=%s"
+                            .formatted(stimulus.spanId(), collector.receivedSpans()),
+                    timeout
+            );
         }
-
-        throw new AssertionError(
-                "The invalid span was never exported: spanId=%s receivedSpans=%s"
-                        .formatted(stimulus.spanId(), collector.receivedSpans())
-        );
     }
 
-    private static void sleepExportPollInterval() throws InterruptedException {
-        Thread.sleep(EXPORT_POLL_INTERVAL.toMillis());
+    private static Optional<OtlpTraceCollector.ReceivedSpan> exportedSpan(OtlpTraceCollector collector,
+                                                                          StimulusSpan stimulus) {
+        return collector.receivedSpans()
+                .stream()
+                .filter(span -> span.spanId().equals(stimulus.spanId()))
+                .findFirst();
     }
 
     private void assertErrorDiagnosticEmitted(ChildProcessResult result) {

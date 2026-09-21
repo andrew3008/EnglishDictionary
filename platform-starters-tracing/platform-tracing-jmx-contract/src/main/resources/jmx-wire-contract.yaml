@@ -350,15 +350,15 @@ openTypes:
     valueField: value
     valueType: long
     indexFields: [key]
-  processorWatchdogValues:
+  processorSpanTimeoutValues:
     kind: composite
-    typeName: space.br1440.platform.tracing.ProcessorWatchdogValues
+    typeName: space.br1440.platform.tracing.ProcessorSpanTimeoutValues
     fields:
       - { name: ownerPresent, type: boolean, required: true, nullable: false }
       - { name: ownerGeneration, type: long, required: true, nullable: false }
       - { name: ownerCapturedOffsetNanos, type: long, required: true, nullable: false }
-      - { name: forcedSpanCloses, type: long, required: true, nullable: false }
-      - { name: forcedTraceCloses, type: long, required: true, nullable: false }
+      - { name: forcedSpanEndAttemptsTotal, type: long, required: true, nullable: false }
+      - { name: forcedTraceEndAttemptsTotal, type: long, required: true, nullable: false }
       - { name: activeSpanCount, type: int, required: true, nullable: false }
       - { name: activeTraceCount, type: int, required: true, nullable: false }
       - { name: trackedTraceCount, type: int, required: true, nullable: false }
@@ -368,7 +368,12 @@ openTypes:
       - { name: trackedSpanPerTraceCapacity, type: int, required: true, nullable: false }
       - { name: spansRejectedPerTraceTotal, type: long, required: true, nullable: false }
       - { name: spansRejectedGlobalTotal, type: long, required: true, nullable: false }
+      - { name: spansRejectedTraceCapacityTotal, type: long, required: true, nullable: false }
       - { name: spanLedgerInvariantViolationTotal, type: long, required: true, nullable: false }
+      - { name: scanFailuresTotal, type: long, required: true, nullable: false }
+      - { name: forceEndFailuresTotal, type: long, required: true, nullable: false }
+      - { name: lastSuccessfulBackgroundScanEpochMillis, type: long, required: true, nullable: false }
+      - { name: scannerState, type: string, required: true, nullable: false }
   processorCompositeValues:
     kind: composite
     typeName: space.br1440.platform.tracing.ProcessorCompositeValues
@@ -396,7 +401,7 @@ openTypes:
       - { name: agentInstanceId, type: string, required: true, nullable: false }
       - { name: captureStartedAt, type: long, required: true, nullable: false }
       - { name: captureCompletedAt, type: long, required: true, nullable: false }
-      - { name: watchdog, type: "composite:processorWatchdogValues", required: true, nullable: false }
+      - { name: spanTimeout, type: "composite:processorSpanTimeoutValues", required: true, nullable: false }
       - { name: composite, type: "composite:processorCompositeValues", required: true, nullable: false }
       - { name: metrics, type: "composite:processorMetricsValues", required: true, nullable: false }
   safeWrapperMetrics:

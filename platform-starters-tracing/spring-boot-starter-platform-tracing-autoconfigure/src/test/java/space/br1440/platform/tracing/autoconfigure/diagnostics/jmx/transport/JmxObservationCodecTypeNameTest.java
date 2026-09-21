@@ -46,7 +46,7 @@ class JmxObservationCodecTypeNameTest {
                 JmxWireContract.OPEN_TYPE_EXPORT_PROCESSOR_VALUES_TYPE_NAME,
                 JmxWireContract.OPEN_TYPE_SAFE_EXPORTER_VALUES_TYPE_NAME,
                 JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_OBSERVATION_TYPE_NAME,
-                JmxWireContract.OPEN_TYPE_PROCESSOR_WATCHDOG_VALUES_TYPE_NAME,
+                JmxWireContract.OPEN_TYPE_PROCESSOR_SPAN_TIMEOUT_VALUES_TYPE_NAME,
                 JmxWireContract.OPEN_TYPE_PROCESSOR_COMPOSITE_VALUES_TYPE_NAME,
                 JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_VALUES_TYPE_NAME,
                 JmxWireContract.OPEN_TYPE_DIAGNOSTICS_OBSERVATION_TYPE_NAME);

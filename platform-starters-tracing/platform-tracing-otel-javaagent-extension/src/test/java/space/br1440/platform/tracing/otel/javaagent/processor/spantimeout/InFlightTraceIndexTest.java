@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -28,23 +30,23 @@ class InFlightTraceIndexTest {
 
     private static InFlightTraceIndex index(int maxTrackedTraces,
                                             int maxTrackedSpansPerTrace,
-                                            PermitTracker permitTracker,
+                                            int maxTrackedSpans,
                                             AtomicLong clock) {
         return new InFlightTraceIndex(
                 HOUR_NANOS, HOUR_NANOS,
-                maxTrackedTraces, maxTrackedSpansPerTrace,
-                clock::get, permitTracker
+                maxTrackedTraces, maxTrackedSpansPerTrace, maxTrackedSpans,
+                clock::get
         );
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static InFlightTraceIndex index(int maxTrackedTraces,
-                                            PermitTracker permitTracker,
                                             AtomicLong clock,
                                             Runnable afterFirstEvictionPlan) {
         return new InFlightTraceIndex(
                 HOUR_NANOS, HOUR_NANOS,
-                maxTrackedTraces, 10,
-                clock::get, permitTracker,
+                maxTrackedTraces, 10, 1_000,
+                clock::get,
                 afterFirstEvictionPlan
         );
     }
@@ -53,23 +55,32 @@ class InFlightTraceIndexTest {
     private static InFlightTraceIndex index(long spanTimeoutNanos,
                                             long traceTimeoutNanos,
                                             int maxTrackedTraces,
-                                            PermitTracker permitTracker,
                                             AtomicLong clock,
                                             Runnable afterFirstEvictionPlan) {
         return new InFlightTraceIndex(
                 spanTimeoutNanos, traceTimeoutNanos,
-                maxTrackedTraces, 10,
-                clock::get, permitTracker,
+                maxTrackedTraces, 10, 1_000,
+                clock::get,
                 afterFirstEvictionPlan
         );
+    }
+
+    private static List<ExpiredSpan> collectExpired(InFlightTraceIndex index, long now) {
+        Deque<ExpiredSpan> into = new ArrayDeque<>();
+        index.collectExpired(now, into);
+        return List.copyOf(into);
+    }
+
+    private static void admitEnded(InFlightTraceIndex index, String traceId, ReadWriteSpan span, long now) {
+        index.admit(traceId, span.getSpanContext().getSpanId(), span, now, () -> true);
+        index.onEnd(traceId, span.getSpanContext().getSpanId(), span);
     }
 
     @Test
     void duplicateSpanIdIsNoOpAndDoesNotConsumeAnExtraPermit() {
         // given
-        PermitTracker permitTracker = new PermitTracker(5);
         AtomicLong clock = new AtomicLong();
-        InFlightTraceIndex index = index(5, 5, permitTracker, clock);
+        InFlightTraceIndex index = index(5, 5, 5, clock);
         ReadWriteSpan span = SpanTimeoutTestSpans.span(1, 1);
 
         // when
@@ -78,6 +89,7 @@ class InFlightTraceIndexTest {
 
         // then
         assertThat(index.trackedSpanCount()).isEqualTo(1);
+        assertThat(index.acquiredTraceSlotCount()).isEqualTo(1);
         assertThat(index.rejectedPerTraceTotal()).isZero();
         assertThat(index.rejectedGlobalTotal()).isZero();
     }
@@ -85,9 +97,8 @@ class InFlightTraceIndexTest {
     @Test
     void perTraceSaturationRejectsSecondDistinctSpanOnSameTrace() {
         // given
-        PermitTracker permitTracker = new PermitTracker(100);
         AtomicLong clock = new AtomicLong();
-        InFlightTraceIndex index = index(100, 1, permitTracker, clock);
+        InFlightTraceIndex index = index(100, 1, 100, clock);
 
         // when
         index.admit("t1", "s1", SpanTimeoutTestSpans.span(1, 1), clock.get(), () -> true);
@@ -100,11 +111,10 @@ class InFlightTraceIndexTest {
     }
 
     @Test
-    void globalSaturationOnABrandNewTraceLeavesNoGhostEntry() {
+    void globalSaturationOnABrandNewTraceRollsBackTheTraceSlotAndLeavesNoGhostEntry() {
         // given
-        PermitTracker permitTracker = new PermitTracker(1);
         AtomicLong clock = new AtomicLong();
-        InFlightTraceIndex index = index(100, 100, permitTracker, clock);
+        InFlightTraceIndex index = index(100, 100, 1, clock);
         index.admit("t1", "s1", SpanTimeoutTestSpans.span(1, 1), clock.get(), () -> true);
 
         // when
@@ -112,15 +122,17 @@ class InFlightTraceIndexTest {
 
         // then
         assertThat(index.rejectedGlobalTotal()).isEqualTo(1);
+        assertThat(index.rejectedTraceCapacityTotal()).isZero();
         assertThat(index.size()).isEqualTo(1);
+        assertThat(index.acquiredTraceSlotCount()).isEqualTo(1);
+        assertThat(index.traceSlotInvariantViolationTotal()).isZero();
     }
 
     @Test
     void globalSaturationOnAnExistingTraceKeepsItsPriorStateIntact() {
         // given
-        PermitTracker permitTracker = new PermitTracker(1);
         AtomicLong clock = new AtomicLong();
-        InFlightTraceIndex index = index(100, 5, permitTracker, clock);
+        InFlightTraceIndex index = index(100, 5, 1, clock);
         index.admit("t1", "s1", SpanTimeoutTestSpans.span(1, 1), clock.get(), () -> true);
 
         // when
@@ -135,9 +147,8 @@ class InFlightTraceIndexTest {
     @Test
     void dualSaturationIncrementsOnlyThePerTraceCounterNotTheGlobalOne() {
         // given
-        PermitTracker permitTracker = new PermitTracker(1);
         AtomicLong clock = new AtomicLong();
-        InFlightTraceIndex index = index(100, 1, permitTracker, clock);
+        InFlightTraceIndex index = index(100, 1, 1, clock);
         index.admit("t1", "s1", SpanTimeoutTestSpans.span(1, 1), clock.get(), () -> true);
 
         // when
@@ -151,9 +162,8 @@ class InFlightTraceIndexTest {
     @Test
     void permitReleasedOnOnEndIsReusableByANewAdmission() {
         // given
-        PermitTracker permitTracker = new PermitTracker(1);
         AtomicLong clock = new AtomicLong();
-        InFlightTraceIndex index = index(100, 100, permitTracker, clock);
+        InFlightTraceIndex index = index(100, 100, 1, clock);
         ReadWriteSpan first = SpanTimeoutTestSpans.span(1, 1);
         index.admit("t1", "s1", first, clock.get(), () -> true);
 
@@ -167,11 +177,10 @@ class InFlightTraceIndexTest {
     }
 
     @Test
-    void admissionRemainsFailOpenWhenAdmissionOpenSupplierReportsClosed() {
+    void admissionIsSkippedWhenAdmissionOpenSupplierReportsClosed() {
         // given
-        PermitTracker permitTracker = new PermitTracker(100);
         AtomicLong clock = new AtomicLong();
-        InFlightTraceIndex index = index(100, 100, permitTracker, clock);
+        InFlightTraceIndex index = index(100, 100, 100, clock);
 
         // when
         index.admit("t1", "s1", SpanTimeoutTestSpans.span(1, 1), clock.get(), () -> false);
@@ -179,86 +188,146 @@ class InFlightTraceIndexTest {
         // then
         assertThat(index.size()).isZero();
         assertThat(index.trackedSpanCount()).isZero();
+        assertThat(index.acquiredTraceSlotCount()).isZero();
         assertThat(index.rejectedPerTraceTotal()).isZero();
         assertThat(index.rejectedGlobalTotal()).isZero();
+        assertThat(index.rejectedTraceCapacityTotal()).isZero();
+    }
+
+    @Test
+    void traceCapacityRejectsABrandNewTraceWithoutTouchingSpanPermits() {
+        // given
+        AtomicLong clock = new AtomicLong();
+        InFlightTraceIndex index = index(1, 10, 100, clock);
+        index.admit("t1", "s1", SpanTimeoutTestSpans.span(1, 1), clock.get(), () -> true);
+
+        // when
+        index.admit("t2", "s1", SpanTimeoutTestSpans.span(2, 1), clock.get(), () -> true);
+
+        // then
+        assertThat(index.rejectedTraceCapacityTotal()).isEqualTo(1);
+        assertThat(index.rejectedGlobalTotal()).isZero();
+        assertThat(index.size()).isEqualTo(1);
+        assertThat(index.trackedSpanCount()).isEqualTo(1);
+        assertThat(index.acquiredTraceSlotCount()).isEqualTo(1);
+    }
+
+    @Test
+    void traceCapacityStillAdmitsSpansOfAnAlreadyTrackedTrace() {
+        // given
+        AtomicLong clock = new AtomicLong();
+        InFlightTraceIndex index = index(1, 10, 100, clock);
+        index.admit("t1", "s1", SpanTimeoutTestSpans.span(1, 1), clock.get(), () -> true);
+
+        // when
+        index.admit("t1", "s2", SpanTimeoutTestSpans.span(1, 2), clock.get(), () -> true);
+
+        // then
+        assertThat(index.rejectedTraceCapacityTotal()).isZero();
+        assertThat(index.trackedSpanCount()).isEqualTo(2);
     }
 
     @Test
     void collectExpiredPrefersSpanReasonOverTraceReasonWhenBothExpireTogether() {
         // given
         AtomicLong clock = new AtomicLong();
-        PermitTracker permitTracker = new PermitTracker(10);
         InFlightTraceIndex index = new InFlightTraceIndex(
                 Duration.ofMillis(10).toNanos(), Duration.ofMillis(10).toNanos(),
-                10, 10,
-                clock::get, permitTracker
+                10, 10, 10,
+                clock::get
         );
         index.admit("t1", "s1", SpanTimeoutTestSpans.span(1, 1), clock.get(), () -> true);
         clock.set(Duration.ofMillis(10).toNanos() + 1);
 
         // when
-        List<InFlightTraceIndex.ExpiredSpan> expired = index.collectExpired(clock.get());
+        List<ExpiredSpan> expired = collectExpired(index, clock.get());
 
         // then
         assertThat(expired).hasSize(1);
-        assertThat(expired.getFirst().reason()).isEqualTo(InFlightTraceIndex.TimeoutReason.SPAN);
+        assertThat(expired.getFirst().reason()).isEqualTo(TimeoutReason.SPAN);
+        assertThat(expired.getFirst().spanId()).isEqualTo("s1");
     }
 
     @Test
     void collectExpiredUsesTraceReasonWhenOnlyTraceTimeoutIsExceeded() {
         // given
         AtomicLong clock = new AtomicLong();
-        PermitTracker permitTracker = new PermitTracker(10);
         InFlightTraceIndex index = new InFlightTraceIndex(
                 Duration.ofHours(1).toNanos(), Duration.ofMillis(10).toNanos(),
-                10, 10,
-                clock::get, permitTracker
+                10, 10, 10,
+                clock::get
         );
         index.admit("t1", "s1", SpanTimeoutTestSpans.span(1, 1), clock.get(), () -> true);
         clock.set(Duration.ofMillis(10).toNanos() + 1);
 
         // when
-        List<InFlightTraceIndex.ExpiredSpan> expired = index.collectExpired(clock.get());
+        List<ExpiredSpan> expired = collectExpired(index, clock.get());
 
         // then
         assertThat(expired).hasSize(1);
-        assertThat(expired.getFirst().reason()).isEqualTo(InFlightTraceIndex.TimeoutReason.TRACE);
+        assertThat(expired.getFirst().reason()).isEqualTo(TimeoutReason.TRACE);
     }
 
     @Test
-    void tombstoneSurvivesScanUntilItsOwnTraceEpochExpires() {
+    void extractedCandidateKeepsItsPermitUntilTheCallerReleasesIt() {
         // given
         AtomicLong clock = new AtomicLong();
-        PermitTracker permitTracker = new PermitTracker(10);
+        InFlightTraceIndex index = new InFlightTraceIndex(
+                Duration.ofMillis(10).toNanos(), HOUR_NANOS,
+                10, 10, 10,
+                clock::get
+        );
+        index.admit("t1", "s1", SpanTimeoutTestSpans.span(1, 1), clock.get(), () -> true);
+        clock.set(Duration.ofMillis(10).toNanos() + 1);
+
+        // when
+        List<ExpiredSpan> expired = collectExpired(index, clock.get());
+
+        // then
+        assertThat(expired).hasSize(1);
+        assertThat(index.trackedSpanCount()).isEqualTo(1);
+        assertThat(index.nonEmptyTraceCount()).isZero();
+
+        index.releaseCandidatePermit(expired.getFirst(), "force-end");
+        assertThat(index.trackedSpanCount()).isZero();
+        assertThat(index.permitInvariantViolationTotal()).isZero();
+    }
+
+    @Test
+    void emptyStateSurvivesScanUntilItsOwnTraceEpochExpires() {
+        // given
+        AtomicLong clock = new AtomicLong();
         long spanTimeout = Duration.ofMillis(10).toNanos();
         long traceTimeout = Duration.ofMillis(100).toNanos();
-        InFlightTraceIndex index = new InFlightTraceIndex(spanTimeout, traceTimeout, 10, 10, clock::get, permitTracker);
+        InFlightTraceIndex index = new InFlightTraceIndex(spanTimeout, traceTimeout, 10, 10, 10, clock::get);
         index.admit("t1", "s1", SpanTimeoutTestSpans.span(1, 1), clock.get(), () -> true);
         clock.set(spanTimeout + 1);
 
         // when
-        List<InFlightTraceIndex.ExpiredSpan> firstScan = index.collectExpired(clock.get());
+        List<ExpiredSpan> firstScan = collectExpired(index, clock.get());
+        index.releaseCandidatePermit(firstScan.getFirst(), "force-end");
 
         // then
         assertThat(firstScan).hasSize(1);
         assertThat(index.size()).isEqualTo(1);
+        assertThat(index.acquiredTraceSlotCount()).isEqualTo(1);
         assertThat(index.nonEmptyTraceCount()).isZero();
 
         // when
         clock.set(traceTimeout + 1);
-        List<InFlightTraceIndex.ExpiredSpan> secondScan = index.collectExpired(clock.get());
+        List<ExpiredSpan> secondScan = collectExpired(index, clock.get());
 
         // then
         assertThat(secondScan).isEmpty();
         assertThat(index.size()).isZero();
+        assertThat(index.acquiredTraceSlotCount()).isZero();
     }
 
     @Test
     void hasEndedSpanIsPurgedByScanWithoutForceCloseOrLostPermit() {
         // given
         AtomicLong clock = new AtomicLong();
-        PermitTracker permitTracker = new PermitTracker(10);
-        InFlightTraceIndex index = index(10, 10, permitTracker, clock);
+        InFlightTraceIndex index = index(10, 10, 10, clock);
         ReadWriteSpan span = SpanTimeoutTestSpans.span(1, 1);
         index.admit("t1", "s1", span, clock.get(), () -> true);
         assertThat(index.trackedSpanCount()).isEqualTo(1);
@@ -266,7 +335,7 @@ class InFlightTraceIndexTest {
         when(span.hasEnded()).thenReturn(true);
 
         // when
-        List<InFlightTraceIndex.ExpiredSpan> expired = index.collectExpired(clock.get());
+        List<ExpiredSpan> expired = collectExpired(index, clock.get());
 
         // then
         assertThat(expired).isEmpty();
@@ -275,15 +344,34 @@ class InFlightTraceIndexTest {
     }
 
     @Test
+    void drainAllReleasesEverySpanPermitAndTraceSlot() {
+        // given
+        AtomicLong clock = new AtomicLong();
+        InFlightTraceIndex index = index(10, 10, 10, clock);
+        index.admit("t1", "s1", SpanTimeoutTestSpans.span(1, 1), clock.get(), () -> true);
+        index.admit("t1", "s2", SpanTimeoutTestSpans.span(1, 2), clock.get(), () -> true);
+        index.admit("t2", "s1", SpanTimeoutTestSpans.span(2, 1), clock.get(), () -> true);
+
+        // when
+        index.drainAll();
+
+        // then
+        assertThat(index.size()).isZero();
+        assertThat(index.trackedSpanCount()).isZero();
+        assertThat(index.acquiredTraceSlotCount()).isZero();
+        assertThat(index.permitInvariantViolationTotal()).isZero();
+        assertThat(index.traceSlotInvariantViolationTotal()).isZero();
+    }
+
+    @Test
     @SuppressWarnings("resource")
     void concurrentScanAndOnEndNeverDoubleReleaseTheSamePermit() throws Exception {
         // given
         AtomicLong clock = new AtomicLong();
-        PermitTracker permitTracker = new PermitTracker(10);
         InFlightTraceIndex index = new InFlightTraceIndex(
                 Duration.ofNanos(1).toNanos(), Duration.ofHours(1).toNanos(),
-                10, 10,
-                clock::get, permitTracker
+                10, 10, 10,
+                clock::get
         );
         ReadWriteSpan span = SpanTimeoutTestSpans.span(1, 1);
         CountDownLatch scannerEnteredHasEnded = new CountDownLatch(1);
@@ -296,10 +384,11 @@ class InFlightTraceIndexTest {
         index.admit("t1", "s1", span, clock.get(), () -> true);
         clock.set(2L);
         ExecutorService executor = Executors.newFixedThreadPool(2);
+        Deque<ExpiredSpan> batch = new ArrayDeque<>();
 
         // when
         try {
-            Future<?> scan = executor.submit(() -> index.collectExpired(clock.get()));
+            Future<?> scan = executor.submit(() -> index.collectExpired(clock.get(), batch));
             assertThat(scannerEnteredHasEnded.await(5, TimeUnit.SECONDS)).isTrue();
             Future<?> end = executor.submit(() -> index.onEnd("t1", "s1", span));
             releaseScanner.countDown();
@@ -308,6 +397,9 @@ class InFlightTraceIndexTest {
         } finally {
             executor.shutdownNow();
         }
+        for (ExpiredSpan candidate : batch) {
+            index.releaseCandidatePermit(candidate, "force-end");
+        }
 
         // then
         assertThat(index.trackedSpanCount()).isZero();
@@ -315,109 +407,188 @@ class InFlightTraceIndexTest {
     }
 
     @Test
-    void evictOldestIfNeededEvictsTheComputedBatchAndReleasesTheirPermits() {
+    void liveTracesAreNeverEvictedEvenUnderTraceCapacityPressure() {
         // given
-        PermitTracker permitTracker = new PermitTracker(100);
         AtomicLong clock = new AtomicLong();
-        InFlightTraceIndex index = index(3, 10, permitTracker, clock);
-        for (int traceOrdinal = 1; traceOrdinal <= 5; traceOrdinal++) {
-            clock.set(traceOrdinal);
-            index.admit("t" + traceOrdinal, "s1", SpanTimeoutTestSpans.span(traceOrdinal, 1), clock.get(), () -> true);
-        }
-        assertThat(index.trackedSpanCount()).isEqualTo(5);
-
-        // when
-        index.evictOldestIfNeeded();
-
-        // then
-        assertThat(index.size()).isEqualTo(3);
-        assertThat(index.trackingEvictedTotal()).isEqualTo(2);
-        assertThat(index.trackedSpanCount()).isEqualTo(3);
-
-        index.admit("new-trace", "s1", SpanTimeoutTestSpans.span(99, 1), clock.get(), () -> true);
-        assertThat(index.trackedSpanCount()).isEqualTo(4);
-    }
-
-    @Test
-    void evictionPrefersEmptyTracesOverLiveOnesEvenWhenTheyAreOlder() {
-        // given
-        PermitTracker permitTracker = new PermitTracker(100);
-        AtomicLong clock = new AtomicLong();
-        InFlightTraceIndex index = index(3, 10, permitTracker, clock);
-
-        ReadWriteSpan liveSpan = SpanTimeoutTestSpans.span(1, 1);
+        InFlightTraceIndex index = index(2, 10, 100, clock);
         clock.set(1);
-        index.admit("t-live", "s1", liveSpan, clock.get(), () -> true);
-
-        ReadWriteSpan emptyFirst = SpanTimeoutTestSpans.span(2, 1);
-        clock.set(2);
-        index.admit("t-empty-1", "s1", emptyFirst, clock.get(), () -> true);
-        index.onEnd("t-empty-1", "s1", emptyFirst);
-
-        ReadWriteSpan emptySecond = SpanTimeoutTestSpans.span(3, 1);
-        clock.set(3);
-        index.admit("t-empty-2", "s1", emptySecond, clock.get(), () -> true);
-        index.onEnd("t-empty-2", "s1", emptySecond);
-        clock.set(4);
-        index.admit("t-new-1", "s1", SpanTimeoutTestSpans.span(4, 1), clock.get(), () -> true);
-        clock.set(5);
-        index.admit("t-new-2", "s1", SpanTimeoutTestSpans.span(5, 1), clock.get(), () -> true);
-        assertThat(index.size()).isEqualTo(5);
-
-        index.evictOldestIfNeeded();
-
-        // then
-        assertThat(index.size()).isEqualTo(3);
-        assertThat(index.trackingEvictedTotal()).isEqualTo(2);
-        assertThat(index.trackedSpanCount()).isEqualTo(3);
-    }
-
-    @Test
-    void evictionOfLiveTracesNeverExceedsTheActualOverflowEvenWhenTheAmortizedBatchFloorIsLarger() {
-        // given
-        PermitTracker permitTracker = new PermitTracker(100);
-        AtomicLong clock = new AtomicLong();
-        int capacity = 20;
-        InFlightTraceIndex index = index(capacity, 10, permitTracker, clock);
-        for (int traceIndex = 1; traceIndex <= (capacity + 1); traceIndex++) {
-            clock.set(traceIndex);
-            index.admit("t-live-" + traceIndex, "s1", SpanTimeoutTestSpans.span(traceIndex, 1), clock.get(), () -> true);
-        }
-        assertThat(index.size()).isEqualTo(capacity + 1);
-        assertThat(index.trackedSpanCount()).isEqualTo(capacity + 1);
-
-        // when
-        index.evictOldestIfNeeded();
-
-        // then
-        assertThat(index.size()).isEqualTo(capacity);
-        assertThat(index.trackingEvictedTotal()).isEqualTo(1);
-        assertThat(index.trackedSpanCount()).isEqualTo(capacity);
-    }
-
-    @Test
-    void admissionStaysFailOpenAboveTraceCapacityUntilEvictionActuallyRuns() {
-        // given
-        PermitTracker permitTracker = new PermitTracker(100);
-        AtomicLong clock = new AtomicLong();
-        InFlightTraceIndex index = index(1, 10, permitTracker, clock);
-
-        // when
         index.admit("t1", "s1", SpanTimeoutTestSpans.span(1, 1), clock.get(), () -> true);
+        clock.set(2);
         index.admit("t2", "s1", SpanTimeoutTestSpans.span(2, 1), clock.get(), () -> true);
+        index.admit("t3", "s1", SpanTimeoutTestSpans.span(3, 1), clock.get(), () -> true);
+        assertThat(index.rejectedTraceCapacityTotal()).isEqualTo(1);
+
+        // when
+        index.relieveTracePressure();
 
         // then
         assertThat(index.size()).isEqualTo(2);
+        assertThat(index.trackingEvictedTotal()).isZero();
         assertThat(index.trackedSpanCount()).isEqualTo(2);
+        assertThat(index.nonEmptyTraceCount()).isEqualTo(2);
+    }
+
+    @Test
+    void relieveTracePressureEvictsTheOldestEmptyStateAndFreesItsSlotForANewTrace() {
+        // given
+        AtomicLong clock = new AtomicLong();
+        InFlightTraceIndex index = index(3, 10, 100, clock);
+        clock.set(1);
+        admitEnded(index, "t-empty-old", SpanTimeoutTestSpans.span(1, 1), clock.get());
+        clock.set(2);
+        admitEnded(index, "t-empty-new", SpanTimeoutTestSpans.span(2, 1), clock.get());
+        clock.set(3);
+        index.admit("t-live", "s1", SpanTimeoutTestSpans.span(3, 1), clock.get(), () -> true);
+        index.admit("t-rejected", "s1", SpanTimeoutTestSpans.span(4, 1), clock.get(), () -> true);
+        assertThat(index.rejectedTraceCapacityTotal()).isEqualTo(1);
+
+        // when
+        index.relieveTracePressure();
+
+        // then
+        assertThat(index.size()).isEqualTo(2);
+        assertThat(index.trackingEvictedTotal()).isEqualTo(1);
+        assertThat(index.acquiredTraceSlotCount()).isEqualTo(2);
+        assertThat(index.trackedSpanCount()).isEqualTo(1);
+
+        index.admit("t-empty-old", "s-resumed", SpanTimeoutTestSpans.span(1, 2), clock.get(), () -> true);
+        assertThat(index.size()).isEqualTo(3);
+        assertThat(index.rejectedTraceCapacityTotal()).isEqualTo(1);
+    }
+
+    @Test
+    void relieveTracePressureIsANoOpWhileSlotsAreFreeAndNoRejectionWasObserved() {
+        // given
+        AtomicLong clock = new AtomicLong();
+        InFlightTraceIndex index = index(10, 10, 100, clock);
+        admitEnded(index, "t-empty", SpanTimeoutTestSpans.span(1, 1), clock.get());
+        index.admit("t-live", "s1", SpanTimeoutTestSpans.span(2, 1), clock.get(), () -> true);
+
+        // when
+        index.relieveTracePressure();
+
+        // then
+        assertThat(index.size()).isEqualTo(2);
+        assertThat(index.trackingEvictedTotal()).isZero();
+    }
+
+    @Test
+    void pressureSignalIsConsumedByASingleReliefPass() {
+        // given
+        AtomicLong clock = new AtomicLong();
+        InFlightTraceIndex index = index(2, 10, 100, clock);
+        clock.set(1);
+        admitEnded(index, "t-empty-a", SpanTimeoutTestSpans.span(1, 1), clock.get());
+        clock.set(2);
+        admitEnded(index, "t-empty-b", SpanTimeoutTestSpans.span(2, 1), clock.get());
+        index.admit("t-rejected", "s1", SpanTimeoutTestSpans.span(3, 1), clock.get(), () -> true);
+
+        // when
+        index.relieveTracePressure();
+        index.relieveTracePressure();
+
+        // then
+        assertThat(index.trackingEvictedTotal()).isEqualTo(1);
+        assertThat(index.size()).isEqualTo(1);
+    }
+
+    @Test
+    void evictionSkipsAnEmptyCandidateRevivedBetweenPlanningAndCommit() {
+        // given
+        AtomicLong clock = new AtomicLong();
+        InFlightTraceIndex[] holder = new InFlightTraceIndex[1];
+        ReadWriteSpan revivedSpan = SpanTimeoutTestSpans.span(1, 2);
+        InFlightTraceIndex index = index(20, clock,
+                () -> holder[0].admit("t-empty-a", "s-revived", revivedSpan, clock.get(), () -> true)
+        );
+        holder[0] = index;
+        clock.set(1);
+        admitEnded(index, "t-empty-a", SpanTimeoutTestSpans.span(1, 1), clock.get());
+        clock.set(2);
+        admitEnded(index, "t-empty-b", SpanTimeoutTestSpans.span(2, 1), clock.get());
+        for (int liveOrdinal = 1; liveOrdinal <= 18; liveOrdinal++) {
+            clock.set(2 + liveOrdinal);
+            index.admit("t-live-" + liveOrdinal, "s1",
+                    SpanTimeoutTestSpans.span(10 + liveOrdinal, 1), clock.get(), () -> true);
+        }
+        assertThat(index.size()).isEqualTo(20);
+
+        // when
+        index.relieveTracePressure();
+
+        // then
+        assertThat(index.size()).isEqualTo(19);
+        assertThat(index.trackingEvictedTotal()).isEqualTo(1);
+        assertThat(index.trackedSpanCount()).isEqualTo(19);
+        assertThat(index.nonEmptyTraceCount()).isEqualTo(19);
+        assertThat(index.acquiredTraceSlotCount()).isEqualTo(19);
+    }
+
+    @Test
+    void evictionSkipsAStaleCandidateWhoseStateWasReplacedBetweenPlanningAndCommit() {
+        // given
+        AtomicLong clock = new AtomicLong();
+        InFlightTraceIndex[] holder = new InFlightTraceIndex[1];
+        ReadWriteSpan replacementSpan = SpanTimeoutTestSpans.span(1, 2);
+        InFlightTraceIndex index = index(1_000L, 100L, 20, clock, () -> {
+            clock.set(101);
+            collectExpired(holder[0], 101);
+            holder[0].admit("t-stale-a", "s-replacement", replacementSpan, 101, () -> true);
+        });
+        holder[0] = index;
+        admitEnded(index, "t-stale-a", SpanTimeoutTestSpans.span(1, 1), 0);
+        admitEnded(index, "t-empty-b", SpanTimeoutTestSpans.span(2, 1), 1);
+        for (int liveOrdinal = 1; liveOrdinal <= 18; liveOrdinal++) {
+            index.admit("t-live-" + liveOrdinal, "s1", SpanTimeoutTestSpans.span(10 + liveOrdinal, 1), 1, () -> true);
+        }
+        assertThat(index.size()).isEqualTo(20);
+
+        // when
+        index.relieveTracePressure();
+
+        // then
+        assertThat(index.size()).isEqualTo(19);
+        assertThat(index.trackingEvictedTotal()).isEqualTo(1);
+        assertThat(index.trackedSpanCount()).isEqualTo(19);
+        assertThat(index.nonEmptyTraceCount()).isEqualTo(19);
+        assertThat(index.acquiredTraceSlotCount()).isEqualTo(19);
+        assertThat(index.traceSlotInvariantViolationTotal()).isZero();
+    }
+
+    @Test
+    void evictingAnEmptyStateStartsANewTraceEpochForTheSameTraceId() {
+        // given
+        AtomicLong clock = new AtomicLong();
+        InFlightTraceIndex index = index(1_000L, 100L, 2, clock, () -> {
+        });
+        admitEnded(index, "t1", SpanTimeoutTestSpans.span(1, 1), 0);
+        ReadWriteSpan other = SpanTimeoutTestSpans.span(2, 1);
+        index.admit("t2", "s1", other, 1, () -> true);
+        index.admit("t3", "s1", SpanTimeoutTestSpans.span(3, 1), 1, () -> true);
+        index.relieveTracePressure();
+        assertThat(index.trackingEvictedTotal()).isEqualTo(1);
+        index.onEnd("t2", "s1", other);
+
+        // when
+        ReadWriteSpan resumed = SpanTimeoutTestSpans.span(1, 2);
+        index.admit("t1", "s-resumed", resumed, 50, () -> true);
+
+        // then
+        assertThat(collectExpired(index, 150)).isEmpty();
+        assertThat(index.trackedSpanCount()).isEqualTo(1);
+
+        List<ExpiredSpan> expired = collectExpired(index, 151);
+        assertThat(expired).hasSize(1);
+        assertThat(expired.getFirst().traceId()).isEqualTo("t1");
+        assertThat(expired.getFirst().reason()).isEqualTo(TimeoutReason.TRACE);
     }
 
     @Test
     @SuppressWarnings("resource")
-    void identitySafeEvictionNeverCorruptsThePermitTrackerUnderConcurrentTraceChurn() throws Exception {
+    void identitySafeEvictionNeverCorruptsEitherLedgerUnderConcurrentTraceChurn() throws Exception {
         // given
-        PermitTracker permitTracker = new PermitTracker(10_000);
         AtomicLong clock = new AtomicLong();
-        InFlightTraceIndex index = index(2, 100, permitTracker, clock);
+        InFlightTraceIndex index = index(2, 100, 10_000, clock);
         int churnThreads = 4;
         int iterationsPerThread = 2_000;
         String[] sharedTraceIds = {
@@ -434,7 +605,7 @@ class InFlightTraceIndexTest {
                 try {
                     start.await();
                     while (evictorRunning.get()) {
-                        index.evictOldestIfNeeded();
+                        index.relieveTracePressure();
                     }
                 } catch (InterruptedException interrupted) {
                     Thread.currentThread().interrupt();
@@ -472,173 +643,153 @@ class InFlightTraceIndexTest {
 
         // then
         assertThat(index.permitInvariantViolationTotal()).isZero();
+        assertThat(index.traceSlotInvariantViolationTotal()).isZero();
+        assertThat(index.trackedSpanCount()).isZero();
+        assertThat(index.acquiredTraceSlotCount()).isEqualTo(index.size());
+        assertThat(index.size()).isLessThanOrEqualTo(2);
     }
 
     @Test
-    void evictionSkipsAnEmptyCandidateRevivedBetweenPlanningAndCommit() {
+    @SuppressWarnings("resource")
+    void concurrentAdmissionOfDistinctTracesNeverExceedsTraceCapacity() throws Exception {
         // given
-        PermitTracker permitTracker = new PermitTracker(100);
+        int maxTrackedTraces = 50;
+        int threads = 8;
+        int tracesPerThread = 500;
         AtomicLong clock = new AtomicLong();
-        InFlightTraceIndex[] holder = new InFlightTraceIndex[1];
-        ReadWriteSpan revivedSpan = SpanTimeoutTestSpans.span(1, 2);
-        InFlightTraceIndex index = index(20, permitTracker, clock,
-                () -> holder[0].admit("t-empty-a", "s-revived", revivedSpan, clock.get(), () -> true)
-        );
-        holder[0] = index;
-        clock.set(1);
-        ReadWriteSpan firstEmpty = SpanTimeoutTestSpans.span(1, 1);
-        index.admit("t-empty-a", "s1", firstEmpty, clock.get(), () -> true);
-        index.onEnd("t-empty-a", "s1", firstEmpty);
-        clock.set(2);
-        ReadWriteSpan secondEmpty = SpanTimeoutTestSpans.span(2, 1);
-        index.admit("t-empty-b", "s1", secondEmpty, clock.get(), () -> true);
-        index.onEnd("t-empty-b", "s1", secondEmpty);
-        for (int liveOrdinal = 1; liveOrdinal <= 19; liveOrdinal++) {
-            clock.set(2 + liveOrdinal);
-            index.admit("t-live-" + liveOrdinal, "s1",
-                    SpanTimeoutTestSpans.span(10 + liveOrdinal, 1), clock.get(), () -> true);
+        InFlightTraceIndex index = index(maxTrackedTraces, 100, 100_000, clock);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+
+        // when
+        try {
+            List<Future<?>> admitters = new ArrayList<>();
+            for (int threadIndex = 0; threadIndex < threads; threadIndex++) {
+                int capturedThreadIndex = threadIndex;
+                admitters.add(executor.submit(() -> {
+                    start.await();
+                    for (int ordinal = 0; ordinal < tracesPerThread; ordinal++) {
+                        int traceOrdinal = capturedThreadIndex * tracesPerThread + ordinal + 1;
+                        String traceId = SpanTimeoutTestSpans.hex(traceOrdinal, 32);
+                        index.admit(traceId, "s1", SpanTimeoutTestSpans.span(traceOrdinal, 1),
+                                clock.incrementAndGet(), () -> true);
+                    }
+                    return null;
+                }));
+            }
+
+            start.countDown();
+            for (Future<?> admitter : admitters) {
+                admitter.get(30, TimeUnit.SECONDS);
+            }
+        } finally {
+            executor.shutdownNow();
         }
-        assertThat(index.size()).isEqualTo(21);
-
-        // when
-        index.evictOldestIfNeeded();
 
         // then
-        assertThat(index.size()).isEqualTo(20);
-        assertThat(index.trackingEvictedTotal()).isEqualTo(1);
-        assertThat(index.liveTracesEvictedTotal()).isZero();
-        assertThat(index.trackedSpanCount()).isEqualTo(20);
-        assertThat(index.nonEmptyTraceCount()).isEqualTo(20);
+        assertThat(index.size()).isEqualTo(maxTrackedTraces);
+        assertThat(index.acquiredTraceSlotCount()).isEqualTo(maxTrackedTraces);
+        assertThat(index.trackedSpanCount()).isEqualTo(maxTrackedTraces);
+        assertThat(index.rejectedTraceCapacityTotal()).isEqualTo((long) threads * tracesPerThread - maxTrackedTraces);
+        assertThat(index.rejectedGlobalTotal()).isZero();
+        assertThat(index.permitInvariantViolationTotal()).isZero();
+        assertThat(index.traceSlotInvariantViolationTotal()).isZero();
     }
 
     @Test
-    void boundedReplanCoversResidualOverflowWithoutInflatingLiveEvictionToTheHysteresisFloor() {
+    @SuppressWarnings("resource")
+    void acquiredTraceSlotsNeverExceedTraceCapacityWhilePublishedStatesAreRemovedConcurrently() throws Exception {
         // given
-        PermitTracker permitTracker = new PermitTracker(1_000);
+        int maxTrackedTraces = 4;
+        int churnThreads = 4;
+        int iterationsPerThread = 3_000;
         AtomicLong clock = new AtomicLong();
-        InFlightTraceIndex[] holder = new InFlightTraceIndex[1];
-        ReadWriteSpan revivedSpan = SpanTimeoutTestSpans.span(1, 2);
-        InFlightTraceIndex index = index(100, permitTracker, clock,
-                () -> holder[0].admit("t-empty-a", "s-revived", revivedSpan, clock.get(), () -> true));
-        holder[0] = index;
-        clock.set(1);
-        ReadWriteSpan firstEmpty = SpanTimeoutTestSpans.span(1, 1);
-        index.admit("t-empty-a", "s1", firstEmpty, clock.get(), () -> true);
-        index.onEnd("t-empty-a", "s1", firstEmpty);
-        clock.set(2);
-        ReadWriteSpan secondEmpty = SpanTimeoutTestSpans.span(2, 1);
-        index.admit("t-empty-b", "s1", secondEmpty, clock.get(), () -> true);
-        index.onEnd("t-empty-b", "s1", secondEmpty);
-        for (int liveOrdinal = 1; liveOrdinal <= 101; liveOrdinal++) {
-            clock.set(2 + liveOrdinal);
-            index.admit("t-live-" + liveOrdinal, "s1",
-                    SpanTimeoutTestSpans.span(10 + liveOrdinal, 1), clock.get(), () -> true);
+        InFlightTraceIndex index = index(maxTrackedTraces, 100, 10_000, clock);
+        AtomicBoolean running = new AtomicBoolean(true);
+        AtomicLong maxObservedSlots = new AtomicLong();
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(churnThreads + 2);
+
+        // when
+        try {
+            // Снятие опубликованных состояний идёт на потоке relief. Наблюдатель фиксирует пик ledger'а
+            // слотов — линеаризуемой границы; ConcurrentHashMap.size() — слабо согласованная оценка
+            // и под конкурентным снятием/публикацией транзиентно может показать max + 1.
+            Future<?> evictor = executor.submit(() -> {
+                start.await();
+                while (running.get()) {
+                    index.relieveTracePressure();
+                }
+                return null;
+            });
+            Future<?> observer = executor.submit(() -> {
+                start.await();
+                while (running.get()) {
+                    maxObservedSlots.accumulateAndGet(index.acquiredTraceSlotCount(), Math::max);
+                }
+                return null;
+            });
+
+            List<Future<?>> churners = new ArrayList<>();
+            for (int threadIndex = 0; threadIndex < churnThreads; threadIndex++) {
+                int capturedThreadIndex = threadIndex;
+                churners.add(executor.submit(() -> {
+                    start.await();
+                    for (int iteration = 0; iteration < iterationsPerThread; iteration++) {
+                        int traceOrdinal = capturedThreadIndex * iterationsPerThread + iteration + 1;
+                        String traceId = SpanTimeoutTestSpans.hex(traceOrdinal, 32);
+                        ReadWriteSpan span = SpanTimeoutTestSpans.span(traceOrdinal, 1);
+                        index.admit(traceId, "s1", span, clock.incrementAndGet(), () -> true);
+                        index.onEnd(traceId, "s1", span);
+                    }
+                    return null;
+                }));
+            }
+
+            start.countDown();
+            for (Future<?> churner : churners) {
+                churner.get(30, TimeUnit.SECONDS);
+            }
+            running.set(false);
+            evictor.get(10, TimeUnit.SECONDS);
+            observer.get(10, TimeUnit.SECONDS);
+        } finally {
+            executor.shutdownNow();
         }
-        assertThat(index.size()).isEqualTo(103);
-        assertThat(index.trackedSpanCount()).isEqualTo(101);
-
-        // when
-        index.evictOldestIfNeeded();
 
         // then
-        assertThat(index.size()).isEqualTo(100);
-        assertThat(index.trackingEvictedTotal()).isEqualTo(3);
-        assertThat(index.liveTracesEvictedTotal()).isEqualTo(2);
-        assertThat(index.trackedSpanCount()).isEqualTo(100);
+        assertThat(maxObservedSlots.get()).isLessThanOrEqualTo(maxTrackedTraces);
+        assertThat(index.size()).isLessThanOrEqualTo(maxTrackedTraces);
+        assertThat(index.acquiredTraceSlotCount()).isEqualTo(index.size());
+        assertThat(index.trackedSpanCount()).isZero();
+        assertThat(index.permitInvariantViolationTotal()).isZero();
+        assertThat(index.traceSlotInvariantViolationTotal()).isZero();
     }
 
     @Test
-    void evictionSkipsAStaleCandidateWhoseStateWasReplacedBetweenPlanningAndCommit() {
+    void traceCapacityRejectionAndReliefAreEachLoggedOnceWithinTheirRateLimitWindows() {
         // given
-        PermitTracker permitTracker = new PermitTracker(100);
         AtomicLong clock = new AtomicLong();
-        InFlightTraceIndex[] holder = new InFlightTraceIndex[1];
-        ReadWriteSpan replacementSpan = SpanTimeoutTestSpans.span(1, 2);
-        InFlightTraceIndex index = index(1_000L, 100L, 20, permitTracker, clock, () -> {
-            clock.set(101);
-            holder[0].collectExpired(101);
-            holder[0].admit("t-stale-a", "s-replacement", replacementSpan, 101, () -> true);
-        });
-        holder[0] = index;
-        ReadWriteSpan staleSpan = SpanTimeoutTestSpans.span(1, 1);
-        index.admit("t-stale-a", "s1", staleSpan, 0, () -> true);
-        index.onEnd("t-stale-a", "s1", staleSpan);
-        ReadWriteSpan spareSpan = SpanTimeoutTestSpans.span(2, 1);
-        index.admit("t-empty-b", "s1", spareSpan, 1, () -> true);
-        index.onEnd("t-empty-b", "s1", spareSpan);
-        for (int liveOrdinal = 1; liveOrdinal <= 19; liveOrdinal++) {
-            index.admit("t-live-" + liveOrdinal, "s1", SpanTimeoutTestSpans.span(10 + liveOrdinal, 1), 1, () -> true);
-        }
-        assertThat(index.size()).isEqualTo(21);
-
-        // when
-        index.evictOldestIfNeeded();
-
-        // then
-        assertThat(index.size()).isEqualTo(20);
-        assertThat(index.trackingEvictedTotal()).isEqualTo(1);
-        assertThat(index.liveTracesEvictedTotal()).isZero();
-        assertThat(index.trackedSpanCount()).isEqualTo(20);
-        assertThat(index.nonEmptyTraceCount()).isEqualTo(20);
-    }
-
-    @Test
-    void evictingATombstoneStartsANewTraceEpochForTheSameTraceId() {
-        // given
-        PermitTracker permitTracker = new PermitTracker(100);
-        AtomicLong clock = new AtomicLong();
-        InFlightTraceIndex index = index(1_000L, 100L, 1, permitTracker, clock, () -> {
-        });
-
-        ReadWriteSpan first = SpanTimeoutTestSpans.span(1, 1);
-        index.admit("t1", "s1", first, 0, () -> true);
-        index.onEnd("t1", "s1", first);
-
-        ReadWriteSpan other = SpanTimeoutTestSpans.span(2, 1);
-        index.admit("t2", "s1", other, 1, () -> true);
-        index.evictOldestIfNeeded();
-
-        assertThat(index.trackingEvictedTotal() - index.liveTracesEvictedTotal()).isEqualTo(1);
-        index.onEnd("t2", "s1", other);
-
-        // when
-        ReadWriteSpan resumed = SpanTimeoutTestSpans.span(1, 2);
-        index.admit("t1", "s-resumed", resumed, 50, () -> true);
-
-        // then
-        assertThat(index.collectExpired(150)).isEmpty();
-        assertThat(index.trackedSpanCount()).isEqualTo(1);
-
-        List<InFlightTraceIndex.ExpiredSpan> expired = index.collectExpired(151);
-        assertThat(expired).hasSize(1);
-        assertThat(expired.getFirst().traceId()).isEqualTo("t1");
-        assertThat(expired.getFirst().reason()).isEqualTo(InFlightTraceIndex.TimeoutReason.TRACE);
-    }
-
-    @Test
-    void tombstoneEvictionLogDoesNotSuppressTheLiveEvictionLogInTheSameRateLimitWindow() {
-        // given
-        PermitTracker permitTracker = new PermitTracker(100);
-        AtomicLong clock = new AtomicLong();
-        InFlightTraceIndex index = index(1, 10, permitTracker, clock);
+        InFlightTraceIndex index = index(1, 10, 100, clock);
         AgentLogCapture logs = new AgentLogCapture();
         logs.install();
         try {
-            ReadWriteSpan tombstoned = SpanTimeoutTestSpans.span(1, 1);
-            index.admit("t1", "s1", tombstoned, 0, () -> true);
-            index.onEnd("t1", "s1", tombstoned);
-            index.admit("t2", "s1", SpanTimeoutTestSpans.span(2, 1), 0, () -> true);
+            admitEnded(index, "t1", SpanTimeoutTestSpans.span(1, 1), 0);
 
             // when
-            index.evictOldestIfNeeded();
+            index.admit("t2", "s1", SpanTimeoutTestSpans.span(2, 1), 0, () -> true);
             index.admit("t3", "s1", SpanTimeoutTestSpans.span(3, 1), 0, () -> true);
-            index.evictOldestIfNeeded();
+            index.relieveTracePressure();
 
             // then
+            assertThat(index.rejectedTraceCapacityTotal()).isEqualTo(2);
+            assertThat(index.trackingEvictedTotal()).isEqualTo(1);
             assertThat(logs.events()).extracting(AgentLogEvent::eventCode)
-                    .containsExactly(AgentEventCodes.EXPORT_WATCHDOG,
-                            AgentEventCodes.EXPORT_WATCHDOG_LIVE_EVICTION);
-            assertThat(index.liveTracesEvictedTotal()).isEqualTo(1);
+                    .containsExactly(AgentEventCodes.EXPORT_SPAN_TIMEOUT, AgentEventCodes.EXPORT_SPAN_TIMEOUT);
+            assertThat(logs.events()).extracting(AgentLogEvent::message)
+                    .containsExactly(
+                            "Span timeout rejected span tracking: tracked-trace capacity reached",
+                            "Span timeout evicted empty trace states under pressure");
         } finally {
             logs.restore();
         }

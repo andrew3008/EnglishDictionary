@@ -110,6 +110,7 @@ final class BootstrapActivation {
         attempt.enter(ActivationPhase.RUNTIME_BINDING);
 
         AutoconfigureSession session = attempt.session();
+        //noinspection resource -- владение передаётся жизненному циклу BootstrapResources, закрытие происходит через shutdown hook / завершение attempt
         BootstrapResources resources = attempt.resources();
         resources.push(PlatformPropagationGate.shared().bindAcceptedPolicy(session.policy()), "propagation-gate");
         resources.push(PlatformLogControl.shared().bindAcceptedPolicy(session.policy()), "log-control");

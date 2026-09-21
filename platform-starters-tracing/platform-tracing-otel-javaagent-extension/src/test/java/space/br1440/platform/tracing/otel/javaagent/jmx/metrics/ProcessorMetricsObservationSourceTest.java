@@ -28,7 +28,7 @@ class ProcessorMetricsObservationSourceTest {
         // when
         CompositeData observation = source.getProcessorMetricsObservation();
         CompositeData spanTimeout = (CompositeData) observation.get(
-                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG);
+                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_SPAN_TIMEOUT);
         CompositeData composite = (CompositeData) observation.get(
                 JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_COMPOSITE);
         CompositeData metrics = (CompositeData) observation.get(
@@ -36,13 +36,13 @@ class ProcessorMetricsObservationSourceTest {
 
         // then
         assertThat((Boolean) spanTimeout.get(
-                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_PRESENT)).isFalse();
+                JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_OWNER_PRESENT)).isFalse();
         assertThat((Boolean) composite.get(
                 JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_PRESENT)).isFalse();
         assertThat((Boolean) metrics.get(
                 JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_PRESENT)).isFalse();
         assertThat((Long) spanTimeout.get(
-                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_GENERATION)).isEqualTo(0L);
+                JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_OWNER_GENERATION)).isEqualTo(0L);
         assertThat((Long) composite.get(
                 JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_GENERATION)).isEqualTo(0L);
         assertThat((Long) metrics.get(
@@ -52,7 +52,7 @@ class ProcessorMetricsObservationSourceTest {
     @Test
     void presentSpanTimeoutOwnerExportsLiveCounters() {
         // given
-        SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
+        SpanTimeoutProcessor spanTimeout = SpanTimeoutProcessor.start(
                 Duration.ofMinutes(1), Duration.ofMinutes(1), Duration.ofMinutes(1), 10_000, 1_024, 60_000);
         OwnerRegistrationSlot<SpanTimeoutProcessor> slot = new OwnerRegistrationSlot<>();
         slot.replace(spanTimeout);
@@ -65,15 +65,15 @@ class ProcessorMetricsObservationSourceTest {
         // when
         CompositeData observation = source.getProcessorMetricsObservation();
         CompositeData spanTimeoutValues = (CompositeData) observation.get(
-                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG);
+                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_SPAN_TIMEOUT);
 
         // then
         assertThat((Boolean) spanTimeoutValues.get(
-                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_PRESENT)).isTrue();
+                JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_OWNER_PRESENT)).isTrue();
         assertThat((Long) spanTimeoutValues.get(
-                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_FORCED_SPAN_CLOSES)).isZero();
+                JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_FORCED_SPAN_END_ATTEMPTS_TOTAL)).isZero();
         assertThat((Integer) spanTimeoutValues.get(
-                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_ACTIVE_SPAN_COUNT)).isZero();
+                JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_ACTIVE_SPAN_COUNT)).isZero();
         spanTimeout.shutdown();
     }
 }

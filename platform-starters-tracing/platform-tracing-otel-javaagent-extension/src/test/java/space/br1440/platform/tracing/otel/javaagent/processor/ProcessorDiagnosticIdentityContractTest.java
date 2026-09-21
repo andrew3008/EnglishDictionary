@@ -30,27 +30,35 @@ class ProcessorDiagnosticIdentityContractTest {
         // then
         assertThat(Modifier.isPublic(ProcessorDiagnosticIdentity.class.getModifiers())).isTrue();
 
-        List<ProcessorDiagnosticIdentity> processors = List.of(
-                new BaggageSpanProcessor(Set.of(), List.of()),
-                new EnrichingSpanProcessor(),
-                ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of()),
-                new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING)),
-                new ClassificationSpanProcessor(Duration.ofSeconds(5), Duration.ofSeconds(1)),
-                new SpanTimeoutProcessor(Duration.ofSeconds(5), Duration.ofSeconds(30), Duration.ofDays(365),
-                        10_000, Integer.MAX_VALUE, Integer.MAX_VALUE),
-                new SpanLimitsMetricsProcessor()
+        SpanTimeoutProcessor spanTimeout = SpanTimeoutProcessor.start(
+                Duration.ofSeconds(5), Duration.ofSeconds(30), Duration.ofDays(365),
+                10_000, Integer.MAX_VALUE, Integer.MAX_VALUE
         );
 
-        assertThat(processors)
-                .extracting(ProcessorDiagnosticIdentity::diagnosticId)
-                .containsExactly(
-                        "baggage",
-                        "enrichment",
-                        "scrubbing",
-                        "validation",
-                        "classification",
-                        "watchdog",
-                        "span_limits_metrics");
+        try {
+            List<ProcessorDiagnosticIdentity> processors = List.of(
+                    new BaggageSpanProcessor(Set.of(), List.of()),
+                    new EnrichingSpanProcessor(),
+                    ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of()),
+                    new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING)),
+                    new ClassificationSpanProcessor(Duration.ofSeconds(5), Duration.ofSeconds(1)),
+                    spanTimeout,
+                    new SpanLimitsMetricsProcessor()
+            );
+
+            assertThat(processors)
+                    .extracting(ProcessorDiagnosticIdentity::diagnosticId)
+                    .containsExactly(
+                            "baggage",
+                            "enrichment",
+                            "scrubbing",
+                            "validation",
+                            "classification",
+                            "span_timeout",
+                            "span_limits_metrics");
+        } finally {
+            spanTimeout.shutdown();
+        }
     }
 
     @Test

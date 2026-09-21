@@ -1,31 +1,34 @@
 package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
-final class PermitTracker {
+final class AdmissionBudget {
 
-    private static final PlatformAgentLogger log = PlatformAgentLogger.get(PermitTracker.class);
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(AdmissionBudget.class);
 
-    private final int maxPermitCount;
-    private final AtomicInteger acquiredPermitCount = new AtomicInteger();
+    private final String kind;
+    private final int capacity;
+    private final AtomicInteger used = new AtomicInteger();
     private final AtomicLong invariantViolationTotal = new AtomicLong();
 
-    PermitTracker(int maxPermitCount) {
-        this.maxPermitCount = maxPermitCount;
+    AdmissionBudget(String kind, int capacity) {
+        this.kind = Objects.requireNonNull(kind, "kind");
+        this.capacity = capacity;
     }
 
     boolean tryAcquire() {
         for (;;) {
-            int current = acquiredPermitCount.get();
-            if (current >= maxPermitCount) {
+            int current = used.get();
+            if (current >= capacity) {
                 return false;
             }
 
-            if (acquiredPermitCount.compareAndSet(current, current + 1)) {
+            if (used.compareAndSet(current, current + 1)) {
                 return true;
             }
         }
@@ -37,19 +40,22 @@ final class PermitTracker {
         }
 
         for (;;) {
-            int current = acquiredPermitCount.get();
+            int current = used.get();
             if (permitCount > current) {
                 invariantViolationTotal.incrementAndGet();
-                log.warn(AgentEventCodes.WATCHDOG_SPAN_PERMIT_INVARIANT_VIOLATION,
-                        "Span permit release exceeded the acquired permit count",
+                log.warn(AgentEventCodes.SPAN_TIMEOUT_PERMIT_INVARIANT_VIOLATION,
+                        "Permit release exceeded the acquired permit count",
+                        "kind", kind,
                         "acquiredPermitCount", String.valueOf(current),
                         "requestedReleaseCount", String.valueOf(permitCount),
                         "operation", operationName,
-                        "traceId", (traceId == null) ? "" : traceId);
+                        "traceId", (traceId == null) ? "" : traceId
+                );
+
                 return;
             }
 
-            if (acquiredPermitCount.compareAndSet(current, current - permitCount)) {
+            if (used.compareAndSet(current, current - permitCount)) {
                 return;
             }
         }
@@ -59,12 +65,16 @@ final class PermitTracker {
         invariantViolationTotal.incrementAndGet();
     }
 
-    int acquiredPermitCount() {
-        return acquiredPermitCount.get();
+    boolean isFull() {
+        return (used.get() >= capacity);
     }
 
-    int maxPermitCount() {
-        return maxPermitCount;
+    int used() {
+        return used.get();
+    }
+
+    int capacity() {
+        return capacity;
     }
 
     long invariantViolationTotal() {

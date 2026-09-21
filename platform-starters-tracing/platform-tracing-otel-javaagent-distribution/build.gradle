@@ -30,6 +30,7 @@ def runtimePolicyProjectPath = ':platform-starters-tracing:platform-tracing-runt
 def commonUtilProjectPath = ':platform-starters-common:platform-starters-common-util'
 def junitJupiterVersion = libs.versions.junit.jupiter.get()
 def assertjCoordinate = 'org.assertj:assertj-core:' + libs.versions.assertj.get()
+def awaitilityCoordinate = 'org.awaitility:awaitility:' + libs.versions.awaitility.get()
 def jakartaAnnotationApiCoordinate = 'jakarta.annotation:jakarta.annotation-api:2.1.1'
 def otelProtoCoordinate = 'io.opentelemetry.proto:opentelemetry-proto:' + libs.versions.bom.otelproto.get()
 def protobufJavaCoordinate = 'com.google.protobuf:protobuf-java:' + libs.versions.bom.protobuf.get()
@@ -333,10 +334,10 @@ testing {
         register('controlledAgentRuntimeTest', JvmTestSuite) { JvmTestSuite suite ->
             suite.useJUnitJupiter(junitJupiterVersion)
             suite.dependencies.implementation.add(assertjCoordinate)
+            suite.dependencies.implementation.add(awaitilityCoordinate)
 
             suite.dependencies.implementation.add(otelProtoCoordinate)
             suite.dependencies.implementation.add(protobufJavaCoordinate)
-
             suite.dependencies.compileOnly.add(otelApiModule + ':' + otelSdkVersion)
         }
     }

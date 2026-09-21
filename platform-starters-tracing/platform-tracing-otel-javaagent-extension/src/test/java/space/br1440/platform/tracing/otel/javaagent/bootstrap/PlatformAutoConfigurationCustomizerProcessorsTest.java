@@ -14,11 +14,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import javax.management.Attribute;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -236,7 +238,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         Map<String, String> disableAll = Map.of(
                 "platform.tracing.javaagent.scrubbing.enabled", "false",
                 "platform.tracing.javaagent.span-attributes.validation.level", "DISABLED",
-                "platform.tracing.watchdog.enabled", "false"
+                "platform.tracing.span-timeout.enabled", "false"
         );
 
         // when/then
@@ -266,8 +268,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
                     new Class<?>[]{AutoConfigurationCustomizer.class},
                     (Object proxyObj, Method method, Object[] args) -> switch (method.getName()) {
                         case "addSamplerCustomizer" -> {
-                            this.samplerCustomizer =
-                                    (BiFunction<Sampler, ConfigProperties, Sampler>) args[0];
+                            this.samplerCustomizer = (BiFunction<Sampler, ConfigProperties, Sampler>) args[0];
                             yield proxyObj;
                         }
 
@@ -279,7 +280,9 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
                         case "addPropertiesCustomizer" -> {
                             propertiesCustomizers.add(
-                                    (Function<ConfigProperties, Map<String, String>>) args[0]);
+                                    (Function<ConfigProperties, Map<String, String>>) args[0]
+                            );
+
                             yield proxyObj;
                         }
 
@@ -339,6 +342,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
             if (listKey.equals(name)) {
                 return listValue;
             }
+
             return Collections.emptyList();
         }
     }
@@ -366,8 +370,10 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         ObjectName objectName = DomainObjectNames.SAMPLING;
 
         // when/then
-        org.junit.jupiter.api.Assertions.assertThrows(Exception.class,
-                () -> server.setAttribute(objectName, new javax.management.Attribute("SamplingObservation", null)));
+        Assertions.assertThrows(
+                Exception.class,
+                () -> server.setAttribute(objectName, new Attribute("SamplingObservation", null))
+        );
 
         // then
         assertThat(samplingRatioFromObservation(objectName)).isEqualTo(0.1d);

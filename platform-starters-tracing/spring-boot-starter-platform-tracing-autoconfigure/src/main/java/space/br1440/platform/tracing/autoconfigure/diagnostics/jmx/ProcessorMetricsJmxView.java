@@ -58,8 +58,8 @@ public final class ProcessorMetricsJmxView {
                 JmxObservationCodec.getPositiveLong(composite, JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_CAPTURE_COMPLETED_AT)
         );
 
-        CompositeData spanTimeoutComposite = JmxObservationCodec.getComposite(composite, JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG);
-        JmxObservationCodec.requireCompositeTypeName(spanTimeoutComposite, JmxWireContract.OPEN_TYPE_PROCESSOR_WATCHDOG_VALUES_TYPE_NAME);
+        CompositeData spanTimeoutComposite = JmxObservationCodec.getComposite(composite, JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_SPAN_TIMEOUT);
+        JmxObservationCodec.requireCompositeTypeName(spanTimeoutComposite, JmxWireContract.OPEN_TYPE_PROCESSOR_SPAN_TIMEOUT_VALUES_TYPE_NAME);
 
         CompositeData compositeValuesComposite = JmxObservationCodec.getComposite(composite, JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_COMPOSITE);
         JmxObservationCodec.requireCompositeTypeName(compositeValuesComposite, JmxWireContract.OPEN_TYPE_PROCESSOR_COMPOSITE_VALUES_TYPE_NAME);
@@ -69,32 +69,34 @@ public final class ProcessorMetricsJmxView {
 
         JmxOwnerState<ProcessorSpanTimeoutValues> spanTimeoutState = JmxObservationCodec.ownerState(
                 spanTimeoutComposite,
-                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_PRESENT,
-                JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_GENERATION,
+                JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_OWNER_PRESENT,
+                JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_OWNER_GENERATION,
                 () -> new ProcessorSpanTimeoutValues(
-                        JmxObservationCodec.getLong(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_FORCED_SPAN_CLOSES),
-
-                        JmxObservationCodec.getLong(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_FORCED_TRACE_CLOSES),
-
-                        JmxObservationCodec.getInt(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_ACTIVE_SPAN_COUNT),
-
-                        JmxObservationCodec.getInt(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_ACTIVE_TRACE_COUNT),
-
-                        JmxObservationCodec.getInt(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKED_TRACE_COUNT),
-
-                        JmxObservationCodec.getInt(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKED_TRACE_CAPACITY),
-
-                        JmxObservationCodec.getLong(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKING_EVICTED_TOTAL),
-
-                        JmxObservationCodec.getInt(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKED_SPAN_CAPACITY),
-
-                        JmxObservationCodec.getInt(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_TRACKED_SPAN_PER_TRACE_CAPACITY),
-
-                        JmxObservationCodec.getLong(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_SPANS_REJECTED_PER_TRACE_TOTAL),
-
-                        JmxObservationCodec.getLong(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_SPANS_REJECTED_GLOBAL_TOTAL),
-
-                        JmxObservationCodec.getLong(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_SPAN_LEDGER_INVARIANT_VIOLATION_TOTAL))
+                        new ProcessorSpanTimeoutValues.ForceEnd(
+                                JmxObservationCodec.getLong(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_FORCED_SPAN_END_ATTEMPTS_TOTAL),
+                                JmxObservationCodec.getLong(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_FORCED_TRACE_END_ATTEMPTS_TOTAL),
+                                JmxObservationCodec.getLong(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_FORCE_END_FAILURES_TOTAL)
+                        ),
+                        new ProcessorSpanTimeoutValues.Tracking(
+                                JmxObservationCodec.getInt(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_ACTIVE_SPAN_COUNT),
+                                JmxObservationCodec.getInt(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_ACTIVE_TRACE_COUNT),
+                                JmxObservationCodec.getInt(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_TRACKED_TRACE_COUNT),
+                                JmxObservationCodec.getInt(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_TRACKED_TRACE_CAPACITY),
+                                JmxObservationCodec.getLong(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_TRACKING_EVICTED_TOTAL),
+                                JmxObservationCodec.getInt(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_TRACKED_SPAN_CAPACITY),
+                                JmxObservationCodec.getInt(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_TRACKED_SPAN_PER_TRACE_CAPACITY),
+                                JmxObservationCodec.getLong(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_SPAN_LEDGER_INVARIANT_VIOLATION_TOTAL)
+                        ),
+                        new ProcessorSpanTimeoutValues.Rejections(
+                                JmxObservationCodec.getLong(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_SPANS_REJECTED_PER_TRACE_TOTAL),
+                                JmxObservationCodec.getLong(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_SPANS_REJECTED_GLOBAL_TOTAL),
+                                JmxObservationCodec.getLong(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_SPANS_REJECTED_TRACE_CAPACITY_TOTAL)
+                        ),
+                        new ProcessorSpanTimeoutValues.Scanner(
+                                JmxObservationCodec.getLong(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_SCAN_FAILURES_TOTAL),
+                                JmxObservationCodec.getLong(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_LAST_SUCCESSFUL_BACKGROUND_SCAN_EPOCH_MILLIS),
+                                JmxObservationCodec.getString(spanTimeoutComposite, JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_SCANNER_STATE)
+                        ))
         );
 
         JmxOwnerState<ProcessorCompositeValues> compositeState = JmxObservationCodec.ownerState(
@@ -122,9 +124,7 @@ public final class ProcessorMetricsJmxView {
                 JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_GENERATION,
                 () -> new ProcessorMetricsValues(
                         JmxObservationCodec.getLong(metricsComposite, JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_DROPPED_ATTRIBUTES_TOTAL),
-
                         JmxObservationCodec.getLong(metricsComposite, JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_DROPPED_EVENTS_TOTAL),
-
                         JmxObservationCodec.getLong(metricsComposite, JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_DROPPED_LINKS_TOTAL)
                 )
         );

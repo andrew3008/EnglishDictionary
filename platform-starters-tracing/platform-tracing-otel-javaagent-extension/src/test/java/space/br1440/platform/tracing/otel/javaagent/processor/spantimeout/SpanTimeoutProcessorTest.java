@@ -44,15 +44,15 @@ class SpanTimeoutProcessorTest {
             Span longSpan = tracer.spanBuilder("hung-op").startSpan();
             clock.addAndGet(Duration.ofMillis(51).toNanos());
 
-            spanTimeout.scanForTesting();
+            assertThat(spanTimeout.forceFlush().isSuccess()).isTrue();
 
             // then
             assertThat(exporter.getFinishedSpanItems()).hasSize(1);
             SpanData data = exporter.getFinishedSpanItems().getFirst();
             assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TIMEOUT))).isEqualTo("span");
             assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT))).isEqualTo("timeout");
-            assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
-            assertThat(spanTimeout.getForcedSpanCloses()).isEqualTo(1);
+            assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.UNSET);
+            assertThat(spanTimeout.getForcedSpanEndAttemptsTotal()).isEqualTo(1);
 
             longSpan.end();
             assertThat(exporter.getFinishedSpanItems()).hasSize(1);
@@ -78,12 +78,12 @@ class SpanTimeoutProcessorTest {
 
             // when
             tracer.spanBuilder("fast-op").startSpan().end();
-            spanTimeout.scanForTesting();
+            assertThat(spanTimeout.forceFlush().isSuccess()).isTrue();
 
             // then
             SpanData data = exporter.getFinishedSpanItems().getFirst();
             assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TIMEOUT))).isNull();
-            assertThat(spanTimeout.getForcedSpanCloses()).isZero();
+            assertThat(spanTimeout.getForcedSpanEndAttemptsTotal()).isZero();
 
             spanTimeout.shutdown();
             tracerProvider.shutdown();
@@ -108,13 +108,13 @@ class SpanTimeoutProcessorTest {
             // when
             Span span = tracer.spanBuilder("trace-root").startSpan();
             clock.addAndGet(Duration.ofMillis(51).toNanos());
-            spanTimeout.scanForTesting();
+            assertThat(spanTimeout.forceFlush().isSuccess()).isTrue();
 
             // then
             SpanData data = exporter.getFinishedSpanItems().getFirst();
             assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TIMEOUT))).isEqualTo("trace");
             assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT))).isEqualTo("timeout");
-            assertThat(spanTimeout.getForcedTraceCloses()).isEqualTo(1);
+            assertThat(spanTimeout.getForcedTraceEndAttemptsTotal()).isEqualTo(1);
 
             span.end();
             spanTimeout.shutdown();
@@ -146,9 +146,9 @@ class SpanTimeoutProcessorTest {
             // then
             assertThat(exporter.getFinishedSpanItems()).hasSize(1);
             SpanData data = exporter.getFinishedSpanItems().getFirst();
-            assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+            assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.UNSET);
             assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TIMEOUT))).isEqualTo("span");
-            assertThat(spanTimeout.getForcedSpanCloses()).isEqualTo(1);
+            assertThat(spanTimeout.getForcedSpanEndAttemptsTotal()).isEqualTo(1);
 
             spanTimeout.shutdown();
             tracerProvider.shutdown();
@@ -158,8 +158,6 @@ class SpanTimeoutProcessorTest {
     @Test
     void concurrency_all_internal_indexes_cleared_after_spans_finish() throws InterruptedException {
         // given
-        // Регрессионный тест на BUG-3 + BUG-4: после одновременного завершения всех span'ов
-        // единый trace-owned state должен полностью освободиться.
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
         SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
                 Duration.ofMinutes(10), Duration.ofMinutes(10), System::nanoTime,
@@ -203,8 +201,8 @@ class SpanTimeoutProcessorTest {
             // then
             assertThat(spanTimeout.getActiveSpanCount()).isZero();
             assertThat(spanTimeout.getActiveTraceCount()).isZero();
-            assertThat(spanTimeout.getForcedSpanCloses()).isZero();
-            assertThat(spanTimeout.getForcedTraceCloses()).isZero();
+            assertThat(spanTimeout.getForcedSpanEndAttemptsTotal()).isZero();
+            assertThat(spanTimeout.getForcedTraceEndAttemptsTotal()).isZero();
 
             spanTimeout.shutdown();
             tracerProvider.shutdown();

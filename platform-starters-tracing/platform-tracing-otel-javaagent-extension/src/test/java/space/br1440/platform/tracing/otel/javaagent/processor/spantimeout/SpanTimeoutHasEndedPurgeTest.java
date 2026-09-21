@@ -2,9 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.reflect.Field;
 import java.time.Duration;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
@@ -21,24 +19,29 @@ class SpanTimeoutHasEndedPurgeTest {
         // given
         SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
                 Duration.ofMinutes(1), Duration.ofMinutes(1), System::nanoTime,
-                10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
+                10_000, Integer.MAX_VALUE, Integer.MAX_VALUE
+        );
+
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(spanTimeout)
                 .build();
-        Tracer tracer = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build().getTracer("purge");
-        Span span = tracer.spanBuilder("ended-outside").startSpan();
-        assertThat(spanTimeout.getActiveSpanCount()).isEqualTo(1);
-        span.end();
 
-        // when
-        spanTimeout.scanForTesting();
+        try (OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()) {
+            Tracer tracer = sdk.getTracer("purge");
+            Span span = tracer.spanBuilder("ended-outside").startSpan();
+            assertThat(spanTimeout.getActiveSpanCount()).isEqualTo(1);
+            span.end();
 
-        // then
-        assertThat(spanTimeout.getActiveSpanCount()).isZero();
-        assertThat(spanTimeout.getForcedSpanCloses()).isZero();
-        assertThat(spanTimeout.getForcedTraceCloses()).isZero();
-        spanTimeout.shutdown();
-        tracerProvider.shutdown();
+            // when
+            assertThat(spanTimeout.forceFlush().isSuccess()).isTrue();
+
+            // then
+            assertThat(spanTimeout.getActiveSpanCount()).isZero();
+            assertThat(spanTimeout.getForcedSpanEndAttemptsTotal()).isZero();
+            assertThat(spanTimeout.getForcedTraceEndAttemptsTotal()).isZero();
+            spanTimeout.shutdown();
+            tracerProvider.shutdown();
+        }
     }
 
     @Test
@@ -47,26 +50,31 @@ class SpanTimeoutHasEndedPurgeTest {
         AtomicLong clock = new AtomicLong();
         Duration timeout = Duration.ofMillis(10);
         SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
-                timeout, timeout, clock::get, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
+                timeout, timeout, clock::get, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE
+        );
+
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(spanTimeout)
                 .build();
-        Tracer tracer = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build().getTracer("deadline");
-        Span span = tracer.spanBuilder("boundary").startSpan();
-        clock.set(timeout.toNanos());
 
-        // when
-        spanTimeout.scanForTesting();
+        try (OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()) {
+            Tracer tracer = sdk.getTracer("deadline");
+            Span span = tracer.spanBuilder("boundary").startSpan();
+            clock.set(timeout.toNanos());
 
-        // then
-        assertThat(spanTimeout.getForcedSpanCloses()).isZero();
-        assertThat(spanTimeout.getForcedTraceCloses()).isZero();
-        clock.addAndGet(1L);
-        spanTimeout.scanForTesting();
-        assertThat(spanTimeout.getForcedSpanCloses() + spanTimeout.getForcedTraceCloses()).isEqualTo(1);
-        span.end();
-        spanTimeout.shutdown();
-        tracerProvider.shutdown();
+            // when
+            assertThat(spanTimeout.forceFlush().isSuccess()).isTrue();
+
+            // then
+            assertThat(spanTimeout.getForcedSpanEndAttemptsTotal()).isZero();
+            assertThat(spanTimeout.getForcedTraceEndAttemptsTotal()).isZero();
+            clock.addAndGet(1L);
+            assertThat(spanTimeout.forceFlush().isSuccess()).isTrue();
+            assertThat(spanTimeout.getForcedSpanEndAttemptsTotal() + spanTimeout.getForcedTraceEndAttemptsTotal()).isEqualTo(1);
+            span.end();
+            spanTimeout.shutdown();
+            tracerProvider.shutdown();
+        }
     }
 
     @Test
@@ -74,62 +82,27 @@ class SpanTimeoutHasEndedPurgeTest {
         // given
         AtomicLong clock = new AtomicLong();
         SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
-                Duration.ofMillis(10), Duration.ofMillis(10), clock::get, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
+                Duration.ofMillis(10), Duration.ofMillis(10), clock::get, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE
+        );
+
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(spanTimeout)
                 .build();
-        Tracer tracer = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build().getTracer("exclusive");
-        Span span = tracer.spanBuilder("both").startSpan();
-        clock.set(Duration.ofMillis(20).toNanos());
 
-        // when
-        spanTimeout.scanForTesting();
+        try (OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()) {
+            Tracer tracer = sdk.getTracer("exclusive");
+            Span span = tracer.spanBuilder("both").startSpan();
+            clock.set(Duration.ofMillis(20).toNanos());
 
-        // then
-        assertThat(spanTimeout.getForcedSpanCloses()).isEqualTo(1);
-        assertThat(spanTimeout.getForcedTraceCloses()).isZero();
-        span.end();
-        spanTimeout.shutdown();
-        tracerProvider.shutdown();
-    }
+            // when
+            assertThat(spanTimeout.forceFlush().isSuccess()).isTrue();
 
-    @Test
-    void clearedWeakReferenceIsPurgedWithoutForceClose() throws ReflectiveOperationException {
-        // given
-        SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
-                Duration.ofMinutes(1), Duration.ofMinutes(1), System::nanoTime,
-                10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
-        SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
-                .addSpanProcessor(spanTimeout)
-                .build();
-        Tracer tracer = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build().getTracer("gc");
-        Span span = tracer.spanBuilder("weak").startSpan();
-        assertThat(spanTimeout.getActiveSpanCount()).isEqualTo(1);
-        clearTrackedSpanReference(spanTimeout);
-
-        // when
-        spanTimeout.scanForTesting();
-
-        // then
-        assertThat(spanTimeout.getActiveSpanCount()).isZero();
-        assertThat(spanTimeout.getForcedSpanCloses()).isZero();
-        assertThat(spanTimeout.getForcedTraceCloses()).isZero();
-        span.end();
-        spanTimeout.shutdown();
-        tracerProvider.shutdown();
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void clearTrackedSpanReference(SpanTimeoutProcessor spanTimeout) throws ReflectiveOperationException {
-        Field indexField = SpanTimeoutProcessor.class.getDeclaredField("index");
-        indexField.setAccessible(true);
-        InFlightTraceIndex index = (InFlightTraceIndex) indexField.get(spanTimeout);
-
-        Field tracesField = InFlightTraceIndex.class.getDeclaredField("traces");
-        tracesField.setAccessible(true);
-        Map<String, InFlightTraceState> traces = (Map<String, InFlightTraceState>) tracesField.get(index);
-        assertThat(traces.values()).singleElement().satisfies(state ->
-                assertThat(state.records()).singleElement().satisfies(tracked ->
-                        tracked.spanRef().clear()));
+            // then
+            assertThat(spanTimeout.getForcedSpanEndAttemptsTotal()).isEqualTo(1);
+            assertThat(spanTimeout.getForcedTraceEndAttemptsTotal()).isZero();
+            span.end();
+            spanTimeout.shutdown();
+            tracerProvider.shutdown();
+        }
     }
 }

@@ -286,7 +286,7 @@ class ExtensionConfigTest {
         assertThatThrownBy(() -> new ExtensionConfig(
                 durationConfig(ExtensionPropertyNames.SPAN_TIMEOUT_SCAN_INTERVAL, Duration.ZERO)))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("platform.tracing.watchdog.scan-interval must be greater than zero");
+                .hasMessage("platform.tracing.span-timeout.scan-interval must be greater than zero");
     }
 
     @Test
@@ -297,7 +297,7 @@ class ExtensionConfigTest {
         // when / then
         assertThatThrownBy(() -> new ExtensionConfig(config))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("platform.tracing.watchdog.span-timeout must be greater than zero");
+                .hasMessage("platform.tracing.span-timeout.span must be greater than zero");
     }
 
     @Test
@@ -308,7 +308,7 @@ class ExtensionConfigTest {
         // when / then
         assertThatThrownBy(() -> new ExtensionConfig(config))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("platform.tracing.watchdog.trace-timeout must be greater than zero");
+                .hasMessage("platform.tracing.span-timeout.trace must be greater than zero");
     }
 
     @Test
@@ -320,7 +320,7 @@ class ExtensionConfigTest {
         // when / then
         assertThatThrownBy(() -> new ExtensionConfig(config))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("platform.tracing.watchdog.trace-timeout must be greater than zero");
+                .hasMessage("platform.tracing.span-timeout.trace must be greater than zero");
     }
 
     @Test
@@ -331,7 +331,7 @@ class ExtensionConfigTest {
         // when / then
         assertThatThrownBy(() -> new ExtensionConfig(config))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("platform.tracing.watchdog.max-tracked-traces must be greater than zero");
+                .hasMessage("platform.tracing.span-timeout.max-tracked-traces must be greater than zero");
     }
 
     @Test
@@ -342,7 +342,7 @@ class ExtensionConfigTest {
         // when / then
         assertThatThrownBy(() -> new ExtensionConfig(config))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("platform.tracing.watchdog.max-tracked-traces must be greater than zero");
+                .hasMessage("platform.tracing.span-timeout.max-tracked-traces must be greater than zero");
     }
 
     @Test
@@ -353,7 +353,7 @@ class ExtensionConfigTest {
         // when / then
         assertThatThrownBy(() -> new ExtensionConfig(config))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("platform.tracing.watchdog.max-tracked-spans-per-trace must be greater than zero");
+                .hasMessage("platform.tracing.span-timeout.max-tracked-spans-per-trace must be greater than zero");
     }
 
     @Test
@@ -364,7 +364,7 @@ class ExtensionConfigTest {
         // when / then
         assertThatThrownBy(() -> new ExtensionConfig(config))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("platform.tracing.watchdog.max-tracked-spans must be greater than zero");
+                .hasMessage("platform.tracing.span-timeout.max-tracked-spans must be greater than zero");
     }
 
     @Test
@@ -389,8 +389,8 @@ class ExtensionConfigTest {
                 ExtensionPropertyNames.SPAN_TIMEOUT_SPAN_TIMEOUT, Duration.ofSeconds(10),
                 ExtensionPropertyNames.SPAN_TIMEOUT_TRACE_TIMEOUT, Duration.ofSeconds(5)))))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("platform.tracing.watchdog.trace-timeout must be greater than or equal to "
-                        + "platform.tracing.watchdog.span-timeout");
+                .hasMessage("platform.tracing.span-timeout.trace must be greater than or equal to "
+                        + "platform.tracing.span-timeout.span");
     }
 
     @Test

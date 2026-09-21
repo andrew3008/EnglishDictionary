@@ -20,15 +20,18 @@ import io.micrometer.core.instrument.binder.MeterBinder;
 
 final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
 
-    private static final String SPAN_TIMEOUT_METRIC_NAME = "platform.tracing.processor.watchdog.count";
-    private static final String SPAN_TIMEOUT_ACTIVE_METRIC_NAME = "platform.tracing.processor.watchdog.active";
-    private static final String SPAN_TIMEOUT_TRACKED_METRIC_NAME = "platform.tracing.processor.watchdog.tracked";
-    private static final String SPAN_TIMEOUT_CAPACITY_METRIC_NAME = "platform.tracing.processor.watchdog.capacity";
+    private static final String SPAN_TIMEOUT_METRIC_NAME = "platform.tracing.processor.span_timeout.count";
+    private static final String SPAN_TIMEOUT_ACTIVE_METRIC_NAME = "platform.tracing.processor.span_timeout.active";
+    private static final String SPAN_TIMEOUT_TRACKED_METRIC_NAME = "platform.tracing.processor.span_timeout.tracked";
+    private static final String SPAN_TIMEOUT_CAPACITY_METRIC_NAME = "platform.tracing.processor.span_timeout.capacity";
+    private static final String SPAN_TIMEOUT_SCANNER_METRIC_NAME = "platform.tracing.processor.span_timeout.scanner";
+    private static final String SPAN_TIMEOUT_SCANNER_LAST_SUCCESS_METRIC_NAME =
+            "platform.tracing.processor.span_timeout.scanner.last_success_epoch_millis";
     private static final String COMPOSITE_ERRORS_TOTAL_METRIC_NAME = "platform.tracing.processor.composite.errors_total";
     private static final String COMPOSITE_ERRORS_BY_NAME_METRIC_NAME = "platform.tracing.processor.composite.errors_by_name";
     private static final String METRICS_METRIC_NAME = "platform.tracing.processor.metrics.count";
     private static final String DOMAIN = "processor_metrics";
-    private static final String SPAN_TIMEOUT_OWNER = "watchdog";
+    private static final String SPAN_TIMEOUT_OWNER = "span_timeout";
     private static final String COMPOSITE_OWNER = "composite";
     private static final String METRICS_OWNER = "metrics";
 
@@ -68,7 +71,7 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
         for (ProcessorSpanTimeoutMetricKey key : ProcessorSpanTimeoutMetricKey.values()) {
             FunctionCounter.builder(SPAN_TIMEOUT_METRIC_NAME, spanTimeoutBridge, b -> b.count(key))
                     .tags("metric", key.metricTag())
-                    .description("Cumulative counters of the span watchdog processor owner")
+                    .description("Cumulative counters of the span timeout processor owner")
                     .register(registry);
 
             FunctionCounter.builder(MonotonicJmxCounterGroupBridge.ANOMALY_METRIC_NAME, spanTimeoutBridge, b -> b.anomalyCount(key))
@@ -80,19 +83,19 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
 
         Gauge.builder(SPAN_TIMEOUT_ACTIVE_METRIC_NAME, this, binder -> binder.activeCount(SpanTimeoutActiveScope.SPANS))
                 .tags("scope", "spans")
-                .description("Spans currently tracked by the span watchdog processor")
+                .description("Spans currently tracked by the span timeout processor")
                 .register(registry);
         Gauge.builder(SPAN_TIMEOUT_ACTIVE_METRIC_NAME, this, binder -> binder.activeCount(SpanTimeoutActiveScope.TRACES))
                 .tags("scope", "traces")
-                .description("Traces currently holding at least one live span in the watchdog")
+                .description("Traces currently holding at least one live span in the span timeout index")
                 .register(registry);
         Gauge.builder(SPAN_TIMEOUT_TRACKED_METRIC_NAME, this, PlatformTracingProcessorMetricsBinder::trackedTraceCount)
                 .tags("scope", "traces")
-                .description("Trace records currently retained by the span watchdog, including epoch tombstones")
+                .description("Trace records currently retained by the span timeout index, including epoch tombstones")
                 .register(registry);
         Gauge.builder(SPAN_TIMEOUT_CAPACITY_METRIC_NAME, this, binder -> binder.capacity(SpanTimeoutCapacityScope.TRACES))
                 .tags("scope", "traces")
-                .description("Configured maximum number of trace records retained by the span watchdog")
+                .description("Configured maximum number of trace records retained by the span timeout index")
                 .register(registry);
         Gauge.builder(SPAN_TIMEOUT_CAPACITY_METRIC_NAME, this, binder -> binder.capacity(SpanTimeoutCapacityScope.SPANS))
                 .tags("scope", "spans")
@@ -101,6 +104,18 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
         Gauge.builder(SPAN_TIMEOUT_CAPACITY_METRIC_NAME, this, binder -> binder.capacity(SpanTimeoutCapacityScope.SPANS_PER_TRACE))
                 .tags("scope", "spans_per_trace")
                 .description("Configured per-trace fairness guard on tracked spans within a single trace")
+                .register(registry);
+        // Состояние сканера кодируется как набор gauge 0/1 по одному на состояние: числовой ранг enum
+        // не переносится через wire-контракт, а строка scannerState не выражается gauge напрямую.
+        for (SpanTimeoutScannerStateTag state : SpanTimeoutScannerStateTag.values()) {
+            Gauge.builder(SPAN_TIMEOUT_SCANNER_METRIC_NAME, this, binder -> binder.scannerState(state))
+                    .tags("state", state.tag())
+                    .description("1 when the span timeout background scanner is in the tagged state, otherwise 0")
+                    .register(registry);
+        }
+        Gauge.builder(SPAN_TIMEOUT_SCANNER_LAST_SUCCESS_METRIC_NAME, this,
+                        PlatformTracingProcessorMetricsBinder::lastSuccessfulBackgroundScanEpochMillis)
+                .description("Wall-clock epoch millis of the last successful span timeout background scan; 0 until the first success")
                 .register(registry);
 
         FunctionCounter.builder(COMPOSITE_ERRORS_TOTAL_METRIC_NAME, compositeBridge,
@@ -182,36 +197,51 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
         }
 
         Map<ProcessorSpanTimeoutMetricKey, Long> keyed = new EnumMap<>(ProcessorSpanTimeoutMetricKey.class);
-        keyed.put(ProcessorSpanTimeoutMetricKey.FORCED_SPAN_CLOSES, values.forcedSpanCloses());
-        keyed.put(ProcessorSpanTimeoutMetricKey.FORCED_TRACE_CLOSES, values.forcedTraceCloses());
-        keyed.put(ProcessorSpanTimeoutMetricKey.TRACKING_EVICTED, values.trackingEvictedTotal());
-        keyed.put(ProcessorSpanTimeoutMetricKey.SPANS_REJECTED_PER_TRACE, values.spansRejectedPerTraceTotal());
-        keyed.put(ProcessorSpanTimeoutMetricKey.SPANS_REJECTED_GLOBAL, values.spansRejectedGlobalTotal());
-        keyed.put(ProcessorSpanTimeoutMetricKey.SPAN_LEDGER_INVARIANT_VIOLATION, values.spanLedgerInvariantViolationTotal());
+        keyed.put(ProcessorSpanTimeoutMetricKey.FORCED_SPAN_END_ATTEMPTS, values.forceEnd().forcedSpanEndAttemptsTotal());
+        keyed.put(ProcessorSpanTimeoutMetricKey.FORCED_TRACE_END_ATTEMPTS, values.forceEnd().forcedTraceEndAttemptsTotal());
+        keyed.put(ProcessorSpanTimeoutMetricKey.TRACKING_EVICTED, values.tracking().trackingEvictedTotal());
+        keyed.put(ProcessorSpanTimeoutMetricKey.SPANS_REJECTED_PER_TRACE, values.rejections().spansRejectedPerTraceTotal());
+        keyed.put(ProcessorSpanTimeoutMetricKey.SPANS_REJECTED_GLOBAL, values.rejections().spansRejectedGlobalTotal());
+        keyed.put(ProcessorSpanTimeoutMetricKey.SPANS_REJECTED_TRACE_CAPACITY, values.rejections().spansRejectedTraceCapacityTotal());
+        keyed.put(ProcessorSpanTimeoutMetricKey.SPAN_LEDGER_INVARIANT_VIOLATION, values.tracking().spanLedgerInvariantViolationTotal());
+        keyed.put(ProcessorSpanTimeoutMetricKey.SCAN_FAILURES, values.scanner().scanFailuresTotal());
+        keyed.put(ProcessorSpanTimeoutMetricKey.FORCE_END_FAILURES, values.forceEnd().forceEndFailuresTotal());
         return new JmxOwnerState.Present<>(keyed, generation);
+    }
+
+    private double scannerState(SpanTimeoutScannerStateTag state) {
+        return presentSpanTimeoutValues()
+                .map(values -> state.wireName().equals(values.scanner().scannerState()) ? 1.0 : 0.0)
+                .orElse(Double.NaN);
+    }
+
+    private double lastSuccessfulBackgroundScanEpochMillis() {
+        return presentSpanTimeoutValues()
+                .map(values -> (double) values.scanner().lastSuccessfulBackgroundScanEpochMillis())
+                .orElse(Double.NaN);
     }
 
     private double activeCount(SpanTimeoutActiveScope scope) {
         return presentSpanTimeoutValues()
                 .map(values -> (double) switch (scope) {
-                    case SPANS -> values.activeSpanCount();
-                    case TRACES -> values.activeTraceCount();
+                    case SPANS -> values.tracking().activeSpanCount();
+                    case TRACES -> values.tracking().activeTraceCount();
                 })
                 .orElse(Double.NaN);
     }
 
     private double trackedTraceCount() {
         return presentSpanTimeoutValues()
-                .map(values -> (double) values.trackedTraceCount())
+                .map(values -> (double) values.tracking().trackedTraceCount())
                 .orElse(Double.NaN);
     }
 
     private double capacity(SpanTimeoutCapacityScope scope) {
         return presentSpanTimeoutValues()
                 .map(values -> (double) switch (scope) {
-                    case TRACES -> values.trackedTraceCapacity();
-                    case SPANS -> values.trackedSpanCapacity();
-                    case SPANS_PER_TRACE -> values.trackedSpanPerTraceCapacity();
+                    case TRACES -> values.tracking().trackedTraceCapacity();
+                    case SPANS -> values.tracking().trackedSpanCapacity();
+                    case SPANS_PER_TRACE -> values.tracking().trackedSpanPerTraceCapacity();
                 })
                 .orElse(Double.NaN);
     }
@@ -225,6 +255,33 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
     private enum SpanTimeoutActiveScope {
         SPANS,
         TRACES
+    }
+
+    /**
+     * Домен значений {@code scannerState} wire-контракта. Дублирует имена enum сканера из плоскости агента
+     * намеренно: autoconfigure не зависит от типов extension, сравнение выполняется по строке контракта.
+     */
+    private enum SpanTimeoutScannerStateTag {
+        DISABLED("DISABLED", "disabled"),
+        RUNNING("RUNNING", "running"),
+        STOPPED("STOPPED", "stopped"),
+        TERMINATED_ABNORMALLY("TERMINATED_ABNORMALLY", "terminated_abnormally");
+
+        private final String wireName;
+        private final String tag;
+
+        SpanTimeoutScannerStateTag(String wireName, String tag) {
+            this.wireName = wireName;
+            this.tag = tag;
+        }
+
+        String wireName() {
+            return wireName;
+        }
+
+        String tag() {
+            return tag;
+        }
     }
 
     private Optional<ProcessorSpanTimeoutValues> presentSpanTimeoutValues() {

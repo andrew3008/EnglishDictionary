@@ -3,8 +3,6 @@ package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-import java.lang.ref.WeakReference;
-
 import org.junit.jupiter.api.Test;
 
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
@@ -109,7 +107,6 @@ class InFlightTraceStateTest {
         assertThat(removed).isTrue();
         assertThat(state.size()).isEqualTo(1);
         assertThat(state.contains("span-2")).isTrue();
-        // collapse back to single mode must still reject a duplicate of the remaining span
         assertThat(state.addIfAbsent(tracked("span-2", mock(ReadWriteSpan.class)))).isFalse();
     }
 
@@ -139,8 +136,6 @@ class InFlightTraceStateTest {
         InFlightTraceState.Tracked foreign = tracked("span-1", mock(ReadWriteSpan.class));
 
         // when
-        // identity-based equals/hashCode: a distinct Tracked instance with the same fields
-        // must not be treated as the same tracked record.
         boolean removed = state.remove(foreign);
 
         // then
@@ -201,6 +196,6 @@ class InFlightTraceStateTest {
     }
 
     private static InFlightTraceState.Tracked tracked(String spanId, ReadWriteSpan span) {
-        return new InFlightTraceState.Tracked(spanId, new WeakReference<>(span), 0L);
+        return new InFlightTraceState.Tracked(spanId, span, 0L);
     }
 }

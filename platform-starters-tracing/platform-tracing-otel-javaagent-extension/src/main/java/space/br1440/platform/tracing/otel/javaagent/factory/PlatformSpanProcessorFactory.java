@@ -122,7 +122,7 @@ public final class PlatformSpanProcessorFactory {
             return Optional.empty();
         }
 
-        SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
+        SpanTimeoutProcessor spanTimeout = SpanTimeoutProcessor.start(
                 extConfig.spanTimeout().spanTimeout(),
                 extConfig.spanTimeout().traceTimeout(),
                 extConfig.spanTimeout().scanInterval(),

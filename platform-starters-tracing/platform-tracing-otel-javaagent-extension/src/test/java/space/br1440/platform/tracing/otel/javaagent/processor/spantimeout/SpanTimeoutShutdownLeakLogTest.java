@@ -29,17 +29,19 @@ class SpanTimeoutShutdownLeakLogTest {
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(spanTimeout)
                 .build();
-        Tracer tracer = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build().getTracer("leak");
-        Span hung = tracer.spanBuilder("unfinished").startSpan();
+        try (OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()) {
+            Tracer tracer = sdk.getTracer("leak");
+            Span hung = tracer.spanBuilder("unfinished").startSpan();
 
-        // when
-        spanTimeout.shutdown();
+            // when
+            spanTimeout.shutdown();
 
-        // then
-        assertThat(logs.rendered())
-                .contains(AgentEventCodes.EXPORT_WATCHDOG)
-                .contains("Unfinished spans remain at SDK shutdown");
-        hung.end();
-        tracerProvider.shutdown();
+            // then
+            assertThat(logs.rendered())
+                    .contains(AgentEventCodes.EXPORT_SPAN_TIMEOUT)
+                    .contains("Unfinished spans remain at SDK shutdown");
+            hung.end();
+            tracerProvider.shutdown();
+        }
     }
 }

@@ -169,7 +169,11 @@ class TracingStatusAssemblerTest {
     void runtimeSpanTimeoutSectionExposesLiveAndBoundedState() {
         // given
         PlatformTracingJmxClient jmxClient = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
-        ProcessorSpanTimeoutValues values = new ProcessorSpanTimeoutValues(11L, 4L, 3, 1, 7, 10_000, 9L, 60_000, 1_024, 5L, 2L, 0L);
+        ProcessorSpanTimeoutValues values = new ProcessorSpanTimeoutValues(
+                new ProcessorSpanTimeoutValues.ForceEnd(11L, 4L, 13L),
+                new ProcessorSpanTimeoutValues.Tracking(3, 1, 7, 10_000, 9L, 60_000, 1_024, 0L),
+                new ProcessorSpanTimeoutValues.Rejections(5L, 2L, 8L),
+                new ProcessorSpanTimeoutValues.Scanner(6L, 1_700_000_000_004L, "RUNNING"));
         when(jmxClient.processorMetrics().observation()).thenReturn(Optional.of(
                         new ProcessorMetricsObservation(
                                 new ObservationCapture("agent-instance", 17L, 1_700_000_000_000L, 1_700_000_000_005L),
@@ -197,11 +201,11 @@ class TracingStatusAssemblerTest {
         // then
         assertThat(snapshot.schemaVersion()).isEqualTo(TracingStatusSnapshot.CURRENT_SCHEMA_VERSION);
         @SuppressWarnings("unchecked")
-        Map<String, Object> spanTimeout = (Map<String, Object>) snapshot.runtime().get("watchdog");
+        Map<String, Object> spanTimeout = (Map<String, Object>) snapshot.runtime().get("spanTimeout");
         assertThat(spanTimeout)
                 .containsEntry("present", true)
-                .containsEntry("forcedSpanCloses", 11L)
-                .containsEntry("forcedTraceCloses", 4L)
+                .containsEntry("forcedSpanEndAttemptsTotal", 11L)
+                .containsEntry("forcedTraceEndAttemptsTotal", 4L)
                 .containsEntry("activeSpanCount", 3)
                 .containsEntry("activeTraceCount", 1)
                 .containsEntry("trackedTraceCount", 7)
@@ -211,7 +215,12 @@ class TracingStatusAssemblerTest {
                 .containsEntry("trackedSpanPerTraceCapacity", 1_024)
                 .containsEntry("spansRejectedPerTraceTotal", 5L)
                 .containsEntry("spansRejectedGlobalTotal", 2L)
-                .containsEntry("spanLedgerInvariantViolationTotal", 0L);
+                .containsEntry("spansRejectedTraceCapacityTotal", 8L)
+                .containsEntry("spanLedgerInvariantViolationTotal", 0L)
+                .containsEntry("scanFailuresTotal", 6L)
+                .containsEntry("forceEndFailuresTotal", 13L)
+                .containsEntry("lastSuccessfulBackgroundScanEpochMillis", 1_700_000_000_004L)
+                .containsEntry("scannerState", "RUNNING");
         assertThat(captureOf(spanTimeout))
                 .containsEntry("agentInstanceId", "agent-instance")
                 .containsEntry("sequence", 17L)
@@ -267,7 +276,7 @@ class TracingStatusAssemblerTest {
                 stableCoherenceGuard());
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> spanTimeout = (Map<String, Object>) assembler.assemble().runtime().get("watchdog");
+        Map<String, Object> spanTimeout = (Map<String, Object>) assembler.assemble().runtime().get("spanTimeout");
         return spanTimeout;
     }
 

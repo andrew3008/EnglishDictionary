@@ -9,6 +9,8 @@ import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
 final class ExtensionConfigReader {
 
+    private static final String MUST_BE_POSITIVE = " must be greater than zero";
+
     private final ConfigProperties config;
 
     ExtensionConfigReader(ConfigProperties config) {
@@ -62,5 +64,29 @@ final class ExtensionConfigReader {
     int intValue(String name, int defaultValue) {
         Integer configValue = config.getInt(name);
         return (configValue == null) ? defaultValue : configValue;
+    }
+
+    Duration positiveDuration(String name, Duration defaultValue) {
+        Duration value = durationValue(name, defaultValue);
+        if (value.isZero() || value.isNegative()) {
+            throw new IllegalArgumentException(name + MUST_BE_POSITIVE);
+        }
+
+        return value;
+    }
+
+    int positiveInt(String name, int defaultValue) {
+        int value = intValue(name, defaultValue);
+        if (value <= 0) {
+            throw new IllegalArgumentException(name + MUST_BE_POSITIVE);
+        }
+
+        return value;
+    }
+
+    static void requireOrdered(Duration lower, String lowerName, Duration upper, String upperName) {
+        if (upper.compareTo(lower) < 0) {
+            throw new IllegalArgumentException(upperName + " must be greater than or equal to " + lowerName);
+        }
     }
 }

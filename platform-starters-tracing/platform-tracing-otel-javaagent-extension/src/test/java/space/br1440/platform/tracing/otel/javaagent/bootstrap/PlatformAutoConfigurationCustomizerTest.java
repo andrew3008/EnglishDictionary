@@ -74,8 +74,6 @@ class PlatformAutoConfigurationCustomizerTest {
         Map<String, String> defaults = recorder.propertiesSupplier.get();
 
         // then
-        // BSP-дефолты: соответствуют требованиям §3.2 «локальная буферизация» и §3 «таймауты».
-        // Длительности — в integer-ms согласно OTel SPEC.
         assertThat(defaults)
                 .containsEntry("otel.bsp.max.queue.size", "2048")
                 .containsEntry("otel.bsp.max.export.batch.size", "512")
@@ -83,7 +81,6 @@ class PlatformAutoConfigurationCustomizerTest {
                 .containsEntry("otel.bsp.export.timeout", "5000")
                 .doesNotContainKey("otel.instrumentation.http.server.capture-request-headers");
 
-        // Span limits: соответствуют требованиям §2.1, §2.2, §2.3 (50 / 1000 / 10).
         assertThat(defaults)
                 .containsEntry("otel.span.attribute.count.limit", "50")
                 .containsEntry("otel.span.attribute.value.length.limit", "1000")
@@ -119,8 +116,6 @@ class PlatformAutoConfigurationCustomizerTest {
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
-        // addPropertiesCustomizer должен отработать до samplerCustomizer, чтобы
-        // extensionConfig был инициализирован. Прайминг с пустым конфигом → defaultRatio=0.1.
         recorder.primeWithConfig(new MapConfigProperties(Map.of()));
 
         // when
@@ -218,7 +213,7 @@ class PlatformAutoConfigurationCustomizerTest {
         ConfigProperties props = new MapConfigProperties(Map.of(
                 "platform.tracing.javaagent.scrubbing.enabled", "false",
                 "platform.tracing.javaagent.span-attributes.validation.level", "DISABLED",
-                "platform.tracing.watchdog.enabled", "false",
+                "platform.tracing.span-timeout.enabled", "false",
                 "platform.tracing.classification.enabled", "false",
                 "platform.tracing.metrics.enabled", "false"
         ));
@@ -229,14 +224,6 @@ class PlatformAutoConfigurationCustomizerTest {
                 .hasMessageContaining("scrubbing.enabled=false is forbidden");
     }
 
-    /**
-     * Перехватчик вызовов {@link AutoConfigurationCustomizer}: на основе {@link Proxy}.
-     * <p>
-     * Реализован через прокси, потому что интерфейс SDK содержит более 10 методов, многие из
-     * которых обязательны (без default). Прокси позволяет реагировать только на нужные нам имена
-     * методов и автоматически возвращать сам proxy для всех fluent-вызовов; устойчив к изменениям
-     * сигнатур интерфейса в будущих версиях SDK (если только не переименуют ключевые методы).
-     */
     private static final class Recorder {
         BiFunction<Sampler, ConfigProperties, Sampler> samplerCustomizer;
         BiFunction<SdkTracerProviderBuilder, ConfigProperties, SdkTracerProviderBuilder> tracerProviderCustomizer;
@@ -244,11 +231,6 @@ class PlatformAutoConfigurationCustomizerTest {
 
         private final List<Function<ConfigProperties, Map<String, String>>> propertiesCustomizers = new ArrayList<>();
 
-        /**
-         * Имитирует фазу addPropertiesCustomizer OTel SDK lifecycle: вызывает все зарегистрированные
-         * callbacks с переданным конфигом. Необходимо вызвать до {@code samplerCustomizer.apply()},
-         * чтобы extensionConfig был инициализирован (PR-5).
-         */
         void primeWithConfig(ConfigProperties config) {
             for (Function<ConfigProperties, Map<String, String>> pc : propertiesCustomizers) {
                 pc.apply(config);
@@ -281,64 +263,59 @@ class PlatformAutoConfigurationCustomizerTest {
                             yield proxyObj;
                         }
 
-                        default ->
-                            // Все прочие методы fluent-API возвращают сам customizer.
-                                proxyObj;
+                        default -> proxyObj;
                     });
         }
     }
 
-    /**
-         * Минимальная in-memory реализация {@link ConfigProperties} для unit-тестов.
-         */
-        private record MapConfigProperties(Map<String, String> data) implements ConfigProperties {
+    private record MapConfigProperties(Map<String, String> data) implements ConfigProperties {
 
-            private MapConfigProperties(Map<String, String> data) {
-                this.data = new HashMap<>(data);
-            }
-
-            @Override
-            public String getString(String name) {
-                return data.get(name);
-            }
-
-            @Override
-            public Boolean getBoolean(String name) {
-                String value = data.get(name);
-                return value == null ? null : Boolean.parseBoolean(value);
-            }
-
-            @Override
-            public Integer getInt(String name) {
-                String value = data.get(name);
-                return value == null ? null : Integer.valueOf(value);
-            }
-
-            @Override
-            public Long getLong(String name) {
-                String value = data.get(name);
-                return value == null ? null : Long.valueOf(value);
-            }
-
-            @Override
-            public Double getDouble(String name) {
-                String value = data.get(name);
-                return value == null ? null : Double.valueOf(value);
-            }
-
-            @Override
-            public Duration getDuration(String name) {
-                return null;
-            }
-
-            @Override
-            public List<String> getList(String name) {
-                return Collections.emptyList();
-            }
-
-            @Override
-            public Map<String, String> getMap(String name) {
-                return Collections.emptyMap();
-            }
+        private MapConfigProperties(Map<String, String> data) {
+            this.data = new HashMap<>(data);
         }
+
+        @Override
+        public String getString(String name) {
+            return data.get(name);
+        }
+
+        @Override
+        public Boolean getBoolean(String name) {
+            String value = data.get(name);
+            return value == null ? null : Boolean.parseBoolean(value);
+        }
+
+        @Override
+        public Integer getInt(String name) {
+            String value = data.get(name);
+            return value == null ? null : Integer.valueOf(value);
+        }
+
+        @Override
+        public Long getLong(String name) {
+            String value = data.get(name);
+            return value == null ? null : Long.valueOf(value);
+        }
+
+        @Override
+        public Double getDouble(String name) {
+            String value = data.get(name);
+            return value == null ? null : Double.valueOf(value);
+        }
+
+        @Override
+        public Duration getDuration(String name) {
+            return null;
+        }
+
+        @Override
+        public List<String> getList(String name) {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public Map<String, String> getMap(String name) {
+            return Collections.emptyMap();
+        }
+    }
 }

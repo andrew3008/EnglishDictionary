@@ -91,7 +91,7 @@ final class PlatformTracingJmxDomainHealthMetricsBinder implements MeterBinder {
                 c -> c.processorMetrics().lastSuccessAge()
                         .map(PlatformTracingJmxDomainHealthMetricsBinder::freshnessValue)
                         .orElse(Double.NaN));
-        bindOwner(registry, "processor_metrics", "watchdog",
+        bindOwner(registry, "processor_metrics", "span_timeout",
                 c -> c.processorMetrics().observation()
                         .map(ProcessorMetricsObservation::spanTimeout)
                         .map(PlatformTracingJmxDomainHealthMetricsBinder::ownerPresentValue)

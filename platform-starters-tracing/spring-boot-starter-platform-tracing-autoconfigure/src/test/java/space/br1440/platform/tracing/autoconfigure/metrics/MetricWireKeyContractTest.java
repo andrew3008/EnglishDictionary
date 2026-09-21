@@ -74,7 +74,8 @@ class MetricWireKeyContractTest {
                         "scrubbing",
                         "validation",
                         "classification",
-                        "watchdog",
-                        "span_limits_metrics");
+                        "span_timeout",
+                        "span_limits_metrics"
+                );
     }
 }

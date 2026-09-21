@@ -32,13 +32,13 @@ public final class ExtensionPropertyNames {
     public static final String CLASSIFICATION_SLOW_THRESHOLD = "platform.tracing.classification.slow-threshold";
     public static final String CLASSIFICATION_NORMAL_THRESHOLD = "platform.tracing.classification.normal-threshold";
 
-    public static final String SPAN_TIMEOUT_ENABLED = "platform.tracing.watchdog.enabled";
-    public static final String SPAN_TIMEOUT_SPAN_TIMEOUT = "platform.tracing.watchdog.span-timeout";
-    public static final String SPAN_TIMEOUT_TRACE_TIMEOUT = "platform.tracing.watchdog.trace-timeout";
-    public static final String SPAN_TIMEOUT_SCAN_INTERVAL = "platform.tracing.watchdog.scan-interval";
-    public static final String SPAN_TIMEOUT_MAX_TRACKED_TRACES = "platform.tracing.watchdog.max-tracked-traces";
-    public static final String SPAN_TIMEOUT_MAX_TRACKED_SPANS_PER_TRACE = "platform.tracing.watchdog.max-tracked-spans-per-trace";
-    public static final String SPAN_TIMEOUT_MAX_TRACKED_SPANS = "platform.tracing.watchdog.max-tracked-spans";
+    public static final String SPAN_TIMEOUT_ENABLED = "platform.tracing.span-timeout.enabled";
+    public static final String SPAN_TIMEOUT_SPAN_TIMEOUT = "platform.tracing.span-timeout.span";
+    public static final String SPAN_TIMEOUT_TRACE_TIMEOUT = "platform.tracing.span-timeout.trace";
+    public static final String SPAN_TIMEOUT_SCAN_INTERVAL = "platform.tracing.span-timeout.scan-interval";
+    public static final String SPAN_TIMEOUT_MAX_TRACKED_TRACES = "platform.tracing.span-timeout.max-tracked-traces";
+    public static final String SPAN_TIMEOUT_MAX_TRACKED_SPANS_PER_TRACE = "platform.tracing.span-timeout.max-tracked-spans-per-trace";
+    public static final String SPAN_TIMEOUT_MAX_TRACKED_SPANS = "platform.tracing.span-timeout.max-tracked-spans";
 
     public static final String QUEUE_OVERFLOW_POLICY = "platform.tracing.queue.overflow-policy";
 
@@ -51,7 +51,6 @@ public final class ExtensionPropertyNames {
     public static final String BAGGAGE_PROCESSOR_DENY_PATTERNS = "platform.tracing.baggage.processor.deny-patterns";
 
     public static final String OTEL_JAVAAGENT_EXTENSIONS = "otel.javaagent.extensions";
-    public static final String CONTROLLED_AGENT_EXPECTED_SHA256 =
-            "platform.tracing.controlled-agent.expected-sha256";
+    public static final String CONTROLLED_AGENT_EXPECTED_SHA256 = "platform.tracing.controlled-agent.expected-sha256";
 
 }

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
+import java.lang.reflect.Proxy;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -16,7 +17,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.openjdk.jol.info.ClassLayout;
 import org.openjdk.jol.info.GraphLayout;
 
@@ -98,7 +98,7 @@ class SpanTimeoutSizingGateTest {
 
     private static void printObjectLayouts() {
         List<Class<?>> layoutTargets = List.of(
-                InFlightTraceState.class, InFlightTraceState.Tracked.class, PermitTracker.class);
+                InFlightTraceState.class, InFlightTraceState.Tracked.class, AdmissionBudget.class);
         for (Class<?> target : layoutTargets) {
             try {
                 System.out.println("SIZING layout " + target.getSimpleName() + "="
@@ -115,10 +115,11 @@ class SpanTimeoutSizingGateTest {
         AtomicLong clock = new AtomicLong();
         try (SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
                 Duration.ofHours(1), Duration.ofHours(1), clock::get, maxTraces, Integer.MAX_VALUE, Integer.MAX_VALUE)) {
+            Object[] spans = new Object[traces * spansPerTrace];
             int spanOrdinal = 0;
             for (int traceIndex = 0; traceIndex < traces; traceIndex++) {
                 for (int spanIndex = 0; spanIndex < spansPerTrace; spanIndex++) {
-                    startSpan(spanTimeout, traceIndex + 1, ++spanOrdinal);
+                    spans[spanOrdinal] = startSpan(spanTimeout, traceIndex + 1, ++spanOrdinal);
                 }
             }
             assertThat(spanTimeout.getTrackingEvictedTotal()).isZero();
@@ -126,7 +127,10 @@ class SpanTimeoutSizingGateTest {
 
             forceGc();
             Object index = activeTraces(spanTimeout);
-            long retained = GraphLayout.parseInstance(index).totalSize();
+
+            long retained = GraphLayout.parseInstance(index)
+                    .subtract(GraphLayout.parseInstance(spans))
+                    .totalSize();
             long heapUsed = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getUsed();
             long scanP99 = scanP99(spanTimeout);
             System.out.println("SIZING profile=" + name
@@ -216,26 +220,39 @@ class SpanTimeoutSizingGateTest {
         }
     }
 
-    private static void startSpan(SpanTimeoutProcessor spanTimeout, int traceOrdinal, int spanOrdinal) {
+    private static ReadWriteSpan startSpan(SpanTimeoutProcessor spanTimeout, int traceOrdinal, int spanOrdinal) {
         SpanContext context = SpanContext.create(
                 String.format("%032x", traceOrdinal),
                 String.format("%016x", spanOrdinal),
                 TraceFlags.getSampled(),
                 TraceState.getDefault());
-        ReadWriteSpan span = Mockito.mock(ReadWriteSpan.class);
-        Mockito.when(span.getSpanContext()).thenReturn(context);
-        Mockito.when(span.hasEnded()).thenReturn(false);
+        ReadWriteSpan span = liveSpan(context);
         spanTimeout.onStart(Context.root(), span);
+        return span;
+    }
+
+    private static ReadWriteSpan liveSpan(SpanContext context) {
+        return (ReadWriteSpan) Proxy.newProxyInstance(
+                ReadWriteSpan.class.getClassLoader(),
+                new Class<?>[] {ReadWriteSpan.class},
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "getSpanContext" -> context;
+                    case "hasEnded" -> Boolean.FALSE;
+                    case "hashCode" -> System.identityHashCode(proxy);
+                    case "equals" -> proxy == args[0];
+                    case "toString" -> "liveSpan" + context.getSpanId();
+                    default -> throw new UnsupportedOperationException(method.getName());
+                });
     }
 
     private static long scanP99(SpanTimeoutProcessor spanTimeout) {
         for (int index = 0; index < SCAN_WARMUP; index++) {
-            spanTimeout.scanForTesting();
+            spanTimeout.forceFlush();
         }
         long[] samples = new long[SCAN_SAMPLES];
         for (int index = 0; index < SCAN_SAMPLES; index++) {
             long began = System.nanoTime();
-            spanTimeout.scanForTesting();
+            spanTimeout.forceFlush();
             samples[index] = System.nanoTime() - began;
         }
         return p99(samples);

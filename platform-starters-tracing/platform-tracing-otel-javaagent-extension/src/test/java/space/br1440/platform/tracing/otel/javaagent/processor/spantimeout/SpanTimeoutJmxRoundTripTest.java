@@ -25,14 +25,14 @@ class SpanTimeoutJmxRoundTripTest {
         // given
         AtomicLong clock = new AtomicLong();
         SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
-                Duration.ofMillis(10), 
-                Duration.ofMinutes(1), 
-                clock::get, 
-                10_000, 
-                Integer.MAX_VALUE, 
+                Duration.ofMillis(10),
+                Duration.ofMinutes(1),
+                clock::get,
+                10_000,
+                Integer.MAX_VALUE,
                 Integer.MAX_VALUE
         );
-        
+
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(spanTimeout)
                 .build();
@@ -41,7 +41,7 @@ class SpanTimeoutJmxRoundTripTest {
             Tracer tracer = sdk.getTracer("jmx");
             Span hung = tracer.spanBuilder("hung").startSpan();
             clock.addAndGet(Duration.ofMillis(11).toNanos());
-            spanTimeout.scanForTesting();
+            assertThat(spanTimeout.forceFlush().isSuccess()).isTrue();
 
             OwnerRegistrationSlot<SpanTimeoutProcessor> slot = new OwnerRegistrationSlot<>();
             slot.replace(spanTimeout);
@@ -50,18 +50,19 @@ class SpanTimeoutJmxRoundTripTest {
                     new OwnerRegistrationSlot<>(),
                     new OwnerRegistrationSlot<>(),
                     UUID.randomUUID()
-                );
+            );
 
             // when
             CompositeData observation = source.getProcessorMetricsObservation();
             CompositeData spanTimeoutValues = (CompositeData) observation.get(
-                    JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_WATCHDOG
-                );
+                    JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_SPAN_TIMEOUT
+            );
 
             // then
-            assertThat((Boolean) spanTimeoutValues.get(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_OWNER_PRESENT)).isTrue();
-            assertThat((Long) spanTimeoutValues.get(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_FORCED_SPAN_CLOSES)).isEqualTo(1L);
-            assertThat((Integer) spanTimeoutValues.get(JmxWireContract.FIELD_PROCESSOR_WATCHDOG_VALUES_ACTIVE_SPAN_COUNT)).isZero();
+            assertThat((Boolean) spanTimeoutValues.get(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_OWNER_PRESENT)).isTrue();
+            assertThat((Long) spanTimeoutValues.get(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_FORCED_SPAN_END_ATTEMPTS_TOTAL)).isEqualTo(1L);
+            assertThat((Integer) spanTimeoutValues.get(JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_ACTIVE_SPAN_COUNT)).isZero();
+
             hung.end();
             spanTimeout.shutdown();
         }

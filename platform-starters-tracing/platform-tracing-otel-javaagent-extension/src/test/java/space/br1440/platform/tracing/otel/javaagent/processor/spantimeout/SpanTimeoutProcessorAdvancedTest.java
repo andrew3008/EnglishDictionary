@@ -79,8 +79,8 @@ class SpanTimeoutProcessorAdvancedTest {
                 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE)) {
             // when/then
             assertThat(spanTimeout.forceFlush().isSuccess()).isTrue();
-            assertThat(spanTimeout.getForcedSpanCloses()).isZero();
-            assertThat(spanTimeout.getForcedTraceCloses()).isZero();
+            assertThat(spanTimeout.getForcedSpanEndAttemptsTotal()).isZero();
+            assertThat(spanTimeout.getForcedTraceEndAttemptsTotal()).isZero();
         }
     }
 
@@ -101,7 +101,7 @@ class SpanTimeoutProcessorAdvancedTest {
             // when
             tracer.spanBuilder("hung").startSpan();
             clock.addAndGet(Duration.ofMillis(21).toNanos());
-            spanTimeout.scanForTesting();
+            assertThat(spanTimeout.forceFlush().isSuccess()).isTrue();
 
             // then
             assertThat(exporter.getFinishedSpanItems()).hasSize(1);
@@ -133,14 +133,14 @@ class SpanTimeoutProcessorAdvancedTest {
             // when
             tracer.spanBuilder("op").startSpan();
             clock.addAndGet(Duration.ofMillis(21).toNanos());
-            spanTimeout.scanForTesting();
+            assertThat(spanTimeout.forceFlush().isSuccess()).isTrue();
 
             // then
             SpanData data = exporter.getFinishedSpanItems().getFirst();
             assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TIMEOUT)))
                     .isEqualTo("span");
-            assertThat(spanTimeout.getForcedSpanCloses()).isEqualTo(1);
-            assertThat(spanTimeout.getForcedTraceCloses()).isZero();
+            assertThat(spanTimeout.getForcedSpanEndAttemptsTotal()).isEqualTo(1);
+            assertThat(spanTimeout.getForcedTraceEndAttemptsTotal()).isZero();
 
             spanTimeout.shutdown();
             tracerProvider.shutdown();

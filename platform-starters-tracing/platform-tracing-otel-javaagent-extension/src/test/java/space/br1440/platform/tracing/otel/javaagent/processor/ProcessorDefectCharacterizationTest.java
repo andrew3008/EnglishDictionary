@@ -94,7 +94,7 @@ class ProcessorDefectCharacterizationTest {
         // given: лимиты по количеству спанов/трейсов не участвуют в этом сценарии,
         // поэтому выставлены заведомо недостижимыми — тест проверяет только
         // изоляцию по traceId при совпадающем spanId, а не поведение при переполнении.
-        try (SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
+        try (SpanTimeoutProcessor spanTimeout = SpanTimeoutProcessor.start(
                 Duration.ofHours(1),
                 Duration.ofHours(2),
                 Duration.ofDays(365),

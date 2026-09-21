@@ -25,31 +25,33 @@ class SpanTimeoutTraceEpochTest {
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(spanTimeout)
                 .build();
-        Tracer tracer = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build().getTracer("epoch");
-        Span first = tracer.spanBuilder("first").startSpan();
-        first.end();
-        spanTimeout.scanForTesting();
-        assertThat(spanTimeout.getActiveTraceCount()).isZero();
-        assertThat(spanTimeout.getTrackedTraceCount()).isEqualTo(1);
+        try (OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()) {
+            Tracer tracer = sdk.getTracer("epoch");
+            Span first = tracer.spanBuilder("first").startSpan();
+            first.end();
+            assertThat(spanTimeout.forceFlush().isSuccess()).isTrue();
+            assertThat(spanTimeout.getActiveTraceCount()).isZero();
+            assertThat(spanTimeout.getTrackedTraceCount()).isEqualTo(1);
 
-        clock.set(Duration.ofMillis(8).toNanos());
-        Span second = tracer.spanBuilder("second")
-                .setParent(Context.root().with(first))
-                .startSpan();
-        assertThat(spanTimeout.getActiveTraceCount()).isEqualTo(1);
-        assertThat(spanTimeout.getTrackedTraceCount()).isEqualTo(1);
+            clock.set(Duration.ofMillis(8).toNanos());
+            Span second = tracer.spanBuilder("second")
+                    .setParent(Context.root().with(first))
+                    .startSpan();
+            assertThat(spanTimeout.getActiveTraceCount()).isEqualTo(1);
+            assertThat(spanTimeout.getTrackedTraceCount()).isEqualTo(1);
 
-        // when
-        clock.set(timeout.toNanos() + 1L);
-        spanTimeout.scanForTesting();
+            // when
+            clock.set(timeout.toNanos() + 1L);
+            assertThat(spanTimeout.forceFlush().isSuccess()).isTrue();
 
-        // then
-        assertThat(spanTimeout.getForcedTraceCloses()).isEqualTo(1);
-        assertThat(spanTimeout.getForcedSpanCloses()).isZero();
-        assertThat(spanTimeout.getActiveTraceCount()).isZero();
-        second.end();
-        spanTimeout.shutdown();
-        tracerProvider.shutdown();
+            // then
+            assertThat(spanTimeout.getForcedTraceEndAttemptsTotal()).isEqualTo(1);
+            assertThat(spanTimeout.getForcedSpanEndAttemptsTotal()).isZero();
+            assertThat(spanTimeout.getActiveTraceCount()).isZero();
+            second.end();
+            spanTimeout.shutdown();
+            tracerProvider.shutdown();
+        }
     }
 
     @Test
@@ -62,25 +64,27 @@ class SpanTimeoutTraceEpochTest {
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(spanTimeout)
                 .build();
-        Tracer tracer = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build().getTracer("tombstone");
-        Span span = tracer.spanBuilder("ended").startSpan();
-        span.end();
-        spanTimeout.scanForTesting();
-        assertThat(spanTimeout.getTrackedTraceCount()).isEqualTo(1);
-        assertThat(spanTimeout.getActiveTraceCount()).isZero();
+        try (OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()) {
+            Tracer tracer = sdk.getTracer("tombstone");
+            Span span = tracer.spanBuilder("ended").startSpan();
+            span.end();
+            assertThat(spanTimeout.forceFlush().isSuccess()).isTrue();
+            assertThat(spanTimeout.getTrackedTraceCount()).isEqualTo(1);
+            assertThat(spanTimeout.getActiveTraceCount()).isZero();
 
-        // when
-        clock.set(timeout.toNanos());
-        spanTimeout.scanForTesting();
+            // when
+            clock.set(timeout.toNanos());
+            assertThat(spanTimeout.forceFlush().isSuccess()).isTrue();
 
-        // then
-        assertThat(spanTimeout.getTrackedTraceCount()).isEqualTo(1);
-        clock.addAndGet(1L);
-        spanTimeout.scanForTesting();
-        assertThat(spanTimeout.getTrackedTraceCount()).isZero();
-        assertThat(spanTimeout.getForcedSpanCloses()).isZero();
-        assertThat(spanTimeout.getForcedTraceCloses()).isZero();
-        spanTimeout.shutdown();
-        tracerProvider.shutdown();
+            // then
+            assertThat(spanTimeout.getTrackedTraceCount()).isEqualTo(1);
+            clock.addAndGet(1L);
+            assertThat(spanTimeout.forceFlush().isSuccess()).isTrue();
+            assertThat(spanTimeout.getTrackedTraceCount()).isZero();
+            assertThat(spanTimeout.getForcedSpanEndAttemptsTotal()).isZero();
+            assertThat(spanTimeout.getForcedTraceEndAttemptsTotal()).isZero();
+            spanTimeout.shutdown();
+            tracerProvider.shutdown();
+        }
     }
 }

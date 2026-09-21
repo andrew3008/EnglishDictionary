@@ -42,10 +42,9 @@ public final class AgentEventCodes {
     public static final String EXPORT_LIFECYCLE = "PTA-EXPORT-005";
     public static final String EXPORT_CALLBACK = "PTA-EXPORT-006";
     public static final String EXPORT_COMPOSITE_LIFECYCLE = "PTA-EXPORT-007";
-    public static final String EXPORT_WATCHDOG = "PTA-EXPORT-008";
+    public static final String EXPORT_SPAN_TIMEOUT = "PTA-EXPORT-008";
     public static final String EXPORT_FACTORY = "PTA-EXPORT-009";
-    public static final String WATCHDOG_SPAN_PERMIT_INVARIANT_VIOLATION = "PTA-EXPORT-010";
-    public static final String EXPORT_WATCHDOG_LIVE_EVICTION = "PTA-EXPORT-011";
+    public static final String SPAN_TIMEOUT_PERMIT_INVARIANT_VIOLATION = "PTA-EXPORT-010";
 
     public static final String SAMPLE_FALLBACK = "PTA-SAMPLE-001";
 
@@ -92,10 +91,9 @@ public final class AgentEventCodes {
             EXPORT_LIFECYCLE,
             EXPORT_CALLBACK,
             EXPORT_COMPOSITE_LIFECYCLE,
-            EXPORT_WATCHDOG,
+            EXPORT_SPAN_TIMEOUT,
             EXPORT_FACTORY,
-            WATCHDOG_SPAN_PERMIT_INVARIANT_VIOLATION,
-            EXPORT_WATCHDOG_LIVE_EVICTION,
+            SPAN_TIMEOUT_PERMIT_INVARIANT_VIOLATION,
             SAMPLE_FALLBACK,
             CTRL_PLANE,
             CTRL_WRITER,

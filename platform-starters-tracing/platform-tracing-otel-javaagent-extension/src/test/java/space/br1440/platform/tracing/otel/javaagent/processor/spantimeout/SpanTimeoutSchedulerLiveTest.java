@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
@@ -23,36 +24,42 @@ class SpanTimeoutSchedulerLiveTest {
     void realSchedulerForceClosesHungSpanAndStopsAfterShutdown() {
         // given
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
-        SpanTimeoutProcessor spanTimeout = new SpanTimeoutProcessor(
+
+        SpanTimeoutProcessor spanTimeout = SpanTimeoutProcessor.start(
                 Duration.ofMillis(80), Duration.ofSeconds(2), Duration.ofMillis(20), 10_000,
-                Integer.MAX_VALUE, Integer.MAX_VALUE);
+                Integer.MAX_VALUE, Integer.MAX_VALUE
+        );
+
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(spanTimeout)
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        Tracer tracer = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build().getTracer("scheduler");
 
-        // when
-        Span hung = tracer.spanBuilder("hung").startSpan();
-        awaitCondition(
-                Duration.ofSeconds(2),
-                () -> !exporter.getFinishedSpanItems().isEmpty() && spanTimeout.getForcedSpanCloses() == 1L);
+        try (OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()) {
+            Tracer tracer = sdk.getTracer("scheduler");
 
-        // then
-        assertThat(exporter.getFinishedSpanItems()).isNotEmpty();
-        assertThat(spanTimeout.getForcedSpanCloses()).isEqualTo(1);
-        Thread spanTimeoutThread = threadNamed("platform-tracing-watchdog");
-        assertThat(spanTimeoutThread).isNotNull();
-        assertThat(spanTimeoutThread.isDaemon()).isTrue();
+            // when
+            Span hung = tracer.spanBuilder("hung").startSpan();
+            awaitCondition(
+                    Duration.ofSeconds(2),
+                    () -> !exporter.getFinishedSpanItems().isEmpty() && spanTimeout.getForcedSpanEndAttemptsTotal() == 1L);
 
-        assertThat(spanTimeout.shutdown().isSuccess()).isTrue();
-        int afterShutdown = exporter.getFinishedSpanItems().size();
-        Span another = tracer.spanBuilder("after-shutdown").startSpan();
-        sleep(Duration.ofMillis(200));
-        assertThat(exporter.getFinishedSpanItems()).hasSize(afterShutdown);
-        another.end();
-        hung.end();
-        tracerProvider.shutdown();
+            // then
+            assertThat(exporter.getFinishedSpanItems()).isNotEmpty();
+            assertThat(spanTimeout.getForcedSpanEndAttemptsTotal()).isEqualTo(1);
+            Thread spanTimeoutThread = threadNamed("platform-tracing-span-timeout");
+            assertThat(spanTimeoutThread).isNotNull();
+            assertThat(spanTimeoutThread.isDaemon()).isTrue();
+
+            assertThat(spanTimeout.shutdown().isSuccess()).isTrue();
+            int afterShutdown = exporter.getFinishedSpanItems().size();
+            Span another = tracer.spanBuilder("after-shutdown").startSpan();
+            sleep(Duration.ofMillis(200));
+            assertThat(exporter.getFinishedSpanItems()).hasSize(afterShutdown);
+            another.end();
+            hung.end();
+            tracerProvider.shutdown();
+        }
     }
 
     @Test
@@ -70,23 +77,29 @@ class SpanTimeoutSchedulerLiveTest {
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(spanTimeout)
                 .build();
-        Tracer tracer = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build().getTracer("scan");
-        Span hung = tracer.spanBuilder("hung").startSpan();
-        failNextScan.set(0);
+        try (OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()) {
+            Tracer tracer = sdk.getTracer("scan");
+            Span hung = tracer.spanBuilder("hung").startSpan();
+            failNextScan.set(0);
 
-        // when
-        spanTimeout.scanForTesting();
-        failNextScan.set(-1);
-        clock.set(Duration.ofMillis(20).toNanos());
-        spanTimeout.scanForTesting();
+            // when
+            CompletableResultCode failedScan = spanTimeout.forceFlush();
+            failNextScan.set(-1);
+            clock.set(Duration.ofMillis(20).toNanos());
+            CompletableResultCode recoveredScan = spanTimeout.forceFlush();
 
-        // then
-        assertThat(spanTimeout.getForcedSpanCloses()).isEqualTo(1);
-        hung.end();
-        spanTimeout.shutdown();
-        tracerProvider.shutdown();
+            // then
+            assertThat(failedScan.isSuccess()).isFalse();
+            assertThat(recoveredScan.isSuccess()).isTrue();
+            assertThat(spanTimeout.getScanFailuresTotal()).isEqualTo(1);
+            assertThat(spanTimeout.getForcedSpanEndAttemptsTotal()).isEqualTo(1);
+            hung.end();
+            spanTimeout.shutdown();
+            tracerProvider.shutdown();
+        }
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static Thread threadNamed(String name) {
         for (Thread thread : Thread.getAllStackTraces().keySet()) {
             if (name.equals(thread.getName())) {

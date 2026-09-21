@@ -165,7 +165,7 @@ public final class TracingStatusAssembler {
         runtime.put("validation", validationSection());
         runtime.put("scrubbing", scrubbingSection());
         runtime.put("export", exportSection());
-        runtime.put("watchdog", spanTimeoutSection());
+        runtime.put("spanTimeout", spanTimeoutSection());
         runtime.put("processorErrorsTotal", processorErrorsTotal());
         runtime.put("processorErrorsByName", processorErrorsByName());
         return runtime;
@@ -244,18 +244,23 @@ public final class TracingStatusAssembler {
         Map<String, Object> spanTimeout = new LinkedHashMap<>();
         spanTimeout.put("capture", captureSection(observation.map(ProcessorMetricsObservation::capture).orElse(null)));
         spanTimeout.put("present", values.isPresent());
-        spanTimeout.put("forcedSpanCloses", values.map(ProcessorSpanTimeoutValues::forcedSpanCloses).orElse(null));
-        spanTimeout.put("forcedTraceCloses", values.map(ProcessorSpanTimeoutValues::forcedTraceCloses).orElse(null));
-        spanTimeout.put("activeSpanCount", values.map(ProcessorSpanTimeoutValues::activeSpanCount).orElse(null));
-        spanTimeout.put("activeTraceCount", values.map(ProcessorSpanTimeoutValues::activeTraceCount).orElse(null));
-        spanTimeout.put("trackedTraceCount", values.map(ProcessorSpanTimeoutValues::trackedTraceCount).orElse(null));
-        spanTimeout.put("trackedTraceCapacity", values.map(ProcessorSpanTimeoutValues::trackedTraceCapacity).orElse(null));
-        spanTimeout.put("trackingEvictedTotal", values.map(ProcessorSpanTimeoutValues::trackingEvictedTotal).orElse(null));
-        spanTimeout.put("trackedSpanCapacity", values.map(ProcessorSpanTimeoutValues::trackedSpanCapacity).orElse(null));
-        spanTimeout.put("trackedSpanPerTraceCapacity", values.map(ProcessorSpanTimeoutValues::trackedSpanPerTraceCapacity).orElse(null));
-        spanTimeout.put("spansRejectedPerTraceTotal", values.map(ProcessorSpanTimeoutValues::spansRejectedPerTraceTotal).orElse(null));
-        spanTimeout.put("spansRejectedGlobalTotal", values.map(ProcessorSpanTimeoutValues::spansRejectedGlobalTotal).orElse(null));
-        spanTimeout.put("spanLedgerInvariantViolationTotal", values.map(ProcessorSpanTimeoutValues::spanLedgerInvariantViolationTotal).orElse(null));
+        spanTimeout.put("forcedSpanEndAttemptsTotal", values.map(v -> v.forceEnd().forcedSpanEndAttemptsTotal()).orElse(null));
+        spanTimeout.put("forcedTraceEndAttemptsTotal", values.map(v -> v.forceEnd().forcedTraceEndAttemptsTotal()).orElse(null));
+        spanTimeout.put("activeSpanCount", values.map(v -> v.tracking().activeSpanCount()).orElse(null));
+        spanTimeout.put("activeTraceCount", values.map(v -> v.tracking().activeTraceCount()).orElse(null));
+        spanTimeout.put("trackedTraceCount", values.map(v -> v.tracking().trackedTraceCount()).orElse(null));
+        spanTimeout.put("trackedTraceCapacity", values.map(v -> v.tracking().trackedTraceCapacity()).orElse(null));
+        spanTimeout.put("trackingEvictedTotal", values.map(v -> v.tracking().trackingEvictedTotal()).orElse(null));
+        spanTimeout.put("trackedSpanCapacity", values.map(v -> v.tracking().trackedSpanCapacity()).orElse(null));
+        spanTimeout.put("trackedSpanPerTraceCapacity", values.map(v -> v.tracking().trackedSpanPerTraceCapacity()).orElse(null));
+        spanTimeout.put("spansRejectedPerTraceTotal", values.map(v -> v.rejections().spansRejectedPerTraceTotal()).orElse(null));
+        spanTimeout.put("spansRejectedGlobalTotal", values.map(v -> v.rejections().spansRejectedGlobalTotal()).orElse(null));
+        spanTimeout.put("spansRejectedTraceCapacityTotal", values.map(v -> v.rejections().spansRejectedTraceCapacityTotal()).orElse(null));
+        spanTimeout.put("spanLedgerInvariantViolationTotal", values.map(v -> v.tracking().spanLedgerInvariantViolationTotal()).orElse(null));
+        spanTimeout.put("scanFailuresTotal", values.map(v -> v.scanner().scanFailuresTotal()).orElse(null));
+        spanTimeout.put("forceEndFailuresTotal", values.map(v -> v.forceEnd().forceEndFailuresTotal()).orElse(null));
+        spanTimeout.put("lastSuccessfulBackgroundScanEpochMillis", values.map(v -> v.scanner().lastSuccessfulBackgroundScanEpochMillis()).orElse(null));
+        spanTimeout.put("scannerState", values.map(v -> v.scanner().scannerState()).orElse(null));
         return spanTimeout;
     }
 

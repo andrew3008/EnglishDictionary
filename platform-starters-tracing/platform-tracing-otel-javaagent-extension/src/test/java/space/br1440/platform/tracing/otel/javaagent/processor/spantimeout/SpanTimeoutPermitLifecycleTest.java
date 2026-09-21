@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
@@ -42,7 +43,7 @@ class SpanTimeoutPermitLifecycleTest {
             testNanoTime.set(2L);
 
             // when
-            Future<?> scanFuture = executorService.submit(spanTimeoutProcessor::scanForTesting);
+            Future<?> scanFuture = executorService.submit(spanTimeoutProcessor::forceFlush);
             assertThat(spanStateCheckStarted.await(5, TimeUnit.SECONDS)).isTrue();
             Future<?> endFuture = executorService.submit(() -> spanTimeoutProcessor.onEnd(span));
             continueScanner.countDown();
@@ -51,6 +52,50 @@ class SpanTimeoutPermitLifecycleTest {
 
             // then
             assertThat(spanTimeoutProcessor.getActiveSpanCount()).isZero();
+            assertThat(spanTimeoutProcessor.getSpanPermitInvariantViolationTotal()).isZero();
+        }
+    }
+
+    @Test
+    void extractedCandidateKeepsItsPermitUntilTheEndAttemptCompletes() throws Exception {
+        // given
+        AtomicLong testNanoTime = new AtomicLong();
+        ReadWriteSpan expired = SpanTimeoutTestSpans.span(1, 1);
+        ReadWriteSpan fresh = SpanTimeoutTestSpans.span(2, 1);
+        CountDownLatch endStarted = new CountDownLatch(1);
+        CountDownLatch releaseEnd = new CountDownLatch(1);
+        doAnswer(ignored -> {
+            endStarted.countDown();
+            assertThat(releaseEnd.await(5, TimeUnit.SECONDS)).isTrue();
+            return null;
+        }).when(expired).end();
+
+        try (SpanTimeoutProcessor spanTimeoutProcessor = new SpanTimeoutProcessor(
+                Duration.ofNanos(1), Duration.ofHours(1), testNanoTime::get, 10, 10, 2
+        );
+             ExecutorService executorService = Executors.newFixedThreadPool(2)) {
+            spanTimeoutProcessor.onStart(Context.root(), expired);
+            testNanoTime.set(2L);
+            spanTimeoutProcessor.onStart(Context.root(), fresh);
+
+            // when
+            Future<?> scanFuture = executorService.submit(spanTimeoutProcessor::forceFlush);
+            assertThat(endStarted.await(5, TimeUnit.SECONDS)).isTrue();
+
+            // then
+            assertThat(spanTimeoutProcessor.getActiveSpanCount()).isEqualTo(2);
+            spanTimeoutProcessor.onStart(Context.root(), SpanTimeoutTestSpans.span(3, 1));
+            assertThat(spanTimeoutProcessor.getSpansRejectedGlobalTotal()).isEqualTo(1);
+
+            Future<?> parallelFlush = executorService.submit(spanTimeoutProcessor::forceFlush);
+            parallelFlush.get(5, TimeUnit.SECONDS);
+            assertThat(spanTimeoutProcessor.getActiveSpanCount()).isEqualTo(2);
+
+            releaseEnd.countDown();
+            scanFuture.get(5, TimeUnit.SECONDS);
+
+            assertThat(spanTimeoutProcessor.getActiveSpanCount()).isEqualTo(1);
+            assertThat(spanTimeoutProcessor.getForcedSpanEndAttemptsTotal()).isEqualTo(1);
             assertThat(spanTimeoutProcessor.getSpanPermitInvariantViolationTotal()).isZero();
         }
     }
@@ -126,7 +171,7 @@ class SpanTimeoutPermitLifecycleTest {
             spanTimeoutProcessor.onStart(Context.root(), SpanTimeoutTestSpans.span(2, 1));
 
             // when
-            spanTimeoutProcessor.scanForTesting();
+            assertThat(spanTimeoutProcessor.forceFlush().isSuccess()).isTrue();
 
             // then
             assertThat(spanTimeoutProcessor.getSpanPermitInvariantViolationTotal()).isZero();
