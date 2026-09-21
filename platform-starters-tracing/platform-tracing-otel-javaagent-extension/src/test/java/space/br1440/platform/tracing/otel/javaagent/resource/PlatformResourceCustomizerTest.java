@@ -5,54 +5,51 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Supplier;
-
-import io.opentelemetry.api.common.AttributeKey;
-import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.sdk.resources.Resource;
 
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
+import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 
-/**
- * Поведение {@link PlatformResourceCustomizer}: per-key omit, post-provider merge,
- * host omit-if-unknown, container opt-in, disabled keys и валидация на старте.
- */
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.sdk.resources.Resource;
+
 class PlatformResourceCustomizerTest {
 
     private static final Function<String, String> NO_ENV = name -> null;
-    private static final Supplier<Optional<String>> NO_CONTAINER = Optional::empty;
+    private static final Supplier<Optional<String>> NO_BUILD = Optional::empty;
 
     private static AttributeKey<String> key(String name) {
         return AttributeKey.stringKey(name);
     }
 
-    @SuppressWarnings("SameParameterValue")
     private static PlatformResourceCustomizer customizer(Function<String, String> env,
                                                           Supplier<Optional<String>> buildVersion,
-                                                          Supplier<Optional<String>> manifestVersion,
-                                                          Supplier<Optional<String>> container,
-                                                          HostNameResolver host) {
-        return new PlatformResourceCustomizer(
-                new ResourceAttributeResolver(),
-                host,
-                new ResourceValidationDiagnostics(),
-                env,
-                container,
-                buildVersion,
-                manifestVersion);
+                                                          HostNameResolver host,
+                                                          TracingDiagnostics diagnostics) {
+        return new PlatformResourceCustomizer(host, env, buildVersion, diagnostics);
     }
 
-    /** Хост-резолвер, который никогда не находит имя (omit-сценарий). */
+    private static PlatformResourceCustomizer customizer(Function<String, String> env,
+                                                          Supplier<Optional<String>> buildVersion,
+                                                          HostNameResolver host) {
+        return customizer(env, buildVersion, host, new TracingDiagnostics());
+    }
+
     private static HostNameResolver noHost() {
         return new HostNameResolver(NO_ENV, () -> null);
     }
 
     @Test
-    void platform_properties_fill_identity() {
+    void platformPropertiesFillIdentity() {
         // given
         Map<String, String> values = Map.of(
                 PlatformResourceCustomizer.PROP_SERVICE_NAME, "demo-service",
@@ -62,7 +59,7 @@ class PlatformResourceCustomizerTest {
         );
 
         // when
-        Resource resource = customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost())
+        Resource resource = customizer(NO_ENV, NO_BUILD, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(values));
 
         // then
@@ -73,14 +70,14 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void otel_service_name_blocks_platform_override() {
+    void otelServiceNameBlocksPlatformOverride() {
         // given
         Map<String, String> values = Map.of(
                 "otel.service.name", "otel-svc",
                 PlatformResourceCustomizer.PROP_SERVICE_NAME, "platform-svc");
 
         // when
-        Resource resource = customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost())
+        Resource resource = customizer(NO_ENV, NO_BUILD, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(values));
 
         // then
@@ -88,9 +85,9 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void service_version_from_build_info_when_explicit_not_set() {
+    void serviceVersionFromBuildInfoWhenExplicitNotSet() {
         // when
-        Resource resource = customizer(NO_ENV, () -> Optional.of("2.17.4"), Optional::empty, NO_CONTAINER, noHost())
+        Resource resource = customizer(NO_ENV, () -> Optional.of("2.17.4"), noHost())
                 .customize(Resource.empty(), new TestConfigProperties(Map.of()));
 
         // then
@@ -98,22 +95,26 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void service_version_explicit_wins_over_build_info() {
+    void serviceVersionExplicitWinsOverBuildInfo() {
         // given
         Map<String, String> values = Map.of(PlatformResourceCustomizer.PROP_SERVICE_VERSION, "9.9.9");
+        AtomicBoolean buildRead = new AtomicBoolean(false);
 
         // when
-        Resource resource = customizer(NO_ENV, () -> Optional.of("2.17.4"), Optional::empty, NO_CONTAINER, noHost())
-                .customize(Resource.empty(), new TestConfigProperties(values));
+        Resource resource = customizer(NO_ENV, () -> {
+            buildRead.set(true);
+            return Optional.of("2.17.4");
+        }, noHost()).customize(Resource.empty(), new TestConfigProperties(values));
 
         // then
         assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_VERSION))).isEqualTo("9.9.9");
+        assertThat(buildRead).isFalse();
     }
 
     @Test
-    void host_name_omit_when_undefined() {
+    void hostNameOmitWhenUndefined() {
         // when
-        Resource resource = customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost())
+        Resource resource = customizer(NO_ENV, NO_BUILD, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(Map.of()));
 
         // then
@@ -121,7 +122,7 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void host_name_from_HOSTNAME_env() {
+    void hostNameFromHostnameEnv() {
         // given
         HostNameResolver host = new HostNameResolver(
                 name -> "HOSTNAME".equals(name) ? "pod-billing-7f9c" : null,
@@ -130,7 +131,7 @@ class PlatformResourceCustomizerTest {
                 });
 
         // when
-        Resource resource = customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, host)
+        Resource resource = customizer(NO_ENV, NO_BUILD, host)
                 .customize(Resource.empty(), new TestConfigProperties(Map.of()));
 
         // then
@@ -138,12 +139,12 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void container_id_explicit_config() {
+    void containerIdExplicitConfig() {
         // given
         Map<String, String> values = Map.of(PlatformResourceCustomizer.PROP_CONTAINER_ID, "docker-abc123");
 
         // when
-        Resource resource = customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost())
+        Resource resource = customizer(NO_ENV, NO_BUILD, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(values));
 
         // then
@@ -151,29 +152,25 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void container_id_procfs_only_with_opt_in() {
+    void containerIdFromEnvironmentWhenConfigBlank() {
         // given
-        Supplier<Optional<String>> procfs = () -> Optional.of("procfs-id");
+        Function<String, String> env = name -> "CONTAINER_ID".equals(name) ? "env-container" : null;
 
         // when
-        Resource off = customizer(NO_ENV, Optional::empty, Optional::empty, procfs, noHost())
+        Resource resource = customizer(env, NO_BUILD, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(Map.of()));
-        Resource on = customizer(NO_ENV, Optional::empty, Optional::empty, procfs, noHost())
-                .customize(Resource.empty(), new TestConfigProperties(
-                        Map.of(ExtensionPropertyNames.RESOURCE_DETECT_CONTAINER_ID, "true")));
 
         // then
-        assertThat(off.getAttribute(key(PlatformAttributes.CONTAINER_ID))).isNull();
-        assertThat(on.getAttribute(key(PlatformAttributes.CONTAINER_ID))).isEqualTo("procfs-id");
+        assertThat(resource.getAttribute(key(PlatformAttributes.CONTAINER_ID))).isEqualTo("env-container");
     }
 
     @Test
-    void k8s_pod_uid_is_no_longer_written() {
+    void k8sPodUidIsNoLongerWritten() {
         // given
         Map<String, String> values = Map.of("platform.tracing.service.k8s-pod-uid", "pod-uid-123");
 
         // when
-        Resource resource = customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost())
+        Resource resource = customizer(NO_ENV, NO_BUILD, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(values));
 
         // then
@@ -181,7 +178,7 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void existing_resource_wins_over_platform_fallback() {
+    void existingResourceWinsOverPlatformFallback() {
         // given
         Resource existing = Resource.create(Attributes.builder()
                 .put(key(PlatformAttributes.SERVICE_NAME), "existing-service")
@@ -194,7 +191,7 @@ class PlatformResourceCustomizerTest {
                 PlatformResourceCustomizer.PROP_CONTAINER_ID, "platform-container");
 
         // when
-        Resource resource = customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost())
+        Resource resource = customizer(NO_ENV, NO_BUILD, noHost())
                 .customize(existing, new TestConfigProperties(values));
 
         // then
@@ -204,19 +201,99 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void error_fails_when_required_keys_absent() {
+    void disabledKeyAlreadyPresentOnExistingResourceIsNotStripped() {
         // given
-        Map<String, String> values = Map.of(ExtensionPropertyNames.RESOURCE_VALIDATION_MODE, "ERROR");
-        PlatformResourceCustomizer customizer =
-                customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost());
+        Resource existing = Resource.create(Attributes.of(key(PlatformAttributes.PLATFORM_HOST), "kept-host"));
+        Map<String, String> values = Map.of(
+                "otel.resource.disabled.keys", PlatformAttributes.PLATFORM_HOST,
+                PlatformResourceCustomizer.PROP_HOST, "platform-host",
+                PlatformResourceCustomizer.PROP_SERVICE_NAME, "demo-service",
+                PlatformResourceCustomizer.PROP_ENVIRONMENT, "production");
 
-        // when/then
-        assertThatThrownBy(() -> customizer.customize(Resource.empty(), new TestConfigProperties(values)))
-                .isInstanceOf(IllegalStateException.class);
+        // when
+        Resource resource = customizer(NO_ENV, NO_BUILD, noHost())
+                .customize(existing, new TestConfigProperties(values));
+
+        // then
+        assertThat(resource.getAttribute(key(PlatformAttributes.PLATFORM_HOST))).isEqualTo("kept-host");
     }
 
     @Test
-    void error_does_not_fail_with_otel_service_name_effective_view() {
+    void disabledKeyIsNotProjectedByPlatform() {
+        // given
+        Map<String, String> values = Map.of(
+                "otel.resource.disabled.keys", PlatformAttributes.PLATFORM_HOST,
+                PlatformResourceCustomizer.PROP_HOST, "platform-host",
+                PlatformResourceCustomizer.PROP_SERVICE_NAME, "demo-service",
+                PlatformResourceCustomizer.PROP_ENVIRONMENT, "production");
+
+        // when
+        Resource resource = customizer(NO_ENV, NO_BUILD, noHost())
+                .customize(Resource.empty(), new TestConfigProperties(values));
+
+        // then
+        assertThat(resource.getAttribute(key(PlatformAttributes.PLATFORM_HOST))).isNull();
+        assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isEqualTo("demo-service");
+    }
+
+    @Test
+    void errorFailsWhenRequiredKeysAbsent() {
+        // given
+        Map<String, String> values = Map.of(ExtensionPropertyNames.RESOURCE_VALIDATION_MODE, "ERROR");
+        PlatformResourceCustomizer customizer = customizer(NO_ENV, NO_BUILD, noHost());
+
+        // when/then
+        assertThatThrownBy(() -> customizer.customize(Resource.empty(), new TestConfigProperties(values)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("missing required keys");
+    }
+
+    @Test
+    void warningLogsIncompleteIdentityWithoutFailing() {
+        // given
+        AgentLogCapture logs = new AgentLogCapture();
+        logs.install();
+        try {
+            // when
+            Resource resource = customizer(NO_ENV, NO_BUILD, noHost())
+                    .customize(Resource.empty(), new TestConfigProperties(Map.of()));
+
+            // then
+            assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isNull();
+            assertThat(logs.events())
+                    .filteredOn(event -> event.level() == AgentLogLevel.WARN)
+                    .extracting(AgentLogEvent::message)
+                    .contains("Resource identity incomplete");
+        } finally {
+            logs.restore();
+        }
+    }
+
+    @Test
+    void completeIdentityIsLoggedAtInfo() {
+        // given
+        AgentLogCapture logs = new AgentLogCapture();
+        logs.install();
+        Map<String, String> values = Map.of(
+                PlatformResourceCustomizer.PROP_SERVICE_NAME, "demo-service",
+                PlatformResourceCustomizer.PROP_ENVIRONMENT, "production");
+        try {
+            // when
+            customizer(NO_ENV, NO_BUILD, noHost())
+                    .customize(Resource.empty(), new TestConfigProperties(values));
+
+            // then
+            assertThat(logs.events())
+                    .filteredOn(event -> "Resource identity resolved".equals(event.message()))
+                    .extracting(AgentLogEvent::level)
+                    .containsExactly(AgentLogLevel.INFO);
+        } finally {
+            logs.restore();
+        }
+    }
+
+    @Test
+    void errorDoesNotFailWithOtelServiceNameEffectiveView() {
         // given
         Map<String, String> values = Map.of(
                 ExtensionPropertyNames.RESOURCE_VALIDATION_MODE, "ERROR",
@@ -224,7 +301,7 @@ class PlatformResourceCustomizerTest {
                 PlatformResourceCustomizer.PROP_ENVIRONMENT, "production");
 
         // when
-        Resource resource = customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost())
+        Resource resource = customizer(NO_ENV, NO_BUILD, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(values));
 
         // then
@@ -233,19 +310,60 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void legacy_provider_controls_are_rejected_explicitly() {
+    void warningReturnsExistingAndCountsCustomizationFailure() {
         // given
-        TestConfigProperties config = new TestConfigProperties(Map.of(
-                "otel.java.disabled.resource.providers",
-                "space.br1440.platform.tracing.otel.javaagent.resource.SafeResourceProvider"));
+        TracingDiagnostics diagnostics = new TracingDiagnostics();
+        HostNameResolver failingHost = new HostNameResolver(NO_ENV, () -> {
+            throw new IllegalStateException("injected hostname failure");
+        });
+        Resource existing = Resource.create(Attributes.of(key(PlatformAttributes.SERVICE_NAME), "kept"));
+        AgentLogCapture logs = new AgentLogCapture();
+        logs.install();
+        try {
+            // when
+            Resource resource = customizer(NO_ENV, NO_BUILD, failingHost, diagnostics)
+                    .customize(existing, new TestConfigProperties(Map.of()));
 
-        // when
-        PlatformResourceCustomizer customizer =
-                customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost());
+            // then
+            assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isEqualTo("kept");
+            assertThat(diagnostics.getResourceFailures()).isEqualTo(1);
+            assertThat(logs.events())
+                    .filteredOn(event -> "Resource customization failed".equals(event.message()))
+                    .extracting(AgentLogEvent::level)
+                    .containsExactly(AgentLogLevel.WARN);
+        } finally {
+            logs.restore();
+        }
+    }
 
-        // then
-        assertThatThrownBy(() -> customizer.customize(Resource.empty(), config))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Legacy SafeResourceProvider controls are unsupported");
+    @Test
+    void errorPropagatesCustomizationFailure() {
+        // given
+        TracingDiagnostics diagnostics = new TracingDiagnostics();
+        HostNameResolver failingHost = new HostNameResolver(NO_ENV, () -> {
+            throw new IllegalStateException("injected hostname failure");
+        });
+        Map<String, String> values = Map.of(ExtensionPropertyNames.RESOURCE_VALIDATION_MODE, "ERROR");
+
+        // when/then
+        assertThatThrownBy(() -> customizer(NO_ENV, NO_BUILD, failingHost, diagnostics)
+                .customize(Resource.empty(), new TestConfigProperties(values)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("injected hostname failure");
+        assertThat(diagnostics.getResourceFailures()).isZero();
+    }
+
+    @Test
+    void invalidValidationModeFailsBeforeCustomization() {
+        // given
+        TracingDiagnostics diagnostics = new TracingDiagnostics();
+        Map<String, String> values = Map.of(ExtensionPropertyNames.RESOURCE_VALIDATION_MODE, "NOPE");
+
+        // when/then
+        assertThatThrownBy(() -> customizer(NO_ENV, NO_BUILD, noHost(), diagnostics)
+                .customize(Resource.empty(), new TestConfigProperties(values)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("platform.tracing.resource.validation-mode");
+        assertThat(diagnostics.getResourceFailures()).isZero();
     }
 }

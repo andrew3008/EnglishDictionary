@@ -7,7 +7,7 @@ import space.br1440.platform.common.util.StringUtils;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
-public final class EnvironmentNormalizer {
+final class EnvironmentNormalizer {
 
     public static final String UNKNOWN = "unknown";
 

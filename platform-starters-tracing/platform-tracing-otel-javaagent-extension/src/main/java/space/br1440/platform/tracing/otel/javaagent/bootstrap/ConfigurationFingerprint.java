@@ -27,7 +27,6 @@ final class ConfigurationFingerprint {
             ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
             ExtensionPropertyNames.RESOURCE_NORMALIZE_ENVIRONMENT,
             ExtensionPropertyNames.RESOURCE_VALIDATION_MODE,
-            ExtensionPropertyNames.RESOURCE_DETECT_CONTAINER_ID,
             ExtensionPropertyNames.CLASSIFICATION_ENABLED,
             ExtensionPropertyNames.CLASSIFICATION_SLOW_THRESHOLD,
             ExtensionPropertyNames.CLASSIFICATION_NORMAL_THRESHOLD,

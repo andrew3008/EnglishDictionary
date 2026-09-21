@@ -11,7 +11,7 @@ import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.common.util.StringUtils;
 
-public final class HostNameResolver {
+final class HostNameResolver {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(HostNameResolver.class);
 

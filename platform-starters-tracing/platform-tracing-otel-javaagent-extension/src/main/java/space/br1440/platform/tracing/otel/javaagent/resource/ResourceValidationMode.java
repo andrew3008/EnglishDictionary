@@ -4,7 +4,7 @@ import java.util.Locale;
 
 import space.br1440.platform.common.util.StringUtils;
 
-public enum ResourceValidationMode {
+enum ResourceValidationMode {
 
     WARNING,
     ERROR;

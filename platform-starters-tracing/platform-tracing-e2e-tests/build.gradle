@@ -107,6 +107,17 @@ tasks.named('bootJar', BootJar) {
     mainClass = 'space.br1440.platform.tracing.e2e.PackagedTracingCertificationApplication'
 }
 
+def buildInfoFixtureVersion = '7.7.7-buildinfo-fixture'
+
+springBoot {
+    buildInfo {
+        properties {
+            version = buildInfoFixtureVersion
+            time = null
+        }
+    }
+}
+
 def dualSdkBootJar = tasks.register('dualSdkBootJar', BootJar) {
     group = 'verification'
     archiveFileName = 'platform-tracing-packaged-certification-dual-sdk.jar'
@@ -176,6 +187,8 @@ tasks.named('test', Test) {
     arguments.dualSdkApplicationBootJar.set(packagedDualSdkBootJar)
     arguments.collisionAgentJar.set(packagedCollisionAgentJar)
     jvmArgumentProviders.add(arguments)
+
+    systemProperty 'platformTracing.buildInfoFixtureVersion', buildInfoFixtureVersion
 
     def evidenceDirectory = layout.buildDirectory.dir('reports/packaged-certification')
     systemProperty 'platformTracing.evidenceDirectory', evidenceDirectory.get().asFile.absolutePath

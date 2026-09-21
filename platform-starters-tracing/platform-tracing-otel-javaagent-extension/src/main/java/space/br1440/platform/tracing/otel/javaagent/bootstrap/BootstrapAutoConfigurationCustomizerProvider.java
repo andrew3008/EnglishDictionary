@@ -8,7 +8,7 @@ import space.br1440.platform.tracing.otel.javaagent.exporter.response.ObservingS
 import space.br1440.platform.tracing.otel.javaagent.propagation.BaggagePropagationCustomizer;
 import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagatorsDefaultsCustomizer;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
-import space.br1440.platform.tracing.otel.javaagent.resource.SafeResourceCustomizer;
+import space.br1440.platform.tracing.otel.javaagent.resource.PlatformResourceCustomizer;
 import space.br1440.platform.tracing.otel.javaagent.sampler.PlatformManagedSamplers;
 
 import io.opentelemetry.context.propagation.TextMapPropagator;
@@ -25,7 +25,7 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
     private final PlatformTracingDefaultsProvider defaultsProvider = new PlatformTracingDefaultsProvider();
     private final BaggagePropagationCustomizer baggageCustomizer = new BaggagePropagationCustomizer();
     private final PlatformPropagatorsDefaultsCustomizer propagatorsDefaults = new PlatformPropagatorsDefaultsCustomizer();
-    private final SafeResourceCustomizer resourceCustomizer = new SafeResourceCustomizer();
+    private final PlatformResourceCustomizer resourceCustomizer = new PlatformResourceCustomizer();
 
     @SuppressWarnings("unused")
     public BootstrapAutoConfigurationCustomizerProvider() {

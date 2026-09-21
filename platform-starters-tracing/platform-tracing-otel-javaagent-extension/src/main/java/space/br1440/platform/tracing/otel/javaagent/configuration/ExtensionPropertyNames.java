@@ -26,7 +26,6 @@ public final class ExtensionPropertyNames {
 
     public static final String RESOURCE_NORMALIZE_ENVIRONMENT = "platform.tracing.resource.normalize-environment";
     public static final String RESOURCE_VALIDATION_MODE = "platform.tracing.resource.validation-mode";
-    public static final String RESOURCE_DETECT_CONTAINER_ID = "platform.tracing.resource.detect-container-id";
 
     public static final String CLASSIFICATION_ENABLED = "platform.tracing.classification.enabled";
     public static final String CLASSIFICATION_SLOW_THRESHOLD = "platform.tracing.classification.slow-threshold";

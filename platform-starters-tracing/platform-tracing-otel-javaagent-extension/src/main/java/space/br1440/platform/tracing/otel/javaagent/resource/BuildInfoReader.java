@@ -1,28 +1,30 @@
 package space.br1440.platform.tracing.otel.javaagent.resource;
 
 import java.io.InputStream;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.function.Function;
 
 import space.br1440.platform.common.util.StringUtils;
 
-public final class BuildInfoReader {
+final class BuildInfoReader {
 
     static final String BUILD_INFO_PATH = "META-INF/build-info.properties";
     static final String BUILD_INFO_PATH_BOOT_INF = "BOOT-INF/classes/META-INF/build-info.properties";
     static final String VERSION_KEY = "build.version";
 
-    private final ClasspathResourceLoader loader;
+    private final Function<String, InputStream> loader;
 
-    public BuildInfoReader() {
-        this(ClasspathResourceLoader.tcclFirst());
+    BuildInfoReader() {
+        this(BuildInfoReader::openFromTcclFirst);
     }
 
-    public BuildInfoReader(ClasspathResourceLoader loader) {
-        this.loader = loader;
+    BuildInfoReader(Function<String, InputStream> loader) {
+        this.loader = Objects.requireNonNull(loader, "loader");
     }
 
-    public Optional<String> readVersion() {
+    Optional<String> readVersion() {
         Optional<String> root = readFrom(BUILD_INFO_PATH);
         if (root.isPresent()) {
             return root;
@@ -32,7 +34,7 @@ public final class BuildInfoReader {
     }
 
     private Optional<String> readFrom(String path) {
-        try (InputStream in = loader.open(path)) {
+        try (InputStream in = loader.apply(path)) {
             if (in == null) {
                 return Optional.empty();
             }
@@ -46,8 +48,20 @@ public final class BuildInfoReader {
             }
 
             return Optional.empty();
-        } catch (Exception | LinkageError e) {
+        } catch (Exception | LinkageError failure) {
             return Optional.empty();
         }
+    }
+
+    private static InputStream openFromTcclFirst(String path) {
+        ClassLoader contextLoader = Thread.currentThread().getContextClassLoader();
+        if (contextLoader != null) {
+            InputStream fromContext = contextLoader.getResourceAsStream(path);
+            if (fromContext != null) {
+                return fromContext;
+            }
+        }
+
+        return BuildInfoReader.class.getClassLoader().getResourceAsStream(path);
     }
 }

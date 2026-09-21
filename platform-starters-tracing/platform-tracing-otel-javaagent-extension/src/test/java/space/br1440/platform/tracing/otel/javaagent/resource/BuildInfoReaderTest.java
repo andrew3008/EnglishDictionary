@@ -1,19 +1,19 @@
 package space.br1440.platform.tracing.otel.javaagent.resource;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class BuildInfoReaderTest {
 
-    /** Загрузчик поверх карты path -> содержимое; отсутствующий путь -> null. */
-    private static ClasspathResourceLoader loaderOf(Map<String, String> contentByPath) {
+    private static Function<String, InputStream> loaderOf(Map<String, String> contentByPath) {
         return path -> {
             String content = contentByPath.get(path);
             return content == null ? null : new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
@@ -21,9 +21,9 @@ class BuildInfoReaderTest {
     }
 
     @Test
-    void reads_build_version_from_root() {
+    void readsBuildVersionFromRoot() {
         // given
-        ClasspathResourceLoader loader = loaderOf(Map.of(
+        Function<String, InputStream> loader = loaderOf(Map.of(
                 "META-INF/build-info.properties", "build.version=2.17.4\nbuild.name=demo\n"));
 
         // when/then
@@ -31,9 +31,9 @@ class BuildInfoReaderTest {
     }
 
     @Test
-    void fallback_to_BOOT_INF_classes() {
+    void fallbackToBootInfClasses() {
         // given
-        ClasspathResourceLoader loader = loaderOf(Map.of(
+        Function<String, InputStream> loader = loaderOf(Map.of(
                 "BOOT-INF/classes/META-INF/build-info.properties", "build.version=3.0.0\n"));
 
         // when/then
@@ -41,15 +41,15 @@ class BuildInfoReaderTest {
     }
 
     @Test
-    void empty_when_file_absent() {
+    void emptyWhenFileAbsent() {
         // given/when/then
         assertThat(new BuildInfoReader(loaderOf(Map.of())).readVersion()).isEqualTo(Optional.empty());
     }
 
     @Test
-    void empty_when_key_absent() {
+    void emptyWhenKeyAbsent() {
         // given
-        ClasspathResourceLoader loader = loaderOf(Map.of(
+        Function<String, InputStream> loader = loaderOf(Map.of(
                 "META-INF/build-info.properties", "build.name=demo\n"));
 
         // when/then
@@ -57,9 +57,9 @@ class BuildInfoReaderTest {
     }
 
     @Test
-    void empty_on_read_error() {
+    void emptyOnReadError() {
         // given
-        ClasspathResourceLoader broken = path -> new InputStream() {
+        Function<String, InputStream> broken = path -> new InputStream() {
             @Override
             public int read() {
                 throw new RuntimeException("boom");

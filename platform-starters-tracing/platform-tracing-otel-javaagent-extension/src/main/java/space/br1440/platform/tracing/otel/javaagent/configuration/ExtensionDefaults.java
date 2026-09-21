@@ -20,7 +20,6 @@ public final class ExtensionDefaults {
     public static final List<String> DEFAULT_BUILT_IN_RULES = BuiltInSpanAttributeScrubbingRules.defaultConfigNames();
 
     public static final boolean DEFAULT_RESOURCE_NORMALIZE_ENVIRONMENT = true;
-    public static final boolean DEFAULT_RESOURCE_DETECT_CONTAINER_ID = false;
 
     public static final Duration DEFAULT_CLASSIFICATION_SLOW_THRESHOLD = Duration.ofSeconds(5);
     public static final Duration DEFAULT_CLASSIFICATION_NORMAL_THRESHOLD = Duration.ofSeconds(1);

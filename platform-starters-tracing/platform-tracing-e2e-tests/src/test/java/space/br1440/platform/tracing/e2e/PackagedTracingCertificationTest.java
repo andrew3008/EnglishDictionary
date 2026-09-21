@@ -29,6 +29,7 @@ class PackagedTracingCertificationTest {
     );
     private static final Pattern LIFECYCLE_FIELD = Pattern.compile("(?:^|, )lifecycle=([A-Z][A-Z0-9_]*)");
     private static final String STALE_EXTENSION_VERSION = "0.9.0-stale-fixture";
+    private static final String RESOURCE_IDENTITY_MESSAGE = "Resource identity resolved";
     private static final String CUSTOMIZER_PROVIDER_CLASS_ENTRY =
             "space/br1440/platform/tracing/otel/javaagent/bootstrap/BootstrapAutoConfigurationCustomizerProvider.class";
     private static final String CUSTOMIZER_PROVIDER_SERVICE_ENTRY =
@@ -191,6 +192,31 @@ class PackagedTracingCertificationTest {
     }
 
     @Test
+    void build_info_supplies_service_version_in_boot_jar_layout() throws Exception {
+        // given
+        String fixtureVersion = requiredProperty("platformTracing.buildInfoFixtureVersion");
+        Map<String, String> properties = controlledProperties(
+                ControlledAgentArtifactMutator.sha256(controlledAgent));
+        properties.remove("platform.tracing.service.version");
+
+        // when
+        PackagedProcessLauncher.ProcessResult result = launcher.launch(
+                new PackagedProcessLauncher.LaunchRequest(
+                        "build-info-service-version",
+                        applicationBootJar,
+                        List.of(controlledAgent),
+                        properties
+                ));
+
+        // then
+        assertSuccessful(result, "build-info-service-version");
+        assertThat(resourceIdentityLine(result.combinedOutput()))
+                .as("platform resolver must supply service.version from BOOT-INF build-info; "
+                        + "an <absent> version means the upstream detector already owns this path")
+                .contains("\"version\":\"" + fixtureVersion + "\"");
+    }
+
+    @Test
     void foreign_mbean_collision_fails_closed() throws Exception {
         // given
         PackagedProcessLauncher.LaunchRequest request = new PackagedProcessLauncher.LaunchRequest(
@@ -311,6 +337,14 @@ class PackagedTracingCertificationTest {
                 .containsExactly(expected);
 
         assertThat(output).doesNotContain(PackagedTracingCertificationApplication.PROCESS_OK_TOKEN);
+    }
+
+    private static String resourceIdentityLine(String output) {
+        return output.lines()
+                .filter(line -> line.contains(RESOURCE_IDENTITY_MESSAGE))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(
+                        "Agent did not emit '" + RESOURCE_IDENTITY_MESSAGE + "'; output=" + output));
     }
 
     private static Set<FailureEnvelope> failureEnvelopes(String output) {

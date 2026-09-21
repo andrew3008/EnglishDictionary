@@ -34,7 +34,7 @@ class JmxSecurityArchitectureGateTest {
 
     private static final Set<String> LOADER_HACK_EXACT_ALLOWLIST = Set.of(
             "platform-starters-tracing/platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/"
-                    + "platform/tracing/otel/javaagent/resource/ClasspathResourceLoader.java");
+                    + "platform/tracing/otel/javaagent/resource/BuildInfoReader.java");
 
     @Test
     void connector_server_apis_are_confined_to_security_package() throws IOException {
