@@ -6,6 +6,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 
@@ -23,8 +24,10 @@ final class SpanTimeoutScanner {
     private final SpanTimeoutScan scan;
     private final LongSupplier epochMillis;
     private final AtomicLong lastSuccessfulScanEpochMillis = new AtomicLong(NEVER_SUCCEEDED_EPOCH_MILLIS);
+    private final AtomicBoolean stopped = new AtomicBoolean(false);
     private volatile ScheduledExecutorService scheduler;
     private volatile ScheduledFuture<?> scanTask;
+    private volatile boolean stopResult;
 
     SpanTimeoutScanner(SpanTimeoutScan scan, LongSupplier epochMillis) {
         this.scan = Objects.requireNonNull(scan, "scan");
@@ -56,6 +59,16 @@ final class SpanTimeoutScanner {
     }
 
     boolean stop() {
+        if (!stopped.compareAndSet(false, true)) {
+            return stopResult;
+        }
+
+        boolean result = doStop();
+        stopResult = result;
+        return result;
+    }
+
+    private boolean doStop() {
         ScheduledExecutorService executor = scheduler;
         if (executor == null) {
             return true;

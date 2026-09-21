@@ -25,7 +25,8 @@ class SpanTimeoutScannerStateTest {
         return SpanTimeoutProcessor.start(
                 Duration.ofHours(1), Duration.ofHours(1), scanInterval,
                 nanoTime, () -> FIXED_EPOCH_MILLIS,
-                10, 10, 10);
+                10, 10, 10
+        );
     }
 
     @Test
@@ -43,18 +44,19 @@ class SpanTimeoutScannerStateTest {
     @Test
     void backgroundScannerRunsAndReportsHeartbeatThenStopsOnShutdown() {
         // given
-        SpanTimeoutProcessor processor = started(SCAN_INTERVAL, System::nanoTime);
+        try (SpanTimeoutProcessor processor = started(SCAN_INTERVAL, System::nanoTime)) {
 
-        // when
-        assertThat(processor.getScannerState()).isEqualTo(SpanTimeoutScannerState.RUNNING);
-        awaitCondition(() -> processor.getLastSuccessfulBackgroundScanEpochMillis() == FIXED_EPOCH_MILLIS);
+            // when
+            assertThat(processor.getScannerState()).isEqualTo(SpanTimeoutScannerState.RUNNING);
+            awaitCondition(() -> processor.getLastSuccessfulBackgroundScanEpochMillis() == FIXED_EPOCH_MILLIS);
 
-        // then
-        assertThat(processor.getLastSuccessfulBackgroundScanEpochMillis()).isEqualTo(FIXED_EPOCH_MILLIS);
-        assertThat(processor.getScanFailuresTotal()).isZero();
+            // then
+            assertThat(processor.getLastSuccessfulBackgroundScanEpochMillis()).isEqualTo(FIXED_EPOCH_MILLIS);
+            assertThat(processor.getScanFailuresTotal()).isZero();
 
-        assertThat(processor.shutdown().isSuccess()).isTrue();
-        assertThat(processor.getScannerState()).isEqualTo(SpanTimeoutScannerState.STOPPED);
+            assertThat(processor.shutdown().isSuccess()).isTrue();
+            assertThat(processor.getScannerState()).isEqualTo(SpanTimeoutScannerState.STOPPED);
+        }
     }
 
     @Test
@@ -68,30 +70,31 @@ class SpanTimeoutScannerStateTest {
 
             return System.nanoTime();
         };
-        SpanTimeoutProcessor processor = started(SCAN_INTERVAL, nanoTime);
 
-        // when
-        awaitCondition(() -> (processor.getScanFailuresTotal() == 1L)
-                && (processor.getLastSuccessfulBackgroundScanEpochMillis() == FIXED_EPOCH_MILLIS));
+        try (SpanTimeoutProcessor processor = started(SCAN_INTERVAL, nanoTime)) {
 
-        // then
-        assertThat(processor.getScanFailuresTotal()).isEqualTo(1);
-        assertThat(processor.getScannerState()).isEqualTo(SpanTimeoutScannerState.RUNNING);
-        processor.shutdown();
+            // when
+            awaitCondition(() -> (processor.getScanFailuresTotal() == 1L)
+                    && (processor.getLastSuccessfulBackgroundScanEpochMillis() == FIXED_EPOCH_MILLIS));
+
+            // then
+            assertThat(processor.getScanFailuresTotal()).isEqualTo(1);
+            assertThat(processor.getScannerState()).isEqualTo(SpanTimeoutScannerState.RUNNING);
+        }
     }
 
     @Test
     void manualForceFlushDoesNotAdvanceTheBackgroundHeartbeat() {
         // given
-        SpanTimeoutProcessor processor = started(Duration.ofDays(1), System::nanoTime);
+        try (SpanTimeoutProcessor processor = started(Duration.ofDays(1), System::nanoTime)) {
 
-        // when
-        assertThat(processor.forceFlush().isSuccess()).isTrue();
+            // when
+            assertThat(processor.forceFlush().isSuccess()).isTrue();
 
-        // then
-        assertThat(processor.getLastSuccessfulBackgroundScanEpochMillis()).isZero();
-        assertThat(processor.getScannerState()).isEqualTo(SpanTimeoutScannerState.RUNNING);
-        processor.shutdown();
+            // then
+            assertThat(processor.getLastSuccessfulBackgroundScanEpochMillis()).isZero();
+            assertThat(processor.getScannerState()).isEqualTo(SpanTimeoutScannerState.RUNNING);
+        }
     }
 
     @Test
@@ -99,44 +102,51 @@ class SpanTimeoutScannerStateTest {
         // given
         AgentLogCapture logs = new AgentLogCapture();
         logs.install();
+
         try {
             LongSupplier nanoTime = () -> {
                 throw new LinkageError("injected fatal clock failure");
             };
-            SpanTimeoutProcessor processor = started(SCAN_INTERVAL, nanoTime);
 
-            // when
-            awaitCondition(() -> processor.getScannerState() == SpanTimeoutScannerState.TERMINATED_ABNORMALLY);
+            try (SpanTimeoutProcessor processor = started(SCAN_INTERVAL, nanoTime)) {
 
-            // then
-            assertThat(processor.getScannerState()).isEqualTo(SpanTimeoutScannerState.TERMINATED_ABNORMALLY);
-            assertThat(processor.getLastSuccessfulBackgroundScanEpochMillis()).isZero();
-            assertThat(processor.getScanFailuresTotal()).isEqualTo(1);
+                // when
+                awaitCondition(() -> processor.getScannerState() == SpanTimeoutScannerState.TERMINATED_ABNORMALLY);
 
-            assertThat(processor.shutdown().isSuccess()).isTrue();
-            assertThat(processor.getScannerState()).isEqualTo(SpanTimeoutScannerState.TERMINATED_ABNORMALLY);
-            assertThat(logs.events())
-                    .filteredOn(event -> event.level() == AgentLogLevel.WARN)
-                    .extracting(AgentLogEvent::message)
-                    .contains(
-                            "Span-timeout scanner terminated abnormally",
-                            "Span-timeout scanner had terminated abnormally before shutdown"
-                    );
-            assertThat(logs.events())
-                    .filteredOn(event -> "Span-timeout scanner terminated abnormally".equals(event.message()))
-                    .extracting(AgentLogEvent::throwableDigest)
-                    .singleElement()
-                    .asString()
-                    .contains("LinkageError");
-            assertThat(logs.events())
-                    .filteredOn(event -> "Span-timeout scanner had terminated abnormally before shutdown".equals(event.message()))
-                    .extracting(AgentLogEvent::throwableDigest)
-                    .singleElement()
-                    .isNull();
-            assertThat(logs.events())
-                    .filteredOn(event -> event.level() == AgentLogLevel.WARN)
-                    .extracting(AgentLogEvent::eventCode)
-                    .containsOnly(AgentEventCodes.EXPORT_SPAN_TIMEOUT);
+                // then
+                assertThat(processor.getScannerState()).isEqualTo(SpanTimeoutScannerState.TERMINATED_ABNORMALLY);
+                assertThat(processor.getLastSuccessfulBackgroundScanEpochMillis()).isZero();
+                assertThat(processor.getScanFailuresTotal()).isEqualTo(1);
+
+                assertThat(processor.shutdown().isSuccess()).isTrue();
+                assertThat(processor.getScannerState()).isEqualTo(SpanTimeoutScannerState.TERMINATED_ABNORMALLY);
+
+                assertThat(logs.events())
+                        .filteredOn(event -> event.level() == AgentLogLevel.WARN)
+                        .extracting(AgentLogEvent::message)
+                        .contains(
+                                "Span-timeout scanner terminated abnormally",
+                                "Span-timeout scanner had terminated abnormally before shutdown"
+                        );
+
+                assertThat(logs.events())
+                        .filteredOn(event -> "Span-timeout scanner terminated abnormally".equals(event.message()))
+                        .extracting(AgentLogEvent::throwableDigest)
+                        .singleElement()
+                        .asString()
+                        .contains("LinkageError");
+
+                assertThat(logs.events())
+                        .filteredOn(event -> "Span-timeout scanner had terminated abnormally before shutdown".equals(event.message()))
+                        .extracting(AgentLogEvent::throwableDigest)
+                        .singleElement()
+                        .isNull();
+
+                assertThat(logs.events())
+                        .filteredOn(event -> event.level() == AgentLogLevel.WARN)
+                        .extracting(AgentLogEvent::eventCode)
+                        .containsOnly(AgentEventCodes.EXPORT_SPAN_TIMEOUT);
+            }
         } finally {
             logs.restore();
         }
