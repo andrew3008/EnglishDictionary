@@ -45,12 +45,6 @@ def mockitoAgentConfiguration = configurations.register('mockitoAgent') {
     canBeResolved = true
 }
 
-['testCompileClasspath', 'testRuntimeClasspath'].each { classpathName ->
-    configurations.named(classpathName) {
-        exclude group: 'net.bytebuddy', module: 'byte-buddy-dep'
-    }
-}
-
 dependencies {
     mockitoAgent platform(project(':spring-boot-starter-platform-bom'))
     mockitoAgent('org.mockito:mockito-core') {
@@ -101,4 +95,10 @@ tasks.named('test', Test) {
     def mockitoAgentArguments = objects.newInstance(JavaAgentArgumentProvider)
     mockitoAgentArguments.agentClasspath.from(mockitoAgentConfiguration)
     jvmArgumentProviders.add(mockitoAgentArguments)
+}
+
+['testCompileClasspath', 'testRuntimeClasspath'].each { classpathName ->
+    configurations.named(classpathName) {
+        exclude group: 'net.bytebuddy', module: 'byte-buddy-dep'
+    }
 }
