@@ -392,7 +392,7 @@ class AgentContractFailureMessagesTest {
         // given
         TracingDeploymentDiagnostics diagnostics = diagnostics(
                 AgentRuntimeState.EXTENSION_INCOMPATIBLE,
-                "REMOTE_JMX_UNCERTIFIED_STARTUP_CONFIGURATION",
+                "REMOTE_JMX_MANAGEMENT_AGENT_CONFIGURED",
                 "FAILED",
                 "contract",
                 "digest",
@@ -409,7 +409,7 @@ class AgentContractFailureMessagesTest {
         assertThat(message).isEqualTo(
                 AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
                         AgentRuntimeState.EXTENSION_INCOMPATIBLE,
-                        "REMOTE_JMX_UNCERTIFIED_STARTUP_CONFIGURATION")
+                        "REMOTE_JMX_MANAGEMENT_AGENT_CONFIGURED")
                         + ", lifecycle=FAILED. "
                         + AgentContractFailureMessages.DEFAULT_EXPLANATION_TEMPLATE.formatted("FAILED")
         );
@@ -493,6 +493,7 @@ class AgentContractFailureMessagesTest {
         );
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static TracingDeploymentDiagnostics diagnostics(AgentRuntimeState runtimeState,
                                                             String failureCode,
                                                             String lifecycle,

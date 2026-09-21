@@ -6,12 +6,8 @@ public final class ManagedAgentJvmFlagsLauncherProbe {
 
     private static final String PROBE_PROPERTY_PREFIX = "MANAGED_AGENT_PROBE_PROPERTY ";
     private static final String PROBE_INPUT_ARGUMENT_PREFIX = "MANAGED_AGENT_PROBE_INPUT_ARGUMENT ";
-
     private static final String[] MANAGED_SYSTEM_PROPERTIES = {
-            "platform.tracing.controlled-agent.expected-sha256",
-            "platform.tracing.jmx.remote.mode",
-            "platform.tracing.jmx.remote.listener-confirmed",
-            "platform.tracing.jmx.remote.authorization-forwarder-installed"
+            "platform.tracing.controlled-agent.expected-sha256"
     };
 
     private ManagedAgentJvmFlagsLauncherProbe() {

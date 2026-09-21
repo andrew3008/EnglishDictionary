@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
-import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxDeploymentTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxAssessorTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory;
 
 final class RuntimeEvidenceTestFixtures {
@@ -30,10 +30,10 @@ final class RuntimeEvidenceTestFixtures {
     }
 
     static BootstrapCoordinator coordinator(PlatformScrubberFactory scrubberFactory) {
-        return BootstrapCoordinator.create(
+        return new BootstrapCoordinator(
+                JvmShutdownHookRegistry.INSTANCE,
                 scrubberFactory,
                 trustedAttestor(),
-                ignored -> RemoteJmxDeploymentTestFixtures
-                        .startupVerifiedRemoteProhibitedPolicy());
+                ignored -> RemoteJmxAssessorTestFixtures.allowingAssessor());
     }
 }

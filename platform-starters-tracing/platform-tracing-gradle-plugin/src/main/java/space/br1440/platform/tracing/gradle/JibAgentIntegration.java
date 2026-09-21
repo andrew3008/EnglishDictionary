@@ -21,9 +21,8 @@ final class JibAgentIntegration {
     private static final String STAGED_AGENT_FILE_NAME = "agent.jar";
     private static final String IMAGE_AGENT_DIRECTORY = "/opt/platform-tracing";
     private static final String IMAGE_AGENT_PATH = IMAGE_AGENT_DIRECTORY + "/" + STAGED_AGENT_FILE_NAME;
-
-    private static final String JMX_UNCERTIFIED_STARTUP_PREFIX = "com.sun.management.jmxremote";
-    private static final String ENABLE_ATTACH_MECHANISM_FLAG = "-XX:-DisableAttachMechanism";
+    private static final String MANAGEMENT_AGENT_PROPERTY_PREFIX = "com.sun.management";
+    private static final String MANAGEMENT_SERVER_FLAG = "-XX:+ManagementServer";
 
     private static final List<String> MANAGED_OTEL_PROPERTY_KEYS = List.of(
             "otel.propagators",
@@ -92,8 +91,8 @@ final class JibAgentIntegration {
                     task.dependsOn(stage);
                     task.getStagedAgentJar().set(stagingDirectory.map(directory -> directory.file(STAGED_AGENT_FILE_NAME)));
                     task.getRequiredJvmFlags().set(managedJvmFlags);
-                    task.getForbiddenJvmFlags().set(List.of(ENABLE_ATTACH_MECHANISM_FLAG));
-                    task.getForbiddenSystemPropertyKeyPrefixes().set(List.of(JMX_UNCERTIFIED_STARTUP_PREFIX));
+                    task.getForbiddenJvmFlags().set(List.of(MANAGEMENT_SERVER_FLAG));
+                    task.getForbiddenSystemPropertyKeyPrefixes().set(List.of(MANAGEMENT_AGENT_PROPERTY_PREFIX));
                     task.getManagedSystemPropertyKeys().set(MANAGED_OTEL_PROPERTY_KEYS);
                     task.getRequiredAgentDestination().set(IMAGE_AGENT_DIRECTORY);
                     task.getJvmFlags().set(project.provider(jib::jvmFlags));

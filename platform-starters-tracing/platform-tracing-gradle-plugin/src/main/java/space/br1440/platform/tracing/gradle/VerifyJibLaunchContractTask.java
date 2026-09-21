@@ -187,7 +187,8 @@ public abstract class VerifyJibLaunchContractTask extends DefaultTask {
 
             String key = property.get().key();
             if (startsWithAny(key, forbiddenKeyPrefixes)) {
-                throw conflict(flag, "an uncertified JMX startup configuration; the platform manages remote JMX exposure");
+                throw conflict(flag, "a JDK management agent activation argument; "
+                        + "the agent denies runtime mutation registration when it is present");
             }
 
             if (managedSystemPropertyKeys.contains(key)) {

@@ -103,8 +103,9 @@ class JibAgentIntegrationFunctionalTest {
         assertThat(captured).contains(JDWP_FLAG);
         assertThat(captured).contains("-javaagent:/opt/platform-tracing/agent.jar");
         assertThat(captured).contains("-Dplatform.tracing.controlled-agent.expected-sha256=%s".formatted(pinSha256()));
-        assertThat(captured).contains("-Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED");
-        assertThat(captured).contains("-XX:+DisableAttachMechanism");
+        assertThat(captured).doesNotContain("-Dcom.sun.management");
+        assertThat(captured).doesNotContain("-XX:+ManagementServer");
+        assertThat(captured).doesNotContain("DisableAttachMechanism");
         assertThat(captured).contains("/app/resources");
         assertThat(captured).contains("/opt/platform-tracing");
     }
@@ -131,6 +132,32 @@ class JibAgentIntegrationFunctionalTest {
         assertThat(outcomeOf(result, ":verifyJibLaunchContract")).isEqualTo(TaskOutcome.SUCCESS);
         String captured = Files.readString(project.resolve("build/jib-launch-contract.txt"), StandardCharsets.UTF_8);
         assertThat(captured).contains(flag);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"-XX:+DisableAttachMechanism", "-XX:-DisableAttachMechanism"})
+    void user_supplied_attach_flag_is_preserved(String attachFlag) throws IOException {
+        Path project = jibConsumer(
+                "attach-flag-" + Integer.toHexString(attachFlag.hashCode()),
+                "3.4.4",
+                "tracing-first",
+                """
+                jib {
+                    to { image = 'example/unused' }
+                    container {
+                        jvmFlags = ['%s']
+                    }
+                }
+                """.formatted(attachFlag)
+        );
+
+        BuildResult result = run(project, "captureJibLaunchContract");
+
+        assertThat(outcomeOf(result, ":verifyJibLaunchContract")).isEqualTo(TaskOutcome.SUCCESS);
+        String captured = Files.readString(project.resolve("build/jib-launch-contract.txt"), StandardCharsets.UTF_8);
+        assertThat(captured.lines().filter(attachFlag::equals))
+                .as("the attach flag is owned by the consumer and must be neither added nor removed")
+                .hasSize(1);
     }
 
     @Test
@@ -294,8 +321,9 @@ class JibAgentIntegrationFunctionalTest {
             "-Dotel.propagators=tracecontext",
             "-Dotel.propagators",
             "-Dotel.propagators=tracecontext,baggage,b3",
-            "-Dplatform.tracing.jmx.remote.mode==expected",
-            "-Dcom.sun.management.jmxremote.port=9010"
+            "-Dcom.sun.management.jmxremote.port=9010",
+            "-Dcom.sun.management.config.file=/etc/management.properties",
+            "-Dcom.sun.managementX=1"
     })
     void managed_or_uncertified_system_property_key_fails_closed_regardless_of_form(String flag) throws IOException {
         Path project = jibConsumer(
@@ -363,25 +391,26 @@ class JibAgentIntegrationFunctionalTest {
                 .contains("-javaagent:/opt/other/agent.jar");
     }
 
-    @Test
-    void disable_attach_mechanism_negation_fails_closed() throws IOException {
+    @ParameterizedTest
+    @ValueSource(strings = {"-XX:+ManagementServer"})
+    void forbidden_non_property_flag_fails_closed(String flag) throws IOException {
         Path project = jibConsumer(
-                "disable-attach-negation",
+                "forbidden-flag-" + Integer.toHexString(flag.hashCode()),
                 "3.4.4",
                 "tracing-first",
                 """
                 jib {
                     to { image = 'example/unused' }
                     container {
-                        jvmFlags = ['-XX:-DisableAttachMechanism']
+                        jvmFlags = ['%s']
                     }
                 }
-                """
+                """.formatted(flag)
         );
 
         BuildResult result = runAndFail(project, "verifyJibLaunchContract");
 
-        assertThat(result.getOutput()).contains("-XX:-DisableAttachMechanism");
+        assertThat(result.getOutput()).contains(flag);
     }
 
     private void assertHelpSucceedsWithoutValidatingJibConfiguration(Path project) {

@@ -9,53 +9,57 @@ platformJavaLibrary {
     bomProjectPath = ':spring-boot-starter-platform-bom'
 }
 
-def jmxContractProject = project(':platform-starters-tracing:platform-tracing-jmx-contract')
-def generateJmxWireContract = ':platform-starters-tracing:platform-tracing-jmx-contract:generateJmxWireContract'
-def generatedJmxContractSources = files(jmxContractProject.layout.buildDirectory.dir(
-        'generated/jmx-wire-contract/extension/java'
-)).builtBy(generateJmxWireContract)
-def generatedJmxContractResources = files(jmxContractProject.layout.buildDirectory.dir(
-        'generated/jmx-wire-contract/extension/resources'
-)).builtBy(generateJmxWireContract)
+def jolVersion = '0.17'
+def autoServiceVersion = '1.1.1'
 
-sourceSets.main.java.srcDir(generatedJmxContractSources)
+def jmxContractProjectPath = ':platform-starters-tracing:platform-tracing-jmx-contract'
+def generateJmxWireContract = "${jmxContractProjectPath}:generateJmxWireContract"
+def generatedJmxContractRoot = project(jmxContractProjectPath).layout.buildDirectory
+        .dir('generated/jmx-wire-contract/extension')
 
-tasks.named('compileJava') {
-    dependsOn generateJmxWireContract
+def generatedJmxContractSources = files(generatedJmxContractRoot.map { it.dir('java') })
+        .builtBy(generateJmxWireContract)
+def generatedJmxContractResources = files(generatedJmxContractRoot.map { it.dir('resources') })
+        .builtBy(generateJmxWireContract)
+
+sourceSets.named('main') {
+    java.srcDir(generatedJmxContractSources)
 }
 
 tasks.named('processResources', ProcessResources) {
-    dependsOn generateJmxWireContract
     from(generatedJmxContractResources)
 }
 
-def mockitoAgentConfiguration = configurations.create('mockitoAgent') {
+abstract class JavaAgentArgumentProvider implements CommandLineArgumentProvider {
+    @Classpath
+    abstract ConfigurableFileCollection getAgentClasspath()
+
+    @Override
+    Iterable<String> asArguments() {
+        return ["-javaagent:${agentClasspath.singleFile.absolutePath}"]
+    }
+}
+
+def mockitoAgentConfiguration = configurations.register('mockitoAgent') {
     canBeConsumed = false
     canBeResolved = true
 }
 
-dependencies {
-    mockitoAgent(platform(project(':spring-boot-starter-platform-bom')))
-    mockitoAgent('org.mockito:mockito-core') {
-        transitive = false
+['testCompileClasspath', 'testRuntimeClasspath'].each { classpathName ->
+    configurations.named(classpathName) {
+        exclude group: 'net.bytebuddy', module: 'byte-buddy-dep'
     }
 }
 
-tasks.named('test', Test) {
-    jvmArgs(
-            "-javaagent:${mockitoAgentConfiguration.singleFile.absolutePath}",
-            '-XX:+DisableAttachMechanism',
-            '-Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED',
-            '-Dplatform.tracing.jmx.remote.listener-confirmed=false',
-            '-Dplatform.tracing.jmx.remote.authorization-forwarder-installed=false'
-    )
-}
-
 dependencies {
+    mockitoAgent platform(project(':spring-boot-starter-platform-bom'))
+    mockitoAgent('org.mockito:mockito-core') {
+        transitive = false
+    }
+
     implementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
     implementation project(':platform-starters-tracing:platform-tracing-runtime-policy')
     implementation project(':platform-starters-common:platform-starters-common-util')
-
     implementation 'io.opentelemetry.proto:opentelemetry-proto'
     implementation 'com.google.protobuf:protobuf-java'
 
@@ -64,34 +68,37 @@ dependencies {
     compileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure'
     compileOnly 'io.opentelemetry:opentelemetry-exporter-sender-okhttp'
     compileOnly 'io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api'
-    compileOnly 'org.projectlombok:lombok'
 
+    compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
     testImplementation project(':platform-starters-tracing:platform-tracing-testkit')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'org.mockito:mockito-core'
-    testImplementation 'org.openjdk.jol:jol-core:0.17'
+    testImplementation "org.openjdk.jol:jol-core:${jolVersion}"
+    testImplementation libs.jsonschema.validator
+
     testImplementation 'io.opentelemetry:opentelemetry-sdk'
-    testImplementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
     testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
     testImplementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure'
-    testImplementation('io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api') {
-        exclude group: 'net.bytebuddy', module: 'byte-buddy-dep'
-    }
+    testImplementation 'io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api'
     testImplementation 'io.opentelemetry:opentelemetry-extension-trace-propagators'
     testImplementation 'io.opentelemetry:opentelemetry-exporter-logging'
     testImplementation 'io.opentelemetry:opentelemetry-exporter-logging-otlp'
     testImplementation 'io.opentelemetry:opentelemetry-exporter-otlp'
-    testImplementation 'org.slf4j:slf4j-api'
-    testImplementation 'ch.qos.logback:logback-classic'
-    testImplementation libs.jsonschema.validator
 
-    testCompileOnly 'com.google.auto.service:auto-service-annotations:1.1.1'
-
-    testAnnotationProcessor 'com.google.auto.service:auto-service:1.1.1'
+    testCompileOnly "com.google.auto.service:auto-service-annotations:${autoServiceVersion}"
+    testAnnotationProcessor "com.google.auto.service:auto-service:${autoServiceVersion}"
 
     testRuntimeOnly project(path: ':spring-boot-starter-platform-logging', configuration: 'platformLogMaskingElements')
+    testRuntimeOnly 'ch.qos.logback:logback-classic'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test', Test) {
+    def mockitoAgentArguments = objects.newInstance(JavaAgentArgumentProvider)
+    mockitoAgentArguments.agentClasspath.from(mockitoAgentConfiguration)
+    jvmArgumentProviders.add(mockitoAgentArguments)
 }

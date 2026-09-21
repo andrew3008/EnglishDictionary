@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.HashMap;
@@ -24,10 +25,11 @@ import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
+import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxAssessorTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxDenialReason;
-import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxDeploymentDeclaration;
-import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxDeploymentTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxMutationRegistrationAssessor;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogEvent;
@@ -56,9 +58,11 @@ class BootstrapCoordinatorTest {
     @Test
     void activate_without_prior_prepare_classified_as_PLATFORM_ACP_NOT_EXECUTED() {
         // given
-        BootstrapCoordinator coordinator = BootstrapCoordinator.create(
+        BootstrapCoordinator coordinator = new BootstrapCoordinator(
+                new CapturingShutdownHookRegistry(),
                 new PlatformScrubberFactory(),
-                RuntimeEvidenceTestFixtures.trustedAttestor()
+                RuntimeEvidenceTestFixtures.trustedAttestor(),
+                AutoconfigureSessionFactory::currentProcessRemoteJmxAssessor
         );
 
         // when/then
@@ -76,10 +80,10 @@ class BootstrapCoordinatorTest {
                 hooks,
                 new PlatformScrubberFactory(),
                 RuntimeEvidenceTestFixtures.trustedAttestor(),
-                ignored -> RemoteJmxDeploymentTestFixtures
-                        .startupVerifiedRemoteProhibitedPolicy()
+                ignored -> RemoteJmxAssessorTestFixtures.allowingAssessor()
         );
         this.ownedCoordinator = coordinator;
+
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
         satisfyReadinessBarrier(session);
         coordinator.activate();
@@ -107,13 +111,12 @@ class BootstrapCoordinatorTest {
                 extensionVersion -> {
                     throw new NoClassDefFoundError("simulated runtime evidence linkage failure");
                 },
-                ignored -> RemoteJmxDeploymentTestFixtures
-                        .startupVerifiedRemoteProhibitedPolicy()
+                ignored -> RemoteJmxAssessorTestFixtures.allowingAssessor()
         );
-        this.ownedCoordinator = coordinator;
-        AutoconfigureSession session = coordinator.prepare(config(Map.of()));
 
-        try {
+        try (coordinator) {
+            this.ownedCoordinator = coordinator;
+            AutoconfigureSession session = coordinator.prepare(config(Map.of()));
             // when
             assertThatThrownBy(coordinator::activate)
                     .isInstanceOf(NoClassDefFoundError.class)
@@ -127,8 +130,6 @@ class BootstrapCoordinatorTest {
             assertThat(session.readiness().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
             assertThat(session.readiness().failureCode())
                     .isEqualTo(AttestationFailureCode.EXTENSION_LINKAGE_ERROR.name());
-        } finally {
-            coordinator.closeDiagnosticHandle();
         }
     }
 
@@ -139,17 +140,17 @@ class BootstrapCoordinatorTest {
         ShutdownHookRegistry hooks = (threadName, action) -> () -> {
             throw cleanupFailure;
         };
+
         BootstrapCoordinator coordinator = new BootstrapCoordinator(
                 hooks,
                 new PlatformScrubberFactory(),
                 RuntimeEvidenceTestFixtures.trustedAttestor(),
-                ignored -> RemoteJmxDeploymentTestFixtures
-                        .startupVerifiedRemoteProhibitedPolicy()
+                ignored -> RemoteJmxAssessorTestFixtures.allowingAssessor()
         );
-        this.ownedCoordinator = coordinator;
-        AutoconfigureSession session = coordinator.prepare(config(Map.of()));
 
-        try {
+        try (coordinator) {
+            this.ownedCoordinator = coordinator;
+            AutoconfigureSession session = coordinator.prepare(config(Map.of()));
             // when
             assertThatThrownBy(coordinator::activate)
                     .isInstanceOf(BootstrapException.class)
@@ -168,8 +169,6 @@ class BootstrapCoordinatorTest {
                     .isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
             assertThat(session.readiness().failureCode())
                     .isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
-        } finally {
-            coordinator.closeDiagnosticHandle();
         }
     }
 
@@ -181,8 +180,7 @@ class BootstrapCoordinatorTest {
                 hooks,
                 new PlatformScrubberFactory(),
                 RuntimeEvidenceTestFixtures.trustedAttestor(),
-                ignored -> RemoteJmxDeploymentTestFixtures
-                        .startupVerifiedRemoteProhibitedPolicy()
+                ignored -> RemoteJmxAssessorTestFixtures.allowingAssessor()
         );
         this.ownedCoordinator = coordinator;
 
@@ -260,32 +258,129 @@ class BootstrapCoordinatorTest {
     @Test
     void remoteJmxGateDenialPublishesFailedDiagnosticSnapshotBeforeRuntimeRegistration() {
         // given
+        // when
+        RemoteJmxDenialOutcome outcome = activateAndExpectRemoteJmxFailure(
+                RemoteJmxAssessorTestFixtures.managementAgentAssessor(),
+                RemoteJmxDenialReason.REMOTE_JMX_MANAGEMENT_AGENT_CONFIGURED);
+
+        // then
+        assertThat(outcome.readiness().failureMessage())
+                .contains(RemoteJmxAssessorTestFixtures.REMEDIATION_MANAGEMENT_AGENT);
+        assertThat(singleRemoteJmxDenialEvent(outcome).fields())
+                .containsEntry(
+                        "failureCode",
+                        RemoteJmxDenialReason.REMOTE_JMX_MANAGEMENT_AGENT_CONFIGURED.name())
+                .containsEntry("remediation", RemoteJmxAssessorTestFixtures.REMEDIATION_MANAGEMENT_AGENT)
+                .containsEntry("offendingArguments", "-Dcom.sun.management.jmxremote.port");
+    }
+
+    @Test
+    void remoteJmxCaptureFailureIsPublishedAsClassifiedEvidenceUnknownDenial() {
+        // given
+        // when
+        RemoteJmxDenialOutcome outcome = activateAndExpectRemoteJmxFailure(
+                RemoteJmxAssessorTestFixtures.captureUnavailableAssessor(),
+                RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN);
+
+        // then
+        assertThat(outcome.readiness().failureMessage())
+                .contains(RemoteJmxAssessorTestFixtures.REMEDIATION_CAPTURE_UNAVAILABLE);
+        assertThat(singleRemoteJmxDenialEvent(outcome).fields())
+                .containsEntry("failureCode", RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name())
+                .containsEntry("remediation", RemoteJmxAssessorTestFixtures.REMEDIATION_CAPTURE_UNAVAILABLE)
+                .containsEntry("offendingArguments", "");
+    }
+
+    @Test
+    void remoteJmxDenialEventReportsArgumentNamesWithoutValues() {
+        // given
+        // when
+        RemoteJmxDenialOutcome outcome = activateAndExpectRemoteJmxFailure(
+                RemoteJmxAssessorTestFixtures.managementAgentAssessor(),
+                RemoteJmxDenialReason.REMOTE_JMX_MANAGEMENT_AGENT_CONFIGURED
+        );
+
+        // then
+        AgentLogEvent denial = singleRemoteJmxDenialEvent(outcome);
+        assertThat(denial.fields())
+                .containsEntry("offendingArguments", "-Dcom.sun.management.jmxremote.port");
+        assertThat(denial.fields().values())
+                .as("argument values must never reach the diagnostic event")
+                .noneMatch(value -> value.contains("9010"));
+    }
+
+    @Test
+    void unhandledRemoteJmxPhaseErrorPublishesEvidenceUnknownWithoutRegisteringMutation() {
+        // given
+        // when
+        RemoteJmxDenialOutcome outcome = activateAndExpectRemoteJmxFailure(
+                RemoteJmxAssessorTestFixtures.explodingAssessor(),
+                RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN);
+
+        // then
+        assertThat(outcome.readiness().failureMessage())
+                .contains(RemoteJmxAssessorTestFixtures.EXPLODING_SUPPLIER_MESSAGE)
+                .doesNotContain(RemoteJmxAssessorTestFixtures.REMEDIATION_CAPTURE_UNAVAILABLE);
+        assertThat(eventsWithCode(outcome, AgentEventCodes.BOOT_REMOTE_JMX_DENIED))
+                .as("the exception path is not a classified assessment denial")
+                .isEmpty();
+        assertThat(eventsWithCode(outcome, AgentEventCodes.BOOT_CLASSIFIED_FAILURE)).isNotEmpty();
+    }
+
+    private RemoteJmxDenialOutcome activateAndExpectRemoteJmxFailure(RemoteJmxMutationRegistrationAssessor assessor,
+                                                                     RemoteJmxDenialReason expectedReason) {
         BootstrapCoordinator coordinator = new BootstrapCoordinator(
                 new CapturingShutdownHookRegistry(),
                 new PlatformScrubberFactory(),
                 RuntimeEvidenceTestFixtures.trustedAttestor(),
-                ignored -> RemoteJmxDeploymentTestFixtures.startupEvidenceUnknownPolicy()
+                ignored -> assessor
         );
 
         try (coordinator) {
             this.ownedCoordinator = coordinator;
-            AutoconfigureSession session = coordinator.prepare(config(Map.of(
-                    RemoteJmxDeploymentDeclaration.MODE_PROPERTY,
-                    RemoteJmxDeploymentDeclaration.Mode.UNDECLARED.name())));
-            // when
-            assertThatThrownBy(coordinator::activate)
-                    .isInstanceOf(BootstrapException.class)
-                    .extracting(failure -> ((BootstrapException) failure).failure().code())
-                    .isEqualTo(RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name());
+            AutoconfigureSession session = coordinator.prepare(config(Map.of()));
 
-            // then
+            AgentLogCapture logs = new AgentLogCapture();
+            logs.install();
+
+            List<AgentLogEvent> events;
+            try {
+                assertThatThrownBy(coordinator::activate)
+                        .isInstanceOf(BootstrapException.class)
+                        .extracting(failure -> ((BootstrapException) failure).failure().code())
+                        .isEqualTo(expectedReason.name());
+                events = logs.events();
+            } finally {
+                logs.restore();
+            }
+
             assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
             assertThat(coordinator.currentWire().batchId()).isEmpty();
-            assertThat(coordinator.currentWire().failureCode())
-                    .isEqualTo(RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name());
-            assertThat(session.readiness().failureCode())
-                    .isEqualTo(RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name());
+            assertThat(coordinator.currentWire().failureCode()).isEqualTo(expectedReason.name());
+            assertThat(session.readiness().failureCode()).isEqualTo(expectedReason.name());
+            assertThat(ManagementFactory.getPlatformMBeanServer()
+                    .isRegistered(DomainObjectNames.SETTINGS_MUTATION))
+                    .as("mutation surface must stay unregistered after gate denial")
+                    .isFalse();
+            assertThat(ManagementFactory.getPlatformMBeanServer()
+                    .isRegistered(DomainObjectNames.EXTENSION_READINESS))
+                    .as("diagnostic readiness must remain available after gate denial")
+                    .isTrue();
+            return new RemoteJmxDenialOutcome(session.readiness(), events);
         }
+    }
+
+    private static AgentLogEvent singleRemoteJmxDenialEvent(RemoteJmxDenialOutcome outcome) {
+        List<AgentLogEvent> denials = eventsWithCode(outcome, AgentEventCodes.BOOT_REMOTE_JMX_DENIED);
+        assertThat(denials).hasSize(1);
+        return denials.getFirst();
+    }
+
+    private static List<AgentLogEvent> eventsWithCode(RemoteJmxDenialOutcome outcome, String eventCode) {
+        return outcome.events()
+                .stream()
+                .filter(event -> eventCode.equals(event.eventCode()))
+                .toList();
     }
 
     @Test
@@ -351,10 +446,10 @@ class BootstrapCoordinatorTest {
                 hooks,
                 new PlatformScrubberFactory(),
                 RuntimeEvidenceTestFixtures.trustedAttestor(),
-                ignored -> RemoteJmxDeploymentTestFixtures
-                        .startupVerifiedRemoteProhibitedPolicy()
+                ignored -> RemoteJmxAssessorTestFixtures.allowingAssessor()
         );
         this.ownedCoordinator = coordinator;
+
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
         satisfyReadinessBarrier(session);
         coordinator.activate();
@@ -374,8 +469,10 @@ class BootstrapCoordinatorTest {
         // given
         AgentLogCapture logs = new AgentLogCapture();
         logs.install();
+
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
         this.ownedCoordinator = coordinator;
+
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
         satisfyReadinessBarrier(session);
 
@@ -405,8 +502,10 @@ class BootstrapCoordinatorTest {
         // given
         AgentLogCapture logs = new AgentLogCapture();
         logs.install();
+
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
         this.ownedCoordinator = coordinator;
+
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
         markAllCapabilitiesExcept(session, PlatformExtensionCapability.SANITIZER_INSTALLED);
 
@@ -427,6 +526,7 @@ class BootstrapCoordinatorTest {
         // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
         this.ownedCoordinator = coordinator;
+
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
         markAllCapabilitiesExcept(session, PlatformExtensionCapability.SANITIZER_INSTALLED);
         session.scrubbingRuntime().acknowledgeExportModeResolved();
@@ -676,11 +776,7 @@ class BootstrapCoordinatorTest {
     }
 
     private static ConfigProperties config(Map<String, String> data) {
-        Map<String, String> effective = new HashMap<>(data);
-        effective.putIfAbsent(
-                RemoteJmxDeploymentDeclaration.MODE_PROPERTY,
-                RemoteJmxDeploymentDeclaration.Mode.REMOTE_PROHIBITED.name());
-        return new MapConfigProperties(effective);
+        return new MapConfigProperties(new HashMap<>(data));
     }
 
     private static final class MapConfigProperties implements ConfigProperties {
@@ -740,6 +836,9 @@ class BootstrapCoordinatorTest {
         public java.util.Map<String, String> getMap(String name) {
             return java.util.Map.of();
         }
+    }
+
+    private record RemoteJmxDenialOutcome(PlatformExtensionReadiness readiness, List<AgentLogEvent> events) {
     }
 
     private static final class CapturingShutdownHookRegistry implements ShutdownHookRegistry {

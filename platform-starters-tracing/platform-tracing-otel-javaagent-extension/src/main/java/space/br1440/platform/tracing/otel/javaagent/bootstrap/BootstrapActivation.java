@@ -1,28 +1,30 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.ACTIVATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.DIAGNOSTIC_MBEAN_REGISTRATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.RUNTIME_EVIDENCE_ATTESTATION_FAILED;
+
 import java.util.Objects;
+import java.util.UUID;
 
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxDenialReason;
-import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxExposureAssessment;
-import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxMutationRegistrationGate;
+import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxRegistrationAssessment;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagationGate;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
-import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
 final class BootstrapActivation {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(BootstrapActivation.class);
 
-    private static final String DIAGNOSTIC_REGISTRATION_FAILED = "DIAGNOSTIC_MBEAN_REGISTRATION_FAILED";
-    private static final String RUNTIME_EVIDENCE_ATTESTATION_FAILED = "RUNTIME_EVIDENCE_ATTESTATION_FAILED";
-    private static final String ACTIVATION_FAILED = "ACTIVATION_FAILED";
+    private static final String SHUTDOWN_HOOK_THREAD_NAME = "platform-tracing-bootstrap-shutdown";
+    private static final long INITIAL_EVIDENCE_GENERATION = 1L;
 
     private final BootstrapLifecycleState lifecycle;
     private final BootstrapReadinessJournal journal;
@@ -52,127 +54,120 @@ final class BootstrapActivation {
     }
 
     private void activateExclusively() {
-        AutoconfigureSession activeSession = lifecycle.beginActivation();
-
-        journal.publishInitializing(activeSession);
+        AutoconfigureSession session = lifecycle.beginActivation();
+        journal.publishInitializing(session);
 
         BootstrapResources resources = new BootstrapResources(hookRegistry);
         lifecycle.attachResources(resources);
 
-        String batchId = "";
-        ExtensionRuntimeEvidence runtimeEvidence = ExtensionRuntimeEvidence.unavailable(activeSession.readiness().extensionVersion());
-        String phaseFailureCode = DIAGNOSTIC_REGISTRATION_FAILED;
+        ActivationAttempt attempt = new ActivationAttempt(session, resources);
         try {
-            diagnosticHandle.replace(
-                    activeSession.jmxRegistrar().registerDiagnosticReadiness(journal::current)
-            );
-
-            phaseFailureCode = RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name();
-            authorizeMutation(
-                    activeSession,
-                    resources,
-                    batchId,
-                    runtimeEvidence);
-
-            phaseFailureCode = RUNTIME_EVIDENCE_ATTESTATION_FAILED;
-            try {
-                runtimeEvidence = runtimeEvidenceAttestor.attest(activeSession.readiness().extensionVersion());
-            } catch (RuntimeEvidenceAttestationException failure) {
-                throw terminalTransitions.terminalizeActivationFailure(
-                        activeSession,
-                        resources,
-                        failure.code().name(),
-                        failure,
-                        batchId,
-                        runtimeEvidence
-                );
-            }
-            ExtensionRuntimeEvidence attestedEvidence = runtimeEvidence;
-
-            phaseFailureCode = ACTIVATION_FAILED;
-            resources.push(
-                    PlatformPropagationGate.shared().bindAcceptedPolicy(activeSession.policy()),
-                    "propagation-gate");
-            resources.push(
-                    PlatformLogControl.shared().bindAcceptedPolicy(activeSession.policy()),
-                    "log-control");
-            PlatformTracingMBeanRegistrar.RuntimeRegistration runtimeRegistration =
-                    activeSession.jmxRegistrar().registerRuntimeControls(activeSession.policy());
-            batchId = runtimeRegistration.batchId().toString();
-            resources.push(runtimeRegistration, "runtime-jmx-controls");
-            String registeredBatchId = batchId;
-            resources.push(
-                    () -> terminalTransitions.publishTransportStale(
-                            activeSession,
-                            registeredBatchId,
-                            attestedEvidence),
-                    "readiness-stale-transition");
-            resources.installShutdownHook(
-                    "platform-tracing-bootstrap-shutdown",
-                    cleanupFailure -> terminalTransitions.completeShutdown(
-                            activeSession,
-                            registeredBatchId,
-                            attestedEvidence,
-                            cleanupFailure)
-            );
-
-            activeSession.scrubbingRuntime().requireInstallationComplete();
-            activeSession.readiness().markInstalled(PlatformExtensionCapability.SANITIZER_INSTALLED);
-            activeSession.readiness().requireReady();
-
-            ExtensionReadinessWireSnapshot ready = ExtensionReadinessWireSnapshot.ready(
-                    activeSession.readiness(),
-                    activeSession.sessionId().toString(),
-                    batchId,
-                    1L,
-                    attestedEvidence
-            );
-            journal.publishReady(ready);
-            lifecycle.commitActive(activeSession);
-            emitInstalled(ready);
-        } catch (BootstrapException classified) {
-            throw classified;
-        } catch (RuntimeException | Error e) {
-            String failureCode = e instanceof LinkageError
-                    ? AttestationFailureCode.EXTENSION_LINKAGE_ERROR.name()
-                    : phaseFailureCode;
-
-            BootstrapException classified = terminalTransitions.terminalizeActivationFailure(
-                    activeSession,
-                    resources,
-                    failureCode,
-                    e,
-                    batchId,
-                    runtimeEvidence
-            );
-            PlatformThrowables.propagateIfFatal(e);
-            throw classified;
+            registerDiagnosticReadiness(attempt);
+            assessRemoteJmx(attempt);
+            attestRuntimeEvidence(attempt);
+            bindRuntime(attempt);
+            publishReady(attempt);
+        } catch (RuntimeException | Error failure) {
+            throw terminalize(attempt, failure);
         }
     }
 
-    private void authorizeMutation(AutoconfigureSession activeSession,
-                                   BootstrapResources resources,
-                                   String batchId,
-                                   ExtensionRuntimeEvidence runtimeEvidence) {
-        RemoteJmxMutationRegistrationGate policy = activeSession.remoteJmxExposurePolicy();
-        RemoteJmxExposureAssessment remoteJmxAssessment = policy.evaluateCurrentProcess();
-        if (!remoteJmxAssessment.allowsLocalMutationRegistration()) {
-            String failureCode = remoteJmxAssessment.failureCode().name();
-            IllegalStateException cause = new IllegalStateException(
-                    "Remote JMX security gate rejected local mutation registration: " + failureCode
-            );
+    private void registerDiagnosticReadiness(ActivationAttempt attempt) {
+        attempt.enter(ActivationPhase.DIAGNOSTIC_REGISTRATION);
 
-            throw terminalTransitions.terminalizeActivationFailure(
-                    activeSession,
-                    resources,
-                    failureCode,
-                    cause,
-                    batchId,
-                    runtimeEvidence
-            );
+        diagnosticHandle.replace(
+                attempt.session().jmxRegistrar().registerDiagnosticReadiness(journal::current)
+        );
+    }
+
+    private void assessRemoteJmx(ActivationAttempt attempt) {
+        attempt.enter(ActivationPhase.REMOTE_JMX_ASSESSMENT);
+
+        RemoteJmxRegistrationAssessment assessment = attempt.session().remoteJmxMutationRegistrationAssessor().assess();
+        if (assessment.allowsLocalMutationRegistration()) {
+            return;
         }
 
-        policy.requireCurrentProcessPermit();
+        log.error(
+                AgentEventCodes.BOOT_REMOTE_JMX_DENIED,
+                "Remote JMX mutation registration denied",
+                "failureCode", assessment.failureCode().name(),
+                "remediation", assessment.remediation(),
+                "offendingArguments", String.join(",", assessment.offendingArguments())
+        );
+        throw new RemoteJmxRegistrationDeniedException(assessment);
+    }
+
+    private void attestRuntimeEvidence(ActivationAttempt attempt) {
+        attempt.enter(ActivationPhase.RUNTIME_EVIDENCE_ATTESTATION);
+
+        String extensionVersion = attempt.session().readiness().extensionVersion();
+        ExtensionRuntimeEvidence evidence = runtimeEvidenceAttestor.attest(extensionVersion);
+        attempt.recordAttestedEvidence(evidence);
+    }
+
+    private void bindRuntime(ActivationAttempt attempt) {
+        attempt.enter(ActivationPhase.RUNTIME_BINDING);
+
+        AutoconfigureSession session = attempt.session();
+        BootstrapResources resources = attempt.resources();
+        resources.push(PlatformPropagationGate.shared().bindAcceptedPolicy(session.policy()), "propagation-gate");
+        resources.push(PlatformLogControl.shared().bindAcceptedPolicy(session.policy()), "log-control");
+
+        PlatformTracingMBeanRegistrar.RuntimeRegistration runtimeRegistration = session.jmxRegistrar().registerRuntimeControls(session.policy());
+        attempt.recordRuntimeRegistration(runtimeRegistration.batchId());
+        resources.push(runtimeRegistration, "runtime-jmx-controls");
+
+        String batchId = attempt.batchId();
+        ExtensionRuntimeEvidence evidence = attempt.evidence();
+        resources.push(
+                () -> terminalTransitions.publishTransportStale(session, batchId, evidence),
+                "readiness-stale-transition"
+        );
+        resources.installShutdownHook(
+                SHUTDOWN_HOOK_THREAD_NAME,
+                cleanupFailure -> terminalTransitions.completeShutdown(session, batchId, evidence, cleanupFailure)
+        );
+    }
+
+    private void publishReady(ActivationAttempt attempt) {
+        attempt.enter(ActivationPhase.READINESS_PUBLICATION);
+
+        AutoconfigureSession session = attempt.session();
+        session.scrubbingRuntime().requireInstallationComplete();
+        session.readiness().markInstalled(PlatformExtensionCapability.SANITIZER_INSTALLED);
+        session.readiness().requireReady();
+
+        ExtensionReadinessWireSnapshot ready = ExtensionReadinessWireSnapshot.ready(
+                session.readiness(),
+                session.sessionId().toString(),
+                attempt.batchId(),
+                INITIAL_EVIDENCE_GENERATION,
+                attempt.evidence()
+        );
+        journal.publishReady(ready);
+        lifecycle.commitActive(session);
+        emitInstalled(ready);
+    }
+
+    private BootstrapException terminalize(ActivationAttempt attempt, Throwable failure) {
+        return terminalTransitions.terminalizeActivationFailure(
+                attempt.session(),
+                attempt.resources(),
+                failureCodeOf(attempt, failure),
+                failure,
+                attempt.batchId(),
+                attempt.evidence()
+        );
+    }
+
+    private static String failureCodeOf(ActivationAttempt attempt, Throwable failure) {
+        return switch (failure) {
+            case LinkageError ignored -> AttestationFailureCode.EXTENSION_LINKAGE_ERROR.name();
+            case RuntimeEvidenceAttestationException attestation -> attestation.code().name();
+            case RemoteJmxRegistrationDeniedException denied -> denied.failureCode().name();
+            default -> attempt.phase().failureCode();
+        };
     }
 
     private static void emitInstalled(ExtensionReadinessWireSnapshot ready) {
@@ -184,5 +179,71 @@ final class BootstrapActivation {
                 "protocolVersion", PlatformExtensionReadiness.PROTOCOL_VERSION,
                 "extensionVersion", ready.evidence().extensionVersion()
         );
+    }
+
+    private enum ActivationPhase {
+        DIAGNOSTIC_REGISTRATION(DIAGNOSTIC_MBEAN_REGISTRATION_FAILED),
+        REMOTE_JMX_ASSESSMENT(RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name()),
+        RUNTIME_EVIDENCE_ATTESTATION(RUNTIME_EVIDENCE_ATTESTATION_FAILED),
+        RUNTIME_BINDING(ACTIVATION_FAILED),
+        READINESS_PUBLICATION(ACTIVATION_FAILED);
+
+        private final String failureCode;
+
+        ActivationPhase(String failureCode) {
+            this.failureCode = failureCode;
+        }
+
+        String failureCode() {
+            return failureCode;
+        }
+    }
+
+    private static final class ActivationAttempt {
+
+        private final AutoconfigureSession session;
+        private final BootstrapResources resources;
+
+        private ActivationPhase phase = ActivationPhase.DIAGNOSTIC_REGISTRATION;
+        private String batchId = "";
+        private ExtensionRuntimeEvidence evidence;
+
+        ActivationAttempt(AutoconfigureSession session, BootstrapResources resources) {
+            this.session = Objects.requireNonNull(session, "session");
+            this.resources = Objects.requireNonNull(resources, "resources");
+            this.evidence = ExtensionRuntimeEvidence.unavailable(session.readiness().extensionVersion());
+        }
+
+        void enter(ActivationPhase next) {
+            this.phase = Objects.requireNonNull(next, "next");
+        }
+
+        void recordAttestedEvidence(ExtensionRuntimeEvidence attested) {
+            this.evidence = Objects.requireNonNull(attested, "attested");
+        }
+
+        void recordRuntimeRegistration(UUID registeredBatchId) {
+            this.batchId = Objects.requireNonNull(registeredBatchId, "registeredBatchId").toString();
+        }
+
+        AutoconfigureSession session() {
+            return session;
+        }
+
+        BootstrapResources resources() {
+            return resources;
+        }
+
+        ActivationPhase phase() {
+            return phase;
+        }
+
+        String batchId() {
+            return batchId;
+        }
+
+        ExtensionRuntimeEvidence evidence() {
+            return evidence;
+        }
     }
 }

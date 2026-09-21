@@ -19,9 +19,15 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.management.remote.JMXConnector;
+import javax.management.remote.JMXConnectorFactory;
+import javax.management.remote.JMXServiceURL;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import com.sun.tools.attach.AttachNotSupportedException;
+import com.sun.tools.attach.VirtualMachine;
 
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
@@ -32,6 +38,7 @@ class ControlledAgentRuntimeTest {
 
     private static final String EXPECTED_PROBE_CAPABILITIES = "7";
     private static final String PROBE_OK_PREFIX = "CONTROLLED_AGENT_PROBE_OK";
+    private static final String REMOTE_JMX_DENIED_OK_PREFIX = ControlledAgentRemoteJmxDenialProbe.OK_PREFIX;
     private static final String ANY_PTA_EVENT_CODE = "\"event_code\":\"PTA-";
 
     private static final String OTLP_PARTIAL_SUCCESS_PROBE_OK_PREFIX = "OTLP_PARTIAL_SUCCESS_PROBE_OK";
@@ -49,6 +56,7 @@ class ControlledAgentRuntimeTest {
     private static final String ERROR_LEVEL_MARKER = "\"level\":\"ERROR\"";
     private static final Duration EXPORT_TIMEOUT = Duration.ofSeconds(20);
     private static final Duration EXPORT_POLL_INTERVAL = Duration.ofMillis(100);
+    private static final Duration CHILD_READY_POLL_INTERVAL = Duration.ofMillis(100);
 
     @TempDir
     Path temporaryDirectory;
@@ -87,6 +95,30 @@ class ControlledAgentRuntimeTest {
     }
 
     @Test
+    void management_agent_argument_fails_readiness_without_registering_mutation()
+            throws IOException, InterruptedException, URISyntaxException {
+        // given
+        AgentTestFixture fixture = AgentTestFixture.load();
+
+        // when
+        ChildProcessResult result = runRemoteJmxDenialProbe(fixture);
+
+        // then
+        assertProcessCompletedSuccessfully(result);
+        assertRemoteJmxDenialObserved(result);
+    }
+
+    @Test
+    void late_local_management_connector_can_discover_mutation_mbean() throws Exception {
+        // given
+        AgentTestFixture fixture = AgentTestFixture.load();
+
+        // when
+        // then
+        assertLateLocalManagementConnectorDiscoversMutationMBean(fixture);
+    }
+
+    @Test
     void controlled_agent_reports_otlp_partial_success_via_export_observation() throws Exception {
         // given
         AgentTestFixture fixture = AgentTestFixture.load();
@@ -117,6 +149,116 @@ class ControlledAgentRuntimeTest {
 
         Process process = processBuilder.start();
         boolean finished = process.waitFor(WAIT_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        if (!finished) {
+            process.destroyForcibly().waitFor(KILL_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        }
+
+        String stdout = Files.readString(stdoutFile, StandardCharsets.UTF_8);
+        String stderr = Files.readString(stderrFile, StandardCharsets.UTF_8);
+        Integer exitCode = finished ? process.exitValue() : null;
+
+        return new ChildProcessResult(finished, exitCode, stdout, stderr);
+    }
+
+    private ChildProcessResult runRemoteJmxDenialProbe(AgentTestFixture fixture) throws IOException, InterruptedException, URISyntaxException {
+        Path javaExecutable = javaExecutable();
+        Path probeClassPath = probeClassPath(ControlledAgentRemoteJmxDenialProbe.class);
+        Path stdoutFile = temporaryDirectory.resolve("remote-jmx-denial-child.stdout.log");
+        Path stderrFile = temporaryDirectory.resolve("remote-jmx-denial-child.stderr.log");
+
+        ProcessBuilder processBuilder = new ProcessBuilder(
+                remoteJmxDenialChildCommand(javaExecutable, probeClassPath, fixture)
+        );
+        removeContaminatingEnvironment(processBuilder.environment());
+        processBuilder.redirectOutput(stdoutFile.toFile());
+        processBuilder.redirectError(stderrFile.toFile());
+
+        Process process = processBuilder.start();
+        boolean finished = process.waitFor(WAIT_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        if (!finished) {
+            process.destroyForcibly().waitFor(KILL_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        }
+
+        String stdout = Files.readString(stdoutFile, StandardCharsets.UTF_8);
+        String stderr = Files.readString(stderrFile, StandardCharsets.UTF_8);
+        Integer exitCode = finished ? process.exitValue() : null;
+
+        return new ChildProcessResult(finished, exitCode, stdout, stderr);
+    }
+
+    private void assertLateLocalManagementConnectorDiscoversMutationMBean(AgentTestFixture fixture)
+            throws IOException, InterruptedException, URISyntaxException, AttachNotSupportedException {
+        Path javaExecutable = javaExecutable();
+        Path probeClassPath = probeClassPath(ControlledAgentLateAttachProbe.class);
+        Path stdoutFile = temporaryDirectory.resolve("late-attach-child.stdout.log");
+        Path stderrFile = temporaryDirectory.resolve("late-attach-child.stderr.log");
+
+        ProcessBuilder processBuilder = new ProcessBuilder(
+                lateAttachChildCommand(javaExecutable, probeClassPath, fixture));
+        removeContaminatingEnvironment(processBuilder.environment());
+        processBuilder.redirectOutput(stdoutFile.toFile());
+        processBuilder.redirectError(stderrFile.toFile());
+
+        Process process = processBuilder.start();
+        ChildProcessResult result;
+        try {
+            long childPid = awaitLateAttachProbePid(process, stdoutFile, stderrFile);
+            assertMutationMBeanVisibleThroughLocalManagementConnector(childPid);
+        } finally {
+            result = stopLateAttachChild(process, stdoutFile, stderrFile);
+        }
+
+        assertProcessCompletedSuccessfully(result);
+    }
+
+    private static long awaitLateAttachProbePid(Process process, Path stdoutFile, Path stderrFile)
+            throws IOException, InterruptedException {
+        String readyPrefix = ControlledAgentLateAttachProbe.READY_LINE_PREFIX;
+        long deadlineNanos = System.nanoTime() + WAIT_TIMEOUT.toNanos();
+        while (System.nanoTime() < deadlineNanos) {
+            Optional<String> readyLine = Files.readString(stdoutFile, StandardCharsets.UTF_8)
+                    .lines()
+                    .filter(line -> line.startsWith(readyPrefix))
+                    .findFirst();
+            if (readyLine.isPresent()) {
+                return Long.parseLong(readyLine.get().substring(readyPrefix.length()).trim());
+            }
+            if (!process.isAlive()) {
+                break;
+            }
+
+            Thread.sleep(CHILD_READY_POLL_INTERVAL.toMillis());
+        }
+
+        throw new AssertionError(
+                "Late attach probe never reported READY; stdout=%s, stderr=%s".formatted(
+                        Files.readString(stdoutFile, StandardCharsets.UTF_8),
+                        Files.readString(stderrFile, StandardCharsets.UTF_8))
+        );
+    }
+
+    private static void assertMutationMBeanVisibleThroughLocalManagementConnector(long childPid)
+            throws AttachNotSupportedException, IOException {
+        VirtualMachine virtualMachine = VirtualMachine.attach(Long.toString(childPid));
+        String serviceAddress;
+        try {
+            serviceAddress = virtualMachine.startLocalManagementAgent();
+        } finally {
+            virtualMachine.detach();
+        }
+
+        try (JMXConnector connector = JMXConnectorFactory.connect(new JMXServiceURL(serviceAddress))) {
+            assertThat(connector.getMBeanServerConnection()
+                    .isRegistered(JmxWireContract.SETTINGS_MUTATION_OBJECT_NAME))
+                    .as("a management connector started after startup discovers the mutation MBean")
+                    .isTrue();
+        }
+    }
+
+    private static ChildProcessResult stopLateAttachChild(Process process, Path stdoutFile, Path stderrFile)
+            throws IOException, InterruptedException {
+        process.getOutputStream().close();
+        boolean finished = process.waitFor(KILL_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
         if (!finished) {
             process.destroyForcibly().waitFor(KILL_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
         }
@@ -198,6 +340,19 @@ class ControlledAgentRuntimeTest {
         assertThat(result.stdout()
                 .lines()
                 .filter(line -> line.startsWith(PROBE_OK_PREFIX)))
+                .containsExactly(expectedLine);
+    }
+
+    private void assertRemoteJmxDenialObserved(ChildProcessResult result) {
+        String expectedLine = REMOTE_JMX_DENIED_OK_PREFIX
+                + " failureCode=" + ControlledAgentRemoteJmxDenialProbe.EXPECTED_FAILURE_CODE
+                + " mutationRegistered=false readinessRegistered=true";
+
+        assertThat(result.stdout()
+                .lines()
+                .filter(line -> line.startsWith(REMOTE_JMX_DENIED_OK_PREFIX)))
+                .as("Remote JMX denial probe must report the terminal FAILED snapshot; stdout=%s, stderr=%s",
+                        result.stdout(), result.stderr())
                 .containsExactly(expectedLine);
     }
 
@@ -340,7 +495,6 @@ class ControlledAgentRuntimeTest {
                                              AgentTestFixture fixture) {
         List<String> command = new ArrayList<>();
         command.add(javaExecutable.toString());
-        command.add("-XX:+DisableAttachMechanism");
         command.add("-Dfile.encoding=UTF-8");
         command.add("-Dsun.stdout.encoding=UTF-8");
         command.add("-Dsun.stderr.encoding=UTF-8");
@@ -351,9 +505,6 @@ class ControlledAgentRuntimeTest {
         command.add("-Dplatform.tracing.service.version=1.0.0");
         command.add("-Dplatform.tracing.service.environment=test");
         command.add("-Dplatform.tracing.resource.validation-mode=ERROR");
-        command.add("-Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED");
-        command.add("-Dplatform.tracing.jmx.remote.listener-confirmed=false");
-        command.add("-Dplatform.tracing.jmx.remote.authorization-forwarder-installed=false");
         command.add("-Dplatform.tracing.controlled-agent.expected-sha256=" + fixture.expectedControlledAgentSha());
         command.add("-javaagent:" + fixture.controlledAgent());
         command.add("-cp");
@@ -366,13 +517,60 @@ class ControlledAgentRuntimeTest {
         return command;
     }
 
+    private static List<String> remoteJmxDenialChildCommand(Path javaExecutable,
+                                                            Path probeClassPath,
+                                                            AgentTestFixture fixture) {
+        List<String> command = new ArrayList<>();
+        command.add(javaExecutable.toString());
+        command.add("-Dcom.sun.management.jmxremote.authenticate=false");
+        command.add("-Dfile.encoding=UTF-8");
+        command.add("-Dsun.stdout.encoding=UTF-8");
+        command.add("-Dsun.stderr.encoding=UTF-8");
+        command.add("-Dotel.traces.exporter=logging");
+        command.add("-Dotel.metrics.exporter=none");
+        command.add("-Dotel.logs.exporter=none");
+        command.add("-Dplatform.tracing.service.name=controlled-agent-runtime-test");
+        command.add("-Dplatform.tracing.service.version=1.0.0");
+        command.add("-Dplatform.tracing.service.environment=test");
+        command.add("-Dplatform.tracing.resource.validation-mode=ERROR");
+        command.add("-Dplatform.tracing.controlled-agent.expected-sha256=" + fixture.expectedControlledAgentSha());
+        command.add("-javaagent:" + fixture.controlledAgent());
+        command.add("-cp");
+        command.add(probeClassPath.toString());
+        command.add(ControlledAgentRemoteJmxDenialProbe.class.getName());
+        return command;
+    }
+
+    private static List<String> lateAttachChildCommand(Path javaExecutable,
+                                                       Path probeClassPath,
+                                                       AgentTestFixture fixture) {
+        List<String> command = new ArrayList<>();
+        command.add(javaExecutable.toString());
+        command.add("-Djava.rmi.server.hostname=127.0.0.1");
+        command.add("-Dfile.encoding=UTF-8");
+        command.add("-Dsun.stdout.encoding=UTF-8");
+        command.add("-Dsun.stderr.encoding=UTF-8");
+        command.add("-Dotel.traces.exporter=logging");
+        command.add("-Dotel.metrics.exporter=none");
+        command.add("-Dotel.logs.exporter=none");
+        command.add("-Dplatform.tracing.service.name=controlled-agent-runtime-test");
+        command.add("-Dplatform.tracing.service.version=1.0.0");
+        command.add("-Dplatform.tracing.service.environment=test");
+        command.add("-Dplatform.tracing.resource.validation-mode=ERROR");
+        command.add("-Dplatform.tracing.controlled-agent.expected-sha256=" + fixture.expectedControlledAgentSha());
+        command.add("-javaagent:" + fixture.controlledAgent());
+        command.add("-cp");
+        command.add(probeClassPath.toString());
+        command.add(ControlledAgentLateAttachProbe.class.getName());
+        return command;
+    }
+
     private static List<String> spanAttributeValidationDiagnosticChildCommand(Path javaExecutable,
                                                                              Path probeClassPath,
                                                                              AgentTestFixture fixture,
                                                                              String tracesEndpoint) {
         List<String> command = new ArrayList<>();
         command.add(javaExecutable.toString());
-        command.add("-XX:+DisableAttachMechanism");
         command.add("-Dfile.encoding=UTF-8");
         command.add("-Dsun.stdout.encoding=UTF-8");
         command.add("-Dsun.stderr.encoding=UTF-8");
@@ -390,9 +588,6 @@ class ControlledAgentRuntimeTest {
         command.add("-Dplatform.tracing.service.version=1.0.0");
         command.add("-Dplatform.tracing.service.environment=test");
         command.add("-Dplatform.tracing.resource.validation-mode=ERROR");
-        command.add("-Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED");
-        command.add("-Dplatform.tracing.jmx.remote.listener-confirmed=false");
-        command.add("-Dplatform.tracing.jmx.remote.authorization-forwarder-installed=false");
         command.add("-Dplatform.tracing.controlled-agent.expected-sha256=" + fixture.expectedControlledAgentSha());
         command.add("-javaagent:" + fixture.controlledAgent());
         command.add("-cp");
@@ -407,7 +602,6 @@ class ControlledAgentRuntimeTest {
                                                                 String tracesEndpoint) {
         List<String> command = new ArrayList<>();
         command.add(javaExecutable.toString());
-        command.add("-XX:+DisableAttachMechanism");
         command.add("-Dfile.encoding=UTF-8");
         command.add("-Dsun.stdout.encoding=UTF-8");
         command.add("-Dsun.stderr.encoding=UTF-8");
@@ -422,9 +616,6 @@ class ControlledAgentRuntimeTest {
         command.add("-Dplatform.tracing.service.version=1.0.0");
         command.add("-Dplatform.tracing.service.environment=test");
         command.add("-Dplatform.tracing.resource.validation-mode=ERROR");
-        command.add("-Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED");
-        command.add("-Dplatform.tracing.jmx.remote.listener-confirmed=false");
-        command.add("-Dplatform.tracing.jmx.remote.authorization-forwarder-installed=false");
         command.add("-Dplatform.tracing.controlled-agent.expected-sha256=" + fixture.expectedControlledAgentSha());
         command.add("-javaagent:" + fixture.controlledAgent());
         command.add("-cp");

@@ -256,10 +256,6 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
                         """
                         -javaagent:%s
                         -Dplatform.tracing.controlled-agent.expected-sha256=%s
-                        -Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED
-                        -Dplatform.tracing.jmx.remote.listener-confirmed=false
-                        -Dplatform.tracing.jmx.remote.authorization-forwarder-installed=false
-                        -XX:+DisableAttachMechanism
                         """.formatted(
                                 agentJarIn(project).toRealPath(),
                                 loadPin().getProperty("agent.sha256")
@@ -290,7 +286,7 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
         // then
         assertThat(project.resolve("build/boot-run-args.txt"))
                 .content(StandardCharsets.UTF_8)
-                .contains("-Xmx256m", "-XX:+DisableAttachMechanism", "-javaagent:" + agentJarIn(project).toRealPath());
+                .contains("-Xmx256m", "-javaagent:" + agentJarIn(project).toRealPath());
     }
 
     @Test
@@ -307,10 +303,6 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
                         """
                         -javaagent:%s
                         -Dplatform.tracing.controlled-agent.expected-sha256=%s
-                        -Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED
-                        -Dplatform.tracing.jmx.remote.listener-confirmed=false
-                        -Dplatform.tracing.jmx.remote.authorization-forwarder-installed=false
-                        -XX:+DisableAttachMechanism
                         """.formatted(
                                 agentJarIn(project).toRealPath(),
                                 loadPin().getProperty("agent.sha256")
@@ -352,10 +344,16 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
         assertThat(result.stdout())
                 .contains("MANAGED_AGENT_PROBE_PROPERTY platform.tracing.controlled-agent.expected-sha256="
                         + loadPin().getProperty("agent.sha256"))
-                .contains("MANAGED_AGENT_PROBE_PROPERTY platform.tracing.jmx.remote.mode=REMOTE_PROHIBITED")
-                .contains("MANAGED_AGENT_PROBE_PROPERTY platform.tracing.jmx.remote.listener-confirmed=false")
-                .contains("MANAGED_AGENT_PROBE_PROPERTY platform.tracing.jmx.remote.authorization-forwarder-installed=false")
-                .contains("MANAGED_AGENT_PROBE_INPUT_ARGUMENT -XX:+DisableAttachMechanism");
+                .as("the assessor reads startup arguments delivered through java @argfile")
+                .contains("MANAGED_AGENT_PROBE_INPUT_ARGUMENT "
+                        + "-Dplatform.tracing.controlled-agent.expected-sha256="
+                        + loadPin().getProperty("agent.sha256"));
+
+        List<String> managementInputArguments = result.stdout().lines()
+                .filter(line -> line.startsWith("MANAGED_AGENT_PROBE_INPUT_ARGUMENT -Dcom.sun.management")
+                        || line.equals("MANAGED_AGENT_PROBE_INPUT_ARGUMENT -XX:+ManagementServer"))
+                .toList();
+        assertThat(managementInputArguments).isEmpty();
 
         List<String> javaAgentInputArguments = result.stdout().lines()
                 .filter(line -> line.startsWith("MANAGED_AGENT_PROBE_INPUT_ARGUMENT -javaagent:"))

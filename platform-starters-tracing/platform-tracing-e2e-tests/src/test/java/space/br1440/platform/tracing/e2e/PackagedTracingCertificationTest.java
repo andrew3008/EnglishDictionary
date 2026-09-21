@@ -165,7 +165,7 @@ class PackagedTracingCertificationTest {
 
         assertFailure("accidental-remote-jmx", remoteConfigured,
                 "EXTENSION_INCOMPATIBLE",
-                "REMOTE_JMX_UNCERTIFIED_STARTUP_CONFIGURATION",
+                "REMOTE_JMX_MANAGEMENT_AGENT_CONFIGURED",
                 "FAILED");
 
         assertFailure("extension-missing", extensionMissing,
@@ -197,8 +197,7 @@ class PackagedTracingCertificationTest {
                 "mbean-collision",
                 applicationBootJar,
                 List.of(collisionAgent, controlledAgent),
-                controlledProperties(ControlledAgentArtifactMutator.sha256(controlledAgent)),
-                List.of()
+                controlledProperties(ControlledAgentArtifactMutator.sha256(controlledAgent))
         );
 
         // when
@@ -220,8 +219,7 @@ class PackagedTracingCertificationTest {
                 scenario,
                 applicationBootJar,
                 List.of(),
-                properties,
-                List.of()
+                properties
         );
     }
 
@@ -236,8 +234,7 @@ class PackagedTracingCertificationTest {
                 scenarioFileName,
                 bootJar,
                 List.of(agent),
-                properties,
-                List.of()
+                properties
         );
     }
 
@@ -252,9 +249,6 @@ class PackagedTracingCertificationTest {
         properties.put("platform.tracing.service.version", "1.0.0");
         properties.put("platform.tracing.service.environment", "test");
         properties.put("platform.tracing.resource.validation-mode", "ERROR");
-        properties.put("platform.tracing.jmx.remote.mode", "REMOTE_PROHIBITED");
-        properties.put("platform.tracing.jmx.remote.listener-confirmed", "false");
-        properties.put("platform.tracing.jmx.remote.authorization-forwarder-installed", "false");
         properties.put("platform.tracing.controlled-agent.expected-sha256", expectedAgentSha);
         properties.put("platform.tracing.enabled", "true");
         properties.put("platform.tracing.control.channel", "ACTUATOR");
@@ -291,7 +285,6 @@ class PackagedTracingCertificationTest {
     @SuppressWarnings("SameParameterValue")
     private static void assertSuccessful(PackagedProcessLauncher.ProcessResult result,
                                          String scenario) {
-        assertThat(result.finished()).as(scenario + " process must terminate").isTrue();
         assertThat(result.exitCode())
                 .as("%s process failed; stdout=%s, stderr=%s",
                         scenario, result.stdout(), result.stderr())
@@ -338,11 +331,9 @@ class PackagedTracingCertificationTest {
 
     private static void assertFailedProcess(PackagedProcessLauncher.ProcessResult result,
                                             String scenario) {
-        assertThat(result.finished()).as(scenario + " process must terminate").isTrue();
         assertThat(result.exitCode())
                 .as("%s process unexpectedly succeeded; stdout=%s, stderr=%s",
                         scenario, result.stdout(), result.stderr())
-                .isNotNull()
                 .isNotZero();
     }
 

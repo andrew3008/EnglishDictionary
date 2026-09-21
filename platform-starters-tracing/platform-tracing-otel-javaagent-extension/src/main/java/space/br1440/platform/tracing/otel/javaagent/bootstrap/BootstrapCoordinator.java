@@ -1,11 +1,13 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.CONFIGURATION_INITIALIZATION_FAILED;
+
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
-import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxMutationRegistrationGate;
+import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxMutationRegistrationAssessor;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
@@ -14,68 +16,40 @@ import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
 final class BootstrapCoordinator implements AutoCloseable {
 
+    private static final String PREPARE_PHASE = "prepare";
+
+    private final BootstrapLifecycleState lifecycle;
+    private final BootstrapReadinessJournal journal;
+    private final DiagnosticReadinessHandle diagnosticHandle;
+    private final BootstrapTerminalTransitions terminalTransitions;
     private final AutoconfigureSessionFactory sessionFactory;
-    private final BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-    private final BootstrapReadinessJournal journal = new BootstrapReadinessJournal(lifecycle.monitor());
-    private final DiagnosticReadinessHandle diagnosticHandle = new DiagnosticReadinessHandle();
-    private final BootstrapTerminalTransitions terminalTransitions = new BootstrapTerminalTransitions(lifecycle, journal, diagnosticHandle);
     private final BootstrapActivation activation;
 
     static BootstrapCoordinator create() {
-        return create(new PlatformScrubberFactory());
-    }
-
-    static BootstrapCoordinator create(PlatformScrubberFactory scrubberFactory) {
         return new BootstrapCoordinator(
                 JvmShutdownHookRegistry.INSTANCE,
-                scrubberFactory,
-                ControlledAgentRuntimeAttestor.production()
-        );
-    }
-
-    static BootstrapCoordinator create(PlatformScrubberFactory scrubberFactory,
-                                       RuntimeEvidenceAttestor runtimeEvidenceAttestor) {
-        return new BootstrapCoordinator(
-                JvmShutdownHookRegistry.INSTANCE,
-                scrubberFactory,
-                runtimeEvidenceAttestor
-        );
-    }
-
-    static BootstrapCoordinator create(PlatformScrubberFactory scrubberFactory,
-                                       RuntimeEvidenceAttestor runtimeEvidenceAttestor,
-                                       Function<ConfigProperties, RemoteJmxMutationRegistrationGate> remoteJmxExposurePolicyFactory) {
-        return new BootstrapCoordinator(
-                JvmShutdownHookRegistry.INSTANCE,
-                scrubberFactory,
-                runtimeEvidenceAttestor,
-                remoteJmxExposurePolicyFactory
+                new PlatformScrubberFactory(),
+                ControlledAgentRuntimeAttestor.production(),
+                AutoconfigureSessionFactory::currentProcessRemoteJmxAssessor
         );
     }
 
     BootstrapCoordinator(ShutdownHookRegistry hookRegistry,
                          PlatformScrubberFactory scrubberFactory,
-                         RuntimeEvidenceAttestor runtimeEvidenceAttestor) {
-        this(
-                hookRegistry,
-                scrubberFactory,
-                runtimeEvidenceAttestor,
-                AutoconfigureSessionFactory::currentProcessRemoteJmxPolicy);
-    }
-
-    BootstrapCoordinator(
-            ShutdownHookRegistry hookRegistry,
-            PlatformScrubberFactory scrubberFactory,
-            RuntimeEvidenceAttestor runtimeEvidenceAttestor,
-            Function<ConfigProperties, RemoteJmxMutationRegistrationGate> remoteJmxExposurePolicyFactory) {
-        this.sessionFactory = new AutoconfigureSessionFactory(scrubberFactory, remoteJmxExposurePolicyFactory);
+                         RuntimeEvidenceAttestor runtimeEvidenceAttestor,
+                         Function<ConfigProperties, RemoteJmxMutationRegistrationAssessor> remoteJmxAssessorFactory) {
+        this.lifecycle = new BootstrapLifecycleState();
+        this.journal = new BootstrapReadinessJournal(lifecycle.monitor());
+        this.diagnosticHandle = new DiagnosticReadinessHandle();
+        this.terminalTransitions = new BootstrapTerminalTransitions(lifecycle, journal, diagnosticHandle);
+        this.sessionFactory = new AutoconfigureSessionFactory(scrubberFactory, remoteJmxAssessorFactory);
         this.activation = new BootstrapActivation(
                 lifecycle,
                 journal,
                 terminalTransitions,
                 diagnosticHandle,
-                Objects.requireNonNull(runtimeEvidenceAttestor, "runtimeEvidenceAttestor"),
-                Objects.requireNonNull(hookRegistry, "hookRegistry")
+                runtimeEvidenceAttestor,
+                hookRegistry
         );
     }
 
@@ -90,10 +64,10 @@ final class BootstrapCoordinator implements AutoCloseable {
             lifecycle.completePrepare(prepared);
             return prepared;
         } catch (SanitizerBootstrapException e) {
-            throw lifecycle.fail(e.code(), "prepare", e);
+            throw lifecycle.fail(e.code(), PREPARE_PHASE, e);
         } catch (RuntimeException | Error e) {
             PlatformThrowables.propagateIfFatal(e);
-            throw lifecycle.fail("CONFIGURATION_INITIALIZATION_FAILED", "prepare", e);
+            throw lifecycle.fail(CONFIGURATION_INITIALIZATION_FAILED, PREPARE_PHASE, e);
         }
     }
 
@@ -101,18 +75,17 @@ final class BootstrapCoordinator implements AutoCloseable {
         return lifecycle.requireSession();
     }
 
-    <T> T execute(String phaseFailureCode, Supplier<T> action) {
-        lifecycle.requireOperable(phaseFailureCode);
+    <T> T execute(String failureCode, Supplier<T> action) {
+        Objects.requireNonNull(failureCode, "failureCode");
+        lifecycle.requireOperable(failureCode);
 
         try {
             return action.get();
         } catch (SanitizerBootstrapException e) {
-            BootstrapException classified = lifecycle.fail(e.code(), phaseFailureCode, e);
-            publishSessionFailure(e.code(), e);
-            throw classified;
+            throw failCustomization(e.code(), failureCode, e);
         } catch (RuntimeException | Error e) {
             PlatformThrowables.propagateIfFatal(e);
-            throw lifecycle.fail(phaseFailureCode, phaseFailureCode, e);
+            throw failCustomization(failureCode, failureCode, e);
         }
     }
 
@@ -129,25 +102,15 @@ final class BootstrapCoordinator implements AutoCloseable {
     }
 
     @Override
-    @SuppressWarnings("EmptyTryBlock")
     public void close() {
         BootstrapLifecycleState.CloseTransition transition = lifecycle.beginClose();
         if (!transition.started()) {
             return;
         }
 
-        Throwable cleanupFailure = null;
-        BootstrapResources resources = transition.resources();
-        if (resources != null) {
-            try (BootstrapResources ignored = resources) {
-                // закрытие через try-with-resources
-            } catch (RuntimeException | Error failure) {
-                cleanupFailure = failure;
-            }
-        }
-
+        Throwable cleanupFailure = closeActivationResources(transition.resources());
         try {
-            closeDiagnosticHandle();
+            diagnosticHandle.close();
         } catch (RuntimeException | Error failure) {
             cleanupFailure = BootstrapCleanupFailures.aggregate(cleanupFailure, failure);
         }
@@ -160,11 +123,22 @@ final class BootstrapCoordinator implements AutoCloseable {
         lifecycle.markClosed();
     }
 
-    void closeDiagnosticHandle() {
-        diagnosticHandle.close();
+    private BootstrapException failCustomization(String code, String phase, Throwable cause) {
+        BootstrapException classified = lifecycle.fail(code, phase, cause);
+        terminalTransitions.publishSessionFailure(lifecycle.currentSession(), code, cause);
+        return classified;
     }
 
-    private void publishSessionFailure(String failureCode, Throwable cause) {
-        terminalTransitions.publishSessionFailure(lifecycle.currentSession(), failureCode, cause);
+    private static Throwable closeActivationResources(BootstrapResources resources) {
+        if (resources == null) {
+            return null;
+        }
+
+        try {
+            resources.close();
+            return null;
+        } catch (RuntimeException | Error failure) {
+            return failure;
+        }
     }
 }

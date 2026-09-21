@@ -31,21 +31,26 @@ Remote connector создаётся только отдельным test-only Ja
 владеет loopback listener. Этот fixture не добавляет connector в production extension и не
 подменяет внешнюю аттестацию deployment-owned listener, TLS, authentication и admission controls.
 
-Production extension сегодня не устанавливает default-deny forwarder на platform MBeanServer —
-единственный код-уровневый контроль remote JMX — fail-closed exposure gate
-(`RemoteJmxMutationRegistrationGate`), который отклоняет регистрацию mutation endpoint при
-любом непрочитанном или несертифицированном remote-listener evidence. Профиль
-`PLATFORM_OWNED_CERTIFIED_CONNECTOR` (с forwarder-attestation) в текущей реализации недостижим,
-пока платформа не поставляет собственный connector.
+Production extension не устанавливает default-deny forwarder на platform MBeanServer.
+Единственный код-уровневый контроль remote JMX — оценка **controlled startup arguments**
+(`RemoteJmxMutationRegistrationAssessor`); bootstrap отказывает в регистрации mutation
+endpoint при отрицательной оценке. Оцениваются только аргументы активации JDK management
+agent: любой аргумент, начинающийся с `-Dcom.sun.management`, и `-XX:+ManagementServer`.
+`REMOTE_JMX_MANAGEMENT_AGENT_CONFIGURED` — обнаружение запрещённых аргументов, не
+доказательство запущенного listener. Отключение Attach-механизма JVM не требуется и не
+оценивается.
 
-Forked JVM всегда стартует с `-XX:+DisableAttachMechanism` и точной тройкой
-`platform.tracing.jmx.remote.*` startup arguments. В остальных сценариях явно объявляется
-`REMOTE_PROHIBITED`.
+Forked JVM стартует без attach-флага и без аргументов активации management agent.
+Разрешение оценки не является доказательством отсутствия любого JMX-коннектора,
+инвентаризацией уже созданных коннекторов или сетевой недоступности MBeanServer.
+Расширение не гарантирует невозможность позднего открытия JMX-доступа
+(`jcmd ManagementAgent.start`, Attach API).
 
-Этот lane подтверждает неизменяемость startup declaration после запуска JVM, но не выдаёт
+Этот lane подтверждает, что startup arguments, видимые через
+`RuntimeMXBean.getInputArguments()`, не меняются после запуска JVM, но не выдаёт
 криптографическую admission/supply-chain аттестацию и не доказывает, что произвольный код
-приложения никогда не создаст второй программный connector. Эти свойства остаются обязательными
-внешними release evidence.
+приложения никогда не создаст второй программный connector. Эти свойства остаются
+обязательными внешними release evidence.
 
 Synthetic stale fixture детерминированно удаляет метод topology-ABI из копии текущего
 extension JAR и присваивает ей отдельную версию. Он проверяет точную классификацию

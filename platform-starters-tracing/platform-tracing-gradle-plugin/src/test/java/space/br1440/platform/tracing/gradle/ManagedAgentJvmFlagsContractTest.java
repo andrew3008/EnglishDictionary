@@ -18,11 +18,19 @@ class ManagedAgentJvmFlagsContractTest {
         // then
         assertThat(arguments).containsExactly(
                 "-javaagent:/agent.jar",
-                "-Dplatform.tracing.controlled-agent.expected-sha256=deadbeef",
-                "-Dplatform.tracing.jmx.remote.mode=REMOTE_PROHIBITED",
-                "-Dplatform.tracing.jmx.remote.listener-confirmed=false",
-                "-Dplatform.tracing.jmx.remote.authorization-forwarder-installed=false",
-                "-XX:+DisableAttachMechanism"
+                "-Dplatform.tracing.controlled-agent.expected-sha256=deadbeef"
         );
+    }
+
+    @Test
+    void forAgentPath_never_emits_management_agent_activation_arguments() {
+        // given
+        // when
+        var arguments = ManagedAgentJvmFlags.forAgentPath("/agent.jar", "deadbeef");
+
+        // then
+        assertThat(arguments)
+                .noneMatch(argument -> argument.startsWith("-Dcom.sun.management"))
+                .doesNotContain("-XX:+ManagementServer");
     }
 }
