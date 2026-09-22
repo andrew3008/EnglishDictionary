@@ -275,10 +275,9 @@ class TraceResponseHeaderServletFilterTest {
         doThrow(new ServletException("boom")).when(chain).doFilter(eq(request), any(HttpServletResponse.class));
 
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
-        SdkTracerProvider provider = SdkTracerProvider.builder()
+        try (SdkTracerProvider provider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
-                .build();
-        try {
+                .build()) {
             Span span = provider.get("test").spanBuilder("http.server").startSpan();
             try (Scope ignored = span.makeCurrent()) {
                 assertThatThrownBy(() -> filter.doFilter(request, response, chain))
@@ -288,25 +287,20 @@ class TraceResponseHeaderServletFilterTest {
 
             assertThat(exporter.getFinishedSpanItems().getFirst().getAttributes().get(RESULT_KEY))
                     .isEqualTo(SpanResult.FAILURE.value());
-        } finally {
-            provider.close();
         }
     }
 
     private SpanData runFilterWithCurrentSpan() throws Exception {
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
-        SdkTracerProvider provider = SdkTracerProvider.builder()
+        try (SdkTracerProvider provider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
-                .build();
-        try {
+                .build()) {
             Span span = provider.get("test").spanBuilder("http.server").startSpan();
             try (Scope ignored = span.makeCurrent()) {
                 filter.doFilter(request, response, chain);
             }
             span.end();
             return exporter.getFinishedSpanItems().getFirst();
-        } finally {
-            provider.close();
         }
     }
 }
