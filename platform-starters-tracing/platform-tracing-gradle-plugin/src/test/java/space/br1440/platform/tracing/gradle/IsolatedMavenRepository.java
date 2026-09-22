@@ -22,6 +22,7 @@ final class IsolatedMavenRepository {
         return root.toAbsolutePath().normalize().toUri().toString();
     }
 
+    @SuppressWarnings("SameParameterValue")
     void installRelease(PluginRelease release) throws IOException {
         installJar(PluginRelease.PLUGIN_GROUP, PluginRelease.PLUGIN_ARTIFACT, release.pluginJar());
 

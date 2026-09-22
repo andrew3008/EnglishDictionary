@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import lombok.NonNull;
+
 import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
@@ -60,7 +62,7 @@ final class JibIntegration {
         }
 
         @Override
-        public void execute(Task task) {
+        public void execute(@NonNull Task task) {
             List<String> implementations = jib.getPluginExtensions().get().stream()
                     .map(ExtensionParameters::getImplementation)
                     .toList();
