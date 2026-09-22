@@ -55,7 +55,8 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
 
         PlatformOwnedServerHttpResponse wrapped = new PlatformOwnedServerHttpResponse(exchange.getResponse());
         if (properties.getRequestIdHeader().isEnabled()) {
-            wrapped.protectRequestId(properties.getRequestIdHeader().getName(), requestId);
+            String requestIdHeader = properties.getPropagation().getPlatformHeaders().getRequestIdHeader();
+            wrapped.protectRequestId(requestIdHeader, requestId);
         }
 
         try {

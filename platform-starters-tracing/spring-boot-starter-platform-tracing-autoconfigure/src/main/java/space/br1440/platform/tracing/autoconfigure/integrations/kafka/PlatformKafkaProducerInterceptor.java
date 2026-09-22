@@ -34,7 +34,8 @@ public final class PlatformKafkaProducerInterceptor<K, V> implements ProducerInt
                 InboundTraceControl control = new InboundTraceControl(
                         identityBoundary != null && identityBoundary.forceTrace(),
                         identityBoundary != null && identityBoundary.qaTrace(),
-                        null, null, null);
+                        null, null, null
+                );
                 OutboundPropagationHeaders headers = propagation.resolve(decision, control);
                 apply(record.headers(), headers);
             }
@@ -77,6 +78,7 @@ public final class PlatformKafkaProducerInterceptor<K, V> implements ProducerInt
         headers.forceTrace().ifPresent(header -> set(carrier, header));
         headers.qaTrace().ifPresent(header -> set(carrier, header));
         headers.requestId().ifPresent(header -> set(carrier, header));
+        headers.correlationId().ifPresent(header -> set(carrier, header));
     }
 
     private static void set(Headers carrier, OutboundPropagationHeaders.Header header) {

@@ -42,7 +42,7 @@ public class PlatformKafkaOutboundAutoConfiguration {
                 outbound.isPropagateForceTrace(),
                 outbound.isPropagateQaTrace(),
                 outbound.isPropagateRequestId(),
-                false
+                outbound.isPropagateCorrelationId()
         );
 
         return new PlatformKafkaProducerFactoryCustomizer(policy, propagation, identityBoundary);

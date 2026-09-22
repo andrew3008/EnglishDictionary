@@ -27,21 +27,23 @@ public class TracingProperties {
     private final Kafka kafka = new Kafka();
 
     /**
-     * Политика записи {@code X-Request-Id} в HTTP-ответ (Servlet/WebFlux фильтры).
+     * Политика записи request-id заголовка в HTTP-ответ (Servlet/WebFlux фильтры).
      * Property-namespace: {@code platform.tracing.request-id-header.*}.
+     * <p>
+     * Имя заголовка здесь не конфигурируется — единственный источник имени и для inbound-чтения,
+     * и для outbound-записи (включая этот response-фильтр) —
+     * {@code platform.tracing.propagation.platform-headers.request-id-header}
+     * (поле {@code Propagation.PlatformHeaderNames.requestIdHeader}).
      */
     @Getter @Setter @Accessors(chain = true)
     public static class RequestIdResponseHeader {
 
         /**
-         * Разрешает запись request-id заголовка (имя — {@link #name}) в HTTP-ответ.
-         * По умолчанию {@code true}. При {@code false} фильтр остаётся активным:
-         * {@code X-Trace-Id}, identity boundary и cleanup продолжают работать.
+         * Разрешает запись request-id заголовка в HTTP-ответ. По умолчанию {@code true}.
+         * При {@code false} фильтр остаётся активным: {@code X-Trace-Id}, identity boundary
+         * и cleanup продолжают работать.
          */
         private boolean enabled = true;
-
-        /** Имя заголовка request-id в HTTP-ответе. */
-        private String name = PlatformHeaders.X_REQUEST_ID;
     }
 
     /**
@@ -103,8 +105,11 @@ public class TracingProperties {
     public static class Propagation {
 
         /**
-         * Имена платформенных управляющих заголовков, которые читаются на входе на стороне Java Agent и записываются на выходе см. {@link Outbound}).
-         * Единая точка настройки имён: изменение здесь одновременно меняет, какие заголовки распознаются как входящие и какие проставляются как исходящие.
+         * Имена платформенных управляющих заголовков: читаются на входе (Servlet/WebFlux inbound),
+         * записываются на выходе (см. {@link Outbound}) и, для request-id, также в HTTP-ответ
+         * (см. {@link RequestIdResponseHeader}). Единая точка настройки имён: изменение здесь
+         * одновременно меняет, какие заголовки распознаются как входящие и какие проставляются
+         * как исходящие.
          */
         private final PlatformHeaderNames platformHeaders = new PlatformHeaderNames();
 
@@ -124,6 +129,12 @@ public class TracingProperties {
         public static class PlatformHeaderNames {
             private String forceTraceHeader = PlatformHeaders.X_TRACE_ON;
             private String qaTraceHeader = PlatformHeaders.X_QA_TRACE;
+
+            /**
+             * Имя request-id заголовка: используется для inbound-чтения (Servlet/WebFlux),
+             * outbound-инжекции (HTTP/Kafka) и записи в HTTP-ответ ({@link RequestIdResponseHeader}).
+             * Единая точка настройки имени для всех направлений.
+             */
             private String requestIdHeader = PlatformHeaders.X_REQUEST_ID;
         }
 

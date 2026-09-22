@@ -99,7 +99,7 @@ class TraceResponseHeaderServletFilterTest {
 
         filter.doFilter(request, response, chain);
 
-        verify(response).setHeader(eq(properties.getRequestIdHeader().getName()), eq("req-incoming-1"));
+        verify(response).setHeader(eq(PlatformHeaders.X_REQUEST_ID), eq("req-incoming-1"));
         verify(response).setHeader(eq(PlatformHeaders.X_TRACE_ID), eq("trace-abc-123"));
         verify(chain).doFilter(eq(request), any(HttpServletResponse.class));
         assertThat(seenInsideChain.get()).isEmpty();
@@ -114,7 +114,7 @@ class TraceResponseHeaderServletFilterTest {
         filter.doFilter(request, response, chain);
 
         verify(response, never()).setHeader(eq(PlatformHeaders.X_TRACE_ID), anyString());
-        verify(response).setHeader(eq(properties.getRequestIdHeader().getName()), eq("req-2"));
+        verify(response).setHeader(eq(PlatformHeaders.X_REQUEST_ID), eq("req-2"));
     }
 
     @Test
@@ -129,8 +129,23 @@ class TraceResponseHeaderServletFilterTest {
         filter.doFilter(request, response, chain);
 
         // then
-        verify(response, never()).setHeader(eq(properties.getRequestIdHeader().getName()), anyString());
+        verify(response, never()).setHeader(eq(PlatformHeaders.X_REQUEST_ID), anyString());
         verify(response).setHeader(PlatformHeaders.X_TRACE_ID, "trace-keep");
+    }
+
+    @Test
+    void respondsWithCustomRequestIdHeaderNameConfiguredViaPlatformHeaders() throws ServletException, java.io.IOException {
+        // given
+        properties.getPropagation().getPlatformHeaders().setRequestIdHeader("X-Custom-Request-Id");
+        when(request.getHeader(eq("X-Custom-Request-Id"))).thenReturn("req-custom");
+        when(traceContextView.traceId()).thenReturn(Optional.empty());
+        when(response.isCommitted()).thenReturn(false);
+
+        // when
+        filter.doFilter(request, response, chain);
+
+        // then
+        verify(response).setHeader(eq("X-Custom-Request-Id"), eq("req-custom"));
     }
 
     @Test

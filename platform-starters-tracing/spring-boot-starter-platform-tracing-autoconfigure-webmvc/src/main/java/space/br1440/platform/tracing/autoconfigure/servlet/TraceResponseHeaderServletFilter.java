@@ -67,7 +67,8 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
 
         PlatformOwnedHttpServletResponse wrapped = new PlatformOwnedHttpServletResponse(response);
         if (properties.getRequestIdHeader().isEnabled()) {
-            wrapped.protectRequestId(properties.getRequestIdHeader().getName(), requestId);
+            String requestIdHeader = properties.getPropagation().getPlatformHeaders().getRequestIdHeader();
+            wrapped.protectRequestId(requestIdHeader, requestId);
         }
         capturedTraceId.ifPresent(wrapped::protectTraceId);
 

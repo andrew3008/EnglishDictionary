@@ -60,8 +60,26 @@ class TraceResponseHeaderWebFilterTest {
         exchange.getResponse().setComplete().block();
 
         // then
-        assertThat(exchange.getResponse().getHeaders().getFirst(properties.getRequestIdHeader().getName())).isNull();
+        assertThat(exchange.getResponse().getHeaders().getFirst(PlatformHeaders.X_REQUEST_ID)).isNull();
         assertThat(exchange.getResponse().getHeaders().getFirst(PlatformHeaders.X_TRACE_ID)).isEqualTo(TRACE_ID);
+    }
+
+    @Test
+    void respondsWithCustomRequestIdHeaderNameConfiguredViaPlatformHeaders() {
+        // given
+        TracingProperties properties = new TracingProperties();
+        properties.getPropagation().getPlatformHeaders().setRequestIdHeader("X-Custom-Request-Id");
+
+        TraceResponseHeaderWebFilter filter = filterWith(traceOperationsWithoutTraceId(), properties);
+        MockServerWebExchange exchange = exchangeFor("/custom-request-id", "X-Custom-Request-Id", "req-custom");
+        WebFilterChain chain = ignored -> Mono.empty();
+
+        // when
+        filter.filter(exchange, chain).block();
+        exchange.getResponse().setComplete().block();
+
+        // then
+        assertThat(exchange.getResponse().getHeaders().getFirst("X-Custom-Request-Id")).isEqualTo("req-custom");
     }
 
     @Test

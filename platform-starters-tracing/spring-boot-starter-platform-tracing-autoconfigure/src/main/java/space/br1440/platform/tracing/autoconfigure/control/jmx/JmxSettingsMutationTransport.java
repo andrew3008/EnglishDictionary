@@ -140,6 +140,10 @@ final class JmxSettingsMutationTransport {
                             .attemptId(attemptId)
                             .sourceAuthority(sourceAuthorityFor(source))
                             .applyTrigger(applyTriggerFor(source))
+                            // sourceRevision — зарезервированное wire-поле для будущей корреляции
+                            // с версией манифеста (например, Config Server revision). У Spring
+                            // сегодня нет источника этого значения ни для CONFIG_SERVER, ни для
+                            // ACTUATOR, поэтому оно всегда пустое; на domain validation/apply не влияет.
                             .sourceRevision("")
                             .policy(snapshot)
                             .build()

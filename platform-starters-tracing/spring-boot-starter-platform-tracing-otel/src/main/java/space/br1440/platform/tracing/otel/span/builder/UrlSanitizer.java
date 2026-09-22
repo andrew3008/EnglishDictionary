@@ -9,9 +9,9 @@ import lombok.experimental.UtilityClass;
 /**
  * Удаляет секреты из URL перед записью значения в span.
  *
- * <p>{@value #MAX_LENGTH} совпадает с дефолтом {@code TracingProperties.Limits.maxAttributeValueLength}.
- * Значение зафиксировано константой намеренно: sanitizer не должен зависеть от Spring-контекста;
- * изменение лимита атрибутов не обязано автоматически менять порог обрезки URL.
+ * <p>{@value #MAX_LENGTH} — независимая от Spring-конфигурации константа: sanitizer не должен
+ * зависеть от Spring-контекста, поэтому порог обрезки URL зафиксирован здесь,
+ * а не выведен из внешней настройки лимитов span-атрибутов.
  */
 @UtilityClass
 class UrlSanitizer {

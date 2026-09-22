@@ -101,13 +101,21 @@ class TracingPropertiesBindingTest {
     @Test
     void bindsRequestIdHeader() {
         contextRunner
-                .withPropertyValues(
-                        "platform.tracing.request-id-header.enabled=false",
-                        "platform.tracing.request-id-header.name=X-Custom-Request-Id")
+                .withPropertyValues("platform.tracing.request-id-header.enabled=false")
                 .run(ctx -> {
                     TracingProperties properties = ctx.getBean(TracingProperties.class);
                     assertThat(properties.getRequestIdHeader().isEnabled()).isFalse();
-                    assertThat(properties.getRequestIdHeader().getName()).isEqualTo("X-Custom-Request-Id");
+                });
+    }
+
+    @Test
+    void requestIdHeaderNameComesOnlyFromPlatformHeaders() {
+        contextRunner
+                .withPropertyValues("platform.tracing.propagation.platform-headers.request-id-header=X-Custom-Request-Id")
+                .run(ctx -> {
+                    TracingProperties properties = ctx.getBean(TracingProperties.class);
+                    assertThat(properties.getPropagation().getPlatformHeaders().getRequestIdHeader())
+                            .isEqualTo("X-Custom-Request-Id");
                 });
     }
 
