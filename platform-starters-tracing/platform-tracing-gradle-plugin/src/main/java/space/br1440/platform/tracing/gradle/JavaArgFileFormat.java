@@ -2,12 +2,12 @@ package space.br1440.platform.tracing.gradle;
 
 import java.util.List;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class JavaArgFileFormat {
 
     private static final String LINE_SEPARATOR = "\n";
-
-    private JavaArgFileFormat() {
-    }
 
     static String render(List<String> arguments) {
         StringBuilder content = new StringBuilder();

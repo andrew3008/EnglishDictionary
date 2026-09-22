@@ -324,6 +324,42 @@ artifacts {
     }
 }
 
+Provider<RegularFile> controlledAgentPinFile = layout.buildDirectory.file('controlled-agent/controlled-agent-pin.properties') as Provider<RegularFile>
+def controlledAgentVersion = project.version.toString()
+
+def writeControlledAgentPin = tasks.register('writeControlledAgentPin') {
+    group = 'build'
+    description = 'Writes the controlled Java agent pin (version and SHA-256) consumed by the Gradle plugin'
+    dependsOn publishControlledJavaAgent
+
+    inputs.file(controlledAgentJarFile)
+            .withPropertyName('controlledAgentJar')
+            .withPathSensitivity(PathSensitivity.NONE)
+    inputs.property('agentVersion', controlledAgentVersion)
+    outputs.file(controlledAgentPinFile)
+
+    doLast {
+        File jar = controlledAgentJarFile.get().asFile
+        String content = 'agent.sha256=' + sha256Hex(jar) + '\n' + 'agent.version=' + controlledAgentVersion + '\n'
+
+        File target = controlledAgentPinFile.get().asFile
+        target.parentFile.mkdirs()
+        target.setText(content, 'UTF-8')
+    }
+}
+
+def controlledAgentPinElements = configurations.create('controlledAgentPinElements') {
+    canBeConsumed = true
+    canBeResolved = false
+}
+
+artifacts {
+    add(controlledAgentPinElements.name, controlledAgentPinFile) {
+        builtBy writeControlledAgentPin
+        type = 'properties'
+    }
+}
+
 testing {
     suites {
         register('controlledAgentArtifactTest', JvmTestSuite) { JvmTestSuite suite ->

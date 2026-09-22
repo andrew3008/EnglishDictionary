@@ -10,21 +10,25 @@ import java.util.regex.Pattern;
 
 import org.gradle.api.GradleException;
 
-import space.br1440.platform.common.util.StringUtils;
-
-final class ControlledAgentPin {
+record ControlledAgentPin(String version, String sha256) {
 
     private static final String RESOURCE_PATH = "/META-INF/platform-tracing/controlled-agent-pin.properties";
     private static final String VERSION_KEY = "agent.version";
     private static final String SHA256_KEY = "agent.sha256";
     private static final Pattern SHA256_HEX = Pattern.compile("[0-9a-f]{64}");
 
-    private final String version;
-    private final String sha256;
+    ControlledAgentPin {
+        if (version == null || version.isBlank() || !version.equals(version.trim())) {
+            throw new GradleException("""
+                    Controlled agent pin %s must be a trimmed non-blank value"""
+                    .formatted(VERSION_KEY));
+        }
 
-    private ControlledAgentPin(String version, String sha256) {
-        this.version = version;
-        this.sha256 = sha256;
+        if (sha256 == null || !SHA256_HEX.matcher(sha256).matches()) {
+            throw new GradleException("""
+                    Controlled agent pin %s must be a lowercase 64-character SHA-256 hex value"""
+                    .formatted(SHA256_KEY));
+        }
     }
 
     static ControlledAgentPin load() {
@@ -47,36 +51,12 @@ final class ControlledAgentPin {
         }
 
         return new ControlledAgentPin(
-                requireVersion(properties.getProperty(VERSION_KEY)),
-                requireSha256(properties.getProperty(SHA256_KEY))
+                properties.getProperty(VERSION_KEY),
+                properties.getProperty(SHA256_KEY)
         );
     }
 
-    private static String requireVersion(String value) {
-        if (StringUtils.isNullOrBlank(value) || !value.equals(value.trim())) {
-            throw new GradleException("""
-                    Controlled agent pin %s must be a trimmed non-blank value"""
-                    .formatted(VERSION_KEY));
-        }
-
-        return value;
-    }
-
-    private static String requireSha256(String value) {
-        if (value == null || !SHA256_HEX.matcher(value).matches()) {
-            throw new GradleException("""
-                    Controlled agent pin %s must be a lowercase 64-character SHA-256 hex value"""
-                    .formatted(SHA256_KEY));
-        }
-
-        return value;
-    }
-
-    String version() {
-        return version;
-    }
-
-    String sha256() {
-        return sha256;
+    String agentFileName() {
+        return PlatformTracingJavaAgentPlugin.AGENT_MODULE + "-" + version + ".jar";
     }
 }

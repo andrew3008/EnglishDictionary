@@ -5,97 +5,86 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import org.gradle.testkit.runner.BuildResult;
-import org.gradle.testkit.runner.GradleRunner;
 import org.gradle.testkit.runner.TaskOutcome;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import space.br1440.platform.common.util.StringUtils;
+class PlatformTracingJavaAgentPluginFunctionalTest extends FunctionalTestSupport {
 
-/**
- * Проверяет zero-config контракт плагина на реальных сборках-потребителях.
- *
- * <p>Плагин ставится из собранного JAR в изолированный Maven-репозиторий, поэтому тест видит
- * то же, что увидит сервис: pin внутри релиза, marker publication и резолв агента по группе и имени артефакта.
- * Сборки-потребители работают в offline и только с изолированным репозиторием — сеть и
- * состояние рабочей станции на результат не влияют.
- */
-class PlatformTracingJavaAgentPluginFunctionalTest {
-
-    private static final String PLUGIN_ID = "platform.tracing-javaagent";
-    private static final String PLUGIN_GROUP = "space.br1440.platform.starters.tracing";
-    private static final String PLUGIN_ARTIFACT = "platform-tracing-gradle-plugin";
-    private static final String MARKER_ARTIFACT = PLUGIN_ID + ".gradle.plugin";
-    private static final String AGENT_ARTIFACT = "platform-tracing-javaagent";
-    private static final String COMMON_UTIL_GROUP = "space.br1440.platform.starters";
-    private static final String COMMON_UTIL_ARTIFACT = "platform-starters-common-util";
     private static final String PLUGIN_IMPLEMENTATION_CLASS = "space.br1440.platform.tracing.gradle.PlatformTracingJavaAgentPlugin";
-    private static final String PIN_RESOURCE = "/META-INF/platform-tracing/controlled-agent-pin.properties";
     private static final String PLUGIN_DESCRIPTOR = "/META-INF/gradle-plugins/" + PLUGIN_ID + ".properties";
-
-    private static final String MATERIALIZE_TASK = ":materializeControlledAgent";
-    private static final String VERIFY_TASK = ":verifyControlledAgent";
-    private static final String DOCKER_BUILD_ARGS_TASK = ":generateAgentDockerBuildArgs";
-    private static final String PREPARE_TASK = ":prepareControlledAgent";
-    private static final String CLASSPATH_GUARD_TASK = ":verifyAgentNotOnApplicationClasspath";
-    private static final String AGENT_DIRECTORY = "build/platform-tracing/agent";
-    private static final String DOCKER_BUILD_ARGS_FILE = "build/platform-tracing/docker-build-args.env";
-    private static final String LOCAL_AGENT_ARGS_FILE = "build/platform-tracing/idea-run/local-agent.args";
-
+    private static final String JIB_EXTENSION_SERVICE = "/META-INF/services/com.google.cloud.tools.jib.gradle.extension.JibGradlePluginExtension";
+    private static final String JIB_EXTENSION_CLASS = "space.br1440.platform.tracing.gradle.PlatformTracingJibExtension";
     private static final Duration LAUNCHER_PROBE_TIMEOUT = Duration.ofSeconds(30);
 
-    private static final String PLUGIN_VERSION = requiredProperty("platformTracing.pluginVersion");
-    private static final Path PLUGIN_JAR = requiredPath("platformTracing.pluginJar");
-    private static final Path COMMON_UTIL_JAR = requiredPath("platformTracing.commonUtilJar");
-    private static final Path CONTROLLED_AGENT_JAR = requiredPath("platformTracing.controlledAgentJar");
-
-    private static final Path TEST_KIT_DIRECTORY = Path.of(requiredProperty("platformTracing.testKitDirectory"));
-
-    @TempDir
-    Path temporaryDirectory;
-
-    private Path isolatedRepository;
-
-    @BeforeEach
-    void setUp() throws IOException {
-        isolatedRepository = temporaryDirectory.resolve("m2");
-        installPlugin();
-        installAgent(CONTROLLED_AGENT_JAR);
-    }
-
     @Test
-    void plugin_descriptor_and_agent_pin_are_packaged_in_the_release() throws IOException {
+    void plugin_descriptor_pin_and_jib_service_are_packaged_in_the_release() throws IOException {
         // given
-        Properties descriptor = loadProperties(requiredResource(PLUGIN_DESCRIPTOR));
+        Properties descriptor = PluginRelease.loadProperties(PluginRelease.requiredResource(PLUGIN_DESCRIPTOR));
 
         // when
-        Properties pin = loadPin();
+        Properties pin = RELEASE.pin();
+        String jibService;
+        try (InputStream stream = PluginRelease.requiredResource(JIB_EXTENSION_SERVICE).openStream()) {
+            jibService = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+        }
 
         // then
-        assertThat(descriptor.getProperty("implementation-class"))
-                .isEqualTo(PLUGIN_IMPLEMENTATION_CLASS);
+        assertThat(descriptor.getProperty("implementation-class")).isEqualTo(PLUGIN_IMPLEMENTATION_CLASS);
         assertThat(pin.getProperty("agent.version")).isEqualTo(PLUGIN_VERSION);
         assertThat(pin.getProperty("agent.sha256")).matches("[0-9a-f]{64}");
+        assertThat(jibService.strip()).isEqualTo(JIB_EXTENSION_CLASS);
     }
 
     @Test
-    void prepare_materializes_the_verified_agent_and_the_docker_build_arg() throws IOException {
+    void published_plugin_resolves_by_id_from_the_real_publication() throws IOException {
+        // given
+        Path implementation = RELEASE.publishedArtifactDirectory(PLUGIN_GROUP, PLUGIN_ARTIFACT);
+        Path marker = RELEASE.publishedArtifactDirectory(PLUGIN_ID, PLUGIN_ID + ".gradle.plugin");
+        Path project = ConsumerProject.groovy("published-plugin")
+                .withLeadingRepository(RELEASE.publishedRepository())
+                .create(temporaryDirectory, repository, javaConsumer());
+
+        // when
+        BuildResult result = run(project, "prepareControlledAgent");
+
+        // then
+        assertThat(outcomeOf(result, VERIFY_TASK)).isEqualTo(TaskOutcome.SUCCESS);
+
+        String implementationPom = Files.readString(implementation.resolve(PLUGIN_ARTIFACT + "-" + PLUGIN_VERSION + ".pom"), StandardCharsets.UTF_8);
+        assertThat(implementationPom)
+                .doesNotContain("<dependencyManagement>")
+                .doesNotContain("<dependencies>");
+
+        String markerPom = Files.readString(marker.resolve(PLUGIN_ID + ".gradle.plugin-" + PLUGIN_VERSION + ".pom"), StandardCharsets.UTF_8);
+        assertThat(markerPom)
+                .contains("<groupId>" + PLUGIN_GROUP + "</groupId>")
+                .contains("<artifactId>" + PLUGIN_ARTIFACT + "</artifactId>")
+                .contains("<version>" + PLUGIN_VERSION + "</version>");
+
+        String module = Files.readString(implementation.resolve(PLUGIN_ARTIFACT + "-" + PLUGIN_VERSION + ".module"), StandardCharsets.UTF_8);
+        assertThat(module)
+                .contains("\"name\": \"apiElements\"")
+                .contains("\"name\": \"runtimeElements\"")
+                .doesNotContain("\"dependencies\"")
+                .doesNotContain("\"dependencyConstraints\"");
+        assertThat(implementation.resolve(PLUGIN_ARTIFACT + "-" + PLUGIN_VERSION + "-sources.jar")).isRegularFile();
+        assertThat(implementation.resolve(PLUGIN_ARTIFACT + "-" + PLUGIN_VERSION + "-javadoc.jar")).isRegularFile();
+    }
+
+    @Test
+    void prepare_writes_the_verified_agent_and_the_local_argfile() throws IOException {
         // given
         Path project = consumer("prepare-happy", javaConsumer());
 
@@ -103,32 +92,79 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
         BuildResult result = run(project, "prepareControlledAgent");
 
         // then
-        assertThat(agentJarIn(project)).isRegularFile();
-        assertThat(Files.readAllBytes(agentJarIn(project)))
-                .isEqualTo(Files.readAllBytes(CONTROLLED_AGENT_JAR));
-        assertThat(project.resolve(DOCKER_BUILD_ARGS_FILE))
-                .hasContent("PLATFORM_AGENT_JAR=" + agentFileName() + "\n");
         assertThat(outcomeOf(result, VERIFY_TASK)).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(outcomeOf(result, ARG_FILE_TASK)).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(agentJarIn(project)).isRegularFile();
+        assertThat(Files.readAllBytes(agentJarIn(project))).isEqualTo(Files.readAllBytes(CONTROLLED_AGENT_JAR));
+        assertThat(localArgsFileIn(project)).isRegularFile();
+        assertThat(project.resolve("build/platform-tracing/docker-build-args.env")).doesNotExist();
     }
 
     @Test
-    void tampered_agent_bytes_fail_closed() throws IOException {
+    void tampered_agent_bytes_fail_closed_and_leave_no_outputs() throws IOException {
         // given
-        installAgent(Files.writeString(
-                temporaryDirectory.resolve("tampered.jar"),
-                "not-the-controlled-agent",
-                StandardCharsets.UTF_8));
+        installAgent(Files.writeString(temporaryDirectory.resolve("tampered.jar"), "not-the-controlled-agent", StandardCharsets.UTF_8));
         Path project = consumer("prepare-tampered", javaConsumer());
+
+        // when
+        BuildResult result = runAndFail(project, "prepareControlledAgent");
+
+        // then
+        assertThat(result.getOutput())
+                .contains("does not match the SHA-256 pinned")
+                .contains("expected: " + pinnedSha256());
+        assertThat(agentJarIn(project)).doesNotExist();
+        assertThat(localArgsFileIn(project)).doesNotExist();
+    }
+
+    @Test
+    void stale_verified_copy_is_replaced_when_the_resolved_agent_changes() throws IOException {
+        // given
+        Path project = consumer("prepare-stale-copy", javaConsumer());
+        run(project, "verifyControlledAgent");
+        Files.writeString(agentJarIn(project), "stale-copy", StandardCharsets.UTF_8);
+
+        // when
+        BuildResult result = run(project, "verifyControlledAgent");
+
+        // then
+        assertThat(outcomeOf(result, VERIFY_TASK)).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(Files.readAllBytes(agentJarIn(project))).isEqualTo(Files.readAllBytes(CONTROLLED_AGENT_JAR));
+    }
+
+    @Test
+    void re_executed_verify_removes_foreign_files_from_the_owned_agent_directory() throws IOException {
+        // given
+        Path project = consumer("prepare-owned-directory", javaConsumer());
+        run(project, "verifyControlledAgent");
+        Files.delete(agentJarIn(project));
+        Path stale = Files.writeString(project.resolve(AGENT_DIRECTORY).resolve("stale.jar"), "stale", StandardCharsets.UTF_8);
+
+        // when
+        BuildResult result = run(project, "verifyControlledAgent");
+
+        // then
+        assertThat(outcomeOf(result, VERIFY_TASK)).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(stale).doesNotExist();
+        assertThat(Files.readAllBytes(agentJarIn(project))).isEqualTo(Files.readAllBytes(CONTROLLED_AGENT_JAR));
+    }
+
+    @Test
+    void second_artifact_in_the_controlled_agent_configuration_fails_closed() throws IOException {
+        // given
+        installJar(PLUGIN_GROUP, "extra-artifact", CONTROLLED_AGENT_JAR);
+        Path project = consumer("controlled-agent-two-files", javaConsumer() + """
+                dependencies {
+                    controlledAgent '%s:extra-artifact:%s'
+                }
+                """.formatted(PLUGIN_GROUP, PLUGIN_VERSION));
 
         // when
         BuildResult result = runAndFail(project, "verifyControlledAgent");
 
         // then
-        assertThat(result.getOutput())
-                .contains("does not match the SHA-256 pinned")
-                .contains("expected: " + loadPin().getProperty("agent.sha256"));
-        assertThat(project.resolve(DOCKER_BUILD_ARGS_FILE)).doesNotExist();
-        assertThat(project.resolve(LOCAL_AGENT_ARGS_FILE)).doesNotExist();
+        assertThat(result.getOutput()).contains("must resolve to exactly one artifact, got 2");
+        assertThat(agentJarIn(project)).doesNotExist();
     }
 
     @Test
@@ -144,21 +180,14 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"implementation", "compileOnly", "runtimeOnly"})
-    void agent_declared_as_an_application_dependency_fails_closed(String configuration)
-            throws IOException {
+    @ValueSource(strings = {"implementation", "compileOnly", "runtimeOnly", "testImplementation", "testRuntimeOnly"})
+    void agent_declared_as_a_dependency_of_any_source_set_fails_closed(String configuration) throws IOException {
         // given
-        Path project = consumer("classpath-guard-" + configuration, """
-                plugins {
-                    id 'java'
-                    id '%s' version '%s'
-                }
+        Path project = consumer("classpath-guard-" + configuration, javaConsumer() + """
                 dependencies {
                     %s '%s:%s:%s'
                 }
-                """.formatted(
-                PLUGIN_ID, PLUGIN_VERSION,
-                configuration, PLUGIN_GROUP, AGENT_ARTIFACT, PLUGIN_VERSION));
+                """.formatted(configuration, PLUGIN_GROUP, AGENT_ARTIFACT, PLUGIN_VERSION));
 
         // when
         BuildResult result = runAndFail(project, "verifyAgentNotOnApplicationClasspath");
@@ -170,30 +199,60 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
     }
 
     @Test
+    void unresolved_application_dependency_fails_the_classpath_guard_closed() throws IOException {
+        // given
+        Path project = consumer("classpath-guard-unresolved", javaConsumer() + """
+                dependencies {
+                    implementation 'example.missing:missing-library:1.0'
+                }
+                """);
+
+        // when
+        BuildResult result = runAndFail(project, "verifyAgentNotOnApplicationClasspath");
+
+        // then
+        assertThat(result.getOutput())
+                .contains("dependency graph is incomplete")
+                .contains("example.missing:missing-library:1.0");
+    }
+
+    @Test
+    void classpath_guard_is_wired_into_check() throws IOException {
+        // given
+        Path project = consumer("classpath-guard-check", javaConsumer());
+
+        // when
+        BuildResult result = run(project, "check", "--dry-run");
+
+        // then
+        assertThat(result.getOutput()).contains(CLASSPATH_GUARD_TASK);
+    }
+
+    @Test
     void plugin_order_does_not_change_the_boot_run_graph() throws IOException {
         // given
-        Path bootFirst = consumer("order-boot-first", springBootConsumer(), true);
-        Path agentFirst = consumer("order-agent-first", """
+        Path bootFirst = springBootConsumer("order-boot-first", springBootBuildScript());
+        Path agentFirst = springBootConsumer("order-agent-first", """
                 plugins {
                     id '%s' version '%s'
                     id 'java'
                     id 'org.springframework.boot'
                 }
-                """.formatted(PLUGIN_ID, PLUGIN_VERSION), true);
+                """.formatted(PLUGIN_ID, PLUGIN_VERSION));
 
         // when
         String bootFirstGraph = run(bootFirst, "bootRun", "--dry-run").getOutput();
         String agentFirstGraph = run(agentFirst, "bootRun", "--dry-run").getOutput();
 
         // then
-        assertThat(bootFirstGraph).contains(MATERIALIZE_TASK, VERIFY_TASK, ":bootRun");
-        assertThat(agentFirstGraph).contains(MATERIALIZE_TASK, VERIFY_TASK, ":bootRun");
+        assertThat(bootFirstGraph).contains(VERIFY_TASK, ":bootRun");
+        assertThat(agentFirstGraph).contains(VERIFY_TASK, ":bootRun");
     }
 
     @Test
     void boot_jar_does_not_resolve_the_agent() throws IOException {
         // given
-        Path project = consumer("boot-jar-isolated", springBootConsumer(), true);
+        Path project = springBootConsumer("boot-jar-isolated", springBootBuildScript());
 
         // when
         BuildResult result = run(project, "bootJar", "--dry-run");
@@ -201,7 +260,7 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
         // then
         assertThat(result.getOutput())
                 .contains(":bootJar")
-                .doesNotContain(MATERIALIZE_TASK, VERIFY_TASK, PREPARE_TASK);
+                .doesNotContain(VERIFY_TASK, PREPARE_TASK, ARG_FILE_TASK);
     }
 
     @Test
@@ -214,125 +273,113 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
         BuildResult second = run(project, "prepareControlledAgent");
 
         // then
-        assertThat(outcomeOf(second, MATERIALIZE_TASK)).isEqualTo(TaskOutcome.UP_TO_DATE);
-        assertThat(outcomeOf(second, DOCKER_BUILD_ARGS_TASK)).isEqualTo(TaskOutcome.UP_TO_DATE);
-        assertThat(outcomeOf(second, VERIFY_TASK)).isIn(TaskOutcome.SUCCESS, TaskOutcome.UP_TO_DATE);
+        assertThat(outcomeOf(second, VERIFY_TASK)).isEqualTo(TaskOutcome.UP_TO_DATE);
+        assertThat(outcomeOf(second, ARG_FILE_TASK)).isEqualTo(TaskOutcome.UP_TO_DATE);
     }
 
     @Test
     void prepare_reuses_the_configuration_cache() throws IOException {
         // given
-        Path project = consumer("configuration-cache", javaConsumer());
-        BuildResult first = run(project, "prepareControlledAgent", "--configuration-cache");
+        Path project = consumer("configuration-cache-prepare", javaConsumer());
 
-        // when
-        BuildResult second = run(project, "prepareControlledAgent", "--configuration-cache");
-
-        // then
-        assertThat(first.getOutput()).contains("Configuration cache entry stored");
-        assertThat(second.getOutput()).contains("Reusing configuration cache");
+        // when / then
+        assertConfigurationCacheReused(project, "prepareControlledAgent");
     }
 
     @Test
-    void boot_run_receives_the_path_of_the_verified_agent() throws IOException {
+    void classpath_guard_reuses_the_configuration_cache() throws IOException {
         // given
-        Path project = consumer("boot-run-args", springBootConsumer() + """
-                tasks.register('captureBootRunAgent') {
-                    dependsOn 'verifyControlledAgent'
-                    doLast {
-                        def bootRun = tasks.named('bootRun', JavaExec).get()
-                        def arguments = bootRun.jvmArgumentProviders.collectMany { it.asArguments() }
-                        file('build/boot-run-args.txt').text = arguments.join('\\n')
-                    }
-                }
-                """, true);
+        Path project = consumer("configuration-cache-guard", javaConsumer());
+
+        // when / then
+        assertConfigurationCacheReused(project, "verifyAgentNotOnApplicationClasspath");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"bootRun", "bootTestRun"})
+    void boot_java_exec_tasks_receive_the_path_of_the_verified_agent(String taskName) throws IOException {
+        // given
+        Path project = springBootConsumer("boot-args-" + taskName, springBootBuildScript() + captureJvmArgumentsTask(taskName));
 
         // when
-        run(project, "captureBootRunAgent");
+        BuildResult result = run(project, "captureJvmArguments");
 
         // then
-        assertThat(project.resolve("build/boot-run-args.txt"))
-                .hasContent(
-                        """
+        assertThat(outcomeOf(result, VERIFY_TASK)).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(project.resolve("build/jvm-args.txt"))
+                .hasContent("""
                         -javaagent:%s
                         -Dplatform.tracing.controlled-agent.expected-sha256=%s
-                        """.formatted(
-                                agentJarIn(project).toRealPath(),
-                                loadPin().getProperty("agent.sha256")
-                        )
-                );
+                        """.formatted(agentJarIn(project).toRealPath(), pinnedSha256()));
     }
 
     @Test
     void boot_run_preserves_user_supplied_jvm_arguments() throws IOException {
         // given
-        Path project = consumer("boot-run-user-args", springBootConsumer() + """
+        Path project = springBootConsumer("boot-run-user-args", springBootBuildScript() + """
                 bootRun {
                     jvmArgs '-Xmx256m'
                 }
-                tasks.register('captureBootRunAgent') {
+                tasks.register('captureJvmArguments') {
                     dependsOn 'verifyControlledAgent'
+                    def bootRun = tasks.named('bootRun', JavaExec)
+                    def output = layout.buildDirectory.file('jvm-args.txt')
                     doLast {
-                        def bootRun = tasks.named('bootRun', JavaExec).get()
-                        def arguments = bootRun.jvmArgumentProviders.collectMany { it.asArguments() } + bootRun.jvmArgs
-                        file('build/boot-run-args.txt').text = arguments.join('\\n')
+                        def task = bootRun.get()
+                        def arguments = task.jvmArgumentProviders.collectMany { it.asArguments() } + task.jvmArgs
+                        output.get().asFile.text = arguments.join('\\n')
                     }
                 }
-                """, true);
+                """);
 
         // when
-        run(project, "captureBootRunAgent");
+        run(project, "captureJvmArguments");
 
         // then
-        assertThat(project.resolve("build/boot-run-args.txt"))
+        assertThat(project.resolve("build/jvm-args.txt"))
                 .content(StandardCharsets.UTF_8)
                 .contains("-Xmx256m", "-javaagent:" + agentJarIn(project).toRealPath());
     }
 
     @Test
-    void local_agent_args_file_is_written_after_a_successful_verify() throws IOException {
+    void local_agent_argfile_points_at_the_verified_agent() throws IOException {
         // given
         Path project = consumer("idea-args-created", javaConsumer());
 
         // when
-        run(project, "verifyControlledAgent");
+        run(project, "writeLocalAgentArgFile");
 
         // then
-        assertThat(project.resolve(LOCAL_AGENT_ARGS_FILE))
-                .hasContent(
-                        """
+        assertThat(localArgsFileIn(project))
+                .hasContent("""
                         -javaagent:%s
                         -Dplatform.tracing.controlled-agent.expected-sha256=%s
-                        """.formatted(
-                                agentJarIn(project).toRealPath(),
-                                loadPin().getProperty("agent.sha256")
-                        )
-                );
+                        """.formatted(agentJarIn(project).toRealPath(), pinnedSha256()));
     }
 
     @Test
-    void local_agent_args_file_is_restored_after_manual_deletion() throws IOException {
+    void local_agent_argfile_is_restored_after_manual_deletion() throws IOException {
         // given
         Path project = consumer("idea-args-restored", javaConsumer());
-        run(project, "verifyControlledAgent");
-        Path argsFile = project.resolve(LOCAL_AGENT_ARGS_FILE);
+        run(project, "writeLocalAgentArgFile");
+        Path argsFile = localArgsFileIn(project);
         String originalContent = Files.readString(argsFile, StandardCharsets.UTF_8);
         Files.delete(argsFile);
 
         // when
-        run(project, "verifyControlledAgent");
+        run(project, "writeLocalAgentArgFile");
 
         // then
         assertThat(argsFile).exists().hasContent(originalContent);
     }
 
     @Test
-    void local_agent_args_file_is_interpreted_correctly_by_a_real_java_launcher()
+    void local_agent_argfile_is_interpreted_correctly_by_a_real_java_launcher()
             throws IOException, InterruptedException, URISyntaxException {
         // given
         Path project = consumer("idea args path with space & sign", javaConsumer());
-        run(project, "verifyControlledAgent");
-        Path argsFile = project.resolve(LOCAL_AGENT_ARGS_FILE).toRealPath();
+        run(project, "writeLocalAgentArgFile");
+        Path argsFile = localArgsFileIn(project).toRealPath();
 
         // when
         ChildProcessResult result = runLauncherProbe(argsFile);
@@ -342,12 +389,9 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
                 .as("probe must terminate normally; stdout=%s, stderr=%s", result.stdout(), result.stderr())
                 .isZero();
         assertThat(result.stdout())
-                .contains("MANAGED_AGENT_PROBE_PROPERTY platform.tracing.controlled-agent.expected-sha256="
-                        + loadPin().getProperty("agent.sha256"))
+                .contains("MANAGED_AGENT_PROBE_PROPERTY platform.tracing.controlled-agent.expected-sha256=" + pinnedSha256())
                 .as("the assessor reads startup arguments delivered through java @argfile")
-                .contains("MANAGED_AGENT_PROBE_INPUT_ARGUMENT "
-                        + "-Dplatform.tracing.controlled-agent.expected-sha256="
-                        + loadPin().getProperty("agent.sha256"));
+                .contains("MANAGED_AGENT_PROBE_INPUT_ARGUMENT -Dplatform.tracing.controlled-agent.expected-sha256=" + pinnedSha256());
 
         List<String> managementInputArguments = result.stdout().lines()
                 .filter(line -> line.startsWith("MANAGED_AGENT_PROBE_INPUT_ARGUMENT -Dcom.sun.management")
@@ -359,6 +403,24 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
                 .filter(line -> line.startsWith("MANAGED_AGENT_PROBE_INPUT_ARGUMENT -javaagent:"))
                 .toList();
         assertThat(javaAgentInputArguments).hasSize(1);
+    }
+
+    @Test
+    void kotlin_dsl_consumer_prepares_the_agent_without_configuration() throws IOException {
+        // given
+        Path project = kotlinConsumer("kotlin-dsl", """
+                plugins {
+                    java
+                    id("%s") version "%s"
+                }
+                """.formatted(PLUGIN_ID, PLUGIN_VERSION));
+
+        // when
+        BuildResult result = run(project, "prepareControlledAgent");
+
+        // then
+        assertThat(outcomeOf(result, VERIFY_TASK)).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(Files.readAllBytes(agentJarIn(project))).isEqualTo(Files.readAllBytes(CONTROLLED_AGENT_JAR));
     }
 
     private ChildProcessResult runLauncherProbe(Path argsFile) throws IOException, InterruptedException, URISyntaxException {
@@ -389,24 +451,18 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
     }
 
     private static Path javaExecutable() {
-        String javaCommand = System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win")
-                ? "java.exe"
-                : "java";
+        String javaCommand = System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win") ? "java.exe" : "java";
         return Path.of(System.getProperty("java.home"), "bin", javaCommand);
     }
 
     private static Path probeClassPath() throws URISyntaxException {
-        return Path.of(ManagedAgentJvmFlagsLauncherProbe.class
-                .getProtectionDomain()
-                .getCodeSource()
-                .getLocation()
-                .toURI());
+        return Path.of(ManagedAgentJvmFlagsLauncherProbe.class.getProtectionDomain().getCodeSource().getLocation().toURI());
     }
 
     private record ChildProcessResult(boolean finished, Integer exitCode, String stdout, String stderr) {
     }
 
-    private String javaConsumer() {
+    private static String javaConsumer() {
         return """
                 plugins {
                     id 'java'
@@ -415,7 +471,7 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
                 """.formatted(PLUGIN_ID, PLUGIN_VERSION);
     }
 
-    private String springBootConsumer() {
+    private static String springBootBuildScript() {
         return """
                 plugins {
                     id 'java'
@@ -425,258 +481,17 @@ class PlatformTracingJavaAgentPluginFunctionalTest {
                 """.formatted(PLUGIN_ID, PLUGIN_VERSION);
     }
 
-    private Path consumer(String name, String buildScript) throws IOException {
-        return consumer(name, buildScript, false);
-    }
-
-    private Path consumer(String name, String buildScript, boolean springBootSubstitute) throws IOException {
-        Path project = temporaryDirectory.resolve(name);
-        Files.createDirectories(project);
-        if (springBootSubstitute) {
-            writeSpringBootSubstitute(project);
-        }
-
-        Files.writeString(project.resolve("settings.gradle"), """
-                        pluginManagement {
-                            repositories {
-                                maven { url = uri('%s') }
-                            }
-                        }
-                        dependencyResolutionManagement {
-                            repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-                            repositories {
-                                maven { url = uri('%s') }
-                            }
-                        }
-                        rootProject.name = '%s'
-                        """.formatted(
-                        groovyUri(isolatedRepository), groovyUri(isolatedRepository), name),
-                StandardCharsets.UTF_8);
-        Files.writeString(project.resolve("build.gradle"), buildScript, StandardCharsets.UTF_8);
-        return project;
-    }
-
-    private static void writeSpringBootSubstitute(Path project) throws IOException {
-        Path buildSrc = project.resolve("buildSrc");
-        Files.createDirectories(buildSrc.resolve("src/main/java"));
-        Files.createDirectories(buildSrc.resolve("src/main/resources/META-INF/gradle-plugins"));
-
-        Files.writeString(buildSrc.resolve("build.gradle"), """
-                plugins {
-                    id 'java'
-                }
-                """, StandardCharsets.UTF_8);
-
-        Files.writeString(
-                buildSrc.resolve(
-                        "src/main/resources/META-INF/gradle-plugins/"
-                                + "org.springframework.boot.properties"),
-                "implementation-class=SpringBootTaskSubstitutePlugin\n",
-                StandardCharsets.UTF_8);
-
-        Files.writeString(buildSrc.resolve("src/main/java/SpringBootTaskSubstitutePlugin.java"), """
-                import org.gradle.api.Plugin;
-                import org.gradle.api.Project;
-                import org.gradle.api.tasks.JavaExec;
-                import org.gradle.api.tasks.bundling.Jar;
-
-                public final class SpringBootTaskSubstitutePlugin implements Plugin<Project> {
-                    @Override
-                    public void apply(Project project) {
-                        project.getTasks().register("bootRun", JavaExec.class);
-                        project.getTasks().register("bootJar", Jar.class);
+    private static String captureJvmArgumentsTask(String javaExecTaskName) {
+        return """
+                tasks.register('captureJvmArguments') {
+                    dependsOn 'verifyControlledAgent'
+                    def javaExec = tasks.named('%s', JavaExec)
+                    def output = layout.buildDirectory.file('jvm-args.txt')
+                    doLast {
+                        def arguments = javaExec.get().jvmArgumentProviders.collectMany { it.asArguments() }
+                        output.get().asFile.text = arguments.join('\\n')
                     }
                 }
-                """, StandardCharsets.UTF_8);
-    }
-
-    private BuildResult run(Path project, String... arguments) {
-        return runner(project, arguments).build();
-    }
-
-    private BuildResult runAndFail(Path project, String... arguments) {
-        return runner(project, arguments).buildAndFail();
-    }
-
-    private GradleRunner runner(Path project, String... arguments) {
-        List<String> command = new ArrayList<>(List.of(arguments));
-        command.add("--offline");
-        command.add("--no-build-cache");
-        command.add("--stacktrace");
-        return GradleRunner.create()
-                .withTestKitDir(testKitDirectory().toFile())
-                .withProjectDir(project.toFile())
-                .withArguments(command)
-                .forwardOutput();
-    }
-
-    private static Path testKitDirectory() {
-        try {
-            return Files.createDirectories(TEST_KIT_DIRECTORY);
-        } catch (IOException failure) {
-            throw new IllegalStateException("Cannot create the shared TestKit directory: " + TEST_KIT_DIRECTORY, failure);
-        }
-    }
-
-    private static TaskOutcome outcomeOf(BuildResult result, String taskPath) {
-        var task = result.task(taskPath);
-        if (task == null) {
-            throw new IllegalStateException("Build did not run the expected task: " + taskPath);
-        }
-
-        return task.getOutcome();
-    }
-
-    private void installPlugin() throws IOException {
-        Path pluginDirectory = mavenDirectory(PLUGIN_GROUP, PLUGIN_ARTIFACT);
-        Files.copy(
-                PLUGIN_JAR,
-                pluginDirectory.resolve(PLUGIN_ARTIFACT + "-" + PLUGIN_VERSION + ".jar"),
-                StandardCopyOption.REPLACE_EXISTING
-        );
-
-        Files.writeString(
-                pluginDirectory.resolve(PLUGIN_ARTIFACT + "-" + PLUGIN_VERSION + ".pom"),
-                mavenPom(PLUGIN_GROUP, PLUGIN_ARTIFACT, "jar", """
-                          <dependencies>
-                            <dependency>
-                              <groupId>%s</groupId>
-                              <artifactId>%s</artifactId>
-                              <version>%s</version>
-                              <scope>runtime</scope>
-                            </dependency>
-                          </dependencies>
-                        """.formatted(COMMON_UTIL_GROUP, COMMON_UTIL_ARTIFACT, PLUGIN_VERSION)),
-                StandardCharsets.UTF_8
-        );
-
-        installCommonUtil();
-
-        Path markerDirectory = mavenDirectory(PLUGIN_ID, MARKER_ARTIFACT);
-        Files.writeString(
-                markerDirectory.resolve(MARKER_ARTIFACT + "-" + PLUGIN_VERSION + ".pom"),
-                mavenPom(PLUGIN_ID, MARKER_ARTIFACT, "pom", """
-                          <dependencies>
-                            <dependency>
-                              <groupId>%s</groupId>
-                              <artifactId>%s</artifactId>
-                              <version>%s</version>
-                            </dependency>
-                          </dependencies>
-                        """.formatted(PLUGIN_GROUP, PLUGIN_ARTIFACT, PLUGIN_VERSION)),
-                StandardCharsets.UTF_8
-        );
-    }
-
-    private void installCommonUtil() throws IOException {
-        Path commonUtilDirectory = mavenDirectory(COMMON_UTIL_GROUP, COMMON_UTIL_ARTIFACT);
-
-        Files.copy(
-                COMMON_UTIL_JAR,
-                commonUtilDirectory.resolve(COMMON_UTIL_ARTIFACT + "-" + PLUGIN_VERSION + ".jar"),
-                StandardCopyOption.REPLACE_EXISTING
-        );
-
-        Files.writeString(
-                commonUtilDirectory.resolve(COMMON_UTIL_ARTIFACT + "-" + PLUGIN_VERSION + ".pom"),
-                mavenPom(COMMON_UTIL_GROUP, COMMON_UTIL_ARTIFACT, "jar", ""),
-                StandardCharsets.UTF_8
-        );
-    }
-
-    private void installAgent(Path jar) throws IOException {
-        Path agentDirectory = mavenDirectory(PLUGIN_GROUP, AGENT_ARTIFACT);
-
-        Files.copy(
-                jar,
-                agentDirectory.resolve(agentFileName()),
-                StandardCopyOption.REPLACE_EXISTING
-        );
-
-        Files.writeString(
-                agentDirectory.resolve(AGENT_ARTIFACT + "-" + PLUGIN_VERSION + ".pom"),
-                mavenPom(PLUGIN_GROUP, AGENT_ARTIFACT, "jar", ""),
-                StandardCharsets.UTF_8
-        );
-    }
-
-    private Path mavenDirectory(String group, String artifact) throws IOException {
-        Path directory = isolatedRepository
-                .resolve(group.replace('.', '/'))
-                .resolve(artifact)
-                .resolve(PLUGIN_VERSION);
-        Files.createDirectories(directory);
-        return directory;
-    }
-
-    private static String mavenPom(String group,
-                                   String artifact,
-                                   String packaging,
-                                   String body
-    ) {
-        return """
-                <?xml version="1.0" encoding="UTF-8"?>
-                <project>
-                  <modelVersion>4.0.0</modelVersion>
-                  <groupId>%s</groupId>
-                  <artifactId>%s</artifactId>
-                  <version>%s</version>
-                  <packaging>%s</packaging>
-                %s</project>
-                """.formatted(group, artifact, PLUGIN_VERSION, packaging, body);
-    }
-
-    private static String agentFileName() {
-        return AGENT_ARTIFACT + "-" + PLUGIN_VERSION + ".jar";
-    }
-
-    private static Path agentJarIn(Path project) {
-        return project
-                .resolve(AGENT_DIRECTORY)
-                .resolve(agentFileName());
-    }
-
-    private static Properties loadPin() throws IOException {
-        return loadProperties(requiredResource(PIN_RESOURCE));
-    }
-
-    private static Properties loadProperties(URL resource) throws IOException {
-        Properties properties = new Properties();
-        try (InputStream stream = resource.openStream()) {
-            properties.load(stream);
-        }
-
-        return properties;
-    }
-
-    private static URL requiredResource(String name) {
-        URL resource = PlatformTracingJavaAgentPluginFunctionalTest.class.getResource(name);
-        if (resource == null) {
-            throw new IllegalStateException("Plugin release is missing the resource: " + name);
-        }
-
-        return resource;
-    }
-
-    private static String groovyUri(Path path) {
-        return path.toAbsolutePath().normalize().toUri().toString().replace("'", "\\'");
-    }
-
-    private static Path requiredPath(String name) {
-        Path path = Path.of(requiredProperty(name));
-        if (!Files.isRegularFile(path)) {
-            throw new IllegalStateException("Required test file is missing: " + path);
-        }
-
-        return path;
-    }
-
-    private static String requiredProperty(String name) {
-        String value = System.getProperty(name);
-        if (StringUtils.isNullOrBlank(value)) {
-            throw new IllegalStateException("Required test system property is missing: " + name);
-        }
-
-        return value;
+                """.formatted(javaExecTaskName);
     }
 }

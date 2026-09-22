@@ -2,31 +2,29 @@ package space.br1440.platform.tracing.gradle;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.List;
+import java.util.Set;
+
+import javax.inject.Inject;
 
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
-import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.file.FileSystemOperations;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
-import org.gradle.api.tasks.InputFile;
-import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 
 public abstract class VerifyControlledAgentTask extends DefaultTask {
 
-    private static final int BUFFER_SIZE = 64 * 1024;
-
-    @InputFile
-    @PathSensitive(PathSensitivity.ABSOLUTE)
-    public abstract RegularFileProperty getAgentJar();
+    @InputFiles
+    @PathSensitive(PathSensitivity.NONE)
+    public abstract ConfigurableFileCollection getControlledAgent();
 
     @Input
     public abstract Property<String> getAgentVersion();
@@ -34,13 +32,19 @@ public abstract class VerifyControlledAgentTask extends DefaultTask {
     @Input
     public abstract Property<String> getExpectedSha256();
 
-    @OutputFile
-    public abstract RegularFileProperty getArgsFile();
+    @Input
+    public abstract Property<String> getAgentFileName();
+
+    @OutputDirectory
+    public abstract DirectoryProperty getAgentDirectory();
+
+    @Inject
+    protected abstract FileSystemOperations getFileSystemOperations();
 
     @TaskAction
     public void verify() {
-        File agentJar = getAgentJar().get().getAsFile();
-        String actual = sha256Hex(agentJar);
+        File source = requireSingleArtifact();
+        String actual = sha256Of(source.toPath());
         String expected = getExpectedSha256().get();
         if (!expected.equals(actual)) {
             throw new GradleException("""
@@ -50,62 +54,37 @@ public abstract class VerifyControlledAgentTask extends DefaultTask {
                       file:     %s
                     Resolve the agent from the approved repository or use the plugin release \
                     that owns this agent version."""
-                    .formatted(
-                            getAgentVersion().get(),
-                            expected,
-                            actual,
-                            agentJar.getAbsolutePath()
-                    )
+                    .formatted(getAgentVersion().get(), expected, actual, source.getAbsolutePath())
             );
         }
 
-        writeArgsFile(agentJar, actual);
+        String fileName = getAgentFileName().get();
+        getFileSystemOperations().sync(spec -> {
+            spec.from(source);
+            spec.into(getAgentDirectory());
+            spec.rename(sourceName -> fileName);
+        });
     }
 
-    private void writeArgsFile(File agentJar, String verifiedSha256) {
-        Path target = getArgsFile().get().getAsFile().toPath();
-        List<String> flags = ManagedAgentJvmFlags.forAgentPath(agentJar.getAbsolutePath(), verifiedSha256);
-        String content = JavaArgFileFormat.render(flags);
-
-        try {
-            Files.createDirectories(target.getParent());
-            Files.writeString(target, content);
-        } catch (IOException failure) {
-            throw new GradleException("Cannot write " + target, failure);
-        }
-
-        getLogger().lifecycle("Platform tracing: local agent argfile is ready at {}", target.toAbsolutePath());
-    }
-
-    private static String sha256Hex(File file) {
-        MessageDigest digest;
-        try {
-            digest = MessageDigest.getInstance("SHA-256");
-        } catch (NoSuchAlgorithmException failure) {
-            throw new GradleException("SHA-256 is not available in this JVM", failure);
-        }
-
-        byte[] buffer = new byte[BUFFER_SIZE];
-        try (InputStream stream = Files.newInputStream(file.toPath())) {
-            int read = stream.read(buffer);
-            while (read != -1) {
-                digest.update(buffer, 0, read);
-                read = stream.read(buffer);
-            }
-        } catch (IOException failure) {
+    private File requireSingleArtifact() {
+        Set<File> files = getControlledAgent().getFiles();
+        if (files.size() != 1) {
             throw new GradleException("""
-                    Cannot read %s"""
-                    .formatted(file.getAbsolutePath()),
-                    failure
+                    Controlled Java agent configuration must resolve to exactly one artifact, got %d: %s. \
+                    The agent is a single JAR pinned by the plugin release; do not add dependencies to \
+                    the controlledAgent configuration."""
+                    .formatted(files.size(), files)
             );
         }
 
-        byte[] bytes = digest.digest();
-        StringBuilder result = new StringBuilder(bytes.length * 2);
-        for (byte value : bytes) {
-            result.append(Character.forDigit((value >> 4) & 0xF, 16));
-            result.append(Character.forDigit(value & 0xF, 16));
+        return files.iterator().next();
+    }
+
+    private static String sha256Of(Path file) {
+        try {
+            return Sha256Digest.hexOf(file);
+        } catch (IOException failure) {
+            throw new GradleException("Cannot read " + file.toAbsolutePath(), failure);
         }
-        return result.toString();
     }
 }

@@ -76,16 +76,34 @@ plugins {
 }
 ```
 
-Плагин резолвит агент вне application classpath, сверяет SHA-256 со вшитым pin,
-кладёт JAR в `build/platform-tracing/agent/platform-tracing-javaagent-<V>.jar`
-и пишет `build/platform-tracing/docker-build-args.env` с `PLATFORM_AGENT_JAR`.
-Публичная задача — `prepareControlledAgent`. `bootJar` и `assemble` агент не тянут.
-`bootRun` получает `-javaagent` на проверенный файл и `-Dplatform.tracing.controlled-agent.expected-sha256`
-из того же вшитого pin — вручную прописывать SHA-256 в JVM Options локально не нужно.
+Плагин резолвит агент вне application classpath (конфигурация `controlledAgent`, strict version),
+сверяет SHA-256 со вшитым pin и кладёт проверенные байты в
+`build/platform-tracing/agent/platform-tracing-javaagent-<V>.jar` — единственный источник агента
+для всех потребителей ниже. Публичная задача — `prepareControlledAgent` (verify + argfile).
+`bootJar` и `assemble` агент не тянут.
 
-Это build-time верификация. Runtime-проверка SHA-256 до старта JVM, mount path
-и delivery mechanism остаются за deployment/GitOps-слоем и в этом репозитории
-не реализованы.
+- `bootRun` и `bootTestRun` получают `-javaagent` на проверенный файл и
+  `-Dplatform.tracing.controlled-agent.expected-sha256` из того же pin — вручную прописывать SHA-256
+  в JVM Options локально не нужно.
+- Для запуска из IDE плагин пишет `build/platform-tracing/idea-run/local-agent.args`
+  (`java @<path>/local-agent.args ...`).
+- При применённом `com.google.cloud.tools.jib` плагин регистрирует Jib plugin extension: образ получает
+  слой `/opt/platform-tracing/agent.jar` и entrypoint
+  `java -javaagent:/opt/platform-tracing/agent.jar -Dplatform.tracing.controlled-agent.expected-sha256=<pin> ...`.
+  Сборка образа отказывает (fail-closed) при `container.entrypoint` (`INHERIT` или custom), втором
+  `-javaagent`, `-XX:+ManagementServer`, `-Dcom.sun.management*`, managed `otel.*`-ключах,
+  `JAVA_TOOL_OPTIONS`/`JDK_JAVA_OPTIONS`/`_JAVA_OPTIONS`/`OTEL_*` в `container.environment`
+  и при любых иных `jib.pluginExtensions`. Поддерживаются Jib 3.3.2+; оба плагина должны применяться
+  из одного `plugins {}` (Jib только из `buildSrc` не поддерживается).
+- `check` включает `verifyAgentNotOnApplicationClasspath`: агент на compile/runtime classpath любого
+  source set, как и нерезолвленная зависимость, — отказ.
+
+Dockerfile-канал (`docker-build-args.env`, `PLATFORM_AGENT_JAR`) удалён: delivery в образ —
+только через Jib. Сборки, копирующие JAR из `build/platform-tracing/agent/` вручную,
+продолжают работать, но контракт запуска для них не формируется плагином.
+
+Это build-time верификация. Runtime-проверка SHA-256 до старта JVM остаётся за
+`ControlledAgentRuntimeAttestor` и deployment/GitOps-слоем.
 
 Стартовая проверка в `spring-boot-starter-platform-tracing-autoconfigure`
 (`AgentStartupVerifier`) сопоставляет прочитанный readiness snapshot агента с флагом
@@ -96,12 +114,6 @@ plugins {
 приоритет прежний: сначала `failureCode` агента, затем reason классификатора. Правило ограничено
 веткой обработки уже прочитанного snapshot и не распространяется на `DUAL_SDK_COLLISION` и на
 ошибки чтения readiness-эндпоинта.
-
-Контракт ownership, развёртывание и release/rollback:
-
-- [`06-adr-javaagent-distribution-ownership.md`](../Platform_Traces_Docs/architecture/agent-runtime/06-adr-javaagent-distribution-ownership.md);
-- [`07-controlled-javaagent-deployment-contract.md`](../Platform_Traces_Docs/architecture/agent-runtime/07-controlled-javaagent-deployment-contract.md);
-- [`08-controlled-javaagent-release-and-rollback-runbook.md`](../Platform_Traces_Docs/architecture/agent-runtime/08-controlled-javaagent-release-and-rollback-runbook.md).
 
 До назначения fleet/SRE owner, фиксации реального chart/GitOps path, подтверждения Nexus
 stage/promote и прохождения Gentoo qualification 54/54 первый stable имеет статус **NO-GO**.

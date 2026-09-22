@@ -1,20 +1,14 @@
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Path
-import java.security.MessageDigest
-
 plugins {
-    id 'platform.java-library-publish'
-    id 'platform.java-library'
+    id 'platform.gradle-plugin-publish'
     id 'platform.testing'
-    id 'java-gradle-plugin'
 }
 
 group = 'space.br1440.platform.starters.tracing'
 
-platformJavaLibrary {
-    bomProjectPath = ':spring-boot-starter-platform-bom'
-}
+def lombokVersion = '1.18.46'
+def jibGradlePluginFloorVersion = '3.3.2'
+def jibGradlePluginExtensionApiVersion = '0.4.0'
+def distributionProjectPath = ':platform-starters-tracing:platform-tracing-otel-javaagent-distribution'
 
 gradlePlugin {
     plugins {
@@ -27,153 +21,92 @@ gradlePlugin {
                     without any configuration in the consuming build script."""
         }
     }
-    testSourceSets(sourceSets.test)
 }
 
-tasks.withType(AbstractPublishToMaven).configureEach { task ->
-    task.onlyIf { task.publication.name != 'mavenJava' }
+def asResolvableAgentInput = { Configuration configuration ->
+    configuration.canBeConsumed = false
+    configuration.canBeResolved = true
+    configuration.transitive = false
 }
-
-def distributionProjectPath = ':platform-starters-tracing:platform-tracing-otel-javaagent-distribution'
-
-def controlledAgentDistribution = configurations.create('controlledAgentDistribution') {
-    canBeConsumed = false
-    canBeResolved = true
-    transitive = false
-}
+def controlledAgentDistribution = configurations.register('controlledAgentDistribution', asResolvableAgentInput)
+def controlledAgentPin = configurations.register('controlledAgentPin', asResolvableAgentInput)
 
 dependencies {
     add(controlledAgentDistribution.name, project(path: distributionProjectPath, configuration: 'controlledAgentElements'))
+    add(controlledAgentPin.name, project(path: distributionProjectPath, configuration: 'controlledAgentPinElements'))
 
-    implementation project(':platform-starters-common:platform-starters-common-util')
+    compileOnly "com.google.cloud.tools:jib-gradle-plugin-extension-api:${jibGradlePluginExtensionApiVersion}"
+    compileOnly "com.google.cloud.tools:jib-gradle-plugin:${jibGradlePluginFloorVersion}"
+
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
 
     testImplementation gradleApi()
     testImplementation gradleTestKit()
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testImplementation 'org.assertj:assertj-core'
+    testImplementation "com.google.cloud.tools:jib-gradle-plugin-extension-api:${jibGradlePluginExtensionApiVersion}"
+    testImplementation "com.google.cloud.tools:jib-gradle-plugin:${jibGradlePluginFloorVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter:${libs.versions.junit.jupiter.get()}"
+    testImplementation "org.assertj:assertj-core:${libs.versions.assertj.get()}"
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-def controlledAgentJar = controlledAgentDistribution.incoming.files.elements.map { locations ->
-    List<File> files = locations.collect { it.asFile }
-    if (files.size() != 1) {
-        throw new GradleException("""
-                controlledAgentDistribution must resolve to exactly one \
-                artifact, got ${files.size()}: ${files}"""
-        )
-    }
-
-    files.first()
-}
-
-abstract class GenerateControlledAgentPin extends DefaultTask {
-
-    private static final String PIN_ENTRY_PATH = 'META-INF/platform-tracing/controlled-agent-pin.properties'
-
-    @InputFile
-    @PathSensitive(PathSensitivity.NONE)
-    abstract RegularFileProperty getAgentJar()
-
-    @Input
-    abstract Property<String> getAgentVersion()
-
-    @OutputDirectory
-    abstract DirectoryProperty getOutputDirectory()
-
-    @TaskAction
-    void generate() {
-        String version = agentVersion.get()
-        if (version.isBlank() || version.trim() != version) {
-            throw new GradleException("Controlled agent version must be a trimmed non-blank value")
-        }
-
-        byte[] bytes = Files.readAllBytes(agentJar.get().asFile.toPath())
-        String content = 'agent.sha256=' + sha256Hex(bytes) + '\n' + 'agent.version=' + version + '\n'
-
-        Path target = outputDirectory.get().file(PIN_ENTRY_PATH).asFile.toPath()
-        Files.createDirectories(target.parent)
-        Files.write(target, content.getBytes(StandardCharsets.UTF_8))
-    }
-
-    private static String sha256Hex(byte[] bytes) {
-        byte[] digest = MessageDigest.getInstance('SHA-256').digest(bytes)
-        StringBuilder result = new StringBuilder(64)
-        for (byte value : digest) {
-            result.append(Character.forDigit((value >> 4) & 0xF, 16))
-            result.append(Character.forDigit(value & 0xF, 16))
-        }
-
-        result.toString()
-    }
-}
-
-def generateControlledAgentPin = tasks.register(
-        'generateControlledAgentPin',
-        GenerateControlledAgentPin
-) {
-    dependsOn controlledAgentDistribution
-
-    agentJar.fileProvider(controlledAgentJar)
-    agentVersion.set(project.version.toString())
-    outputDirectory.set(layout.buildDirectory.dir('generated/controlled-agent-pin'))
-}
-
 tasks.named('processResources', ProcessResources) {
-    from generateControlledAgentPin
-}
-
-abstract class FunctionalTestArguments implements CommandLineArgumentProvider {
-
-    @InputFile
-    @PathSensitive(PathSensitivity.NONE)
-    abstract RegularFileProperty getControlledAgentJar()
-
-    @InputFile
-    @PathSensitive(PathSensitivity.NONE)
-    abstract RegularFileProperty getPluginJar()
-
-    @InputFile
-    @PathSensitive(PathSensitivity.NONE)
-    abstract RegularFileProperty getCommonUtilJar()
-
-    @Input
-    abstract Property<String> getPluginVersion()
-
-    @Internal
-    abstract DirectoryProperty getTestKitDirectory()
-
-    @Override
-    Iterable<String> asArguments() {
-        [
-                '-DplatformTracing.controlledAgentJar=' + controlledAgentJar.get().asFile.absolutePath,
-                '-DplatformTracing.pluginJar=' + pluginJar.get().asFile.absolutePath,
-                '-DplatformTracing.commonUtilJar=' + commonUtilJar.get().asFile.absolutePath,
-                '-DplatformTracing.pluginVersion=' + pluginVersion.get(),
-                '-DplatformTracing.testKitDirectory=' + testKitDirectory.get().asFile.absolutePath
-        ]
+    from(controlledAgentPin) {
+        into 'META-INF/platform-tracing'
     }
 }
 
-tasks.named('test', Test) {
-    def arguments = objects.newInstance(FunctionalTestArguments)
+publishing {
+    repositories {
+        maven {
+            name = 'functionalTest'
+            url = layout.buildDirectory.dir('functional-test-repository')
+        }
+    }
+}
 
-    arguments.controlledAgentJar
-            .fileProvider(controlledAgentJar)
+tasks.named('test', Test) { Test test ->
+    test.dependsOn 'publishAllPublicationsToFunctionalTestRepository'
 
-    arguments.pluginJar
-            .set(tasks
-                    .named('jar', Jar)
-                    .flatMap { it.archiveFile }
-            )
+    def systemProperties = test.platformSystemProperties
+    systemProperties.singleFile('platformTracing.controlledAgentJar', controlledAgentDistribution)
+    systemProperties.file('platformTracing.pluginJar', tasks.named('jar', Jar).flatMap { it.archiveFile })
 
-    arguments.commonUtilJar.set(
-            project(':platform-starters-common:platform-starters-common-util')
-                    .tasks
-                    .named('jar', Jar)
-                    .flatMap { it.archiveFile }
+    systemProperties.singleFile(
+            'platformTracing.pluginPom',
+            tasks.withType(GenerateMavenPom).matching { it.name == 'generatePomFileForPluginMavenPublication' }
     )
 
-    arguments.pluginVersion.set(project.version.toString())
-    arguments.testKitDirectory.set(layout.buildDirectory.dir('test-kit'))
-    jvmArgumentProviders.add(arguments)
+    systemProperties.singleFile(
+            'platformTracing.markerPom',
+            tasks.withType(GenerateMavenPom).matching { it.name == 'generatePomFileForPlatformTracingJavaAgentPluginMarkerMavenPublication' }
+    )
+
+    systemProperties.singleFile(
+            'platformTracing.pluginModule',
+            tasks.withType(GenerateModuleMetadata).matching { it.name == 'generateMetadataFileForPluginMavenPublication' }
+    )
+
+    systemProperties.value('platformTracing.pluginVersion', provider { project.version.toString() })
+    systemProperties.untrackedDirectory('platformTracing.publishedRepository', layout.buildDirectory.dir('functional-test-repository'))
+    systemProperties.untrackedDirectory('platformTracing.testKitDirectory', layout.buildDirectory.dir('test-kit'))
+}
+
+def verifyPluginPublications = tasks.register('verifyPluginPublications') {
+    group = 'verification'
+    description = 'Fails when the plugin module publishes anything besides pluginMaven and its marker'
+
+    def actual = provider { publishing.publications.names.toList().sort() }
+    def expected = ['platformTracingJavaAgentPluginMarkerMaven', 'pluginMaven']
+    inputs.property('publications', actual)
+
+    doLast {
+        if (actual.get().toList() != expected) {
+            throw new GradleException("Unexpected plugin publications: ${actual.get()}, expected ${expected}")
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn verifyPluginPublications
 }

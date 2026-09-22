@@ -1,5 +1,5 @@
 pluginManagement {
-    def platformConventionsVersion = '1.0.5'
+    def platformConventionsVersion = '1.0.6'
 
     repositories {
         maven {
@@ -31,6 +31,8 @@ pluginManagement {
         id 'platform.java-library' version platformConventionsVersion
         id 'platform.java-library-publish' version platformConventionsVersion
         id 'platform.java-platform-publish' version platformConventionsVersion
+        id 'platform.publishing-repositories' version platformConventionsVersion
+        id 'platform.gradle-plugin-publish' version platformConventionsVersion
         id 'platform.testing' version platformConventionsVersion
         id 'com.gradleup.shadow' version '9.2.2'
     }

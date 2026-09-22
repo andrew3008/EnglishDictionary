@@ -14,9 +14,14 @@ record SystemPropertyFlag(String key, String value) {
         String body = flag.substring(PREFIX.length());
         int separator = body.indexOf('=');
         if (separator < 0) {
-            return Optional.of(new SystemPropertyFlag(body, null));
+            SystemPropertyFlag propertyFlag = new SystemPropertyFlag(body, null);
+            return Optional.of(propertyFlag);
         }
 
-        return Optional.of(new SystemPropertyFlag(body.substring(0, separator), body.substring(separator + 1)));
+        SystemPropertyFlag propertyFlag = new SystemPropertyFlag(
+                body.substring(0, separator),
+                body.substring(separator + 1)
+        );
+        return Optional.of(propertyFlag);
     }
 }

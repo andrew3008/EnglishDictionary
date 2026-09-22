@@ -11,7 +11,7 @@ import org.gradle.process.CommandLineArgumentProvider;
 public abstract class ControlledAgentArgumentProvider implements CommandLineArgumentProvider {
 
     @InputFile
-    @PathSensitive(PathSensitivity.NONE)
+    @PathSensitive(PathSensitivity.ABSOLUTE)
     public abstract RegularFileProperty getAgentJar();
 
     @Input
