@@ -2,13 +2,12 @@ package space.br1440.platform.tracing.otel.javaagent.resource;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Supplier;
 
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
-import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -21,6 +20,7 @@ import lombok.experimental.UtilityClass;
 final class ResourceAttributeResolver {
 
     static final String SDK_UNKNOWN_SERVICE = "unknown_service:java";
+    static final String UNKNOWN = "unknown";
 
     private static final AttributeKey<String> SERVICE_NAME = AttributeKey.stringKey(PlatformAttributes.SERVICE_NAME);
     private static final AttributeKey<String> SERVICE_VERSION = AttributeKey.stringKey(PlatformAttributes.SERVICE_VERSION);
@@ -32,11 +32,6 @@ final class ResourceAttributeResolver {
                               Resource existing,
                               Resource otelEnv,
                               Supplier<Optional<String>> buildVersion) {
-        boolean normalize = config.getBoolean(
-                ExtensionPropertyNames.RESOURCE_NORMALIZE_ENVIRONMENT,
-                ExtensionDefaults.DEFAULT_RESOURCE_NORMALIZE_ENVIRONMENT
-        );
-
         AttributesBuilder builder = Attributes.builder();
 
         resolveServiceName(config, existing, otelEnv)
@@ -45,11 +40,11 @@ final class ResourceAttributeResolver {
         resolveServiceVersion(config, existing, otelEnv, buildVersion)
                 .ifPresent(value -> builder.put(SERVICE_VERSION, value));
 
-        resolveEnvironment(config, existing, otelEnv, normalize)
+        resolveEnvironment(config, existing, otelEnv)
                 .ifPresent(value -> builder.put(ENVIRONMENT, value));
 
         if (existing.getAttribute(PLATFORM_ID) == null) {
-            builder.put(PLATFORM_ID, resolvePlatformId(config).orElse(EnvironmentNormalizer.UNKNOWN));
+            builder.put(PLATFORM_ID, resolvePlatformId(config).orElse(UNKNOWN));
         }
 
         return builder.build();
@@ -115,14 +110,25 @@ final class ResourceAttributeResolver {
 
     private static Optional<String> resolveEnvironment(ConfigProperties config,
                                                        Resource existing,
-                                                       Resource otelEnv,
-                                                       boolean normalize) {
+                                                       Resource otelEnv) {
         if (existing.getAttribute(ENVIRONMENT) != null || otelEnv.getAttribute(ENVIRONMENT) != null) {
             return Optional.empty();
         }
 
         String platform = config.getString(PlatformResourceCustomizer.PROP_ENVIRONMENT);
-        return Optional.of(EnvironmentNormalizer.normalize(platform, normalize));
+        return Optional.of(canonicalize(platform));
+    }
+
+    /**
+     * Имя окружения — идентификатор Flux-overlay. Меняются только регистр и пробелы:
+     * разные кластеры ({@code stage} и {@code stg}) не сливаются.
+     */
+    private static String canonicalize(String raw) {
+        if (StringUtils.isNullOrBlank(raw)) {
+            return UNKNOWN;
+        }
+
+        return raw.trim().toLowerCase(Locale.ROOT);
     }
 
     private static Optional<String> resolvePlatformId(ConfigProperties config) {
@@ -144,7 +150,7 @@ final class ResourceAttributeResolver {
 
     private static boolean isUnknownOrBlank(String resolved, String otelEnv, String existing) {
         String value = firstNonNull(resolved, otelEnv, existing);
-        return StringUtils.isNullOrBlank(value) || EnvironmentNormalizer.UNKNOWN.equals(value);
+        return StringUtils.isNullOrBlank(value) || UNKNOWN.equals(value);
     }
 
     private static String firstNonNull(String first, String second, String third) {

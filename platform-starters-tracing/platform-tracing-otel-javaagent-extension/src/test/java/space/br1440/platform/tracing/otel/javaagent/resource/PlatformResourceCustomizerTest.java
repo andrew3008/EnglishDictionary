@@ -54,7 +54,7 @@ class PlatformResourceCustomizerTest {
         Map<String, String> values = Map.of(
                 PlatformResourceCustomizer.PROP_SERVICE_NAME, "demo-service",
                 PlatformResourceCustomizer.PROP_SERVICE_VERSION, "1.0.0",
-                PlatformResourceCustomizer.PROP_ENVIRONMENT, "prod",
+                PlatformResourceCustomizer.PROP_ENVIRONMENT, "production",
                 PlatformResourceCustomizer.PROP_ID, "demo-001"
         );
 

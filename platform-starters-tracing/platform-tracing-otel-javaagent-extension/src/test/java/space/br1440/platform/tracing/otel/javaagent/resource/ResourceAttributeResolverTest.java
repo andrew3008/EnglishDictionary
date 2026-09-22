@@ -8,6 +8,8 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 
@@ -105,13 +107,42 @@ class ResourceAttributeResolverTest {
         assertThat(read).isFalse();
     }
 
-    @Test
-    void environmentIsNormalized() {
+    @ParameterizedTest
+    @CsvSource({
+            "production,production",
+            "staging,staging",
+            "staging-new,staging-new",
+            "staging-testcenter,staging-testcenter",
+            "databi-staging,databi-staging",
+            "cloud-test,cloud-test",
+            "ml-production,ml-production",
+            "stage,stage",
+            "stg,stg"
+    })
+    void environmentNameIsPreservedApartFromCaseAndWhitespace(String raw, String expected) {
         // when
-        Attributes attrs = resolve(Map.of(PlatformResourceCustomizer.PROP_ENVIRONMENT, "prod"));
+        Attributes attrs = resolve(Map.of(PlatformResourceCustomizer.PROP_ENVIRONMENT, raw));
 
         // then
-        assertThat(attrs.get(key(PlatformAttributes.PLATFORM_ENVIRONMENT))).isEqualTo("production");
+        assertThat(attrs.get(key(PlatformAttributes.PLATFORM_ENVIRONMENT))).isEqualTo(expected);
+    }
+
+    @Test
+    void mixedCaseAndSurroundingWhitespaceAreCanonicalizedWithoutRenaming() {
+        // when
+        Attributes attrs = resolve(Map.of(PlatformResourceCustomizer.PROP_ENVIRONMENT, " PROD "));
+
+        // then
+        assertThat(attrs.get(key(PlatformAttributes.PLATFORM_ENVIRONMENT))).isEqualTo("prod");
+    }
+
+    @Test
+    void blankEnvironmentBecomesUnknown() {
+        // when
+        Attributes attrs = resolve(Map.of(PlatformResourceCustomizer.PROP_ENVIRONMENT, "  "));
+
+        // then
+        assertThat(attrs.get(key(PlatformAttributes.PLATFORM_ENVIRONMENT))).isEqualTo(ResourceAttributeResolver.UNKNOWN);
     }
 
     @Test
@@ -121,7 +152,7 @@ class ResourceAttributeResolverTest {
 
         // then
         assertThat(attrs.get(key(PlatformAttributes.SERVICE_NAME))).isNull();
-        assertThat(attrs.get(key(PlatformAttributes.PLATFORM_ID))).isEqualTo(EnvironmentNormalizer.UNKNOWN);
+        assertThat(attrs.get(key(PlatformAttributes.PLATFORM_ID))).isEqualTo(ResourceAttributeResolver.UNKNOWN);
     }
 
     @Test

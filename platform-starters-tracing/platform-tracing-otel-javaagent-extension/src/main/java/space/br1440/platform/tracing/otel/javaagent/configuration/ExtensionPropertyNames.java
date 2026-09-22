@@ -24,7 +24,6 @@ public final class ExtensionPropertyNames {
     public static final String SPAN_ATTRIBUTES_VALIDATION_LEVEL =
             "platform.tracing.javaagent.span-attributes.validation.level";
 
-    public static final String RESOURCE_NORMALIZE_ENVIRONMENT = "platform.tracing.resource.normalize-environment";
     public static final String RESOURCE_VALIDATION_MODE = "platform.tracing.resource.validation-mode";
 
     public static final String CLASSIFICATION_ENABLED = "platform.tracing.classification.enabled";
