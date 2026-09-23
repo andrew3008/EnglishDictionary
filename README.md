@@ -12,51 +12,51 @@
 
 ### Платформенный BOM
 
-| Модуль | Описание |
-|--------|----------|
+| Модуль                                                                   | Описание                                                                                                     |
+|--------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
 | [`spring-boot-starter-platform-bom`](./spring-boot-starter-platform-bom) | Bill of Materials: импорт `spring-boot-dependencies` и дополнительные constraints для зависимостей стартеров |
 
 Подключение у потребителя: `api platform("space.br1440.platform.starters:spring-boot-starter-platform-bom:<версия>")` (или эквивалент в Maven).
 
 ### Стартеры — отдельные каталоги в корне
 
-| Модуль | Документация |
-|--------|---------------|
-| [`spring-boot-starter-platform-logging`](./spring-boot-starter-platform-logging) | [README](./spring-boot-starter-platform-logging/README.md) |
-| [`spring-boot-starter-platform-metrics`](./spring-boot-starter-platform-metrics) | [README](./spring-boot-starter-platform-metrics/README.md) |
-| [`spring-boot-starter-platform-leader-election`](./spring-boot-starter-platform-leader-election) | [README](./spring-boot-starter-platform-leader-election/README.md) |
-| [`spring-boot-starter-platform-health-checks`](./spring-boot-starter-platform-health-checks) | [README](./spring-boot-starter-platform-health-checks/README.md) |
-| [`spring-boot-starter-platform-security`](./spring-boot-starter-platform-security) | [README](./spring-boot-starter-platform-security/README.md) |
+| Модуль                                                                                                                         | Документация                                                                      |
+|--------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
+| [`spring-boot-starter-platform-logging`](./spring-boot-starter-platform-logging)                                               | [README](./spring-boot-starter-platform-logging/README.md)                        |
+| [`spring-boot-starter-platform-metrics`](./spring-boot-starter-platform-metrics)                                               | [README](./spring-boot-starter-platform-metrics/README.md)                        |
+| [`spring-boot-starter-platform-leader-election`](./spring-boot-starter-platform-leader-election)                               | [README](./spring-boot-starter-platform-leader-election/README.md)                |
+| [`spring-boot-starter-platform-health-checks`](./spring-boot-starter-platform-health-checks)                                   | [README](./spring-boot-starter-platform-health-checks/README.md)                  |
+| [`spring-boot-starter-platform-security`](./spring-boot-starter-platform-security)                                             | [README](./spring-boot-starter-platform-security/README.md)                       |
 | [`spring-boot-starter-platform-postgres-read-write-split-jdbc`](./spring-boot-starter-platform-postgres-read-write-split-jdbc) | [README](./spring-boot-starter-platform-postgres-read-write-split-jdbc/README.md) |
 
 ### Обработка ошибок (`platform-starters-error-handling/`)
 
 Все артефакты семейства публикуются в группе `space.br1440.platform.starters.errorhandling`.
 
-| Gradle-проект | Каталог |
-|-----------------|---------|
-| `:platform-starters-error-handling:platform-error-handling-core` | [`platform-error-handling-core`](platform-starters-error-handling/platform-error-handling-core) |
-| `:platform-starters-error-handling:spring-boot-starter-platform-error-handling-mvc` | [`spring-boot-starter-platform-error-handling-mvc`](platform-starters-error-handling/spring-boot-starter-platform-error-handling-mvc) |
+| Gradle-проект                                                                           | Каталог                                                                                                                                       |
+|-----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| `:platform-starters-error-handling:platform-error-handling-core`                        | [`platform-error-handling-core`](platform-starters-error-handling/platform-error-handling-core)                                               |
+| `:platform-starters-error-handling:spring-boot-starter-platform-error-handling-mvc`     | [`spring-boot-starter-platform-error-handling-mvc`](platform-starters-error-handling/spring-boot-starter-platform-error-handling-mvc)         |
 | `:platform-starters-error-handling:spring-boot-starter-platform-error-handling-webflux` | [`spring-boot-starter-platform-error-handling-webflux`](platform-starters-error-handling/spring-boot-starter-platform-error-handling-webflux) |
 
 ### Трассировка (`platform-starters-tracing/`)
 
 Публикуемые application-артефакты семейства и controlled javaagent используют группу `space.br1440.platform.starters.tracing`. Внутренние сборочные варианты Maven-координат не имеют.
 
-| Gradle-проект | Каталог |
-|-----------------|---------|
-| `:platform-starters-tracing:spring-boot-starter-platform-tracing-api` | [`spring-boot-starter-platform-tracing-api`](platform-starters-tracing/spring-boot-starter-platform-tracing-api) |
-| `:platform-starters-tracing:platform-tracing-runtime-policy` | [`platform-tracing-runtime-policy`](platform-starters-tracing/platform-tracing-runtime-policy) |
-| `:platform-starters-tracing:spring-boot-starter-platform-tracing-otel` | [`spring-boot-starter-platform-tracing-otel`](platform-starters-tracing/spring-boot-starter-platform-tracing-otel) |
-| `:platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure` | [`spring-boot-starter-platform-tracing-autoconfigure`](platform-starters-tracing/spring-boot-starter-platform-tracing-autoconfigure) |
-| `:platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webmvc` | [`spring-boot-starter-platform-tracing-autoconfigure-webmvc`](platform-starters-tracing/spring-boot-starter-platform-tracing-autoconfigure-webmvc) |
-| `:platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webflux` | [`spring-boot-starter-platform-tracing-autoconfigure-webflux`](platform-starters-tracing/spring-boot-starter-platform-tracing-autoconfigure-webflux) |
-| `:platform-starters-tracing:spring-boot-starter-platform-tracing-mvc` | [`spring-boot-starter-platform-tracing-mvc`](platform-starters-tracing/spring-boot-starter-platform-tracing-mvc) |
-| `:platform-starters-tracing:spring-boot-starter-platform-tracing-webflux` | [`spring-boot-starter-platform-tracing-webflux`](platform-starters-tracing/spring-boot-starter-platform-tracing-webflux) |
-| `:platform-starters-tracing:platform-tracing-testkit` | [`platform-tracing-testkit`](platform-starters-tracing/platform-tracing-testkit) — внутренние тестовые fixtures, не публикуются |
-| `:platform-starters-tracing:platform-tracing-otel-javaagent-extension` | [`platform-tracing-otel-javaagent-extension`](platform-starters-tracing/platform-tracing-otel-javaagent-extension) — внутренний модуль исходного кода и тестов; упаковкой управляет distribution, отдельно не публикуется |
-| `:platform-starters-tracing:platform-tracing-otel-javaagent-distribution` | [`platform-tracing-otel-javaagent-distribution`](platform-starters-tracing/platform-tracing-otel-javaagent-distribution) — единственный владелец deployable-артефакта `platform-tracing-javaagent` |
-| `:platform-starters-tracing:platform-tracing-gradle-plugin` | [`platform-tracing-gradle-plugin`](platform-starters-tracing/platform-tracing-gradle-plugin) — Gradle-плагин `platform.tracing-javaagent`; build tooling, не входит в BOM |
+| Gradle-проект                                                                           | Каталог                                                                                                                                                                                                                   |
+|-----------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `:platform-starters-tracing:spring-boot-starter-platform-tracing-api`                   | [`spring-boot-starter-platform-tracing-api`](platform-starters-tracing/spring-boot-starter-platform-tracing-api)                                                                                                          |
+| `:platform-starters-tracing:platform-tracing-runtime-policy`                            | [`platform-tracing-runtime-policy`](platform-starters-tracing/platform-tracing-runtime-policy)                                                                                                                            |
+| `:platform-starters-tracing:spring-boot-starter-platform-tracing-otel`                  | [`spring-boot-starter-platform-tracing-otel`](platform-starters-tracing/spring-boot-starter-platform-tracing-otel)                                                                                                        |
+| `:platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure`         | [`spring-boot-starter-platform-tracing-autoconfigure`](platform-starters-tracing/spring-boot-starter-platform-tracing-autoconfigure)                                                                                      |
+| `:platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webmvc`  | [`spring-boot-starter-platform-tracing-autoconfigure-webmvc`](platform-starters-tracing/spring-boot-starter-platform-tracing-autoconfigure-webmvc)                                                                        |
+| `:platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webflux` | [`spring-boot-starter-platform-tracing-autoconfigure-webflux`](platform-starters-tracing/spring-boot-starter-platform-tracing-autoconfigure-webflux)                                                                      |
+| `:platform-starters-tracing:spring-boot-starter-platform-tracing-mvc`                   | [`spring-boot-starter-platform-tracing-mvc`](platform-starters-tracing/spring-boot-starter-platform-tracing-mvc)                                                                                                          |
+| `:platform-starters-tracing:spring-boot-starter-platform-tracing-webflux`               | [`spring-boot-starter-platform-tracing-webflux`](platform-starters-tracing/spring-boot-starter-platform-tracing-webflux)                                                                                                  |
+| `:platform-starters-tracing:platform-tracing-testkit`                                   | [`platform-tracing-testkit`](platform-starters-tracing/platform-tracing-testkit) — внутренние тестовые fixtures, не публикуются                                                                                           |
+| `:platform-starters-tracing:platform-tracing-otel-javaagent-extension`                  | [`platform-tracing-otel-javaagent-extension`](platform-starters-tracing/platform-tracing-otel-javaagent-extension) — внутренний модуль исходного кода и тестов; упаковкой управляет distribution, отдельно не публикуется |
+| `:platform-starters-tracing:platform-tracing-otel-javaagent-distribution`               | [`platform-tracing-otel-javaagent-distribution`](platform-starters-tracing/platform-tracing-otel-javaagent-distribution) — единственный владелец deployable-артефакта `platform-tracing-javaagent`                        |
+| `:platform-starters-tracing:platform-tracing-gradle-plugin`                             | [`platform-tracing-gradle-plugin`](platform-starters-tracing/platform-tracing-gradle-plugin) — Gradle-плагин `platform.tracing-javaagent`; build tooling, не входит в BOM                                                 |
 
 Controlled Platform Agent поставляется артефактом
 `space.br1440.platform.starters.tracing:platform-tracing-javaagent:<version>`.
@@ -126,12 +126,12 @@ BOM или публикации tracing-платформы.
 
 Имена Gradle-проектов не совпадают с каталогами, поэтому для них задан явный `projectDir`.
 
-| Gradle-проект | Каталог | Документация |
-|----------------|---------|----------------|
-| `:platform-starters-common:platform-starters-common-util` | [`platform-starters-common-util`](platform-starters-common/platform-starters-common-util) | [README](platform-starters-common/platform-starters-common-util/README.md) |
-| `:platform-starters-common:spring-boot-starter-platform-common-uid1440` | [`spring-boot-starter-uid1440`](platform-starters-common/spring-boot-starter-uid1440) | [README](platform-starters-common/spring-boot-starter-uid1440/README.md) |
+| Gradle-проект                                                                        | Каталог                                                                                                         | Документация                                                                          |
+|--------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
+| `:platform-starters-common:platform-starters-common-util`                            | [`platform-starters-common-util`](platform-starters-common/platform-starters-common-util)                       | —                                                                                     |
+| `:platform-starters-common:spring-boot-starter-platform-common-uid1440`              | [`spring-boot-starter-uid1440`](platform-starters-common/spring-boot-starter-uid1440)                           | [README](platform-starters-common/spring-boot-starter-uid1440/README.md)              |
 | `:platform-starters-common:spring-boot-starter-platform-common-header-based-routing` | [`spring-boot-starter-header-based-routing`](platform-starters-common/spring-boot-starter-header-based-routing) | [README](platform-starters-common/spring-boot-starter-header-based-routing/README.md) |
-| `:platform-starters-common:spring-boot-starter-platform-common-x-trace-id` | [`spring-boot-starter-x-trace-id`](platform-starters-common/spring-boot-starter-x-trace-id) | [README](platform-starters-common/spring-boot-starter-x-trace-id/README.md) |
+| `:platform-starters-common:spring-boot-starter-platform-common-x-trace-id`           | [`spring-boot-starter-x-trace-id`](platform-starters-common/spring-boot-starter-x-trace-id)                     | [README](platform-starters-common/spring-boot-starter-x-trace-id/README.md)           |
 
 ## Публикация
 
