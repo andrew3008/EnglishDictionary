@@ -49,6 +49,7 @@ abstract class FunctionalTestSupport {
         return ConsumerProject.groovy(name).create(temporaryDirectory, repository, buildScript);
     }
 
+    @SuppressWarnings("SameParameterValue")
     Path kotlinConsumer(String name, String buildScript) throws IOException {
         return ConsumerProject.kotlin(name).create(temporaryDirectory, repository, buildScript);
     }
@@ -61,6 +62,7 @@ abstract class FunctionalTestSupport {
         repository.installAgent(jar);
     }
 
+    @SuppressWarnings("SameParameterValue")
     void installJar(String group, String artifact, Path jar) throws IOException {
         repository.installJar(group, artifact, jar);
     }

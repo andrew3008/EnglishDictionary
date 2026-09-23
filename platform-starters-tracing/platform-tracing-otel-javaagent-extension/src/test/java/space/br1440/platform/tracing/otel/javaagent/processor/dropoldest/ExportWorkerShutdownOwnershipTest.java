@@ -58,11 +58,11 @@ class ExportWorkerShutdownOwnershipTest {
                 .exportTimeout(Duration.ofMillis(400))
                 .shutdownTimeout(Duration.ofMillis(200))
                 .build();
-        SdkTracerProvider provider = SdkTracerProvider.builder()
+
+        try (SdkTracerProvider provider = SdkTracerProvider.builder()
                 .setSampler(Sampler.alwaysOn())
                 .addSpanProcessor(processor)
-                .build();
-        try {
+                .build()) {
             provider.get("held-export").spanBuilder("span").startSpan().end();
             assertThat(exporter.awaitExportEntered()).isTrue();
             for (int index = 0; index < 3; index++) {
@@ -80,7 +80,6 @@ class ExportWorkerShutdownOwnershipTest {
             assertThat(processor.metricsSnapshot().discardedQueuedTotal()).isEqualTo(3);
         } finally {
             exporter.releaseExport();
-            provider.close();
         }
     }
 
@@ -101,6 +100,7 @@ class ExportWorkerShutdownOwnershipTest {
         assertThat(shutdown.isSuccess()).isFalse();
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static Set<Thread> threadsNamed(String prefix) {
         Set<Thread> matching = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Thread thread : Thread.getAllStackTraces().keySet()) {
