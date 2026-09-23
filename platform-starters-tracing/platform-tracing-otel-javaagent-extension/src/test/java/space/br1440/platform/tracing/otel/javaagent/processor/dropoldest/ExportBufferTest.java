@@ -221,7 +221,8 @@ class ExportBufferTest {
             assertThat(metrics.discardedQueuedTotal()).isEqualTo(1L);
             assertThat(Thread.currentThread().isInterrupted()).isTrue();
         } finally {
-            Thread.interrupted();
+            boolean wasInterrupted = Thread.interrupted();
+            assertThat(wasInterrupted).isTrue();
         }
     }
 
@@ -257,14 +258,8 @@ class ExportBufferTest {
         return spanData;
     }
 
-    private static final class ClockAdvancingShutdownExporter implements SpanExporter {
-        private final AtomicLong nanoTime;
-        private final long shutdownAdvanceNanos;
-
-        private ClockAdvancingShutdownExporter(AtomicLong nanoTime, long shutdownAdvanceNanos) {
-            this.nanoTime = nanoTime;
-            this.shutdownAdvanceNanos = shutdownAdvanceNanos;
-        }
+    private record ClockAdvancingShutdownExporter(AtomicLong nanoTime,
+                                                  long shutdownAdvanceNanos) implements SpanExporter {
 
         @Override
         public CompletableResultCode export(Collection<SpanData> spans) {

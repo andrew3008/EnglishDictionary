@@ -22,7 +22,7 @@ public final class ScrubbingFailureLog {
     }
 
     private static void logDetail(RateLimitedLogger log, String event) {
-        if (!log.isDebugEnabled()) {
+        if (log.isDebugDisabled()) {
             return;
         }
 

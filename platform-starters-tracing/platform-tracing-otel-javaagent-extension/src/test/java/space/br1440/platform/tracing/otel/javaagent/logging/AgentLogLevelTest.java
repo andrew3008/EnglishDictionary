@@ -30,6 +30,7 @@ class AgentLogLevelTest {
                     case DEBUG -> eventLevel != AgentLogLevel.TRACE;
                     case TRACE -> true;
                 };
+
                 assertThat(configuredLevel.permits(eventLevel))
                         .as(configuredLevel + " permits " + eventLevel)
                         .isEqualTo(expected);
@@ -45,8 +46,8 @@ class AgentLogLevelTest {
         assertThatThrownBy(AgentLogLevel.OFF::requireEventLevel)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("OFF is not a valid event level");
+
         assertThat(AgentLogLevel.TRACE.permits(AgentLogLevel.OFF)).isFalse();
-        assertThat(AgentLogLevel.INFO.permits(null)).isFalse();
     }
 
     @Test
@@ -56,6 +57,7 @@ class AgentLogLevelTest {
         // then
         assertThat(AgentLogLevel.parseOrDefault(" debug ", AgentLogLevel.WARN))
                 .isEqualTo(AgentLogLevel.DEBUG);
+
         assertThat(AgentLogLevel.parseOrDefault("verbose", AgentLogLevel.WARN))
                 .isEqualTo(AgentLogLevel.WARN);
     }

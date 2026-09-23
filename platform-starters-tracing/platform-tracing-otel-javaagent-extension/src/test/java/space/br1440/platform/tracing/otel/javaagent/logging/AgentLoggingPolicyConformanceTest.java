@@ -80,8 +80,7 @@ class AgentLoggingPolicyConformanceTest {
     @Test
     void throwable_traversal_is_bounded() {
         // given
-        Throwable deepest = new IllegalStateException("secret");
-        Throwable current = deepest;
+        Throwable current = new IllegalStateException("secret");
         for (int i = 0; i < 10; i++) {
             current = new IllegalStateException("secret", current);
         }

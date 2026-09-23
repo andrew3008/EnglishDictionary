@@ -84,8 +84,10 @@ public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallb
             JsonNode node = JSON.readTree(line);
             Map<String, String> fields = new LinkedHashMap<>();
             JsonNode fieldsNode = node.path("fields");
-            fieldsNode.fields().forEachRemaining(entry ->
-                    fields.put(entry.getKey(), entry.getValue().asText("")));
+            fieldsNode.properties().forEach(entry ->
+                    fields.put(entry.getKey(), entry.getValue().asText(""))
+            );
+
             JsonNode errorStacktrace = node.get("error_stacktrace");
             return new CapturedLogEvent(
                     Instant.parse(node.path("timestamp").asText()),

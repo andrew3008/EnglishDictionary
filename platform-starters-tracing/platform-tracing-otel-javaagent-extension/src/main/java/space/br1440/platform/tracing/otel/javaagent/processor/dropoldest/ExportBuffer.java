@@ -232,8 +232,12 @@ final class ExportBuffer {
 
             long elapsedSinceExportNanos = nowNanos - lastExportNanos;
             if (isExportReadyLocked(scheduleDelayNanos, elapsedSinceExportNanos)) {
-                inFlightBatch = spanQueue.drainBatch();
-                return new WorkerAction.ExportBatch(inFlightBatch);
+                SpanQueue.Batch batch = spanQueue.drainBatch();
+                if (batch == null) {
+                    throw new IllegalStateException("Export-ready queue returned an empty batch");
+                }
+                inFlightBatch = batch;
+                return new WorkerAction.ExportBatch(batch);
             }
 
             try {
@@ -341,16 +345,18 @@ final class ExportBuffer {
     }
 
     private long lowestUnresolvedSequenceLocked() {
+        SpanQueue.Batch inFlight = inFlightBatch;
         long queueHead = spanQueue.headSequence();
-        if (inFlightBatch == null) {
+        if (inFlight == null) {
             return queueHead;
         }
 
+        long inFlightSequence = inFlight.firstSequence();
         if (queueHead == SpanQueue.NONE) {
-            return inFlightBatch.firstSequence();
+            return inFlightSequence;
         }
 
-        return Math.min(inFlightBatch.firstSequence(), queueHead);
+        return Math.min(inFlightSequence, queueHead);
     }
 
     private void recordRejectedAdmission(LifecycleState rejectedState) {

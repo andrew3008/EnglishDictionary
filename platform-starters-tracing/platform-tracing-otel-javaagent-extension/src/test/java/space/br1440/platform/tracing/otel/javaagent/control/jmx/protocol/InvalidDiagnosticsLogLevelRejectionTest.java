@@ -65,12 +65,14 @@ class InvalidDiagnosticsLogLevelRejectionTest {
         assertThat(AgentLoggingRuntime.shared().effectiveLevel()).isEqualTo(effectiveBefore);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static CompositeData withDiagnosticsLogLevel(CompositeData request, String rawLevel) throws Exception {
         CompositeData policy = (CompositeData) request.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_RUNTIME_POLICY);
         Map<String, Object> policyFields = new LinkedHashMap<>();
         for (String field : policy.getCompositeType().keySet()) {
             policyFields.put(field, policy.get(field));
         }
+
         policyFields.put(JmxWireContract.FIELD_RUNTIME_POLICY_DIAGNOSTICS_LOG_LEVEL, rawLevel);
         CompositeData rewrittenPolicy = new CompositeDataSupport(policy.getCompositeType(), policyFields);
 
@@ -78,6 +80,7 @@ class InvalidDiagnosticsLogLevelRejectionTest {
         for (String field : request.getCompositeType().keySet()) {
             requestFields.put(field, request.get(field));
         }
+
         requestFields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_RUNTIME_POLICY, rewrittenPolicy);
         return new CompositeDataSupport(request.getCompositeType(), requestFields);
     }
@@ -88,6 +91,7 @@ class InvalidDiagnosticsLogLevelRejectionTest {
                 Instant.parse("2026-09-23T12:00:00Z"),
                 SettingsSourceAuthority.CONFIG_SERVER,
                 SettingsUpdateTrigger.REFRESH,
-                "revision-invalid-level");
+                "revision-invalid-level"
+        );
     }
 }

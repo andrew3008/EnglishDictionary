@@ -53,8 +53,10 @@ class BoundedThrowableRendererTest {
     @Test
     void exception_messages_are_absent_from_the_digest() {
         // given
-        Throwable root = new IllegalStateException(SECRET_MARKER);
-        root.initCause(new IllegalArgumentException(SECRET_MARKER));
+        Throwable root = new IllegalStateException(
+                SECRET_MARKER,
+                new IllegalArgumentException(SECRET_MARKER)
+        );
         root.addSuppressed(new IllegalStateException(SECRET_MARKER));
 
         // when
@@ -79,7 +81,8 @@ class BoundedThrowableRendererTest {
         String rendered = BoundedThrowableRenderer.render(hostile);
         String capped = BoundedThrowableRenderer.renderingFailureDetail(
                 longClassName,
-                "java.lang.IllegalStateException");
+                "java.lang.IllegalStateException"
+        );
 
         // then
         assertThat(rendered)

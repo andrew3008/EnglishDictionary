@@ -83,12 +83,12 @@ public final class RateLimitedLogger {
                 eventCode, message, error, k1, v1);
     }
 
-    public boolean isDebugEnabled() {
-        return delegate.isDebugEnabled();
+    public boolean isDebugDisabled() {
+        return !delegate.isDebugEnabled();
     }
 
     public EmitResult debug(AgentEventCode eventCode, String message, String k1, String v1) {
-        if (!isDebugEnabled()) {
+        if (isDebugDisabled()) {
             return EmitResult.FILTERED_BY_LEVEL;
         }
 
@@ -96,7 +96,7 @@ public final class RateLimitedLogger {
     }
 
     public EmitResult debug(AgentEventCode eventCode, String message, String k1, String v1, String k2, String v2) {
-        if (!isDebugEnabled()) {
+        if (isDebugDisabled()) {
             return EmitResult.FILTERED_BY_LEVEL;
         }
 

@@ -11,13 +11,7 @@ final class DiagnosticReadinessHandle {
     }
 
     void close() {
-        AutoCloseable registration = handle.getAndSet(null);
-        if (registration == null) {
-            return;
-        }
-
-        try {
-            registration.close();
+        try (AutoCloseable registration = handle.getAndSet(null)) {
         } catch (Exception failure) {
             throw new IllegalStateException("Diagnostic readiness MBean cleanup failed", failure);
         }

@@ -396,6 +396,7 @@ class ControlledAgentArtifactTest {
         }
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static Path requiredDirectory(String name) {
         Path path = Path.of(requiredProperty(name));
         if (!Files.isDirectory(path)) {

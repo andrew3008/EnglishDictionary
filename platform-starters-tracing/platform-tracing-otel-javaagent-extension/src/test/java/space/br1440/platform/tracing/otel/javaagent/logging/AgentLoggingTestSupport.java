@@ -1,8 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.logging;
 
-/**
- * Сброс process-singleton логгера между тестами.
- */
 public final class AgentLoggingTestSupport {
 
     private AgentLoggingTestSupport() {
@@ -12,7 +9,7 @@ public final class AgentLoggingTestSupport {
         AgentLoggingRuntime.reset();
     }
 
-    public static void install(PlatformStderrSink sink) {
+    static void install(PlatformStderrSink sink) {
         AgentLoggingRuntime.shared().install(sink);
     }
 }

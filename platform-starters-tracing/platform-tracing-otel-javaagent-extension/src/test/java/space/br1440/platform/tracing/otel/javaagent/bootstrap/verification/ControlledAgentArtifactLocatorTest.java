@@ -283,6 +283,7 @@ class ControlledAgentArtifactLocatorTest {
         return archive(fileName, ControlledAgentArtifactLocator.IDENTITY_ENTRY, identityBytes.toByteArray());
     }
 
+    @SuppressWarnings("SameParameterValue")
     private Path foreignAgent(String fileName) throws IOException {
         return archive(fileName, "META-INF/MANIFEST.MF", "Manifest-Version: 1.0\n".getBytes(StandardCharsets.UTF_8));
     }

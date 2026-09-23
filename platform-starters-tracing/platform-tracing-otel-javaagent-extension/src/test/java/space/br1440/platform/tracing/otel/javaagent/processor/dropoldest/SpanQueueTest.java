@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -40,8 +41,8 @@ class SpanQueueTest {
         queue.admit(spanData());
 
         // when
-        SpanQueue.Batch first = queue.drainBatch();
-        SpanQueue.Batch second = queue.drainBatch();
+        SpanQueue.Batch first = Objects.requireNonNull(queue.drainBatch());
+        SpanQueue.Batch second = Objects.requireNonNull(queue.drainBatch());
 
         // then
         assertThat(first.firstSequence()).isEqualTo(1L);
