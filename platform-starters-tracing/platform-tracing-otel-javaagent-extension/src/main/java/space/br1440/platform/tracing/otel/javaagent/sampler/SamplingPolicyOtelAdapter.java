@@ -23,7 +23,6 @@ final class SamplingPolicyOtelAdapter {
 
     private static final AttributeKey<String> SAMPLING_REASON_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_SAMPLING_REASON);
     private static final AttributeKey<String> URL_PATH_KEY = AttributeKey.stringKey("url.path");
-
     private static final SamplingResult FALLBACK_DROP = SamplingResult.create(SamplingDecision.DROP);
     private static final SamplingResult KILL_SWITCH_DROP = SamplingResult.create(SamplingDecision.DROP);
 
@@ -77,8 +76,8 @@ final class SamplingPolicyOtelAdapter {
                                            Attributes attributes) {
         String urlPath = attributes.get(URL_PATH_KEY);
         InboundTraceControl control = parentContext.get(PlatformTraceContextKeys.TRACE_CONTROL);
-        String forceValue = control == null ? null : control.rawForceTraceValue();
-        boolean qaTrace = control != null && control.qaTrace();
+        String forceValue = (control == null) ? null : control.rawForceTraceValue();
+        boolean qaTrace = (control != null) && control.qaTrace();
         ParentContextState parentState = resolveParentState(parentContext);
         return new SamplingPolicyRequest(urlPath, traceId, forceValue, qaTrace, parentState);
     }
