@@ -116,14 +116,10 @@ final class ResourceAttributeResolver {
         }
 
         String platform = config.getString(PlatformResourceCustomizer.PROP_ENVIRONMENT);
-        return Optional.of(canonicalize(platform));
+        return Optional.of(canonicalizeEnvironment(platform));
     }
 
-    /**
-     * Имя окружения — идентификатор Flux-overlay. Меняются только регистр и пробелы:
-     * разные кластеры ({@code stage} и {@code stg}) не сливаются.
-     */
-    private static String canonicalize(String raw) {
+    private static String canonicalizeEnvironment(String raw) {
         if (StringUtils.isNullOrBlank(raw)) {
             return UNKNOWN;
         }

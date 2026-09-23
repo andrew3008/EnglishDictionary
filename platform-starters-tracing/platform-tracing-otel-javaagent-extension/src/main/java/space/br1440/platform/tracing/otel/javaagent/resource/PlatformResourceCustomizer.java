@@ -145,7 +145,7 @@ public final class PlatformResourceCustomizer {
 
     private Optional<String> resolveContainerId(ConfigProperties config) {
         String explicit = firstNonBlank(config.getString(PROP_CONTAINER_ID), envReader.apply(ENV_CONTAINER_ID));
-        return explicit == null ? Optional.empty() : Optional.of(explicit.trim());
+        return (explicit == null) ? Optional.empty() : Optional.of(explicit.trim());
     }
 
     private static Set<String> disabledKeys(ConfigProperties config) {

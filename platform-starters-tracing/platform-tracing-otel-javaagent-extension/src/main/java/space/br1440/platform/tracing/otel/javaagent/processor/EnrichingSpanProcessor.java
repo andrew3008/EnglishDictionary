@@ -105,10 +105,10 @@ public final class EnrichingSpanProcessor implements PlatformEndingSpanProcessor
     }
 
     private void recordRemoteServiceOnError(ReadWriteSpan span, StatusData status) {
-        boolean isErrorClient = span.getKind() == SpanKind.CLIENT
+        boolean isErrorClient = (span.getKind() == SpanKind.CLIENT)
                 && status != null
-                && status.getStatusCode() == StatusCode.ERROR
-                && span.getAttribute(PLATFORM_REMOTE_SERVICE_KEY) == null;
+                && (status.getStatusCode() == StatusCode.ERROR)
+                && (span.getAttribute(PLATFORM_REMOTE_SERVICE_KEY) == null);
         if (!isErrorClient) {
             return;
         }
