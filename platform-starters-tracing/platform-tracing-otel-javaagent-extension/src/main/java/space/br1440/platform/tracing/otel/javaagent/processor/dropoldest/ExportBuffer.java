@@ -1,11 +1,11 @@
 package space.br1440.platform.tracing.otel.javaagent.processor.dropoldest;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.LongSupplier;
 
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.data.SpanData;
@@ -15,17 +15,28 @@ final class ExportBuffer {
     private static final long MIN_WORKER_AWAIT_NANOS = TimeUnit.MILLISECONDS.toNanos(1);
 
     private final DropOldestExportMetrics metrics;
+    private final LongSupplier nanoTime;
     private final SpanQueue spanQueue;
     private final FlushTracker flushTracker = new FlushTracker();
     private final ReentrantLock lock = new ReentrantLock();
     private final Condition workAvailable = lock.newCondition();
 
     private volatile LifecycleState lifecycleState = LifecycleState.ACTIVE;
-    private InFlightExport inFlightExport;
+
+    private SpanQueue.Batch inFlightBatch;
+    private ShutdownDrain shutdownDrain;
 
     ExportBuffer(int maxQueueSize, int maxExportBatchSize, DropOldestExportMetrics metrics) {
-        this.spanQueue = new SpanQueue(maxQueueSize, maxExportBatchSize);
+        this(maxQueueSize, maxExportBatchSize, metrics, System::nanoTime);
+    }
+
+    ExportBuffer(int maxQueueSize,
+                 int maxExportBatchSize,
+                 DropOldestExportMetrics metrics,
+                 LongSupplier nanoTime) {
         this.metrics = Objects.requireNonNull(metrics, "metrics");
+        this.nanoTime = Objects.requireNonNull(nanoTime, "nanoTime");
+        this.spanQueue = new SpanQueue(maxQueueSize, maxExportBatchSize);
     }
 
     boolean isAdmissionOpen() {
@@ -33,214 +44,162 @@ final class ExportBuffer {
     }
 
     void rejectAdmission() {
-        if (lifecycleState == LifecycleState.FAILED) {
-            metrics.incrementDroppedAfterFailure();
-        } else {
-            metrics.incrementDroppedAfterShutdown();
-        }
+        recordRejectedAdmission(lifecycleState);
     }
 
     void admit(SpanData snapshot) {
+        Objects.requireNonNull(snapshot, "snapshot");
+
+        LifecycleState rejectedState = null;
+        boolean overflowed = false;
+        List<FlushTracker.FlushCompletion> completions = List.of();
         lock.lock();
         try {
             if (lifecycleState != LifecycleState.ACTIVE) {
-                rejectAdmission();
-                return;
-            }
-
-            SpanQueue.AdmitOutcome outcome = spanQueue.admit(snapshot);
-            if (outcome.dropped() != null) {
-                flushTracker.markFailureAtOrBefore(outcome.dropped().sequence());
-                metrics.incrementDroppedOverflow();
-            }
-
-            if (spanQueue.hasBatchReady() || flushTracker.hasActive()) {
-                workAvailable.signal();
-            }
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    // намеренно: elapsedSinceExport пересчитывается от lastExportNanos,
-    // а не от возврата awaitNanos
-    @SuppressWarnings("ResultOfMethodCallIgnored")
-    WorkUnit awaitWork(long scheduleDelayNanos, long lastExportNanos) {
-        List<FlushTracker.FlushCompletion> completions = new ArrayList<>(2);
-        WorkUnit result;
-
-        lock.lock();
-        try {
-            completions.addAll(collectTerminalFlushesLocked());
-            if (isWorkerDoneLocked()) {
-                result = WorkUnit.terminate();
+                rejectedState = lifecycleState;
             } else {
-                long elapsedSinceExport = System.nanoTime() - lastExportNanos;
-                WorkUnit loopResult = null;
-                while (!shouldExportNowLocked(scheduleDelayNanos, elapsedSinceExport)) {
-                    if (isWorkerDoneLocked()) {
-                        loopResult = WorkUnit.terminate();
-                        break;
-                    }
-
-                    long waitNanos = spanQueue.isEmpty()
-                            ? scheduleDelayNanos
-                            : Math.max(MIN_WORKER_AWAIT_NANOS, scheduleDelayNanos - elapsedSinceExport);
-                    try {
-                        workAvailable.awaitNanos(waitNanos);
-                    } catch (InterruptedException interrupted) {
-                        Thread.currentThread().interrupt();
-                        completions.addAll(failTerminalLocked());
-                        loopResult = WorkUnit.terminate();
-                        break;
-                    }
-
-                    elapsedSinceExport = System.nanoTime() - lastExportNanos;
+                long droppedSequence = spanQueue.admit(snapshot);
+                if (droppedSequence != SpanQueue.NONE) {
+                    flushTracker.failGenerationsCovering(droppedSequence);
+                    completions = collectTerminalFlushesLocked();
+                    overflowed = true;
                 }
 
-                result = (loopResult != null) ? loopResult : WorkUnit.batch(spanQueue.drainBatch());
+                if (spanQueue.hasBatchReady() || flushTracker.hasActive()) {
+                    workAvailable.signal();
+                }
             }
         } finally {
             lock.unlock();
         }
 
-        FlushTracker.completeAfterUnlock(completions);
-        return result;
+        if (rejectedState != null) {
+            recordRejectedAdmission(rejectedState);
+            return;
+        }
+
+        try {
+            if (overflowed) {
+                metrics.incrementDroppedOverflow();
+            }
+        } finally {
+            FlushTracker.completeAfterUnlock(completions);
+        }
     }
 
-    void settle(List<SequencedSpan> batch, boolean success) {
-        List<FlushTracker.FlushCompletion> completions;
+    WorkerAction awaitNextAction(long scheduleDelayNanos, long lastExportNanos) {
+        LockedEffects effects = new LockedEffects();
         lock.lock();
         try {
-            spanQueue.resolve(batch);
-            if (!success) {
-                flushTracker.markFailureAtOrBefore(batch);
+            return awaitNextActionLocked(scheduleDelayNanos, lastExportNanos, effects);
+        } finally {
+            lock.unlock();
+            effects.publish(metrics);
+        }
+    }
+
+    void completeExport(SpanQueue.Batch batch, boolean success) {
+        Objects.requireNonNull(batch, "batch");
+
+        LockedEffects effects = new LockedEffects();
+        lock.lock();
+        try {
+            if (batch != inFlightBatch) {
+                throw new IllegalStateException("Export batch does not match the current in-flight batch");
             }
 
-            completions = collectTerminalFlushesLocked();
+            if (!success) {
+                flushTracker.failGenerationsCovering(batch.firstSequence());
+            }
+
+            inFlightBatch = null;
+            if (isShutdownDeadlineExceededLocked(nanoTime.getAsLong())) {
+                expireShutdownDrainLocked(effects);
+            } else {
+                effects.addCompletions(collectTerminalFlushesLocked());
+            }
             workAvailable.signal();
         } finally {
             lock.unlock();
-        }
-
-        FlushTracker.completeAfterUnlock(completions);
-    }
-
-    InFlightExport registerTimedOut(List<SequencedSpan> batch, CompletableResultCode pendingResult) {
-        InFlightExport created = new InFlightExport(batch, pendingResult);
-        List<FlushTracker.FlushCompletion> completions;
-
-        lock.lock();
-        try {
-            inFlightExport = created;
-            flushTracker.markFailureAtOrBefore(batch);
-            completions = collectTerminalFlushesLocked();
-        } finally {
-            lock.unlock();
-        }
-
-        FlushTracker.completeAfterUnlock(completions);
-        return created;
-    }
-
-    void completeTimedOut(InFlightExport pending) {
-        settle(pending.batch(), pending.resultCode().isSuccess());
-        lock.lock();
-        try {
-            if (inFlightExport == pending) {
-                inFlightExport = null;
-                workAvailable.signal();
-            }
-        } finally {
-            lock.unlock();
+            effects.publish(metrics);
         }
     }
 
     CompletableResultCode requestFlush() {
-        List<FlushTracker.FlushCompletion> completions;
-        CompletableResultCode result;
+        LockedEffects effects = new LockedEffects();
         lock.lock();
         try {
             if (lifecycleState != LifecycleState.ACTIVE) {
                 return CompletableResultCode.ofFailure();
             }
 
-            result = flushTracker.requestOrExtend(spanQueue.lastAdmittedSequence());
-            flushTracker.markTimedOutFailureIfOverlapping(inFlightFirstSequenceOrNullLocked());
-            completions = collectTerminalFlushesLocked();
+            CompletableResultCode result = flushTracker.requestOrExtend(spanQueue.lastAdmittedSequence());
+            effects.addCompletions(collectTerminalFlushesLocked());
+            workAvailable.signal();
+            return result;
+        } finally {
+            lock.unlock();
+            effects.publish(metrics);
+        }
+    }
+
+    void beginShutdown(long shutdownTimeoutNanos) {
+        LockedEffects effects = new LockedEffects();
+        lock.lock();
+        try {
+            if (lifecycleState != LifecycleState.ACTIVE) {
+                return;
+            }
+
+            lifecycleState = LifecycleState.SHUTTING_DOWN;
+
+            CompletableResultCode shutdownFlush = flushTracker.requestOrExtend(spanQueue.lastAdmittedSequence());
+            shutdownDrain = new ShutdownDrain(nanoTime.getAsLong(), shutdownTimeoutNanos, shutdownFlush);
+            effects.addCompletions(collectTerminalFlushesLocked());
             workAvailable.signal();
         } finally {
             lock.unlock();
-        }
-
-        FlushTracker.completeAfterUnlock(completions);
-        return result;
-    }
-
-    void beginShutdown() {
-        lock.lock();
-        try {
-            if (lifecycleState == LifecycleState.ACTIVE) {
-                lifecycleState = LifecycleState.SHUTTING_DOWN;
-                workAvailable.signal();
-            }
-        } finally {
-            lock.unlock();
+            effects.publish(metrics);
         }
     }
 
     boolean markTerminated() {
+        LockedEffects effects = new LockedEffects();
         lock.lock();
+
         try {
-            if (lifecycleState != LifecycleState.FAILED) {
+            if (lifecycleState == LifecycleState.SHUTTING_DOWN) {
                 lifecycleState = LifecycleState.TERMINATED;
+                releaseAllWorkLocked(effects);
+            } else if (lifecycleState == LifecycleState.ACTIVE) {
+                failTerminalLocked(effects);
             }
 
             return lifecycleState == LifecycleState.FAILED;
         } finally {
             lock.unlock();
+            effects.publish(metrics);
         }
-    }
-
-    void forceDiscardQueuedAndFailFlushes() {
-        List<FlushTracker.FlushCompletion> completions;
-        lock.lock();
-        try {
-            List<SequencedSpan> discarded = spanQueue.drainAll();
-            metrics.addDiscardedQueued(discarded.size());
-            flushTracker.failAllPending();
-            completions = collectTerminalFlushesLocked();
-            workAvailable.signal();
-        } finally {
-            lock.unlock();
-        }
-
-        FlushTracker.completeAfterUnlock(completions);
     }
 
     void failTerminal() {
-        List<FlushTracker.FlushCompletion> completions;
+        LockedEffects effects = new LockedEffects();
         lock.lock();
+
         try {
-            completions = failTerminalLocked();
+            failTerminalLocked(effects);
         } finally {
             lock.unlock();
+            effects.publish(metrics);
         }
-
-        FlushTracker.completeAfterUnlock(completions);
     }
 
     LifecycleState lifecycleState() {
         return lifecycleState;
     }
 
-    int pendingFlushGenerationCount() {
-        lock.lock();
-        try {
-            return flushTracker.pendingGenerationCount();
-        } finally {
-            lock.unlock();
-        }
+    long currentTimeNanos() {
+        return nanoTime.getAsLong();
     }
 
     BufferSnapshot snapshot() {
@@ -252,83 +211,153 @@ final class ExportBuffer {
         }
     }
 
-    private List<FlushTracker.FlushCompletion> failTerminalLocked() {
-        if (lifecycleState == LifecycleState.FAILED) {
-            return List.of();
-        }
-
-        lifecycleState = LifecycleState.FAILED;
-        List<SequencedSpan> discarded = spanQueue.drainAll();
-        metrics.addDiscardedQueued(discarded.size());
-        flushTracker.failAllPending();
-        List<FlushTracker.FlushCompletion> completions = collectTerminalFlushesLocked();
-        workAvailable.signal();
-
-        return completions;
-    }
-
-    private boolean isWorkerDoneLocked() {
-        return lifecycleState != LifecycleState.ACTIVE && spanQueue.isEmpty() && inFlightExport == null;
-    }
-
-    private boolean shouldExportNowLocked(long scheduleDelayNanos, long elapsedSinceExportNanos) {
-        if (inFlightExport != null) {
-            return false;
-        }
-
-        if (lifecycleState != LifecycleState.ACTIVE) {
-            return true;
-        }
-
-        if (flushTracker.hasActive()) {
-            return true;
-        }
-
-        if (spanQueue.hasBatchReady()) {
-            return true;
-        }
-
-        return !spanQueue.isEmpty() && elapsedSinceExportNanos >= scheduleDelayNanos;
-    }
-
-    private List<FlushTracker.FlushCompletion> collectTerminalFlushesLocked() {
-        return flushTracker.collectTerminal(spanQueue::isResolvedUpTo, inFlightFirstSequenceOrNullLocked());
-    }
-
-    private Long inFlightFirstSequenceOrNullLocked() {
-        return (inFlightExport == null) ? null : inFlightExport.firstSequence();
-    }
-
     record BufferSnapshot(int queueSize, LifecycleState lifecycleState) {
     }
 
-    static final class WorkUnit {
-        private final List<SequencedSpan> batch;
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    private WorkerAction awaitNextActionLocked(long scheduleDelayNanos,
+                                               long lastExportNanos,
+                                               LockedEffects effects) {
+        while (true) {
+            effects.addCompletions(collectTerminalFlushesLocked());
+            if (isWorkerDoneLocked()) {
+                return new WorkerAction.StopWorker(workerStopReasonLocked());
+            }
 
-        private WorkUnit(List<SequencedSpan> batch) {
-            this.batch = batch;
-        }
+            long nowNanos = nanoTime.getAsLong();
+            if (isShutdownDeadlineExceededLocked(nowNanos)) {
+                expireShutdownDrainLocked(effects);
+                return new WorkerAction.StopWorker(WorkerStopReason.DRAIN_DEADLINE_EXCEEDED);
+            }
 
-        static WorkUnit batch(List<SequencedSpan> batch) {
-            return new WorkUnit(batch);
-        }
+            long elapsedSinceExportNanos = nowNanos - lastExportNanos;
+            if (isExportReadyLocked(scheduleDelayNanos, elapsedSinceExportNanos)) {
+                inFlightBatch = spanQueue.drainBatch();
+                return new WorkerAction.ExportBatch(inFlightBatch);
+            }
 
-        static WorkUnit terminate() {
-            return new WorkUnit(null);
-        }
-
-        boolean isTerminate() {
-            return batch == null;
-        }
-
-        List<SequencedSpan> batch() {
-            return batch;
+            try {
+                workAvailable.awaitNanos(workerWaitNanosLocked(scheduleDelayNanos, elapsedSinceExportNanos, nowNanos));
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                failTerminalLocked(effects);
+                return new WorkerAction.StopWorker(WorkerStopReason.WORKER_FAILED);
+            }
         }
     }
 
-    record InFlightExport(List<SequencedSpan> batch, CompletableResultCode resultCode) {
-        long firstSequence() {
-            return batch.getFirst().sequence();
+    private boolean isExportReadyLocked(long scheduleDelayNanos, long elapsedSinceExportNanos) {
+        if (inFlightBatch != null || spanQueue.isEmpty()) {
+            return false;
+        }
+
+        if (lifecycleState != LifecycleState.ACTIVE || flushTracker.hasActive()) {
+            return true;
+        }
+
+        return spanQueue.hasBatchReady() || elapsedSinceExportNanos >= scheduleDelayNanos;
+    }
+
+    private long workerWaitNanosLocked(long scheduleDelayNanos, long elapsedSinceExportNanos, long nowNanos) {
+        long waitNanos = spanQueue.isEmpty()
+                ? scheduleDelayNanos
+                : Math.max(MIN_WORKER_AWAIT_NANOS, scheduleDelayNanos - elapsedSinceExportNanos);
+
+        if (lifecycleState == LifecycleState.SHUTTING_DOWN) {
+            waitNanos = Math.min(waitNanos, requireShutdownDrainLocked().remainingNanos(nowNanos));
+        }
+
+        return waitNanos;
+    }
+
+    private boolean isWorkerDoneLocked() {
+        return lifecycleState != LifecycleState.ACTIVE
+                && spanQueue.isEmpty()
+                && inFlightBatch == null;
+    }
+
+    private WorkerStopReason workerStopReasonLocked() {
+        if (lifecycleState == LifecycleState.FAILED) {
+            return WorkerStopReason.WORKER_FAILED;
+        }
+
+        return requireShutdownDrainLocked().stopReason();
+    }
+
+    private void failTerminalLocked(LockedEffects effects) {
+        if (lifecycleState == LifecycleState.FAILED || lifecycleState == LifecycleState.TERMINATED) {
+            return;
+        }
+
+        lifecycleState = LifecycleState.FAILED;
+        releaseAllWorkLocked(effects);
+    }
+
+    private void expireShutdownDrainLocked(LockedEffects effects) {
+        requireShutdownDrainLocked().markDeadlineExceeded();
+        discardQueuedAndFailFlushesLocked(effects);
+    }
+
+    private void releaseAllWorkLocked(LockedEffects effects) {
+        inFlightBatch = null;
+        discardQueuedAndFailFlushesLocked(effects);
+    }
+
+    private void discardQueuedAndFailFlushesLocked(LockedEffects effects) {
+        effects.addDiscardedQueued(spanQueue.drainAll());
+        flushTracker.failAllPending();
+        effects.addCompletions(collectTerminalFlushesLocked());
+        workAvailable.signal();
+    }
+
+    private boolean isShutdownDeadlineExceededLocked(long nowNanos) {
+        return (lifecycleState == LifecycleState.SHUTTING_DOWN)
+                && requireShutdownDrainLocked().isDeadlineExceeded(nowNanos);
+    }
+
+    private ShutdownDrain requireShutdownDrainLocked() {
+        if (shutdownDrain == null) {
+            throw new IllegalStateException("Shutdown drain has not been initialized");
+        }
+
+        return shutdownDrain;
+    }
+
+    private List<FlushTracker.FlushCompletion> collectTerminalFlushesLocked() {
+        if (!flushTracker.hasActive()) {
+            return List.of();
+        }
+
+        List<FlushTracker.FlushCompletion> completions = flushTracker.collectTerminal(this::isResolvedUpToLocked);
+        if (shutdownDrain != null) {
+            shutdownDrain.captureFlushOutcome(completions);
+        }
+        return completions;
+    }
+
+    private boolean isResolvedUpToLocked(long watermark) {
+        long lowestUnresolved = lowestUnresolvedSequenceLocked();
+        return (lowestUnresolved == SpanQueue.NONE) || (lowestUnresolved > watermark);
+    }
+
+    private long lowestUnresolvedSequenceLocked() {
+        long queueHead = spanQueue.headSequence();
+        if (inFlightBatch == null) {
+            return queueHead;
+        }
+
+        if (queueHead == SpanQueue.NONE) {
+            return inFlightBatch.firstSequence();
+        }
+
+        return Math.min(inFlightBatch.firstSequence(), queueHead);
+    }
+
+    private void recordRejectedAdmission(LifecycleState rejectedState) {
+        if (rejectedState == LifecycleState.FAILED) {
+            metrics.incrementDroppedAfterFailure();
+        } else {
+            metrics.incrementDroppedAfterShutdown();
         }
     }
 }

@@ -30,7 +30,7 @@ final class TimedSpanExporter {
         this.metrics = metrics;
     }
 
-    ExportOutcome export(List<SpanData> snapshots) {
+    boolean export(List<SpanData> snapshots) {
         CompletableResultCode resultCode;
         try {
             resultCode = delegate.export(snapshots);
@@ -38,13 +38,13 @@ final class TimedSpanExporter {
             PlatformThrowables.propagateIfFatal(failure);
             metrics.incrementFailures();
             log.warn(AgentEventCodes.EXPORT_TIMED, "exporter.export() threw", failure);
-            return ExportOutcome.FAILURE;
+            return false;
         }
 
         if (resultCode == null) {
             metrics.incrementFailures();
             log.warn(AgentEventCodes.EXPORT_TIMED, "exporter.export() returned null");
-            return ExportOutcome.FAILURE;
+            return false;
         }
 
         boolean completed = resultCode.join(exportTimeoutNanos, TimeUnit.NANOSECONDS).isDone();
@@ -53,16 +53,16 @@ final class TimedSpanExporter {
             metrics.incrementFailures();
             log.warn(AgentEventCodes.EXPORT_TIMED, "exporter.export() timed out", "timeoutMs",
                     String.valueOf(TimeUnit.NANOSECONDS.toMillis(exportTimeoutNanos)));
-            return ExportOutcome.timedOut(resultCode);
+            return false;
         }
 
         if (!resultCode.isSuccess()) {
             metrics.incrementFailures();
             log.warn(AgentEventCodes.EXPORT_TIMED, "exporter.export() returned failure");
-            return ExportOutcome.FAILURE;
+            return false;
         }
 
-        return ExportOutcome.SUCCESS;
+        return true;
     }
 
     boolean shutdown() {
@@ -97,15 +97,5 @@ final class TimedSpanExporter {
         }
 
         return success;
-    }
-
-    record ExportOutcome(boolean timedOut, boolean success, CompletableResultCode pendingResult) {
-
-        static final ExportOutcome SUCCESS = new ExportOutcome(false, true, null);
-        static final ExportOutcome FAILURE = new ExportOutcome(false, false, null);
-
-        static ExportOutcome timedOut(CompletableResultCode pendingResult) {
-            return new ExportOutcome(true, false, pendingResult);
-        }
     }
 }

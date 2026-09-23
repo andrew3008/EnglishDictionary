@@ -16,7 +16,6 @@ import java.util.concurrent.locks.LockSupport;
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.TraceFlags;
 import io.opentelemetry.api.trace.TraceState;
-import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
@@ -35,11 +34,6 @@ import space.br1440.platform.tracing.otel.javaagent.processor.composite.Platform
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.SpanTimeoutProcessor;
 
-/**
- * Characterization-тесты для дефектов, ранее выявленных в pipeline процессоров:
- * утечка чувствительных данных в диагностику, изоляция spanTimeout по trace,
- * и корректность отложенного shutdown у drop-oldest экспортёра при зависшем export().
- */
 class ProcessorDefectCharacterizationTest {
 
     private static final String SENSITIVE_SPAN_NAME = "customer-secret-span-name";
@@ -129,7 +123,7 @@ class ProcessorDefectCharacterizationTest {
     }
 
     @Test
-    void dropOldestDefersExporterShutdownUntilTimedOutExportCompletes() throws InterruptedException {
+    void timedOutExportDoesNotDeferExporterShutdown() throws InterruptedException {
         // given
         PendingExporter exporter = new PendingExporter();
         PlatformDropOldestExportSpanProcessor processor =
@@ -144,26 +138,25 @@ class ProcessorDefectCharacterizationTest {
         try (SdkTracerProvider provider = SdkTracerProvider.builder()
                 .addSpanProcessor(processor)
                 .build()) {
-
-            Tracer tracer = provider.get(TRACER_SCOPE);
+            provider.get(TRACER_SCOPE).spanBuilder("pending-export").startSpan().end();
+            assertThat(exporter.exportStarted.await(AWAIT_TIMEOUT.toSeconds(), TimeUnit.SECONDS)).isTrue();
+            awaitWorkerIdleAfterTimeout(processor);
 
             // when
-            tracer.spanBuilder("pending-export").startSpan().end();
-
-            // then: экспорт начался и завис до истечения exportTimeout
-            assertThat(exporter.exportStarted.await(AWAIT_TIMEOUT.toSeconds(), TimeUnit.SECONDS)).isTrue();
-            awaitExportTimeoutRecorded(processor);
-
-            // shutdown не может завершиться успешно, пока export() всё ещё выполняется
             CompletableResultCode shutdownResult = processor.shutdown();
-            assertThat(shutdownResult.join(AWAIT_TIMEOUT.toSeconds(), TimeUnit.SECONDS).isSuccess()).isFalse();
-            assertThat(exporter.shutdownCalled.getCount()).isOne();
 
-            // после завершения зависшего export() shutdown экспортёра вызывается ровно один раз
-            exporter.pendingExport.succeed();
-            assertThat(exporter.shutdownCalled.await(AWAIT_TIMEOUT.toSeconds(), TimeUnit.SECONDS)).isTrue();
-            assertThat(exporter.shutdownWhileExportPending).isFalse();
+            // then
+            assertThat(shutdownResult.join(AWAIT_TIMEOUT.toSeconds(), TimeUnit.SECONDS).isDone()).isTrue();
+            assertThat(shutdownResult.isSuccess()).isTrue();
             assertThat(exporter.shutdownCalls.get()).isEqualTo(1);
+            assertThat(exporter.shutdownWhileExportPending).isTrue();
+
+            long timeouts = processor.metricsSnapshot().timeoutsTotal();
+            long failures = processor.metricsSnapshot().failuresTotal();
+            exporter.pendingExport.succeed();
+            assertThat(processor.metricsSnapshot().timeoutsTotal()).isEqualTo(timeouts);
+            assertThat(processor.metricsSnapshot().failuresTotal()).isEqualTo(failures);
+            assertThat(shutdownResult.isSuccess()).isTrue();
         } finally {
             exporter.pendingExport.succeed();
         }
@@ -183,6 +176,33 @@ class ProcessorDefectCharacterizationTest {
             LockSupport.parkNanos(POLL_INTERVAL.toNanos());
         }
         assertThat(processor.metricsSnapshot().timeoutsTotal()).isEqualTo(1);
+    }
+
+    private static void awaitWorkerIdleAfterTimeout(PlatformDropOldestExportSpanProcessor processor) {
+        awaitExportTimeoutRecorded(processor);
+        long deadline = System.nanoTime() + AWAIT_TIMEOUT.toNanos();
+        while (System.nanoTime() < deadline) {
+            if (processor.metricsSnapshot().queueSize() == 0 && workerIsTimedWaiting()) {
+                return;
+            }
+
+            LockSupport.parkNanos(POLL_INTERVAL.toNanos());
+        }
+
+        assertThat(workerIsTimedWaiting())
+                .as("worker must leave the timed-out export before shutdown is requested")
+                .isTrue();
+    }
+
+    private static boolean workerIsTimedWaiting() {
+        for (Thread thread : Thread.getAllStackTraces().keySet()) {
+            if ("platform-tracing-drop-oldest-exporter".equals(thread.getName())
+                    && thread.getState() == Thread.State.TIMED_WAITING) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

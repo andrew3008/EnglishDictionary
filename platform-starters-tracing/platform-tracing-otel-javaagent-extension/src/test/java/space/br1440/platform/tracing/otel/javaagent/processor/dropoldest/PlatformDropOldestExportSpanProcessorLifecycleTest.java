@@ -112,6 +112,46 @@ class PlatformDropOldestExportSpanProcessorLifecycleTest {
     }
 
     @Test
+    void exportFailureDuringShutdownDrainFailsShutdown() {
+        // given
+        SpanExporter failing = new SpanExporter() {
+            @Override
+            public CompletableResultCode export(Collection<SpanData> batch) {
+                return CompletableResultCode.ofFailure();
+            }
+
+            @Override
+            public CompletableResultCode flush() {
+                return CompletableResultCode.ofSuccess();
+            }
+
+            @Override
+            public CompletableResultCode shutdown() {
+                return CompletableResultCode.ofSuccess();
+            }
+        };
+        PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor.builder(failing)
+                .maxQueueSize(16)
+                .maxExportBatchSize(1)
+                .scheduleDelay(Duration.ofMinutes(10))
+                .shutdownTimeout(Duration.ofSeconds(5))
+                .build();
+
+        try (SdkTracerProvider provider = SdkTracerProvider.builder()
+                .setSampler(Sampler.alwaysOn())
+                .addSpanProcessor(processor)
+                .build()) {
+            // when
+            provider.get("shutdown-drain-failure").spanBuilder("span").startSpan().end();
+            CompletableResultCode shutdown = processor.shutdown();
+
+            // then
+            assertThat(shutdown.join(5, TimeUnit.SECONDS).isDone()).isTrue();
+            assertThat(shutdown.isSuccess()).isFalse();
+        }
+    }
+
+    @Test
     @DisplayName("exportTimeout срабатывает: счётчик exportTimeouts инкрементируется, экспорт неуспешен")
     void exportTimeoutIncrementsCounter() {
         // given
@@ -159,19 +199,25 @@ class PlatformDropOldestExportSpanProcessorLifecycleTest {
     }
 
     @Test
-    @DisplayName("Делегат, завершившийся после exportTimeout, доводит in-flight export до settle без второго таймаута")
-    void lateDelegateCompletionAfterExportTimeoutSettlesTheInFlightExport() throws InterruptedException {
+    void lateDelegateCompletionAfterExportTimeoutDoesNotChangeTheProcessorResult() throws InterruptedException {
         // given
         List<CompletableResultCode> pending = new CopyOnWriteArrayList<>();
         CountDownLatch exportCalled = new CountDownLatch(1);
+        CountDownLatch continued = new CountDownLatch(1);
+        AtomicInteger calls = new AtomicInteger();
 
         SpanExporter completesAfterJoinTimeout = new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> batch) {
-                CompletableResultCode result = new CompletableResultCode();
-                pending.add(result);
-                exportCalled.countDown();
-                return result;
+                if (calls.incrementAndGet() == 1) {
+                    CompletableResultCode result = new CompletableResultCode();
+                    pending.add(result);
+                    exportCalled.countDown();
+                    return result;
+                }
+
+                continued.countDown();
+                return CompletableResultCode.ofSuccess();
             }
 
             @Override public CompletableResultCode flush() {
@@ -195,39 +241,27 @@ class PlatformDropOldestExportSpanProcessorLifecycleTest {
                 .setSampler(Sampler.alwaysOn())
                 .addSpanProcessor(processor)
                 .build()) {
-            Tracer t = tp.get("late-completion-test");
+            Tracer tracer = tp.get("late-completion-test");
 
             // when
-            t.spanBuilder("a").startSpan().end();
-            t.spanBuilder("b").startSpan().end();
+            tracer.spanBuilder("a").startSpan().end();
+            tracer.spanBuilder("b").startSpan().end();
             assertThat(exportCalled.await(3, TimeUnit.SECONDS)).isTrue();
             CompletableResultCode timedOutFlush = processor.forceFlush();
             timedOutFlush.join(3, TimeUnit.SECONDS);
             long timeoutsAfterJoin = processor.metricsSnapshot().timeoutsTotal();
+            long failuresAfterJoin = processor.metricsSnapshot().failuresTotal();
 
             // then
             assertThat(timedOutFlush.isSuccess()).isFalse();
-            assertThat(timeoutsAfterJoin)
-                    .as("processor перестал ждать делегата и зафиксировал ровно один timeout")
-                    .isEqualTo(1);
+            assertThat(timeoutsAfterJoin).isEqualTo(1);
 
-            // when
             pending.getFirst().succeed();
-            long deadline = System.currentTimeMillis() + 3000;
-            while (processor.metricsSnapshot().queueSize() != 0 && System.currentTimeMillis() < deadline) {
-                TimeUnit.MILLISECONDS.sleep(20);
-            }
+            assertThat(processor.metricsSnapshot().timeoutsTotal()).isEqualTo(timeoutsAfterJoin);
+            assertThat(processor.metricsSnapshot().failuresTotal()).isEqualTo(failuresAfterJoin);
 
-            // then
-            assertThat(processor.metricsSnapshot().queueSize())
-                    .as("поздний ответ снял in-flight export, очередь освободилась")
-                    .isZero();
-
-            assertThat(processor.metricsSnapshot().timeoutsTotal())
-                    .as("поздний ответ не классифицируется как ещё один timeout")
-                    .isEqualTo(timeoutsAfterJoin);
-
-            assertThat(processor.metricsSnapshot().droppedAfterFailureTotal()).isZero();
+            tracer.spanBuilder("c").startSpan().end();
+            assertThat(continued.await(3, TimeUnit.SECONDS)).isTrue();
         }
     }
 

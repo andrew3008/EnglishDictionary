@@ -27,29 +27,26 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
 
     private static final RateLimitedLogger log = new RateLimitedLogger(PlatformDropOldestExportSpanProcessor.class);
 
-    private final DropOldestExportConfig config;
+    private final int queueCapacity;
     private final DropOldestExportMetrics metrics;
     private final ExportBuffer buffer;
-    private final ProcessorLifecycle lifecycle;
+    private final ExportWorker worker;
 
     private PlatformDropOldestExportSpanProcessor(Builder builder) {
-        this.config = new DropOldestExportConfig(
-                builder.maxQueueSize,
-                builder.maxExportBatchSize,
-                builder.scheduleDelay.toNanos(),
-                builder.exportTimeout.toNanos(),
-                builder.shutdownTimeout.toNanos()
-        );
-
+        this.queueCapacity = builder.maxQueueSize;
         this.metrics = new DropOldestExportMetrics();
-        this.buffer = new ExportBuffer(config.maxQueueSize(), config.maxExportBatchSize(), metrics);
+        this.buffer = new ExportBuffer(builder.maxQueueSize, builder.maxExportBatchSize, metrics);
 
         TimedSpanExporter timedSpanExporter = new TimedSpanExporter(
-                builder.exporter, config.exportTimeoutNanos(), config.shutdownTimeoutNanos(), metrics
+                builder.exporter,
+                builder.exportTimeout.toNanos(),
+                builder.shutdownTimeout.toNanos(),
+                metrics
         );
 
-        ExportWorker worker = new ExportWorker(buffer, timedSpanExporter, config.scheduleDelayNanos());
-        this.lifecycle = new ProcessorLifecycle(buffer, worker, timedSpanExporter, config.shutdownTimeoutNanos());
+        this.worker = new ExportWorker(
+                buffer, timedSpanExporter, builder.scheduleDelay.toNanos(), builder.shutdownTimeout.toNanos()
+        );
         worker.start();
     }
 
@@ -96,13 +93,13 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
 
     @Override
     public CompletableResultCode shutdown() {
-        return lifecycle.shutdown();
+        return worker.shutdown();
     }
 
     public MetricsSnapshot metricsSnapshot() {
         ExportBuffer.BufferSnapshot bufferSnapshot = buffer.snapshot();
         return new MetricsSnapshot(
-                config.maxQueueSize(),
+                queueCapacity,
                 bufferSnapshot.queueSize(),
                 bufferSnapshot.lifecycleState().name(),
                 metrics.droppedOverflowTotal(),
@@ -128,11 +125,6 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
             long timeoutsTotal) {
     }
 
-    // Test-only диагностический хук
-    int pendingFlushGenerationCount() {
-        return buffer.pendingFlushGenerationCount();
-    }
-
     public static Builder builder(SpanExporter exporter) {
         return new Builder(exporter);
     }
@@ -142,7 +134,7 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
         private static final int DEFAULT_MAX_QUEUE_SIZE = 2048;
         private static final int DEFAULT_MAX_EXPORT_BATCH_SIZE = 512;
         private static final Duration DEFAULT_SCHEDULE_DELAY = Duration.ofMillis(5_000);
-        private static final Duration DEFAULT_EXPORT_TIMEOUT = Duration.ofMillis(5_000);
+        private static final Duration DEFAULT_EXPORT_TIMEOUT = Duration.ofMillis(30_000);
 
         private final SpanExporter exporter;
         private int maxQueueSize = DEFAULT_MAX_QUEUE_SIZE;
@@ -207,45 +199,39 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
         }
 
         public PlatformDropOldestExportSpanProcessor build() {
-            applyValidationWithSafeFallback();
+            validate();
             return new PlatformDropOldestExportSpanProcessor(this);
         }
 
-        private void applyValidationWithSafeFallback() {
+        private void validate() {
             if (maxQueueSize <= 0) {
-                log.warn(AgentEventCodes.EXPORT_DROP_OLDEST, "Invalid value; using fallback",
-                        "name", "maxQueueSize");
-                maxQueueSize = DEFAULT_MAX_QUEUE_SIZE;
+                throw new IllegalArgumentException("maxQueueSize must be positive");
             }
 
             if (maxExportBatchSize <= 0) {
-                log.warn(AgentEventCodes.EXPORT_DROP_OLDEST, "Invalid value; using fallback",
-                        "name", "maxExportBatchSize");
-                maxExportBatchSize = DEFAULT_MAX_EXPORT_BATCH_SIZE;
+                throw new IllegalArgumentException("maxExportBatchSize must be positive");
             }
 
             if (maxExportBatchSize > maxQueueSize) {
-                log.warn(AgentEventCodes.EXPORT_DROP_OLDEST, "Exceeds maxQueueSize; clamped to queue size",
-                        "name", "maxExportBatchSize");
+                log.warn(AgentEventCodes.EXPORT_DROP_OLDEST,
+                        "Exceeds maxQueueSize; clamped to queue size",
+                        "name",
+                        "maxExportBatchSize"
+                );
+
                 maxExportBatchSize = maxQueueSize;
             }
 
             if (scheduleDelay == null || scheduleDelay.isNegative() || scheduleDelay.isZero()) {
-                log.warn(AgentEventCodes.EXPORT_DROP_OLDEST, "Invalid value; using fallback",
-                        "name", "scheduleDelay");
-                scheduleDelay = DEFAULT_SCHEDULE_DELAY;
+                throw new IllegalArgumentException("scheduleDelay must be positive");
             }
 
             if (exportTimeout == null || exportTimeout.isNegative() || exportTimeout.isZero()) {
-                log.warn(AgentEventCodes.EXPORT_DROP_OLDEST, "Invalid value; using fallback",
-                        "name", "exportTimeout");
-                exportTimeout = DEFAULT_EXPORT_TIMEOUT;
+                throw new IllegalArgumentException("exportTimeout must be positive");
             }
 
             if (shutdownTimeout == null || shutdownTimeout.isNegative() || shutdownTimeout.isZero()) {
-                log.warn(AgentEventCodes.EXPORT_DROP_OLDEST, "Invalid value; using fallback",
-                        "name", "shutdownTimeout");
-                shutdownTimeout = ExtensionDefaults.DEFAULT_DROP_OLDEST_SHUTDOWN_TIMEOUT;
+                throw new IllegalArgumentException("shutdownTimeout must be positive");
             }
         }
     }

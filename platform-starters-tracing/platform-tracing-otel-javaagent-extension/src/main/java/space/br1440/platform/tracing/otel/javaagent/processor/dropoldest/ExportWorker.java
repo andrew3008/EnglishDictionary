@@ -2,100 +2,173 @@ package space.br1440.platform.tracing.otel.javaagent.processor.dropoldest;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
-import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.common.CompletableResultCode;
 
 final class ExportWorker implements Runnable {
+
+    static final String THREAD_NAME = "platform-tracing-drop-oldest-exporter";
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(ExportWorker.class);
 
     private final ExportBuffer buffer;
     private final TimedSpanExporter exporter;
     private final long scheduleDelayNanos;
-    private final CountDownLatch terminated = new CountDownLatch(1);
+    private final long shutdownTimeoutNanos;
+    private final CompletableResultCode shutdownResult = new CompletableResultCode();
 
-    ExportWorker(ExportBuffer buffer, TimedSpanExporter exporter, long scheduleDelayNanos) {
+    ExportWorker(ExportBuffer buffer,
+                 TimedSpanExporter exporter,
+                 long scheduleDelayNanos,
+                 long shutdownTimeoutNanos) {
         this.buffer = buffer;
         this.exporter = exporter;
         this.scheduleDelayNanos = scheduleDelayNanos;
+        this.shutdownTimeoutNanos = shutdownTimeoutNanos;
     }
 
     void start() {
-        Thread thread = new Thread(this, "platform-tracing-drop-oldest-exporter");
+        Thread thread = new Thread(this, THREAD_NAME);
         thread.setDaemon(true);
         thread.start();
     }
 
-    boolean awaitTermination(long timeoutNanos) {
-        try {
-            return terminated.await(Math.max(0, timeoutNanos), TimeUnit.NANOSECONDS);
-        } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt();
-            return false;
-        }
-    }
-
-    void awaitTerminationUnbounded() {
-        boolean interrupted = false;
-        while (terminated.getCount() != 0) {
-            try {
-                terminated.await();
-            } catch (InterruptedException ignored) {
-                interrupted = true;
-            }
-        }
-
-        if (interrupted) {
-            Thread.currentThread().interrupt();
-        }
+    CompletableResultCode shutdown() {
+        buffer.beginShutdown(shutdownTimeoutNanos);
+        return shutdownResult;
     }
 
     @Override
     public void run() {
-        long lastExportNanos = System.nanoTime();
+        WorkerStopReason stopReason = WorkerStopReason.WORKER_FAILED;
+        FailureCollector failures = new FailureCollector();
+        boolean loopFailed = false;
         try {
-            while (true) {
-                ExportBuffer.WorkUnit work = buffer.awaitWork(scheduleDelayNanos, lastExportNanos);
-                if (work.isTerminate()) {
-                    return;
-                }
-
-                exportBatch(work.batch());
-                lastExportNanos = System.nanoTime();
-            }
+            stopReason = exportUntilShutdown();
         } catch (Throwable failure) {
-            buffer.failTerminal();
+            loopFailed = true;
+            failures.add(failure);
+            failBuffer(failures);
+        }
 
-            PlatformThrowables.propagateIfFatal(failure);
-            log.error(AgentEventCodes.EXPORT_WORKER, "Export worker terminated abnormally", failure);
-        } finally {
-            terminated.countDown();
+        terminate(stopReason, failures);
+        failures.propagateFatal();
+
+        Throwable failure = failures.combineForLogging();
+        if (failure == null) {
+            return;
+        }
+
+        String message = loopFailed
+                ? "Export worker terminated abnormally"
+                : "Exporter shutdown failed after worker drain completed";
+        log.error(AgentEventCodes.EXPORT_WORKER, message, failure);
+    }
+
+    private WorkerStopReason exportUntilShutdown() {
+        long lastExportNanos = buffer.currentTimeNanos();
+        while (true) {
+            WorkerAction action = buffer.awaitNextAction(scheduleDelayNanos, lastExportNanos);
+            switch (action) {
+                case WorkerAction.ExportBatch exportBatch -> exportBatch(exportBatch.batch());
+                case WorkerAction.StopWorker stopWorker -> {
+                    return stopWorker.reason();
+                }
+            }
+
+            lastExportNanos = buffer.currentTimeNanos();
         }
     }
 
-    private void exportBatch(List<SequencedSpan> batch) {
-        if (batch.isEmpty()) {
-            return;
+    private void exportBatch(SpanQueue.Batch batch) {
+        boolean success = exporter.export(batch.spans());
+        buffer.completeExport(batch, success);
+    }
+
+    private void failBuffer(FailureCollector failures) {
+        try {
+            buffer.failTerminal();
+        } catch (Throwable failTerminalFailure) {
+            failures.add(failTerminalFailure);
+        }
+    }
+
+    private void terminate(
+            WorkerStopReason stopReason,
+            FailureCollector failures
+    ) {
+        boolean exporterShutdownSucceeded = false;
+        try {
+            exporterShutdownSucceeded = exporter.shutdown();
+        } catch (Throwable shutdownFailure) {
+            failures.add(shutdownFailure);
         }
 
-        List<SpanData> snapshots = new ArrayList<>(batch.size());
-        for (SequencedSpan sequencedSpan : batch) {
-            snapshots.add(sequencedSpan.snapshot());
+        boolean lifecycleSettled = false;
+        boolean workerFailed = true;
+        try {
+            workerFailed = buffer.markTerminated();
+            lifecycleSettled = true;
+        } catch (Throwable settleFailure) {
+            failures.add(settleFailure);
+        } finally {
+            boolean succeeded = lifecycleSettled
+                    && stopReason == WorkerStopReason.DRAIN_COMPLETED
+                    && !workerFailed
+                    && exporterShutdownSucceeded;
+            publishShutdownResult(succeeded, failures);
+        }
+    }
+
+    private void publishShutdownResult(boolean succeeded, FailureCollector failures) {
+        try {
+            if (succeeded) {
+                shutdownResult.succeed();
+            } else {
+                shutdownResult.fail();
+            }
+        } catch (Throwable publicationFailure) {
+            failures.add(publicationFailure);
+            if (!shutdownResult.isDone()) {
+                try {
+                    shutdownResult.fail();
+                } catch (Throwable fallbackFailure) {
+                    failures.add(fallbackFailure);
+                }
+            }
+        }
+    }
+
+    private static final class FailureCollector {
+        private final List<Throwable> failures = new ArrayList<>(3);
+
+        private void add(Throwable failure) {
+            failures.add(failure);
         }
 
-        TimedSpanExporter.ExportOutcome outcome = exporter.export(snapshots);
-        if (outcome.timedOut()) {
-            ExportBuffer.InFlightExport pending = buffer.registerTimedOut(batch, outcome.pendingResult());
-            outcome.pendingResult().whenComplete(() -> buffer.completeTimedOut(pending));
-            return;
+        private void propagateFatal() {
+            for (Throwable failure : failures) {
+                PlatformThrowables.propagateIfFatal(failure);
+            }
         }
 
-        buffer.settle(batch, outcome.success());
+        private Throwable combineForLogging() {
+            if (failures.isEmpty()) {
+                return null;
+            }
+
+            Throwable primary = failures.getFirst();
+            for (int index = 1; index < failures.size(); index++) {
+                Throwable secondary = failures.get(index);
+                if (secondary != primary) {
+                    primary.addSuppressed(secondary);
+                }
+            }
+            return primary;
+        }
     }
 }

@@ -1,23 +1,24 @@
 package space.br1440.platform.tracing.otel.javaagent.processor.dropoldest;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.function.LongPredicate;
+
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
+import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 
 import io.opentelemetry.sdk.common.CompletableResultCode;
 
 final class FlushTracker {
+
+    private static final RateLimitedLogger log = new RateLimitedLogger(FlushTracker.class);
 
     private Generation active;
     private Generation queued;
 
     boolean hasActive() {
         return active != null;
-    }
-
-    int pendingGenerationCount() {
-        return (active == null ? 0 : 1) + (queued == null ? 0 : 1);
     }
 
     CompletableResultCode requestOrExtend(long watermark) {
@@ -35,17 +36,9 @@ final class FlushTracker {
         return queued.result;
     }
 
-    void markFailureAtOrBefore(long sequence) {
+    void failGenerationsCovering(long sequence) {
         markIfCovers(active, sequence);
         markIfCovers(queued, sequence);
-    }
-
-    void markFailureAtOrBefore(Collection<SequencedSpan> spans) {
-        if (spans.isEmpty()) {
-            return;
-        }
-
-        markFailureAtOrBefore(spans.iterator().next().sequence());
     }
 
     void failAllPending() {
@@ -58,12 +51,7 @@ final class FlushTracker {
         }
     }
 
-    void markTimedOutFailureIfOverlapping(Long inFlightFirstSequence) {
-        markIfOverlapping(active, inFlightFirstSequence);
-        markIfOverlapping(queued, inFlightFirstSequence);
-    }
-
-    List<FlushCompletion> collectTerminal(LongPredicate isResolvedUpTo, Long inFlightFirstSequence) {
+    List<FlushCompletion> collectTerminal(LongPredicate isResolvedUpTo) {
         List<FlushCompletion> completions = new ArrayList<>(2);
         while (active != null) {
             boolean resolved = isResolvedUpTo.test(active.watermark);
@@ -74,34 +62,52 @@ final class FlushTracker {
             completions.add(new FlushCompletion(active.result, !active.failed));
             active = queued;
             queued = null;
-            markIfOverlapping(active, inFlightFirstSequence);
         }
 
         return completions;
     }
 
     static void completeAfterUnlock(List<FlushCompletion> completions) {
+        List<Throwable> callbackFailures = null;
         for (FlushCompletion completion : completions) {
-            if (completion.success()) {
-                completion.result().succeed();
-            } else {
-                completion.result().fail();
+            try {
+                if (completion.success()) {
+                    completion.result().succeed();
+                } else {
+                    completion.result().fail();
+                }
+            } catch (Throwable callbackFailure) {
+                if (callbackFailures == null) {
+                    callbackFailures = new ArrayList<>(2);
+                }
+                callbackFailures.add(callbackFailure);
             }
         }
+
+        reportCallbackFailures(callbackFailures);
+    }
+
+    private static void reportCallbackFailures(List<Throwable> callbackFailures) {
+        if (callbackFailures == null) {
+            return;
+        }
+
+        for (Throwable callbackFailure : callbackFailures) {
+            PlatformThrowables.propagateIfFatal(callbackFailure);
+        }
+
+        Throwable primary = callbackFailures.getFirst();
+        for (int index = 1; index < callbackFailures.size(); index++) {
+            Throwable secondary = callbackFailures.get(index);
+            if (secondary != primary) {
+                primary.addSuppressed(secondary);
+            }
+        }
+        log.warn(AgentEventCodes.EXPORT_CALLBACK, "Flush completion callback failed", primary);
     }
 
     private static void markIfCovers(Generation generation, long sequence) {
         if (generation != null && sequence <= generation.watermark) {
-            generation.failed = true;
-        }
-    }
-
-    private static void markIfOverlapping(Generation generation, Long inFlightFirstSequence) {
-        if (generation == null || inFlightFirstSequence == null) {
-            return;
-        }
-
-        if (inFlightFirstSequence <= generation.watermark) {
             generation.failed = true;
         }
     }

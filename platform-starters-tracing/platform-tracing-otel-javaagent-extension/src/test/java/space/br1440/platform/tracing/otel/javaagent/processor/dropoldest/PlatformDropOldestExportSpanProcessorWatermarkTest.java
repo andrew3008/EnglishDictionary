@@ -10,13 +10,16 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
+import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
-import org.junit.jupiter.api.Test;
 
 class PlatformDropOldestExportSpanProcessorWatermarkTest {
 
@@ -41,12 +44,10 @@ class PlatformDropOldestExportSpanProcessorWatermarkTest {
             // then
             assertThat(coalesced).isSameAs(queued);
             assertThat(queued).isNotSameAs(active);
-            assertThat(processor.pendingFlushGenerationCount()).isEqualTo(2);
 
             exporter.firstExport.succeed();
             assertThat(active.join(5, TimeUnit.SECONDS).isSuccess()).isTrue();
             assertThat(queued.join(5, TimeUnit.SECONDS).isSuccess()).isTrue();
-            assertThat(processor.pendingFlushGenerationCount()).isZero();
             assertThat(exporter.exported).hasSize(7);
         } finally {
             exporter.firstExport.succeed();
@@ -71,12 +72,70 @@ class PlatformDropOldestExportSpanProcessorWatermarkTest {
             endSpans(tracer, "overflow", 1);
 
             // then
-            assertThat(flush.join(5, TimeUnit.SECONDS).isSuccess()).isFalse();
+            assertThat(flush.join(5, TimeUnit.SECONDS).isDone()).isTrue();
+            assertThat(flush.isSuccess()).isFalse();
             assertThat(processor.metricsSnapshot().droppedOverflowTotal()).isEqualTo(1);
         } finally {
             exporter.firstExport.succeed();
             provider.shutdown().join(5, TimeUnit.SECONDS);
         }
+    }
+
+    @Test
+    void failedBatchContainingAnEarlierWatermarkFailsThatFlush() {
+        // given
+        DropOldestExportMetrics metrics = new DropOldestExportMetrics();
+        ExportBuffer buffer = new ExportBuffer(16, 16, metrics);
+        for (int index = 0; index < 5; index++) {
+            buffer.admit(spanData());
+        }
+        CompletableResultCode flush = buffer.requestFlush();
+        for (int index = 0; index < 5; index++) {
+            buffer.admit(spanData());
+        }
+
+        // when
+        WorkerAction action =
+                buffer.awaitNextAction(Duration.ofHours(1).toNanos(), System.nanoTime());
+        assertThat(action).isInstanceOf(WorkerAction.ExportBatch.class);
+        SpanQueue.Batch batch = ((WorkerAction.ExportBatch) action).batch();
+        assertThat(batch.spans()).hasSize(10);
+        buffer.completeExport(batch, false);
+
+        // then
+        assertThat(flush.isDone()).isTrue();
+        assertThat(flush.isSuccess()).isFalse();
+    }
+
+    @Test
+    void dropOfTheLastProtectedSpanFailsTheOwningFlushBeforeTheOlderBatchSettles() {
+        // given
+        DropOldestExportMetrics metrics = new DropOldestExportMetrics();
+        ExportBuffer buffer = new ExportBuffer(2, 1, metrics);
+        buffer.admit(spanData());
+        WorkerAction action =
+                buffer.awaitNextAction(Duration.ofHours(1).toNanos(), System.nanoTime());
+        assertThat(action).isInstanceOf(WorkerAction.ExportBatch.class);
+        SpanQueue.Batch inFlight = ((WorkerAction.ExportBatch) action).batch();
+        buffer.admit(spanData());
+        CompletableResultCode flush = buffer.requestFlush();
+        buffer.admit(spanData());
+
+        // when
+        buffer.admit(spanData());
+
+        // then
+        assertThat(flush.isDone()).isTrue();
+        assertThat(flush.isSuccess()).isFalse();
+        assertThat(metrics.droppedOverflowTotal()).isEqualTo(1);
+        buffer.completeExport(inFlight, true);
+        assertThat(flush.isSuccess()).isFalse();
+    }
+
+    private static SpanData spanData() {
+        SpanData spanData = Mockito.mock(SpanData.class);
+        Mockito.when(spanData.getAttributes()).thenReturn(Attributes.empty());
+        return spanData;
     }
 
     private static PlatformDropOldestExportSpanProcessor processor(

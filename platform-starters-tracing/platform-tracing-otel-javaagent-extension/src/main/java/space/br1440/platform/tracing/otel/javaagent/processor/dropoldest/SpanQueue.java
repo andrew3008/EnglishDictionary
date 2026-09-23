@@ -3,29 +3,19 @@ package space.br1440.platform.tracing.otel.javaagent.processor.dropoldest;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.NavigableSet;
-import java.util.Objects;
-import java.util.TreeSet;
 
 import io.opentelemetry.sdk.trace.data.SpanData;
 
 final class SpanQueue {
 
+    static final long NONE = -1L;
+
     private final int maxQueueSize;
     private final int maxExportBatchSize;
-    private final ArrayDeque<SequencedSpan> queue;
-    private final NavigableSet<Long> unresolvedSequences = new TreeSet<>();
+    private final ArrayDeque<SpanData> queue;
     private long lastAdmittedSequence;
 
     SpanQueue(int maxQueueSize, int maxExportBatchSize) {
-        if (maxQueueSize <= 0) {
-            throw new IllegalArgumentException("maxQueueSize must be positive, got: " + maxQueueSize);
-        }
-
-        if (maxExportBatchSize <= 0) {
-            throw new IllegalArgumentException("maxExportBatchSize must be positive, got: " + maxExportBatchSize);
-        }
-
         this.maxQueueSize = maxQueueSize;
         this.maxExportBatchSize = maxExportBatchSize;
         this.queue = new ArrayDeque<>(maxQueueSize);
@@ -47,56 +37,51 @@ final class SpanQueue {
         return lastAdmittedSequence;
     }
 
-    boolean isResolvedUpTo(long watermark) {
-        return unresolvedSequences.floor(watermark) == null;
-    }
-
-    AdmitOutcome admit(SpanData snapshot) {
-        SequencedSpan dropped = null;
-        if (queue.size() >= maxQueueSize) {
-            dropped = Objects.requireNonNull(queue.pollFirst(),"queue.pollFirst() must not be null: queue.size() >= maxQueueSize > 0");
-            unresolvedSequences.remove(dropped.sequence());
-        }
-
-        long sequence = Math.incrementExact(lastAdmittedSequence);
-        lastAdmittedSequence = sequence;
-        queue.offerLast(new SequencedSpan(sequence, snapshot));
-        unresolvedSequences.add(sequence);
-
-        return new AdmitOutcome(sequence, dropped);
-    }
-
-    void resolve(List<SequencedSpan> batch) {
-        for (SequencedSpan span : batch) {
-            unresolvedSequences.remove(span.sequence());
-        }
-    }
-
-    List<SequencedSpan> drainBatch() {
-        int n = Math.min(queue.size(), maxExportBatchSize);
-        if (n == 0) {
-            return List.of();
-        }
-
-        List<SequencedSpan> batch = new ArrayList<>(n);
-        for (int i = 0; i < n; i++) {
-            batch.add(queue.pollFirst());
-        }
-
-        return batch;
-    }
-
-    List<SequencedSpan> drainAll() {
+    long headSequence() {
         if (queue.isEmpty()) {
-            return List.of();
+            return NONE;
         }
 
-        List<SequencedSpan> discarded = new ArrayList<>(queue);
+        return lastAdmittedSequence - queue.size() + 1;
+    }
+
+    long admit(SpanData snapshot) {
+        long dropped = NONE;
+        if (queue.size() >= maxQueueSize) {
+            dropped = headSequence();
+            queue.pollFirst();
+        }
+
+        lastAdmittedSequence = Math.incrementExact(lastAdmittedSequence);
+        queue.offerLast(snapshot);
+        return dropped;
+    }
+
+    Batch drainBatch() {
+        int count = Math.min(queue.size(), maxExportBatchSize);
+        if (count == 0) {
+            return null;
+        }
+
+        long firstSequence = headSequence();
+        List<SpanData> spans = new ArrayList<>(count);
+        for (int index = 0; index < count; index++) {
+            spans.add(queue.pollFirst());
+        }
+
+        return new Batch(firstSequence, spans);
+    }
+
+    int drainAll() {
+        int discarded = queue.size();
         queue.clear();
-        resolve(discarded);
         return discarded;
     }
 
-    record AdmitOutcome(long sequence, SequencedSpan dropped) {
+    record Batch(long firstSequence, List<SpanData> spans) {
+
+        long lastSequence() {
+            return firstSequence + spans.size() - 1;
+        }
     }
 }
