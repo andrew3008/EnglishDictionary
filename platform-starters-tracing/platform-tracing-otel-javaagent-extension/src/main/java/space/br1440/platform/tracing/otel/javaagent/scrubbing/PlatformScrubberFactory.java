@@ -58,7 +58,8 @@ public final class PlatformScrubberFactory {
         List<RuntimeRule> rules = collectClassified(extConfig.scrubbing(), config);
         if (rules.isEmpty()) {
             throw new SanitizerBootstrapException(SanitizerBootstrapException.RULE_SET_EMPTY,
-                    "Scrubbing is enabled, but no effective sanitizing rules were loaded");
+                    "Scrubbing is enabled, but no effective sanitizing rules were loaded"
+            );
         }
 
         boolean failFast = ScrubbingMissingKeyPolicy.FAIL_FAST.value()
@@ -238,10 +239,12 @@ public final class PlatformScrubberFactory {
     private static String canonicalize(File f) {
         try {
             return f.getCanonicalPath();
-        } catch (IOException e) {
+        } catch (IOException ex) {
             String safeName = StringUtils.hasText(f.getName()) ? f.getName() : "<unnamed>";
-            throw classified(SanitizerBootstrapException.RULE_LOADING_FAILED,
-                    "Unable to canonicalize configured OpenTelemetry extension path '" + safeName + "'", e
+            throw classified(
+                    SanitizerBootstrapException.RULE_LOADING_FAILED,
+                    "Unable to canonicalize configured OpenTelemetry extension path '" + safeName + "'",
+                    ex
             );
         }
     }

@@ -39,10 +39,6 @@ public final class ExtensionRuleLoader implements AutoCloseable {
             "io/opentelemetry/"
     );
 
-    /**
-     * Режим валидации кастомных правил. Закрытый набор — {@code WARNING} и {@code ERROR}.
-     * {@code DISABLED} не вводится и отвергается.
-     */
     public enum ValidationMode {
         WARNING,
         ERROR;
