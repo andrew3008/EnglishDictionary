@@ -146,8 +146,10 @@ class ExportBufferTest {
         // given
         ExportBuffer buffer = new ExportBuffer(4, 1, new DropOldestExportMetrics());
         buffer.admit(spanData());
+
         SpanQueue.Batch batch = awaitBatch(buffer);
         CompletableResultCode flush = buffer.requestFlush();
+
         CountDownLatch reentered = new CountDownLatch(1);
         AtomicBoolean callbackObservedReentry = new AtomicBoolean();
         AtomicReference<Thread> probeThread = new AtomicReference<>();
@@ -156,6 +158,7 @@ class ExportBufferTest {
                 buffer.snapshot();
                 reentered.countDown();
             });
+
             probeThread.set(probe);
             probe.start();
             try {
@@ -179,6 +182,7 @@ class ExportBufferTest {
         // given
         ExportBuffer buffer = new ExportBuffer(4, 1, new DropOldestExportMetrics());
         buffer.admit(spanData());
+
         SpanQueue.Batch batch = awaitBatch(buffer);
         CompletableResultCode active = buffer.requestFlush();
         CompletableResultCode queued = buffer.requestFlush();
@@ -242,8 +246,7 @@ class ExportBufferTest {
     }
 
     private static SpanQueue.Batch awaitBatch(ExportBuffer buffer) {
-        WorkerAction action =
-                buffer.awaitNextAction(SCHEDULE_DELAY_NANOS, System.nanoTime());
+        WorkerAction action = buffer.awaitNextAction(SCHEDULE_DELAY_NANOS, System.nanoTime());
         assertThat(action).isInstanceOf(WorkerAction.ExportBatch.class);
         return ((WorkerAction.ExportBatch) action).batch();
     }
