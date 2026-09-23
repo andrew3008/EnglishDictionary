@@ -1,7 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.logging;
 
 import java.util.Locale;
-import java.util.Objects;
 
 import space.br1440.platform.common.util.StringUtils;
 
@@ -23,12 +22,14 @@ public enum AgentLogLevel {
     }
 
     boolean permits(AgentLogLevel eventLevel) {
-        Objects.requireNonNull(eventLevel, "eventLevel");
+        if (eventLevel == null || !eventLevel.eventLevel) {
+            return false;
+        }
 
-        eventLevel.requireEventLevel();
         return (this != OFF) && (eventLevel.detail <= detail);
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     AgentLogLevel requireEventLevel() {
         if (!eventLevel) {
             throw new IllegalArgumentException(name() + " is not a valid event level");

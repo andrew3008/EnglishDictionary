@@ -6,6 +6,14 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.ExtensionRuntimeVerifier;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.JvmShutdownHookRegistry;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.ShutdownHookRegistry;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSessionFactory;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.ConfigurationFingerprint;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxMutationRegistrationAssessor;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
@@ -29,14 +37,14 @@ final class BootstrapCoordinator implements AutoCloseable {
         return new BootstrapCoordinator(
                 JvmShutdownHookRegistry.INSTANCE,
                 new PlatformScrubberFactory(),
-                ControlledAgentRuntimeAttestor.production(),
+                ExtensionRuntimeVerifier.forCurrentJvm(),
                 AutoconfigureSessionFactory::currentProcessRemoteJmxAssessor
         );
     }
 
     BootstrapCoordinator(ShutdownHookRegistry hookRegistry,
                          PlatformScrubberFactory scrubberFactory,
-                         RuntimeEvidenceAttestor runtimeEvidenceAttestor,
+                         ExtensionRuntimeVerifier runtimeVerifier,
                          Function<ConfigProperties, RemoteJmxMutationRegistrationAssessor> remoteJmxAssessorFactory) {
         this.lifecycle = new BootstrapLifecycleState();
         this.journal = new BootstrapReadinessJournal(lifecycle.monitor());
@@ -48,7 +56,7 @@ final class BootstrapCoordinator implements AutoCloseable {
                 journal,
                 terminalTransitions,
                 diagnosticHandle,
-                runtimeEvidenceAttestor,
+                runtimeVerifier,
                 hookRegistry
         );
     }

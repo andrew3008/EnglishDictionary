@@ -39,7 +39,7 @@ class OwnerMaskingVocabularyTest {
             PlatformAgentLogger logger = PlatformAgentLogger.get(OwnerMaskingVocabularyTest.class);
 
             // when
-            EmitResult result = logger.warn(AgentEventCodes.CTRL_UPDATE, "Tracing settings update failed",
+            EmitResult result = logger.warn(AgentEventCode.CTRL_UPDATE, "Tracing settings update failed",
                     key, "value");
 
             // then

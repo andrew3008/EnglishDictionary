@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireUtf8Meter;
 
@@ -16,7 +17,7 @@ public record TracingSettings(boolean samplingEnabled,
                               SpanAttributeValidationLevel validationLevel,
                               boolean exporterEnabled,
                               boolean traceControlHeadersEnabled,
-                              TracingLogLevel diagnosticsLogLevel) {
+                              AgentLogLevel diagnosticsLogLevel) {
 
     public TracingSettings {
         samplingRatio = normalizeRatio(samplingRatio, "samplingRatio");
@@ -32,7 +33,7 @@ public record TracingSettings(boolean samplingEnabled,
                                      SpanAttributeValidationLevel validationLevel,
                                      boolean exporterEnabled,
                                      boolean traceControlHeadersEnabled,
-                                     TracingLogLevel diagnosticsLogLevel) {
+                                     AgentLogLevel diagnosticsLogLevel) {
         return new TracingSettings(
                 samplingEnabled,
                 samplingRatio,

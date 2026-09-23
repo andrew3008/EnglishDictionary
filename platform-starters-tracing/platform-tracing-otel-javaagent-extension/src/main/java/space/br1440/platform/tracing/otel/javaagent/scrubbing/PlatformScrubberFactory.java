@@ -17,7 +17,7 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfi
 import space.br1440.platform.tracing.otel.javaagent.configuration.JavaAgentExtensionPaths;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ScrubbingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.factory.ScrubbingMissingKeyPolicy;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
@@ -80,7 +80,7 @@ public final class PlatformScrubberFactory {
     private static SanitizerBootstrapException classified(String code, String message, Throwable failure) {
         PlatformThrowables.propagateIfFatal(failure);
         if (log.isDebugEnabled()) {
-            log.debug(AgentEventCodes.SCRUB_FAILURE, message);
+            log.debug(AgentEventCode.SCRUB_FAILURE, message);
         }
 
         return new SanitizerBootstrapException(code, message + " (" + failure.getClass().getName() + ")");
@@ -102,7 +102,7 @@ public final class PlatformScrubberFactory {
             if (rule != null) {
                 builtIn.add(rule);
             } else {
-                log.warn(AgentEventCodes.SCRUB_UNKNOWN_BUILTIN, "Unknown built-in scrubbing rule", "name", name);
+                log.warn(AgentEventCode.SCRUB_UNKNOWN_BUILTIN, "Unknown built-in scrubbing rule", "name", name);
             }
         }
 
@@ -196,7 +196,7 @@ public final class PlatformScrubberFactory {
                     origin
             ));
         } else {
-            log.debug(AgentEventCodes.SCRUB_INITIALIZED, "Duplicate rule name ignored", "name", rule.name());
+            log.debug(AgentEventCode.SCRUB_INITIALIZED, "Duplicate rule name ignored", "name", rule.name());
         }
     }
 
@@ -223,6 +223,7 @@ public final class PlatformScrubberFactory {
                 if (ArrayUtils.isNullOrEmpty(jars)) {
                     continue;
                 }
+
                 for (File jar : jars) {
                     canonicalPaths.add(canonicalize(jar));
                 }

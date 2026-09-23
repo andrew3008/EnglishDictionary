@@ -23,7 +23,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
@@ -152,7 +152,7 @@ class PlatformSettingsStatusMBeanTest {
                 .isEqualTo(true);
         assertThat(snapshot.get(
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_DIAGNOSTICS_LOG_LEVEL))
-                .isEqualTo(TracingLogLevel.INFO.name());
+                .isEqualTo(AgentLogLevel.INFO.name());
 
         TabularData routes = (TabularData) snapshot.get(
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS);
@@ -182,7 +182,7 @@ class PlatformSettingsStatusMBeanTest {
         return TracingSettings.of(
                 true,
                 samplingRatio,
-                routes, SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO);
+                routes, SpanAttributeValidationLevel.WARNING, true, true, AgentLogLevel.INFO);
     }
 
     private static final class ForeignStatusFailure extends RuntimeException {

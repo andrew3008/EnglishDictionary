@@ -23,7 +23,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
@@ -398,7 +398,7 @@ class PlatformDropOldestExportSpanProcessorContractTest {
 
             long exportFailureWarnCount = capture.events().stream()
                     .filter(event -> event.level() == AgentLogLevel.WARN)
-                    .filter(event -> AgentEventCodes.EXPORT_TIMED.equals(event.eventCode()))
+                    .filter(event -> AgentEventCode.EXPORT_TIMED.equals(event.eventCode()))
                     .count();
             assertThat(exportFailureWarnCount)
                     .as("RateLimitedLogger throttles bursts but is not a single permanent one-shot flag")

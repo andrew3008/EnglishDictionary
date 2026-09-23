@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Objects;
 
 import space.br1440.platform.common.util.StringUtils;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingFailureLog;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
@@ -83,7 +83,7 @@ final class SpanDataBoundaryScrubber {
                 || events.criticalFailure()
                 || links.criticalFailure();
         if (criticalFailure) {
-            log.warn(AgentEventCodes.SCRUB_EXPORT_BOUNDARY,
+            log.warn(AgentEventCode.SCRUB_EXPORT_BOUNDARY,
                     "Critical scrubbing rule failed; collapsing all boundary surfaces");
             return SpanBoundaryOutcome.changed(collapseBoundarySurfaces(spanData));
         }

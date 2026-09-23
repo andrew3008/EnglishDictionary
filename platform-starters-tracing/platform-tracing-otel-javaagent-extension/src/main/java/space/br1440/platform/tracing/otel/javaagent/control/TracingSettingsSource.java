@@ -1,8 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.control;
 
-import java.time.Instant;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -11,17 +9,12 @@ import space.br1440.platform.common.util.MapUtils;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 public final class TracingSettingsSource {
@@ -43,7 +36,7 @@ public final class TracingSettingsSource {
 
         SpanAttributeValidationLevel level = config.validation().requestedLevel();
         if (level.isDisabled()) {
-            log.warn(AgentEventCodes.VALID_POLICY, "Validation DISABLED");
+            log.warn(AgentEventCode.VALID_POLICY, "Validation DISABLED");
         }
 
         return create(config.sampling(), level);
@@ -65,7 +58,7 @@ public final class TracingSettingsSource {
                 validationLevel,
                 true,
                 true,
-                TracingLogLevel.INFO
+                AgentLogLevel.INFO
         );
 
         return new TracingSettingsSource(new TracingSettingsStore(UUID.randomUUID().toString(), settings));
@@ -81,7 +74,7 @@ public final class TracingSettingsSource {
                 SpanAttributeValidationLevel.DISABLED,
                 true,
                 true,
-                TracingLogLevel.INFO
+                AgentLogLevel.INFO
         );
 
         return new TracingSettingsSource(new TracingSettingsStore(UUID.randomUUID().toString(), settings));
@@ -89,41 +82,6 @@ public final class TracingSettingsSource {
 
     public TracingSettingsRevision current() {
         return store.current();
-    }
-
-    public boolean applyLogLevel(String value) {
-        TracingLogLevel level;
-        try {
-            level = TracingLogLevel.valueOf(
-                    Objects.requireNonNull(value, "value").trim().toUpperCase(Locale.ROOT)
-            );
-        } catch (IllegalArgumentException | NullPointerException exception) {
-            return false;
-        }
-
-        TracingSettingsRevision witnessed = store.current();
-        TracingSettings current = witnessed.policy();
-        TracingSettings candidate = TracingSettings.of(
-                current.samplingEnabled(),
-                current.samplingRatio(),
-                current.samplingRouteRatios(),
-                current.validationLevel(),
-                current.exporterEnabled(),
-                current.traceControlHeadersEnabled(),
-                level
-        );
-
-        SettingsUpdateAttempt attempt = new SettingsUpdateAttempt(
-                UUID.randomUUID().toString(),
-                Instant.now(),
-                SettingsSourceAuthority.DEV_ACTUATOR,
-                SettingsUpdateTrigger.DEVELOPER_COMMAND,
-                "diagnostics.log-level"
-        );
-
-        SettingsUpdateResult result = updater.apply(attempt, witnessed.base(), candidate);
-        return result.outcome() == SettingsUpdateStatus.APPLIED
-                || result.outcome() == SettingsUpdateStatus.UNCHANGED;
     }
 
     public TracingSettingsStore store() {
@@ -148,7 +106,7 @@ public final class TracingSettingsSource {
                 validationLevel,
                 true,
                 true,
-                TracingLogLevel.INFO
+                AgentLogLevel.INFO
         );
 
         return new TracingSettingsSource(new TracingSettingsStore(UUID.randomUUID().toString(), settings));

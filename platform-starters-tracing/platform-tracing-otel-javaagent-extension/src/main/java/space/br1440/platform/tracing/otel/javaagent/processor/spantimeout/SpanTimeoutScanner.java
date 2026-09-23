@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 final class SpanTimeoutScanner {
@@ -75,7 +75,7 @@ final class SpanTimeoutScanner {
         }
 
         if (state() == SpanTimeoutScannerState.TERMINATED_ABNORMALLY) {
-            log.warn(AgentEventCodes.EXPORT_SPAN_TIMEOUT,
+            log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT,
                     "Span-timeout scanner had terminated abnormally before shutdown");
         }
 
@@ -87,12 +87,12 @@ final class SpanTimeoutScanner {
             }
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            log.warn(AgentEventCodes.EXPORT_SPAN_TIMEOUT,
+            log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT,
                     "Interrupted while waiting for the span-timeout scanner to stop");
             return false;
         }
 
-        log.warn(AgentEventCodes.EXPORT_SPAN_TIMEOUT, "Span-timeout scanner did not stop within the shutdown timeout",
+        log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT, "Span-timeout scanner did not stop within the shutdown timeout",
                 "timeoutMillis", String.valueOf(SHUTDOWN_TIMEOUT_MILLIS));
         return false;
     }
@@ -124,7 +124,7 @@ final class SpanTimeoutScanner {
                 lastSuccessfulScanEpochMillis.set(epochMillis.getAsLong());
             }
         } catch (Throwable failure) {
-            log.warn(AgentEventCodes.EXPORT_SPAN_TIMEOUT, "Span-timeout scanner terminated abnormally", failure);
+            log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT, "Span-timeout scanner terminated abnormally", failure);
             throw failure;
         }
     }

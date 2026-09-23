@@ -28,7 +28,7 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
@@ -66,7 +66,7 @@ class ProcessorDefectCharacterizationTest {
             // then
             assertThat(capture.events())
                     .anySatisfy(event -> assertThat(event.eventCode())
-                            .isEqualTo(AgentEventCodes.EXPORT_CALLBACK));
+                            .isEqualTo(AgentEventCode.EXPORT_CALLBACK));
 
             assertThat(capture.rendered())
                     .doesNotContain(SENSITIVE_SPAN_NAME, SENSITIVE_EXCEPTION_MESSAGE);

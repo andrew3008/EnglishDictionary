@@ -47,8 +47,8 @@ class ControlledAgentArtifactTest {
     private static final String THIRD_PARTY_NOTICES_ENTRY = "META-INF/platform-tracing/THIRD-PARTY-NOTICES.txt";
     private static final String LOG_EVENT_SCHEMA_RESOURCE = "platform-log-event.schema.json";
     private static final String ACP_PIN_PROVIDERS_CLASS =
-            "space/br1440/platform/tracing/otel/javaagent/bootstrap/"
-                    + "AllowedUpstreamAcpProviders.class";
+            "space/br1440/platform/tracing/otel/javaagent/bootstrap/verification/"
+                    + "UpstreamCustomizerProviderAllowlist.class";
 
     private static final String EXTENSION_IMPLEMENTATION_TITLE = "platform-tracing-otel-javaagent-extension";
     private static final String OTEL_JAVAAGENT_COORDINATE = "io.opentelemetry.javaagent:opentelemetry-javaagent:2.30.0";

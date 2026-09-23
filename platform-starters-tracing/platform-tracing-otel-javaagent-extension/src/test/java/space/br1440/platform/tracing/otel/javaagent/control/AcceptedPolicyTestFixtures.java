@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.control;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 
@@ -26,7 +26,7 @@ public final class AcceptedPolicyTestFixtures {
                 SpanAttributeValidationLevel.WARNING,
                 true,
                 true,
-                TracingLogLevel.INFO
+                AgentLogLevel.INFO
         );
     }
 

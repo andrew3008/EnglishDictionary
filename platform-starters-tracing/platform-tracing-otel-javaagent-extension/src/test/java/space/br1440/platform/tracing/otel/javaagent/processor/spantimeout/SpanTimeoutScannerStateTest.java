@@ -10,9 +10,9 @@ import java.util.function.LongSupplier;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 
 class SpanTimeoutScannerStateTest {
@@ -123,7 +123,7 @@ class SpanTimeoutScannerStateTest {
 
                 assertThat(logs.events())
                         .filteredOn(event -> event.level() == AgentLogLevel.WARN)
-                        .extracting(AgentLogEvent::message)
+                        .extracting(CapturedLogEvent::message)
                         .contains(
                                 "Span-timeout scanner terminated abnormally",
                                 "Span-timeout scanner had terminated abnormally before shutdown"
@@ -131,21 +131,21 @@ class SpanTimeoutScannerStateTest {
 
                 assertThat(logs.events())
                         .filteredOn(event -> "Span-timeout scanner terminated abnormally".equals(event.message()))
-                        .extracting(AgentLogEvent::throwableDigest)
+                        .extracting(CapturedLogEvent::throwableDigest)
                         .singleElement()
                         .asString()
                         .contains("LinkageError");
 
                 assertThat(logs.events())
                         .filteredOn(event -> "Span-timeout scanner had terminated abnormally before shutdown".equals(event.message()))
-                        .extracting(AgentLogEvent::throwableDigest)
+                        .extracting(CapturedLogEvent::throwableDigest)
                         .singleElement()
                         .isNull();
 
                 assertThat(logs.events())
                         .filteredOn(event -> event.level() == AgentLogLevel.WARN)
-                        .extracting(AgentLogEvent::eventCode)
-                        .containsOnly(AgentEventCodes.EXPORT_SPAN_TIMEOUT);
+                        .extracting(CapturedLogEvent::eventCode)
+                        .containsOnly(AgentEventCode.EXPORT_SPAN_TIMEOUT);
             }
         } finally {
             logs.restore();

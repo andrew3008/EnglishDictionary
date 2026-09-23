@@ -7,10 +7,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.logging.EmitResult;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
@@ -44,19 +44,19 @@ class RateLimitedLoggerTest {
 
         // when
         // then
-        assertThat(logger.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, "msg"))
+        assertThat(logger.warn(AgentEventCode.EXPORT_SAFE_EXPORTER, "msg"))
                 .as("fast #1").isEqualTo(EmitResult.EMITTED);
-        assertThat(logger.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, "msg"))
+        assertThat(logger.warn(AgentEventCode.EXPORT_SAFE_EXPORTER, "msg"))
                 .as("fast #2").isEqualTo(EmitResult.EMITTED);
         assertThat(logger.isThrottled()).isFalse();
 
-        assertThat(logger.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, "msg"))
+        assertThat(logger.warn(AgentEventCode.EXPORT_SAFE_EXPORTER, "msg"))
                 .as("переход в throttled + сообщение").isEqualTo(EmitResult.EMITTED);
         assertThat(logger.isThrottled()).isTrue();
 
-        assertThat(logger.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, "msg"))
+        assertThat(logger.warn(AgentEventCode.EXPORT_SAFE_EXPORTER, "msg"))
                 .as("throttled #1 (последний токен)").isEqualTo(EmitResult.EMITTED);
-        assertThat(logger.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, "msg"))
+        assertThat(logger.warn(AgentEventCode.EXPORT_SAFE_EXPORTER, "msg"))
                 .as("throttled исчерпан — подавлено").isEqualTo(EmitResult.RATE_LIMITED);
     }
 
@@ -69,7 +69,7 @@ class RateLimitedLoggerTest {
         // then
         assertThat(logger.logRecoveryOnce("recovered")).isEqualTo(EmitResult.FILTERED_BY_LEVEL);
 
-        logger.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, "problem");
+        logger.warn(AgentEventCode.EXPORT_SAFE_EXPORTER, "problem");
         assertThat(logger.logRecoveryOnce("recovered")).as("первое восстановление")
                 .isEqualTo(EmitResult.EMITTED);
         assertThat(logger.logRecoveryOnce("recovered")).as("повторно — нет")
@@ -83,19 +83,19 @@ class RateLimitedLoggerTest {
         RateLimitedLogger logger = new RateLimitedLogger(
                 PlatformAgentLogger.get(RateLimitedLoggerTest.class),
                 5, 1, 1, TimeUnit.MINUTES, clock::get);
-        PlatformLogControl.shared().setLevel(AgentLogLevel.ERROR);
+        AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.ERROR);
 
         // when
         // then
-        assertThat(logger.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, "msg"))
+        assertThat(logger.warn(AgentEventCode.EXPORT_SAFE_EXPORTER, "msg"))
                 .as("ERROR < WARN — подавлено гейтом").isEqualTo(EmitResult.FILTERED_BY_LEVEL);
 
-        PlatformLogControl.shared().setLevel(AgentLogLevel.OFF);
-        assertThat(logger.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, "msg"))
+        AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.OFF);
+        assertThat(logger.warn(AgentEventCode.EXPORT_SAFE_EXPORTER, "msg"))
                 .as("OFF — подавлено").isEqualTo(EmitResult.FILTERED_BY_LEVEL);
 
-        PlatformLogControl.shared().setLevel(AgentLogLevel.WARN);
-        assertThat(logger.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, "msg"))
+        AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.WARN);
+        assertThat(logger.warn(AgentEventCode.EXPORT_SAFE_EXPORTER, "msg"))
                 .as("WARN — снова печатается").isEqualTo(EmitResult.EMITTED);
     }
 }

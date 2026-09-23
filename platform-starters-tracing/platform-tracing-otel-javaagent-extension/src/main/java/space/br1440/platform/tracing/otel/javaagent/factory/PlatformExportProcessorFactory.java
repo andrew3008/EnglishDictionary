@@ -15,7 +15,7 @@ import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.otel.javaagent.configuration.QueueExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
@@ -84,7 +84,7 @@ public final class PlatformExportProcessorFactory {
                 return safe;
             }
 
-            log.error(AgentEventCodes.EXPORT_FACTORY, "Foreign SafeSpanExporter cannot be re-wrapped",
+            log.error(AgentEventCode.EXPORT_FACTORY, "Foreign SafeSpanExporter cannot be re-wrapped",
                     "type", exporter.getClass().getName());
 
             throw new SanitizerBootstrapException(
@@ -109,7 +109,7 @@ public final class PlatformExportProcessorFactory {
         }
 
         if (exporterCount.get() > 1) {
-            log.warn(AgentEventCodes.EXPORT_FACTORY, "Multiple SpanExporters; falling back to stock BatchSpanProcessor",
+            log.warn(AgentEventCode.EXPORT_FACTORY, "Multiple SpanExporters; falling back to stock BatchSpanProcessor",
                     "count", String.valueOf(exporterCount.get()));
             markExportPathProtected();
             return processor;
@@ -117,12 +117,12 @@ public final class PlatformExportProcessorFactory {
 
         SpanExporter exporter = capturedExporter.get();
         if (exporter == null) {
-            log.warn(AgentEventCodes.EXPORT_FACTORY, "Captured SpanExporter is null; falling back");
+            log.warn(AgentEventCode.EXPORT_FACTORY, "Captured SpanExporter is null; falling back");
             return processor;
         }
 
         if (!(processor instanceof BatchSpanProcessor)) {
-            log.warn(AgentEventCodes.EXPORT_FACTORY, "Pipeline processor is not BatchSpanProcessor; falling back",
+            log.warn(AgentEventCode.EXPORT_FACTORY, "Pipeline processor is not BatchSpanProcessor; falling back",
                     "type", processor.getClass().getName());
             markExportPathProtected();
             return processor;
@@ -130,7 +130,7 @@ public final class PlatformExportProcessorFactory {
 
         ReplacementAwareSpanExporter stockExporter = capturedStockExporter.get();
         if (stockExporter == null) {
-            log.warn(AgentEventCodes.EXPORT_FACTORY, "Replacement-aware exporter is absent; falling back");
+            log.warn(AgentEventCode.EXPORT_FACTORY, "Replacement-aware exporter is absent; falling back");
             markExportPathProtected();
             return processor;
         }
@@ -139,7 +139,7 @@ public final class PlatformExportProcessorFactory {
         try {
             processor.shutdown().join(5, TimeUnit.SECONDS);
         } catch (RuntimeException e) {
-            log.warn(AgentEventCodes.EXPORT_FACTORY, "Stock BatchSpanProcessor.shutdown() failed", e);
+            log.warn(AgentEventCode.EXPORT_FACTORY, "Stock BatchSpanProcessor.shutdown() failed", e);
         }
 
         PlatformDropOldestExportSpanProcessor replacement = PlatformDropOldestExportSpanProcessor
@@ -153,7 +153,7 @@ public final class PlatformExportProcessorFactory {
         markExportPathProtected();
 
         if (dropOldestEnabledLogged.compareAndSet(false, true)) {
-            log.info(AgentEventCodes.EXPORT_FACTORY, "DROP_OLDEST export processor enabled", "count",
+            log.info(AgentEventCode.EXPORT_FACTORY, "DROP_OLDEST export processor enabled", "count",
                     String.valueOf(replacement.metricsSnapshot().queueCapacity()));
         }
 
@@ -177,7 +177,7 @@ public final class PlatformExportProcessorFactory {
             return false;
         }
 
-        log.warn(AgentEventCodes.EXPORT_FACTORY, "Unknown overflow-policy; treating as DROP_OLDEST",
+        log.warn(AgentEventCode.EXPORT_FACTORY, "Unknown overflow-policy; treating as DROP_OLDEST",
                 "name", queueConfig.overflowPolicy());
 
         return false;

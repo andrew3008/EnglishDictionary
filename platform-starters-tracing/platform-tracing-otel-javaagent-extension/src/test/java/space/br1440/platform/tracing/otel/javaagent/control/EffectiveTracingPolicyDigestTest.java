@@ -1,6 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.control;
 
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
@@ -20,7 +20,7 @@ class EffectiveTracingPolicyDigestTest {
         TracingSettings policy = TracingSettings.of(
                 true,
                 0.25d,
-                Map.of("/orders", 0.5d, "/health", 0.0d), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO);
+                Map.of("/orders", 0.5d, "/health", 0.0d), SpanAttributeValidationLevel.WARNING, true, true, AgentLogLevel.INFO);
 
         // when/then
         assertThat(TracingSettingsDigest.sha256(policy))
@@ -33,7 +33,7 @@ class EffectiveTracingPolicyDigestTest {
         TracingSettings policy = TracingSettings.of(
                 true,
                 0.25d,
-                Map.of(), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO);
+                Map.of(), SpanAttributeValidationLevel.WARNING, true, true, AgentLogLevel.INFO);
 
         // when/then
         assertThat(TracingSettingsDigest.sha256(policy))
@@ -97,6 +97,6 @@ class EffectiveTracingPolicyDigestTest {
         return TracingSettings.of(
                 true,
                 samplingRatio,
-                routeRatios, SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO);
+                routeRatios, SpanAttributeValidationLevel.WARNING, true, true, AgentLogLevel.INFO);
     }
 }

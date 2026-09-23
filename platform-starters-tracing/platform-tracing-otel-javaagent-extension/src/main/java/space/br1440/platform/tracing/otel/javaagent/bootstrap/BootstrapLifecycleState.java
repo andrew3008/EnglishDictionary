@@ -2,7 +2,10 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import java.util.Objects;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.ConfigurationFingerprint;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 final class BootstrapLifecycleState {
@@ -65,22 +68,27 @@ final class BootstrapLifecycleState {
     AutoconfigureSession beginActivation() {
         synchronized (monitor) {
             if (state == BootstrapState.NEW) {
-                throw fail("PLATFORM_ACP_NOT_EXECUTED", "activate",
-                        new IllegalStateException(
-                                "AgentListener.afterAgent invoked without a prior ACP prepare() call "
-                                + "(declarative configuration bypass or missing platform ACP registration)"
-                        )
+                throw fail(
+                        "PLATFORM_ACP_NOT_EXECUTED",
+                        "activate",
+                        new IllegalStateException("""
+                            AgentListener.afterAgent invoked without a prior ACP prepare() call \
+                            (declarative configuration bypass or missing platform ACP registration)""")
                 );
             }
 
             if (state == BootstrapState.PREPARING) {
-                throw fail("REENTRANT_OR_OUT_OF_ORDER", "activate",
-                        new IllegalStateException(
-                                "afterAgent invoked while bootstrap preparation is still in progress"));
+                throw fail(
+                        "REENTRANT_OR_OUT_OF_ORDER",
+                        "activate",
+                        new IllegalStateException("afterAgent invoked while bootstrap preparation is still in progress")
+                );
             }
 
             if (state == BootstrapState.ACTIVATING) {
-                throw fail("DUPLICATE_ACTIVATION", "activate",
+                throw fail(
+                        "DUPLICATE_ACTIVATION",
+                        "activate",
                         new IllegalStateException("afterAgent invoked more than once for this coordinator")
                 );
             }
@@ -115,6 +123,7 @@ final class BootstrapLifecycleState {
             if (session == null) {
                 throw stickyFailure("session");
             }
+
             return session;
         }
     }
@@ -185,7 +194,7 @@ final class BootstrapLifecycleState {
                 this.state = BootstrapState.FAILED;
             }
 
-            log.warn(AgentEventCodes.BOOT_CLASSIFIED_FAILURE, "Bootstrap phase failed", cause, "phase", phase);
+            log.warn(AgentEventCode.BOOT_CLASSIFIED_FAILURE, "Bootstrap phase failed", cause, "phase", phase);
 
             return new BootstrapException(failure);
         }
@@ -195,7 +204,7 @@ final class BootstrapLifecycleState {
     BootstrapException rejectWithoutStateChange(String code, String phase, Throwable cause) {
         synchronized (monitor) {
             BootstrapFailure rejection = new BootstrapFailure(code, phase, cause);
-            log.warn(AgentEventCodes.BOOT_CLASSIFIED_FAILURE, "Bootstrap operation rejected", cause, "phase", phase);
+            log.warn(AgentEventCode.BOOT_CLASSIFIED_FAILURE, "Bootstrap operation rejected", cause, "phase", phase);
             return new BootstrapException(rejection);
         }
     }

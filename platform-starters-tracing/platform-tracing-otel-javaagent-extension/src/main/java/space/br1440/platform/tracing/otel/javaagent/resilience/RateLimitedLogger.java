@@ -4,7 +4,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.LongSupplier;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.EmitResult;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
@@ -38,47 +38,47 @@ public final class RateLimitedLogger {
         this.errorThrottled = TokenBucketRateLimiter.perInterval(throttledLimit, interval, unit, nanoClock);
     }
 
-    public EmitResult warn(String eventCode, String message) {
+    public EmitResult warn(AgentEventCode eventCode, String message) {
         return log(AgentLogLevel.WARN, warnFast, warnThrottled, warnThrottledMode, "warnings",
                 eventCode, message, null);
     }
 
-    public EmitResult warn(String eventCode, String message, String k1, String v1) {
+    public EmitResult warn(AgentEventCode eventCode, String message, String k1, String v1) {
         return log(AgentLogLevel.WARN, warnFast, warnThrottled, warnThrottledMode, "warnings",
                 eventCode, message, null, k1, v1);
     }
 
-    public EmitResult warn(String eventCode, String message, String k1, String v1, String k2, String v2) {
+    public EmitResult warn(AgentEventCode eventCode, String message, String k1, String v1, String k2, String v2) {
         return log(AgentLogLevel.WARN, warnFast, warnThrottled, warnThrottledMode, "warnings",
                 eventCode, message, null, k1, v1, k2, v2);
     }
 
-    public EmitResult warn(String eventCode, String message, Throwable error) {
+    public EmitResult warn(AgentEventCode eventCode, String message, Throwable error) {
         return log(AgentLogLevel.WARN, warnFast, warnThrottled, warnThrottledMode, "warnings",
                 eventCode, message, error);
     }
 
-    public EmitResult warn(String eventCode, String message, Throwable error, String k1, String v1) {
+    public EmitResult warn(AgentEventCode eventCode, String message, Throwable error, String k1, String v1) {
         return log(AgentLogLevel.WARN, warnFast, warnThrottled, warnThrottledMode, "warnings",
                 eventCode, message, error, k1, v1);
     }
 
-    public EmitResult error(String eventCode, String message) {
+    public EmitResult error(AgentEventCode eventCode, String message) {
         return log(AgentLogLevel.ERROR, errorFast, errorThrottled, errorThrottledMode, "errors",
                 eventCode, message, null);
     }
 
-    public EmitResult error(String eventCode, String message, String k1, String v1) {
+    public EmitResult error(AgentEventCode eventCode, String message, String k1, String v1) {
         return log(AgentLogLevel.ERROR, errorFast, errorThrottled, errorThrottledMode, "errors",
                 eventCode, message, null, k1, v1);
     }
 
-    public EmitResult error(String eventCode, String message, Throwable error) {
+    public EmitResult error(AgentEventCode eventCode, String message, Throwable error) {
         return log(AgentLogLevel.ERROR, errorFast, errorThrottled, errorThrottledMode, "errors",
                 eventCode, message, error);
     }
 
-    public EmitResult error(String eventCode, String message, Throwable error, String k1, String v1) {
+    public EmitResult error(AgentEventCode eventCode, String message, Throwable error, String k1, String v1) {
         return log(AgentLogLevel.ERROR, errorFast, errorThrottled, errorThrottledMode, "errors",
                 eventCode, message, error, k1, v1);
     }
@@ -87,7 +87,7 @@ public final class RateLimitedLogger {
         return delegate.isDebugEnabled();
     }
 
-    public EmitResult debug(String eventCode, String message, String k1, String v1) {
+    public EmitResult debug(AgentEventCode eventCode, String message, String k1, String v1) {
         if (!isDebugEnabled()) {
             return EmitResult.FILTERED_BY_LEVEL;
         }
@@ -95,7 +95,7 @@ public final class RateLimitedLogger {
         return delegate.debug(eventCode, message, k1, v1);
     }
 
-    public EmitResult debug(String eventCode, String message, String k1, String v1, String k2, String v2) {
+    public EmitResult debug(AgentEventCode eventCode, String message, String k1, String v1, String k2, String v2) {
         if (!isDebugEnabled()) {
             return EmitResult.FILTERED_BY_LEVEL;
         }
@@ -105,7 +105,7 @@ public final class RateLimitedLogger {
 
     private EmitResult log(AgentLogLevel level, TokenBucketRateLimiter fastBucket,
                            TokenBucketRateLimiter throttledBucket, AtomicBoolean throttledMode,
-                           String throttleAnnouncementNoun, String eventCode, String message,
+                           String throttleAnnouncementNoun, AgentEventCode eventCode, String message,
                            Throwable error, String... fields) {
         if (!delegate.isEnabled(level)) {
             return EmitResult.FILTERED_BY_LEVEL;
@@ -132,7 +132,7 @@ public final class RateLimitedLogger {
 
         if (throttledMode.compareAndSet(false, true)) {
             delegate.warn(
-                    AgentEventCodes.RATE_THROTTLED,
+                    AgentEventCode.RATE_THROTTLED,
                     "Agent logging is throttled",
                     "kind",
                     throttleAnnouncementNoun
@@ -149,7 +149,7 @@ public final class RateLimitedLogger {
 
     private EmitResult emit(
             AgentLogLevel level,
-            String eventCode,
+            AgentEventCode eventCode,
             String message,
             Throwable error,
             String[] fields
@@ -159,7 +159,7 @@ public final class RateLimitedLogger {
 
     public EmitResult logRecoveryOnce(String message) {
         if (problemLogged.compareAndSet(true, false)) {
-            return delegate.info(AgentEventCodes.RATE_RECOVERY, message);
+            return delegate.info(AgentEventCode.RATE_RECOVERY, message);
         }
         return EmitResult.FILTERED_BY_LEVEL;
     }

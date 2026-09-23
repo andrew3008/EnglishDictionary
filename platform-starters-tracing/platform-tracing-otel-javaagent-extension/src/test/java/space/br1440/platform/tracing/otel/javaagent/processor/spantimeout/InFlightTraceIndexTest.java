@@ -18,9 +18,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 
@@ -784,9 +784,9 @@ class InFlightTraceIndexTest {
             // then
             assertThat(index.rejectedTraceCapacityTotal()).isEqualTo(2);
             assertThat(index.trackingEvictedTotal()).isEqualTo(1);
-            assertThat(logs.events()).extracting(AgentLogEvent::eventCode)
-                    .containsExactly(AgentEventCodes.EXPORT_SPAN_TIMEOUT, AgentEventCodes.EXPORT_SPAN_TIMEOUT);
-            assertThat(logs.events()).extracting(AgentLogEvent::message)
+            assertThat(logs.events()).extracting(CapturedLogEvent::eventCode)
+                    .containsExactly(AgentEventCode.EXPORT_SPAN_TIMEOUT, AgentEventCode.EXPORT_SPAN_TIMEOUT);
+            assertThat(logs.events()).extracting(CapturedLogEvent::message)
                     .containsExactly(
                             "Span timeout rejected span tracking: tracked-trace capacity reached",
                             "Span timeout evicted empty trace states under pressure");

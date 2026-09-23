@@ -6,6 +6,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
@@ -18,21 +19,24 @@ class AgentLoggingRuntimeTest {
 
     @AfterEach
     void restore() {
-        AgentLoggingRuntime.resetSharedForTests();
+        AgentLoggingRuntime.reset();
     }
 
     @Test
     void encoder_truncates_to_max_encoded_bytes() {
         // given
         PlatformLogEventEncoder encoder = new PlatformLogEventEncoder();
-        String huge = "x".repeat(20_000);
+        LinkedHashMap<String, String> fields = new LinkedHashMap<>();
+        for (int i = 0; i < AgentLogFieldNamePolicy.MAX_FIELDS; i++) {
+            fields.put("f" + i, "x".repeat(AgentLogEvent.MAX_ARGUMENT_CHARS));
+        }
         AgentLogEvent oversized = new AgentLogEvent(
                 Instant.parse("2026-08-16T19:00:00Z"),
                 AgentLogLevel.WARN,
-                AgentEventCodes.SCRUB_FAILURE,
+                AgentEventCode.SCRUB_FAILURE,
                 getClass().getName(),
-                huge,
-                Map.of(),
+                "scrub failed",
+                fields,
                 null
         );
 
@@ -44,8 +48,9 @@ class AgentLoggingRuntimeTest {
         assertThat(encoded.length).isLessThanOrEqualTo(AgentLogEvent.MAX_ENCODED_BYTES);
         assertThat(encoded[encoded.length - 1]).isEqualTo((byte) '\n');
         assertThat(json).contains("\"event_code\":\"PTA-ENCODE-001\"");
-        assertThat(json).contains("Platform Agent log event could not be encoded safely");
-        assertThat(json).doesNotContain(huge);
+        assertThat(json).contains("\"original_event_code\":\"PTA-SCRUB-013\"");
+        assertThat(json).contains("\"fallback_reason\":\"byte_budget\"");
+        assertThat(json).doesNotContain("x".repeat(AgentLogEvent.MAX_ARGUMENT_CHARS));
     }
 
     @Test
@@ -56,7 +61,7 @@ class AgentLoggingRuntimeTest {
         assertThatThrownBy(() -> new AgentLogEvent(
                 Instant.parse("2026-08-16T19:00:00Z"),
                 AgentLogLevel.OFF,
-                AgentEventCodes.BOOT_INSTALLED,
+                AgentEventCode.BOOT_INSTALLED,
                 getClass().getName(),
                 "Platform agent logging installed",
                 Map.of(),
@@ -69,12 +74,12 @@ class AgentLoggingRuntimeTest {
     @Test
     void sink_write_error_is_delivery_failed() {
         // given
-        AgentLoggingRuntime.shared().installForTests(new PlatformStderrSink(new FailingOutputStream()));
+        AgentLoggingRuntime.shared().install(new PlatformStderrSink(new FailingOutputStream()));
         AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.INFO);
         PlatformAgentLogger logger = PlatformAgentLogger.get(AgentLoggingRuntimeTest.class);
 
         // when
-        EmitResult result = logger.info(AgentEventCodes.BOOT_INSTALLED, "Platform agent logging installed",
+        EmitResult result = logger.info(AgentEventCode.BOOT_INSTALLED, "Platform agent logging installed",
                 "kind", "PLATFORM_STDERR_DIRECT");
 
         // then
@@ -85,12 +90,12 @@ class AgentLoggingRuntimeTest {
     void disabled_event_level_is_filtered_before_sink() {
         // given
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        AgentLoggingRuntime.shared().installForTests(new PlatformStderrSink(buffer));
+        AgentLoggingRuntime.shared().install(new PlatformStderrSink(buffer));
         AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.ERROR);
         PlatformAgentLogger logger = PlatformAgentLogger.get(AgentLoggingRuntimeTest.class);
 
         // when
-        EmitResult result = logger.info(AgentEventCodes.BOOT_INSTALLED, "Platform agent logging installed",
+        EmitResult result = logger.info(AgentEventCode.BOOT_INSTALLED, "Platform agent logging installed",
                 "kind", "PLATFORM_STDERR_DIRECT");
 
         // then
@@ -102,7 +107,7 @@ class AgentLoggingRuntimeTest {
     void sink_ignores_system_err_replacement() {
         // given
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        AgentLoggingRuntime.shared().installForTests(new PlatformStderrSink(buffer));
+        AgentLoggingRuntime.shared().install(new PlatformStderrSink(buffer));
         AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.INFO);
         PlatformAgentLogger logger = PlatformAgentLogger.get(AgentLoggingRuntimeTest.class);
         PrintStream previous = System.err;
@@ -110,7 +115,7 @@ class AgentLoggingRuntimeTest {
 
         try {
             // when
-            EmitResult result = logger.info(AgentEventCodes.BOOT_INSTALLED, "Platform agent logging installed",
+            EmitResult result = logger.info(AgentEventCode.BOOT_INSTALLED, "Platform agent logging installed",
                 "kind", "PLATFORM_STDERR_DIRECT");
 
             // then

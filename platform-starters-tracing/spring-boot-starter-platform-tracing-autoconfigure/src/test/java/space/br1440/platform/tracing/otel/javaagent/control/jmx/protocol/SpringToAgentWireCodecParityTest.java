@@ -15,7 +15,7 @@ import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTrac
 import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 
@@ -62,7 +62,7 @@ class SpringToAgentWireCodecParityTest {
         assertThat(settings.validationLevel()).isEqualTo(SpanAttributeValidationLevel.WARNING);
         assertThat(settings.exporterEnabled()).isTrue();
         assertThat(settings.traceControlHeadersEnabled()).isTrue();
-        assertThat(settings.diagnosticsLogLevel()).isEqualTo(TracingLogLevel.DEBUG);
+        assertThat(settings.diagnosticsLogLevel()).isEqualTo(AgentLogLevel.DEBUG);
     }
 
     @Test

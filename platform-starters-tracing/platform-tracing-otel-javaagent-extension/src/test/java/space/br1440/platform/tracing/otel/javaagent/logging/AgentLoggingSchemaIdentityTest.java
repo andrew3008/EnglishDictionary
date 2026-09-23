@@ -4,8 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 
 import org.junit.jupiter.api.Test;
@@ -13,38 +11,38 @@ import org.junit.jupiter.api.Test;
 class AgentLoggingSchemaIdentityTest {
 
     @Test
-    void reviewed_identity_matches_java_recomputation_of_actual_schema() throws IOException {
+    void reviewed_identity_matches_sha256_of_the_schema_file() throws IOException {
         // given
-        Map<String, byte[]> files = PlatformLogSchemaSetHash.readNormalizedFromClasspath(getClass());
         Properties identity = loadProperties("/META-INF/platform-tracing/agent-logging-schema.properties");
 
         // when
-        String javaSetHash = PlatformLogSchemaSetHash.setSha256(files);
+        String schemaHash = PlatformLogSchemaHash.sha256OfNormalizedSchema(getClass());
 
         // then
         assertThat(identity.getProperty("schema.hashAlgorithm"))
-                .isEqualTo(PlatformLogSchemaSetHash.ALGORITHM_ID);
+                .isEqualTo(PlatformLogSchemaHash.ALGORITHM_ID);
         assertThat(identity.getProperty("schema.name")).isEqualTo("platform-log-event-v1");
         assertThat(identity.getProperty("schema.semanticVersion")).isEqualTo("1");
-        assertThat(identity.getProperty("schema.sha256")).isEqualTo(javaSetHash);
+        assertThat(identity.getProperty("schema.sha256")).isEqualTo(schemaHash);
     }
 
     @Test
-    void java_hash_matches_frozen_known_answer() throws IOException {
+    void normalized_fixture_matches_the_frozen_sha256() throws IOException {
         // given
         Properties expected = loadProperties("/platform-log-schema-known-answer/expected.properties");
-        Map<String, byte[]> files = PlatformLogSchemaSetHash.readNormalizedFromClasspath(
-                getClass(),
-                List.of("a.json", "b.yaml"),
-                "platform-log-schema-known-answer"
-        );
+        byte[] raw;
+        try (InputStream input = AgentLoggingSchemaIdentityTest.class.getResourceAsStream(
+                "/platform-log-schema-known-answer/a.json")) {
+            assertThat(input).isNotNull();
+            raw = input.readAllBytes();
+        }
 
         // when
-        String actual = PlatformLogSchemaSetHash.setSha256(files);
+        String actual = PlatformLogSchemaHash.sha256Hex(PlatformLogSchemaHash.normalize(raw));
 
         // then
-        assertThat(expected.getProperty("algorithmId")).isEqualTo(PlatformLogSchemaSetHash.ALGORITHM_ID);
-        assertThat(actual).isEqualTo(expected.getProperty("expectedAggregateSha256"));
+        assertThat(expected.getProperty("algorithmId")).isEqualTo(PlatformLogSchemaHash.ALGORITHM_ID);
+        assertThat(actual).isEqualTo(expected.getProperty("expectedSha256"));
     }
 
     private static Properties loadProperties(String resource) throws IOException {

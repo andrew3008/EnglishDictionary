@@ -35,9 +35,9 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 
 final class PlatformSettingsMutationFailureContractTest {
@@ -73,7 +73,7 @@ final class PlatformSettingsMutationFailureContractTest {
                 "",
                 SettingsRejectionReason.INTERNAL_FAILURE);
         assertThat(warnEvents()).singleElement().satisfies(event -> {
-            assertThat(event.eventCode()).isEqualTo(AgentEventCodes.CTRL_WRITER);
+            assertThat(event.eventCode()).isEqualTo(AgentEventCode.CTRL_WRITER);
             assertThat(event.fields()).containsEntry("attemptId", "<unavailable>");
             assertThat(event.fields().toString()).doesNotContain(maliciousAttemptId, "forged-log-line");
             assertThat(event.throwableDigest()).isNotNull();
@@ -110,7 +110,7 @@ final class PlatformSettingsMutationFailureContractTest {
                 applyFailure,
                 "JMX_CONTROL_APPLY_FAILED: Settings snapshot update failed");
         assertThat(warnEvents()).singleElement().satisfies(event -> {
-            assertThat(event.eventCode()).isEqualTo(AgentEventCodes.CTRL_WRITER);
+            assertThat(event.eventCode()).isEqualTo(AgentEventCode.CTRL_WRITER);
             assertThat(event.fields()).containsEntry("attemptId", attempt.attemptId());
             assertThat(event.throwableDigest()).isNotNull();
         });
@@ -153,7 +153,7 @@ final class PlatformSettingsMutationFailureContractTest {
         assertThat(diagnostics.snapshot().countOf(SettingsUpdateStatus.FAILED)).isZero();
         verify(updater, never()).failBeforeApply(any(), any());
         assertThat(warnEvents()).singleElement().satisfies(event -> {
-            assertThat(event.eventCode()).isEqualTo(AgentEventCodes.CTRL_WRITER);
+            assertThat(event.eventCode()).isEqualTo(AgentEventCode.CTRL_WRITER);
             assertThat(event.fields()).containsEntry("attemptId", attempt.attemptId());
             assertThat(event.throwableDigest()).isNotNull();
         });
@@ -201,7 +201,7 @@ final class PlatformSettingsMutationFailureContractTest {
                 new String[]{CompositeData.class.getName()});
     }
 
-    private List<AgentLogEvent> warnEvents() {
+    private List<CapturedLogEvent> warnEvents() {
         return capture.events().stream()
                 .filter(event -> event.level() == AgentLogLevel.WARN)
                 .toList();

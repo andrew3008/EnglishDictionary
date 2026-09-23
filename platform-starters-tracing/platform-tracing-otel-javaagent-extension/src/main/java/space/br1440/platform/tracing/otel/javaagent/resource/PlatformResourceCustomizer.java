@@ -13,7 +13,7 @@ import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
@@ -82,7 +82,7 @@ public final class PlatformResourceCustomizer {
                 throw (Error) failure;
             }
 
-            log.warn(AgentEventCodes.BOOT_RESOURCE_IDENTITY, "Resource customization failed", failure);
+            log.warn(AgentEventCode.BOOT_RESOURCE_IDENTITY, "Resource customization failed", failure);
             diagnostics.recordResourceFailure();
             return existing;
         }
@@ -119,7 +119,7 @@ public final class PlatformResourceCustomizer {
                                         ResourceValidationMode mode) {
         List<String> missing = ResourceAttributeResolver.missingRequiredKeys(projection, otelEnv, existing);
         if (missing.isEmpty()) {
-            log.info(AgentEventCodes.BOOT_RESOURCE_IDENTITY, "Resource identity resolved",
+            log.info(AgentEventCode.BOOT_RESOURCE_IDENTITY, "Resource identity resolved",
                     "service", orAbsent(projection.get(SERVICE_NAME_KEY)),
                     "environment", orAbsent(projection.get(ENVIRONMENT_KEY)),
                     "version", orAbsent(projection.get(SERVICE_VERSION_KEY)),
@@ -135,7 +135,7 @@ public final class PlatformResourceCustomizer {
             );
         }
 
-        log.warn(AgentEventCodes.BOOT_RESOURCE_IDENTITY, "Resource identity incomplete",
+        log.warn(AgentEventCode.BOOT_RESOURCE_IDENTITY, "Resource identity incomplete",
                 "service", orAbsent(projection.get(SERVICE_NAME_KEY)),
                 "environment", orAbsent(projection.get(ENVIRONMENT_KEY)),
                 "version", orAbsent(projection.get(SERVICE_VERSION_KEY)),

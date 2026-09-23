@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 public final class RuleCircuitBreaker {
@@ -63,32 +63,38 @@ public final class RuleCircuitBreaker {
         }
     }
 
-    public void recordFailure(Throwable t) {
+    public void recordFailure(Throwable throwable) {
         totalFailures.incrementAndGet();
 
         if (state.get() == State.HALF_OPEN) {
             openedAtMs.set(System.currentTimeMillis());
             state.set(State.OPEN);
             probeInProgress.set(0);
-            throttledWarn("Circuit breaker probe failed; returning to OPEN");
+            throttledWarn("Circuit breaker probe failed; returning to OPEN", throwable);
             return;
         }
 
         int failures = failureCount.incrementAndGet();
         if (failures >= failureThreshold && state.compareAndSet(State.CLOSED, State.OPEN)) {
             openedAtMs.set(System.currentTimeMillis());
-            throttledWarn("Circuit breaker opened after consecutive failures");
+            throttledWarn("Circuit breaker opened after consecutive failures", throwable);
         } else {
-            throttledWarn("Recorded rule failure");
+            throttledWarn("Recorded rule failure", throwable);
         }
     }
 
-    private void throttledWarn(String message) {
+    private void throttledWarn(String message, Throwable throwable) {
         long now = System.currentTimeMillis();
         long last = lastLoggedMs.get();
         if ((now - last) >= logThrottleMs && lastLoggedMs.compareAndSet(last, now)) {
-            log.warn(AgentEventCodes.SCRUB_CIRCUIT_OPEN, message, "name", ruleName,
-                    "count", String.valueOf(failureCount.get()));
+            String exceptionType = (throwable != null) ? throwable.getClass().getName() : "unknown";
+            String exceptionMessage = (throwable != null) ? String.valueOf(throwable.getMessage()) : "n/a";
+            log.warn(AgentEventCode.SCRUB_CIRCUIT_OPEN, message,
+                    "name", ruleName,
+                    "count", String.valueOf(failureCount.get()),
+                    "exceptionType", exceptionType,
+                    "exceptionMessage", exceptionMessage
+            );
         }
     }
 

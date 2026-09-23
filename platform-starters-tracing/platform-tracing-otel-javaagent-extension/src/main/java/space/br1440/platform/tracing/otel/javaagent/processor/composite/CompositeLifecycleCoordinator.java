@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.processor.composite;
 import java.util.ArrayList;
 import java.util.List;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
@@ -132,7 +132,7 @@ final class CompositeLifecycleCoordinator {
 
     private static void recordError(NamedDelegate namedDelegate, Operation operation, String failureKind) {
         namedDelegate.errorCount().incrementAndGet();
-        log.warn(AgentEventCodes.EXPORT_COMPOSITE_LIFECYCLE, "Composite processor lifecycle failed",
+        log.warn(AgentEventCode.EXPORT_COMPOSITE_LIFECYCLE, "Composite processor lifecycle failed",
                 "phase", operation.displayName,
                 "delegate", namedDelegate.name(),
                 "kind", failureKind);

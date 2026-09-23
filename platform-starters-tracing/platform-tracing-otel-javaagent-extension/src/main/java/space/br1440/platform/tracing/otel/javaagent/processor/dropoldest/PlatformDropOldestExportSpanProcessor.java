@@ -5,7 +5,7 @@ import java.util.Objects;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 
 import io.opentelemetry.context.Context;
@@ -21,7 +21,7 @@ import lombok.NonNull;
 /**
  * DROP_OLDEST {@link SpanProcessor}: неблокирующий bounded queue + отдельный
  * export worker, вытесняющий самые старые спаны при переполнении очереди вместо
- * блокировки вызывающего потока (в отличие от stock {@code BatchSpanProcessor}).
+ * блокировки вызывающего потока (в отличие от {@code BatchSpanProcessor} в нативном OTEL агенте).
  */
 public final class PlatformDropOldestExportSpanProcessor implements SpanProcessor {
 
@@ -74,7 +74,7 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
         try {
             snapshot = span.toSpanData();
         } catch (RuntimeException e) {
-            log.warn(AgentEventCodes.EXPORT_DROP_OLDEST, "toSpanData() failed", e);
+            log.warn(AgentEventCode.EXPORT_DROP_OLDEST, "toSpanData() failed", e);
             return;
         }
 
@@ -213,7 +213,7 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
             }
 
             if (maxExportBatchSize > maxQueueSize) {
-                log.warn(AgentEventCodes.EXPORT_DROP_OLDEST,
+                log.warn(AgentEventCode.EXPORT_DROP_OLDEST,
                         "Exceeds maxQueueSize; clamped to queue size",
                         "name",
                         "maxExportBatchSize"

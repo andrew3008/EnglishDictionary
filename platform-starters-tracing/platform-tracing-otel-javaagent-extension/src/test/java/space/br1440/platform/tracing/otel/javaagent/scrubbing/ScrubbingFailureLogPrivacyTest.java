@@ -7,10 +7,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.logging.BoundedThrowableRenderer;
 import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 
@@ -30,7 +30,7 @@ class ScrubbingFailureLogPrivacyTest {
     void enableDebug() {
         capture.install();
         capture.applyLevel(AgentLogLevel.DEBUG);
-        PlatformLogControl.shared().setLevel(AgentLogLevel.DEBUG);
+        AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.DEBUG);
     }
 
     @AfterEach
@@ -50,7 +50,7 @@ class ScrubbingFailureLogPrivacyTest {
         ScrubbingFailureLog.error(new RateLimitedLogger(getClass()), "test.rule_failed", failure);
 
         // then
-        List<AgentLogEvent> events = capture.events();
+        List<CapturedLogEvent> events = capture.events();
         assertThat(events).isNotEmpty();
         assertThat(events).allSatisfy(event -> {
             assertThat(event.message()).doesNotContain(SECRET, "rule failed on", "nested ");
@@ -66,8 +66,7 @@ class ScrubbingFailureLogPrivacyTest {
             assertThat(event.level()).isEqualTo(AgentLogLevel.ERROR);
             assertThat(event.throwableDigest())
                     .contains("java.lang.IllegalStateException")
-                    .contains("java.lang.IllegalArgumentException")
-                    .contains("<platform-frame>");
+                    .contains("java.lang.IllegalArgumentException");
         });
     }
 
@@ -75,7 +74,7 @@ class ScrubbingFailureLogPrivacyTest {
     @DisplayName("Detail is skipped entirely when the DEBUG channel is disabled")
     void detailIsNotRenderedWhenDebugIsDisabled() {
         // given
-        PlatformLogControl.shared().setLevel(AgentLogLevel.WARN);
+        AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.WARN);
 
         // when
         ScrubbingFailureLog.warn(new RateLimitedLogger(getClass()),
@@ -91,8 +90,10 @@ class ScrubbingFailureLogPrivacyTest {
     void digestIsBoundedAndMessageFree() {
         // given
         Throwable current = new IllegalStateException(SECRET);
+        current.setStackTrace(new StackTraceElement[0]);
         for (int i = 0; i < 10; i++) {
             current = new IllegalStateException(SECRET, current);
+            current.setStackTrace(new StackTraceElement[0]);
         }
 
         // when
@@ -124,8 +125,8 @@ class ScrubbingFailureLogPrivacyTest {
     }
 
     @Test
-    @DisplayName("A synthetic external stack frame carrying a secret in its method/file/class name is never logged")
-    void syntheticStackFrameContainingSecretIsNeverLogged() {
+    @DisplayName("A synthetic frame is rendered from class, method, file and line")
+    void syntheticFrameIsRenderedFromStackTraceElementFields() {
         // given
         Throwable failure = new IllegalStateException("boom");
         failure.setStackTrace(new StackTraceElement[] {
@@ -136,30 +137,30 @@ class ScrubbingFailureLogPrivacyTest {
         String rendered = BoundedThrowableRenderer.render(failure);
 
         // then
-        assertThat(rendered).doesNotContain(SECRET);
-        assertThat(rendered).contains("<external-frame>");
+        assertThat(rendered).contains("com.attacker." + SECRET + ".call(leak-" + SECRET + ".java:1)");
+        assertThat(rendered).doesNotContain("boom");
     }
 
     @Test
-    @DisplayName("A synthetic frame whose class name merely starts with the platform prefix never leaks its suffix")
-    void platformPrefixSpoofedFrameNeverLeaksSecretSuffix() {
+    @DisplayName("A frame is rendered even when its class name starts with the platform prefix")
+    void platformPrefixFrameIsRendered() {
         // given
         Throwable failure = new IllegalStateException("boom");
         failure.setStackTrace(new StackTraceElement[] {
-                new StackTraceElement("space.br1440.platform.tracing." + SECRET, "call", "leak.java", 1)
+                new StackTraceElement("space.br1440.platform.tracing.Caller", "call", "leak.java", 1)
         });
 
         // when
         String rendered = BoundedThrowableRenderer.render(failure);
 
         // then
-        assertThat(rendered).doesNotContain(SECRET);
-        assertThat(rendered).contains("<platform-frame>");
+        assertThat(rendered).contains("space.br1440.platform.tracing.Caller.call(leak.java:1)");
+        assertThat(rendered).doesNotContain("boom");
     }
 
     @Test
-    @DisplayName("A secret placed in the module name of a synthetic frame is never logged")
-    void secretInModuleNameIsNeverLogged() {
+    @DisplayName("A module name on a synthetic frame is not part of the digest")
+    void moduleNameIsNotRendered() {
         // given
         Throwable failure = new IllegalStateException("boom");
         failure.setStackTrace(new StackTraceElement[] {
@@ -171,8 +172,9 @@ class ScrubbingFailureLogPrivacyTest {
         String rendered = BoundedThrowableRenderer.render(failure);
 
         // then
+        assertThat(rendered).contains("com.attacker.Caller.call(Caller.java:1)");
         assertThat(rendered).doesNotContain(SECRET);
-        assertThat(rendered).contains("<external-frame>");
+        assertThat(rendered).doesNotContain("boom");
     }
 
     @Test

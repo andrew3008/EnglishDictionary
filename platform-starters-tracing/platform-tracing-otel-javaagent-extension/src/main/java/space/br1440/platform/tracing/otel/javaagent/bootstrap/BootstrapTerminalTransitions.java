@@ -5,9 +5,12 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFa
 
 import java.util.Objects;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
@@ -84,7 +87,7 @@ final class BootstrapTerminalTransitions {
 
         publishRollbackIncomplete(activeSession, "shutdown", terminalFailure, batchId, evidence);
         log.warn(
-                AgentEventCodes.BOOT_CLASSIFIED_FAILURE,
+                AgentEventCode.BOOT_CLASSIFIED_FAILURE,
                 "Platform bootstrap shutdown cleanup failed",
                 terminalFailure,
                 "phase",

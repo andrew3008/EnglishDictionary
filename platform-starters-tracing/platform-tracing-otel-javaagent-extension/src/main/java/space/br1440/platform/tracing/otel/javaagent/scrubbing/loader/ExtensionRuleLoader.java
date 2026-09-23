@@ -18,7 +18,7 @@ import java.util.ServiceLoader;
 import java.util.Set;
 
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.StableScrubbingRule;
@@ -245,7 +245,7 @@ public final class ExtensionRuleLoader implements AutoCloseable {
             throw new IllegalStateException("ERROR validation failed for '" + name + "': " + reason + " (" + safeDetails + ")");
         }
 
-        log.warn(AgentEventCodes.SCRUB_EXTENSION_SKIPPED, "Extension scrubbing rule skipped",
+        log.warn(AgentEventCode.SCRUB_EXTENSION_SKIPPED, "Extension scrubbing rule skipped",
                 "name", name,
                 "reason", String.valueOf(reason),
                 "detail", safeDetails);

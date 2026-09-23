@@ -45,9 +45,8 @@ class AgentLogLevelTest {
         assertThatThrownBy(AgentLogLevel.OFF::requireEventLevel)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("OFF is not a valid event level");
-        assertThatThrownBy(() -> AgentLogLevel.TRACE.permits(AgentLogLevel.OFF))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("OFF is not a valid event level");
+        assertThat(AgentLogLevel.TRACE.permits(AgentLogLevel.OFF)).isFalse();
+        assertThat(AgentLogLevel.INFO.permits(null)).isFalse();
     }
 
     @Test

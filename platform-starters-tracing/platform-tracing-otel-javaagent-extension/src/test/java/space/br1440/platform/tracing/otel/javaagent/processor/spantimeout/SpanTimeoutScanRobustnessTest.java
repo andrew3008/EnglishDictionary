@@ -16,9 +16,9 @@ import java.util.function.LongSupplier;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 
 import io.opentelemetry.context.Context;
@@ -203,11 +203,11 @@ class SpanTimeoutScanRobustnessTest {
             processor.forceFlush();
 
             // then
-            List<AgentLogEvent> summaries = processorSummaries(logs);
+            List<CapturedLogEvent> summaries = processorSummaries(logs);
             assertThat(summaries).hasSize(1);
-            AgentLogEvent summary = summaries.getFirst();
+            CapturedLogEvent summary = summaries.getFirst();
             assertThat(summary.level()).isEqualTo(AgentLogLevel.INFO);
-            assertThat(summary.eventCode()).isEqualTo(AgentEventCodes.EXPORT_SPAN_TIMEOUT);
+            assertThat(summary.eventCode()).isEqualTo(AgentEventCode.EXPORT_SPAN_TIMEOUT);
             assertThat(summary.message()).isEqualTo("Span timeout force-ended spans");
             assertThat(summary.fields())
                     .containsEntry("spanTimeoutAttempts", "3")
@@ -235,9 +235,9 @@ class SpanTimeoutScanRobustnessTest {
             processor.forceFlush();
 
             // then
-            List<AgentLogEvent> summaries = processorSummaries(logs);
+            List<CapturedLogEvent> summaries = processorSummaries(logs);
             assertThat(summaries).hasSize(1);
-            AgentLogEvent summary = summaries.getFirst();
+            CapturedLogEvent summary = summaries.getFirst();
             assertThat(summary.level()).isEqualTo(AgentLogLevel.WARN);
             assertThat(summary.message()).isEqualTo("Span timeout force-ended spans with failures");
             assertThat(summary.fields())
@@ -250,7 +250,7 @@ class SpanTimeoutScanRobustnessTest {
         }
     }
 
-    private static List<AgentLogEvent> processorSummaries(AgentLogCapture logs) {
+    private static List<CapturedLogEvent> processorSummaries(AgentLogCapture logs) {
         return logs.events().stream()
                 .filter(event -> SpanTimeoutScan.class.getName().equals(event.logger()))
                 .filter(event -> event.level() != AgentLogLevel.DEBUG)

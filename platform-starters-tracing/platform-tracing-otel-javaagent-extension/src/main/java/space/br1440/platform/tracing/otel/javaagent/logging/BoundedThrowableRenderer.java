@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.logging;
 
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
 
@@ -10,15 +11,14 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public final class BoundedThrowableRenderer {
 
-    static final int MAX_CAUSES = AgentLogEvent.MAX_CAUSES;
-    static final int MAX_SUPPRESSED = AgentLogEvent.MAX_SUPPRESSED;
-    static final int MAX_FRAMES = AgentLogEvent.MAX_FRAMES;
+    static final int MAX_CAUSES = 3;
+    static final int MAX_SUPPRESSED = 3;
+    static final int MAX_FRAMES = 30;
     static final int MAX_TOTAL_LENGTH = 4096;
 
-    private static final String PLATFORM_PACKAGE_PREFIX = "space.br1440.platform.tracing.";
-    private static final String PLATFORM_FRAME = "<platform-frame>";
-    private static final String EXTERNAL_FRAME = "<external-frame>";
     private static final String TRUNCATION_SUFFIX = "\n... (output truncated)";
+    private static final String NATIVE_METHOD = "Native Method";
+    private static final String UNKNOWN_SOURCE = "Unknown Source";
 
     static int maxDigestChars() {
         return MAX_TOTAL_LENGTH + TRUNCATION_SUFFIX.length();
@@ -36,15 +36,41 @@ public final class BoundedThrowableRenderer {
             return capTotalLength(out);
         } catch (Throwable renderingFailure) {
             PlatformThrowables.propagateIfFatal(renderingFailure);
-            return throwable.getClass().getName()
-                    + " (detail rendering failed: "
-                    + renderingFailure.getClass().getName()
-                    + ")";
+            return renderingFailureDetail(
+                    throwable.getClass().getName(),
+                    renderingFailure.getClass().getName()
+            );
         }
     }
 
+    static String renderFrame(StackTraceElement frame) {
+        String location = frameLocation(frame.getFileName(), frame.getLineNumber());
+        return frame.getClassName() + "." + frame.getMethodName() + "(" + location + ")";
+    }
+
+    static String renderingFailureDetail(String throwableClassName, String failureClassName) {
+        String detail = throwableClassName + " (detail rendering failed: " + failureClassName + ")";
+        if (detail.length() <= MAX_TOTAL_LENGTH) {
+            return detail;
+        }
+
+        return detail.substring(0, MAX_TOTAL_LENGTH);
+    }
+
+    private static String frameLocation(String fileName, int lineNumber) {
+        if (lineNumber == -2) {
+            return NATIVE_METHOD;
+        }
+
+        if (fileName == null || lineNumber < 0) {
+            return UNKNOWN_SOURCE;
+        }
+
+        return fileName + ":" + lineNumber;
+    }
+
     private static Set<Throwable> newIdentitySet() {
-        return java.util.Collections.newSetFromMap(new IdentityHashMap<>());
+        return Collections.newSetFromMap(new IdentityHashMap<>());
     }
 
     private static String capTotalLength(StringBuilder out) {
@@ -88,8 +114,8 @@ public final class BoundedThrowableRenderer {
 
     private static void appendOne(StringBuilder out, Throwable throwable) {
         out.append(throwable.getClass().getName());
-        StackTraceElement[] frames = throwable.getStackTrace();
 
+        StackTraceElement[] frames = throwable.getStackTrace();
         int rendered = Math.min(frames.length, MAX_FRAMES);
         for (int i = 0; i < rendered; i++) {
             out.append("\n\tat ").append(renderFrame(frames[i]));
@@ -98,14 +124,5 @@ public final class BoundedThrowableRenderer {
         if (frames.length > rendered) {
             out.append("\n\t... ").append(frames.length - rendered).append(" more");
         }
-    }
-
-    private static String renderFrame(StackTraceElement frame) {
-        String className = frame.getClassName();
-        if (className.startsWith(PLATFORM_PACKAGE_PREFIX)) {
-            return PLATFORM_FRAME;
-        }
-
-        return EXTERNAL_FRAME;
     }
 }

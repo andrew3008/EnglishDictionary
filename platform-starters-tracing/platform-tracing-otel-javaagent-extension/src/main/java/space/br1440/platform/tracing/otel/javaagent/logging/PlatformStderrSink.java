@@ -7,12 +7,12 @@ import java.io.OutputStream;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 
-public final class PlatformStderrSink {
+final class PlatformStderrSink {
 
     private final OutputStream stream;
     private final ReentrantLock writeLock = new ReentrantLock();
 
-    public PlatformStderrSink() {
+    PlatformStderrSink() {
         this(new FileOutputStream(FileDescriptor.err));
     }
 
@@ -20,7 +20,7 @@ public final class PlatformStderrSink {
         this.stream = Objects.requireNonNull(stream, "stream");
     }
 
-    public void write(byte[] payload) throws IOException {
+    void write(byte[] payload) throws IOException {
         Objects.requireNonNull(payload, "payload");
 
         writeLock.lock();

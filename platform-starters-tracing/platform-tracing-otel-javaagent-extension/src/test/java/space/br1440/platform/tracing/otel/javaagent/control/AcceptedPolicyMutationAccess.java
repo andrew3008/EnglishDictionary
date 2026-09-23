@@ -9,6 +9,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCom
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 
 public final class AcceptedPolicyMutationAccess {
 
@@ -78,6 +79,31 @@ public final class AcceptedPolicyMutationAccess {
                         current.diagnosticsLogLevel()
                 )
         );
+    }
+
+    public static boolean applyDiagnosticsLogLevel(TracingSettingsSource access, String rawLevel) {
+        AgentLogLevel level;
+
+        try {
+            level = AgentLogLevel.valueOf(rawLevel);
+        } catch (IllegalArgumentException | NullPointerException exception) {
+            return false;
+        }
+
+        SettingsUpdateStatus status = applyCandidate(
+                access,
+                current -> TracingSettings.of(
+                        current.samplingEnabled(),
+                        current.samplingRatio(),
+                        current.samplingRouteRatios(),
+                        current.validationLevel(),
+                        current.exporterEnabled(),
+                        current.traceControlHeadersEnabled(),
+                        level
+                )
+        );
+
+        return status == SettingsUpdateStatus.APPLIED || status == SettingsUpdateStatus.UNCHANGED;
     }
 
     public static SettingsUpdateStatus applyTraceControlHeaders(TracingSettingsSource access,

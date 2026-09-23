@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 
 class AdmissionBudgetTest {
@@ -78,7 +78,7 @@ class AdmissionBudgetTest {
         assertThat(budget.used()).isEqualTo(1);
         assertThat(budget.invariantViolationTotal()).isEqualTo(1);
         assertThat(logCapture.rendered())
-                .contains(AgentEventCodes.SPAN_TIMEOUT_PERMIT_INVARIANT_VIOLATION)
+                .contains(AgentEventCode.EXPORT_SPAN_TIMEOUT_PERMIT_VIOLATION.code())
                 .contains("acquiredPermitCount")
                 .contains("requestedReleaseCount")
                 .contains("trace-9");

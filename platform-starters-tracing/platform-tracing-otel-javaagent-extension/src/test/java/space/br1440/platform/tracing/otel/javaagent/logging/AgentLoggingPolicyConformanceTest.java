@@ -8,6 +8,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AgentLoggingPolicyConformanceTest {
 
@@ -22,7 +23,7 @@ class AgentLoggingPolicyConformanceTest {
         AgentLogEvent event = new AgentLogEvent(
                 Instant.parse("2026-08-16T19:00:00Z"),
                 AgentLogLevel.INFO,
-                AgentEventCodes.BOOT_INSTALLED,
+                AgentEventCode.BOOT_INSTALLED,
                 getClass().getName(),
                 "Platform agent logging installed",
                 fields,
@@ -42,15 +43,7 @@ class AgentLoggingPolicyConformanceTest {
     @Test
     void encoded_payload_never_exceeds_max_bytes() {
         // given
-        AgentLogEvent event = new AgentLogEvent(
-                Instant.parse("2026-08-16T19:00:00Z"),
-                AgentLogLevel.WARN,
-                AgentEventCodes.SCRUB_FAILURE,
-                getClass().getName(),
-                "x".repeat(20_000),
-                Map.of(),
-                null
-        );
+        AgentLogEvent event = byteBudgetEvent();
 
         // when
         byte[] encoded = encoder.encode(event);
@@ -105,61 +98,45 @@ class AgentLoggingPolicyConformanceTest {
         assertThat(rendered).doesNotContain("secret");
         assertThat(rendered).contains("cause chain truncated");
         assertThat(rendered.lines().filter(line -> line.contains("suppressed")).count())
-                .isEqualTo(AgentLogEvent.MAX_SUPPRESSED);
+                .isEqualTo(BoundedThrowableRenderer.MAX_SUPPRESSED);
     }
 
     @Test
-    void oversized_logger_is_replaced_with_fixed_fallback() {
+    void oversized_logger_is_rejected_by_the_event() {
         // given
         String hugeLogger = "x".repeat(20_000);
-        AgentLogEvent event = new AgentLogEvent(
+
+        // when
+        // then
+        assertThatThrownBy(() -> new AgentLogEvent(
                 Instant.parse("2026-08-16T19:00:00Z"),
                 AgentLogLevel.WARN,
-                AgentEventCodes.SCRUB_FAILURE,
+                AgentEventCode.SCRUB_FAILURE,
                 hugeLogger,
                 "Scrubbing boundary collapsed",
                 Map.of(),
                 null
-        );
-
-        // when
-        byte[] encoded = encoder.encode(event);
-        String json = new String(encoded, StandardCharsets.UTF_8);
-
-        // then
-        assertThat(encoded.length).isLessThanOrEqualTo(AgentLogEvent.MAX_ENCODED_BYTES);
-        assertThat(json).contains("\"event_code\":\"PTA-ENCODE-001\"");
-        assertThat(json).contains("space.br1440.platform.tracing.otel.javaagent.logging");
-        assertThat(json).doesNotContain(hugeLogger);
+        )).isInstanceOf(IllegalArgumentException.class).hasMessage("logger");
     }
 
     @Test
-    void unknown_event_code_is_replaced_with_encode_fallback() {
+    void byte_budget_fallback_keeps_the_original_event_code() {
         // given
-        AgentLogEvent event = new AgentLogEvent(
-                Instant.parse("2026-08-16T19:00:00Z"),
-                AgentLogLevel.ERROR,
-                "FAKE-UNKNOWN-999",
-                getClass().getName(),
-                "Schema conformance event",
-                Map.of(),
-                null
-        );
-
         // when
-        String json = new String(encoder.encode(event), StandardCharsets.UTF_8);
+        String json = new String(encoder.encode(byteBudgetEvent()), StandardCharsets.UTF_8);
 
         // then
         assertThat(json).contains("\"event_code\":\"PTA-ENCODE-001\"");
-        assertThat(json).doesNotContain("FAKE-UNKNOWN-999");
-        assertThat(json).contains("Platform Agent log event could not be encoded safely");
+        assertThat(json).contains("\"original_event_code\":\"PTA-EXPORT-001\"");
+        assertThat(json).contains("\"fallback_reason\":\"byte_budget\"");
+        assertThat(json).doesNotContain("invariant_violation");
     }
 
     @Test
     void encoder_escapes_quotes_and_keeps_truncation_deterministic() {
         // given
-        AgentLogEvent first = oversized();
-        AgentLogEvent second = oversized();
+        AgentLogEvent first = byteBudgetEvent();
+        AgentLogEvent second = byteBudgetEvent();
 
         // when
         byte[] left = encoder.encode(first);
@@ -182,14 +159,18 @@ class AgentLoggingPolicyConformanceTest {
         }
     }
 
-    private static AgentLogEvent oversized() {
+    private static AgentLogEvent byteBudgetEvent() {
+        Map<String, String> fields = new LinkedHashMap<>();
+        for (int i = 0; i < AgentLogFieldNamePolicy.MAX_FIELDS; i++) {
+            fields.put("f" + i, "Q".repeat(AgentLogEvent.MAX_ARGUMENT_CHARS));
+        }
         return new AgentLogEvent(
                 Instant.parse("2026-08-16T19:00:00Z"),
                 AgentLogLevel.ERROR,
-                AgentEventCodes.EXPORT_SAFE_EXPORTER,
+                AgentEventCode.EXPORT_SAFE_EXPORTER,
                 AgentLoggingPolicyConformanceTest.class.getName(),
-                "quote\"x".repeat(4_000),
-                Map.of(),
+                "quote\"x",
+                fields,
                 null
         );
     }
@@ -198,7 +179,7 @@ class AgentLoggingPolicyConformanceTest {
         return new AgentLogEvent(
                 Instant.parse("2026-08-16T19:00:00Z"),
                 AgentLogLevel.ERROR,
-                AgentEventCodes.EXPORT_SAFE_EXPORTER,
+                AgentEventCode.EXPORT_SAFE_EXPORTER,
                 AgentLoggingPolicyConformanceTest.class.getName(),
                 "quote\"x",
                 Map.of(),

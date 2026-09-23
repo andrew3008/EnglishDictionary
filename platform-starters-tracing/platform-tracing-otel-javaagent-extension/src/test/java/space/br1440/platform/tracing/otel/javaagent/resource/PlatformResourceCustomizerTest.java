@@ -15,7 +15,7 @@ import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -262,7 +262,7 @@ class PlatformResourceCustomizerTest {
             assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isNull();
             assertThat(logs.events())
                     .filteredOn(event -> event.level() == AgentLogLevel.WARN)
-                    .extracting(AgentLogEvent::message)
+                    .extracting(CapturedLogEvent::message)
                     .contains("Resource identity incomplete");
         } finally {
             logs.restore();
@@ -285,7 +285,7 @@ class PlatformResourceCustomizerTest {
             // then
             assertThat(logs.events())
                     .filteredOn(event -> "Resource identity resolved".equals(event.message()))
-                    .extracting(AgentLogEvent::level)
+                    .extracting(CapturedLogEvent::level)
                     .containsExactly(AgentLogLevel.INFO);
         } finally {
             logs.restore();
@@ -329,7 +329,7 @@ class PlatformResourceCustomizerTest {
             assertThat(diagnostics.getResourceFailures()).isEqualTo(1);
             assertThat(logs.events())
                     .filteredOn(event -> "Resource customization failed".equals(event.message()))
-                    .extracting(AgentLogEvent::level)
+                    .extracting(CapturedLogEvent::level)
                     .containsExactly(AgentLogLevel.WARN);
         } finally {
             logs.restore();

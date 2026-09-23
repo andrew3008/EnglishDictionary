@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.scrubbing.diagnostics;
 import java.util.List;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.loader.ExtensionRuleLoader;
 
@@ -22,17 +22,18 @@ public final class StartupDiagnostics {
                             int clampedPriorities,
                             int openBreakers,
                             List<ExtensionRuleLoader.FailedEntry> failedEntries) {
-        log.emit(AgentLogLevel.INFO, AgentEventCodes.SCRUB_INITIALIZED, "Scrubbing rule initialized", null,
+        log.emit(AgentLogLevel.INFO, AgentEventCode.SCRUB_INITIALIZED, "Scrubbing rule initialized", null,
                 "builtInRules", String.valueOf(builtInRules),
                 "bundledSpiRules", String.valueOf(bundledSpiRules),
                 "customRules", String.valueOf(customRules),
                 "kind", loadingMode,
                 "failedProviders", String.valueOf(failedProviders),
                 "clampedPriorities", String.valueOf(clampedPriorities),
-                "openBreakers", String.valueOf(openBreakers));
+                "openBreakers", String.valueOf(openBreakers)
+        );
 
         for (ExtensionRuleLoader.FailedEntry entry : failedEntries) {
-            log.warn(AgentEventCodes.SCRUB_PROVIDER_FAILED, "Scrubbing provider failed", "name", entry.name(),
+            log.warn(AgentEventCode.SCRUB_PROVIDER_FAILED, "Scrubbing provider failed", "name", entry.name(),
                     "reason", String.valueOf(entry.reason()));
         }
     }

@@ -27,7 +27,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 public final class PlatformSettingsMutationMBean implements DynamicMBean {
@@ -203,7 +203,7 @@ public final class PlatformSettingsMutationMBean implements DynamicMBean {
 
     private static void logFailure(RuntimeException failure, String phase, String attemptId) {
         log.warn(
-                AgentEventCodes.CTRL_WRITER,
+                AgentEventCode.CTRL_WRITER,
                 "JMX settings mutation failed", failure,
                 "phase", phase,
                 "attemptId", sanitizeAttemptIdForLog(attemptId)

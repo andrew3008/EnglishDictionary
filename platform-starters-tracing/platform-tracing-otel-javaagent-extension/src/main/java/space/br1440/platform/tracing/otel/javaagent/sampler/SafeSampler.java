@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.resilience.CircuitBreaker;
 import space.br1440.platform.tracing.otel.javaagent.resilience.DegradedModeController;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
@@ -56,12 +56,12 @@ public final class SafeSampler implements Sampler, PlatformManagedSampler {
 
                 degradedController.recordFailure(DegradedModeController.Component.SAMPLER);
                 diagnostics.recordSamplerFailure();
-                log.warn(AgentEventCodes.SAMPLE_FALLBACK, "Sampler fell back to parent-based sampling");
+                log.warn(AgentEventCode.SAMPLE_FALLBACK, "Sampler fell back to parent-based sampling");
             } catch (Throwable ex) {
                 PlatformThrowables.propagateIfFatal(ex);
                 degradedController.recordFailure(DegradedModeController.Component.SAMPLER);
                 diagnostics.recordSamplerFailure();
-                log.warn(AgentEventCodes.SAMPLE_FALLBACK, "Sampler fell back to parent-based sampling", ex);
+                log.warn(AgentEventCode.SAMPLE_FALLBACK, "Sampler fell back to parent-based sampling", ex);
             }
         }
 

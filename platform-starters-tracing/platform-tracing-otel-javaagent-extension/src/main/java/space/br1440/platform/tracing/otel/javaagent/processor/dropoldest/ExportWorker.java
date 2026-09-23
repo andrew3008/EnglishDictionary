@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.processor.dropoldest;
 import java.util.ArrayList;
 import java.util.List;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
@@ -66,7 +66,7 @@ final class ExportWorker implements Runnable {
         String message = loopFailed
                 ? "Export worker terminated abnormally"
                 : "Exporter shutdown failed after worker drain completed";
-        log.error(AgentEventCodes.EXPORT_WORKER, message, failure);
+        log.error(AgentEventCode.EXPORT_WORKER, message, failure);
     }
 
     private WorkerStopReason exportUntilShutdown() {

@@ -9,7 +9,7 @@ import io.opentelemetry.sdk.resources.Resource;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
@@ -34,7 +34,7 @@ class ValidationStartupErrorPolicyTest {
                 .filteredOn(event -> event.level() == AgentLogLevel.ERROR)
                 .singleElement()
                 .satisfies(event -> {
-                    assertThat(event.eventCode()).isEqualTo(AgentEventCodes.VALID_MISSING_ATTRIBUTES);
+                    assertThat(event.eventCode()).isEqualTo(AgentEventCode.VALID_MISSING_ATTRIBUTES);
                     assertThat(event.message()).isEqualTo("Required span attributes are missing");
                     assertThat(event.fields().toString())
                             .doesNotContain("customer-secret-span-name", "platform.trace.type", "platform.trace.result");

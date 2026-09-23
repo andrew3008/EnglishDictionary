@@ -15,7 +15,7 @@ import javax.crypto.spec.SecretKeySpec;
 import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.IpPrefixTruncator;
@@ -107,7 +107,7 @@ public final class ScrubbingRuntime {
         }
 
         if (enabled && !hasHmacKey) {
-            log.warn(AgentEventCodes.SCRUB_HMAC_MISSING, "Scrubbing HMAC key is not set");
+            log.warn(AgentEventCode.SCRUB_HMAC_MISSING, "Scrubbing HMAC key is not set");
         }
 
         this.hmacKey = hasHmacKey ? hmacSecret.copyBytes() : null;
@@ -256,7 +256,7 @@ public final class ScrubbingRuntime {
                 && ScrubbingDecision.SCRUBBING_FAILED_REASON.equals(decision.reason());
         if (failClosed) {
             failures.increment();
-            log.warn(AgentEventCodes.SCRUB_RULE_FAILED, "Applying fail-closed mask",
+            log.warn(AgentEventCode.SCRUB_RULE_FAILED, "Applying fail-closed mask",
                     "attribute", key.getKey());
             applyFailClosed(span, key, type);
             return;
@@ -306,7 +306,7 @@ public final class ScrubbingRuntime {
             case BOOLEAN_ARRAY -> span.setAttribute((AttributeKey<List<Boolean>>) key, List.of(SENTINEL_BOOLEAN));
 
             default -> {
-                log.warn(AgentEventCodes.SCRUB_UNSUPPORTED_TYPE, "Unsupported attribute type",
+                log.warn(AgentEventCode.SCRUB_UNSUPPORTED_TYPE, "Unsupported attribute type",
                         "type", String.valueOf(type));
                 markAttributesUnverified();
                 return false;
@@ -358,7 +358,7 @@ public final class ScrubbingRuntime {
             String truncated = IpPrefixTruncator.truncate(value);
             if (truncated == null) {
                 failures.increment();
-                log.warn(AgentEventCodes.SCRUB_RULE_FAILED, "IP prefix truncation failed; falling back to full mask",
+                log.warn(AgentEventCode.SCRUB_RULE_FAILED, "IP prefix truncation failed; falling back to full mask",
                         "reason", decision.reason());
                 return MASK;
             }
@@ -437,7 +437,7 @@ public final class ScrubbingRuntime {
     public void markAttributesUnverified() {
         if (attributesVerified.compareAndSet(true, false)) {
             collapseModeActivations.increment();
-            log.error(AgentEventCodes.SCRUB_BOUNDARY_COLLAPSE, "Scrubbing boundary collapsed");
+            log.error(AgentEventCode.SCRUB_BOUNDARY_COLLAPSE, "Scrubbing boundary collapsed");
         }
     }
 

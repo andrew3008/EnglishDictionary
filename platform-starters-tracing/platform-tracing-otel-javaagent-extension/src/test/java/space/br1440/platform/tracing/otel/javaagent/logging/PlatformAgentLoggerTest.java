@@ -5,7 +5,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PlatformAgentLoggerTest {
 
@@ -28,7 +27,7 @@ class PlatformAgentLoggerTest {
     void disabled_debug_does_not_construct_an_event() {
         // given
         // when
-        EmitResult result = logger.debug(AgentEventCodes.BOOT_HOSTNAME_FAILED, "Hostname resolution failed",
+        EmitResult result = logger.debug(AgentEventCode.BOOT_HOSTNAME_FAILED, "Hostname resolution failed",
                 "detail", "unused");
 
         // then
@@ -41,10 +40,9 @@ class PlatformAgentLoggerTest {
         // given
         // when
         // then
-        assertThatThrownBy(() -> logger.emit(AgentLogLevel.OFF, AgentEventCodes.BOOT_INSTALLED,
-                "Platform agent logging installed", null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("OFF is not a valid event level");
+        EmitResult result = logger.emit(AgentLogLevel.OFF, AgentEventCode.BOOT_INSTALLED,
+                "Platform agent logging installed", null);
+        assertThat(result).isEqualTo(EmitResult.FILTERED_BY_LEVEL);
         assertThat(capture.events()).isEmpty();
     }
 
@@ -52,7 +50,7 @@ class PlatformAgentLoggerTest {
     void rejects_forbidden_field_name() {
         // given
         // when
-        EmitResult result = logger.warn(AgentEventCodes.CTRL_UPDATE, "Tracing settings update failed",
+        EmitResult result = logger.warn(AgentEventCode.CTRL_UPDATE, "Tracing settings update failed",
                 "secret", "value");
 
         // then
@@ -64,7 +62,7 @@ class PlatformAgentLoggerTest {
     void rejects_blank_message() {
         // given
         // when
-        EmitResult result = logger.warn(AgentEventCodes.CTRL_UPDATE, "   ");
+        EmitResult result = logger.warn(AgentEventCode.CTRL_UPDATE, "   ");
 
         // then
         assertThat(result).isEqualTo(EmitResult.REJECTED_BY_SECURITY_POLICY);
@@ -75,7 +73,7 @@ class PlatformAgentLoggerTest {
     void rejects_reserved_root_field_name() {
         // given
         // when
-        EmitResult result = logger.warn(AgentEventCodes.CTRL_UPDATE, "Tracing settings update failed",
+        EmitResult result = logger.warn(AgentEventCode.CTRL_UPDATE, "Tracing settings update failed",
                 "message", "duplicate");
 
         // then
@@ -87,7 +85,7 @@ class PlatformAgentLoggerTest {
     void sanitizes_control_characters_in_fields() {
         // given
         // when
-        EmitResult result = logger.warn(AgentEventCodes.CTRL_WRITER, "Private control writer failed",
+        EmitResult result = logger.warn(AgentEventCode.CTRL_WRITER, "Private control writer failed",
                 "attemptId", "id\r\nforged");
 
         // then
@@ -97,10 +95,10 @@ class PlatformAgentLoggerTest {
     }
 
     @Test
-    void rejects_unknown_event_code() {
+    void rejects_null_event_code() {
         // given
         // when
-        EmitResult result = logger.warn("FAKE-UNKNOWN-999", "Tracing settings update failed");
+        EmitResult result = logger.warn(null, "Tracing settings update failed");
 
         // then
         assertThat(result).isEqualTo(EmitResult.REJECTED_BY_SECURITY_POLICY);
@@ -111,7 +109,7 @@ class PlatformAgentLoggerTest {
     void rejects_odd_field_list() {
         // given
         // when
-        EmitResult result = logger.warn(AgentEventCodes.CTRL_UPDATE, "Tracing settings update failed",
+        EmitResult result = logger.warn(AgentEventCode.CTRL_UPDATE, "Tracing settings update failed",
                 "kind");
 
         // then
@@ -123,7 +121,7 @@ class PlatformAgentLoggerTest {
     void rejects_duplicate_field_names_case_insensitively() {
         // given
         // when
-        EmitResult result = logger.warn(AgentEventCodes.CTRL_UPDATE, "Tracing settings update failed",
+        EmitResult result = logger.warn(AgentEventCode.CTRL_UPDATE, "Tracing settings update failed",
                 "kind", "a", "Kind", "b");
 
         // then
@@ -141,7 +139,7 @@ class PlatformAgentLoggerTest {
         }
 
         // when
-        EmitResult result = logger.warn(AgentEventCodes.CTRL_UPDATE, "Tracing settings update failed",
+        EmitResult result = logger.warn(AgentEventCode.CTRL_UPDATE, "Tracing settings update failed",
                 fields);
 
         // then
@@ -153,7 +151,7 @@ class PlatformAgentLoggerTest {
     void rejects_invalid_field_name_syntax() {
         // given
         // when
-        EmitResult result = logger.warn(AgentEventCodes.CTRL_UPDATE, "Tracing settings update failed",
+        EmitResult result = logger.warn(AgentEventCode.CTRL_UPDATE, "Tracing settings update failed",
                 "1name", "value");
 
         // then

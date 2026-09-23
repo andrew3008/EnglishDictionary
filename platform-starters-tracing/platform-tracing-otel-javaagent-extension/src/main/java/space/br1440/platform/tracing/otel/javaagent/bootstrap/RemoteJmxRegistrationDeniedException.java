@@ -15,6 +15,7 @@ final class RemoteJmxRegistrationDeniedException extends IllegalStateException {
         if (denial.allowsLocalMutationRegistration()) {
             throw new IllegalArgumentException("Remote JMX assessment permits registration; nothing to deny");
         }
+
         this.failureCode = denial.failureCode();
     }
 

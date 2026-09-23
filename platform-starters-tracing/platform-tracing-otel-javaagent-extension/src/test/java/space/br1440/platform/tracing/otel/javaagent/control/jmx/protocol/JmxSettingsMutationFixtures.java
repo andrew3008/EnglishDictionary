@@ -14,7 +14,7 @@ import javax.management.openmbean.TabularDataSupport;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
@@ -33,7 +33,7 @@ final class JmxSettingsMutationFixtures {
         return TracingSettings.of(
                 true,
                 ratio,
-                Map.of("/orders", 0.5d), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO);
+                Map.of("/orders", 0.5d), SpanAttributeValidationLevel.WARNING, true, true, AgentLogLevel.INFO);
     }
 
     static CompositeData request(

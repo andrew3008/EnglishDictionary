@@ -13,7 +13,7 @@ import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 final class MBeanBatchRegistrar {
@@ -109,7 +109,7 @@ final class MBeanBatchRegistrar {
 
     private void rollbackAndThrow(List<OwnedDynamicMBean> journal, JmxRegistrationException primary) {
         log.error(
-                AgentEventCodes.CTRL_MBEAN_BATCH,
+                AgentEventCode.CTRL_MBEAN_BATCH,
                 "MBean batch registration failed",
                 primary,
                 "count",
@@ -126,7 +126,7 @@ final class MBeanBatchRegistrar {
 
     private void rollbackAndRethrow(List<OwnedDynamicMBean> journal, Error primary) {
         log.error(
-                AgentEventCodes.CTRL_MBEAN_BATCH,
+                AgentEventCode.CTRL_MBEAN_BATCH,
                 "MBean batch registration failed",
                 primary,
                 "count",

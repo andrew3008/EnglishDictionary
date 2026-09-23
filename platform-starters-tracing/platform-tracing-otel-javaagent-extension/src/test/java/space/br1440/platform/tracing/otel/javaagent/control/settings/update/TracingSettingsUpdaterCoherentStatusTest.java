@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 
@@ -119,6 +119,6 @@ class TracingSettingsUpdaterCoherentStatusTest {
         return TracingSettings.of(
                 true,
                 samplingRatio,
-                Map.of(), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO);
+                Map.of(), SpanAttributeValidationLevel.WARNING, true, true, AgentLogLevel.INFO);
     }
 }

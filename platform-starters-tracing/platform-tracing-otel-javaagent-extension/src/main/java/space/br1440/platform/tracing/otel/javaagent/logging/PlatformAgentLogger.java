@@ -23,7 +23,8 @@ public final class PlatformAgentLogger {
 
     public static PlatformAgentLogger get(Class<?> owner) {
         Objects.requireNonNull(owner, "owner");
-        return new PlatformAgentLogger(owner.getName(), AgentLoggingRuntime.shared());
+        String logger = AgentLogTextSanitizer.normalizeBounded(owner.getName(), AgentLogEvent.MAX_LOGGER_CHARS);
+        return new PlatformAgentLogger(logger, AgentLoggingRuntime.shared());
     }
 
     public boolean isEnabled(AgentLogLevel eventLevel) {
@@ -34,73 +35,62 @@ public final class PlatformAgentLogger {
         return isEnabled(AgentLogLevel.DEBUG);
     }
 
-    public EmitResult error(String eventCode, String message, Object... fields) {
+    public EmitResult error(AgentEventCode eventCode, String message, Object... fields) {
         return emit(AgentLogLevel.ERROR, eventCode, message, null, fields);
     }
 
-    public EmitResult error(String eventCode, String message, Throwable error, Object... fields) {
+    public EmitResult error(AgentEventCode eventCode, String message, Throwable error, Object... fields) {
         return emit(AgentLogLevel.ERROR, eventCode, message, error, fields);
     }
 
-    public EmitResult warn(String eventCode, String message, Object... fields) {
+    public EmitResult warn(AgentEventCode eventCode, String message, Object... fields) {
         return emit(AgentLogLevel.WARN, eventCode, message, null, fields);
     }
 
-    public EmitResult warn(String eventCode, String message, Throwable error, Object... fields) {
+    public EmitResult warn(AgentEventCode eventCode, String message, Throwable error, Object... fields) {
         return emit(AgentLogLevel.WARN, eventCode, message, error, fields);
     }
 
-    public EmitResult info(String eventCode, String message, Object... fields) {
+    public EmitResult info(AgentEventCode eventCode, String message, Object... fields) {
         return emit(AgentLogLevel.INFO, eventCode, message, null, fields);
     }
 
-    public EmitResult debug(String eventCode, String message, Object... fields) {
+    public EmitResult debug(AgentEventCode eventCode, String message, Object... fields) {
         return emit(AgentLogLevel.DEBUG, eventCode, message, null, fields);
     }
 
-    public EmitResult trace(String eventCode, String message, Object... fields) {
-        return emit(AgentLogLevel.TRACE, eventCode, message, null, fields);
-    }
-
     public EmitResult emit(AgentLogLevel level,
-                           String eventCode,
+                           AgentEventCode eventCode,
                            String message,
                            Throwable error,
                            Object... fields) {
-        Objects.requireNonNull(level, "level");
+        if (level == null || eventCode == null) {
+            return EmitResult.REJECTED_BY_SECURITY_POLICY;
+        }
+
         if (!runtime.isEnabled(level)) {
             return EmitResult.FILTERED_BY_LEVEL;
         }
 
-        if (!AgentEventCodes.isKnown(eventCode)) {
-            return EmitResult.REJECTED_BY_SECURITY_POLICY;
-        }
+        try {
+            String sanitizedMessage = AgentLogTextSanitizer.normalizeBounded(message, AgentLogEvent.MAX_ARGUMENT_CHARS);
+            Map<String, String> sanitized = sanitizeFields(fields);
+            if (sanitizedMessage.isBlank() || sanitized == null || ownerName.isBlank()) {
+                return EmitResult.REJECTED_BY_SECURITY_POLICY;
+            }
 
-        String sanitizedMessage = AgentLogTextSanitizer.normalizeBounded(message, AgentLogEvent.MAX_ARGUMENT_CHARS);
-        if (sanitizedMessage.isBlank()) {
-            return EmitResult.REJECTED_BY_SECURITY_POLICY;
+            return runtime.emit(new AgentLogEvent(
+                    Instant.now(),
+                    level,
+                    eventCode,
+                    ownerName,
+                    sanitizedMessage,
+                    sanitized,
+                    BoundedThrowableRenderer.render(error)
+            ));
+        } catch (RuntimeException invariantViolation) {
+            return runtime.emitFallback(level, eventCode, FallbackReason.INVARIANT_VIOLATION);
         }
-
-        String sanitizedLogger = AgentLogTextSanitizer.normalizeBounded(ownerName, AgentLogEvent.MAX_LOGGER_CHARS);
-        if (sanitizedLogger.isBlank()) {
-            return EmitResult.REJECTED_BY_SECURITY_POLICY;
-        }
-
-        Map<String, String> sanitized = sanitizeFields(fields);
-        if (sanitized == null) {
-            return EmitResult.REJECTED_BY_SECURITY_POLICY;
-        }
-
-        AgentLogEvent event = new AgentLogEvent(
-                Instant.now(),
-                level,
-                eventCode,
-                sanitizedLogger,
-                sanitizedMessage,
-                sanitized,
-                BoundedThrowableRenderer.render(error)
-        );
-        return runtime.emit(event);
     }
 
     private static Map<String, String> sanitizeFields(Object[] fields) {

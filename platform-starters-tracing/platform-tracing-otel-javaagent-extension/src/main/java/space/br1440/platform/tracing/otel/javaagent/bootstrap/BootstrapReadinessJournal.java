@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;

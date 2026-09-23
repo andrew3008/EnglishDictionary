@@ -8,7 +8,7 @@ import java.util.function.LongSupplier;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanResult;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
@@ -72,7 +72,7 @@ final class SpanTimeoutScan {
         } catch (Throwable failure) {
             rethrowIfFatal(failure);
             outcome.failed = true;
-            log.warn(AgentEventCodes.EXPORT_SPAN_TIMEOUT, "Span-timeout scan stage failed", failure,
+            log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT, "Span-timeout scan stage failed", failure,
                     "stage", stage);
         }
     }
@@ -96,7 +96,7 @@ final class SpanTimeoutScan {
                                        ScanOutcome outcome) {
         outcome.recordFailure(candidate, failure);
         forceEndFailuresTotal.incrementAndGet();
-        log.debug(AgentEventCodes.EXPORT_SPAN_TIMEOUT, "Span timeout failed to force-end span",
+        log.debug(AgentEventCode.EXPORT_SPAN_TIMEOUT, "Span timeout failed to force-end span",
                 "traceId", candidate.traceId(),
                 "spanId", candidate.spanId(),
                 "reason", candidate.reason().value(),
@@ -136,7 +136,7 @@ final class SpanTimeoutScan {
         outcome.sample(candidate);
         span.end();
 
-        log.debug(AgentEventCodes.EXPORT_SPAN_TIMEOUT, "Span timeout force-ended span",
+        log.debug(AgentEventCode.EXPORT_SPAN_TIMEOUT, "Span timeout force-ended span",
                 "traceId", candidate.traceId(),
                 "spanId", candidate.spanId(),
                 "reason", candidate.reason().value());
@@ -152,7 +152,7 @@ final class SpanTimeoutScan {
         }
 
         if (outcome.failures == 0) {
-            log.info(AgentEventCodes.EXPORT_SPAN_TIMEOUT, "Span timeout force-ended spans",
+            log.info(AgentEventCode.EXPORT_SPAN_TIMEOUT, "Span timeout force-ended spans",
                     "spanTimeoutAttempts", String.valueOf(outcome.spanAttempts),
                     "traceTimeoutAttempts", String.valueOf(outcome.traceAttempts),
                     "failures", "0",
@@ -161,7 +161,7 @@ final class SpanTimeoutScan {
             return;
         }
 
-        log.warn(AgentEventCodes.EXPORT_SPAN_TIMEOUT, "Span timeout force-ended spans with failures",
+        log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT, "Span timeout force-ended spans with failures",
                 "spanTimeoutAttempts", String.valueOf(outcome.spanAttempts),
                 "traceTimeoutAttempts", String.valueOf(outcome.traceAttempts),
                 "failures", String.valueOf(outcome.failures),

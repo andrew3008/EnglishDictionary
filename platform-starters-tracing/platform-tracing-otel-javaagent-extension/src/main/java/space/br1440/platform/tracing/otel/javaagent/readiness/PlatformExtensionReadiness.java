@@ -12,7 +12,7 @@ import java.util.jar.Manifest;
 
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 public final class PlatformExtensionReadiness {
@@ -147,14 +147,14 @@ public final class PlatformExtensionReadiness {
             }
 
             if (mismatchedTitle != null) {
-                log.warn(AgentEventCodes.BOOT_MANIFEST_VERSION,
+                log.warn(AgentEventCode.BOOT_MANIFEST_VERSION,
                         "Extension MANIFEST.MF Implementation-Title does not match the readiness lookup key; using development",
                         "expectedTitle", IMPLEMENTATION_TITLE,
                         "observedTitle", mismatchedTitle);
             }
         } catch (IOException failure) {
             if (log.isDebugEnabled()) {
-                log.debug(AgentEventCodes.BOOT_MANIFEST_VERSION,
+                log.debug(AgentEventCode.BOOT_MANIFEST_VERSION,
                         "Unable to resolve Implementation-Version from MANIFEST.MF");
             }
         }

@@ -9,9 +9,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.AdmissionRejections.RejectionReason;
 
@@ -73,7 +73,7 @@ class AdmissionRejectionsTest {
         // then
         assertThat(logs.events()).singleElement().satisfies(event -> {
             assertThat(event.level()).isEqualTo(AgentLogLevel.WARN);
-            assertThat(event.eventCode()).isEqualTo(AgentEventCodes.EXPORT_SPAN_TIMEOUT);
+            assertThat(event.eventCode()).isEqualTo(AgentEventCode.EXPORT_SPAN_TIMEOUT);
             assertThat(event.message())
                     .isEqualTo("Span timeout rejected span tracking: global tracked-span capacity reached");
             assertThat(event.fields()).containsEntry("rejected", "2").containsEntry("limit", "500");
@@ -91,7 +91,7 @@ class AdmissionRejectionsTest {
         rejections.logIfAny(RejectionReason.GLOBAL_CAPACITY);
 
         // then
-        assertThat(logs.events()).extracting(AgentLogEvent::message).containsExactly(
+        assertThat(logs.events()).extracting(CapturedLogEvent::message).containsExactly(
                 "Span timeout rejected span tracking: global tracked-span capacity reached",
                 "Span timeout rejected span tracking: per-trace tracked-span capacity reached",
                 "Span timeout rejected span tracking: tracked-trace capacity reached");

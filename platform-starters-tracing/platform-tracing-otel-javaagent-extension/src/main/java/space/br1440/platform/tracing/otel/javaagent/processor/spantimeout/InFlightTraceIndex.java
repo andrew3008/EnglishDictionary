@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.AdmissionRejections.RejectionReason;
 import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.EmptyEvictionPlanner.EvictionCandidate;
@@ -378,7 +378,7 @@ final class InFlightTraceIndex {
             return;
         }
 
-        log.warn(AgentEventCodes.EXPORT_SPAN_TIMEOUT, "Span timeout evicted empty trace states under pressure",
+        log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT, "Span timeout evicted empty trace states under pressure",
                 "evicted", String.valueOf(evicted),
                 "capacity", String.valueOf(traceBudget.capacity()));
     }

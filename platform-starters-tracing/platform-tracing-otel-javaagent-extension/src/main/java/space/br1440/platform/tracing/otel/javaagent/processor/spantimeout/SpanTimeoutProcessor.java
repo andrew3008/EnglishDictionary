@@ -7,7 +7,7 @@ import java.util.function.LongSupplier;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.processor.ProcessorDiagnosticIdentity;
 
@@ -153,7 +153,7 @@ public final class SpanTimeoutProcessor implements SpanProcessor, ProcessorDiagn
 
         int leakedSpans = getActiveSpanCount();
         if (leakedSpans > 0) {
-            log.info(AgentEventCodes.EXPORT_SPAN_TIMEOUT, "Unfinished spans remain at SDK shutdown",
+            log.info(AgentEventCode.EXPORT_SPAN_TIMEOUT, "Unfinished spans remain at SDK shutdown",
                     "count", String.valueOf(leakedSpans));
         }
 

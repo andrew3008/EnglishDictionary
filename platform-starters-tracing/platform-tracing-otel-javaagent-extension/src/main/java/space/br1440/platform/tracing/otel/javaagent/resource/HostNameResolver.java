@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.common.util.StringUtils;
@@ -60,7 +60,7 @@ final class HostNameResolver {
             } catch (Throwable failure) {
                 PlatformThrowables.propagateIfFatal(failure);
                 if (log.isDebugEnabled()) {
-                    log.debug(AgentEventCodes.BOOT_HOSTNAME_FAILED, "Hostname resolution failed", "detail", failure.toString());
+                    log.debug(AgentEventCode.BOOT_HOSTNAME_FAILED, "Hostname resolution failed", "detail", failure.toString());
                 }
             }
         }, "platform-tracing-hostname-resolve");
@@ -75,7 +75,7 @@ final class HostNameResolver {
         }
 
         if (t.isAlive()) {
-            log.warn(AgentEventCodes.BOOT_HOSTNAME_TIMEOUT, "Hostname resolution timed out", "timeoutMs",
+            log.warn(AgentEventCode.BOOT_HOSTNAME_TIMEOUT, "Hostname resolution timed out", "timeoutMs",
                     String.valueOf(HOSTNAME_RESOLVE_TIMEOUT_MS));
             return null;
         }

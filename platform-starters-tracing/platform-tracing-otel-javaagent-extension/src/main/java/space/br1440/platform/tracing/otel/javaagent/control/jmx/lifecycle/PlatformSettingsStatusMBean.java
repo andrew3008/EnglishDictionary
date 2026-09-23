@@ -31,7 +31,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 public final class PlatformSettingsStatusMBean implements DynamicMBean {
@@ -243,7 +243,7 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
 
     private static void logCaptureFailure(RuntimeException failure) {
         log.warn(
-                AgentEventCodes.CTRL_PLANE,
+                AgentEventCode.CTRL_PLANE,
                 "JMX settings status capture failed",
                 failure
         );

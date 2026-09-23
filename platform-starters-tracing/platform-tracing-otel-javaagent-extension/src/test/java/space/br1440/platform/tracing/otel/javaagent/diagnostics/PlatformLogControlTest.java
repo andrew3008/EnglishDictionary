@@ -2,47 +2,26 @@ package space.br1440.platform.tracing.otel.javaagent.diagnostics;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Контракт {@link PlatformLogControl} (Фаза 14): порог детализации, регистронезависимый парсинг,
- * last-known-good при кривом вводе.
+ * Контракт {@link PlatformLogControl}: порог детализации читается из принятой политики.
  */
 class PlatformLogControlTest {
 
     @Test
-    void off_is_a_valid_configured_level() {
+    void bind_projects_accepted_diagnostics_level() {
         // given
         PlatformLogControl control = new PlatformLogControl();
+        TracingSettingsSource source = TracingSettingsSource.isolatedDefaults();
 
         // when
-        control.setLevel(AgentLogLevel.OFF);
+        control.bindAcceptedPolicy(source);
 
         // then
-        assertThat(control.getLevel()).isEqualTo(AgentLogLevel.OFF);
-    }
-
-    @Test
-    void parsing_is_case_insensitive() {
-        // given
-        PlatformLogControl control = new PlatformLogControl();
-
-        // when/then
-        assertThat(control.setLevel("debug")).isTrue();
-        assertThat(control.getLevel()).isEqualTo(AgentLogLevel.DEBUG);
-    }
-
-    @Test
-    void unknown_level_preserves_LKG() {
-        // given
-        PlatformLogControl control = new PlatformLogControl();
-        control.setLevel(AgentLogLevel.INFO);
-
-        // when/then
-        assertThat(control.setLevel("verbose")).isFalse();
-        assertThat(control.setLevel((String) null)).isFalse();
-        assertThat(control.getLevel()).as("last-known-good сохранён").isEqualTo(AgentLogLevel.INFO);
+        assertThat(control.getLevel()).isEqualTo(AgentLogLevel.INFO);
     }
 }

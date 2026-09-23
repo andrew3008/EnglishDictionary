@@ -19,7 +19,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 
 class AcceptedPolicyCoordinatorTest {
@@ -77,7 +77,7 @@ class AcceptedPolicyCoordinatorTest {
                 .filteredOn(event -> event.level() == AgentLogLevel.WARN)
                 .singleElement()
                 .satisfies(event -> {
-                    assertThat(event.eventCode()).isEqualTo(AgentEventCodes.CTRL_UPDATE);
+                    assertThat(event.eventCode()).isEqualTo(AgentEventCode.CTRL_UPDATE);
                     assertThat(event.fields()).containsEntry("attemptId", failedAttempt.attemptId());
                     assertThat(event.throwableDigest()).isNotNull();
                 });

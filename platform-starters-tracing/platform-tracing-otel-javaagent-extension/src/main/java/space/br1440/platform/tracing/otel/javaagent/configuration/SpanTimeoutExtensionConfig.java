@@ -17,7 +17,7 @@ import static space.br1440.platform.tracing.otel.javaagent.configuration.Extensi
 
 import java.time.Duration;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 import lombok.Getter;
@@ -60,7 +60,7 @@ public final class SpanTimeoutExtensionConfig {
                 capacity is bounded by the global budget\
                 """;
 
-        log.warn(AgentEventCodes.EXPORT_SPAN_TIMEOUT,
+        log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT,
                 message,
                 "maxTrackedSpans", String.valueOf(maxTrackedSpans),
                 "maxTrackedSpansPerTrace", String.valueOf(maxTrackedSpansPerTrace));

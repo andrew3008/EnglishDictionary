@@ -3,7 +3,8 @@ package space.br1440.platform.tracing.otel.javaagent.control.settings.update;
 import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitOutcome;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitResult;
@@ -52,7 +53,7 @@ public final class TracingSettingsUpdater {
         try {
             result = evaluate(expectedBase, candidate);
         } catch (RuntimeException exception) {
-            log.warn(AgentEventCodes.CTRL_UPDATE, "Tracing settings update failed", exception, "attemptId", attempt.attemptId());
+            log.warn(AgentEventCode.CTRL_UPDATE, "Tracing settings update failed", exception, "attemptId", attempt.attemptId());
             TracingSettingsRevision accepted = store.current();
             result = new SettingsUpdateResult(
                     SettingsUpdateStatus.FAILED,
@@ -62,8 +63,19 @@ public final class TracingSettingsUpdater {
             );
         }
 
+        if (result.outcome() == SettingsUpdateStatus.APPLIED) {
+            AgentLoggingRuntime.shared().applyLevel(result.accepted().policy().diagnosticsLogLevel());
+        }
+
         diagnostics.record(attempt, result);
         return result;
+    }
+
+    public void runLocked(Runnable action) {
+        Objects.requireNonNull(action, "action");
+        synchronized (updateMonitor) {
+            action.run();
+        }
     }
 
     public SettingsUpdateResult rejectBeforeApply(String wireAttemptId, SettingsRejectionReason reason) {

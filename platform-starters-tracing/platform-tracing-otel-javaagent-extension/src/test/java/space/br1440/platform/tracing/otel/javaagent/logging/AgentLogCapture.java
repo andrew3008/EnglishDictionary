@@ -37,12 +37,12 @@ public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallb
 
     public void install() {
         buffer = new ByteArrayOutputStream();
-        AgentLoggingRuntime.shared().installForTests(new PlatformStderrSink(buffer));
+        AgentLoggingTestSupport.install(new PlatformStderrSink(buffer));
         AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.TRACE);
     }
 
     public void restore() {
-        AgentLoggingRuntime.resetSharedForTests();
+        AgentLoggingTestSupport.reset();
         buffer = null;
     }
 
@@ -50,12 +50,12 @@ public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallb
         AgentLoggingRuntime.shared().applyLevel(threshold);
     }
 
-    public List<AgentLogEvent> events() {
+    public List<CapturedLogEvent> events() {
         if (buffer == null) {
             return List.of();
         }
         String text = buffer.toString(StandardCharsets.UTF_8);
-        List<AgentLogEvent> events = new ArrayList<>();
+        List<CapturedLogEvent> events = new ArrayList<>();
         for (String line : text.split("\n", -1)) {
             if (line.isBlank()) {
                 continue;
@@ -67,9 +67,9 @@ public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallb
 
     public String rendered() {
         StringBuilder out = new StringBuilder();
-        for (AgentLogEvent event : events()) {
+        for (CapturedLogEvent event : events()) {
             out.append(event.level()).append(' ')
-                    .append(event.eventCode()).append(' ')
+                    .append(event.eventCode().code()).append(' ')
                     .append(event.message()).append(' ')
                     .append(event.fields())
                     .append(' ')
@@ -79,7 +79,7 @@ public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallb
         return out.toString();
     }
 
-    private static AgentLogEvent decode(String line) {
+    private static CapturedLogEvent decode(String line) {
         try {
             JsonNode node = JSON.readTree(line);
             Map<String, String> fields = new LinkedHashMap<>();
@@ -87,10 +87,10 @@ public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallb
             fieldsNode.fields().forEachRemaining(entry ->
                     fields.put(entry.getKey(), entry.getValue().asText("")));
             JsonNode errorStacktrace = node.get("error_stacktrace");
-            return new AgentLogEvent(
+            return new CapturedLogEvent(
                     Instant.parse(node.path("timestamp").asText()),
                     AgentLogLevel.valueOf(node.path("level").asText()),
-                    node.path("event_code").asText(),
+                    AgentEventCode.fromCode(node.path("event_code").asText()),
                     node.path("logger").asText(),
                     node.path("message").asText(),
                     fields,

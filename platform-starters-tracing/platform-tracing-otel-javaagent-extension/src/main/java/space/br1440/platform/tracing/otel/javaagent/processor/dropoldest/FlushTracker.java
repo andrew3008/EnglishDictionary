@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.LongPredicate;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 
@@ -103,7 +103,7 @@ final class FlushTracker {
                 primary.addSuppressed(secondary);
             }
         }
-        log.warn(AgentEventCodes.EXPORT_CALLBACK, "Flush completion callback failed", primary);
+        log.warn(AgentEventCode.EXPORT_CALLBACK, "Flush completion callback failed", primary);
     }
 
     private static void markIfCovers(Generation generation, long sequence) {

@@ -3,6 +3,8 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 import java.util.Map;
 import java.util.Objects;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.TracePipelineSpiVerifier;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.configuration.PlatformTracingDefaultsProvider;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ObservingSenderPreference;
 import space.br1440.platform.tracing.otel.javaagent.propagation.BaggagePropagationCustomizer;
@@ -47,7 +49,7 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
 
         customizer.addPropertiesCustomizer(config -> {
             bootstrap.execute("TRACE_PIPELINE_ATTESTATION_FAILED", () -> {
-                TracePipelineSpiAttestation.attest(PLATFORM_EXTENSION_ORDER, getClass());
+                TracePipelineSpiVerifier.verify(PLATFORM_EXTENSION_ORDER, getClass());
                 return null;
             });
 

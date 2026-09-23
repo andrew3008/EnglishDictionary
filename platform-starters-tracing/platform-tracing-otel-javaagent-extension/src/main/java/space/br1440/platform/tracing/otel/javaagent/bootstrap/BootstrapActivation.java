@@ -7,13 +7,19 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFa
 import java.util.Objects;
 import java.util.UUID;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.ExtensionRuntimeVerifier;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.VerificationException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.VerificationFailureCode;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.ShutdownHookRegistry;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxDenialReason;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxRegistrationAssessment;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagationGate;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
@@ -30,20 +36,20 @@ final class BootstrapActivation {
     private final BootstrapReadinessJournal journal;
     private final BootstrapTerminalTransitions terminalTransitions;
     private final DiagnosticReadinessHandle diagnosticHandle;
-    private final RuntimeEvidenceAttestor runtimeEvidenceAttestor;
+    private final ExtensionRuntimeVerifier runtimeVerifier;
     private final ShutdownHookRegistry hookRegistry;
 
     BootstrapActivation(BootstrapLifecycleState lifecycle,
                         BootstrapReadinessJournal journal,
                         BootstrapTerminalTransitions terminalTransitions,
                         DiagnosticReadinessHandle diagnosticHandle,
-                        RuntimeEvidenceAttestor runtimeEvidenceAttestor,
+                        ExtensionRuntimeVerifier runtimeVerifier,
                         ShutdownHookRegistry hookRegistry) {
         this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
         this.journal = Objects.requireNonNull(journal, "journal");
         this.terminalTransitions = Objects.requireNonNull(terminalTransitions, "terminalTransitions");
         this.diagnosticHandle = Objects.requireNonNull(diagnosticHandle, "diagnosticHandle");
-        this.runtimeEvidenceAttestor = Objects.requireNonNull(runtimeEvidenceAttestor, "runtimeEvidenceAttestor");
+        this.runtimeVerifier = Objects.requireNonNull(runtimeVerifier, "runtimeVerifier");
         this.hookRegistry = Objects.requireNonNull(hookRegistry, "hookRegistry");
     }
 
@@ -64,7 +70,7 @@ final class BootstrapActivation {
         try {
             registerDiagnosticReadiness(attempt);
             assessRemoteJmx(attempt);
-            attestRuntimeEvidence(attempt);
+            verifyRuntimeEvidence(attempt);
             bindRuntime(attempt);
             publishReady(attempt);
         } catch (RuntimeException | Error failure) {
@@ -89,7 +95,7 @@ final class BootstrapActivation {
         }
 
         log.error(
-                AgentEventCodes.BOOT_REMOTE_JMX_DENIED,
+                AgentEventCode.BOOT_REMOTE_JMX_DENIED,
                 "Remote JMX mutation registration denied",
                 "failureCode", assessment.failureCode().name(),
                 "remediation", assessment.remediation(),
@@ -98,12 +104,12 @@ final class BootstrapActivation {
         throw new RemoteJmxRegistrationDeniedException(assessment);
     }
 
-    private void attestRuntimeEvidence(ActivationAttempt attempt) {
-        attempt.enter(ActivationPhase.RUNTIME_EVIDENCE_ATTESTATION);
+    private void verifyRuntimeEvidence(ActivationAttempt attempt) {
+        attempt.enter(ActivationPhase.RUNTIME_EVIDENCE_VERIFICATION);
 
         String extensionVersion = attempt.session().readiness().extensionVersion();
-        ExtensionRuntimeEvidence evidence = runtimeEvidenceAttestor.attest(extensionVersion);
-        attempt.recordAttestedEvidence(evidence);
+        ExtensionRuntimeEvidence evidence = runtimeVerifier.verify(extensionVersion);
+        attempt.recordVerifiedEvidence(evidence);
     }
 
     private void bindRuntime(ActivationAttempt attempt) {
@@ -164,8 +170,8 @@ final class BootstrapActivation {
 
     private static String failureCodeOf(ActivationAttempt attempt, Throwable failure) {
         return switch (failure) {
-            case LinkageError ignored -> AttestationFailureCode.EXTENSION_LINKAGE_ERROR.name();
-            case RuntimeEvidenceAttestationException attestation -> attestation.code().name();
+            case LinkageError ignored -> VerificationFailureCode.EXTENSION_LINKAGE_ERROR.name();
+            case VerificationException verification -> verification.code().name();
             case RemoteJmxRegistrationDeniedException denied -> denied.failureCode().name();
             default -> attempt.phase().failureCode();
         };
@@ -173,7 +179,7 @@ final class BootstrapActivation {
 
     private static void emitInstalled(ExtensionReadinessWireSnapshot ready) {
         log.info(
-                AgentEventCodes.BOOT_INSTALLED,
+                AgentEventCode.BOOT_INSTALLED,
                 "Platform tracing extension installed",
                 "lifecycle", ready.lifecycle(),
                 "profile", PlatformExtensionReadiness.PROFILE,
@@ -185,7 +191,7 @@ final class BootstrapActivation {
     private enum ActivationPhase {
         DIAGNOSTIC_REGISTRATION(DIAGNOSTIC_MBEAN_REGISTRATION_FAILED),
         REMOTE_JMX_ASSESSMENT(RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name()),
-        RUNTIME_EVIDENCE_ATTESTATION(RUNTIME_EVIDENCE_ATTESTATION_FAILED),
+        RUNTIME_EVIDENCE_VERIFICATION(RUNTIME_EVIDENCE_ATTESTATION_FAILED),
         RUNTIME_BINDING(ACTIVATION_FAILED),
         READINESS_PUBLICATION(ACTIVATION_FAILED);
 
@@ -219,8 +225,8 @@ final class BootstrapActivation {
             this.phase = Objects.requireNonNull(next, "next");
         }
 
-        void recordAttestedEvidence(ExtensionRuntimeEvidence attested) {
-            this.evidence = Objects.requireNonNull(attested, "attested");
+        void recordVerifiedEvidence(ExtensionRuntimeEvidence verified) {
+            this.evidence = Objects.requireNonNull(verified, "verified");
         }
 
         void recordRuntimeRegistration(UUID registeredBatchId) {

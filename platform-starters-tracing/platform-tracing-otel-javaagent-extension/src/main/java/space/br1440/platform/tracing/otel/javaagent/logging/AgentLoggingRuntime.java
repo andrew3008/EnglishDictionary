@@ -1,9 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.logging;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.atomic.LongAdder;
 
 public final class AgentLoggingRuntime {
 
@@ -11,8 +11,6 @@ public final class AgentLoggingRuntime {
 
     private final PlatformLogEventEncoder encoder = new PlatformLogEventEncoder();
     private final AtomicReference<RuntimeState> state = new AtomicReference<>(RuntimeState.defaultState());
-    private final LongAdder encodeFailures = new LongAdder();
-    private final LongAdder writeFailures = new LongAdder();
 
     private AgentLoggingRuntime() {
     }
@@ -21,15 +19,13 @@ public final class AgentLoggingRuntime {
         return SHARED;
     }
 
-    void installForTests(PlatformStderrSink sink) {
+    void install(PlatformStderrSink sink) {
         Objects.requireNonNull(sink, "sink");
         state.set(new RuntimeState(sink, AgentLogLevel.INFO));
     }
 
-    public static void resetSharedForTests() {
+    static void reset() {
         SHARED.state.set(RuntimeState.defaultState());
-        SHARED.encodeFailures.reset();
-        SHARED.writeFailures.reset();
     }
 
     public boolean isEnabled(AgentLogLevel eventLevel) {
@@ -45,27 +41,24 @@ public final class AgentLoggingRuntime {
         state.updateAndGet(current -> current.withConfiguredLevel(configuredLevel));
     }
 
-    public EmitResult emit(AgentLogEvent event) {
+    EmitResult emit(AgentLogEvent event) {
         Objects.requireNonNull(event, "event");
+        return write(encoder.encode(event));
+    }
 
-        RuntimeState current = state.get();
-        if (!current.configuredLevel().permits(event.level())) {
-            return EmitResult.FILTERED_BY_LEVEL;
-        }
+    @SuppressWarnings("SameParameterValue")
+    EmitResult emitFallback(AgentLogLevel level, AgentEventCode original, FallbackReason reason) {
+        Objects.requireNonNull(level, "level");
+        Objects.requireNonNull(original, "original");
+        Objects.requireNonNull(reason, "reason");
+        return write(encoder.encodeFallback(Instant.now(), level, original, reason));
+    }
 
-        byte[] encoded;
+    private EmitResult write(byte[] encoded) {
         try {
-            encoded = encoder.encode(event);
-        } catch (RuntimeException exception) {
-            encodeFailures.increment();
-            return EmitResult.DELIVERY_FAILED;
-        }
-
-        try {
-            current.sink().write(encoded);
+            state.get().sink().write(encoded);
             return EmitResult.EMITTED;
         } catch (IOException exception) {
-            writeFailures.increment();
             return EmitResult.DELIVERY_FAILED;
         }
     }

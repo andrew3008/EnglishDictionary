@@ -6,70 +6,49 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
-public final class AgentLogEvent {
+record AgentLogEvent(Instant timestamp,
+                     AgentLogLevel level,
+                     AgentEventCode eventCode,
+                     String logger,
+                     String message,
+                     Map<String, String> fields,
+                     String throwableDigest) {
 
-    public static final int MAX_ENCODED_BYTES = 8192;
-    public static final int MAX_ARGUMENT_CHARS = 512;
-    public static final int MAX_LOGGER_CHARS = 512;
-    public static final int MAX_FRAMES = 30;
-    public static final int MAX_CAUSES = 3;
-    public static final int MAX_SUPPRESSED = 3;
+    static final int MAX_ENCODED_BYTES = 8192;
+    static final int MAX_ARGUMENT_CHARS = 512;
+    static final int MAX_LOGGER_CHARS = 512;
 
-    private final Instant timestamp;
-    private final AgentLogLevel level;
-    private final String eventCode;
-    private final String logger;
-    private final String message;
-    private final Map<String, String> fields;
-    private final String throwableDigest;
+    AgentLogEvent {
+        Objects.requireNonNull(timestamp, "timestamp");
+        Objects.requireNonNull(level, "level").requireEventLevel();
+        Objects.requireNonNull(eventCode, "eventCode");
 
-    AgentLogEvent(Instant timestamp,
-                  AgentLogLevel level,
-                  String eventCode,
-                  String logger,
-                  String message,
-                  Map<String, String> fields,
-                  String throwableDigest) {
-        this.timestamp = Objects.requireNonNull(timestamp, "timestamp");
-        this.level = Objects.requireNonNull(level, "level").requireEventLevel();
-        this.eventCode = Objects.requireNonNull(eventCode, "eventCode");
-        this.logger = Objects.requireNonNull(logger, "logger");
-        this.message = Objects.requireNonNull(message, "message");
+        requireBounded(logger, MAX_LOGGER_CHARS, "logger");
+        requireBounded(message, MAX_ARGUMENT_CHARS, "message");
 
         Objects.requireNonNull(fields, "fields");
-        if (fields.size() > AgentLogFieldNamePolicy.maxFields()) {
+        if (fields.size() > AgentLogFieldNamePolicy.MAX_FIELDS) {
             throw new IllegalArgumentException("fields");
         }
-        this.fields = Collections.unmodifiableMap(new LinkedHashMap<>(fields));
 
-        this.throwableDigest = throwableDigest;
+        for (String value : fields.values()) {
+            if (value != null && value.length() > MAX_ARGUMENT_CHARS) {
+                throw new IllegalArgumentException("field value");
+            }
+        }
+
+        fields = Collections.unmodifiableMap(new LinkedHashMap<>(fields));
+
+        if (throwableDigest != null && throwableDigest.length() > BoundedThrowableRenderer.maxDigestChars()) {
+            throw new IllegalArgumentException("throwableDigest");
+        }
     }
 
-    public Instant timestamp() {
-        return timestamp;
-    }
+    private static void requireBounded(String value, int max, String name) {
+        Objects.requireNonNull(value, name);
 
-    public AgentLogLevel level() {
-        return level;
-    }
-
-    public String eventCode() {
-        return eventCode;
-    }
-
-    public String logger() {
-        return logger;
-    }
-
-    public String message() {
-        return message;
-    }
-
-    public Map<String, String> fields() {
-        return fields;
-    }
-
-    public String throwableDigest() {
-        return throwableDigest;
+        if (value.isBlank() || value.length() > max) {
+            throw new IllegalArgumentException(name);
+        }
     }
 }

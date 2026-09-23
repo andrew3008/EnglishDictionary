@@ -32,7 +32,7 @@ class AcceptedPolicyAccessTest {
                 .isEqualTo(SettingsUpdateStatus.APPLIED);
         assertThat(AcceptedPolicyMutationAccess.applyTraceControlHeaders(access, false))
                 .isEqualTo(SettingsUpdateStatus.APPLIED);
-        assertThat(access.applyLogLevel("DEBUG")).isTrue();
+        assertThat(AcceptedPolicyMutationAccess.applyDiagnosticsLogLevel(access, "DEBUG")).isTrue();
 
         // then
         TracingSettingsRevision accepted = access.current();
@@ -66,7 +66,7 @@ class AcceptedPolicyAccessTest {
                 .isEqualTo(SettingsUpdateStatus.UNCHANGED);
         assertThat(access.current()).isSameAs(initial);
 
-        assertThat(access.applyLogLevel("unsupported")).isFalse();
+        assertThat(AcceptedPolicyMutationAccess.applyDiagnosticsLogLevel(access, "unsupported")).isFalse();
         assertThat(access.current()).isSameAs(initial);
     }
 

@@ -28,7 +28,7 @@ import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpe
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.PlatformSettingsStatusMBean;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
@@ -42,24 +42,24 @@ class AgentToSpringWireCodecParityTest {
     @Test
     void defaultPolicyRoundTrips() {
         assertRoundTrip(envelope(0L, uuid(), TracingSettings.of(
-                true, 1.0, Map.of(), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO)));
+                true, 1.0, Map.of(), SpanAttributeValidationLevel.WARNING, true, true, AgentLogLevel.INFO)));
     }
 
     @Test
     void nonEmptyRouteRatiosRoundTrip() {
         assertRoundTrip(envelope(42L, uuid(), TracingSettings.of(
-                true, 0.25, Map.of("/checkout", 0.5, "/search", 0.3, "/health", 0.0), SpanAttributeValidationLevel.ERROR, false, false, TracingLogLevel.DEBUG)));
+                true, 0.25, Map.of("/checkout", 0.5, "/search", 0.3, "/health", 0.0), SpanAttributeValidationLevel.ERROR, false, false, AgentLogLevel.DEBUG)));
     }
 
     @Test
     void emptyRouteRatiosRoundTrip() {
         assertRoundTrip(envelope(7L, uuid(), TracingSettings.of(
-                false, 0.0, Map.of(), SpanAttributeValidationLevel.DISABLED, false, false, TracingLogLevel.OFF)));
+                false, 0.0, Map.of(), SpanAttributeValidationLevel.DISABLED, false, false, AgentLogLevel.OFF)));
     }
 
     @Test
     void allDiagnosticsLogLevelsRoundTrip() {
-        for (TracingLogLevel level : TracingLogLevel.values()) {
+        for (AgentLogLevel level : AgentLogLevel.values()) {
             assertRoundTrip(envelope(1L, uuid(), TracingSettings.of(
                     true, 0.5, Map.of("/a", 0.1),
                     SpanAttributeValidationLevel.WARNING, true, false, level)));
@@ -69,13 +69,13 @@ class AgentToSpringWireCodecParityTest {
     @Test
     void minimumSequenceRoundTrips() {
         assertRoundTrip(envelope(0L, uuid(), TracingSettings.of(
-                true, 1.0, Map.of(), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.WARN)));
+                true, 1.0, Map.of(), SpanAttributeValidationLevel.WARNING, true, true, AgentLogLevel.WARN)));
     }
 
     @Test
     void nonZeroSequenceRoundTrips() {
         assertRoundTrip(envelope(9_223_372_036L, uuid(), TracingSettings.of(
-                true, 1.0, Map.of(), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.WARN)));
+                true, 1.0, Map.of(), SpanAttributeValidationLevel.WARNING, true, true, AgentLogLevel.WARN)));
     }
 
     @Test
@@ -83,14 +83,14 @@ class AgentToSpringWireCodecParityTest {
         String runtimeId = uuid();
         AcceptedSettingsWithSequence decoded = roundTrip(
                 envelope(3L, runtimeId, TracingSettings.of(
-                        true, 1.0, Map.of(), SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO)));
+                        true, 1.0, Map.of(), SpanAttributeValidationLevel.WARNING, true, true, AgentLogLevel.INFO)));
         assertThat(decoded.runtimeInstanceId()).isEqualTo(runtimeId);
     }
 
     @Test
     void allEightPolicyLeavesRoundTripIndependently() {
         TracingSettings policy = TracingSettings.of(
-                false, 0.73, Map.of("/x", 0.9), SpanAttributeValidationLevel.DISABLED, false, true, TracingLogLevel.TRACE);
+                false, 0.73, Map.of("/x", 0.9), SpanAttributeValidationLevel.DISABLED, false, true, AgentLogLevel.TRACE);
         AcceptedSettingsWithSequence decoded = roundTrip(envelope(5L, uuid(), policy));
         CompleteTracingSettings snapshot = decoded.snapshot();
 
@@ -115,9 +115,9 @@ class AgentToSpringWireCodecParityTest {
         insertedDescending.put("/a", 0.1);
 
         AcceptedSettingsWithSequence first = roundTrip(envelope(1L, uuid(), TracingSettings.of(
-                true, 0.5, insertedAscending, SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO)));
+                true, 0.5, insertedAscending, SpanAttributeValidationLevel.WARNING, true, true, AgentLogLevel.INFO)));
         AcceptedSettingsWithSequence second = roundTrip(envelope(1L, uuid(), TracingSettings.of(
-                true, 0.5, insertedDescending, SpanAttributeValidationLevel.WARNING, true, true, TracingLogLevel.INFO)));
+                true, 0.5, insertedDescending, SpanAttributeValidationLevel.WARNING, true, true, AgentLogLevel.INFO)));
 
         assertThat(first.snapshot().samplingRouteRatios())
                 .isEqualTo(second.snapshot().samplingRouteRatios());
@@ -161,7 +161,7 @@ class AgentToSpringWireCodecParityTest {
         TracingSettings policy = TracingSettings.of(
                 samplingEnabled, 0.5, Map.of(),
                 validationLevel, exporterEnabled, traceControlHeadersEnabled,
-                TracingLogLevel.INFO);
+                AgentLogLevel.INFO);
         CompleteTracingSettings snapshot = roundTrip(envelope(1L, uuid(), policy)).snapshot();
 
         assertThat(snapshot.samplingEnabled()).isEqualTo(samplingEnabled);

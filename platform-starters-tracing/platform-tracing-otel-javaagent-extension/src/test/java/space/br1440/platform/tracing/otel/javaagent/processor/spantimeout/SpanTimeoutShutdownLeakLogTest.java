@@ -12,7 +12,7 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 
 class SpanTimeoutShutdownLeakLogTest {
@@ -38,7 +38,7 @@ class SpanTimeoutShutdownLeakLogTest {
 
             // then
             assertThat(logs.rendered())
-                    .contains(AgentEventCodes.EXPORT_SPAN_TIMEOUT)
+                    .contains(AgentEventCode.EXPORT_SPAN_TIMEOUT.code())
                     .contains("Unfinished spans remain at SDK shutdown");
             hung.end();
             tracerProvider.shutdown();

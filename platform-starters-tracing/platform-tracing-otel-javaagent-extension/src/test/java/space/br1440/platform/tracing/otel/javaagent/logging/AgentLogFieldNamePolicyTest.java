@@ -94,7 +94,7 @@ class AgentLogFieldNamePolicyTest {
         AgentLogEvent event = new AgentLogEvent(
                 Instant.parse("2026-08-16T19:00:00Z"),
                 AgentLogLevel.INFO,
-                AgentEventCodes.BOOT_INSTALLED,
+                AgentEventCode.BOOT_INSTALLED,
                 getClass().getName(),
                 "Platform agent logging installed",
                 fields,
@@ -118,7 +118,7 @@ class AgentLogFieldNamePolicyTest {
         assertThatThrownBy(() -> new AgentLogEvent(
                 Instant.parse("2026-08-16T19:00:00Z"),
                 AgentLogLevel.INFO,
-                AgentEventCodes.BOOT_INSTALLED,
+                AgentEventCode.BOOT_INSTALLED,
                 getClass().getName(),
                 "Platform agent logging installed",
                 null,
@@ -127,7 +127,7 @@ class AgentLogFieldNamePolicyTest {
         assertThatThrownBy(() -> new AgentLogEvent(
                 Instant.parse("2026-08-16T19:00:00Z"),
                 AgentLogLevel.INFO,
-                AgentEventCodes.BOOT_INSTALLED,
+                AgentEventCode.BOOT_INSTALLED,
                 getClass().getName(),
                 "Platform agent logging installed",
                 tooMany,

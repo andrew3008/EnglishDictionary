@@ -10,7 +10,6 @@ import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
 
 public final class PlatformLogControl {
 
-    private static final AgentLogLevel PARSE_FALLBACK = AgentLogLevel.WARN;
     private static final PlatformLogControl SHARED = new PlatformLogControl();
 
     private final AtomicReference<TracingSettingsSource> acceptedPolicy = new AtomicReference<>(TracingSettingsSource.isolatedDefaults());
@@ -23,12 +22,11 @@ public final class PlatformLogControl {
         return SHARED;
     }
 
-    public static void resetSharedForTests() {
-        SHARED.releaseActiveForTests();
-        AgentLoggingRuntime.resetSharedForTests();
+    static void reset() {
+        SHARED.releaseActive();
     }
 
-    private void releaseActiveForTests() {
+    private void releaseActive() {
         synchronized (bindLock) {
             acceptedPolicy.set(TracingSettingsSource.isolatedDefaults());
             activeGeneration = 0L;
@@ -37,28 +35,6 @@ public final class PlatformLogControl {
 
     public AgentLogLevel getLevel() {
         return runtime().effectiveLevel();
-    }
-
-    public void setLevel(AgentLogLevel newLevel) {
-        if (newLevel == null) {
-            return;
-        }
-
-        projectLevel(newLevel);
-    }
-
-    public boolean setLevel(String raw) {
-        if (raw == null) {
-            return false;
-        }
-
-        AgentLogLevel parsed = AgentLogLevel.parseOrDefault(raw, null);
-        if (parsed == null) {
-            return false;
-        }
-
-        projectLevel(parsed);
-        return true;
     }
 
     public AutoCloseable bindAcceptedPolicy(TracingSettingsSource policy) {
@@ -75,22 +51,13 @@ public final class PlatformLogControl {
             acceptedPolicy.set(policy);
             activeGeneration = token;
             bindCount.incrementAndGet();
-            projectConfiguredPolicy();
+            policy.updater().runLocked(this::projectConfiguredPolicy);
             return new AcceptedPolicyRegistration(token, previous);
         }
     }
 
-    private void projectLevel(AgentLogLevel newLevel) {
-        runtime().applyLevel(newLevel);
-        acceptedPolicy.get().applyLogLevel(newLevel.name());
-    }
-
     private void projectConfiguredPolicy() {
-        AgentLogLevel configured = AgentLogLevel.parseOrDefault(
-                acceptedPolicy.get().current().diagnosticsLogLevel(),
-                PARSE_FALLBACK
-        );
-        runtime().applyLevel(configured);
+        runtime().applyLevel(acceptedPolicy.get().current().policy().diagnosticsLogLevel());
     }
 
     private static AgentLoggingRuntime runtime() {
@@ -122,7 +89,7 @@ public final class PlatformLogControl {
 
                 acceptedPolicy.set(previous);
                 activeGeneration = 0L;
-                projectConfiguredPolicy();
+                previous.updater().runLocked(PlatformLogControl.this::projectConfiguredPolicy);
             }
         }
     }

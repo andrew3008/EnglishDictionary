@@ -13,7 +13,7 @@ import jakarta.annotation.Nullable;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseObservation;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseScope;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingBoundaryMetrics;
@@ -160,7 +160,7 @@ public final class SafeSpanExporter implements SpanExporter {
             }
         } catch (Throwable ex) {
             PlatformThrowables.propagateIfFatal(ex);
-            log.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, "completion callback failed", ex);
+            log.warn(AgentEventCode.EXPORT_SAFE_EXPORTER, "completion callback failed", ex);
         }
     }
 
@@ -174,7 +174,7 @@ public final class SafeSpanExporter implements SpanExporter {
 
             case NOT_DETERMINED -> {
                 acceptedUnknownBatches.increment();
-                log.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, "OTLP response did not yield a usable accepted span count");
+                log.warn(AgentEventCode.EXPORT_SAFE_EXPORTER, "OTLP response did not yield a usable accepted span count");
             }
 
             case ALL_ACCEPTED, NOT_OBSERVED -> exportedSpans.add(count);
@@ -239,9 +239,9 @@ public final class SafeSpanExporter implements SpanExporter {
 
     private void logExportFailure(String message, Throwable error) {
         if (error != null) {
-            log.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, message, error);
+            log.warn(AgentEventCode.EXPORT_SAFE_EXPORTER, message, error);
         } else {
-            log.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, message);
+            log.warn(AgentEventCode.EXPORT_SAFE_EXPORTER, message);
         }
     }
 

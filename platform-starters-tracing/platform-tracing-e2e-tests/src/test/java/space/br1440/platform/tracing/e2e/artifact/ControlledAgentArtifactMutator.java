@@ -13,8 +13,8 @@ public final class ControlledAgentArtifactMutator {
     private static final String EXTENSION_ENTRY = "extensions/platform-tracing-otel-javaagent-extension.jar";
     private static final String IDENTITY_ENTRY = "META-INF/platform-tracing/javaagent-distribution.properties";
     private static final String RUNTIME_ENVIRONMENT_ENTRY =
-            "space/br1440/platform/tracing/otel/javaagent/bootstrap/"
-                    + "ControlledAgentRuntimeAttestor$SystemRuntimeEnvironment.class";
+            "space/br1440/platform/tracing/otel/javaagent/bootstrap/verification/"
+                    + "ControlledAgentVerifier$CurrentJvm.class";
 
     private static final String STALE_TOPOLOGY_METHOD = "sdkDefiningLoader";
     private static final String STALE_TOPOLOGY_METHOD_DESCRIPTOR = "()Ljava/lang/ClassLoader;";

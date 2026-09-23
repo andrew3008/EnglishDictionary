@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -47,27 +48,84 @@ class AgentLoggingSchemaConformanceTest {
     @Test
     void encode_fallback_matches_schema() {
         // given
-        AgentLogEvent event = new AgentLogEvent(
+        byte[] encoded = encoder.encodeFallback(
                 TS,
                 AgentLogLevel.ERROR,
-                "FAKE-UNKNOWN-999",
-                "x".repeat(20_000),
-                "x".repeat(20_000),
-                Map.of(),
-                null
-        );
+                AgentEventCode.BOOT_INSTALLED,
+                FallbackReason.BYTE_BUDGET);
 
         // when
-        Set<ValidationMessage> errors = validate(encoder.encode(event));
+        Set<ValidationMessage> errors = validate(encoded);
 
         // then
         assertThat(errors).isEmpty();
+        assertThat(new String(encoded, StandardCharsets.UTF_8))
+                .contains("\"original_event_code\":\"PTA-BOOT-001\"")
+                .contains("\"fallback_reason\":\"byte_budget\"");
+    }
+
+    @Test
+    void over_budget_stacktrace_keeps_the_event_without_the_digest() {
+        // given
+        Map<String, String> fields = new LinkedHashMap<>();
+        for (int i = 0; i < 10; i++) {
+            fields.put("f" + i, "v".repeat(AgentLogEvent.MAX_ARGUMENT_CHARS));
+        }
+        AgentLogEvent event = new AgentLogEvent(
+                TS,
+                AgentLogLevel.ERROR,
+                AgentEventCode.SCRUB_FAILURE,
+                getClass().getName(),
+                "m".repeat(AgentLogEvent.MAX_ARGUMENT_CHARS),
+                fields,
+                "d".repeat(4_000));
+
+        // when
+        String json = new String(encoder.encode(event), StandardCharsets.UTF_8);
+
+        // then
+        assertThat(validate(json.getBytes(StandardCharsets.UTF_8))).isEmpty();
+        assertThat(json)
+                .contains("\"event_code\":\"PTA-SCRUB-013\"")
+                .contains("\"message\":\"" + "m".repeat(AgentLogEvent.MAX_ARGUMENT_CHARS) + "\"")
+                .contains("\"f0\"")
+                .doesNotContain("error_stacktrace")
+                .doesNotContain("fallback_reason");
+    }
+
+    @Test
+    void worst_case_fields_fall_back_with_the_original_event_code() {
+        // given
+        Map<String, String> fields = new LinkedHashMap<>();
+        String payload = "Q".repeat(AgentLogEvent.MAX_ARGUMENT_CHARS);
+        for (int i = 0; i < AgentLogFieldNamePolicy.MAX_FIELDS; i++) {
+            fields.put("f" + i, payload);
+        }
+        AgentLogEvent event = new AgentLogEvent(
+                TS,
+                AgentLogLevel.WARN,
+                AgentEventCode.EXPORT_DROP_OLDEST,
+                getClass().getName(),
+                "span dropped",
+                fields,
+                null);
+
+        // when
+        String json = new String(encoder.encode(event), StandardCharsets.UTF_8);
+
+        // then
+        assertThat(validate(json.getBytes(StandardCharsets.UTF_8))).isEmpty();
+        assertThat(json)
+                .contains("\"original_event_code\":\"PTA-EXPORT-002\"")
+                .contains("\"fallback_reason\":\"byte_budget\"")
+                .doesNotContain("invariant_violation")
+                .doesNotContain(payload);
     }
 
     @Test
     void encoded_minimal_info_matches_schema() {
         // given
-        AgentLogEvent event = event(AgentLogLevel.INFO, AgentEventCodes.BOOT_INSTALLED, Map.of(), null);
+        AgentLogEvent event = event(AgentLogLevel.INFO, AgentEventCode.BOOT_INSTALLED, Map.of(), null);
 
         // when
         Set<ValidationMessage> errors = validate(encoder.encode(event));
@@ -81,7 +139,7 @@ class AgentLoggingSchemaConformanceTest {
         // given
         AgentLogEvent event = event(
                 AgentLogLevel.WARN,
-                AgentEventCodes.CTRL_UPDATE,
+                AgentEventCode.CTRL_UPDATE,
                 Map.of("reason", "rejected"),
                 null
         );
@@ -98,7 +156,7 @@ class AgentLoggingSchemaConformanceTest {
         // given
         AgentLogEvent event = event(
                 AgentLogLevel.ERROR,
-                AgentEventCodes.SCRUB_FAILURE,
+                AgentEventCode.SCRUB_FAILURE,
                 Map.of("exceptionType", "IllegalStateException"),
                 "java.lang.IllegalStateException\n\tat <platform-frame>"
         );
@@ -116,7 +174,7 @@ class AgentLoggingSchemaConformanceTest {
         AgentLogEvent event = new AgentLogEvent(
                 TS,
                 AgentLogLevel.DEBUG,
-                AgentEventCodes.BOOT_RESOURCE_IDENTITY,
+                AgentEventCode.BOOT_RESOURCE_IDENTITY,
                 getClass().getName(),
                 "Resource identity resolved",
                 Map.of("phase", "before-spring", "kind", "identity"),
@@ -230,7 +288,7 @@ class AgentLoggingSchemaConformanceTest {
 
     private static AgentLogEvent event(
             AgentLogLevel severity,
-            String eventCode,
+            AgentEventCode eventCode,
             Map<String, String> fields,
             String throwable
     ) {

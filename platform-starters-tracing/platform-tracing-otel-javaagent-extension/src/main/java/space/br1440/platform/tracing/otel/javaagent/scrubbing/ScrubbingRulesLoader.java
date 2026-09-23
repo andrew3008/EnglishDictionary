@@ -13,7 +13,7 @@ import java.util.Properties;
 import java.util.Set;
 
 import space.br1440.platform.common.util.StringUtils;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 import lombok.experimental.UtilityClass;
@@ -59,7 +59,7 @@ public final class ScrubbingRulesLoader {
         Properties properties;
         try (InputStream in = openStream(path, classLoader)) {
             if (in == null) {
-                log.warn(AgentEventCodes.SCRUB_RULES_UNREADABLE, "Scrubbing rules are unreadable",
+                log.warn(AgentEventCode.SCRUB_RULES_UNREADABLE, "Scrubbing rules are unreadable",
                         "path", path);
                 return Collections.emptyList();
             }
@@ -67,7 +67,7 @@ public final class ScrubbingRulesLoader {
             properties = new Properties();
             properties.load(in);
         } catch (IOException e) {
-            log.warn(AgentEventCodes.SCRUB_RULES_UNREADABLE, "Scrubbing rules are unreadable", e, "path", path);
+            log.warn(AgentEventCode.SCRUB_RULES_UNREADABLE, "Scrubbing rules are unreadable", e, "path", path);
             return Collections.emptyList();
         }
 

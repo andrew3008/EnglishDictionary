@@ -1,0 +1,81 @@
+package space.br1440.platform.tracing.otel.javaagent.logging;
+
+/**
+ * Коды событий расширения платформы для OTEL агента.
+ */
+public enum AgentEventCode {
+
+    BOOT_INSTALLED("PTA-BOOT-001"),
+    BOOT_CLASSIFIED_FAILURE("PTA-BOOT-002"),
+    BOOT_HOSTNAME_TIMEOUT("PTA-BOOT-003"),
+    BOOT_HOSTNAME_FAILED("PTA-BOOT-004"),
+    BOOT_RESOURCE_IDENTITY("PTA-BOOT-005"),
+    BOOT_MANIFEST_VERSION("PTA-BOOT-006"),
+    BOOT_FORBIDDEN_SPI("PTA-BOOT-007"),
+    BOOT_PROCESSOR_REGISTRATION("PTA-BOOT-008"),
+    BOOT_UPSTREAM_SERVICE("PTA-BOOT-009"),
+    BOOT_REMOTE_JMX_DENIED("PTA-BOOT-010"),
+
+    VALID_POLICY("PTA-VALID-002"),
+    VALID_MISSING_ATTRIBUTES("PTA-VALID-003"),
+
+    SCRUB_HMAC_MISSING("PTA-SCRUB-001"),
+    SCRUB_RULE_FAILED("PTA-SCRUB-002"),
+    SCRUB_UNSUPPORTED_TYPE("PTA-SCRUB-003"),
+    SCRUB_BOUNDARY_COLLAPSE("PTA-SCRUB-004"),
+    SCRUB_PRIORITY_FLOOR("PTA-SCRUB-005"),
+    SCRUB_CIRCUIT_OPEN("PTA-SCRUB-006"),
+    SCRUB_RULES_UNREADABLE("PTA-SCRUB-007"),
+    SCRUB_INITIALIZED("PTA-SCRUB-008"),
+    SCRUB_PROVIDER_FAILED("PTA-SCRUB-009"),
+    SCRUB_EXTENSION_SKIPPED("PTA-SCRUB-010"),
+    SCRUB_UNKNOWN_BUILTIN("PTA-SCRUB-011"),
+    SCRUB_EXPORT_BOUNDARY("PTA-SCRUB-012"),
+    SCRUB_FAILURE("PTA-SCRUB-013"),
+
+    EXPORT_SAFE_EXPORTER("PTA-EXPORT-001"),
+    EXPORT_DROP_OLDEST("PTA-EXPORT-002"),
+    EXPORT_WORKER("PTA-EXPORT-003"),
+    EXPORT_TIMED("PTA-EXPORT-004"),
+    EXPORT_CALLBACK("PTA-EXPORT-006"),
+    EXPORT_COMPOSITE_LIFECYCLE("PTA-EXPORT-007"),
+    EXPORT_SPAN_TIMEOUT("PTA-EXPORT-008"),
+    EXPORT_FACTORY("PTA-EXPORT-009"),
+    EXPORT_SPAN_TIMEOUT_PERMIT_VIOLATION("PTA-EXPORT-010"),
+
+    SAMPLE_FALLBACK("PTA-SAMPLE-001"),
+
+    CTRL_PLANE("PTA-CTRL-001"),
+    CTRL_WRITER("PTA-CTRL-002"),
+    CTRL_UPDATE("PTA-CTRL-003"),
+    CTRL_MBEAN_BATCH("PTA-CTRL-004"),
+
+    RATE_THROTTLED("PTA-RATE-001"),
+    RATE_RECOVERY("PTA-RATE-002"),
+
+    ENCODE_FALLBACK("PTA-ENCODE-001");
+
+    private final String code;
+
+    AgentEventCode(String code) {
+        this.code = code;
+    }
+
+    public String code() {
+        return code;
+    }
+
+    static AgentEventCode fromCode(String code) {
+        if (code == null) {
+            return null;
+        }
+
+        for (AgentEventCode value : values()) {
+            if (value.code.equals(code)) {
+                return value;
+            }
+        }
+
+        return null;
+    }
+}

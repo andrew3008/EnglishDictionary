@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 final class AdmissionRejections {
@@ -50,7 +50,7 @@ final class AdmissionRejections {
             return;
         }
 
-        log.warn(AgentEventCodes.EXPORT_SPAN_TIMEOUT, slot.message,
+        log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT, slot.message,
                 "rejected", String.valueOf(slot.total.get()),
                 "limit", String.valueOf(slot.limit)
         );

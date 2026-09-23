@@ -4,7 +4,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 final class AdmissionBudget {
@@ -43,7 +43,7 @@ final class AdmissionBudget {
             int current = used.get();
             if (permitCount > current) {
                 invariantViolationTotal.incrementAndGet();
-                log.warn(AgentEventCodes.SPAN_TIMEOUT_PERMIT_INVARIANT_VIOLATION,
+                log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT_PERMIT_VIOLATION,
                         "Permit release exceeded the acquired permit count",
                         "kind", kind,
                         "acquiredPermitCount", String.valueOf(current),

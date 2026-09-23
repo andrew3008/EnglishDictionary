@@ -14,7 +14,7 @@ import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -107,9 +107,9 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
         }
 
         if (level.isError()) {
-            log.error(AgentEventCodes.VALID_MISSING_ATTRIBUTES, "Required span attributes are missing");
+            log.error(AgentEventCode.VALID_MISSING_ATTRIBUTES, "Required span attributes are missing");
         } else {
-            log.warn(AgentEventCodes.VALID_MISSING_ATTRIBUTES, "Required span attributes are missing");
+            log.warn(AgentEventCode.VALID_MISSING_ATTRIBUTES, "Required span attributes are missing");
         }
     }
 

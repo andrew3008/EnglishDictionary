@@ -9,7 +9,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 public final class ObservationSnapshotPublisher implements AutoCloseable {
@@ -79,7 +79,7 @@ public final class ObservationSnapshotPublisher implements AutoCloseable {
                 publication.run();
             } catch (RuntimeException failure) {
                 log.warn(
-                        AgentEventCodes.CTRL_PLANE,
+                        AgentEventCode.CTRL_PLANE,
                         "JMX observation snapshot publication failed",
                         failure,
                         "source", publication.getClass().getName());
@@ -113,7 +113,7 @@ public final class ObservationSnapshotPublisher implements AutoCloseable {
             clearRefreshPending();
             if (!state.get().closed()) {
                 log.warn(
-                        AgentEventCodes.CTRL_PLANE,
+                        AgentEventCode.CTRL_PLANE,
                         "JMX observation snapshot publication request was rejected",
                         rejected);
             }
@@ -158,13 +158,13 @@ public final class ObservationSnapshotPublisher implements AutoCloseable {
         try {
             if (!scheduler.awaitTermination(SHUTDOWN_TIMEOUT.toNanos(), TimeUnit.NANOSECONDS)) {
                 log.warn(
-                        AgentEventCodes.CTRL_PLANE,
+                        AgentEventCode.CTRL_PLANE,
                         "JMX observation snapshot publisher did not stop within the shutdown timeout");
             }
         } catch (InterruptedException interruption) {
             Thread.currentThread().interrupt();
             log.warn(
-                    AgentEventCodes.CTRL_PLANE,
+                    AgentEventCode.CTRL_PLANE,
                     "Interrupted while stopping JMX observation snapshot publisher",
                     interruption);
         }
