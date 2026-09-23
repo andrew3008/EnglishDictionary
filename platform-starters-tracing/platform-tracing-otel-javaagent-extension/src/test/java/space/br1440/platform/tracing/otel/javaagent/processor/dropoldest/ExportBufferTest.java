@@ -158,9 +158,9 @@ class ExportBufferTest {
                 buffer.snapshot();
                 reentered.countDown();
             });
-
             probeThread.set(probe);
             probe.start();
+
             try {
                 callbackObservedReentry.set(reentered.await(3L, TimeUnit.SECONDS));
             } catch (InterruptedException interrupted) {
