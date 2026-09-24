@@ -13,8 +13,9 @@ import javax.management.openmbean.OpenDataException;
 
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
-import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
+import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadinessSnapshot;
 
 /** Предварительно собранный coherent readiness envelope для одной runtime epoch. */
 public final class ExtensionReadinessWireSnapshot {
@@ -70,40 +71,31 @@ public final class ExtensionReadinessWireSnapshot {
         );
     }
 
-    public static ExtensionReadinessWireSnapshot initializing(PlatformExtensionReadiness readiness) {
-        return initializing(readiness, "");
-    }
-
-    public static ExtensionReadinessWireSnapshot initializing(PlatformExtensionReadiness readiness,
+    public static ExtensionReadinessWireSnapshot initializing(PlatformExtensionReadinessSnapshot readiness,
                                                               String runtimeEpoch) {
         Objects.requireNonNull(readiness, "readiness");
+        requireLifecycle(readiness, PlatformExtensionLifecycle.INITIALIZING, "INITIALIZING");
         return new ExtensionReadinessWireSnapshot(
                 Objects.requireNonNull(runtimeEpoch, "runtimeEpoch"),
                 0L,
                 "",
                 INITIALIZING,
-                readiness.capabilities(),
-                missingRequired(readiness),
+                capabilityNames(readiness.installedCapabilities()),
+                capabilityNames(readiness.missingRequiredCapabilities()),
                 "",
                 ExtensionRuntimeEvidence.unavailable(readiness.extensionVersion())
         );
     }
 
-    public static ExtensionReadinessWireSnapshot ready(PlatformExtensionReadiness readiness,
+    public static ExtensionReadinessWireSnapshot ready(PlatformExtensionReadinessSnapshot readiness,
                                                        String runtimeEpoch,
                                                        String batchId,
                                                        long evidenceGeneration,
                                                        ExtensionRuntimeEvidence evidence) {
         Objects.requireNonNull(readiness, "readiness");
         Objects.requireNonNull(evidence, "evidence");
-        if (readiness.lifecycle() != PlatformExtensionLifecycle.READY) {
-            throw new IllegalStateException(
-                    "Cannot construct a READY wire snapshot: underlying lifecycle=" + readiness.lifecycle()
-            );
-        }
-
-        String[] missingRequired = missingRequired(readiness);
-        if (missingRequired.length != 0) {
+        requireLifecycle(readiness, PlatformExtensionLifecycle.READY, "READY");
+        if (!readiness.missingRequiredCapabilities().isEmpty()) {
             throw new IllegalStateException(
                     "Cannot construct a READY wire snapshot with missing required capabilities"
             );
@@ -120,38 +112,37 @@ public final class ExtensionReadinessWireSnapshot {
         if (!evidence.complete()) {
             throw new IllegalStateException("Cannot construct a READY wire snapshot with incomplete evidence");
         }
-        if (!readiness.extensionVersion().equals(evidence.extensionVersion())) {
-            throw new IllegalStateException("Readiness and attested extension versions do not match");
-        }
+        requireMatchingExtensionVersion(readiness, evidence);
         return new ExtensionReadinessWireSnapshot(
                 runtimeEpoch,
                 evidenceGeneration,
                 batchId,
                 READY,
-                readiness.capabilities(),
-                missingRequired,
+                capabilityNames(readiness.installedCapabilities()),
+                capabilityNames(readiness.missingRequiredCapabilities()),
                 "",
                 evidence
         );
     }
 
-    public static ExtensionReadinessWireSnapshot failed(PlatformExtensionReadiness readiness,
+    public static ExtensionReadinessWireSnapshot failed(PlatformExtensionReadinessSnapshot readiness,
                                                         String runtimeEpoch,
                                                         String batchId,
                                                         long evidenceGeneration,
-                                                        String failureCode,
                                                         ExtensionRuntimeEvidence evidence) {
         Objects.requireNonNull(readiness, "readiness");
-        String effectiveFailureCode = requireFailureCode(failureCode);
+        requireLifecycle(readiness, PlatformExtensionLifecycle.FAILED, "FAILED");
+        ExtensionRuntimeEvidence requiredEvidence = Objects.requireNonNull(evidence, "evidence");
+        requireMatchingExtensionVersion(readiness, requiredEvidence);
         return new ExtensionReadinessWireSnapshot(
                 (runtimeEpoch == null) ? "" : runtimeEpoch,
                 evidenceGeneration,
                 (batchId == null) ? "" : batchId,
                 FAILED,
-                readiness.capabilities(),
-                missingRequired(readiness),
-                effectiveFailureCode,
-                Objects.requireNonNull(evidence, "evidence")
+                capabilityNames(readiness.installedCapabilities()),
+                capabilityNames(readiness.missingRequiredCapabilities()),
+                requireFailureCode(readiness.failureCode()),
+                requiredEvidence
         );
     }
 
@@ -224,10 +215,9 @@ public final class ExtensionReadinessWireSnapshot {
         }
     }
 
-    private static String[] missingRequired(PlatformExtensionReadiness readiness) {
-        Set<String> installed = Set.of(readiness.capabilities());
-        return JmxWireContract.REQUIRED_CAPABILITIES.stream()
-                .filter(capability -> !installed.contains(capability))
+    private static String[] capabilityNames(Set<PlatformExtensionCapability> capabilities) {
+        return capabilities.stream()
+                .map(Enum::name)
                 .sorted()
                 .toArray(String[]::new);
     }
@@ -244,5 +234,24 @@ public final class ExtensionReadinessWireSnapshot {
                     "FAILED failureCode must match [A-Z][A-Z0-9_]{0,127}");
         }
         return failureCode;
+    }
+
+    private static void requireLifecycle(PlatformExtensionReadinessSnapshot readiness,
+                                         PlatformExtensionLifecycle expected,
+                                         String wireLifecycle) {
+        if (readiness.lifecycle() != expected) {
+            throw new IllegalStateException(
+                    "Cannot construct a " + wireLifecycle
+                            + " wire snapshot: underlying lifecycle=" + readiness.lifecycle()
+            );
+        }
+    }
+
+    private static void requireMatchingExtensionVersion(
+            PlatformExtensionReadinessSnapshot readiness,
+            ExtensionRuntimeEvidence evidence) {
+        if (!readiness.extensionVersion().equals(evidence.extensionVersion())) {
+            throw new IllegalStateException("Readiness and attested extension versions do not match");
+        }
     }
 }

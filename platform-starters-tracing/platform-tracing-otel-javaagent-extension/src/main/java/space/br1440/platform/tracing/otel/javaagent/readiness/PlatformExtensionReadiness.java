@@ -1,202 +1,153 @@
 package space.br1440.platform.tracing.otel.javaagent.readiness;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.Enumeration;
 import java.util.Objects;
 import java.util.Set;
-import java.util.jar.Manifest;
+import java.util.regex.Pattern;
 
-import space.br1440.platform.common.util.StringUtils;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
-import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
-
+/**
+ * Потоко-безопасная state machine состояния запуска (startup) для javaagent-расширения платформы.
+ * <p>
+ * Для готовности (readiness) обязателен каждый объявленный {@link PlatformExtensionCapability}.
+ * Мутации сериализованы, так как происходят только во время bootstrap и shutdown. Чтение возвращает
+ * единый неизменяемый снимок (snapshot), публикуемый через volatile, поэтому вызывающая сторона не
+ * может наблюдать поля из разных переходов состояния.
+ */
 public final class PlatformExtensionReadiness {
 
-    private static final PlatformAgentLogger log = PlatformAgentLogger.get(PlatformExtensionReadiness.class);
-
-    public static final int PROTOCOL_VERSION = 1;
-    public static final String PROFILE = "platform-agent-secure-v1";
-    public static final String IMPLEMENTATION_TITLE = "platform-tracing-otel-javaagent-extension";
-
-    private static final int FAILURE_MESSAGE_MAX_LENGTH = 512;
     private static final String DEFAULT_FAILURE_CODE = "EXTENSION_INITIALIZATION_FAILED";
-    private static final String DEFAULT_FAILURE_MESSAGE = "Extension initialization failed without a diagnostic cause";
-    private static final Set<PlatformExtensionCapability> REQUIRED_CAPABILITIES = generatedRequiredCapabilities();
+    private static final Pattern FAILURE_CODE_PATTERN = Pattern.compile("[A-Z][A-Z0-9_]{0,127}");
+    private static final Set<PlatformExtensionCapability> REQUIRED_CAPABILITIES =
+            Collections.unmodifiableSet(EnumSet.allOf(PlatformExtensionCapability.class));
 
+    private final Object monitor = new Object();
     private final String extensionVersion;
-    private final Set<PlatformExtensionCapability> installedCapabilities = EnumSet.noneOf(PlatformExtensionCapability.class);
 
-    private PlatformExtensionLifecycle lifecycle = PlatformExtensionLifecycle.INITIALIZING;
-    private String failureCode = "";
-    private String failureMessage = "";
+    private volatile PlatformExtensionReadinessSnapshot current;
 
     public PlatformExtensionReadiness() {
-        this.extensionVersion = resolveExtensionVersion();
+        this(ExtensionVersionResolver.resolve(PlatformExtensionReadiness.class));
     }
 
-    public synchronized void markInstalled(PlatformExtensionCapability capability) {
+    PlatformExtensionReadiness(String extensionVersion) {
+        this.extensionVersion = Objects.requireNonNull(extensionVersion, "extensionVersion");
+        this.current = snapshotOf(
+                PlatformExtensionLifecycle.INITIALIZING,
+                Set.of(),
+                ""
+        );
+    }
+
+    public PlatformExtensionReadinessSnapshot markInstalled(PlatformExtensionCapability capability) {
         Objects.requireNonNull(capability, "capability");
 
-        if (lifecycle == PlatformExtensionLifecycle.FAILED) {
-            return;
+        synchronized (monitor) {
+            PlatformExtensionReadinessSnapshot observed = current;
+            if (observed.lifecycle() == PlatformExtensionLifecycle.FAILED || observed.has(capability)) {
+                return observed;
+            }
+
+            EnumSet<PlatformExtensionCapability> installed = copyOf(observed.installedCapabilities());
+            installed.add(capability);
+            current = snapshotOf(PlatformExtensionLifecycle.INITIALIZING, installed, "");
+            return current;
         }
+    }
 
-        installedCapabilities.add(capability);
-        if (installedCapabilities.containsAll(REQUIRED_CAPABILITIES)) {
-            lifecycle = PlatformExtensionLifecycle.READY;
+    public PlatformExtensionReadinessSnapshot fail(String failureCode) {
+        String normalizedCode = normalizeFailureCode(failureCode);
+        synchronized (monitor) {
+            if (current.lifecycle() != PlatformExtensionLifecycle.FAILED) {
+                current = snapshotOf(
+                        PlatformExtensionLifecycle.FAILED,
+                        current.installedCapabilities(),
+                        normalizedCode
+                );
+            }
+
+            return current;
         }
     }
 
-    public synchronized void fail(String code, Throwable failure) {
-        if (lifecycle == PlatformExtensionLifecycle.FAILED) {
-            return;
-        }
-
-        lifecycle = PlatformExtensionLifecycle.FAILED;
-        failureCode = orDefault(code, DEFAULT_FAILURE_CODE);
-        failureMessage = boundedMessage(failure);
-    }
-
-    public synchronized void failTerminalCleanup(String code, Throwable failure) {
-        lifecycle = PlatformExtensionLifecycle.FAILED;
-        failureCode = orDefault(code, DEFAULT_FAILURE_CODE);
-        failureMessage = boundedMessage(failure);
-    }
-
-    public synchronized PlatformExtensionLifecycle lifecycle() {
-        return lifecycle;
-    }
-
-    public synchronized void requireReady() {
-        if (lifecycle != PlatformExtensionLifecycle.READY) {
-            Set<PlatformExtensionCapability> missing = EnumSet.noneOf(PlatformExtensionCapability.class);
-            missing.addAll(REQUIRED_CAPABILITIES);
-            missing.removeAll(installedCapabilities);
-            throw new IllegalStateException(
-                    "Platform extension readiness is not READY: lifecycle=" + lifecycle
-                            + ", missingCapabilities=" + missing
+    public PlatformExtensionReadinessSnapshot recordTerminalCleanupFailure(String failureCode) {
+        String normalizedCode = normalizeFailureCode(failureCode);
+        synchronized (monitor) {
+            current = snapshotOf(
+                    PlatformExtensionLifecycle.FAILED,
+                    current.installedCapabilities(),
+                    normalizedCode
             );
+
+            return current;
         }
     }
 
-    public String extensionVersion() {
-        return extensionVersion;
+    public PlatformExtensionReadinessSnapshot snapshot() {
+        return current;
     }
 
-    public synchronized String failureCode() {
-        return failureCode;
-    }
+    public PlatformExtensionReadinessSnapshot completeInitialization() {
+        synchronized (monitor) {
+            PlatformExtensionReadinessSnapshot observed = current;
+            if (observed.lifecycle() == PlatformExtensionLifecycle.READY) {
+                return observed;
+            }
 
-    public synchronized String failureMessage() {
-        return failureMessage;
-    }
+            if (observed.lifecycle() == PlatformExtensionLifecycle.FAILED
+                    || !observed.missingRequiredCapabilities().isEmpty()) {
+                throw notReady(observed);
+            }
 
-    public synchronized String[] capabilities() {
-        return installedCapabilities.stream().map(Enum::name).sorted().toArray(String[]::new);
-    }
+            current = snapshotOf(
+                    PlatformExtensionLifecycle.READY,
+                    observed.installedCapabilities(),
+                    ""
+            );
 
-    public synchronized boolean has(PlatformExtensionCapability capability) {
-        Objects.requireNonNull(capability, "capability");
-        return installedCapabilities.contains(capability);
+            return current;
+        }
     }
 
     @Override
-    public synchronized String toString() {
-        return "PlatformExtensionReadiness{"
-                + "profile=" + PROFILE
-                + ", extensionVersion=" + extensionVersion
-                + ", lifecycle=" + lifecycle
-                + ", capabilities=" + installedCapabilities.size() + "/" + REQUIRED_CAPABILITIES.size()
-                + (lifecycle == PlatformExtensionLifecycle.FAILED ? ", failureCode=" + failureCode : "")
-                + '}';
+    public String toString() {
+        return current.toString();
     }
 
-    private static String resolveExtensionVersion() {
-        String implementationVersion = readImplementationVersionFromManifest();
-        return StringUtils.hasText(implementationVersion)
-                ? implementationVersion
-                : "development";
+    private PlatformExtensionReadinessSnapshot snapshotOf(PlatformExtensionLifecycle lifecycle,
+                                                          Set<PlatformExtensionCapability> installedCapabilities,
+                                                          String failureCode) {
+        EnumSet<PlatformExtensionCapability> installed = copyOf(installedCapabilities);
+        EnumSet<PlatformExtensionCapability> missing = EnumSet.copyOf(REQUIRED_CAPABILITIES);
+        missing.removeAll(installed);
+
+        return new PlatformExtensionReadinessSnapshot(
+                extensionVersion,
+                lifecycle,
+                installed,
+                missing,
+                failureCode
+        );
     }
 
-    private static String readImplementationVersionFromManifest() {
-        ClassLoader loader = PlatformExtensionReadiness.class.getClassLoader();
-        if (loader == null) {
-            return null;
-        }
-
-        try {
-            Enumeration<URL> manifestUrls = loader.getResources("META-INF/MANIFEST.MF");
-            String mismatchedTitle = null;
-            for (URL manifestUrl : Collections.list(manifestUrls)) {
-                try (InputStream manifestStream = manifestUrl.openStream()) {
-                    Manifest manifest = new Manifest(manifestStream);
-                    String title = manifest.getMainAttributes().getValue("Implementation-Title");
-                    if (IMPLEMENTATION_TITLE.equals(title)) {
-                        return manifest.getMainAttributes().getValue("Implementation-Version");
-                    }
-
-                    if (isNearMissImplementationTitle(title)) {
-                        mismatchedTitle = title;
-                    }
-                }
-            }
-
-            if (mismatchedTitle != null) {
-                log.warn(AgentEventCode.BOOT_MANIFEST_VERSION,
-                        "Extension MANIFEST.MF Implementation-Title does not match the readiness lookup key; using development",
-                        "expectedTitle", IMPLEMENTATION_TITLE,
-                        "observedTitle", mismatchedTitle);
-            }
-        } catch (IOException failure) {
-            if (log.isDebugEnabled()) {
-                log.debug(AgentEventCode.BOOT_MANIFEST_VERSION,
-                        "Unable to resolve Implementation-Version from MANIFEST.MF");
-            }
-        }
-
-        return null;
+    private static EnumSet<PlatformExtensionCapability> copyOf(Set<PlatformExtensionCapability> capabilities) {
+        return capabilities.isEmpty()
+                ? EnumSet.noneOf(PlatformExtensionCapability.class)
+                : EnumSet.copyOf(capabilities);
     }
 
-    private static boolean isNearMissImplementationTitle(String title) {
-        return (title != null) && title.startsWith(IMPLEMENTATION_TITLE) && !IMPLEMENTATION_TITLE.equals(title);
+    private static String normalizeFailureCode(String failureCode) {
+        return failureCode != null && FAILURE_CODE_PATTERN.matcher(failureCode).matches()
+                ? failureCode
+                : DEFAULT_FAILURE_CODE;
     }
 
-    private static Set<PlatformExtensionCapability> generatedRequiredCapabilities() {
-        EnumSet<PlatformExtensionCapability> required = EnumSet.noneOf(PlatformExtensionCapability.class);
-        for (String capabilityName : JmxWireContract.REQUIRED_CAPABILITIES) {
-            PlatformExtensionCapability capability;
-            try {
-                capability = PlatformExtensionCapability.valueOf(capabilityName);
-            } catch (IllegalArgumentException exception) {
-                throw new IllegalStateException(
-                        "Generated JMX contract contains unknown required capability",
-                        exception);
-            }
-            if (!required.add(capability)) {
-                throw new IllegalStateException("Generated JMX contract contains a duplicate required capability");
-            }
-        }
+    private static IllegalStateException notReady(PlatformExtensionReadinessSnapshot snapshot) {
+        Objects.requireNonNull(snapshot, "snapshot");
 
-        return Collections.unmodifiableSet(required);
-    }
-
-    private static String boundedMessage(Throwable failure) {
-        if (failure == null) {
-            return DEFAULT_FAILURE_MESSAGE;
-        }
-
-        String message = failure.getMessage();
-        String value = failure.getClass().getSimpleName() + (StringUtils.hasText(message) ? ": " + message : "");
-        return (value.length() <= FAILURE_MESSAGE_MAX_LENGTH) ? value : value.substring(0, FAILURE_MESSAGE_MAX_LENGTH);
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private static String orDefault(String value, String fallback) {
-        return StringUtils.hasText(value) ? value : fallback;
+        String message = """
+            Platform extension readiness is not READY: lifecycle=%s, missingCapabilities=%s\
+            """.formatted(snapshot.lifecycle(), snapshot.missingRequiredCapabilities());
+        return new IllegalStateException(message);
     }
 }
