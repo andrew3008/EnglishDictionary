@@ -82,8 +82,8 @@ class SdkOwnershipBoundaryArchTest {
     }
 
     private static DescribedPredicate<JavaMethodCall> isGlobalOpenTelemetryMethod(Set<String> methodNames) {
-        return new DescribedPredicate<>(
-                "call " + GLOBAL_OPEN_TELEMETRY_FQN + "." + methodNames + "(..)") {
+        return new DescribedPredicate<>("call " + GLOBAL_OPEN_TELEMETRY_FQN + "." + methodNames + "(..)") {
+
             @Override
             public boolean test(JavaMethodCall call) {
                 return GLOBAL_OPEN_TELEMETRY_FQN.equals(call.getTargetOwner().getName())
