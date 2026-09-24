@@ -30,7 +30,6 @@ final class LaunchContractPolicy {
     private static final String MODULE_SHORT_FLAG = "-m";
     private static final String JAR_FLAG = "-jar";
     private static final String ARGFILE_PREFIX = "@";
-    private static final String PROPERTY_PREFIX = "-D";
     private static final String OTEL_PROPERTY_PREFIX = "otel.";
     private static final String PLATFORM_PROPERTY_PREFIX = "platform.tracing.";
     private static final String MANAGEMENT_AGENT_PROPERTY_PREFIX = "com.sun.management";

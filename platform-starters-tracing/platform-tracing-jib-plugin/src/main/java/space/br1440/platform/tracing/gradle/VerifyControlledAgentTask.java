@@ -13,13 +13,11 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Set;
-import javax.inject.Inject;
 
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
-import org.gradle.api.file.FileSystemOperations;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
@@ -45,9 +43,6 @@ public abstract class VerifyControlledAgentTask extends DefaultTask {
 
     @OutputDirectory
     public abstract DirectoryProperty getAgentDirectory();
-
-    @Inject
-    protected abstract FileSystemOperations getFileSystemOperations();
 
     @TaskAction
     public void verify() {

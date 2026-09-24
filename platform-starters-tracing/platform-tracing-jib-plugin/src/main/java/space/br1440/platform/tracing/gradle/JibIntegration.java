@@ -11,6 +11,7 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskProvider;
 
+import com.google.cloud.tools.jib.gradle.ExtensionParameters;
 import com.google.cloud.tools.jib.gradle.JibExtension;
 
 import lombok.experimental.UtilityClass;
@@ -48,15 +49,15 @@ final class JibIntegration {
                     .withPathSensitivity(PathSensitivity.NONE);
             task.getInputs().property(PLUGIN_VERSION_INPUT, pluginVersion);
             task.notCompatibleWithConfigurationCache("GoogleContainerTools/jib#3132");
-            // Пустой список не вызывает extension, поэтому проверка регистрации выполняется до действия задачи.
             task.doFirst(ignored -> requireSingleRegistration(jib));
         }));
     }
 
     private static void requireSingleRegistration(JibExtension jib) {
         List<String> implementations = jib.getPluginExtensions().get().stream()
-                .map(parameters -> parameters.getImplementation())
+                .map(ExtensionParameters::getImplementation)
                 .toList();
+
         PlatformTracingJibExtension.registrationViolation(implementations).ifPresent(message -> {
             throw new GradleException(message);
         });
