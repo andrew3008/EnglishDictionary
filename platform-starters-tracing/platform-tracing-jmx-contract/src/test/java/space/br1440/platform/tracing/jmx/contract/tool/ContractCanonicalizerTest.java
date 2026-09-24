@@ -28,7 +28,6 @@ class ContractCanonicalizerTest {
     @Test
     void sha256IsDeterministic() {
         assertThat(ContractCanonicalizer.sha256("value"))
-                .isEqualTo(ContractCanonicalizer.sha256("value"))
-                .hasSize(64);
+                .isEqualTo("cd42404d52ad55ccfa9aca4adc828aa5800ad9d385a0671fbcbf724118320619");
     }
 }

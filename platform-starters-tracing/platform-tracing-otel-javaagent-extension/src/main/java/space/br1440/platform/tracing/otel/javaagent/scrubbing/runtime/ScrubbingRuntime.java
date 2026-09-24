@@ -21,7 +21,7 @@ public final class ScrubbingRuntime {
     private final boolean enabled;
     private final ScrubbingPolicy policy;
     private final boolean hasHmacKey;
-    private final HmacSha256Hasher hasher;
+    private final HmacSha256Digest digest;
     private final ScrubbingCollapseState collapseState = new ScrubbingCollapseState(log);
     private final ScrubbingBoundaryCounters boundaryCounters = new ScrubbingBoundaryCounters();
     private final ScrubbingInstallationBarrier installation = new ScrubbingInstallationBarrier();
@@ -54,7 +54,7 @@ public final class ScrubbingRuntime {
         if (hasHmacKey) {
             byte[] ownedKey = hmacSecret.copyBytes();
             try {
-                this.hasher = HmacSha256Hasher.from(ownedKey);
+                this.digest = HmacSha256Digest.from(ownedKey);
             } catch (IllegalStateException e) {
                 throw new SanitizerBootstrapException(
                         SanitizerBootstrapException.HMAC_INITIALIZATION_FAILED,
@@ -63,11 +63,11 @@ public final class ScrubbingRuntime {
                 );
             }
         } else {
-            this.hasher = null;
+            this.digest = null;
         }
 
         this.attributeScrubber = new SpanAttributeInPlaceScrubber(
-                policy.attributeExecutableRules(), collapseState, hasher, log);
+                policy.attributeExecutableRules(), collapseState, digest, log);
     }
 
     public static ScrubbingRuntime disabled() {
@@ -107,7 +107,7 @@ public final class ScrubbingRuntime {
     }
 
     public String hmacHex(String value) {
-        return hasher.hashHex(value);
+        return digest.hashHex(value);
     }
 
     public void scrubSpanAttributes(ReadWriteSpan span) {

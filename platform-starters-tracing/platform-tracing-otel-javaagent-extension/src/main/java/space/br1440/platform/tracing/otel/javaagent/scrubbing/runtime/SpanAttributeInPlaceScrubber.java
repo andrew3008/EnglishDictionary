@@ -30,15 +30,17 @@ final class SpanAttributeInPlaceScrubber {
 
     private final List<ExecutableRule> rules;
     private final ScrubbingCollapseState collapse;
-    private final HmacSha256Hasher hasher;
+    private final HmacSha256Digest digest;
     private final RateLimitedLogger log;
     private final ScrubbingActionCounters actions = new ScrubbingActionCounters();
 
-    SpanAttributeInPlaceScrubber(List<ExecutableRule> rules, ScrubbingCollapseState collapse,
-                                  HmacSha256Hasher hasher, RateLimitedLogger log) {
+    SpanAttributeInPlaceScrubber(List<ExecutableRule> rules,
+                                 ScrubbingCollapseState collapse,
+                                 HmacSha256Digest digest,
+                                 RateLimitedLogger log) {
         this.rules = rules;
         this.collapse = collapse;
-        this.hasher = hasher;
+        this.digest = digest;
         this.log = log;
     }
 
@@ -207,13 +209,13 @@ final class SpanAttributeInPlaceScrubber {
             }
 
             case HASH -> {
-                if (hasher == null) {
+                if (digest == null) {
                     actions.recordHashMissingKey();
                     actions.recordMasked();
                     return MASK;
                 }
                 actions.recordHashed();
-                return hasher.hashHex(value);
+                return digest.hashHex(value);
             }
 
             case TRUNCATE -> {
