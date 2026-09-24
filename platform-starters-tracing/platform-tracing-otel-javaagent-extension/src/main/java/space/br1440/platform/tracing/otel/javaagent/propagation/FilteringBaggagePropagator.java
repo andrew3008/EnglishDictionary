@@ -15,18 +15,6 @@ import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.context.propagation.TextMapSetter;
 
-/**
- * Filters outbound baggage on {@link #inject} against an allowlist and deny-pattern set.
- * <p>
- * {@link #extract} is an intentional unfiltered passthrough to the delegate: inbound baggage is
- * not pruned here. This is a deliberate, tested boundary (see
- * {@code FilteringBaggagePropagatorTest#extract_isUnfilteredPassthrough_byDesign}), not an
- * oversight — nothing downstream trusts unfiltered inbound {@code Baggage} for anything other
- * than the span-processor plane, which applies its own independent allowlist
- * ({@code platform.tracing.baggage.processor.*}) before writing span attributes. Property names
- * that reach this filter (e.g. {@code platform.tracing.baggage.propagation.outbound-*}) say
- * "outbound" precisely because this asymmetry exists.
- */
 final class FilteringBaggagePropagator implements TextMapPropagator {
 
     private final TextMapPropagator delegate;

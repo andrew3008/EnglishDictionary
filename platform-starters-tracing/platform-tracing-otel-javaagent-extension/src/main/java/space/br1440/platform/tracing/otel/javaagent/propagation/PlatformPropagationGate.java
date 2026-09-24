@@ -1,20 +1,21 @@
 package space.br1440.platform.tracing.otel.javaagent.propagation;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 
 public final class PlatformPropagationGate {
 
     private static final PlatformPropagationGate SHARED = new PlatformPropagationGate();
 
-    private final AtomicReference<TracingSettingsSource> acceptedPolicy =
-            new AtomicReference<>(TracingSettingsSource.isolatedDefaults());
-    private final AtomicLong generation = new AtomicLong();
-    private final Object bindLock = new Object();
     private long activeGeneration;
+    private final AtomicLong generation = new AtomicLong();
+    private final AtomicReference<TracingSettingsSource> acceptedPolicy = new AtomicReference<>(
+            TracingSettingsSource.isolatedDefaults()
+    );
+    private final Object bindLock = new Object();
 
     PlatformPropagationGate() {
     }
@@ -40,13 +41,15 @@ public final class PlatformPropagationGate {
 
     public AutoCloseable bindAcceptedPolicy(TracingSettingsSource policy) {
         Objects.requireNonNull(policy, "policy");
+
         synchronized (bindLock) {
             if (activeGeneration != 0L) {
-                throw new IllegalStateException(
-                        "PlatformPropagationGate already has an active accepted-policy registration");
+                String message = "PlatformPropagationGate already has an active accepted-policy registration";
+                throw new IllegalStateException(message);
             }
 
             TracingSettingsSource previous = acceptedPolicy.get();
+
             long token = generation.incrementAndGet();
             acceptedPolicy.set(policy);
             activeGeneration = token;
@@ -71,6 +74,7 @@ public final class PlatformPropagationGate {
                 if (closed) {
                     return;
                 }
+
                 closed = true;
 
                 if (activeGeneration != token) {

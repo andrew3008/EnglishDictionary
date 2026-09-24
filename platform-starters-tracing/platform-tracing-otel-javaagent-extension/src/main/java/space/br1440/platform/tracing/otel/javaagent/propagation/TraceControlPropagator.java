@@ -4,9 +4,9 @@ import java.util.Collection;
 import java.util.List;
 import jakarta.annotation.Nonnull;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
-import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.runtime.propagation.control.DefaultInboundTraceControlExtractor;
 import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
 

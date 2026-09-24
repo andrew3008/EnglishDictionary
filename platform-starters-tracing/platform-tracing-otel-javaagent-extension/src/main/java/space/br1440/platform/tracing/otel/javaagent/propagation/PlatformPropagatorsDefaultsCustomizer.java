@@ -1,11 +1,11 @@
 package space.br1440.platform.tracing.otel.javaagent.propagation;
 
-import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
 public final class PlatformPropagatorsDefaultsCustomizer implements Function<ConfigProperties, Map<String, String>> {
 

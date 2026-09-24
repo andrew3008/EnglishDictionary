@@ -1,15 +1,10 @@
 package space.br1440.platform.tracing.otel.javaagent.propagation;
 
+import static space.br1440.platform.tracing.otel.javaagent.factory.FactoryUtils.orDefault;
+
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import lombok.experimental.UtilityClass;
 
-import static space.br1440.platform.tracing.otel.javaagent.factory.FactoryUtils.orDefault;
-
-/**
- * Header-name defaults only. Baggage configuration (enabled/allowed-keys/deny-patterns) is owned
- * exclusively by {@code BaggageExtensionConfig} — see its Javadoc for the propagation/processor
- * plane split. This class must not reintroduce a second baggage reader.
- */
 @UtilityClass
 public final class PropagationDefaults {
 
