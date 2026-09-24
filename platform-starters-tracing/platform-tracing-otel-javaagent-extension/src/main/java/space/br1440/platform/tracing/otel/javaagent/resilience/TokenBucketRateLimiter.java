@@ -31,7 +31,7 @@ final class TokenBucketRateLimiter {
     @SuppressWarnings("SameParameterValue")
     synchronized boolean trySpend(double cost) {
         long now = nanoClock.getAsLong();
-        long elapsed = now - lastRefillNanos;
+        long elapsed = (now - lastRefillNanos);
         if (elapsed > 0) {
             availableTokens = Math.min(maxTokens, availableTokens + elapsed * refillRatePerNano);
             lastRefillNanos = now;

@@ -117,16 +117,20 @@ public final class RateLimitedLogger {
                 if (result == EmitResult.EMITTED) {
                     problemLogged.set(true);
                 }
+
                 return result;
             }
+
             return EmitResult.RATE_LIMITED;
         }
 
         if (fastBucket.trySpend(1.0)) {
             EmitResult result = emit(level, eventCode, message, error, fields);
+
             if (result == EmitResult.EMITTED) {
                 problemLogged.set(true);
             }
+
             return result;
         }
 
@@ -137,23 +141,23 @@ public final class RateLimitedLogger {
                     "kind",
                     throttleAnnouncementNoun
             );
+
             EmitResult result = emit(level, eventCode, message, error, fields);
             if (result == EmitResult.EMITTED) {
                 problemLogged.set(true);
             }
+
             return result;
         }
 
         return EmitResult.RATE_LIMITED;
     }
 
-    private EmitResult emit(
-            AgentLogLevel level,
-            AgentEventCode eventCode,
-            String message,
-            Throwable error,
-            String[] fields
-    ) {
+    private EmitResult emit(AgentLogLevel level,
+                            AgentEventCode eventCode,
+                            String message,
+                            Throwable error,
+                            String[] fields) {
         return delegate.emit(level, eventCode, message, error, (Object[]) fields);
     }
 
@@ -161,6 +165,7 @@ public final class RateLimitedLogger {
         if (problemLogged.compareAndSet(true, false)) {
             return delegate.info(AgentEventCode.RATE_RECOVERY, message);
         }
+
         return EmitResult.FILTERED_BY_LEVEL;
     }
 
