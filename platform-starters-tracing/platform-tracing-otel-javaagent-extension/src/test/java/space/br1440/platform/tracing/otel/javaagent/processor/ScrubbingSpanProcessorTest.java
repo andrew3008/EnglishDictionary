@@ -21,7 +21,7 @@ class ScrubbingSpanProcessorTest {
     void drop_by_password_key_name_overwrites_with_empty_string() {
         // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
-                BuiltInSpanAttributeScrubbingRules.resolve("password")
+                BuiltInSpanAttributeScrubbingRules.PASSWORD_KEY.create()
         )))) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -41,7 +41,7 @@ class ScrubbingSpanProcessorTest {
     void jwt_value_is_fully_removed() {
         // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
-                BuiltInSpanAttributeScrubbingRules.resolve("jwt")
+                BuiltInSpanAttributeScrubbingRules.JWT.create()
         )))) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -59,7 +59,7 @@ class ScrubbingSpanProcessorTest {
     void email_is_hashed_when_hmac_key_is_set() {
         // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
-                BuiltInSpanAttributeScrubbingRules.resolve("email")
+                BuiltInSpanAttributeScrubbingRules.EMAIL.create()
         ), MaskedSecret.of("secret-key"), false))) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -81,7 +81,7 @@ class ScrubbingSpanProcessorTest {
     void email_degrades_to_mask_without_hmac_key() {
         // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
-                BuiltInSpanAttributeScrubbingRules.resolve("email")
+                BuiltInSpanAttributeScrubbingRules.EMAIL.create()
         )))) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -101,7 +101,7 @@ class ScrubbingSpanProcessorTest {
     void oauth_authorization_header_is_removed() {
         // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
-                BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")
+                BuiltInSpanAttributeScrubbingRules.OAUTH_HEADER.create()
         )))) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();

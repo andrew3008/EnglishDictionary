@@ -43,7 +43,11 @@ class ScrubbingLoaderCharacterizationTest {
     void startup_policy_is_immutable_and_scrubs_password() {
         // given
         ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
-                List.of(BuiltInSpanAttributeScrubbingRules.resolve("password")), null, false);
+                List.of(BuiltInSpanAttributeScrubbingRules.PASSWORD_KEY.create()),
+                null,
+                false
+        );
+
         // then
         assertThat(runtime.enabled()).isTrue();
         assertThat(runtime.policyVersion()).isEqualTo(1L);

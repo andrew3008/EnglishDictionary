@@ -20,19 +20,16 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * High-risk security characterization scrubbing (PR-5B).
- */
 class ScrubbingSecurityCharacterizationTest {
 
     @Test
     void merge_precedence_drop_beats_hash_on_authorization_key() {
         // given
         ExecutableRule drop = new ExecutableRule(
-                BuiltInSpanAttributeScrubbingRules.resolve("oauth-header"),
+                BuiltInSpanAttributeScrubbingRules.OAUTH_HEADER.create(),
                 new RuleCircuitBreaker("oauth-header"));
         ExecutableRule hash = new ExecutableRule(
-                BuiltInSpanAttributeScrubbingRules.resolve("email"),
+                BuiltInSpanAttributeScrubbingRules.EMAIL.create(),
                 new RuleCircuitBreaker("email"));
 
         ScrubbingDecision decision = MergeEngine.evaluate(

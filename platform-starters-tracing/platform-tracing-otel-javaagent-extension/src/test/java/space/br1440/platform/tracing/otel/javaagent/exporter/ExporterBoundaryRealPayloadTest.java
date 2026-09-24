@@ -47,8 +47,8 @@ class ExporterBoundaryRealPayloadTest {
     private static final String PASSWORD_CANARY = "hunter2-canary";
 
     private static final List<SpanAttributeScrubbingRule> RULES = List.of(
-            BuiltInSpanAttributeScrubbingRules.resolve("email"),
-            BuiltInSpanAttributeScrubbingRules.resolve("password")
+            BuiltInSpanAttributeScrubbingRules.EMAIL.create(),
+            BuiltInSpanAttributeScrubbingRules.PASSWORD_KEY.create()
     );
 
     private static SpanData spanWithSecretsEverywhere() {

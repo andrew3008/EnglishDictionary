@@ -18,9 +18,10 @@ class MaskedSecretTest {
 
         // then
         assertThat(secret.isPresent()).isTrue();
-        assertThat(secret.copyBytes().length).isGreaterThan(0);
-        assertThat(secret.copyBytes()).containsExactly("Jefe".getBytes(StandardCharsets.UTF_8));
-        assertThat(multibyte.copyBytes().length).isGreaterThan(0);
+        assertThat(secret.copyBytes())
+                .isNotEmpty()
+                .containsExactly("Jefe".getBytes(StandardCharsets.UTF_8));
+        assertThat(multibyte.copyBytes()).isNotEmpty();
     }
 
     @Test

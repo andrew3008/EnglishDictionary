@@ -20,8 +20,8 @@ class ScrubbingSecurityNegativeTest {
     void rule_priority_conflict_authorization_is_dropped_not_hashed() {
         // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
-                BuiltInSpanAttributeScrubbingRules.resolve("email"),
-                BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")
+                BuiltInSpanAttributeScrubbingRules.EMAIL.create(),
+                BuiltInSpanAttributeScrubbingRules.OAUTH_HEADER.create()
         ), MaskedSecret.of("key"), false))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -40,7 +40,7 @@ class ScrubbingSecurityNegativeTest {
     void drop_integration_secret_absent_from_exported_SpanData() {
         // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
-                BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")
+                BuiltInSpanAttributeScrubbingRules.OAUTH_HEADER.create()
         )))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -59,7 +59,7 @@ class ScrubbingSecurityNegativeTest {
     void mixed_ip_header_masks_entire_value_in_exported_span() {
         // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
-                BuiltInSpanAttributeScrubbingRules.resolve("ip-address")
+                BuiltInSpanAttributeScrubbingRules.IP_ADDRESS.create()
         )))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -94,17 +94,18 @@ class ScrubbingSecurityNegativeTest {
     void fail_fast_without_key_throws_at_startup() {
         // given
         // then
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
-                () -> ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
-                        List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")), null, true)
-        );
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> {
+            try (ScrubbingSpanProcessor ignored = ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
+                    List.of(BuiltInSpanAttributeScrubbingRules.EMAIL.create()), null, true)) {
+            }
+        });
     }
 
     @Test
     void event_scope_token_in_event_is_not_scrubbed_by_SDK_processor() {
         // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
-                BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")
+                BuiltInSpanAttributeScrubbingRules.OAUTH_HEADER.create()
         )))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -122,7 +123,7 @@ class ScrubbingSecurityNegativeTest {
 
     private static String hashEmail(String key) {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
-                BuiltInSpanAttributeScrubbingRules.resolve("email")
+                BuiltInSpanAttributeScrubbingRules.EMAIL.create()
         ), MaskedSecret.of(key), false))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();

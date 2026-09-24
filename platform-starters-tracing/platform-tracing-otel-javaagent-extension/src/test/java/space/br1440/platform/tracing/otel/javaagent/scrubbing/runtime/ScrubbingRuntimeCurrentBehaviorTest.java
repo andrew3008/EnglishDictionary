@@ -1,7 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -22,7 +21,6 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.AttributeType;
@@ -267,10 +265,16 @@ class ScrubbingRuntimeCurrentBehaviorTest {
 
         // when
         Map<AttributeKey<?>, Object> written = new LinkedHashMap<>();
-        assertThatThrownBy(() -> scrub(runtime, attributes(key, "ivan@example.com"), false, failure, written))
-                .isSameAs(failure);
+        Throwable thrown;
+        try {
+            scrub(runtime, attributes(key, "ivan@example.com"), false, failure, written);
+            thrown = null;
+        } catch (Throwable caught) {
+            thrown = caught;
+        }
 
         // then
+        assertThat(thrown).isSameAs(failure);
         assertThat(written.get(key)).isEqualTo(FAILED);
         assertThat(runtime.failures()).isEqualTo(1);
         assertThat(runtime.attributesVerified()).isFalse();
@@ -295,6 +299,7 @@ class ScrubbingRuntimeCurrentBehaviorTest {
         assertThat(runtime.collapsedSpans()).isEqualTo(1);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static List<String> nullableList(String first, String second, String third) {
         List<String> values = new ArrayList<>();
         values.add(first);
@@ -379,35 +384,43 @@ class ScrubbingRuntimeCurrentBehaviorTest {
                             && args != null
                             && args.length == 2
                             && args[0] instanceof AttributeKey<?> key) {
-                        if (failed[0]) {
+                        if (failed[0] && setAttributeFailure != null) {
                             failed[0] = false;
                             throw setAttributeFailure;
                         }
                         written.put(key, args[1]);
                         return proxy;
                     }
-                    if ("equals".equals(method.getName())) {
-                        return proxy == args[0];
+
+                    switch (method.getName()) {
+                        case "equals" -> {
+                            return proxy == args[0];
+                        }
+                        case "hashCode" -> {
+                            return System.identityHashCode(proxy);
+                        }
+                        case "toString" -> {
+                            return "RecordingAttributeSpan";
+                        }
                     }
-                    if ("hashCode".equals(method.getName())) {
-                        return System.identityHashCode(proxy);
-                    }
-                    if ("toString".equals(method.getName())) {
-                        return "RecordingAttributeSpan";
-                    }
+
                     Class<?> returnType = method.getReturnType();
                     if (returnType.equals(boolean.class)) {
                         return false;
                     }
+
                     if (returnType.equals(int.class)) {
                         return 0;
                     }
+
                     if (returnType.equals(long.class)) {
                         return 0L;
                     }
+
                     if (Span.class.isAssignableFrom(returnType) || returnType.equals(ReadWriteSpan.class)) {
                         return proxy;
                     }
+
                     return null;
                 });
         runtime.scrubSpanAttributes(span);

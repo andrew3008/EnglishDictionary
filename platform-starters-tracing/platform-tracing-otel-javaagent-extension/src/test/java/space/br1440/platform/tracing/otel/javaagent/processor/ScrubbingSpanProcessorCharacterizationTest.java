@@ -41,10 +41,19 @@ class ScrubbingSpanProcessorCharacterizationTest {
         // given
         SpanAttributeScrubbingRule customHash = new SpanAttributeScrubbingRule() {
             @Nonnull
-            @Override public String name() { return "custom-hash"; }
-            @Override public int priority() { return 200; }
+            @Override
+            public String name() {
+                return "custom-hash";
+            }
+
+            @Override
+            public int priority() {
+                return 200;
+            }
+
             @Nonnull
-            @Override public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
+            @Override
+            public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
                 return key.contains("secret")
                         ? ScrubbingDecision.hash("custom-hash")
                         : ScrubbingDecision.keep();
@@ -72,7 +81,9 @@ class ScrubbingSpanProcessorCharacterizationTest {
         String first;
         String second;
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
-                List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")), MaskedSecret.of("secret-key"), false))
+                List.of(BuiltInSpanAttributeScrubbingRules.EMAIL.create()),
+                MaskedSecret.of("secret-key"),
+                false))
         ) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -81,8 +92,10 @@ class ScrubbingSpanProcessorCharacterizationTest {
             first = h.exporter().getFinishedSpanItems().getFirst().getAttributes()
                     .get(io.opentelemetry.api.common.AttributeKey.stringKey("user.email"));
         }
+
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
-                List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")), MaskedSecret.of("secret-key"), false))
+                List.of(BuiltInSpanAttributeScrubbingRules.EMAIL.create()),
+                MaskedSecret.of("secret-key"), false))
         ) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
