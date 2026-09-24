@@ -36,25 +36,30 @@ class StartupAndSettingsBoundaryArchTest {
             new ClassFileImporter().importPackages(FIXTURE_PACKAGE);
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule startupCoreDependencyBoundary =
             TracingStartupContractHealthDependencyRules.coreDependencyBoundary(
                     PRODUCTION_AUTOCONFIG_FQCN);
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule startupAutoConfigurationDependencyBoundary =
             TracingStartupContractHealthDependencyRules.autoConfigurationDependencyBoundary(
                     PRODUCTION_AUTOCONFIG_FQCN);
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule startupForbiddenTransportAndSdkDependencies =
             TracingStartupContractHealthDependencyRules.forbiddenTransportAndSdkDependencies();
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule startupCoreDoesNotDependOnAutoConfiguration =
             TracingStartupContractHealthDependencyRules.coreMustNotDependOnAutoConfiguration(
                     PRODUCTION_AUTOCONFIG_FQCN);
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule settingsRootDoesNotDependOnChildContracts =
             noClasses()
                     .that().resideInAPackage(SETTINGS_PACKAGE)
@@ -62,6 +67,7 @@ class StartupAndSettingsBoundaryArchTest {
                     .because("the settings root contains contracts shared by read and delivery");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule readContractsDoNotDependOnDelivery =
             noClasses()
                     .that().resideInAPackage(READ_PACKAGE)
@@ -69,6 +75,7 @@ class StartupAndSettingsBoundaryArchTest {
                     .because("read contracts must not depend on the write path");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule deliveryContractsDoNotDependOnRead =
             noClasses()
                     .that().resideInAPackage(DELIVERY_PACKAGE)

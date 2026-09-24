@@ -18,6 +18,7 @@ class ScrubbingPackageStructureArchTest {
 
     // given/when/then
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule subpackagesAreFreeOfCycles =
             slices().matching(SCRUBBING + ".(*)..")
                     .should().beFreeOfCycles()
@@ -25,6 +26,7 @@ class ScrubbingPackageStructureArchTest {
 
     // given/when/then
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule rootPackageIsEmpty =
             noClasses()
                     .should().resideInAPackage(SCRUBBING)
@@ -33,6 +35,7 @@ class ScrubbingPackageStructureArchTest {
 
     // given/when/then
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule runtimeDoesNotDependOnAssembly =
             noClasses()
                     .that().resideInAPackage(SCRUBBING + ".runtime..")
@@ -41,6 +44,7 @@ class ScrubbingPackageStructureArchTest {
 
     // given/when/then
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule engineIsASharedKernel =
             noClasses()
                     .that().resideInAPackage(SCRUBBING + ".engine..")

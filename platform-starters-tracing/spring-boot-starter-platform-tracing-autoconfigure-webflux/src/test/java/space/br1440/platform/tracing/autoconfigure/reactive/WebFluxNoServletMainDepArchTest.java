@@ -14,21 +14,26 @@ import space.br1440.platform.tracing.test.arch.ModuleTaxonomyArchRules;
 class WebFluxNoServletMainDepArchTest {
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule webFluxMainNoServletStack =
             ModuleTaxonomyArchRules.WEBFLUX_MAIN_NO_SERVLET_STACK;
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule webFluxMainNoCoreImplementation =
             ModuleTaxonomyArchRules.WEB_AUTOCONFIGURE_MAIN_NO_CORE_IMPL;
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule webFluxMainNoImplementationDependency =
             ModuleTaxonomyArchRules.WEB_MAIN_NO_IMPLEMENTATION_DEPENDENCY;
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule webFluxMainNoOtelContext = ModuleTaxonomyArchRules.WEB_MAIN_NO_OTEL_CONTEXT;
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule webFluxMainNoInternalPropagationTypes =
             ModuleTaxonomyArchRules.WEB_MAIN_NO_INTERNAL_PROPAGATION_TYPES;
 

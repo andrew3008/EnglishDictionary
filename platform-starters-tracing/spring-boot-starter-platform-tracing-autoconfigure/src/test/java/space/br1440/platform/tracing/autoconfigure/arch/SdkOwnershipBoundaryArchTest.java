@@ -47,6 +47,7 @@ class SdkOwnershipBoundaryArchTest {
     private static final Set<String> GLOBAL_READ_METHOD_NAMES = Set.of("get", "isSet");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule noOtelSdkConstruction = noClasses()
             .should().callMethodWhere(callTargetOwnerIn(SDK_CONSTRUCTION_OWNER_FQNS))
             .because("Spring auto-configuration must not construct or configure the OpenTelemetry SDK "
@@ -54,6 +55,7 @@ class SdkOwnershipBoundaryArchTest {
                     + "owns SDK construction");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule noGlobalOpenTelemetryMutation = noClasses()
             .should().callMethodWhere(isGlobalOpenTelemetryMethod(GLOBAL_MUTATION_METHOD_NAMES))
             .because("GlobalOpenTelemetry.set/resetForTest/buildAndRegisterGlobal would perform a "
@@ -61,6 +63,7 @@ class SdkOwnershipBoundaryArchTest {
                     + "global SDK instance");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule globalOpenTelemetryReadConfinedToCompositionRoot = noClasses()
             .that().doNotHaveFullyQualifiedName(COMPOSITION_ROOT)
             .should().callMethodWhere(isGlobalOpenTelemetryMethod(GLOBAL_READ_METHOD_NAMES))

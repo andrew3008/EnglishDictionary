@@ -27,6 +27,7 @@ class ScrubbingBoundaryOwnershipArchTest {
 
     // given/when/then
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule boundaryComponentsDoNotUseStandardStreams =
             noClasses()
                     .that().resideInAnyPackage(
@@ -41,6 +42,7 @@ class ScrubbingBoundaryOwnershipArchTest {
 
     // given/when/then
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule productionExporterIsAssembledOnlyByExportFactory =
             noClasses()
                     .that().doNotHaveSimpleName("PlatformExportProcessorFactory")
@@ -54,6 +56,7 @@ class ScrubbingBoundaryOwnershipArchTest {
 
     // given/when/then
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule installationBarrierIsAcknowledgedOnlyByPipelineAssembly =
             noClasses()
                     .that().doNotHaveSimpleName("PlatformExportProcessorFactory")
@@ -66,6 +69,7 @@ class ScrubbingBoundaryOwnershipArchTest {
 
     // given/when/then
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule boundaryMetricsAreRecordedOnlyByBoundaryOwners =
             noClasses()
                     .that().doNotHaveSimpleName("SafeSpanExporter")
@@ -82,6 +86,7 @@ class ScrubbingBoundaryOwnershipArchTest {
 
     // given/when/then
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule processorsDoNotWriteResourceIdentityAttributes =
             noClasses()
                     .that().resideInAPackage("..processor..")

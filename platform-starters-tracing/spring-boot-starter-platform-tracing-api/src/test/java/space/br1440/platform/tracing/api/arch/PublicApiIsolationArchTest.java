@@ -14,18 +14,22 @@ import space.br1440.platform.tracing.test.arch.ModuleTaxonomyArchRules;
 class PublicApiIsolationArchTest {
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule apiDoesNotDependOnImplementationPackages =
             ModuleTaxonomyArchRules.API_MAIN_NO_IMPLEMENTATION_DEPENDENCY;
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule apiDoesNotExposeOpenTelemetryOrFrameworkTypes =
             ModuleTaxonomyArchRules.API_MAIN_NO_OTEL_OR_FRAMEWORK_TYPES;
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule propagationContractsDoNotDependOnConcreteControlImplementation =
             ModuleTaxonomyArchRules.API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL;
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule identityImplementationTypesAreNotPublic =
             ModuleTaxonomyArchRules.IDENTITY_INTERNAL_TYPES_NOT_PUBLIC;
 }

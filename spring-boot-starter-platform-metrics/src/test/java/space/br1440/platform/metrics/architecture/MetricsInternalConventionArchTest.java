@@ -15,6 +15,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 class MetricsInternalConventionArchTest {
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule factoryTypesResideInInternalFactory = classes()
             .that().haveSimpleName("HttpMetricFactory")
             .or().haveSimpleName("GrpcMetricFactory")
@@ -23,11 +24,13 @@ class MetricsInternalConventionArchTest {
             .should().resideInAPackage("space.br1440.platform.metrics.internal.factory");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule sloHelperResidesInInternal = classes()
             .that().haveSimpleName("SloHelper")
             .should().resideInAPackage("space.br1440.platform.metrics.internal");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule adaptersAndConfigurationDoNotDependOnInternal = noClasses()
             .that().resideInAnyPackage(
                     "space.br1440.platform.metrics.kafka..",

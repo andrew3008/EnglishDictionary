@@ -31,6 +31,7 @@ class AutoconfigureInternalBoundaryArchTest {
                     javaClass -> javaClass.getSimpleName().endsWith("JmxView"));
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule neutralAutoconfigureDoesNotDependOnWebStacks =
             noClasses()
                     .that().resideOutsideOfPackage("space.br1440.platform.tracing.autoconfigure.servlet..")
@@ -41,6 +42,7 @@ class AutoconfigureInternalBoundaryArchTest {
                     .because("web stack integration belongs to dedicated WebMVC and WebFlux modules");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule controlProtocolDoesNotDependOnSpring =
             noClasses()
                     .that().resideInAnyPackage(
@@ -50,6 +52,7 @@ class AutoconfigureInternalBoundaryArchTest {
                     .because("control policy and wire protocol must remain framework neutral");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule statusDoesNotAcquireMutationCapabilities =
             noClasses()
                     .that().resideInAPackage("..autoconfigure.status..")
@@ -58,6 +61,7 @@ class AutoconfigureInternalBoundaryArchTest {
                     .because("status is read only and must not acquire complete write capabilities");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule jmxViewsAreNotHeldOutsideRoot =
             noFields()
                     .that().areDeclaredInClassesThat().resideOutsideOfPackage("..diagnostics.jmx")
@@ -65,6 +69,7 @@ class AutoconfigureInternalBoundaryArchTest {
                     .because("JMX views must not become application-level state");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule jmxViewsAreNotAcceptedOutsideRoot =
             noMethods()
                     .that().areDeclaredInClassesThat().resideOutsideOfPackage("..diagnostics.jmx")
@@ -75,6 +80,7 @@ class AutoconfigureInternalBoundaryArchTest {
                     .because("JMX views must not leak into application method contracts");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule onlyJmxClientReturnsJmxViews =
             noMethods()
                     .that().areDeclaredInClassesThat().resideOutsideOfPackage("..diagnostics.jmx")

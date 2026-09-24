@@ -44,6 +44,7 @@ class ControlPlaneBoundaryArchTest {
     );
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule controlRootDoesNotDependOnJmx =
             noClasses()
                     .that().resideInAPackage(CONTROL)
@@ -51,6 +52,7 @@ class ControlPlaneBoundaryArchTest {
                     .because("the control root must remain independent from the JMX adapter");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule settingsModelIsPureData =
             noClasses()
                     .that().resideInAPackage(MODEL)
@@ -61,6 +63,7 @@ class ControlPlaneBoundaryArchTest {
                     .because("the settings model must not depend on storage, update or transport layers");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule settingsDoesNotDependOnUpdate =
             noClasses()
                     .that().resideInAPackage(SETTINGS)
@@ -68,6 +71,7 @@ class ControlPlaneBoundaryArchTest {
                     .because("update orchestration depends on settings storage, not the reverse");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule updateDoesNotDependOnJmx =
             noClasses()
                     .that().resideInAPackage(UPDATE)
@@ -75,6 +79,7 @@ class ControlPlaneBoundaryArchTest {
                     .because("settings updates must remain transport independent");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule onlyUpdaterCommitsSettings =
             noClasses()
                     .that().areNotAssignableTo(TracingSettingsUpdater.class)
@@ -86,6 +91,7 @@ class ControlPlaneBoundaryArchTest {
                     .because("TracingSettingsUpdater is the single settings mutation authority");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule writerRoutesTerminalFailuresThroughUpdater =
             classes()
                     .that().haveFullyQualifiedName(WRITER)
@@ -102,6 +108,7 @@ class ControlPlaneBoundaryArchTest {
                     .because("the writer must route terminal failures through the update authority");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule protocolDoesNotDependOnLifecycle =
             noClasses()
                     .that().resideInAPackage(PROTOCOL)
@@ -109,6 +116,7 @@ class ControlPlaneBoundaryArchTest {
                     .because("the mutation protocol must not own MBeanServer lifecycle");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule writerIsTheOnlyJmxUpdaterCaller =
             noClasses()
                     .that().resideInAPackage(CONTROL_JMX + "..")
@@ -117,6 +125,7 @@ class ControlPlaneBoundaryArchTest {
                     .because("PlatformSettingsMutationMBean is the only JMX mutation adapter");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule jmxDoesNotWriteDiagnosticsDirectly =
             noClasses()
                     .that().resideInAPackage(CONTROL_JMX + "..")
@@ -133,6 +142,7 @@ class ControlPlaneBoundaryArchTest {
                     .because("JMX adapters must not bypass update diagnostics ownership");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule samplingJmxDoesNotDependOnScrubbingOrValidation =
             noClasses()
                     .that().resideInAPackage("..jmx.sampling..")
@@ -142,6 +152,7 @@ class ControlPlaneBoundaryArchTest {
                     .because("JMX domains must remain independent");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule scrubbingJmxDoesNotDependOnSampling =
             noClasses()
                     .that().resideInAPackage("..jmx.scrubbing..")
@@ -149,6 +160,7 @@ class ControlPlaneBoundaryArchTest {
                     .because("JMX domains must remain independent");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule onlyRegistrationOwnersRegisterMBeans =
             noClasses()
                     .that().resideInAPackage("space.br1440.platform.tracing.otel.javaagent..")
@@ -161,6 +173,7 @@ class ControlPlaneBoundaryArchTest {
                     .because("only explicit registration owners may register MBeans");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule objectNamesAreCreatedOnlyByConstantsOwners =
             noClasses()
                     .that().haveSimpleNameNotEndingWith("ObjectNames")
@@ -168,6 +181,7 @@ class ControlPlaneBoundaryArchTest {
                     .because("raw ObjectName values belong to dedicated constants owners");
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule traceHotPathsDoNotDependOnJmx =
             noClasses()
                     .that().resideInAnyPackage("..sampler..", "..processor..", "..exporter..")

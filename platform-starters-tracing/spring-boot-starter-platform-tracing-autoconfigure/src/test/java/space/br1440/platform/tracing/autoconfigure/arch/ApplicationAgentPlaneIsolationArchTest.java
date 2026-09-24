@@ -36,34 +36,42 @@ class ApplicationAgentPlaneIsolationArchTest {
             "space.br1440.platform.tracing.otel.javaagent.scrubbing..";
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule autoconfigureDoesNotDependOnExtensionImplementation =
             ModuleTaxonomyArchRules.AUTOCONFIGURE_MAIN_NO_OTEL_EXTENSION_IMPL;
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule applicationDoesNotDependOnCoreVersionedRuntime =
             ModuleTaxonomyArchRules.APP_MODULES_NOT_DEPEND_ON_CORE_RUNTIME_VERSIONED;
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule infrastructureIdentityTypesAreNotPublic =
             ModuleTaxonomyArchRules.IDENTITY_INTERNAL_TYPES_NOT_PUBLIC;
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule remoteServiceNotConsumedByApplicationPlane =
             ModuleTaxonomyArchRules.REMOTE_SERVICE_NOT_CONSUMED_BY_APPLICATION_PLANE;
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule noLocalCopiesOfOtelSdkClasses =
             OtelDirectIntegrationRules.NO_LOCAL_COPIES_OF_OTEL_SDK_CLASSES;
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule noFakeOtelPackages =
             OtelDirectIntegrationRules.NO_FAKE_OTEL_PACKAGES;
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule noLocalOtelContractNames =
             OtelDirectIntegrationRules.NO_LOCAL_OTEL_CONTRACT_NAMES;
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule noRawRecordExceptionOutsideRecorder =
             OtelDirectIntegrationRules.NO_RAW_RECORD_EXCEPTION_OUTSIDE_RECORDER;
 

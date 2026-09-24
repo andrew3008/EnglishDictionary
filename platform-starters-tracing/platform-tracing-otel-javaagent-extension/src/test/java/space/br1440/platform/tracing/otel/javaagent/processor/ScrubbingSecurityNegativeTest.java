@@ -97,6 +97,7 @@ class ScrubbingSecurityNegativeTest {
         org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> {
             try (ScrubbingSpanProcessor ignored = ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
                     List.of(BuiltInSpanAttributeScrubbingRules.EMAIL.create()), null, true)) {
+                org.junit.jupiter.api.Assertions.fail("fail-fast startup must throw before the processor is returned");
             }
         });
     }
