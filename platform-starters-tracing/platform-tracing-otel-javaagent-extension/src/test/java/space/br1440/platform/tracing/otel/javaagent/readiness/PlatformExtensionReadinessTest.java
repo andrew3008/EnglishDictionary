@@ -239,6 +239,7 @@ class PlatformExtensionReadinessTest {
     @Test
     void duplicateInstallationReusesTheCurrentGeneration() {
         PlatformExtensionReadiness readiness = new PlatformExtensionReadiness(EXTENSION_VERSION);
+
         PlatformExtensionReadinessSnapshot installed =
                 readiness.markInstalled(PlatformExtensionCapability.CONFIGURATION_LOADED);
 
@@ -253,27 +254,28 @@ class PlatformExtensionReadinessTest {
     void concurrentCapabilityInstallationDoesNotLoseUpdates() throws Exception {
         PlatformExtensionReadiness readiness = new PlatformExtensionReadiness(EXTENSION_VERSION);
         PlatformExtensionCapability[] capabilities = PlatformExtensionCapability.values();
-        ExecutorService executor = Executors.newFixedThreadPool(capabilities.length);
         CountDownLatch poised = new CountDownLatch(capabilities.length);
         CountDownLatch start = new CountDownLatch(1);
 
-        try {
-            List<Future<PlatformExtensionReadinessSnapshot>> futures = Arrays.stream(capabilities)
-                    .map(capability -> executor.submit(() -> {
-                        poised.countDown();
-                        requireLatch(start);
-                        return readiness.markInstalled(capability);
-                    }))
-                    .toList();
+        try (ExecutorService executor = Executors.newFixedThreadPool(capabilities.length)) {
+            try {
+                List<Future<PlatformExtensionReadinessSnapshot>> futures = Arrays.stream(capabilities)
+                        .map(capability -> executor.submit(() -> {
+                            poised.countDown();
+                            requireLatch(start);
+                            return readiness.markInstalled(capability);
+                        }))
+                        .toList();
 
-            assertThat(poised.await(5, TimeUnit.SECONDS)).isTrue();
-            start.countDown();
-            for (Future<PlatformExtensionReadinessSnapshot> future : futures) {
-                future.get(5, TimeUnit.SECONDS);
+                assertThat(poised.await(5, TimeUnit.SECONDS)).isTrue();
+                start.countDown();
+
+                for (Future<PlatformExtensionReadinessSnapshot> future : futures) {
+                    future.get(5, TimeUnit.SECONDS);
+                }
+            } finally {
+                start.countDown();
             }
-        } finally {
-            start.countDown();
-            executor.shutdownNow();
         }
 
         PlatformExtensionReadinessSnapshot capabilitiesComplete = readiness.snapshot();
@@ -290,42 +292,42 @@ class PlatformExtensionReadinessTest {
     @Test
     @Timeout(15)
     void failureWinsEveryRaceWithTheLastCapabilityInstallation() throws Exception {
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-
-        try {
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
             for (int attempt = 0; attempt < 100; attempt++) {
                 PlatformExtensionReadiness readiness = readinessMissingLastCapability();
                 CountDownLatch poised = new CountDownLatch(2);
                 CountDownLatch start = new CountDownLatch(1);
 
-                Future<PlatformExtensionReadinessSnapshot> installation = executor.submit(() -> {
-                    poised.countDown();
-                    requireLatch(start);
-                    return readiness.markInstalled(PlatformExtensionCapability.EXPORT_PATH_PROTECTED);
-                });
-                Future<PlatformExtensionReadinessSnapshot> failure = executor.submit(() -> {
-                    poised.countDown();
-                    requireLatch(start);
-                    return readiness.fail("CONCURRENT_FAILURE");
-                });
+                try {
+                    Future<PlatformExtensionReadinessSnapshot> installation = executor.submit(() -> {
+                        poised.countDown();
+                        requireLatch(start);
+                        return readiness.markInstalled(PlatformExtensionCapability.EXPORT_PATH_PROTECTED);
+                    });
+                    Future<PlatformExtensionReadinessSnapshot> failure = executor.submit(() -> {
+                        poised.countDown();
+                        requireLatch(start);
+                        return readiness.fail("CONCURRENT_FAILURE");
+                    });
 
-                assertThat(poised.await(5, TimeUnit.SECONDS)).isTrue();
-                start.countDown();
-                installation.get(5, TimeUnit.SECONDS);
-                failure.get(5, TimeUnit.SECONDS);
+                    assertThat(poised.await(5, TimeUnit.SECONDS)).isTrue();
+                    start.countDown();
+                    installation.get(5, TimeUnit.SECONDS);
+                    failure.get(5, TimeUnit.SECONDS);
 
-                PlatformExtensionReadinessSnapshot terminal = readiness.snapshot();
-                assertThat(terminal.lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
-                assertThat(terminal.failureCode()).isEqualTo("CONCURRENT_FAILURE");
-                assertThat(terminal.installedCapabilities().size())
-                        .isIn(
-                                PlatformExtensionCapability.values().length - 1,
-                                PlatformExtensionCapability.values().length
-                        );
-                assertSnapshotPartition(terminal);
+                    PlatformExtensionReadinessSnapshot terminal = readiness.snapshot();
+                    assertThat(terminal.lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
+                    assertThat(terminal.failureCode()).isEqualTo("CONCURRENT_FAILURE");
+                    assertThat(terminal.installedCapabilities().size())
+                            .isIn(
+                                    PlatformExtensionCapability.values().length - 1,
+                                    PlatformExtensionCapability.values().length
+                            );
+                    assertSnapshotPartition(terminal);
+                } finally {
+                    start.countDown();
+                }
             }
-        } finally {
-            executor.shutdownNow();
         }
     }
 
