@@ -11,7 +11,7 @@ import space.br1440.platform.tracing.otel.javaagent.factory.PlatformSpanProcesso
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxMutationRegistrationAssessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 public final class AutoconfigureSession {
 
@@ -27,11 +27,11 @@ public final class AutoconfigureSession {
     private final RemoteJmxMutationRegistrationAssessor remoteJmxMutationRegistrationAssessor;
 
     public AutoconfigureSession(UUID sessionId,
-                         ConfigurationFingerprint fingerprint,
-                         ExtensionConfig extensionConfig,
-                         TracingSettingsSource policy,
-                         ScrubbingRuntime scrubbingRuntime,
-                         RemoteJmxMutationRegistrationAssessor remoteJmxMutationRegistrationAssessor) {
+                                ConfigurationFingerprint fingerprint,
+                                ExtensionConfig extensionConfig,
+                                TracingSettingsSource policy,
+                                ScrubbingRuntime scrubbingRuntime,
+                                RemoteJmxMutationRegistrationAssessor remoteJmxMutationRegistrationAssessor) {
         this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
         this.fingerprint = Objects.requireNonNull(fingerprint, "fingerprint");
         this.extensionConfig = Objects.requireNonNull(extensionConfig, "extensionConfig");

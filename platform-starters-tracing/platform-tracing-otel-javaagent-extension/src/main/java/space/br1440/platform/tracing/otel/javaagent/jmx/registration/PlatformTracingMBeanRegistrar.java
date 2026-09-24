@@ -16,7 +16,7 @@ import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.Platfor
 import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.SpanTimeoutProcessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 public final class PlatformTracingMBeanRegistrar {
 

@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.scrubbing;
+package space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly;
 
 import org.junit.jupiter.api.Test;
 
@@ -6,10 +6,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Юнит-тесты {@link ScrubbingRulesLoader}: чтение Properties-файла из classpath/файловой системы,
- * парсинг comma-separated значений, защита от ошибок чтения.
- */
 class ScrubbingRulesLoaderTest {
 
     private final ClassLoader cl = ScrubbingRulesLoaderTest.class.getClassLoader();

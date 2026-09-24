@@ -19,7 +19,6 @@ final class ExtensionVersionResolver {
     static final String DEVELOPMENT_VERSION = "development";
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(ExtensionVersionResolver.class);
-
     private static final String METADATA_RESOURCE = "platform-extension-build.properties";
     private static final String FORMAT_VERSION_KEY = "format.version";
     private static final String ARTIFACT_KEY = "artifact";

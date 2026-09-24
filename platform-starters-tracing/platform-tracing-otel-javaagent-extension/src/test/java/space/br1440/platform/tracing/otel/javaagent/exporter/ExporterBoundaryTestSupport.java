@@ -5,8 +5,8 @@ import java.util.List;
 
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin;
@@ -49,7 +49,7 @@ final class ExporterBoundaryTestSupport {
             rules.add(new RuntimeRule(new ExecutableRule(rule, new RuleCircuitBreaker(rule.name())), RuleOrigin.EXTERNAL_EXTENSION));
         }
         return ScrubbingRuntimeTestFixtures.create(
-                rules, 1L, "test", MaskedSecret.of(hmacKey), false);
+                rules, 1L, MaskedSecret.of(hmacKey), false);
     }
 
     static TestSpanData.Builder baseSpan(String name) {

@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.scrubbing;
+package space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

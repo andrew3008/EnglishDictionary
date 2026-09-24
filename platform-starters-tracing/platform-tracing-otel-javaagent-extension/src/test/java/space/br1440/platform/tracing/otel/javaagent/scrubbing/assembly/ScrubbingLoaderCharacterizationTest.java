@@ -1,9 +1,11 @@
-package space.br1440.platform.tracing.otel.javaagent.scrubbing;
+package space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.test.assertions.ScrubbingAssertions;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
@@ -45,7 +47,6 @@ class ScrubbingLoaderCharacterizationTest {
         // then
         assertThat(runtime.enabled()).isTrue();
         assertThat(runtime.policyVersion()).isEqualTo(1L);
-        assertThat(runtime.policySource()).isEqualTo("startup");
 
         // when
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {

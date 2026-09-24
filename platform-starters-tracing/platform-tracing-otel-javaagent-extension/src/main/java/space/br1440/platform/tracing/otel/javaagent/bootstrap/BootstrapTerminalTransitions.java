@@ -38,14 +38,16 @@ final class BootstrapTerminalTransitions {
                                                     ExtensionRuntimeEvidence evidence) {
         Throwable cleanupFailure = BootstrapCleanupFailures.rollback(resources, cause);
         boolean rollbackIncomplete = cleanupFailure != null
-                || FAILED_ROLLBACK_INCOMPLETE.equals(activeSession.readiness().failureCode());
+                || FAILED_ROLLBACK_INCOMPLETE.equals(
+                        activeSession.readiness().snapshot().failureCode()
+                );
         String effectiveFailureCode = rollbackIncomplete ? FAILED_ROLLBACK_INCOMPLETE : failureCode;
         BootstrapException classified = lifecycle.fail(effectiveFailureCode, "activate", cause);
         if (rollbackIncomplete) {
-            activeSession.readiness().failTerminalCleanup(FAILED_ROLLBACK_INCOMPLETE, cause);
+            activeSession.readiness().recordTerminalCleanupFailure(FAILED_ROLLBACK_INCOMPLETE);
         }
 
-        journal.publishFailed(activeSession, effectiveFailureCode, cause, batchId, evidence);
+        journal.publishFailed(activeSession, effectiveFailureCode, batchId, evidence);
         PlatformThrowables.propagateIfFatal(cause);
         PlatformThrowables.propagateIfFatal(cleanupFailure);
         return classified;
@@ -64,7 +66,7 @@ final class BootstrapTerminalTransitions {
             }
 
             lifecycle.markFailed(TRANSPORT_STALE, "shutdown", cause);
-            journal.publishFailed(activeSession, TRANSPORT_STALE, cause, batchId, evidence);
+            journal.publishFailed(activeSession, TRANSPORT_STALE, batchId, evidence);
         }
     }
 
@@ -118,9 +120,9 @@ final class BootstrapTerminalTransitions {
         }
     }
 
-    void publishSessionFailure(AutoconfigureSession failedSession, String failureCode, Throwable cause) {
+    void publishSessionFailure(AutoconfigureSession failedSession, String failureCode) {
         if (failedSession != null) {
-            journal.publishFailed(failedSession, failureCode, cause);
+            journal.publishFailed(failedSession, failureCode);
         }
     }
 
@@ -130,7 +132,7 @@ final class BootstrapTerminalTransitions {
                                            String batchId,
                                            ExtensionRuntimeEvidence evidence) {
         lifecycle.markFailed(FAILED_ROLLBACK_INCOMPLETE, phase, cause);
-        activeSession.readiness().failTerminalCleanup(FAILED_ROLLBACK_INCOMPLETE, cause);
-        journal.publishFailed(activeSession, FAILED_ROLLBACK_INCOMPLETE, cause, batchId, evidence);
+        activeSession.readiness().recordTerminalCleanupFailure(FAILED_ROLLBACK_INCOMPLETE);
+        journal.publishFailed(activeSession, FAILED_ROLLBACK_INCOMPLETE, batchId, evidence);
     }
 }

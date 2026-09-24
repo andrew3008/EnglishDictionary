@@ -12,8 +12,8 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
 class ScrubbingObservationSourceTest {

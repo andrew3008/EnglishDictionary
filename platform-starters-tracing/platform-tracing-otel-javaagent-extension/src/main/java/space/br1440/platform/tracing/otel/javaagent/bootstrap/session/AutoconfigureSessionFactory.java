@@ -9,8 +9,8 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPrope
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxMutationRegistrationAssessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;

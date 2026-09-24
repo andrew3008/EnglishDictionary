@@ -20,9 +20,10 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadinessSnapshot;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -59,7 +60,8 @@ class PlatformExportProcessorFactoryBoundaryTest {
 
         // then
         assertThat(result).isSameAs(stock);
-        assertThat(registrar.extensionReadiness().has(PlatformExtensionCapability.EXPORT_PATH_PROTECTED)).isTrue();
+        assertThat(registrar.extensionReadiness().snapshot().has(
+                PlatformExtensionCapability.EXPORT_PATH_PROTECTED)).isTrue();
 
         // when
         wrapped.export(List.of(spanWithPasswordEvent()));
@@ -97,8 +99,9 @@ class PlatformExportProcessorFactoryBoundaryTest {
                 stringConfig("DROP_OLDEST"));
 
         // then
-        assertThat(registrar.extensionReadiness().has(PlatformExtensionCapability.EXPORT_PATH_PROTECTED)
-                || registrar.extensionReadiness().has(PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED))
+        PlatformExtensionReadinessSnapshot readiness = registrar.extensionReadiness().snapshot();
+        assertThat(readiness.has(PlatformExtensionCapability.EXPORT_PATH_PROTECTED)
+                || readiness.has(PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED))
                 .isTrue();
     }
 

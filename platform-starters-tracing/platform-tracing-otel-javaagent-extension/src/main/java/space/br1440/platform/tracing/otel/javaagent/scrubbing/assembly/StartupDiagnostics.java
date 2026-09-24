@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.scrubbing.diagnostics;
+package space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly;
 
 import java.util.List;
 
@@ -10,7 +10,7 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.loader.ExtensionRu
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
-public final class StartupDiagnostics {
+final class StartupDiagnostics {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(StartupDiagnostics.class);
 

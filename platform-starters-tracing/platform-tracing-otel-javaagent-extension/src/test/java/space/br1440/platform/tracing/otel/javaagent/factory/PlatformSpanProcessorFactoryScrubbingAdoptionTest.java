@@ -24,10 +24,11 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.ScrubberFactoryTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.loader.ExtensionRuleLoader;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
@@ -176,7 +177,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         void empty_effective_rule_set_fails_secure_profile() {
             // given
             ExtensionConfig extensionConfig = scrubbingEnabledWithoutBuiltInsExtConfig();
-            PlatformScrubberFactory factory = ScrubbingRuntimeTestFixtures.factory(List::of);
+            PlatformScrubberFactory factory = ScrubberFactoryTestFixtures.factory(List::of);
 
             // when/then
             assertThatThrownBy(() -> factory.buildRuntime(extensionConfig, otelOnlyConfig()))
@@ -199,7 +200,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
                     return ScrubbingDecision.keep();
                 }
             };
-            PlatformScrubberFactory factory = ScrubbingRuntimeTestFixtures.factory(
+            PlatformScrubberFactory factory = ScrubberFactoryTestFixtures.factory(
                     () -> List.of(unsafeRule));
             ExtensionConfig extensionConfig = scrubbingEnabledDefaultsExtConfig();
 

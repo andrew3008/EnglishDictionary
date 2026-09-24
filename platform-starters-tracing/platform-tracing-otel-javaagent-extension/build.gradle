@@ -22,12 +22,31 @@ def generatedJmxContractSources = files(generatedJmxContractRoot.map { it.dir('j
 def generatedJmxContractResources = files(generatedJmxContractRoot.map { it.dir('resources') })
         .builtBy(generateJmxWireContract)
 
+def extensionArtifactTitle = 'platform-tracing-otel-javaagent-extension'
+def extensionArtifactMetadataOutputDir = layout.buildDirectory.dir('generated/extension-artifact-metadata')
+def extensionArtifactMetadataPath = 'space/br1440/platform/tracing/otel/javaagent/readiness/platform-extension-build.properties'
+def extensionVersionProvider = project.provider { project.version.toString() }
+
+def writeExtensionArtifactMetadata = tasks.register('writeExtensionArtifactMetadata', WriteProperties) {
+    group = 'build'
+    description = 'Writes classloader-local identity and version metadata for the javaagent extension'
+
+    destinationFile = extensionArtifactMetadataOutputDir.map { it.file(extensionArtifactMetadataPath) }
+    property('format.version', '1')
+    property('artifact', extensionArtifactTitle)
+    property('version', extensionVersionProvider)
+}
+
+def generatedExtensionArtifactMetadata = files(extensionArtifactMetadataOutputDir)
+        .builtBy(writeExtensionArtifactMetadata)
+
 sourceSets.named('main') {
     java.srcDir(generatedJmxContractSources)
 }
 
 tasks.named('processResources', ProcessResources) {
     from(generatedJmxContractResources)
+    from(generatedExtensionArtifactMetadata)
 }
 
 abstract class JavaAgentArgumentProvider implements CommandLineArgumentProvider {
@@ -92,9 +111,13 @@ dependencies {
 }
 
 tasks.named('test', Test) {
+    def expectedExtensionVersion = extensionVersionProvider.get()
     def mockitoAgentArguments = objects.newInstance(JavaAgentArgumentProvider)
     mockitoAgentArguments.agentClasspath.from(mockitoAgentConfiguration)
     jvmArgumentProviders.add(mockitoAgentArguments)
+
+    inputs.property('expectedExtensionVersion', expectedExtensionVersion)
+    systemProperty('platformTracing.expectedExtensionVersion', expectedExtensionVersion)
 }
 
 ['testCompileClasspath', 'testRuntimeClasspath'].each { classpathName ->

@@ -128,6 +128,26 @@ class ControlledAgentVerifierTest {
     }
 
     @Test
+    void extensionVersionMustMatchTheAttestedDistributionVersion() throws IOException {
+        // given
+        Path agent = controlledAgent(
+                "extension".getBytes(StandardCharsets.UTF_8),
+                UpstreamCustomizerProviderAllowlist.load().otelJavaAgentSha256(),
+                "9.9.9"
+        );
+        ControlledAgentVerifier attestor = new ControlledAgentVerifier(environment(
+                sha256(agent), agent, isolatedLoader(), isolatedLoader()));
+
+        // when
+        VerificationException failure = attestFailure(attestor, VERSION);
+
+        // then
+        assertThat(failure.code()).isEqualTo(VerificationFailureCode.DISTRIBUTION_MISMATCH);
+        assertThat(failure).hasMessage(
+                "Extension build version does not match the controlled agent distribution");
+    }
+
+    @Test
     void missingExpectedDigestFailsClosed() throws IOException {
         // given
         Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8));
@@ -139,6 +159,29 @@ class ControlledAgentVerifierTest {
 
         // then
         assertThat(failure.code()).isEqualTo(VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING);
+    }
+
+    @Test
+    void missingOrBlankDistributionVersionFailsClosed() throws IOException {
+        for (String distributionVersion : new String[]{null, " "}) {
+            // given
+            Path agent = controlledAgent(
+                    "extension".getBytes(StandardCharsets.UTF_8),
+                    UpstreamCustomizerProviderAllowlist.load().otelJavaAgentSha256(),
+                    distributionVersion
+            );
+            ControlledAgentVerifier attestor = new ControlledAgentVerifier(environment(
+                    sha256(agent), agent, isolatedLoader(), isolatedLoader()));
+
+            // when
+            VerificationException failure = attestFailure(attestor, VERSION);
+
+            // then
+            assertThat(failure.code()).isEqualTo(
+                    VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING);
+            assertThat(failure).hasMessage(
+                    "Controlled agent identity has no distribution.version");
+        }
     }
 
     @Test
@@ -219,11 +262,21 @@ class ControlledAgentVerifierTest {
     }
 
     private Path controlledAgent(byte[] extension, String upstreamSha256) throws IOException {
+        return controlledAgent(extension, upstreamSha256, VERSION);
+    }
+
+    private Path controlledAgent(
+            byte[] extension,
+            String upstreamSha256,
+            String distributionVersion
+    ) throws IOException {
         Properties identity = new Properties();
         identity.setProperty("format.version", "1");
         identity.setProperty("distribution.group", "space.br1440.platform.starters.tracing");
         identity.setProperty("distribution.artifact", "platform-tracing-javaagent");
-        identity.setProperty("distribution.version", VERSION);
+        if (distributionVersion != null) {
+            identity.setProperty("distribution.version", distributionVersion);
+        }
         identity.setProperty(
                 "upstream.coordinate",
                 "io.opentelemetry.javaagent:opentelemetry-javaagent:2.30.0"

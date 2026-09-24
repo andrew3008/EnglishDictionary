@@ -10,8 +10,8 @@ import java.util.Set;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingKeyNormalizer;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ScrubbingKeyNormalizer;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.IpPrefixTruncator;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
@@ -249,13 +249,11 @@ final class AttributesScrubber {
     private static void putTyped(AttributesBuilder builder, AttributeKey<?> key, Object value) {
         switch (key.getType()) {
             case STRING -> builder.put((AttributeKey<String>) key, (String) value);
-            case STRING_ARRAY -> builder.put((AttributeKey<List<String>>) key, (List<String>) value);
+            case STRING_ARRAY, LONG_ARRAY, DOUBLE_ARRAY, BOOLEAN_ARRAY ->
+                    builder.put((AttributeKey<List<String>>) key, (List<String>) value);
             case LONG -> builder.put((AttributeKey<Long>) key, (Long) value);
             case DOUBLE -> builder.put((AttributeKey<Double>) key, (Double) value);
             case BOOLEAN -> builder.put((AttributeKey<Boolean>) key, (Boolean) value);
-            case LONG_ARRAY -> builder.put((AttributeKey<List<Long>>) key, (List<Long>) value);
-            case DOUBLE_ARRAY -> builder.put((AttributeKey<List<Double>>) key, (List<Double>) value);
-            case BOOLEAN_ARRAY -> builder.put((AttributeKey<List<Boolean>>) key, (List<Boolean>) value);
             case VALUE -> builder.put((AttributeKey<Value<?>>) key, (Value<?>) value);
             default -> {
             }

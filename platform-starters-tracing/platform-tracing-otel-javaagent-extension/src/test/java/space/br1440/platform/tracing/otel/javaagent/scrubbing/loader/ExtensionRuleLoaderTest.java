@@ -3,7 +3,6 @@ package space.br1440.platform.tracing.otel.javaagent.scrubbing.loader;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.diagnostics.FailedProviderReason;
 
 import java.io.IOException;
 import java.io.OutputStream;

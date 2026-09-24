@@ -14,7 +14,7 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationS
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerCapture;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 public final class ScrubbingObservationSource {
 

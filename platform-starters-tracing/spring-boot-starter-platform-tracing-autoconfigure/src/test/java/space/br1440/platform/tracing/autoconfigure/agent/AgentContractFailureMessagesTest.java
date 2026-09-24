@@ -9,7 +9,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
-import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
+import space.br1440.platform.tracing.otel.javaagent.artifact.PlatformExtensionArtifact;
 
 class AgentContractFailureMessagesTest {
 
@@ -17,7 +17,7 @@ class AgentContractFailureMessagesTest {
     void expectedExtensionImplementationTitleMatchesTheExtensionRuntimeConstant() {
         // then
         assertThat(AgentContractFailureMessages.EXPECTED_EXTENSION_IMPLEMENTATION_TITLE)
-                .isEqualTo(PlatformExtensionReadiness.IMPLEMENTATION_TITLE);
+                .isEqualTo(PlatformExtensionArtifact.IMPLEMENTATION_TITLE);
     }
 
     @ParameterizedTest

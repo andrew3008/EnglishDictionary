@@ -17,8 +17,8 @@ import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.Configurat
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxMutationRegistrationAssessor;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
@@ -133,7 +133,7 @@ final class BootstrapCoordinator implements AutoCloseable {
 
     private BootstrapException failCustomization(String code, String phase, Throwable cause) {
         BootstrapException classified = lifecycle.fail(code, phase, cause);
-        terminalTransitions.publishSessionFailure(lifecycle.currentSession(), code, cause);
+        terminalTransitions.publishSessionFailure(lifecycle.currentSession(), code);
         return classified;
     }
 

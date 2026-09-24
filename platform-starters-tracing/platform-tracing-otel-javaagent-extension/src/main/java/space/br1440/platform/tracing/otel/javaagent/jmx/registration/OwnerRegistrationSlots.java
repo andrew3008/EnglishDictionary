@@ -8,7 +8,7 @@ import space.br1440.platform.tracing.otel.javaagent.processor.composite.Platform
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.SpanTimeoutProcessor;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 final class OwnerRegistrationSlots {
 

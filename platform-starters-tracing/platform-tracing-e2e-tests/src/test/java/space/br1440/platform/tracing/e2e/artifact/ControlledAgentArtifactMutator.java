@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.e2e.artifact;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,9 +14,10 @@ public final class ControlledAgentArtifactMutator {
 
     private static final String EXTENSION_ENTRY = "extensions/platform-tracing-otel-javaagent-extension.jar";
     private static final String IDENTITY_ENTRY = "META-INF/platform-tracing/javaagent-distribution.properties";
+    public static final String EXTENSION_BUILD_METADATA_ENTRY =
+            "space/br1440/platform/tracing/otel/javaagent/readiness/platform-extension-build.properties";
     private static final String RUNTIME_ENVIRONMENT_ENTRY =
-            "space/br1440/platform/tracing/otel/javaagent/bootstrap/verification/"
-                    + "ControlledAgentVerifier$CurrentJvm.class";
+            "space/br1440/platform/tracing/otel/javaagent/bootstrap/verification/ControlledAgentVerifier$CurrentJvm.class";
 
     private static final String STALE_TOPOLOGY_METHOD = "sdkDefiningLoader";
     private static final String STALE_TOPOLOGY_METHOD_DESCRIPTOR = "()Ljava/lang/ClassLoader;";
@@ -71,11 +74,34 @@ public final class ControlledAgentArtifactMutator {
         );
 
         nested.manifest().getMainAttributes().putValue("Implementation-Version", staleVersion);
+        setExtensionBuildVersion(nested, staleVersion);
         byte[] mutatedExtension = JarArchive.write(nested);
         outer.entries().put(EXTENSION_ENTRY, mutatedExtension);
 
         Properties identity = loadIdentity(outer);
         identity.setProperty("distribution.version", staleVersion);
+        identity.setProperty("extension.sha256", sha256(mutatedExtension));
+        outer.entries().put(IDENTITY_ENTRY, ControlledAgentIdentityCodec.canonicalize(identity));
+        JarArchive.write(target, outer);
+        return target;
+    }
+
+    public static Path withMismatchedExtensionBuildVersion(Path source,
+                                                           Path target,
+                                                           String mismatchedVersion) throws IOException {
+        if (mismatchedVersion == null || mismatchedVersion.isBlank()) {
+            throw new IllegalArgumentException("Mismatched extension version must not be blank");
+        }
+
+        JarArchive.Content outer = JarArchive.read(Files.readAllBytes(source));
+        JarArchive.Content nested = JarArchive.read(
+                JarArchive.requiredEntry(outer.entries(), EXTENSION_ENTRY)
+        );
+        setExtensionBuildVersion(nested, mismatchedVersion);
+        byte[] mutatedExtension = JarArchive.write(nested);
+        outer.entries().put(EXTENSION_ENTRY, mutatedExtension);
+
+        Properties identity = loadIdentity(outer);
         identity.setProperty("extension.sha256", sha256(mutatedExtension));
         outer.entries().put(IDENTITY_ENTRY, ControlledAgentIdentityCodec.canonicalize(identity));
         JarArchive.write(target, outer);
@@ -106,5 +132,27 @@ public final class ControlledAgentArtifactMutator {
     private static Properties loadIdentity(JarArchive.Content outer) throws IOException {
         byte[] entry = JarArchive.requiredEntry(outer.entries(), IDENTITY_ENTRY);
         return ControlledAgentIdentityCodec.load(entry);
+    }
+
+    private static Properties loadProperties(byte[] bytes) throws IOException {
+        Properties properties = new Properties();
+        properties.load(new ByteArrayInputStream(bytes));
+        return properties;
+    }
+
+    private static byte[] storeProperties(Properties properties) throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        properties.store(output, null);
+        return output.toByteArray();
+    }
+
+    private static void setExtensionBuildVersion(JarArchive.Content nested,
+                                                 String version) throws IOException {
+        Properties extensionMetadata = loadProperties(
+                JarArchive.requiredEntry(nested.entries(), EXTENSION_BUILD_METADATA_ENTRY)
+        );
+
+        extensionMetadata.setProperty("version", version);
+        nested.entries().put(EXTENSION_BUILD_METADATA_ENTRY, storeProperties(extensionMetadata));
     }
 }

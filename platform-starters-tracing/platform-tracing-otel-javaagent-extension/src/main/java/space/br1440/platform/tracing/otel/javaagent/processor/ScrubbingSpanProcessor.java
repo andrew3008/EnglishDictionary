@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.processor;
 import java.util.Objects;
 import jakarta.annotation.Nonnull;
 
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;

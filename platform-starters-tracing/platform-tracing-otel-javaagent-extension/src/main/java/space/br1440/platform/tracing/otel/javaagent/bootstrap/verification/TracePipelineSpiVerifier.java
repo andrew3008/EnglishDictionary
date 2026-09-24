@@ -17,7 +17,7 @@ import java.util.TreeSet;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
 
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
 import lombok.experimental.UtilityClass;

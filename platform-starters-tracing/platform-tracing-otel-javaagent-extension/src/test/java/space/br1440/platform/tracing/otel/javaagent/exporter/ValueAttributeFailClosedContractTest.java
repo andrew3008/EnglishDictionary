@@ -18,7 +18,7 @@ import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.KeyValue;
@@ -64,7 +64,7 @@ class ValueAttributeFailClosedContractTest {
 
     @ParameterizedTest(name = "VALUE не переживает exporter boundary: {0}")
     @MethodSource("shapesAndActions")
-    void valueNeverSurvivesTheExportBoundary(String label, Value<?> payload, ScrubbingAction action) {
+    void valueNeverSurvivesTheExportBoundary(Value<?> payload, ScrubbingAction action) {
         // given
         InMemorySpanExporter delegate = InMemorySpanExporter.create();
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(ruleReturning(action)));
@@ -87,7 +87,7 @@ class ValueAttributeFailClosedContractTest {
 
         // then
         assertThat(finished).hasSize(1);
-        SpanData exported = finished.get(0);
+        SpanData exported = finished.getFirst();
 
         assertThat(exported.getAttributes().asMap().keySet())
                 .as("контракт VALUE_* — отсутствие semantic key целиком, включая alias от процессора")

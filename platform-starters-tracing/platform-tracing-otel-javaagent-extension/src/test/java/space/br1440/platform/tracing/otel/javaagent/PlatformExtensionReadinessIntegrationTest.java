@@ -24,7 +24,7 @@ import space.br1440.platform.tracing.otel.javaagent.testsupport.BootstrapIsolate
 class PlatformExtensionReadinessIntegrationTest {
 
     @Test
-    void completeUnpackagedPipelineFailsAttestationBeforePublishingReady() {
+    void completePipelineWithoutControlledAgentDigestFailsBeforePublishingReady() {
         // given
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         ClassLoader isolatedLoader = BootstrapIsolatedClassLoader.freshBootstrapClassLoader();
@@ -50,14 +50,14 @@ class PlatformExtensionReadinessIntegrationTest {
                         .invoke(listener, sdk))
                         .isInstanceOf(InvocationTargetException.class)
                         .cause()
-                        .hasMessageContaining("DEVELOPMENT_VERSION_FORBIDDEN");
+                        .hasMessageContaining("DISTRIBUTION_EVIDENCE_MISSING");
 
                 // then
                 CompositeData readiness = readinessSnapshot(server);
                 assertThat(readiness.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE))
                         .isEqualTo("FAILED");
                 assertThat(readiness.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE))
-                        .isEqualTo("DEVELOPMENT_VERSION_FORBIDDEN");
+                        .isEqualTo("DISTRIBUTION_EVIDENCE_MISSING");
                 assertThat((String[]) readiness.get(
                         JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES))
                         .containsExactlyInAnyOrder(
@@ -101,14 +101,14 @@ class PlatformExtensionReadinessIntegrationTest {
                         .invoke(listener, sdk))
                         .isInstanceOf(InvocationTargetException.class)
                         .cause()
-                        .hasMessageContaining("DEVELOPMENT_VERSION_FORBIDDEN");
+                        .hasMessageContaining("DISTRIBUTION_EVIDENCE_MISSING");
 
                 // then
                 CompositeData readiness = readinessSnapshot(server);
                 assertThat(readiness.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE))
                         .isEqualTo("FAILED");
                 assertThat(readiness.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE))
-                        .isEqualTo("DEVELOPMENT_VERSION_FORBIDDEN");
+                        .isEqualTo("DISTRIBUTION_EVIDENCE_MISSING");
                 assertThat((String[]) readiness.get(
                         JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES))
                         .doesNotContain("SANITIZER_INSTALLED");

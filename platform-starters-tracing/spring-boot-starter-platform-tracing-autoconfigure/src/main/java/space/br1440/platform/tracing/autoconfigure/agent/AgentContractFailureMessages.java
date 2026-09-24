@@ -108,8 +108,9 @@ final class AgentContractFailureMessages {
             "Use the tracing starter and controlled Java agent distribution from the same platform release.";
 
     static final String VERSION_MISMATCH_DEVELOPMENT_DETAIL_TEMPLATE = """
-            extensionVersion=development means the extension classloader did not find MANIFEST.MF \
-            Implementation-Title=%s; the packaged extension JAR must use that exact title.""";
+        extensionVersion=development means the extension classloader could not read valid \
+        class-local build metadata for artifact=%s; rebuild and deploy the controlled \
+        Java agent distribution from one platform release.""";
 
     static String reject(boolean tracingEnabled,
                          TracingDeploymentDiagnostics diagnostics,

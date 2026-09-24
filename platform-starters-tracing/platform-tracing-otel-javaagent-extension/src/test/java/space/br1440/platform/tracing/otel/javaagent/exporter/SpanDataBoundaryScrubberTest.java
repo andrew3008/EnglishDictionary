@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -31,8 +31,8 @@ import io.opentelemetry.sdk.trace.data.StatusData;
 
 class SpanDataBoundaryScrubberTest {
 
-    private static final SpanAttributeScrubbingRule EMAIL = BuiltInSpanAttributeScrubbingRules.resolve("email");
-    private static final SpanAttributeScrubbingRule PASSWORD = BuiltInSpanAttributeScrubbingRules.resolve("password");
+    private static final SpanAttributeScrubbingRule EMAIL = BuiltInSpanAttributeScrubbingRules.EMAIL.create();
+    private static final SpanAttributeScrubbingRule PASSWORD = BuiltInSpanAttributeScrubbingRules.PASSWORD_KEY.create();
 
     @Test
     @DisplayName("Verified span attributes only remove unsupported VALUE trees at the export boundary")
@@ -199,7 +199,9 @@ class SpanDataBoundaryScrubberTest {
     void dropOnStatusDescriptionBecomesEmptyString() {
         // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(
-                List.of(BuiltInSpanAttributeScrubbingRules.resolve("jwt")));
+                List.of(BuiltInSpanAttributeScrubbingRules.JWT.create())
+        );
+
         SpanData input = ExporterBoundaryTestSupport.baseSpan("op")
                 .setStatus(StatusData.create(io.opentelemetry.api.trace.StatusCode.ERROR,
                         "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.signature"))

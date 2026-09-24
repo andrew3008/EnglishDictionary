@@ -4,7 +4,7 @@ import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.Exten
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.JvmShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxAssessorTestFixtures;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
 
 final class RuntimeEvidenceTestFixtures {
 

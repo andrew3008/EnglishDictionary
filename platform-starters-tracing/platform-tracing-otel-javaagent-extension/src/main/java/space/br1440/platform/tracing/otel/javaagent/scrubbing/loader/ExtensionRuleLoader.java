@@ -21,8 +21,7 @@ import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.StableScrubbingRule;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.diagnostics.FailedProviderReason;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.StableScrubbingRule;
 import space.br1440.platform.common.util.ArrayUtils;
 import space.br1440.platform.common.util.StringUtils;
 

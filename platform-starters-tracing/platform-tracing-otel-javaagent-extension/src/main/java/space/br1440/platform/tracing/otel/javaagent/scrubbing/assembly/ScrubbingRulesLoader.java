@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.scrubbing;
+package space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;

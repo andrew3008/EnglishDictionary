@@ -17,8 +17,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -30,8 +30,8 @@ class AttributeValueFailClosedTest {
     private static final AttributeKey<Value<?>> SENSITIVE = AttributeKey.valueKey("db.password");
     private static final AttributeKey<Value<?>> NEUTRAL = AttributeKey.valueKey("http.route.detail");
 
-    private static final SpanAttributeScrubbingRule PASSWORD = BuiltInSpanAttributeScrubbingRules.resolve("password");
-    private static final SpanAttributeScrubbingRule IP = BuiltInSpanAttributeScrubbingRules.resolve("ip-address");
+    private static final SpanAttributeScrubbingRule PASSWORD = BuiltInSpanAttributeScrubbingRules.PASSWORD_KEY.create();
+    private static final SpanAttributeScrubbingRule IP = BuiltInSpanAttributeScrubbingRules.IP_ADDRESS.create();
 
     private static SpanAttributeScrubbingRule alwaysMask() {
         return rule("test-always-mask", ScrubbingDecision.mask("test-always-mask"));
@@ -73,7 +73,8 @@ class AttributeValueFailClosedTest {
                 Arguments.of("kv-list", Value.of(Map.of("password", Value.of("supersecret")))),
                 Arguments.of("nested-array", Value.of(
                         Value.of(Value.of("supersecret"), Value.of(7L)),
-                        Value.of(Value.of(false), Value.empty()))),
+                        Value.of(Value.of(false), Value.empty()))
+                ),
                 Arguments.of("nested", Value.of(
                         KeyValue.of("outer", Value.of(
                                 Value.of(Map.of("inner-password", Value.of("supersecret"))),

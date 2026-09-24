@@ -29,8 +29,8 @@ import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 
 /**
  * Регрессионные тесты замены стандартного {@code BatchSpanProcessor} платформенным
@@ -312,10 +312,10 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
                 bootstrapFailure -> assertThat(bootstrapFailure.failure().code())
                         .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER));
         AutoconfigureSession session = bootstrap.session();
-        assertThat(session.readiness().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
-        assertThat(session.readiness().failureCode())
+        assertThat(session.readiness().snapshot().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
+        assertThat(session.readiness().snapshot().failureCode())
                 .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER);
-        assertThat(session.readiness().has(PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED)).isFalse();
+        assertThat(session.readiness().snapshot().has(PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED)).isFalse();
         assertThat(bootstrap.currentWire().lifecycle()).isEqualTo("FAILED");
     }
 
@@ -341,7 +341,7 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
 
         // then
         assertThat(failure).isInstanceOf(ConfigurationException.class);
-        assertThat(bootstrap.session().readiness().lifecycle())
+        assertThat(bootstrap.session().readiness().snapshot().lifecycle())
                 .isNotEqualTo(PlatformExtensionLifecycle.READY);
         assertThat(bootstrap.currentWire().lifecycle()).isNotEqualTo("READY");
     }

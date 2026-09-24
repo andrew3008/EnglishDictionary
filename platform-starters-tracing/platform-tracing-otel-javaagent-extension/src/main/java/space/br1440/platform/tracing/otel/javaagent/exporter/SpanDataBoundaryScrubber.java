@@ -7,8 +7,8 @@ import java.util.Objects;
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingFailureLog;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingFailureLog;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.sdk.trace.data.EventData;

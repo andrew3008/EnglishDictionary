@@ -97,6 +97,17 @@ class PackagedTracingCertificationTest {
                 evidenceDirectory.resolve("fixture-agent-spi-metadata-removed.jar"),
                 CUSTOMIZER_PROVIDER_SERVICE_ENTRY
         );
+        Path buildMetadataRemovedAgent = ControlledAgentArtifactMutator.withoutExtensionEntry(
+                controlledAgent,
+                evidenceDirectory.resolve("fixture-agent-build-metadata-removed.jar"),
+                ControlledAgentArtifactMutator.EXTENSION_BUILD_METADATA_ENTRY
+        );
+        Path mismatchedBuildVersionAgent =
+                ControlledAgentArtifactMutator.withMismatchedExtensionBuildVersion(
+                        controlledAgent,
+                        evidenceDirectory.resolve("fixture-agent-build-version-mismatch.jar"),
+                        STALE_EXTENSION_VERSION
+                );
         Path staleTopologyAgent =
                 ControlledAgentArtifactMutator.withSeparatelyVersionedStaleTopologyApi(
                         controlledAgent,
@@ -142,6 +153,20 @@ class PackagedTracingCertificationTest {
                 ControlledAgentArtifactMutator.sha256(spiMetadataRemovedAgent),
                 Map.of()
         ));
+        PackagedProcessLauncher.ProcessResult buildMetadataRemoved = launcher.launch(controlledRequest(
+                "build-metadata-removed",
+                applicationBootJar,
+                buildMetadataRemovedAgent,
+                ControlledAgentArtifactMutator.sha256(buildMetadataRemovedAgent),
+                Map.of()
+        ));
+        PackagedProcessLauncher.ProcessResult mismatchedBuildVersion = launcher.launch(controlledRequest(
+                "build-version-mismatch",
+                applicationBootJar,
+                mismatchedBuildVersionAgent,
+                ControlledAgentArtifactMutator.sha256(mismatchedBuildVersionAgent),
+                Map.of()
+        ));
         PackagedProcessLauncher.ProcessResult staleTopologyApi = launcher.launch(controlledRequest(
                 "stale-topology-api",
                 applicationBootJar,
@@ -177,6 +202,12 @@ class PackagedTracingCertificationTest {
 
         assertFailure("spi-metadata-removed", spiMetadataRemoved,
                 "EXTENSION_MISSING", "PLATFORM_EXTENSION_MISSING", null);
+
+        assertFailure("build-metadata-removed", buildMetadataRemoved,
+                "EXTENSION_INCOMPATIBLE", "DEVELOPMENT_VERSION_FORBIDDEN", null);
+
+        assertFailure("build-version-mismatch", mismatchedBuildVersion,
+                "EXTENSION_INCOMPATIBLE", "DISTRIBUTION_MISMATCH", "FAILED");
 
         assertFailure("stale-topology-api", staleTopologyApi,
                 "EXTENSION_INCOMPATIBLE", "EXTENSION_LINKAGE_ERROR", "FAILED");

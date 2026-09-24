@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.scrubbing;
+package space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,8 +21,10 @@ import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.diagnostics.StartupDiagnostics;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.StableScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.PriorityHardening;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuntimeRule;
@@ -65,7 +67,7 @@ public final class PlatformScrubberFactory {
         boolean failFast = ScrubbingMissingKeyPolicy.FAIL_FAST.value()
                 .equalsIgnoreCase(extConfig.scrubbing().missingKeyPolicy());
 
-        return ScrubbingRuntime.create(rules, 1L, "startup", extConfig.scrubbing().hmacKey(), failFast);
+        return ScrubbingRuntime.create(rules, 1L, extConfig.scrubbing().hmacKey(), failFast);
     }
 
     private List<RuntimeRule> collectClassified(ScrubbingExtensionConfig scrubbing, ConfigProperties config) {

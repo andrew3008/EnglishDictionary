@@ -23,12 +23,14 @@ import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagationGate;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
-import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
+import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadinessSnapshot;
 
 final class BootstrapActivation {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(BootstrapActivation.class);
 
+    private static final String INSTALLATION_PROFILE = "platform-agent-secure-v1";
+    private static final int INSTALLATION_PROTOCOL_VERSION = 1;
     private static final String SHUTDOWN_HOOK_THREAD_NAME = "platform-tracing-bootstrap-shutdown";
     private static final long INITIAL_EVIDENCE_GENERATION = 1L;
 
@@ -107,7 +109,7 @@ final class BootstrapActivation {
     private void verifyRuntimeEvidence(ActivationAttempt attempt) {
         attempt.enter(ActivationPhase.RUNTIME_EVIDENCE_VERIFICATION);
 
-        String extensionVersion = attempt.session().readiness().extensionVersion();
+        String extensionVersion = attempt.session().readiness().snapshot().extensionVersion();
         ExtensionRuntimeEvidence evidence = runtimeVerifier.verify(extensionVersion);
         attempt.recordVerifiedEvidence(evidence);
     }
@@ -143,10 +145,10 @@ final class BootstrapActivation {
         AutoconfigureSession session = attempt.session();
         session.scrubbingRuntime().requireInstallationComplete();
         session.readiness().markInstalled(PlatformExtensionCapability.SANITIZER_INSTALLED);
-        session.readiness().requireReady();
+        PlatformExtensionReadinessSnapshot readiness = session.readiness().completeInitialization();
 
         ExtensionReadinessWireSnapshot ready = ExtensionReadinessWireSnapshot.ready(
-                session.readiness(),
+                readiness,
                 session.sessionId().toString(),
                 attempt.batchId(),
                 INITIAL_EVIDENCE_GENERATION,
@@ -182,8 +184,8 @@ final class BootstrapActivation {
                 AgentEventCode.BOOT_INSTALLED,
                 "Platform tracing extension installed",
                 "lifecycle", ready.lifecycle(),
-                "profile", PlatformExtensionReadiness.PROFILE,
-                "protocolVersion", PlatformExtensionReadiness.PROTOCOL_VERSION,
+                "profile", INSTALLATION_PROFILE,
+                "protocolVersion", INSTALLATION_PROTOCOL_VERSION,
                 "extensionVersion", ready.evidence().extensionVersion()
         );
     }
@@ -218,7 +220,9 @@ final class BootstrapActivation {
         ActivationAttempt(AutoconfigureSession session, BootstrapResources resources) {
             this.session = Objects.requireNonNull(session, "session");
             this.resources = Objects.requireNonNull(resources, "resources");
-            this.evidence = ExtensionRuntimeEvidence.unavailable(session.readiness().extensionVersion());
+            this.evidence = ExtensionRuntimeEvidence.unavailable(
+                    session.readiness().snapshot().extensionVersion()
+            );
         }
 
         void enter(ActivationPhase next) {

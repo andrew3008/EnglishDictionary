@@ -1,8 +1,7 @@
-package space.br1440.platform.tracing.otel.javaagent.scrubbing;
+package space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
@@ -33,22 +32,17 @@ public final class ScrubbingRuntimeTestFixtures {
         }
 
         List<RuntimeRule> sorted = PriorityHardening.sortAndClampRuntimeRules(tagged);
-        return ScrubbingRuntime.create(sorted, 1L, "startup", hmacKey, failFast);
+        return ScrubbingRuntime.create(sorted, 1L, hmacKey, failFast);
     }
 
     public static ScrubbingRuntime create(List<RuntimeRule> rules,
                                           long policyVersion,
-                                          String policySource,
                                           MaskedSecret hmacSecret,
                                           boolean failFast) {
-        return ScrubbingRuntime.create(rules, policyVersion, policySource, hmacSecret, failFast);
+        return ScrubbingRuntime.create(rules, policyVersion, hmacSecret, failFast);
     }
 
     public static ScrubbingRuntime disabled() {
         return ScrubbingRuntime.disabled();
-    }
-
-    public static PlatformScrubberFactory factory(Supplier<List<SpanAttributeScrubbingRule>> builtInRulesSupplier) {
-        return new PlatformScrubberFactory(builtInRulesSupplier);
     }
 }

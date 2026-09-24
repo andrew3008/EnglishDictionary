@@ -30,6 +30,7 @@ import io.opentelemetry.sdk.OpenTelemetrySdk;
 final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
 
     private static final String DEVELOPMENT_VERSION = "development";
+    private static final String DISTRIBUTION_VERSION_KEY = "distribution.version";
     private static final String UPSTREAM_SHA256_KEY = "upstream.sha256";
     private static final String UPSTREAM_COORDINATE_KEY = "upstream.coordinate";
     private static final String UPSTREAM_COORDINATE_PREFIX = "io.opentelemetry.javaagent:opentelemetry-javaagent:";
@@ -52,6 +53,7 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
 
         ControlledAgentArtifact artifact = ControlledAgentArtifactLocator.locate(environment.inputArguments());
         AgentDistributionDigest actualDigest = verifyDistributionDigest(artifact.path(), expectedDigest);
+        verifyExtensionMatchesDistribution(artifact.identity(), releaseVersion);
         verifyUpstreamMatchesProviderAllowlist(artifact.identity());
 
         return new ExtensionRuntimeEvidence(
@@ -144,6 +146,24 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
         }
     }
 
+    private static void verifyExtensionMatchesDistribution(Map<String, String> identity,
+                                                           String extensionVersion) {
+        String distributionVersion = identity.get(DISTRIBUTION_VERSION_KEY);
+        if (distributionVersion == null || distributionVersion.isBlank()) {
+            throw failure(
+                    VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
+                    "Controlled agent identity has no " + DISTRIBUTION_VERSION_KEY
+            );
+        }
+
+        if (!extensionVersion.equals(distributionVersion.trim())) {
+            throw failure(
+                    VerificationFailureCode.DISTRIBUTION_MISMATCH,
+                    "Extension build version does not match the controlled agent distribution"
+            );
+        }
+    }
+
     private static String readUpstreamVersion(Map<String, String> identity) {
         String coordinate = identity.get(UPSTREAM_COORDINATE_KEY);
         if (coordinate == null
@@ -157,7 +177,6 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
         return coordinate.substring(UPSTREAM_COORDINATE_PREFIX.length());
     }
 
-    /** Диагностическое описание загрузчика; уникально в пределах одного запуска JVM. */
     private static String describeLoader(ClassLoader loader) {
         if (loader == null) {
             return BOOTSTRAP_LOADER_LABEL;

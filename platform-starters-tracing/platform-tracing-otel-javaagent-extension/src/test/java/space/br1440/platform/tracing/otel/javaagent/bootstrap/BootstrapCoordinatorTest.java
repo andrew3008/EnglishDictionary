@@ -40,10 +40,10 @@ import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
-import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadinessSnapshot;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.ScrubberFactoryTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
@@ -132,8 +132,8 @@ class BootstrapCoordinatorTest {
             assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
             assertThat(coordinator.currentWire().failureCode())
                     .isEqualTo(VerificationFailureCode.EXTENSION_LINKAGE_ERROR.name());
-            assertThat(session.readiness().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
-            assertThat(session.readiness().failureCode())
+            assertThat(session.readiness().snapshot().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
+            assertThat(session.readiness().snapshot().failureCode())
                     .isEqualTo(VerificationFailureCode.EXTENSION_LINKAGE_ERROR.name());
         }
     }
@@ -172,7 +172,7 @@ class BootstrapCoordinatorTest {
             assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
             assertThat(coordinator.currentWire().failureCode())
                     .isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
-            assertThat(session.readiness().failureCode())
+            assertThat(session.readiness().snapshot().failureCode())
                     .isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
         }
     }
@@ -209,7 +209,7 @@ class BootstrapCoordinatorTest {
             assertThat(coordinator.currentWire().failureCode())
                     .isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
             assertThat(coordinator.currentWire().evidenceGeneration()).isEqualTo(3L);
-            assertThat(session.readiness().failureCode())
+            assertThat(session.readiness().snapshot().failureCode())
                     .isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
         }
     }
@@ -255,8 +255,8 @@ class BootstrapCoordinatorTest {
                     .isEqualTo("ACTIVATION_FAILED");
 
             // then
-            assertThat(session.readiness().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
-            assertThat(session.readiness().failureCode()).isEqualTo("ACTIVATION_FAILED");
+            assertThat(session.readiness().snapshot().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
+            assertThat(session.readiness().snapshot().failureCode()).isEqualTo("ACTIVATION_FAILED");
         }
     }
 
@@ -269,8 +269,8 @@ class BootstrapCoordinatorTest {
                 RemoteJmxDenialReason.REMOTE_JMX_MANAGEMENT_AGENT_CONFIGURED);
 
         // then
-        assertThat(outcome.readiness().failureMessage())
-                .contains(RemoteJmxAssessorTestFixtures.REMEDIATION_MANAGEMENT_AGENT);
+        assertThat(outcome.readiness().failureCode())
+                .isEqualTo(RemoteJmxDenialReason.REMOTE_JMX_MANAGEMENT_AGENT_CONFIGURED.name());
         assertThat(singleRemoteJmxDenialEvent(outcome).fields())
                 .containsEntry(
                         "failureCode",
@@ -288,8 +288,8 @@ class BootstrapCoordinatorTest {
                 RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN);
 
         // then
-        assertThat(outcome.readiness().failureMessage())
-                .contains(RemoteJmxAssessorTestFixtures.REMEDIATION_CAPTURE_UNAVAILABLE);
+        assertThat(outcome.readiness().failureCode())
+                .isEqualTo(RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name());
         assertThat(singleRemoteJmxDenialEvent(outcome).fields())
                 .containsEntry("failureCode", RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name())
                 .containsEntry("remediation", RemoteJmxAssessorTestFixtures.REMEDIATION_CAPTURE_UNAVAILABLE)
@@ -323,9 +323,8 @@ class BootstrapCoordinatorTest {
                 RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN);
 
         // then
-        assertThat(outcome.readiness().failureMessage())
-                .contains(RemoteJmxAssessorTestFixtures.EXPLODING_SUPPLIER_MESSAGE)
-                .doesNotContain(RemoteJmxAssessorTestFixtures.REMEDIATION_CAPTURE_UNAVAILABLE);
+        assertThat(outcome.readiness().failureCode())
+                .isEqualTo(RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name());
         assertThat(eventsWithCode(outcome, AgentEventCode.BOOT_REMOTE_JMX_DENIED))
                 .as("the exception path is not a classified assessment denial")
                 .isEmpty();
@@ -362,7 +361,7 @@ class BootstrapCoordinatorTest {
             assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
             assertThat(coordinator.currentWire().batchId()).isEmpty();
             assertThat(coordinator.currentWire().failureCode()).isEqualTo(expectedReason.name());
-            assertThat(session.readiness().failureCode()).isEqualTo(expectedReason.name());
+            assertThat(session.readiness().snapshot().failureCode()).isEqualTo(expectedReason.name());
             assertThat(ManagementFactory.getPlatformMBeanServer()
                     .isRegistered(DomainObjectNames.SETTINGS_MUTATION))
                     .as("mutation surface must stay unregistered after gate denial")
@@ -371,7 +370,7 @@ class BootstrapCoordinatorTest {
                     .isRegistered(DomainObjectNames.EXTENSION_READINESS))
                     .as("diagnostic readiness must remain available after gate denial")
                     .isTrue();
-            return new RemoteJmxDenialOutcome(session.readiness(), events);
+            return new RemoteJmxDenialOutcome(session.readiness().snapshot(), events);
         }
     }
 
@@ -494,9 +493,9 @@ class BootstrapCoordinatorTest {
             assertThat(installed).hasSize(1);
             assertThat(installed.getFirst().fields())
                     .containsEntry("lifecycle", "READY")
-                    .containsEntry("profile", PlatformExtensionReadiness.PROFILE)
+                    .containsEntry("profile", "platform-agent-secure-v1")
                     .containsEntry("protocolVersion", "1")
-                    .containsEntry("extensionVersion", session.readiness().extensionVersion());
+                    .containsEntry("extensionVersion", session.readiness().snapshot().extensionVersion());
         } finally {
             logs.restore();
         }
@@ -544,8 +543,8 @@ class BootstrapCoordinatorTest {
                 .extracting(failure -> ((BootstrapException) failure).failure().code())
                 .isEqualTo("ACTIVATION_FAILED");
 
-        assertThat(session.readiness().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
-        assertThat(session.readiness().has(PlatformExtensionCapability.SANITIZER_INSTALLED)).isFalse();
+        assertThat(session.readiness().snapshot().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
+        assertThat(session.readiness().snapshot().has(PlatformExtensionCapability.SANITIZER_INSTALLED)).isFalse();
         assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
         assertThat(coordinator.state()).isNotEqualTo(BootstrapState.ACTIVE);
     }
@@ -569,7 +568,7 @@ class BootstrapCoordinatorTest {
 
         // then
         assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
-        assertThat(session.readiness().has(PlatformExtensionCapability.SANITIZER_INSTALLED)).isFalse();
+        assertThat(session.readiness().snapshot().has(PlatformExtensionCapability.SANITIZER_INSTALLED)).isFalse();
     }
 
     @Test
@@ -618,8 +617,8 @@ class BootstrapCoordinatorTest {
 
         // then
         assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
-        assertThat(session.readiness().has(PlatformExtensionCapability.SANITIZER_INSTALLED)).isTrue();
-        assertThat(session.readiness().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
+        assertThat(session.readiness().snapshot().has(PlatformExtensionCapability.SANITIZER_INSTALLED)).isTrue();
+        assertThat(session.readiness().snapshot().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
     }
 
     @Test
@@ -642,7 +641,7 @@ class BootstrapCoordinatorTest {
     void empty_built_in_rule_set_preserves_SANITIZER_RULE_SET_EMPTY() {
         // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator(
-                ScrubbingRuntimeTestFixtures.factory(List::of)
+                ScrubberFactoryTestFixtures.factory(List::of)
         );
 
         // when/then
@@ -668,7 +667,7 @@ class BootstrapCoordinatorTest {
     @Test
     void rule_source_failure_preserves_SANITIZER_RULE_LOADING_FAILED() {
         // given
-        BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator(ScrubbingRuntimeTestFixtures.factory(() -> {
+        BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator(ScrubberFactoryTestFixtures.factory(() -> {
             throw new IllegalStateException("rule source unavailable");
         }));
 
@@ -696,7 +695,7 @@ class BootstrapCoordinatorTest {
             }
         };
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator(
-                ScrubbingRuntimeTestFixtures.factory(() -> List.of(brokenMetadata)));
+                ScrubberFactoryTestFixtures.factory(() -> List.of(brokenMetadata)));
 
         // when/then
         assertThatThrownBy(() -> coordinator.prepare(config(Map.of())))
@@ -708,7 +707,7 @@ class BootstrapCoordinatorTest {
     @Test
     void linkage_error_from_rule_source_is_not_classified_as_a_sanitizer_failure() {
         // given
-        BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator(ScrubbingRuntimeTestFixtures.factory(() -> {
+        BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator(ScrubberFactoryTestFixtures.factory(() -> {
             throw new NoClassDefFoundError("simulated missing SPI class");
         }));
 
@@ -736,10 +735,10 @@ class BootstrapCoordinatorTest {
                 .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER);
 
         // then
-        assertThat(session.readiness().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
-        assertThat(session.readiness().failureCode())
+        assertThat(session.readiness().snapshot().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
+        assertThat(session.readiness().snapshot().failureCode())
                 .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER);
-        assertThat(session.readiness().has(PlatformExtensionCapability.SANITIZER_INSTALLED)).isFalse();
+        assertThat(session.readiness().snapshot().has(PlatformExtensionCapability.SANITIZER_INSTALLED)).isFalse();
         assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
     }
 
@@ -843,7 +842,8 @@ class BootstrapCoordinatorTest {
         }
     }
 
-    private record RemoteJmxDenialOutcome(PlatformExtensionReadiness readiness, List<CapturedLogEvent> events) {
+    private record RemoteJmxDenialOutcome(PlatformExtensionReadinessSnapshot readiness,
+                                          List<CapturedLogEvent> events) {
     }
 
     private static final class CapturingShutdownHookRegistry implements ShutdownHookRegistry {

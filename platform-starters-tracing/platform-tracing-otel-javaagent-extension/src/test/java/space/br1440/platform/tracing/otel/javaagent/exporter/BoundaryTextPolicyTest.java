@@ -11,13 +11,13 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
 class BoundaryTextPolicyTest {
 
-    private static final SpanAttributeScrubbingRule EMAIL = BuiltInSpanAttributeScrubbingRules.resolve("email");
-    private static final SpanAttributeScrubbingRule JWT = BuiltInSpanAttributeScrubbingRules.resolve("jwt");
+    private static final SpanAttributeScrubbingRule EMAIL = BuiltInSpanAttributeScrubbingRules.EMAIL.create();
+    private static final SpanAttributeScrubbingRule JWT = BuiltInSpanAttributeScrubbingRules.JWT.create();
     private static final SpanAttributeScrubbingRule UNBOUNDED_TRUNCATE = new SpanAttributeScrubbingRule() {
         @Nonnull
         @Override

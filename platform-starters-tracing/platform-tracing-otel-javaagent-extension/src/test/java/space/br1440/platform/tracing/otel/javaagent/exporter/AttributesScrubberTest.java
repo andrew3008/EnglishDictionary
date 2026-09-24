@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -19,9 +19,9 @@ import io.opentelemetry.api.common.Attributes;
 
 class AttributesScrubberTest {
 
-    private static final SpanAttributeScrubbingRule EMAIL = BuiltInSpanAttributeScrubbingRules.resolve("email");
-    private static final SpanAttributeScrubbingRule PASSWORD = BuiltInSpanAttributeScrubbingRules.resolve("password");
-    private static final SpanAttributeScrubbingRule IP = BuiltInSpanAttributeScrubbingRules.resolve("ip-address");
+    private static final SpanAttributeScrubbingRule EMAIL = BuiltInSpanAttributeScrubbingRules.EMAIL.create();
+    private static final SpanAttributeScrubbingRule PASSWORD = BuiltInSpanAttributeScrubbingRules.PASSWORD_KEY.create();
+    private static final SpanAttributeScrubbingRule IP = BuiltInSpanAttributeScrubbingRules.IP_ADDRESS.create();
 
     @Test
     @DisplayName("No rules configured: attributes pass through untouched, changed=false")

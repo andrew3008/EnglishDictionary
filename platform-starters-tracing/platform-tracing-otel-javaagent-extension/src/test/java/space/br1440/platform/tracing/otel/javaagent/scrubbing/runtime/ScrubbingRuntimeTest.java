@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.scrubbing;
+package space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime;
 
 import java.util.List;
 
@@ -23,15 +23,8 @@ import io.opentelemetry.api.trace.Tracer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * P5 tests for {@link ScrubbingRuntime}: SPI-projection policy (structural text only sees
- * {@code BUILT_IN} rules, everything else sees the full effective set), and the installation
- * barrier used by {@code BootstrapCoordinator.activate()}
- * (ADR-scrubbing-hybrid-processor-export-boundary.md).
- */
 class ScrubbingRuntimeTest {
 
-    /** Matches every string value/key — used to prove SPI-projection scoping, not realism. */
     private static final class MatchEverythingRule implements SpanAttributeScrubbingRule {
         @Nonnull
         @Override
@@ -58,7 +51,7 @@ class ScrubbingRuntimeTest {
         SpanAttributeScrubbingRule external = new MatchEverythingRule();
         ScrubbingRuntime runtime = ScrubbingRuntime.create(
                 List.of(runtimeRule(builtIn, RuleOrigin.BUILT_IN), runtimeRule(external, RuleOrigin.EXTERNAL_EXTENSION)),
-                1L, "test", null, false);
+                1L, null, false);
 
         // then
         assertThat(runtime.attributeExecutableRules()).hasSize(2);
@@ -74,7 +67,7 @@ class ScrubbingRuntimeTest {
                         runtimeRule(new MatchEverythingRule(), RuleOrigin.BUILT_IN),
                         runtimeRule(new MatchEverythingRule(), RuleOrigin.BUNDLED_SPI),
                         runtimeRule(new MatchEverythingRule(), RuleOrigin.EXTERNAL_EXTENSION)),
-                1L, "test", null, false);
+                1L, null, false);
 
         // then
         assertThat(runtime.attributeExecutableRules()).hasSize(3);
@@ -85,7 +78,7 @@ class ScrubbingRuntimeTest {
     void installationBarrierRequiresAllFourAcknowledgements() {
         // given
         ScrubbingRuntime runtime = ScrubbingRuntime.create(
-                List.of(runtimeRule(new MatchEverythingRule(), RuleOrigin.BUILT_IN)), 1L, "test", null, false);
+                List.of(runtimeRule(new MatchEverythingRule(), RuleOrigin.BUILT_IN)), 1L, null, false);
 
         // then
         assertThatThrownBy(runtime::requireInstallationComplete)
@@ -149,7 +142,7 @@ class ScrubbingRuntimeTest {
     @DisplayName("attributesVerified is monotonic: cannot be set back to true once cleared")
     void attributesVerifiedIsMonotonicallyOneWay() {
         // given
-        ScrubbingRuntime runtime = ScrubbingRuntime.create(List.of(), 1L, "test", null, false);
+        ScrubbingRuntime runtime = ScrubbingRuntime.create(List.of(), 1L, null, false);
 
         // then
         assertThat(runtime.attributesVerified()).isTrue();
@@ -193,7 +186,7 @@ class ScrubbingRuntimeTest {
                 List.of(new RuntimeRule(
                         new ExecutableRule(throwing, new RuleCircuitBreaker(throwing.name(), 1, 60_000L, 0L)),
                         RuleOrigin.BUILT_IN)),
-                1L, "test", null, false);
+                1L, null, false);
 
         // when
         try (SpanProcessorHarness harness = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {

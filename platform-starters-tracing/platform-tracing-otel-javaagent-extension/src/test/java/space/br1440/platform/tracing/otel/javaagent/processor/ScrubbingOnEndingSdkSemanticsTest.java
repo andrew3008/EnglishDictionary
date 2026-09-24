@@ -10,8 +10,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin;
@@ -69,63 +69,79 @@ class ScrubbingOnEndingSdkSemanticsTest {
     }
 
     private static ScrubbingRuntime passwordRuntime() {
-        SpanAttributeScrubbingRule password = BuiltInSpanAttributeScrubbingRules.resolve("password");
+        SpanAttributeScrubbingRule password = BuiltInSpanAttributeScrubbingRules.PASSWORD_KEY.create();
         return ScrubbingRuntimeTestFixtures.create(
-                List.of(new RuntimeRule(
-                        new ExecutableRule(password, new RuleCircuitBreaker(password.name())), RuleOrigin.BUILT_IN)),
-                1L, "test", null, false);
+                List.of(
+                        new RuntimeRule(
+                                new ExecutableRule(password, new RuleCircuitBreaker(password.name())),
+                                RuleOrigin.BUILT_IN
+                        )
+                ),
+                1L, null, false);
     }
 
-    private static final class LateWriter implements ExtendedSpanProcessor {
-
-        private final List<String> callOrder;
-
-        private LateWriter(List<String> callOrder) {
-            this.callOrder = callOrder;
-        }
+    private record LateWriter(List<String> callOrder) implements ExtendedSpanProcessor {
 
         @Override
-        public void onEnding(ReadWriteSpan span) {
-            callOrder.add("writer.onEnding");
-            span.setAttribute(PASSWORD, "supersecret");
+            public void onEnding(ReadWriteSpan span) {
+                callOrder.add("writer.onEnding");
+                span.setAttribute(PASSWORD, "supersecret");
+            }
+
+            @Override
+            public boolean isOnEndingRequired() {
+                return true;
+            }
+
+            @Override
+            public void onStart(@Nonnull Context parentContext, @Nonnull ReadWriteSpan span) {
+            }
+
+            @Override
+            public boolean isStartRequired() {
+                return false;
+            }
+
+            @Override
+            public void onEnd(@Nonnull ReadableSpan span) {
+            }
+
+            @Override
+            public boolean isEndRequired() {
+                return false;
+            }
         }
+
+    private record OnEndObserver(List<String> callOrder, List<String> passwordSeen) implements ExtendedSpanProcessor {
 
         @Override
-        public boolean isOnEndingRequired() {
-            return true;
+            public void onEnd(@Nonnull ReadableSpan span) {
+                callOrder.add("observer.onEnd");
+                String value = span.toSpanData().getAttributes().get(PASSWORD);
+                passwordSeen.add(value);
+            }
+
+            @Override
+            public boolean isEndRequired() {
+                return true;
+            }
+
+            @Override
+            public void onStart(@Nonnull Context parentContext, @Nonnull ReadWriteSpan span) {
+            }
+
+            @Override
+            public boolean isStartRequired() {
+                return false;
+            }
+
+            @Override
+            public void onEnding(ReadWriteSpan span) {
+            }
+
+            @Override
+            public boolean isOnEndingRequired() {
+                return false;
+            }
         }
-
-        @Override public void onStart(@Nonnull Context parentContext, @Nonnull ReadWriteSpan span) { }
-        @Override public boolean isStartRequired() { return false; }
-        @Override public void onEnd(@Nonnull ReadableSpan span) { }
-        @Override public boolean isEndRequired() { return false; }
-    }
-
-    private static final class OnEndObserver implements ExtendedSpanProcessor {
-
-        private final List<String> callOrder;
-        private final List<String> passwordSeen;
-
-        private OnEndObserver(List<String> callOrder, List<String> passwordSeen) {
-            this.callOrder = callOrder;
-            this.passwordSeen = passwordSeen;
-        }
-
-        @Override
-        public void onEnd(@Nonnull ReadableSpan span) {
-            callOrder.add("observer.onEnd");
-            String value = span.toSpanData().getAttributes().get(PASSWORD);
-            passwordSeen.add(value);
-        }
-
-        @Override
-        public boolean isEndRequired() {
-            return true;
-        }
-
-        @Override public void onStart(@Nonnull Context parentContext, @Nonnull ReadWriteSpan span) { }
-        @Override public boolean isStartRequired() { return false; }
-        @Override public void onEnding(ReadWriteSpan span) { }
-        @Override public boolean isOnEndingRequired() { return false; }
-    }
 }

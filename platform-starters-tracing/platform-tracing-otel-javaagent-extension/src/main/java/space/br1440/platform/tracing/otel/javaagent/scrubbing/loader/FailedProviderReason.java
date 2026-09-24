@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.scrubbing.diagnostics;
+package space.br1440.platform.tracing.otel.javaagent.scrubbing.loader;
 
 /**
  * Причина, по которой провайдер кастомного правила не был загружен.

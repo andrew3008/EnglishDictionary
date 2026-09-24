@@ -4,7 +4,6 @@ import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.StableScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
 
 import lombok.Getter;
@@ -95,10 +94,6 @@ public final class ExecutableRule {
         return rule instanceof StableScrubbingRule stable
                 ? stable.implementationClass()
                 : rule.getClass();
-    }
-
-    public String getRuleName() {
-        return rule.name();
     }
 
     public boolean isCritical() {

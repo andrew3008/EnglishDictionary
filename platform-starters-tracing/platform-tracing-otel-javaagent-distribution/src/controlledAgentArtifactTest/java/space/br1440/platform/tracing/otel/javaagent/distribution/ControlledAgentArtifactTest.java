@@ -44,11 +44,12 @@ class ControlledAgentArtifactTest {
     private static final String MANIFEST_ENTRY = "META-INF/MANIFEST.MF";
     private static final String ACP_PIN_RESOURCE = "META-INF/platform-tracing/otel-javaagent-acp-pin.properties";
     private static final String SCHEMA_IDENTITY = "META-INF/platform-tracing/agent-logging-schema.properties";
+    private static final String EXTENSION_BUILD_METADATA =
+            "space/br1440/platform/tracing/otel/javaagent/readiness/platform-extension-build.properties";
     private static final String THIRD_PARTY_NOTICES_ENTRY = "META-INF/platform-tracing/THIRD-PARTY-NOTICES.txt";
     private static final String LOG_EVENT_SCHEMA_RESOURCE = "platform-log-event.schema.json";
     private static final String ACP_PIN_PROVIDERS_CLASS =
-            "space/br1440/platform/tracing/otel/javaagent/bootstrap/verification/"
-                    + "UpstreamCustomizerProviderAllowlist.class";
+            "space/br1440/platform/tracing/otel/javaagent/bootstrap/verification/UpstreamCustomizerProviderAllowlist.class";
 
     private static final String EXTENSION_IMPLEMENTATION_TITLE = "platform-tracing-otel-javaagent-extension";
     private static final String OTEL_JAVAAGENT_COORDINATE = "io.opentelemetry.javaagent:opentelemetry-javaagent:2.30.0";
@@ -432,16 +433,26 @@ class ControlledAgentArtifactTest {
 
         // when
         Properties schema = loadProperties(entries.get(SCHEMA_IDENTITY));
+        Properties buildMetadata = loadProperties(entries.get(EXTENSION_BUILD_METADATA));
 
         // then
         assertExtensionSurfaceIsAllowlisted(entries.keySet());
         assertExtensionManifestMatches(manifest, version, schema);
+        assertThat(buildMetadata)
+                .containsEntry("format.version", "1")
+                .containsEntry("artifact", EXTENSION_IMPLEMENTATION_TITLE)
+                .containsEntry("version", version);
     }
 
     private void assertExtensionSurfaceIsAllowlisted(Set<String> entryNames) {
         assertThat(entryNames)
                 .noneMatch(name -> FORBIDDEN_EXTENSION_PREFIXES.stream().anyMatch(name::startsWith))
-                .contains(ACP_PIN_PROVIDERS_CLASS, ACP_PIN_RESOURCE, SCHEMA_IDENTITY)
+                .contains(
+                        ACP_PIN_PROVIDERS_CLASS,
+                        ACP_PIN_RESOURCE,
+                        SCHEMA_IDENTITY,
+                        EXTENSION_BUILD_METADATA
+                )
                 .doesNotContain(LOG_EVENT_SCHEMA_RESOURCE);
     }
 

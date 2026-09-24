@@ -84,9 +84,11 @@ public final class BootstrapResources implements AutoCloseable {
         if (aggregate == null && failure instanceof Error) {
             return failure;
         }
+
         if (aggregate == null) {
             return new IllegalStateException("Platform bootstrap resource cleanup failed", failure);
         }
+
         if (failure instanceof Error && !(aggregate instanceof Error)) {
             failure.addSuppressed(aggregate);
             return failure;
@@ -100,6 +102,7 @@ public final class BootstrapResources implements AutoCloseable {
         if (failure instanceof Error error) {
             throw error;
         }
+
         throw (RuntimeException) failure;
     }
 

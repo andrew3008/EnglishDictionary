@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.scrubbing;
+package space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -206,6 +206,6 @@ class ScrubbingRuntimeConcurrencyTest {
                 RuleOrigin.BUILT_IN
         );
 
-        return ScrubbingRuntime.create(List.of(rule), 1L, "test", MaskedSecret.of(hmacKey), false);
+        return ScrubbingRuntime.create(List.of(rule), 1L, MaskedSecret.of(hmacKey), false);
     }
 }

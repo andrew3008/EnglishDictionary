@@ -16,9 +16,9 @@ import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResp
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingBoundaryMetrics;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingFailureLog;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingBoundaryMetrics;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingFailureLog;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.data.SpanData;

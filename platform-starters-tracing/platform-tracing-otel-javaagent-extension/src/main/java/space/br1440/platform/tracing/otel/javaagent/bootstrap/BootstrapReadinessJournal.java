@@ -7,6 +7,7 @@ import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.Autoconfig
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
+import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadinessSnapshot;
 
 final class BootstrapReadinessJournal {
 
@@ -25,7 +26,7 @@ final class BootstrapReadinessJournal {
 
     void publishInitializing(AutoconfigureSession activeSession) {
         snapshot.set(ExtensionReadinessWireSnapshot.initializing(
-                activeSession.readiness(),
+                activeSession.readiness().snapshot(),
                 activeSession.sessionId().toString()
         ));
     }
@@ -34,21 +35,26 @@ final class BootstrapReadinessJournal {
         snapshot.set(Objects.requireNonNull(ready, "ready"));
     }
 
-    void publishFailed(AutoconfigureSession activeSession, String failureCode, Throwable cause) {
+    void publishFailed(AutoconfigureSession activeSession, String failureCode) {
         ExtensionReadinessWireSnapshot current = snapshot.get();
-        publishFailed(activeSession, failureCode, cause, current.batchId(), current.evidence());
+        PlatformExtensionReadinessSnapshot readiness = activeSession.readiness().snapshot();
+        boolean sameRuntimeEpoch = activeSession.sessionId().toString().equals(current.runtimeEpoch());
+        String batchId = sameRuntimeEpoch ? current.batchId() : "";
+        ExtensionRuntimeEvidence evidence = sameRuntimeEpoch
+                ? current.evidence()
+                : ExtensionRuntimeEvidence.unavailable(readiness.extensionVersion());
+        publishFailed(activeSession, failureCode, batchId, evidence);
     }
 
     void publishFailed(AutoconfigureSession activeSession,
                        String failureCode,
-                       Throwable cause,
                        String batchId,
                        ExtensionRuntimeEvidence evidence) {
         synchronized (monitor) {
-            activeSession.readiness().fail(failureCode, cause);
+            PlatformExtensionReadinessSnapshot readiness = activeSession.readiness().fail(failureCode);
             String runtimeEpoch = activeSession.sessionId().toString();
             ExtensionReadinessWireSnapshot current = snapshot.get();
-            String effectiveFailureCode = activeSession.readiness().failureCode();
+            String effectiveFailureCode = readiness.failureCode();
             if (PlatformExtensionLifecycle.FAILED.name().equals(current.lifecycle())
                     && runtimeEpoch.equals(current.runtimeEpoch())
                     && effectiveFailureCode.equals(current.failureCode())) {
@@ -60,11 +66,10 @@ final class BootstrapReadinessJournal {
                     : 1L;
 
             snapshot.set(ExtensionReadinessWireSnapshot.failed(
-                    activeSession.readiness(),
+                    readiness,
                     runtimeEpoch,
                     batchId,
                     evidenceGeneration,
-                    effectiveFailureCode,
                     evidence
             ));
         }
