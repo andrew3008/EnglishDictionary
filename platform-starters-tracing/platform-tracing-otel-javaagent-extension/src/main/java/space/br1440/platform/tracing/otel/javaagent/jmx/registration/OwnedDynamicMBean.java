@@ -36,6 +36,7 @@ final class OwnedDynamicMBean implements DynamicMBean, MBeanRegistration {
         this.registrationId = Objects.requireNonNull(registrationId, "registrationId");
     }
 
+    @SuppressWarnings("unused")
     UUID batchId() {
         return batchId;
     }
