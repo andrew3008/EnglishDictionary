@@ -74,6 +74,23 @@ class ResourceAttributeResolverTest {
     }
 
     @Test
+    void platformVersionOverridesDetector() {
+        // given
+        Resource existing = Resource.create(Attributes.of(key(PlatformAttributes.SERVICE_VERSION), "from-detector"));
+
+        // when
+        Attributes attrs = ResourceAttributeResolver.resolve(
+                new TestConfigProperties(Map.of(PlatformResourceCustomizer.PROP_SERVICE_VERSION, "9.9.9")),
+                existing,
+                Resource.empty(),
+                Optional::empty
+        );
+
+        // then
+        assertThat(attrs.get(key(PlatformAttributes.SERVICE_VERSION))).isEqualTo("9.9.9");
+    }
+
+    @Test
     void versionFromBuildInfoWhenPlatformEmpty() {
         // when
         Attributes attrs = ResourceAttributeResolver.resolve(
@@ -156,7 +173,7 @@ class ResourceAttributeResolverTest {
     }
 
     @Test
-    void existingNonDefaultServiceNameOmit() {
+    void platformServiceNameOverridesDetector() {
         // given
         Resource existing = Resource.create(Attributes.of(key(PlatformAttributes.SERVICE_NAME), "from-detector"));
 
@@ -169,7 +186,37 @@ class ResourceAttributeResolverTest {
         );
 
         // then
+        assertThat(attrs.get(key(PlatformAttributes.SERVICE_NAME))).isEqualTo("platform-svc");
+    }
+
+    @Test
+    void detectorServiceNameIsOmittedFromProjection() {
+        // given
+        Resource existing = Resource.create(Attributes.of(key(PlatformAttributes.SERVICE_NAME), "from-detector"));
+
+        // when
+        Attributes attrs = ResourceAttributeResolver.resolve(
+                new TestConfigProperties(Map.of()),
+                existing,
+                Resource.empty(),
+                Optional::empty
+        );
+
+        // then
         assertThat(attrs.get(key(PlatformAttributes.SERVICE_NAME))).isNull();
+    }
+
+    @Test
+    void detectorServiceNameCoversRequiredKey() {
+        // given
+        Attributes resolved = Attributes.of(key(PlatformAttributes.PLATFORM_ENVIRONMENT), "production");
+        Resource existing = Resource.create(Attributes.of(key(PlatformAttributes.SERVICE_NAME), "from-detector"));
+
+        // when
+        List<String> missing = ResourceAttributeResolver.missingRequiredKeys(resolved, Resource.empty(), existing);
+
+        // then
+        assertThat(missing).isEmpty();
     }
 
     @Test

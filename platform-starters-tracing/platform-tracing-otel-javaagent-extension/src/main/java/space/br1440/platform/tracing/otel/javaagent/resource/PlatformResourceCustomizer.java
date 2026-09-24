@@ -95,16 +95,16 @@ public final class PlatformResourceCustomizer {
         Attributes identity = ResourceAttributeResolver.resolve(config, existing, otelEnv, buildVersion);
         AttributesBuilder builder = identity.toBuilder();
 
-        if (existing.getAttribute(HOST_NAME_KEY) == null) {
+        if (otelEnv.getAttribute(HOST_NAME_KEY) == null) {
             String explicitHost = config.getString(PROP_HOST);
             if (StringUtils.hasText(explicitHost)) {
                 builder.put(HOST_NAME_KEY, explicitHost.trim().toLowerCase(Locale.ROOT));
-            } else {
+            } else if (existing.getAttribute(HOST_NAME_KEY) == null) {
                 hostNameResolver.resolve().ifPresent(host -> builder.put(HOST_NAME_KEY, host));
             }
         }
 
-        if (existing.getAttribute(CONTAINER_ID_KEY) == null) {
+        if (otelEnv.getAttribute(CONTAINER_ID_KEY) == null) {
             resolveContainerId(config).ifPresent(id -> builder.put(CONTAINER_ID_KEY, id));
         }
 
@@ -118,11 +118,29 @@ public final class PlatformResourceCustomizer {
                                         Resource existing,
                                         ResourceValidationMode mode) {
         List<String> missing = ResourceAttributeResolver.missingRequiredKeys(projection, otelEnv, existing);
+        String service = effective(
+                projection.get(SERVICE_NAME_KEY),
+                otelEnv.getAttribute(SERVICE_NAME_KEY),
+                existing.getAttribute(SERVICE_NAME_KEY)
+        );
+
+        String environment = effective(
+                projection.get(ENVIRONMENT_KEY),
+                otelEnv.getAttribute(ENVIRONMENT_KEY),
+                existing.getAttribute(ENVIRONMENT_KEY)
+        );
+
+        String version = effective(
+                projection.get(SERVICE_VERSION_KEY),
+                otelEnv.getAttribute(SERVICE_VERSION_KEY),
+                existing.getAttribute(SERVICE_VERSION_KEY)
+        );
+
         if (missing.isEmpty()) {
             log.info(AgentEventCode.BOOT_RESOURCE_IDENTITY, "Resource identity resolved",
-                    "service", orAbsent(projection.get(SERVICE_NAME_KEY)),
-                    "environment", orAbsent(projection.get(ENVIRONMENT_KEY)),
-                    "version", orAbsent(projection.get(SERVICE_VERSION_KEY)),
+                    "service", service,
+                    "environment", environment,
+                    "version", version,
                     "kind", mode.name(),
                     "count", "0");
             return;
@@ -136,11 +154,12 @@ public final class PlatformResourceCustomizer {
         }
 
         log.warn(AgentEventCode.BOOT_RESOURCE_IDENTITY, "Resource identity incomplete",
-                "service", orAbsent(projection.get(SERVICE_NAME_KEY)),
-                "environment", orAbsent(projection.get(ENVIRONMENT_KEY)),
-                "version", orAbsent(projection.get(SERVICE_VERSION_KEY)),
+                "service", service,
+                "environment", environment,
+                "version", version,
                 "kind", mode.name(),
-                "missingKeys", keys);
+                "missingKeys", keys
+        );
     }
 
     private Optional<String> resolveContainerId(ConfigProperties config) {
@@ -187,7 +206,15 @@ public final class PlatformResourceCustomizer {
         return StringUtils.hasText(second) ? second : null;
     }
 
-    private static String orAbsent(String value) {
-        return StringUtils.hasText(value) ? value : "<absent>";
+    private static String effective(String projection, String otelEnv, String existing) {
+        if (StringUtils.hasText(projection)) {
+            return projection;
+        }
+
+        if (StringUtils.hasText(otelEnv)) {
+            return otelEnv;
+        }
+
+        return StringUtils.hasText(existing) ? existing : "<absent>";
     }
 }

@@ -89,7 +89,7 @@ include('platform-starters-tracing:spring-boot-starter-platform-tracing-webflux'
 include('platform-starters-tracing:platform-tracing-testkit')
 include('platform-starters-tracing:platform-tracing-otel-javaagent-extension')
 include('platform-starters-tracing:platform-tracing-otel-javaagent-distribution')
-include('platform-starters-tracing:platform-tracing-gradle-plugin')
+include('platform-starters-tracing:platform-tracing-jib-plugin')
 include('platform-starters-tracing:platform-tracing-jmx-contract')
 include('platform-starters-tracing:platform-tracing-e2e-tests')
 

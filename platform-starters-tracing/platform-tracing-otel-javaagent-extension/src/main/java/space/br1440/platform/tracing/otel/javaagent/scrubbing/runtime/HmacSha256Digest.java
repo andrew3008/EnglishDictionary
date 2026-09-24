@@ -22,6 +22,7 @@ final class HmacSha256Digest {
 
     static HmacSha256Digest from(byte[] ownedKey) {
         Objects.requireNonNull(ownedKey, "ownedKey");
+
         try {
             SecretKeySpec key = new SecretKeySpec(ownedKey, HMAC_ALGORITHM);
             Mac mac = Mac.getInstance(HMAC_ALGORITHM);
@@ -36,6 +37,7 @@ final class HmacSha256Digest {
 
     String hashHex(String value) {
         Objects.requireNonNull(value, "value");
+
         byte[] macBytes = threadLocalMac.get().doFinal(value.getBytes(StandardCharsets.UTF_8));
         return HexFormat.of().formatHex(macBytes);
     }

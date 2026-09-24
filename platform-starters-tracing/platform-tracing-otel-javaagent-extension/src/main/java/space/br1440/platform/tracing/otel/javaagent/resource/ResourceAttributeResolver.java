@@ -34,7 +34,7 @@ final class ResourceAttributeResolver {
                               Supplier<Optional<String>> buildVersion) {
         AttributesBuilder builder = Attributes.builder();
 
-        resolveServiceName(config, existing, otelEnv)
+        resolveServiceName(config, otelEnv)
                 .ifPresent(value -> builder.put(SERVICE_NAME, value));
 
         resolveServiceVersion(config, existing, otelEnv, buildVersion)
@@ -64,13 +64,8 @@ final class ResourceAttributeResolver {
         return List.copyOf(missing);
     }
 
-    private static Optional<String> resolveServiceName(ConfigProperties config, Resource existing, Resource otelEnv) {
+    private static Optional<String> resolveServiceName(ConfigProperties config, Resource otelEnv) {
         if (otelEnv.getAttribute(SERVICE_NAME) != null) {
-            return Optional.empty();
-        }
-
-        String existingName = existing.getAttribute(SERVICE_NAME);
-        if (StringUtils.hasText(existingName) && !SDK_UNKNOWN_SERVICE.equals(existingName)) {
             return Optional.empty();
         }
 
@@ -91,13 +86,17 @@ final class ResourceAttributeResolver {
                                                           Resource existing,
                                                           Resource otelEnv,
                                                           Supplier<Optional<String>> buildVersion) {
-        if (otelEnv.getAttribute(SERVICE_VERSION) != null || StringUtils.hasText(existing.getAttribute(SERVICE_VERSION))) {
+        if (otelEnv.getAttribute(SERVICE_VERSION) != null) {
             return Optional.empty();
         }
 
         String platform = config.getString(PlatformResourceCustomizer.PROP_SERVICE_VERSION);
         if (StringUtils.hasText(platform)) {
             return Optional.of(platform.trim());
+        }
+
+        if (StringUtils.hasText(existing.getAttribute(SERVICE_VERSION))) {
+            return Optional.empty();
         }
 
         String fromBuild = buildVersion.get().orElse(null);

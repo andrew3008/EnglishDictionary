@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.resource;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -11,9 +12,9 @@ import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 /**
  * Минимальная in-memory реализация {@link ConfigProperties} для unit-тестов resource-пакета.
  * <p>
- * {@code getString} читает из карты; {@code getMap} возвращает пустую карту (для
- * {@code otel.resource.attributes}). Для эмуляции {@code OTEL_SERVICE_NAME} задавайте ключ
- * {@code otel.service.name}.
+ * {@code getString} читает из карты. {@code getMap} разбирает значение как
+ * {@code key=value} через запятую, как {@code otel.resource.attributes}.
+ * Для эмуляции {@code OTEL_SERVICE_NAME} задавайте ключ {@code otel.service.name}.
  */
 final class TestConfigProperties implements ConfigProperties {
 
@@ -71,6 +72,21 @@ final class TestConfigProperties implements ConfigProperties {
 
     @Override
     public Map<String, String> getMap(String name) {
-        return Collections.emptyMap();
+        String value = data.get(name);
+        if (value == null || value.isBlank()) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, String> parsed = new LinkedHashMap<>();
+        for (String element : value.split(",")) {
+            int separator = element.indexOf('=');
+            if (separator <= 0) {
+                continue;
+            }
+
+            parsed.put(element.substring(0, separator).trim(), element.substring(separator + 1).trim());
+        }
+
+        return Map.copyOf(parsed);
     }
 }

@@ -32,15 +32,15 @@ class PlatformResourceCustomizerTest {
     }
 
     private static PlatformResourceCustomizer customizer(Function<String, String> env,
-                                                          Supplier<Optional<String>> buildVersion,
-                                                          HostNameResolver host,
-                                                          TracingDiagnostics diagnostics) {
+                                                         Supplier<Optional<String>> buildVersion,
+                                                         HostNameResolver host,
+                                                         TracingDiagnostics diagnostics) {
         return new PlatformResourceCustomizer(host, env, buildVersion, diagnostics);
     }
 
     private static PlatformResourceCustomizer customizer(Function<String, String> env,
-                                                          Supplier<Optional<String>> buildVersion,
-                                                          HostNameResolver host) {
+                                                         Supplier<Optional<String>> buildVersion,
+                                                         HostNameResolver host) {
         return customizer(env, buildVersion, host, new TracingDiagnostics());
     }
 
@@ -178,7 +178,7 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void existingResourceWinsOverPlatformFallback() {
+    void platformPropertiesOverrideDetectorIdentity() {
         // given
         Resource existing = Resource.create(Attributes.builder()
                 .put(key(PlatformAttributes.SERVICE_NAME), "existing-service")
@@ -186,6 +186,34 @@ class PlatformResourceCustomizerTest {
                 .put(key(PlatformAttributes.CONTAINER_ID), "existing-container")
                 .build());
         Map<String, String> values = Map.of(
+                PlatformResourceCustomizer.PROP_SERVICE_NAME, "platform-service",
+                PlatformResourceCustomizer.PROP_HOST, "Platform-Host",
+                PlatformResourceCustomizer.PROP_CONTAINER_ID, "platform-container");
+
+        // when
+        Resource resource = customizer(NO_ENV, NO_BUILD, noHost())
+                .customize(existing, new TestConfigProperties(values));
+
+        // then
+        assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isEqualTo("platform-service");
+        assertThat(resource.getAttribute(key(PlatformAttributes.PLATFORM_HOST))).isEqualTo("platform-host");
+        assertThat(resource.getAttribute(key(PlatformAttributes.CONTAINER_ID))).isEqualTo("platform-container");
+    }
+
+    @Test
+    void otelEnvironmentStaysAheadOfPlatformProperties() {
+        // given
+        Resource existing = Resource.create(
+                Attributes.builder()
+                        .put(key(PlatformAttributes.SERVICE_NAME), "otel-svc")
+                        .put(key(PlatformAttributes.PLATFORM_HOST), "otel-host")
+                        .put(key(PlatformAttributes.CONTAINER_ID), "otel-container")
+                        .build()
+        );
+
+        Map<String, String> values = Map.of(
+                "otel.service.name", "otel-svc",
+                "otel.resource.attributes", "host.name=otel-host,container.id=otel-container",
                 PlatformResourceCustomizer.PROP_SERVICE_NAME, "platform-service",
                 PlatformResourceCustomizer.PROP_HOST, "platform-host",
                 PlatformResourceCustomizer.PROP_CONTAINER_ID, "platform-container");
@@ -195,9 +223,33 @@ class PlatformResourceCustomizerTest {
                 .customize(existing, new TestConfigProperties(values));
 
         // then
-        assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isEqualTo("existing-service");
-        assertThat(resource.getAttribute(key(PlatformAttributes.PLATFORM_HOST))).isEqualTo("existing-host");
-        assertThat(resource.getAttribute(key(PlatformAttributes.CONTAINER_ID))).isEqualTo("existing-container");
+        assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isEqualTo("otel-svc");
+        assertThat(resource.getAttribute(key(PlatformAttributes.PLATFORM_HOST))).isEqualTo("otel-host");
+        assertThat(resource.getAttribute(key(PlatformAttributes.CONTAINER_ID))).isEqualTo("otel-container");
+    }
+
+    @Test
+    void detectorNameIsExportedAndLoggedWhenPlatformNameIsAbsent() {
+        // given
+        AgentLogCapture logs = new AgentLogCapture();
+        logs.install();
+
+        Resource existing = Resource.create(Attributes.of(key(PlatformAttributes.SERVICE_NAME), "from-detector"));
+        Map<String, String> values = Map.of(PlatformResourceCustomizer.PROP_ENVIRONMENT, "production");
+        try {
+            // when
+            Resource resource = customizer(NO_ENV, NO_BUILD, noHost())
+                    .customize(existing, new TestConfigProperties(values));
+
+            // then
+            assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isEqualTo("from-detector");
+            assertThat(logs.events())
+                    .filteredOn(event -> "Resource identity resolved".equals(event.message()))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.fields()).containsEntry("service", "from-detector"));
+        } finally {
+            logs.restore();
+        }
     }
 
     @Test

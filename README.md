@@ -56,7 +56,7 @@
 | `:platform-starters-tracing:platform-tracing-testkit`                                   | [`platform-tracing-testkit`](platform-starters-tracing/platform-tracing-testkit) — внутренние тестовые fixtures, не публикуются                                                                                           |
 | `:platform-starters-tracing:platform-tracing-otel-javaagent-extension`                  | [`platform-tracing-otel-javaagent-extension`](platform-starters-tracing/platform-tracing-otel-javaagent-extension) — внутренний модуль исходного кода и тестов; упаковкой управляет distribution, отдельно не публикуется |
 | `:platform-starters-tracing:platform-tracing-otel-javaagent-distribution`               | [`platform-tracing-otel-javaagent-distribution`](platform-starters-tracing/platform-tracing-otel-javaagent-distribution) — единственный владелец deployable-артефакта `platform-tracing-javaagent`                        |
-| `:platform-starters-tracing:platform-tracing-gradle-plugin`                             | [`platform-tracing-gradle-plugin`](platform-starters-tracing/platform-tracing-gradle-plugin) — Gradle-плагин `platform.tracing-javaagent`; build tooling, не входит в BOM                                                 |
+| `:platform-starters-tracing:platform-tracing-jib-plugin`                               | [`platform-tracing-jib-plugin`](platform-starters-tracing/platform-tracing-jib-plugin) — Gradle-плагин `platform.tracing-jib`; работает и без Jib (guard, argfile, bootRun); не входит в BOM                         |
 
 Controlled Platform Agent поставляется артефактом
 `space.br1440.platform.starters.tracing:platform-tracing-javaagent:<version>`.
@@ -67,12 +67,16 @@ Controlled Platform Agent поставляется артефактом
 с версией starter/BOM release train; сам агент не входит в application BOM. Deployment
 закрепляет GAV и SHA-256 JAR, проверяет digest до старта JVM и запускает его на Java 21.
 
-Сервис подключает агент одной строкой в `plugins {}`. Версия и SHA-256 принадлежат
+Сервис подключает агент одной строкой в `plugins {}`. Плагин работает и без Jib:
+classpath guard, `prepareControlledAgent`, local argfile и `bootRun` не требуют плагин Jib.
+Если Jib подключён в другом classloader (`apply false` в root, а плагин в subproject),
+Jib сообщает `extension configured but not discovered on Jib runtime classpath`.
+Нужны Java 21, Gradle 8.5+ и Jib 3.3.2+. Версия и SHA-256 принадлежат
 релизу плагина и совпадают с версией агента:
 
 ```groovy
 plugins {
-    id 'platform.tracing-javaagent' version '<V>'
+    id 'platform.tracing-jib' version '<V>'
 }
 ```
 
