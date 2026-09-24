@@ -70,8 +70,10 @@ class SdkOwnershipBoundaryArchTest {
             .because("GlobalOpenTelemetry.get()/isSet() reads the agent-installed SDK instance and is "
                     + "confined to the single composition root, TracingRuntimeAutoConfiguration");
 
+    @SuppressWarnings("SameParameterValue")
     private static DescribedPredicate<JavaMethodCall> callTargetOwnerIn(Set<String> ownerFqns) {
         return new DescribedPredicate<>("target owner in " + ownerFqns) {
+
             @Override
             public boolean test(JavaMethodCall call) {
                 return ownerFqns.contains(call.getTargetOwner().getName());
