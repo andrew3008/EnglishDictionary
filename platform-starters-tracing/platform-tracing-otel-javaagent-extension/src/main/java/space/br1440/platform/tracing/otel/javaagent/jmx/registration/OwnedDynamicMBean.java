@@ -108,8 +108,7 @@ final class OwnedDynamicMBean implements DynamicMBean, MBeanRegistration {
     }
 
     @Override
-    public Object invoke(String actionName, Object[] params, String[] signature)
-            throws MBeanException, ReflectionException {
+    public Object invoke(String actionName, Object[] params, String[] signature) throws MBeanException, ReflectionException {
         return delegate.invoke(actionName, params, signature);
     }
 

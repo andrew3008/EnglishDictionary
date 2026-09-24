@@ -14,10 +14,10 @@ import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 public final class ObservationSnapshotPublisher implements AutoCloseable {
 
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(ObservationSnapshotPublisher.class);
+
     static final Duration DEFAULT_REFRESH_INTERVAL = Duration.ofSeconds(1L);
     private static final Duration SHUTDOWN_TIMEOUT = Duration.ofSeconds(1L);
-
-    private static final PlatformAgentLogger log = PlatformAgentLogger.get(ObservationSnapshotPublisher.class);
 
     private final List<Runnable> publications;
     private final long refreshIntervalNanos;

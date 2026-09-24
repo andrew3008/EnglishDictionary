@@ -18,23 +18,17 @@ import javax.management.openmbean.OpenMBeanConstructorInfo;
 import javax.management.openmbean.OpenMBeanInfoSupport;
 import javax.management.openmbean.OpenMBeanOperationInfo;
 
-/**
- * Публикует один неизменяемый observation snapshot
- * с точным generated OpenMBean-контрактом.
- */
 final class ReadOnlyCompositeDataDynamicMBean implements DynamicMBean {
 
-    private static final String ENDPOINT_CLASS_NAME =
-            "space.br1440.platform.tracing.jmx.GeneratedReadOnlyEndpoint";
+    private static final String ENDPOINT_CLASS_NAME = "space.br1440.platform.tracing.jmx.GeneratedReadOnlyEndpoint";
 
     private final String attributeName;
     private final Supplier<CompositeData> snapshotSupplier;
     private final MBeanInfo info;
 
-    ReadOnlyCompositeDataDynamicMBean(
-            String attributeName,
-            CompositeType openType,
-            Supplier<CompositeData> snapshotSupplier) {
+    ReadOnlyCompositeDataDynamicMBean(String attributeName,
+                                      CompositeType openType,
+                                      Supplier<CompositeData> snapshotSupplier) {
         this.attributeName = Objects.requireNonNull(attributeName, "attributeName");
         Objects.requireNonNull(openType, "openType");
         this.snapshotSupplier = Objects.requireNonNull(snapshotSupplier, "snapshotSupplier");
@@ -46,6 +40,7 @@ final class ReadOnlyCompositeDataDynamicMBean implements DynamicMBean {
         if (!attributeName.equals(requestedAttribute)) {
             throw new AttributeNotFoundException("Unknown JMX observation attribute: " + requestedAttribute);
         }
+
         return snapshot();
     }
 
@@ -80,8 +75,8 @@ final class ReadOnlyCompositeDataDynamicMBean implements DynamicMBean {
 
     @Override
     public Object invoke(String actionName, Object[] params, String[] signature) throws ReflectionException {
-        throw new ReflectionException(
-                new NoSuchMethodException("JMX observation endpoint has no operations: " + actionName));
+        NoSuchMethodException rootCause = new NoSuchMethodException("JMX observation endpoint has no operations: " + actionName);
+        throw new ReflectionException(rootCause);
     }
 
     @Override
@@ -100,7 +95,9 @@ final class ReadOnlyCompositeDataDynamicMBean implements DynamicMBean {
                 openType,
                 true,
                 false,
-                false);
+                false
+        );
+
         return new OpenMBeanInfoSupport(
                 ENDPOINT_CLASS_NAME,
                 "Generated platform tracing read-only endpoint",

@@ -95,7 +95,7 @@ final class RuntimeControlsRegistrar {
                     agentInstanceId
             );
         } catch (RuntimeException | Error failure) {
-            scope.failRegistration("JMX_OBSERVATION_INITIALIZATION_FAILED", failure);
+            scope.failRegistration("JMX_OBSERVATION_INITIALIZATION_FAILED");
             throw failure;
         }
 
@@ -120,7 +120,7 @@ final class RuntimeControlsRegistrar {
 
     private void failBatchRegistrationLocked(ObservationSnapshotPublisher unstartedPublisher, Throwable failure) {
         closeSuppressing(unstartedPublisher, failure);
-        scope.failRegistration(batchFailureReason(failure), failure);
+        scope.failRegistration(batchFailureReason(failure));
     }
 
     private void failPublisherStartLocked(Throwable failure) {
@@ -135,7 +135,7 @@ final class RuntimeControlsRegistrar {
             closeSuppressing(startedPublisher, failure);
         }
 
-        scope.failRegistration(reason, failure);
+        scope.failRegistration(reason);
     }
 
     private static String batchFailureReason(Throwable failure) {
@@ -195,7 +195,7 @@ final class RuntimeControlsRegistrar {
         try {
             batch.close();
         } catch (JmxRegistrationException failure) {
-            scope.failRegistration("FAILED_ROLLBACK_INCOMPLETE", failure);
+            scope.failRegistration("FAILED_ROLLBACK_INCOMPLETE");
             throw failure;
         } finally {
             batch = null;

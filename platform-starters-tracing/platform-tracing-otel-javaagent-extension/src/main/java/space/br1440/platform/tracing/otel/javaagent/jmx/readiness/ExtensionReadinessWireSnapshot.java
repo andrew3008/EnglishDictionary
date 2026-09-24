@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
-
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.OpenDataException;
@@ -17,14 +16,12 @@ import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionC
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadinessSnapshot;
 
-/** Предварительно собранный coherent readiness envelope для одной runtime epoch. */
 public final class ExtensionReadinessWireSnapshot {
 
     private static final String INITIALIZING = PlatformExtensionLifecycle.INITIALIZING.name();
     private static final String READY = PlatformExtensionLifecycle.READY.name();
     private static final String FAILED = PlatformExtensionLifecycle.FAILED.name();
-    private static final Pattern FAILURE_CODE_PATTERN =
-            Pattern.compile("[A-Z][A-Z0-9_]{0,127}");
+    private static final Pattern FAILURE_CODE_PATTERN = Pattern.compile("[A-Z][A-Z0-9_]{0,127}");
 
     private final String runtimeEpoch;
     private final long evidenceGeneration;
@@ -95,23 +92,29 @@ public final class ExtensionReadinessWireSnapshot {
         Objects.requireNonNull(readiness, "readiness");
         Objects.requireNonNull(evidence, "evidence");
         requireLifecycle(readiness, PlatformExtensionLifecycle.READY, "READY");
+
         if (!readiness.missingRequiredCapabilities().isEmpty()) {
             throw new IllegalStateException(
                     "Cannot construct a READY wire snapshot with missing required capabilities"
             );
         }
+
         if (runtimeEpoch == null || runtimeEpoch.isBlank()) {
             throw new IllegalArgumentException("READY runtimeEpoch must not be blank");
         }
+
         if (batchId == null || batchId.isBlank()) {
             throw new IllegalArgumentException("READY batchId must not be blank");
         }
+
         if (evidenceGeneration <= 0L) {
             throw new IllegalArgumentException("READY evidenceGeneration must be positive");
         }
+
         if (!evidence.complete()) {
             throw new IllegalStateException("Cannot construct a READY wire snapshot with incomplete evidence");
         }
+
         requireMatchingExtensionVersion(readiness, evidence);
         return new ExtensionReadinessWireSnapshot(
                 runtimeEpoch,
@@ -132,8 +135,10 @@ public final class ExtensionReadinessWireSnapshot {
                                                         ExtensionRuntimeEvidence evidence) {
         Objects.requireNonNull(readiness, "readiness");
         requireLifecycle(readiness, PlatformExtensionLifecycle.FAILED, "FAILED");
+
         ExtensionRuntimeEvidence requiredEvidence = Objects.requireNonNull(evidence, "evidence");
         requireMatchingExtensionVersion(readiness, requiredEvidence);
+
         return new ExtensionReadinessWireSnapshot(
                 (runtimeEpoch == null) ? "" : runtimeEpoch,
                 evidenceGeneration,
@@ -184,30 +189,21 @@ public final class ExtensionReadinessWireSnapshot {
 
     private CompositeData buildCompositeData() {
         Map<String, Object> values = new LinkedHashMap<>();
-        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_CONTRACT_ID,
-                JmxWireContract.SCHEMA_ID);
-        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_DIGEST,
-                JmxWireContract.SCHEMA_DIGEST_SHA256);
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_CONTRACT_ID, JmxWireContract.SCHEMA_ID);
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_DIGEST, JmxWireContract.SCHEMA_DIGEST_SHA256);
         values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_RUNTIME_EPOCH, runtimeEpoch);
-        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION,
-                evidenceGeneration);
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION, evidenceGeneration);
         values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID, batchId);
         values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE, lifecycle);
-        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES,
-                capabilities.toArray(String[]::new));
-        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_MISSING_REQUIRED,
-                missingRequired.toArray(String[]::new));
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES, capabilities.toArray(String[]::new));
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_MISSING_REQUIRED, missingRequired.toArray(String[]::new));
         values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE, failureCode);
-        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_DISTRIBUTION_SHA256,
-                evidence.agentDistributionSha256());
-        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_UPSTREAM_AGENT_VERSION,
-                evidence.upstreamAgentVersion());
-        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_VERSION,
-                evidence.extensionVersion());
-        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_DEFINING_LOADER,
-                evidence.extensionDefiningLoader());
-        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_SDK_DEFINING_LOADER,
-                evidence.sdkDefiningLoader());
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_DISTRIBUTION_SHA256, evidence.agentDistributionSha256());
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_UPSTREAM_AGENT_VERSION, evidence.upstreamAgentVersion());
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_VERSION, evidence.extensionVersion());
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_DEFINING_LOADER, evidence.extensionDefiningLoader());
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_SDK_DEFINING_LOADER, evidence.sdkDefiningLoader());
+
         try {
             return new CompositeDataSupport(JmxOpenTypes.READINESS_SNAPSHOT, values);
         } catch (OpenDataException exception) {
@@ -230,9 +226,9 @@ public final class ExtensionReadinessWireSnapshot {
 
     private static String requireFailureCode(String failureCode) {
         if (failureCode == null || !FAILURE_CODE_PATTERN.matcher(failureCode).matches()) {
-            throw new IllegalArgumentException(
-                    "FAILED failureCode must match [A-Z][A-Z0-9_]{0,127}");
+            throw new IllegalArgumentException("FAILED failureCode must match [A-Z][A-Z0-9_]{0,127}");
         }
+
         return failureCode;
     }
 
@@ -240,16 +236,15 @@ public final class ExtensionReadinessWireSnapshot {
                                          PlatformExtensionLifecycle expected,
                                          String wireLifecycle) {
         if (readiness.lifecycle() != expected) {
-            throw new IllegalStateException(
-                    "Cannot construct a " + wireLifecycle
-                            + " wire snapshot: underlying lifecycle=" + readiness.lifecycle()
-            );
+            String message = "Cannot construct a %s wire snapshot: underlying lifecycle=%s"
+                    .formatted(wireLifecycle, readiness.lifecycle());
+
+            throw new IllegalStateException(message);
         }
     }
 
-    private static void requireMatchingExtensionVersion(
-            PlatformExtensionReadinessSnapshot readiness,
-            ExtensionRuntimeEvidence evidence) {
+    private static void requireMatchingExtensionVersion(PlatformExtensionReadinessSnapshot readiness,
+                                                        ExtensionRuntimeEvidence evidence) {
         if (!readiness.extensionVersion().equals(evidence.extensionVersion())) {
             throw new IllegalStateException("Readiness and attested extension versions do not match");
         }

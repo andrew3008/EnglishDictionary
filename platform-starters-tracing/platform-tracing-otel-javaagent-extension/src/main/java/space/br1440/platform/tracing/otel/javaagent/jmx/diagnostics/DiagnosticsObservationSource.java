@@ -21,8 +21,7 @@ public final class DiagnosticsObservationSource {
 
     private final LongAdder invalidConfigCounter;
     private final ObservationCaptureEnvelope envelope;
-    private final ObservationSnapshotStore snapshotStore =
-            new ObservationSnapshotStore(JmxOpenTypes.DIAGNOSTICS_OBSERVATION);
+    private final ObservationSnapshotStore snapshotStore = new ObservationSnapshotStore(JmxOpenTypes.DIAGNOSTICS_OBSERVATION);
 
     public DiagnosticsObservationSource(LongAdder invalidConfigCounter, UUID agentInstanceId) {
         this.invalidConfigCounter = Objects.requireNonNull(invalidConfigCounter, "invalidConfigCounter");
@@ -42,16 +41,16 @@ public final class DiagnosticsObservationSource {
                 JmxOpenTypes.SAFE_WRAPPER_METRICS,
                 JmxWireContract.FIELD_SAFE_WRAPPER_METRICS_KEY,
                 JmxWireContract.FIELD_SAFE_WRAPPER_METRICS_VALUE,
-                TracingDiagnostics.shared().snapshot());
+                TracingDiagnostics.shared().snapshot()
+        );
+
         String platformLogLevel = PlatformLogControl.shared().getLevel().name();
         boolean propagationEnabled = PlatformPropagationGate.shared().isEnabled();
 
         Map<String, Object> values = new LinkedHashMap<>();
         openCapture.sealInto(values);
-        values.put(JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_INVALID_CONFIG_COUNT,
-                invalidConfigCount);
-        values.put(JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_SAFE_WRAPPER_METRICS,
-                safeWrapperMetrics);
+        values.put(JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_INVALID_CONFIG_COUNT, invalidConfigCount);
+        values.put(JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_SAFE_WRAPPER_METRICS, safeWrapperMetrics);
         values.put(JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_PLATFORM_LOG_LEVEL, platformLogLevel);
         values.put(JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_PROPAGATION_ENABLED, propagationEnabled);
         snapshotStore.publish(values);

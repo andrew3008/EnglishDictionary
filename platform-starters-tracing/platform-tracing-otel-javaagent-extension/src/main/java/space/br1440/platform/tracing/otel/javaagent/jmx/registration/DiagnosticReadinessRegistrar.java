@@ -30,7 +30,7 @@ final class DiagnosticReadinessRegistrar {
                         new ExtensionReadinessDynamicMBean(projection)
                 ));
             } catch (JmxRegistrationException failure) {
-                scope.failRegistration("READINESS_MBEAN_REGISTRATION_FAILED", failure);
+                scope.failRegistration("READINESS_MBEAN_REGISTRATION_FAILED");
                 throw failure;
             }
 
@@ -47,7 +47,7 @@ final class DiagnosticReadinessRegistrar {
         try {
             batch.close();
         } catch (JmxRegistrationException failure) {
-            scope.failRegistration("FAILED_ROLLBACK_INCOMPLETE", failure);
+            scope.failRegistration("FAILED_ROLLBACK_INCOMPLETE");
             throw failure;
         } finally {
             batch = null;

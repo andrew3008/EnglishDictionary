@@ -33,6 +33,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
+import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadinessSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
 @SuppressWarnings("resource")
@@ -350,9 +351,10 @@ class PlatformTracingMBeanRegistrarTest {
         assertThat(server.isRegistered(DomainObjectNames.DIAGNOSTICS)).isFalse();
         assertThat(server.isRegistered(DomainObjectNames.SETTINGS_STATUS)).isFalse();
         assertThat(server.isRegistered(DomainObjectNames.SETTINGS_MUTATION)).isFalse();
-        assertThat(registrar.extensionReadiness().lifecycle())
+        PlatformExtensionReadinessSnapshot readiness = registrar.extensionReadiness().snapshot();
+        assertThat(readiness.lifecycle())
                 .isEqualTo(PlatformExtensionLifecycle.FAILED);
-        assertThat(registrar.extensionReadiness().failureCode())
+        assertThat(readiness.failureCode())
                 .isEqualTo("JMX_BATCH_REGISTRATION_FAILED");
     }
 

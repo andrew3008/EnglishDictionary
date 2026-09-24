@@ -15,13 +15,12 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public final class JmxOpenTypeSupport {
 
-    public static TabularData stringLongMap(
-            TabularType type,
-            String keyItem,
-            String valueItem,
-            Map<String, Long> values
-    ) {
+    public static TabularData stringLongMap(TabularType type,
+                                            String keyItem,
+                                            String valueItem,
+                                            Map<String, Long> values) {
         TabularDataSupport table = new TabularDataSupport(type);
+
         for (Map.Entry<String, Long> entry : values.entrySet()) {
             try {
                 table.put(new CompositeDataSupport(type.getRowType(),
@@ -36,16 +35,15 @@ public final class JmxOpenTypeSupport {
         return table;
     }
 
-    public static TabularData stringDoubleMap(
-            TabularType type,
-            String keyItem,
-            String valueItem,
-            Map<String, Double> values
-    ) {
+    public static TabularData stringDoubleMap(TabularType type,
+                                              String keyItem,
+                                              String valueItem,
+                                              Map<String, Double> values) {
         TabularDataSupport table = new TabularDataSupport(type);
         for (Map.Entry<String, Double> entry : values.entrySet()) {
             try {
-                table.put(new CompositeDataSupport(type.getRowType(),
+                table.put(
+                        new CompositeDataSupport(type.getRowType(),
                         new String[]{keyItem, valueItem},
                         new Object[]{entry.getKey(), entry.getValue()})
                 );
@@ -60,6 +58,7 @@ public final class JmxOpenTypeSupport {
     public static CompositeData compositeData(CompositeType type, Map<String, ?> items) {
         Objects.requireNonNull(type, "type");
         Objects.requireNonNull(items, "items");
+
         try {
             return new CompositeDataSupport(type, items);
         } catch (OpenDataException e) {

@@ -10,6 +10,8 @@ import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionR
 
 final class MBeanRegistrationScope {
 
+    private static final String FAILED_ROLLBACK_INCOMPLETE = "FAILED_ROLLBACK_INCOMPLETE";
+
     private final MBeanBatchRegistrar batchRegistrar;
     private final PlatformExtensionReadiness extensionReadiness;
     private final Object serializationLock = new Object();
@@ -49,8 +51,12 @@ final class MBeanRegistrationScope {
         return batchRegistrar.registerAllOrRollback(registrations);
     }
 
-    void failRegistration(String code, Throwable failure) {
-        extensionReadiness.fail(code, failure);
+    void failRegistration(String code) {
+        if (FAILED_ROLLBACK_INCOMPLETE.equals(code)) {
+            extensionReadiness.recordTerminalCleanupFailure(code);
+            return;
+        }
+        extensionReadiness.fail(code);
     }
 
     void reclaimUnreclaimed() {
@@ -64,7 +70,7 @@ final class MBeanRegistrationScope {
         JmxRegistrationException aggregate = new JmxRegistrationException("MBean cleanup retry failed", failures.getFirst());
         failures.stream().skip(1).forEach(aggregate::addSuppressed);
         aggregate.markRollbackIncomplete();
-        failRegistration("FAILED_ROLLBACK_INCOMPLETE", aggregate);
+        failRegistration(FAILED_ROLLBACK_INCOMPLETE);
         throw aggregate;
     }
 

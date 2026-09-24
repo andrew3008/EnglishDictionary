@@ -22,8 +22,7 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWi
 
 public final class ExtensionReadinessDynamicMBean implements DynamicMBean {
 
-    private static final String READINESS_ATTRIBUTE =
-            JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT;
+    private static final String READINESS_ATTRIBUTE = JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT;
     private static final MBeanInfo INFO = buildMBeanInfo();
 
     private final Supplier<ExtensionReadinessWireSnapshot> projection;
@@ -37,6 +36,7 @@ public final class ExtensionReadinessDynamicMBean implements DynamicMBean {
         if (!READINESS_ATTRIBUTE.equals(attribute)) {
             throw new AttributeNotFoundException("Unknown extension readiness attribute: " + attribute);
         }
+
         return snapshot().readinessSnapshot();
     }
 
@@ -89,6 +89,7 @@ public final class ExtensionReadinessDynamicMBean implements DynamicMBean {
                 false,
                 false
         );
+
         return new OpenMBeanInfoSupport(
                 ExtensionReadinessDynamicMBean.class.getName(),
                 "Platform extension readiness generated from the JMX wire contract",

@@ -34,7 +34,7 @@ class PlatformExtensionReadinessJmxTest {
             PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(server, readiness);
             ExtensionReadinessWireSnapshot projection =
-                    ExtensionReadinessWireSnapshot.initializing(readiness);
+                    ExtensionReadinessWireSnapshot.initializing(readiness.snapshot(), "");
 
             // when
             try (AutoCloseable ignored = registrar.registerDiagnosticReadiness(() -> projection)) {
@@ -60,7 +60,10 @@ class PlatformExtensionReadinessJmxTest {
         try {
             PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
             AtomicReference<ExtensionReadinessWireSnapshot> projection =
-                    new AtomicReference<>(ExtensionReadinessWireSnapshot.initializing(readiness, "epoch-1"));
+                    new AtomicReference<>(ExtensionReadinessWireSnapshot.initializing(
+                            readiness.snapshot(),
+                            "epoch-1"
+                    ));
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(server, readiness);
             try (AutoCloseable ignored = registrar.registerDiagnosticReadiness(projection::get)) {
                 // when
@@ -73,7 +76,10 @@ class PlatformExtensionReadinessJmxTest {
                         JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES)).isEmpty();
 
                 // when
-                projection.set(ExtensionReadinessWireSnapshot.initializing(readiness, "epoch-1"));
+                projection.set(ExtensionReadinessWireSnapshot.initializing(
+                        readiness.snapshot(),
+                        "epoch-1"
+                ));
 
                 // then
                 CompositeData published = (CompositeData) server.getAttribute(
@@ -94,7 +100,7 @@ class PlatformExtensionReadinessJmxTest {
         try {
             PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
             ExtensionReadinessWireSnapshot projection =
-                    ExtensionReadinessWireSnapshot.initializing(readiness);
+                    ExtensionReadinessWireSnapshot.initializing(readiness.snapshot(), "");
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(server, readiness);
             try (AutoCloseable ignored = registrar.registerDiagnosticReadiness(() -> projection)) {
                 // when
@@ -124,7 +130,7 @@ class PlatformExtensionReadinessJmxTest {
             PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
             AtomicInteger gets = new AtomicInteger();
             ExtensionReadinessWireSnapshot frozen =
-                    ExtensionReadinessWireSnapshot.initializing(readiness, "epoch-1");
+                    ExtensionReadinessWireSnapshot.initializing(readiness.snapshot(), "epoch-1");
             try (AutoCloseable ignored = new PlatformTracingMBeanRegistrar(server, readiness)
                     .registerDiagnosticReadiness(() -> {
                         gets.incrementAndGet();

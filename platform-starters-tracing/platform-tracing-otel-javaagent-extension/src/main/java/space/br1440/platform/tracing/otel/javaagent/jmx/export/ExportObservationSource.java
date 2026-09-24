@@ -24,12 +24,11 @@ public final class ExportObservationSource {
     private final OwnerRegistrationSlot<PlatformDropOldestExportSpanProcessor> processorSlot;
     private final OwnerRegistrationSlot<SafeSpanExporter> exporterSlot;
     private final ObservationCaptureEnvelope envelope;
-    private final ObservationSnapshotStore snapshotStore =
-            new ObservationSnapshotStore(JmxOpenTypes.EXPORT_OBSERVATION);
+    private final ObservationSnapshotStore snapshotStore = new ObservationSnapshotStore(JmxOpenTypes.EXPORT_OBSERVATION);
 
     public ExportObservationSource(OwnerRegistrationSlot<PlatformDropOldestExportSpanProcessor> processorSlot,
-                         OwnerRegistrationSlot<SafeSpanExporter> exporterSlot,
-                         UUID agentInstanceId) {
+                                   OwnerRegistrationSlot<SafeSpanExporter> exporterSlot,
+                                   UUID agentInstanceId) {
         this.processorSlot = Objects.requireNonNull(processorSlot, "processorSlot");
         this.exporterSlot = Objects.requireNonNull(exporterSlot, "exporterSlot");
         this.envelope = new ObservationCaptureEnvelope(agentInstanceId);
@@ -74,7 +73,8 @@ public final class ExportObservationSource {
                     snapshot.lifecycleState(),
                     snapshot.shutdownFailuresTotal(),
                     snapshot.droppedAfterFailureTotal(),
-                    snapshot.discardedQueuedTotal());
+                    snapshot.discardedQueuedTotal()
+            );
         }
 
         return processorValues(false, state.generation(), offsetNanos, 0, 0, 0L, 0L, 0L, 0L,
@@ -86,8 +86,10 @@ public final class ExportObservationSource {
                 SafeSpanExporter owner, long generation
         )) {
             Map<String, Long> metrics = owner.metricsSnapshot();
-            return exporterValues(true, generation, offsetNanos, owner.isExportEnabled(),
-                    owner.getLastExportDurationNanos(), metrics);
+            return exporterValues(
+                    true, generation, offsetNanos, owner.isExportEnabled(),
+                    owner.getLastExportDurationNanos(), metrics
+            );
         }
 
         return exporterValues(false, state.generation(), offsetNanos, false, 0L, Map.of());
@@ -139,14 +141,16 @@ public final class ExportObservationSource {
         values.put(JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_GENERATION, generation);
         values.put(JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_CAPTURED_OFFSET_NANOS, offsetNanos);
         values.put(JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_EXPORT_ENABLED, exportEnabled);
-        values.put(JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_LAST_EXPORT_DURATION_NANOS,
-                lastExportDurationNanos);
+        values.put(JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_LAST_EXPORT_DURATION_NANOS, lastExportDurationNanos);
         values.put(JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_SAFE_EXPORTER_METRICS,
                 JmxOpenTypeSupport.stringLongMap(
                         JmxOpenTypes.SAFE_EXPORTER_METRICS,
                         JmxWireContract.FIELD_SAFE_EXPORTER_METRICS_KEY,
                         JmxWireContract.FIELD_SAFE_EXPORTER_METRICS_VALUE,
-                        metrics));
+                        metrics
+                )
+        );
+
         return JmxOpenTypeSupport.compositeData(JmxOpenTypes.SAFE_EXPORTER_VALUES, values);
     }
 }
