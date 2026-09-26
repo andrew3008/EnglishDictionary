@@ -158,8 +158,7 @@ class MonotonicJmxCounterGroupBridgeTest {
         nanoTime.addAndGet(WINDOW_NANOS + 1);
         source.publish(Map.of(Key.A, 2L, Key.B, 2L), 1);
 
-        ExecutorService pool = Executors.newFixedThreadPool(8);
-        try {
+        try (ExecutorService pool = Executors.newFixedThreadPool(8)) {
             CountDownLatch ready = new CountDownLatch(8);
             CountDownLatch go = new CountDownLatch(1);
             for (int i = 0; i < 8; i++) {
@@ -171,7 +170,6 @@ class MonotonicJmxCounterGroupBridgeTest {
             }
             assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
             go.countDown();
-        } finally {
             pool.shutdown();
             assertThat(pool.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
         }
@@ -186,9 +184,12 @@ class MonotonicJmxCounterGroupBridgeTest {
 
     private static void awaitQuietly(CountDownLatch latch) {
         try {
-            latch.await(5, TimeUnit.SECONDS);
+            if (!latch.await(5, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("latch was not released before the deadline");
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted while waiting for the latch", e);
         }
     }
 
@@ -196,21 +197,21 @@ class MonotonicJmxCounterGroupBridgeTest {
     private static final class FakeSource implements Supplier<Optional<JmxOwnerState<Map<Key, Long>>>> {
 
         private final AtomicLong reads = new AtomicLong();
-        private volatile Optional<JmxOwnerState<Map<Key, Long>>> current = Optional.empty();
+        private volatile JmxOwnerState<Map<Key, Long>> current;
 
         void publish(Map<Key, Long> values, long generation) {
             EnumMap<Key, Long> copy = new EnumMap<>(values);
-            current = Optional.of(new JmxOwnerState.Present<>(copy, generation));
+            current = new JmxOwnerState.Present<>(copy, generation);
         }
 
         void publishUnavailable() {
-            current = Optional.empty();
+            current = null;
         }
 
         @Override
         public Optional<JmxOwnerState<Map<Key, Long>>> get() {
             reads.incrementAndGet();
-            return current;
+            return Optional.ofNullable(current);
         }
     }
 }

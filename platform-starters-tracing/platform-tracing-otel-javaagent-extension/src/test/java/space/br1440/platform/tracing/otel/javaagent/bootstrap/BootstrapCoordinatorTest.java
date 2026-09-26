@@ -279,8 +279,8 @@ class BootstrapCoordinatorTest {
 
         // when
         BootstrapException failure = catchThrowableOfType(
-                () -> coordinator.prepare(config(Map.of())),
-                BootstrapException.class
+                BootstrapException.class,
+                () -> coordinator.prepare(config(Map.of()))
         );
         AutoconfigureSession retainedSession = coordinator.session();
 
@@ -701,8 +701,8 @@ class BootstrapCoordinatorTest {
         try (coordinator) {
             // when
             BootstrapException failure = catchThrowableOfType(
-                    () -> coordinator.prepare(invalidValidationLevelConfig()),
-                    BootstrapException.class
+                    BootstrapException.class,
+                    () -> coordinator.prepare(invalidValidationLevelConfig())
             );
 
             // then
@@ -721,14 +721,19 @@ class BootstrapCoordinatorTest {
                     DomainObjectNames.EXTENSION_READINESS,
                     JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT
             );
+
             assertThat(diagnostic.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE))
                     .isEqualTo("FAILED");
+
             assertThat(diagnostic.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE))
                     .isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
+
             assertThat(diagnostic.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_INSTANCE_ID))
                     .isEqualTo(agentInstanceId.toString());
+
             assertThat(diagnostic.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID))
                     .isEqualTo("");
+
             assertThat(diagnostic.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION))
                     .isEqualTo(0L);
         }
@@ -744,14 +749,14 @@ class BootstrapCoordinatorTest {
 
         try (coordinator) {
             BootstrapException first = catchThrowableOfType(
-                    () -> coordinator.prepare(invalidValidationLevelConfig()),
-                    BootstrapException.class
+                    BootstrapException.class,
+                    () -> coordinator.prepare(invalidValidationLevelConfig())
             );
 
             // when
             BootstrapException repeated = catchThrowableOfType(
-                    () -> coordinator.prepare(invalidValidationLevelConfig()),
-                    BootstrapException.class
+                    BootstrapException.class,
+                    () -> coordinator.prepare(invalidValidationLevelConfig())
             );
 
             // then
@@ -772,12 +777,12 @@ class BootstrapCoordinatorTest {
         try (coordinator) {
             // when
             BootstrapException first = catchThrowableOfType(
-                    () -> coordinator.prepare(invalidValidationLevelConfig()),
-                    BootstrapException.class
+                    BootstrapException.class,
+                    () -> coordinator.prepare(invalidValidationLevelConfig())
             );
             BootstrapException repeated = catchThrowableOfType(
-                    () -> coordinator.prepare(invalidValidationLevelConfig()),
-                    BootstrapException.class
+                    BootstrapException.class,
+                    () -> coordinator.prepare(invalidValidationLevelConfig())
             );
 
             // then
@@ -976,10 +981,9 @@ class BootstrapCoordinatorTest {
         return new MapConfigProperties(new HashMap<>(data));
     }
 
-    private static final class MapConfigProperties implements ConfigProperties {
-        private final Map<String, String> data;
+    private record MapConfigProperties(Map<String, String> data) implements ConfigProperties {
 
-        MapConfigProperties(Map<String, String> data) {
+        private MapConfigProperties(Map<String, String> data) {
             this.data = new HashMap<>(data);
         }
 
@@ -1018,20 +1022,23 @@ class BootstrapCoordinatorTest {
         }
 
         @Override
-        public java.util.List<String> getList(String name) {
+        public List<String> getList(String name) {
             String value = data.get(name);
+
             if (value == null) {
                 return null;
             }
+
             if (value.isBlank()) {
-                return java.util.List.of();
+                return List.of();
             }
-            return java.util.List.of(value.split("\\s*,\\s*"));
+
+            return List.of(value.split("\\s*,\\s*"));
         }
 
         @Override
-        public java.util.Map<String, String> getMap(String name) {
-            return java.util.Map.of();
+        public Map<String, String> getMap(String name) {
+            return Map.of();
         }
     }
 

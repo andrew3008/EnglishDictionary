@@ -49,10 +49,10 @@ class AutoconfigureSessionIdentityTest {
                 .hasMessage("Autoconfigure session and tracing settings agentInstanceId values must match");
     }
 
-    private static AutoconfigureSession session(AgentInstanceId agentInstanceId,
-                                                TracingSettingsSource policy,
-                                                PlatformTracingMBeanRegistrar registrar) {
-        return new AutoconfigureSession(
+    private static void session(AgentInstanceId agentInstanceId,
+                                TracingSettingsSource policy,
+                                PlatformTracingMBeanRegistrar registrar) {
+        new AutoconfigureSession(
                 agentInstanceId,
                 mock(ConfigurationFingerprint.class),
                 mock(ExtensionConfig.class),

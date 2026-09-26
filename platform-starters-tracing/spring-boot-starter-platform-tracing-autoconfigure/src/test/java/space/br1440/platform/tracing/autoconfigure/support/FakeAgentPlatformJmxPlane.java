@@ -87,7 +87,6 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
 
     private final AtomicInteger applyInvocationCount = new AtomicInteger(0);
     private final AtomicReference<String> lastRequestAgentInstanceId = new AtomicReference<>();
-    private final AtomicReference<String> lastResponseMessageCode = new AtomicReference<>("");
 
     private static final String AGENT_INSTANCE_MISMATCH = "AGENT_INSTANCE_MISMATCH";
     private static final String ACCEPTED_SEQUENCE_MISMATCH = "ACCEPTED_SEQUENCE_MISMATCH";
@@ -229,10 +228,6 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
         return lastRequestAgentInstanceId.get();
     }
 
-    public String lastResponseMessageCode() {
-        return lastResponseMessageCode.get();
-    }
-
     public void setNextApplyOutcome(String outcome) {
         nextApplyOutcome.set(outcome);
     }
@@ -279,7 +274,6 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
         lastRequestAgentInstanceId.set(requestAgentInstanceId);
 
         if (!agentInstanceId.equals(requestAgentInstanceId)) {
-            lastResponseMessageCode.set(AGENT_INSTANCE_MISMATCH);
             try {
                 return new CompositeDataSupport(RESPONSE, RESPONSE_KEYS, new Object[]{
                         acceptedSequence.get(), requestAttemptId, AGENT_INSTANCE_MISMATCH, "STALE",
@@ -308,7 +302,6 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
         String[] violationCodes = NONE.equals(messageCode)
                 ? new String[0]
                 : new String[]{messageCode};
-        lastResponseMessageCode.set(messageCode);
 
         try {
             return new CompositeDataSupport(RESPONSE, RESPONSE_KEYS, new Object[]{

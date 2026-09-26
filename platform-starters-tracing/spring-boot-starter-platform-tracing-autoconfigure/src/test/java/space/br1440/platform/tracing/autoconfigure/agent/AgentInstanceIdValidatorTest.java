@@ -52,6 +52,7 @@ final class AgentInstanceIdValidatorTest {
 
         // when
         // then
+        //noinspection ConstantValue,ConstantConditions
         assertThatThrownBy(() -> AgentInstanceIdValidator.requireCanonical(value, "agentInstanceId"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("agentInstanceId must not be null");

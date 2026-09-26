@@ -47,12 +47,10 @@ final class OtlpTraceCollector implements AutoCloseable {
         this.rejectedSpansPerBatch = rejectedSpansPerBatch;
     }
 
-    /** Коллектор, отвергающий один span в каждом батче: сценарий partial success. */
     static OtlpTraceCollector startRejectingOneSpanPerBatch() throws IOException {
         return start(1L);
     }
 
-    /** Коллектор, принимающий батчи целиком. */
     static OtlpTraceCollector startAcceptingAllSpans() throws IOException {
         return start(0L);
     }
@@ -152,17 +150,26 @@ final class OtlpTraceCollector implements AutoCloseable {
     public void close() {
         server.stop(DRAIN_TIMEOUT_SECONDS);
         executor.shutdown();
+
         try {
-            boolean terminated = executor.awaitTermination(DRAIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            if (!terminated) {
-                executor.shutdownNow();
-                executor.awaitTermination(DRAIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-                throw new IllegalStateException(
-                        "OTLP trace collector did not drain within %d seconds".formatted(DRAIN_TIMEOUT_SECONDS)
-                );
+            if (executor.awaitTermination(DRAIN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                return;
             }
+
+            int droppedExchanges = executor.shutdownNow().size();
+            boolean terminatedAfterInterrupt = executor.awaitTermination(DRAIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            String forcedShutdownOutcome = terminatedAfterInterrupt ? "succeeded" : "FAILED, executor thread is still alive";
+            throw new IllegalStateException(
+                    "OTLP trace collector did not drain within %d s; forced shutdown %s; %d queued exchange(s) dropped"
+                            .formatted(
+                                    DRAIN_TIMEOUT_SECONDS,
+                                    forcedShutdownOutcome,
+                                    droppedExchanges
+                            )
+            );
         } catch (InterruptedException interrupted) {
             executor.shutdownNow();
+
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Interrupted while draining OTLP trace collector", interrupted);
         }

@@ -40,7 +40,13 @@ class TraceControlPropagatorTest {
         }
     };
 
-    private static final TextMapSetter<Map<String, String>> MAP_SETTER = (carrier, key, value) -> carrier.put(key, value);
+    private static final TextMapSetter<Map<String, String>> MAP_SETTER = (carrier, key, value) -> {
+        if (carrier == null) {
+            throw new IllegalArgumentException("carrier must not be null");
+        }
+
+        carrier.put(key, value);
+    };
 
     @Test
     @DisplayName("extract кладёт InboundTraceControl в Context")

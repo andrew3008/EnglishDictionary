@@ -15,12 +15,11 @@ public record AcceptedSettingsWithSequence(long acceptedSequence,
             throw new IllegalArgumentException("acceptedSequence must be greater than or equal to zero");
         }
 
-        agentInstanceId = AgentInstanceIdValidator.requireCanonical(agentInstanceId, "agentInstanceId");
-        snapshot = Objects.requireNonNull(snapshot, "snapshot");
+        AgentInstanceIdValidator.requireCanonical(agentInstanceId, "agentInstanceId");
+        Objects.requireNonNull(snapshot, "snapshot");
     }
 
     public ExpectedSettingsRevision expectedBase() {
         return new ExpectedSettingsRevision(agentInstanceId, acceptedSequence);
     }
-
 }

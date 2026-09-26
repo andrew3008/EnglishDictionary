@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.autoconfigure.metrics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
@@ -22,11 +21,9 @@ class PlatformTracingSafeWrapperMetricsBinderTest {
     private static final String DEGRADED_MODE_METRIC = "platform.tracing.safe_wrapper.degraded_mode";
     private static final String LAST_FAILURE_METRIC = "platform.tracing.safe_wrapper.last_failure_epoch_ms";
 
-    private CoalescingJmxObservationSource<DiagnosticsObservation> source;
-
     @Test
     void absentObservationCollapsesCountersToZeroAndTriStateGaugesToNaN() {
-        SimpleMeterRegistry registry = bindWith(() -> Optional.empty());
+        SimpleMeterRegistry registry = bindWith(Optional::empty);
 
         assertThat(failureCounter(registry, "sampler")).isZero();
         assertThat(failureCounter(registry, "propagator")).isZero();
@@ -86,7 +83,8 @@ class PlatformTracingSafeWrapperMetricsBinderTest {
 
     private SimpleMeterRegistry bindWith(Supplier<Optional<DiagnosticsObservation>> supplier) {
         AtomicLong nanoTime = new AtomicLong(0);
-        source = new CoalescingJmxObservationSource<>(supplier, nanoTime::get, 0L);
+        CoalescingJmxObservationSource<DiagnosticsObservation> source = new CoalescingJmxObservationSource<>(supplier, nanoTime::get, 0L);
+
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
         new PlatformTracingSafeWrapperMetricsBinder(source).bindTo(registry);
         return registry;

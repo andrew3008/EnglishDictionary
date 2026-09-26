@@ -208,7 +208,7 @@ class PlatformAutoConfigurationCustomizerTest {
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
-        // PR-5: ratio поступает из addPropertiesCustomizer (extensionConfig), не из samplerCustomizer config.
+        // ratio поступает из addPropertiesCustomizer (extensionConfig), не из samplerCustomizer config.
         recorder.primeWithConfig(new MapConfigProperties(Map.of("platform.tracing.sampling.ratio", "0")));
 
         // when
@@ -255,20 +255,28 @@ class PlatformAutoConfigurationCustomizerTest {
         try (coordinator) {
             // when
             BootstrapException first = catchThrowableOfType(
-                    () -> recorder.primeWithConfig(config),
-                    BootstrapException.class
+                    BootstrapException.class,
+                    () -> recorder.primeWithConfig(config)
             );
             BootstrapException repeated = catchThrowableOfType(
-                    () -> recorder.primeWithConfig(config),
-                    BootstrapException.class
+                    BootstrapException.class,
+                    () -> recorder.primeWithConfig(config)
             );
             BootstrapException exporterFailure = catchThrowableOfType(
-                    () -> recorder.spanExporterCustomizer.apply(null, config),
-                    BootstrapException.class
+                    BootstrapException.class,
+                    () -> {
+                        try (SpanExporter exporter = recorder.spanExporterCustomizer.apply(null, config)) {
+                            assertThat(exporter).isNull();
+                        }
+                    }
             );
             BootstrapException processorFailure = catchThrowableOfType(
-                    () -> recorder.spanProcessorCustomizer.apply(null, config),
-                    BootstrapException.class
+                    BootstrapException.class,
+                    () -> {
+                        try (SpanProcessor processor = recorder.spanProcessorCustomizer.apply(null, config)) {
+                            assertThat(processor).isNull();
+                        }
+                    }
             );
 
             // then
@@ -320,13 +328,12 @@ class PlatformAutoConfigurationCustomizerTest {
                 invalidDuration("zero span timeout", ExtensionPropertyNames.SPAN_TIMEOUT_SPAN_TIMEOUT, "0"),
                 invalidDuration("zero trace timeout", ExtensionPropertyNames.SPAN_TIMEOUT_TRACE_TIMEOUT, "0"),
                 invalidDuration("zero scan interval", ExtensionPropertyNames.SPAN_TIMEOUT_SCAN_INTERVAL, "0"),
-                invalidInt("zero max tracked traces", ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_TRACES, "0"),
+                invalidInt("zero max tracked traces", ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_TRACES),
                 invalidInt(
                         "zero max tracked spans per trace",
-                        ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_SPANS_PER_TRACE,
-                        "0"
+                        ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_SPANS_PER_TRACE
                 ),
-                invalidInt("zero max tracked spans", ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_SPANS, "0"),
+                invalidInt("zero max tracked spans", ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_SPANS),
                 new InvalidConfiguration(
                         "trace timeout below span timeout",
                         Map.of(
@@ -386,10 +393,8 @@ class PlatformAutoConfigurationCustomizerTest {
         return new InvalidConfiguration(description, Map.of(property, value), property, value, false);
     }
 
-    private static InvalidConfiguration invalidInt(String description,
-                                                   String property,
-                                                   String value) {
-        return new InvalidConfiguration(description, Map.of(property, value), property, value, false);
+    private static InvalidConfiguration invalidInt(String description, String property) {
+        return new InvalidConfiguration(description, Map.of(property, "0"), property, "0", false);
     }
 
     private static InvalidConfiguration parsingFailure(String description,
