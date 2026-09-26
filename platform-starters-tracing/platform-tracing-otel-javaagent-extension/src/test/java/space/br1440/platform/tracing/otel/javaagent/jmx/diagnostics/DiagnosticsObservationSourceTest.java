@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.atomic.LongAdder;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
@@ -14,12 +13,13 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagationGate;
 
 class DiagnosticsObservationSourceTest {
 
-    private static final UUID AGENT_INSTANCE_ID = UUID.randomUUID();
+    private static final AgentInstanceId AGENT_INSTANCE_ID = AgentInstanceId.random();
 
     @Test
     void observationEncodesCompleteDiagnosticsSnapshot() {

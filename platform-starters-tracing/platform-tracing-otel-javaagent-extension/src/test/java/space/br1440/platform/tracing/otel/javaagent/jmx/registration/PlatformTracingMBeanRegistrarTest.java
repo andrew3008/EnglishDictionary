@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures.boundSampling;
 import static space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationTestFixtures.initializingReadinessProjection;
 
 import java.lang.management.ManagementFactory;
@@ -14,7 +15,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanRegistrationException;
@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
@@ -41,10 +42,12 @@ class PlatformTracingMBeanRegistrarTest {
 
     private final List<AutoCloseable> registrations = new ArrayList<>();
     private MBeanServer server;
+    private AgentInstanceId agentInstanceId;
 
     @BeforeEach
     void setUp() {
         server = MBeanServerFactory.createMBeanServer();
+        agentInstanceId = AgentInstanceId.random();
     }
 
     @AfterEach
@@ -62,7 +65,7 @@ class PlatformTracingMBeanRegistrarTest {
     @Test
     void authorizedRuntimeRegistrationRegistersDomainMBeans() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
+        TracingSettingsSource holder = boundSampling(agentInstanceId, true, Map.of(), 0.5);
         PlatformTracingMBeanRegistrar registrar = registrar();
 
         // when
@@ -84,7 +87,7 @@ class PlatformTracingMBeanRegistrarTest {
         // given
         MBeanServer platform = ManagementFactory.getPlatformMBeanServer();
         boolean platformHadScrubbing = platform.isRegistered(DomainObjectNames.SCRUBBING);
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
+        TracingSettingsSource holder = boundSampling(agentInstanceId, true, Map.of(), 0.5);
 
         // when
         wireRequiredComponents(registrar(), holder);
@@ -98,7 +101,7 @@ class PlatformTracingMBeanRegistrarTest {
     void runtimeMBeansRemainAbsentBeforeAuthorizedRegistration() {
         // given
         PlatformTracingMBeanRegistrar registrar = registrar();
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
+        TracingSettingsSource holder = boundSampling(agentInstanceId, true, Map.of(), 0.5);
 
         // when
         wireComponentsExceptAcceptedPolicy(registrar, holder);
@@ -108,9 +111,34 @@ class PlatformTracingMBeanRegistrarTest {
     }
 
     @Test
+    void runtimeRegistrationRejectsDifferentAgentInstanceId() {
+        // given
+        TracingSettingsSource holder = TracingSettingsSource.isolatedDefaults();
+        PlatformTracingMBeanRegistrar registrar =
+                new PlatformTracingMBeanRegistrar(server, AgentInstanceId.random());
+
+        // when
+        assertThatThrownBy(() -> registrar.registerRuntimeControls(holder))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("JMX registrar and tracing settings agentInstanceId values must match");
+    }
+
+    @Test
+    void constructorRejectsUnboundAgentInstanceId() {
+        // given
+        AgentInstanceId agentInstanceId = AgentInstanceId.unbound();
+
+        // when
+        // then
+        assertThatThrownBy(() -> new PlatformTracingMBeanRegistrar(server, agentInstanceId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("JMX registrar agentInstanceId must be bound");
+    }
+
+    @Test
     void activeRuntimeRegistrationRejectsRepeatedAuthorizedCall() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
+        TracingSettingsSource holder = boundSampling(agentInstanceId, true, Map.of(), 0.5);
         PlatformTracingMBeanRegistrar registrar = registrar();
         wireRequiredComponents(registrar, holder);
 
@@ -123,7 +151,7 @@ class PlatformTracingMBeanRegistrarTest {
     @Test
     void secondRegistrarFailsClosedOnExistingOwnedObjectNames() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
+        TracingSettingsSource holder = boundSampling(agentInstanceId, true, Map.of(), 0.5);
         PlatformTracingMBeanRegistrar first = registrar();
         wireRequiredComponents(first, holder);
         PlatformTracingMBeanRegistrar second = registrar();
@@ -138,7 +166,7 @@ class PlatformTracingMBeanRegistrarTest {
     @Test
     void closingRuntimeRegistrationRemovesCompleteRuntimeBatch() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
+        TracingSettingsSource holder = boundSampling(agentInstanceId, true, Map.of(), 0.5);
         PlatformTracingMBeanRegistrar registrar = registrar();
         PlatformTracingMBeanRegistrar.RuntimeRegistration runtimeRegistration = wireRequiredComponents(registrar, holder);
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
@@ -160,7 +188,7 @@ class PlatformTracingMBeanRegistrarTest {
     @Test
     void closingRuntimeRegistrationTwiceIsIdempotentAndReleasesTheGeneration() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
+        TracingSettingsSource holder = boundSampling(agentInstanceId, true, Map.of(), 0.5);
         PlatformTracingMBeanRegistrar registrar = registrar();
         PlatformTracingMBeanRegistrar.RuntimeRegistration runtimeRegistration = wireRequiredComponents(registrar, holder);
         runtimeRegistration.close();
@@ -181,7 +209,7 @@ class PlatformTracingMBeanRegistrarTest {
     @Test
     void concurrentAuthorizedCallsDoNotBreakActiveRegistration() throws Exception {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
+        TracingSettingsSource holder = boundSampling(agentInstanceId, true, Map.of(), 0.5);
         PlatformTracingMBeanRegistrar registrar = registrar();
         wireRequiredComponents(registrar, holder);
 
@@ -230,8 +258,9 @@ class PlatformTracingMBeanRegistrarTest {
             }
         };
 
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
-        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(countingSpy);
+        TracingSettingsSource holder = boundSampling(agentInstanceId, true, Map.of(), 0.5);
+        PlatformTracingMBeanRegistrar registrar =
+                new PlatformTracingMBeanRegistrar(countingSpy, holder.current().agentInstanceId());
         wireComponentsExceptAcceptedPolicy(registrar, holder);
 
         int threads = 8;
@@ -301,8 +330,9 @@ class PlatformTracingMBeanRegistrarTest {
             }
         };
 
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
-        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(faultySpy);
+        TracingSettingsSource holder = boundSampling(agentInstanceId, true, Map.of(), 0.5);
+        PlatformTracingMBeanRegistrar registrar =
+                new PlatformTracingMBeanRegistrar(faultySpy, holder.current().agentInstanceId());
         wireComponentsExceptAcceptedPolicy(registrar, holder);
 
         // when
@@ -334,8 +364,9 @@ class PlatformTracingMBeanRegistrarTest {
                 return super.registerMBean(object, name);
             }
         };
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
-        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(failingServer);
+        TracingSettingsSource holder = boundSampling(agentInstanceId, true, Map.of(), 0.5);
+        PlatformTracingMBeanRegistrar registrar =
+                new PlatformTracingMBeanRegistrar(failingServer, holder.current().agentInstanceId());
         wireComponentsExceptAcceptedPolicy(registrar, holder);
 
         // when
@@ -367,7 +398,8 @@ class PlatformTracingMBeanRegistrarTest {
 
     private void wireComponentsExceptAcceptedPolicy(PlatformTracingMBeanRegistrar registrar,
                                                     TracingSettingsSource acceptedPolicy) {
-        trackRegistration(registrar.registerDiagnosticReadiness(initializingReadinessProjection()));
+        trackRegistration(registrar.registerDiagnosticReadiness(
+                initializingReadinessProjection(registrar.agentInstanceId())));
         CompositeSampler sampler = new CompositeSampler(
                 acceptedPolicy, CategoryBSamplingAccess.snapshot(List.of(), List.of()));
         ValidatingSpanProcessor validating = new ValidatingSpanProcessor(acceptedPolicy);
@@ -377,7 +409,7 @@ class PlatformTracingMBeanRegistrarTest {
     }
 
     private PlatformTracingMBeanRegistrar registrar() {
-        return new PlatformTracingMBeanRegistrar(server);
+        return new PlatformTracingMBeanRegistrar(server, agentInstanceId);
     }
 
     private <T extends AutoCloseable> T trackRegistration(T registration) {

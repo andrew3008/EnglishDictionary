@@ -3,9 +3,9 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.observation;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 
 public final class ObservationCaptureEnvelope {
@@ -49,7 +49,7 @@ public final class ObservationCaptureEnvelope {
     private final String agentInstanceId;
     private final AtomicLong captureSequence = new AtomicLong();
 
-    public ObservationCaptureEnvelope(UUID agentInstanceId) {
+    public ObservationCaptureEnvelope(AgentInstanceId agentInstanceId) {
         this.agentInstanceId = Objects.requireNonNull(agentInstanceId, "agentInstanceId").toString();
     }
 

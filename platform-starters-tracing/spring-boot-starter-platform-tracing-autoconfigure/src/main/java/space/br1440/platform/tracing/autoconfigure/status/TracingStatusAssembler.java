@@ -138,7 +138,7 @@ public final class TracingStatusAssembler {
         agent.put("readinessEndpointPresent", readiness.endpointPresent());
         agent.put("contractId", contractIdentity.contractId());
         agent.put("schemaDigest", contractIdentity.schemaDigest());
-        agent.put("runtimeEpoch", readinessAnchor.runtimeEpoch());
+        agent.put("agentInstanceId", readinessAnchor.agentInstanceId());
         agent.put("evidenceGeneration", readinessAnchor.evidenceGeneration());
         agent.put("batchId", readinessAnchor.batchId());
         agent.put("lifecycle", lifecycleState.lifecycle());

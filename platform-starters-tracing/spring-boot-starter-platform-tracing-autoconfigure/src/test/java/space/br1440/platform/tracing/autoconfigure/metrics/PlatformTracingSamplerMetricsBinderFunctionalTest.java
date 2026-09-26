@@ -43,6 +43,8 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 class PlatformTracingSamplerMetricsBinderFunctionalTest {
 
+    private static final String AGENT_INSTANCE_ID = "123e4567-e89b-12d3-a456-426614174000";
+
     private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
     private ObjectName registeredName;
 
@@ -168,7 +170,7 @@ class PlatformTracingSamplerMetricsBinderFunctionalTest {
 
                     Map<String, Object> values = new LinkedHashMap<>();
                     values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE, 1L);
-                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID, "agent-functional-test");
+                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID, AGENT_INSTANCE_ID);
                     values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_STARTED_AT, 0L);
                     values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_COMPLETED_AT, 0L);
                     values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_ENABLED, true);

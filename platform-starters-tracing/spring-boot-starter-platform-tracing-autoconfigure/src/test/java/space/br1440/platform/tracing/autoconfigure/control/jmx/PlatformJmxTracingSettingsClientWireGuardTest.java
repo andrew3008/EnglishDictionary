@@ -77,13 +77,13 @@ final class PlatformJmxTracingSettingsClientWireGuardTest {
         // when
         // then
         assertThatThrownBy(() -> client.applySnapshot(
-                new ExpectedSettingsRevision("runtime-1", 0L),
+                new ExpectedSettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
                 settings(),
                 TracingSettingsDeliverySource.CONFIG_SERVER))
                 .isInstanceOf(TracingSettingsContractViolationException.class)
                 .hasMessageStartingWith("JMX_CLIENT_MUTATION_JMX_WIRE_TYPE_VIOLATION:");
         assertThatThrownBy(() -> client.applySnapshot(
-                new ExpectedSettingsRevision("runtime-1", 0L),
+                new ExpectedSettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
                 settings(),
                 TracingSettingsDeliverySource.CONFIG_SERVER))
                 .isInstanceOf(TracingConfigurationGuardException.class)
@@ -94,11 +94,11 @@ final class PlatformJmxTracingSettingsClientWireGuardTest {
     @Test
     void mutationRejectsForeignCompositeTypeResponseAsContractViolationNotDeliveryFailure() throws Exception {
         // given
-        String runtimeInstanceId = UUID.randomUUID().toString();
+        String agentInstanceId = UUID.randomUUID().toString();
         try (FakeAgentPlatformJmxPlane plane =
-                     FakeAgentPlatformJmxPlane.malformedApplySnapshotResponse(runtimeInstanceId)) {
+                     FakeAgentPlatformJmxPlane.malformedApplySnapshotResponse(agentInstanceId)) {
             PlatformJmxTracingSettingsClient client = plane.client();
-            ExpectedSettingsRevision expectedBase = new ExpectedSettingsRevision(runtimeInstanceId, 0L);
+            ExpectedSettingsRevision expectedBase = new ExpectedSettingsRevision(agentInstanceId, 0L);
 
             // when
             // then
@@ -130,14 +130,14 @@ final class PlatformJmxTracingSettingsClientWireGuardTest {
         // when
         // then
         assertThatThrownBy(() -> client.applySnapshot(
-                new ExpectedSettingsRevision("runtime-1", 0L),
+                new ExpectedSettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
                 settings(),
                 TracingSettingsDeliverySource.CONFIG_SERVER))
                 .isInstanceOf(TracingSettingsContractViolationException.class)
                 .hasMessageStartingWith("JMX_CLIENT_MUTATION_RESPONSE_TYPE_INVALID:");
                 
         assertThatThrownBy(() -> client.applySnapshot(
-                new ExpectedSettingsRevision("runtime-1", 0L),
+                new ExpectedSettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
                 settings(),
                 TracingSettingsDeliverySource.CONFIG_SERVER))
                 .isInstanceOf(TracingConfigurationGuardException.class)
@@ -154,7 +154,7 @@ final class PlatformJmxTracingSettingsClientWireGuardTest {
         // when
         // then
         assertThatThrownBy(() -> client.applySnapshot(
-                new ExpectedSettingsRevision("runtime-1", 0L),
+                new ExpectedSettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
                 null,
                 TracingSettingsDeliverySource.CONFIG_SERVER))
                 .isInstanceOf(TracingSettingsContractViolationException.class)
@@ -172,11 +172,11 @@ final class PlatformJmxTracingSettingsClientWireGuardTest {
     @ValueSource(strings = {"APPLIED", "UNCHANGED", "REJECTED", "STALE", "FAILED"})
     void mutationOutcomeRoundTripsThroughRealAgentResponseDecoding(String outcome) throws Exception {
         // given
-        String runtimeInstanceId = UUID.randomUUID().toString();
-        try (FakeAgentPlatformJmxPlane plane = FakeAgentPlatformJmxPlane.compliant(runtimeInstanceId, 0L)) {
+        String agentInstanceId = UUID.randomUUID().toString();
+        try (FakeAgentPlatformJmxPlane plane = FakeAgentPlatformJmxPlane.compliant(agentInstanceId, 0L)) {
             plane.setNextApplyOutcome(outcome);
             PlatformJmxTracingSettingsClient client = plane.client();
-            ExpectedSettingsRevision expectedBase = new ExpectedSettingsRevision(runtimeInstanceId, 0L);
+            ExpectedSettingsRevision expectedBase = new ExpectedSettingsRevision(agentInstanceId, 0L);
 
             // when
             TracingSettingsDeliveryResult result =
@@ -205,7 +205,7 @@ final class PlatformJmxTracingSettingsClientWireGuardTest {
         // when
         // then
         assertThatThrownBy(() -> client.applySnapshot(
-                new ExpectedSettingsRevision("runtime-1", 0L), settings(), source))
+                new ExpectedSettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L), settings(), source))
                 .isInstanceOf(TracingSettingsContractViolationException.class);
 
         CompositeData request = (CompositeData) requestCaptor.getValue()[0];

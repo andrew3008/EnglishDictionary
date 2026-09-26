@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Supplier;
 import javax.management.openmbean.CompositeData;
@@ -13,6 +12,7 @@ import javax.management.openmbean.CompositeType;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.DiagnosticsObservationSource;
@@ -24,7 +24,7 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationObs
 
 class ObservationSnapshotSourcesTest {
 
-    private static final UUID AGENT_INSTANCE_ID = UUID.randomUUID();
+    private static final AgentInstanceId AGENT_INSTANCE_ID = AgentInstanceId.random();
 
     @Test
     void allGettersReturnPrecomputedSnapshotsUntilExplicitPublication() {

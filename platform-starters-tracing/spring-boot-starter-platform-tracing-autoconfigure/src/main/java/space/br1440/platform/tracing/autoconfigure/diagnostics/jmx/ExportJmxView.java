@@ -23,7 +23,8 @@ public final class ExportJmxView {
             JmxWireContract.ATTRIBUTE_EXPORT_OBSERVATION_EXPORT_OBSERVATION,
             JmxContractPoint.EXPORT_OBSERVATION,
             JmxOpenTypes.EXPORT_OBSERVATION,
-            ExportJmxView::decode
+            ExportJmxView::decode,
+            ExportObservation::agentInstanceId
     );
 
     private final JmxReadExecutor executor;
@@ -49,8 +50,10 @@ public final class ExportJmxView {
     private static ExportObservation decode(Object raw) {
         CompositeData composite = JmxObservationCodec.asComposite(raw);
         JmxObservationCodec.requireCompositeTypeName(composite, JmxWireContract.OPEN_TYPE_EXPORT_OBSERVATION_TYPE_NAME);
-        String agentInstanceId = JmxObservationCodec.getString(
-                composite, JmxWireContract.FIELD_EXPORT_OBSERVATION_AGENT_INSTANCE_ID);
+        String agentInstanceId = JmxObservationCodec.getAgentInstanceId(
+                composite,
+                JmxWireContract.FIELD_EXPORT_OBSERVATION_AGENT_INSTANCE_ID
+        );
 
         CompositeData processorComposite = JmxObservationCodec.getComposite(composite, JmxWireContract.FIELD_EXPORT_OBSERVATION_PROCESSOR);
         JmxObservationCodec.requireCompositeTypeName(processorComposite, JmxWireContract.OPEN_TYPE_EXPORT_PROCESSOR_VALUES_TYPE_NAME);

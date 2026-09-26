@@ -3,9 +3,9 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import javax.management.openmbean.CompositeData;
 
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
@@ -26,7 +26,8 @@ public final class ScrubbingObservationSource {
     private final ObservationSnapshotStore snapshotStore =
             new ObservationSnapshotStore(JmxOpenTypes.SCRUBBING_OBSERVATION);
 
-    public ScrubbingObservationSource(OwnerRegistrationSlot<ScrubbingRuntime> scrubbingSlot, UUID agentInstanceId) {
+    public ScrubbingObservationSource(OwnerRegistrationSlot<ScrubbingRuntime> scrubbingSlot,
+                                      AgentInstanceId agentInstanceId) {
         this.scrubbingSlot = Objects.requireNonNull(scrubbingSlot, "scrubbingSlot");
         this.envelope = new ObservationCaptureEnvelope(agentInstanceId);
         publishObservationSnapshot();
@@ -64,7 +65,9 @@ public final class ScrubbingObservationSource {
                         JmxOpenTypes.SCRUBBING_METRICS,
                         JmxWireContract.FIELD_SCRUBBING_METRICS_KEY,
                         JmxWireContract.FIELD_SCRUBBING_METRICS_VALUE,
-                        snapshot.metrics()));
+                        snapshot.metrics()
+                )
+        );
         snapshotStore.publish(values);
     }
 
@@ -115,5 +118,4 @@ public final class ScrubbingObservationSource {
         snapshot.put("collapsed_spans", runtime.collapsedSpans());
         return snapshot;
     }
-
 }

@@ -64,7 +64,7 @@ class ValueAttributeFailClosedContractTest {
 
     @ParameterizedTest(name = "VALUE не переживает exporter boundary: {0}")
     @MethodSource("shapesAndActions")
-    void valueNeverSurvivesTheExportBoundary(Value<?> payload, ScrubbingAction action) {
+    void valueNeverSurvivesTheExportBoundary(String caseName, Value<?> payload, ScrubbingAction action) {
         // given
         InMemorySpanExporter delegate = InMemorySpanExporter.create();
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(ruleReturning(action)));
@@ -90,7 +90,7 @@ class ValueAttributeFailClosedContractTest {
         SpanData exported = finished.getFirst();
 
         assertThat(exported.getAttributes().asMap().keySet())
-                .as("контракт VALUE_* — отсутствие semantic key целиком, включая alias от процессора")
+                .as(caseName + ": контракт VALUE_* — отсутствие semantic key целиком, включая alias от процессора")
                 .noneMatch(key -> PROBE_KEY.equals(key.getKey()));
         assertThat(renderedPayload(exported))
                 .as("ни одно представление не должно донести канарейку до экспорта")

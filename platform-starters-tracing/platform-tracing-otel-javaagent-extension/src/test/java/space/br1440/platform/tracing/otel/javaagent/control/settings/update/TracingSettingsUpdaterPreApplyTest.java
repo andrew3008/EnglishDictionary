@@ -1,18 +1,19 @@
 package space.br1440.platform.tracing.otel.javaagent.control.settings.update;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 
 class TracingSettingsUpdaterPreApplyTest {
 
@@ -23,7 +24,7 @@ class TracingSettingsUpdaterPreApplyTest {
     @BeforeEach
     void setUp() {
         store = new TracingSettingsStore(
-                UUID.randomUUID().toString(),
+                AgentInstanceId.from(UUID.randomUUID()),
                 TracingSettings.of(true, 1.0, Map.of(), SpanAttributeValidationLevel.WARNING, true, true, AgentLogLevel.INFO));
         diagnostics = new LastSettingsUpdate();
         updater = new TracingSettingsUpdater(store, diagnostics);

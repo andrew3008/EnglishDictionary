@@ -50,7 +50,7 @@ class SpringToAgentWireCodecParityTest {
                 settings(true, 0.42d, Map.of("/checkout", 0.6d, "/search", 0.2d),
                         "WARNING", true, true, "DEBUG"));
 
-        assertThat(decoded.expectedBase().runtimeInstanceId()).isNotBlank();
+        assertThat(decoded.expectedBase().agentInstanceId().toString()).isNotBlank();
         assertThat(decoded.expectedBase().acceptedSequence()).isEqualTo(42L);
         assertThat(decoded.attempt().sourceAuthority()).isEqualTo(SettingsSourceAuthority.CONFIG_SERVER);
         assertThat(decoded.attempt().applyTrigger()).isEqualTo(SettingsUpdateTrigger.REFRESH);
@@ -79,13 +79,13 @@ class SpringToAgentWireCodecParityTest {
     }
 
     @Test
-    void runtimeInstanceIdIsPreservedExactly() {
-        String runtimeId = UUID.randomUUID().toString();
+    void agentInstanceIdIsPreservedExactly() {
+        String agentInstanceId = UUID.randomUUID().toString();
         DecodedSettingsUpdate decoded = roundTrip(
-                runtimeId, 5L, UUID.randomUUID().toString(), "CONFIG_SERVER", "REFRESH", "rev",
+                agentInstanceId, 5L, UUID.randomUUID().toString(), "CONFIG_SERVER", "REFRESH", "rev",
                 settings(true, 0.5d, Map.of(), "WARNING", true, true, "INFO"));
 
-        assertThat(decoded.expectedBase().runtimeInstanceId()).isEqualTo(runtimeId);
+        assertThat(decoded.expectedBase().agentInstanceId().toString()).isEqualTo(agentInstanceId);
     }
 
     @Test
@@ -133,10 +133,10 @@ class SpringToAgentWireCodecParityTest {
         assertThat(settings.traceControlHeadersEnabled()).isEqualTo(traceControlHeadersEnabled);
     }
 
-    private static DecodedSettingsUpdate roundTrip(String runtimeInstanceId, long acceptedSequence,
+    private static DecodedSettingsUpdate roundTrip(String agentInstanceId, long acceptedSequence,
                                                    String attemptId, String sourceAuthority, String applyTrigger, String sourceRevision,
                                                    CompleteTracingSettings settings) {
-        ExpectedSettingsRevision expectedBase = new ExpectedSettingsRevision(runtimeInstanceId, acceptedSequence);
+        ExpectedSettingsRevision expectedBase = new ExpectedSettingsRevision(agentInstanceId, acceptedSequence);
 
         CompositeData wire = PlatformJmxRequestEncoder.encodeApplyRequest(
                 ApplySnapshotRequestParameters.builder()

@@ -2,22 +2,23 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.validation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.UUID;
 import javax.management.openmbean.CompositeData;
 
-import io.opentelemetry.sdk.resources.Resource;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
+import io.opentelemetry.sdk.resources.Resource;
+
 class ValidationObservationSourceTest {
 
-    private static final UUID AGENT_INSTANCE_ID = UUID.randomUUID();
+    private static final AgentInstanceId AGENT_INSTANCE_ID = AgentInstanceId.random();
 
     @Test
     void ownerAbsentGivesPlaceholderValuesNotSentinel() {

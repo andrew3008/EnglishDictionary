@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -83,6 +84,48 @@ class ControlledAgentRuntimeTest {
     }
 
     @Test
+    void invalid_extension_configuration_fails_bootstrap_without_platform_export()
+            throws IOException, InterruptedException, URISyntaxException {
+        // given
+        AgentTestFixture fixture = AgentTestFixture.load();
+        String controlSpanName = "extension-configuration-control-" + UUID.randomUUID();
+        String invalidSpanName = "extension-configuration-invalid-" + UUID.randomUUID();
+        ChildProcessResult control;
+        ChildProcessResult invalid;
+        OtlpTraceCollector controlCollector;
+        OtlpTraceCollector invalidCollector;
+
+        try (OtlpTraceCollector startedControlCollector = OtlpTraceCollector.startAcceptingAllSpans();
+             OtlpTraceCollector startedInvalidCollector = OtlpTraceCollector.startAcceptingAllSpans()) {
+            controlCollector = startedControlCollector;
+            invalidCollector = startedInvalidCollector;
+
+            // when
+            control = runInvalidExtensionConfigurationProbe(
+                    fixture, controlCollector.tracesEndpoint(), controlSpanName, false
+            );
+            invalid = runInvalidExtensionConfigurationProbe(
+                    fixture, invalidCollector.tracesEndpoint(), invalidSpanName, true
+            );
+        }
+
+        // then
+        assertProcessCompletedSuccessfully(control);
+        assertThat(control.stdout()).contains(InvalidExtensionConfigurationProbe.MAIN_REACHED_MARKER);
+        assertExtensionConfigurationProbeReadiness(control, "READY", "", controlSpanName);
+        assertThat(controlCollector.receivedSpans())
+                .extracting(OtlpTraceCollector.ReceivedSpan::name)
+                .contains(controlSpanName);
+
+        assertProcessCompletedSuccessfully(invalid);
+        assertThat(invalid.stdout()).contains(InvalidExtensionConfigurationProbe.MAIN_REACHED_MARKER);
+        assertExtensionConfigurationProbeReadiness(
+                invalid, "FAILED", "CONFIGURATION_INITIALIZATION_FAILED", invalidSpanName
+        );
+        assertThat(invalidCollector.receivedSpans()).isEmpty();
+    }
+
+    @Test
     void controlled_agent_starts_with_attested_identity_and_ready_extension() throws IOException, InterruptedException, URISyntaxException {
         // given
         AgentTestFixture fixture = AgentTestFixture.load();
@@ -136,6 +179,43 @@ class ControlledAgentRuntimeTest {
             assertOtlpPartialSuccessObserved(result);
             assertThat(collector.receivedBatches()).isGreaterThanOrEqualTo(1);
         }
+    }
+
+    private ChildProcessResult runInvalidExtensionConfigurationProbe(AgentTestFixture fixture,
+                                                                      String tracesEndpoint,
+                                                                      String spanName,
+                                                                      boolean invalidScanInterval)
+            throws IOException, InterruptedException, URISyntaxException {
+        Path javaExecutable = javaExecutable();
+        Path probeClassPath = probeClassPath(InvalidExtensionConfigurationProbe.class);
+        String label = invalidScanInterval ? "extension-configuration-invalid" : "extension-configuration-control";
+        Path stdoutFile = temporaryDirectory.resolve(label + ".stdout.log");
+        Path stderrFile = temporaryDirectory.resolve(label + ".stderr.log");
+
+        ProcessBuilder processBuilder = new ProcessBuilder(
+                invalidExtensionConfigurationChildCommand(
+                        javaExecutable,
+                        probeClassPath,
+                        fixture,
+                        tracesEndpoint,
+                        spanName,
+                        invalidScanInterval
+                )
+        );
+        removeContaminatingEnvironment(processBuilder.environment());
+        processBuilder.redirectOutput(stdoutFile.toFile());
+        processBuilder.redirectError(stderrFile.toFile());
+
+        Process process = processBuilder.start();
+        boolean finished = process.waitFor(WAIT_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        if (!finished) {
+            process.destroyForcibly().waitFor(KILL_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        }
+
+        String stdout = Files.readString(stdoutFile, StandardCharsets.UTF_8);
+        String stderr = Files.readString(stderrFile, StandardCharsets.UTF_8);
+        Integer exitCode = finished ? process.exitValue() : null;
+        return new ChildProcessResult(finished, exitCode, stdout, stderr);
     }
 
     private ChildProcessResult runControlledAgentProbe(AgentTestFixture fixture)
@@ -327,6 +407,22 @@ class ControlledAgentRuntimeTest {
         return new ChildProcessResult(finished, exitCode, stdout, stderr);
     }
 
+    private void assertExtensionConfigurationProbeReadiness(ChildProcessResult result,
+                                                             String lifecycle,
+                                                             String failureCode,
+                                                             String spanName) {
+        String expectedLine = InvalidExtensionConfigurationProbe.RESULT_PREFIX
+                + " lifecycle=" + lifecycle
+                + " failureCode=" + failureCode
+                + " spanName=" + spanName;
+
+        assertThat(result.stdout()
+                .lines()
+                .filter(line -> line.startsWith(InvalidExtensionConfigurationProbe.RESULT_PREFIX)))
+                .as("Child stdout must contain exactly one extension configuration probe line: %s", result.stdout())
+                .containsExactly(expectedLine);
+    }
+
     private void assertProcessCompletedSuccessfully(ChildProcessResult result) {
         assertThat(result.finished()).as("Controlled agent child JVM must terminate").isTrue();
         assertThat(result.exitCode())
@@ -490,6 +586,42 @@ class ControlledAgentRuntimeTest {
 
     private static String openTelemetryApiClasspathEntries() {
         return requiredProperty("platformTracing.otlpProbeApiClasspath");
+    }
+
+    private static List<String> invalidExtensionConfigurationChildCommand(Path javaExecutable,
+                                                                           Path probeClassPath,
+                                                                           AgentTestFixture fixture,
+                                                                           String tracesEndpoint,
+                                                                           String spanName,
+                                                                           boolean invalidScanInterval) {
+        List<String> command = new ArrayList<>();
+        command.add(javaExecutable.toString());
+        command.add("-Dfile.encoding=UTF-8");
+        command.add("-Dsun.stdout.encoding=UTF-8");
+        command.add("-Dsun.stderr.encoding=UTF-8");
+        command.add("-Dotel.traces.exporter=otlp");
+        command.add("-Dotel.exporter.otlp.traces.protocol=http/protobuf");
+        command.add("-Dotel.exporter.otlp.traces.endpoint=" + tracesEndpoint);
+        command.add("-Dotel.exporter.otlp.traces.compression=none");
+        command.add("-Dotel.metrics.exporter=none");
+        command.add("-Dotel.logs.exporter=none");
+        command.add("-Dotel.bsp.schedule.delay=200");
+        command.add("-Dplatform.tracing.sampling.enabled=true");
+        command.add("-Dplatform.tracing.sampling.ratio=1.0");
+        command.add("-Dplatform.tracing.service.name=controlled-agent-runtime-test");
+        command.add("-Dplatform.tracing.service.version=1.0.0");
+        command.add("-Dplatform.tracing.service.environment=test");
+        command.add("-Dplatform.tracing.resource.validation-mode=ERROR");
+        if (invalidScanInterval) {
+            command.add("-Dplatform.tracing.span-timeout.scan-interval=0");
+        }
+        command.add("-Dplatform.tracing.controlled-agent.expected-sha256=" + fixture.expectedControlledAgentSha());
+        command.add("-javaagent:" + fixture.controlledAgent());
+        command.add("-cp");
+        command.add(probeClassPath + File.pathSeparator + openTelemetryApiClasspathEntries());
+        command.add(InvalidExtensionConfigurationProbe.class.getName());
+        command.add(spanName);
+        return command;
     }
 
     private static List<String> childCommand(Path javaExecutable,

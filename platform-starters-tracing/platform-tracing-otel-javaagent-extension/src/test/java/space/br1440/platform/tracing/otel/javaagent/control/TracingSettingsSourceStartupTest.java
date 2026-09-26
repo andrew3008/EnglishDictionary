@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.control;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -14,10 +15,14 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfi
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
 class TracingSettingsSourceStartupTest {
+
+    private static final AgentInstanceId AGENT_INSTANCE_ID =
+            AgentInstanceId.parse("00000000-0000-0000-0000-000000000001");
 
     @Test
     void processErrorStartsError() {
@@ -25,10 +30,11 @@ class TracingSettingsSourceStartupTest {
         TracingSettingsSource source = TracingSettingsSource.fromStartup(config(Map.of(
                 ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
                 "ERROR"
-        )));
+        )), AGENT_INSTANCE_ID);
 
         // then
         assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.ERROR);
+        assertThat(source.current().agentInstanceId()).isEqualTo(AGENT_INSTANCE_ID);
     }
 
     @Test
@@ -37,7 +43,7 @@ class TracingSettingsSourceStartupTest {
         TracingSettingsSource source = TracingSettingsSource.fromStartup(config(Map.of(
                 ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
                 "DISABLED"
-        )));
+        )), AGENT_INSTANCE_ID);
 
         // then
         assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.DISABLED);
@@ -46,7 +52,9 @@ class TracingSettingsSourceStartupTest {
     @Test
     void absentLevelStartsWarning() {
         // given/when
-        TracingSettingsSource source = TracingSettingsSource.fromStartup(config(Map.of()));
+        TracingSettingsSource source = TracingSettingsSource.fromStartup(
+                config(Map.of()),
+                AGENT_INSTANCE_ID);
 
         // then
         assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.WARNING);
@@ -60,7 +68,7 @@ class TracingSettingsSourceStartupTest {
                 "ERROR",
                 "platform.environment",
                 "production"
-        )));
+        )), AGENT_INSTANCE_ID);
 
         // then
         assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.ERROR);
@@ -72,7 +80,7 @@ class TracingSettingsSourceStartupTest {
         TracingSettingsSource source = TracingSettingsSource.fromStartup(config(Map.of(
                 ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
                 "DISABLED"
-        )));
+        )), AGENT_INSTANCE_ID);
 
         // when
         SettingsUpdateStatus outcome = AcceptedPolicyMutationAccess.applyValidation(
@@ -89,7 +97,7 @@ class TracingSettingsSourceStartupTest {
         assertThatThrownBy(() -> TracingSettingsSource.fromStartup(config(Map.of(
                 ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
                 "STRICT"
-        ))))
+        )), AGENT_INSTANCE_ID))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("platform.tracing.javaagent.span-attributes.validation.level");
     }
@@ -110,6 +118,24 @@ class TracingSettingsSourceStartupTest {
 
         // then
         assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.ERROR);
+    }
+
+    @Test
+    void isolatedSourceRejectsDirectStoreMutation() {
+        // given
+        TracingSettingsSource source = TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.DISABLED);
+        TracingSettingsRevision initial = source.current();
+
+        // when
+        Throwable failure = catchThrowable(() -> AcceptedPolicyMutationAccess.applyValidation(
+                source, SpanAttributeValidationLevel.ERROR));
+
+        // then
+        assertThat(failure)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Cannot commit tracing settings to an unbound store");
+        assertThat(source.current().acceptedSequence()).isZero();
+        assertThat(source.current().policy()).isEqualTo(initial.policy());
     }
 
     private static ExtensionConfig config(Map<String, String> values) {

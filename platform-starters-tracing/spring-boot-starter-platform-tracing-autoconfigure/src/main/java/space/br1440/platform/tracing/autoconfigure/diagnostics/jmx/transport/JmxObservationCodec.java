@@ -7,6 +7,7 @@ import java.util.function.Supplier;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentInstanceIdValidator;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
 
 import lombok.experimental.UtilityClass;
@@ -72,10 +73,15 @@ public final class JmxObservationCodec {
         return require(composite, item, String.class);
     }
 
-    /**
-     * Строгий decode wire-строки в enum: unknown/blank/non-canonical значение — это
-     * нарушение контракта, а не повод для silent fallback (см. ADR-drop-oldest-export-processor-v2 §6).
-     */
+    public static String getAgentInstanceId(CompositeData composite, String item) {
+        String value = getString(composite, item);
+        try {
+            return AgentInstanceIdValidator.requireCanonical(value, item);
+        } catch (IllegalArgumentException exception) {
+            throw new JmxContractViolationException(JmxDiagnosticKind.VALUE_SEMANTICS_VIOLATION);
+        }
+    }
+
     public static <E extends Enum<E>> E getEnum(CompositeData composite, String item, Class<E> enumType) {
         String raw = require(composite, item, String.class);
         if (raw.isBlank()) {
@@ -128,9 +134,6 @@ public final class JmxObservationCodec {
     }
 
     private static <T> T require(CompositeData composite, String item, Class<T> type) {
-        // CompositeData.get на неизвестном имени бросает InvalidKeyException мимо таксономии
-        // диагностик, и сырое JMX-исключение доходит до вызывающего. Отсутствующий item — это
-        // нарушение контракта, а не сбой транспорта.
         if (!composite.containsKey(item)) {
             throw new JmxContractViolationException(JmxDiagnosticKind.MISSING_OBSERVATION_ITEM);
         }

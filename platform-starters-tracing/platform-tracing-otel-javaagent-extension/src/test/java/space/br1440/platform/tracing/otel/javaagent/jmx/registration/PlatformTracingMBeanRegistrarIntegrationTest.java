@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures.boundSampling;
 
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
@@ -9,7 +10,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
@@ -26,10 +26,11 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
@@ -47,12 +48,10 @@ class PlatformTracingMBeanRegistrarIntegrationTest {
         server = ManagementFactory.getPlatformMBeanServer();
         cleanUp();
 
-        samplerHolder = TracingSettingsSource.isolatedSampling(true, Collections.emptyMap(), 0.2d);
-        validatingProcessor = new ValidatingSpanProcessor(
-                TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING)
-        );
-
-        registrar = new PlatformTracingMBeanRegistrar(server);
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
+        samplerHolder = boundSampling(agentInstanceId, true, Collections.emptyMap(), 0.2d);
+        validatingProcessor = new ValidatingSpanProcessor(samplerHolder);
+        registrar = new PlatformTracingMBeanRegistrar(server, agentInstanceId);
     }
 
     @AfterEach
@@ -196,6 +195,87 @@ class PlatformTracingMBeanRegistrarIntegrationTest {
     }
 
     @Test
+    void readinessSettingsAndObservationsExposeOneAgentInstanceId() throws Exception {
+        // given
+        String expectedAgentInstanceId = registrar.agentInstanceId().toString();
+        ExtensionReadinessWireSnapshot readiness = ExtensionReadinessWireSnapshot.initializing(
+                registrar.extensionReadiness().snapshot(),
+                expectedAgentInstanceId
+        );
+        trackRegistration(registrar.registerDiagnosticReadiness(() -> readiness));
+        wireMinimal();
+        Map<ObjectName, ObservationIdentityContract> observationContracts = Map.of(
+                DomainObjectNames.SAMPLING,
+                new ObservationIdentityContract(
+                        JmxWireContract.ATTRIBUTE_SAMPLING_OBSERVATION_SAMPLING_OBSERVATION,
+                        JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID
+                ),
+                DomainObjectNames.SCRUBBING,
+                new ObservationIdentityContract(
+                        JmxWireContract.ATTRIBUTE_SCRUBBING_OBSERVATION_SCRUBBING_OBSERVATION,
+                        JmxWireContract.FIELD_SCRUBBING_OBSERVATION_AGENT_INSTANCE_ID
+                ),
+                DomainObjectNames.VALIDATION,
+                new ObservationIdentityContract(
+                        JmxWireContract.ATTRIBUTE_VALIDATION_OBSERVATION_VALIDATION_OBSERVATION,
+                        JmxWireContract.FIELD_VALIDATION_OBSERVATION_AGENT_INSTANCE_ID
+                ),
+                DomainObjectNames.EXPORT,
+                new ObservationIdentityContract(
+                        JmxWireContract.ATTRIBUTE_EXPORT_OBSERVATION_EXPORT_OBSERVATION,
+                        JmxWireContract.FIELD_EXPORT_OBSERVATION_AGENT_INSTANCE_ID
+                ),
+                DomainObjectNames.PROCESSOR_METRICS,
+                new ObservationIdentityContract(
+                        JmxWireContract
+                                .ATTRIBUTE_PROCESSOR_METRICS_OBSERVATION_PROCESSOR_METRICS_OBSERVATION,
+                        JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_AGENT_INSTANCE_ID
+                ),
+                DomainObjectNames.DIAGNOSTICS,
+                new ObservationIdentityContract(
+                        JmxWireContract.ATTRIBUTE_DIAGNOSTICS_OBSERVATION_DIAGNOSTICS_OBSERVATION,
+                        JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_AGENT_INSTANCE_ID
+                )
+        );
+
+        // when
+        CompositeData readinessSnapshot = (CompositeData) server.getAttribute(
+                DomainObjectNames.EXTENSION_READINESS,
+                JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT
+        );
+        CompositeData settingsSnapshot = (CompositeData) server.getAttribute(
+                DomainObjectNames.SETTINGS_STATUS,
+                JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT
+        );
+        Map<ObjectName, CompositeData> observations = new LinkedHashMap<>();
+        for (Map.Entry<ObjectName, ObservationIdentityContract> entry : observationContracts.entrySet()) {
+            observations.put(
+                    entry.getKey(),
+                    (CompositeData) server.getAttribute(entry.getKey(), entry.getValue().attributeName())
+            );
+        }
+        CompositeData repeatedSamplingObservation = (CompositeData) server.getAttribute(
+                DomainObjectNames.SAMPLING,
+                JmxWireContract.ATTRIBUTE_SAMPLING_OBSERVATION_SAMPLING_OBSERVATION
+        );
+
+        // then
+        assertThat(readinessSnapshot.get(
+                JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_INSTANCE_ID))
+                .isEqualTo(expectedAgentInstanceId);
+        assertThat(settingsSnapshot.get(
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_AGENT_INSTANCE_ID))
+                .isEqualTo(expectedAgentInstanceId);
+        for (Map.Entry<ObjectName, ObservationIdentityContract> entry : observationContracts.entrySet()) {
+            assertThat(observations.get(entry.getKey()).get(entry.getValue().agentInstanceIdField()))
+                    .isEqualTo(expectedAgentInstanceId);
+        }
+        assertThat(repeatedSamplingObservation.get(
+                JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID))
+                .isEqualTo(expectedAgentInstanceId);
+    }
+
+    @Test
     void closingRuntimeRegistrationRemovesAllDomainMBeans() {
         // given
         PlatformTracingMBeanRegistrar.RuntimeRegistration runtimeRegistration = wireMinimal();
@@ -255,5 +335,8 @@ class PlatformTracingMBeanRegistrarIntegrationTest {
     }
 
     private record ObservationContract(String attributeName, CompositeType openType) {
+    }
+
+    private record ObservationIdentityContract(String attributeName, String agentInstanceIdField) {
     }
 }

@@ -7,18 +7,18 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import io.opentelemetry.api.common.AttributeKey;
-import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
-import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdkBuilder;
-import io.opentelemetry.sdk.resources.Resource;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.resource.PlatformResourceCustomizer;
+
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
+import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdkBuilder;
+import io.opentelemetry.sdk.resources.Resource;
 
 @ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 class ResourceCustomizerAutoconfigureIntegrationTest {
@@ -108,7 +108,7 @@ class ResourceCustomizerAutoconfigureIntegrationTest {
                 .disableShutdownHook()
                 .addPropertiesSupplier(() -> Map.copyOf(effective));
         beforePlatform.accept(builder);
-        new BootstrapAutoConfigurationCustomizerProvider(BootstrapCoordinator.create()).customize(builder);
+        new BootstrapAutoConfigurationCustomizerProvider(BootstrapCoordinator.createDefault()).customize(builder);
         builder.addResourceCustomizer((resource, config) -> {
             observed.set(resource);
             return resource;

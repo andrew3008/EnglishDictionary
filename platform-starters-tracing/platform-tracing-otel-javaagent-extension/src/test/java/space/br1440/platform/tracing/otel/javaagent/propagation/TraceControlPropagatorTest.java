@@ -12,7 +12,9 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
 import space.br1440.platform.tracing.test.harness.InboundTraceControls;
 
@@ -102,7 +104,7 @@ class TraceControlPropagatorTest {
     void disabledGateMakesExtractNoOp() throws Exception {
         // given
         PlatformPropagationGate gate = new PlatformPropagationGate();
-        TracingSettingsSource policy = TracingSettingsSource.isolatedDefaults();
+        TracingSettingsSource policy = TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random());
         try (AutoCloseable ignored = gate.bindAcceptedPolicy(policy)) {
             SettingsUpdateStatus outcome = AcceptedPolicyMutationAccess.applyTraceControlHeaders(policy, false);
             assertThat(outcome).isIn(SettingsUpdateStatus.APPLIED, SettingsUpdateStatus.UNCHANGED);
@@ -141,7 +143,7 @@ class TraceControlPropagatorTest {
     void fields_doesNotDependOnGateValue() throws Exception {
         // given
         PlatformPropagationGate gate = new PlatformPropagationGate();
-        TracingSettingsSource policy = TracingSettingsSource.isolatedDefaults();
+        TracingSettingsSource policy = TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random());
         try (AutoCloseable ignored = gate.bindAcceptedPolicy(policy)) {
             AcceptedPolicyMutationAccess.applyTraceControlHeaders(policy, false);
             TraceControlPropagator gated = new TraceControlPropagator(

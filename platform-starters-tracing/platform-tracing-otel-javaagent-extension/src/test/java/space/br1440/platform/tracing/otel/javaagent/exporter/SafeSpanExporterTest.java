@@ -25,8 +25,10 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseObservation;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseScope;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
@@ -235,7 +237,7 @@ class SafeSpanExporterTest {
     void exportGateDropsBatchWithoutCallingDelegate() {
         // given
         AtomicInteger delegateCalls = new AtomicInteger();
-        TracingSettingsSource access = TracingSettingsSource.isolatedDefaults();
+        TracingSettingsSource access = TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random());
         SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
@@ -281,7 +283,7 @@ class SafeSpanExporterTest {
     void exportGateDoesNotInvokeBoundaryWhenDisabled() {
         // given
         ScrubbingRuntime runtime = enabledRuntime("password");
-        TracingSettingsSource access = TracingSettingsSource.isolatedDefaults();
+        TracingSettingsSource access = TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random());
         AtomicInteger delegateCalls = new AtomicInteger();
         SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override

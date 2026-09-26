@@ -6,10 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 
 class ObservationCaptureEnvelopeTest {
@@ -17,7 +17,7 @@ class ObservationCaptureEnvelopeTest {
     @Test
     void captureSequenceIsMonotonicPerEnvelopeAndStartsAtOne() {
         // given
-        ObservationCaptureEnvelope envelope = new ObservationCaptureEnvelope(UUID.randomUUID());
+        ObservationCaptureEnvelope envelope = new ObservationCaptureEnvelope(AgentInstanceId.random());
 
         // when/then
         assertThat(List.of(
@@ -30,7 +30,7 @@ class ObservationCaptureEnvelopeTest {
     @Test
     void envelopesKeepIndependentSequences() {
         // given
-        UUID agentInstanceId = UUID.randomUUID();
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
         ObservationCaptureEnvelope first = new ObservationCaptureEnvelope(agentInstanceId);
         ObservationCaptureEnvelope second = new ObservationCaptureEnvelope(agentInstanceId);
 
@@ -43,7 +43,7 @@ class ObservationCaptureEnvelopeTest {
     @Test
     void sealWritesSharedEnvelopeFields() {
         // given
-        UUID agentInstanceId = UUID.randomUUID();
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
         Map<String, Object> values = new LinkedHashMap<>();
 
         // when
@@ -66,7 +66,7 @@ class ObservationCaptureEnvelopeTest {
     @Test
     void completionIsMeasuredAtSealTimeNotAtOpenTime() throws InterruptedException {
         // given
-        ObservationCaptureEnvelope.OpenCapture openCapture = new ObservationCaptureEnvelope(UUID.randomUUID()).open();
+        ObservationCaptureEnvelope.OpenCapture openCapture = new ObservationCaptureEnvelope(AgentInstanceId.random()).open();
         Thread.sleep(10L);
 
         Map<String, Object> values = new LinkedHashMap<>();
@@ -89,7 +89,7 @@ class ObservationCaptureEnvelopeTest {
     @Test
     void sealRejectsMissingValues() {
         // given/when/then
-        assertThatThrownBy(() -> new ObservationCaptureEnvelope(UUID.randomUUID()).open().sealInto(null))
+        assertThatThrownBy(() -> new ObservationCaptureEnvelope(AgentInstanceId.random()).open().sealInto(null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("values");
     }

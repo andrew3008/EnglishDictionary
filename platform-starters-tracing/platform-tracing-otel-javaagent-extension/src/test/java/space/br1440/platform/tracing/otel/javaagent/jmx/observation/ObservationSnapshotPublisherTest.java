@@ -8,7 +8,6 @@ import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -18,6 +17,7 @@ import javax.management.openmbean.CompositeData;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationObservationSource;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 
@@ -43,7 +43,7 @@ class ObservationSnapshotPublisherTest {
             releaseRefresh.await();
             return absent;
         });
-        ValidationObservationSource source = new ValidationObservationSource(slot, UUID.randomUUID());
+        ValidationObservationSource source = new ValidationObservationSource(slot, AgentInstanceId.random());
         CompositeData stable = source.getValidationObservation();
 
         try (ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(

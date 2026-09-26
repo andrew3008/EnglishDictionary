@@ -3,18 +3,18 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.metrics;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
-import java.util.UUID;
 import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.SpanTimeoutProcessor;
 
 class ProcessorMetricsObservationSourceTest {
 
-    private static final UUID AGENT_INSTANCE_ID = UUID.randomUUID();
+    private static final AgentInstanceId AGENT_INSTANCE_ID = AgentInstanceId.random();
 
     @Test
     void allThreeOwnersAbsentEncodePresenceFalse() {
@@ -28,11 +28,14 @@ class ProcessorMetricsObservationSourceTest {
         // when
         CompositeData observation = source.getProcessorMetricsObservation();
         CompositeData spanTimeout = (CompositeData) observation.get(
-                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_SPAN_TIMEOUT);
+                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_SPAN_TIMEOUT
+        );
         CompositeData composite = (CompositeData) observation.get(
-                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_COMPOSITE);
+                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_COMPOSITE
+        );
         CompositeData metrics = (CompositeData) observation.get(
-                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_METRICS);
+                JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_METRICS
+        );
 
         // then
         assertThat((Boolean) spanTimeout.get(

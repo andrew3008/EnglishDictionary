@@ -7,12 +7,12 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFa
 import java.util.Objects;
 import java.util.UUID;
 
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.ExtensionRuntimeVerifier;
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.VerificationException;
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.VerificationFailureCode;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.ShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.ExtensionRuntimeVerifier;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.VerificationException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.VerificationFailureCode;
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
@@ -63,7 +63,7 @@ final class BootstrapActivation {
 
     private void activateExclusively() {
         AutoconfigureSession session = lifecycle.beginActivation();
-        journal.publishInitializing(session);
+        journal.publishInitializing(session.readiness(), session.agentInstanceId());
 
         BootstrapResources resources = new BootstrapResources(hookRegistry);
         lifecycle.attachResources(resources);
@@ -83,8 +83,8 @@ final class BootstrapActivation {
     private void registerDiagnosticReadiness(ActivationAttempt attempt) {
         attempt.enter(ActivationPhase.DIAGNOSTIC_REGISTRATION);
 
-        diagnosticHandle.replace(
-                attempt.session().jmxRegistrar().registerDiagnosticReadiness(journal::current)
+        diagnosticHandle.registerIfAbsent(
+                () -> attempt.session().jmxRegistrar().registerDiagnosticReadiness(journal::current)
         );
     }
 
@@ -149,7 +149,7 @@ final class BootstrapActivation {
 
         ExtensionReadinessWireSnapshot ready = ExtensionReadinessWireSnapshot.ready(
                 readiness,
-                session.sessionId().toString(),
+                session.agentInstanceId().toString(),
                 attempt.batchId(),
                 INITIAL_EVIDENCE_GENERATION,
                 attempt.evidence()

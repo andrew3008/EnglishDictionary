@@ -23,8 +23,7 @@ import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 
 class OwningSpanScopeTest {
 
-    private static final AttributeKey<String> RESULT_KEY =
-            AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT);
+    private static final AttributeKey<String> RESULT_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT);
 
     private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;
@@ -48,13 +47,10 @@ class OwningSpanScopeTest {
         MDC.put(TracingMdcKeys.TRACE_ID, "previous-trace");
         Span span = tracerProvider.get("test").spanBuilder("activate").startSpan();
 
-        OwningSpanScope owning = OwningSpanScope.activate(span, ExceptionRecorder.secureDefault());
-        try {
+        try (OwningSpanScope ignored = OwningSpanScope.activate(span, ExceptionRecorder.secureDefault())) {
             assertThat(Span.current().getSpanContext()).isEqualTo(span.getSpanContext());
             assertThat(MDC.get(TracingMdcKeys.TRACE_ID)).isEqualTo(span.getSpanContext().getTraceId());
             assertThat(MDC.get(TracingMdcKeys.SPAN_ID)).isEqualTo(span.getSpanContext().getSpanId());
-        } finally {
-            owning.close();
         }
 
         assertThat(Span.current().getSpanContext().isValid()).isFalse();
@@ -99,6 +95,24 @@ class OwningSpanScopeTest {
         owning.recordException(new IllegalStateException("boom"));
         owning.close();
 
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
+        assertThat(data.getAttributes().get(RESULT_KEY)).isEqualTo(SpanResult.FAILURE.value());
+        assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+    }
+
+    @Test
+    void successAfterRecordedFailure_doesNotClearError() {
+        // given
+        Span span = tracerProvider.get("test").spanBuilder("latched-failure").startSpan();
+        Scope scope = span.makeCurrent();
+        OwningSpanScope owning = new OwningSpanScope(span, scope, ExceptionRecorder.secureDefault());
+        owning.recordException(new IllegalStateException("boom"));
+
+        // when
+        owning.setResult(SpanResult.SUCCESS);
+        owning.close();
+
+        // then
         SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(RESULT_KEY)).isEqualTo(SpanResult.FAILURE.value());
         assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);

@@ -22,7 +22,8 @@ public final class SamplingJmxView {
             JmxWireContract.ATTRIBUTE_SAMPLING_OBSERVATION_SAMPLING_OBSERVATION,
             JmxContractPoint.SAMPLING_OBSERVATION,
             JmxOpenTypes.SAMPLING_OBSERVATION,
-            SamplingJmxView::decode
+            SamplingJmxView::decode,
+            SamplingObservation::agentInstanceId
     );
 
     private final JmxReadExecutor executor;
@@ -48,7 +49,10 @@ public final class SamplingJmxView {
     private static SamplingObservation decode(Object raw) {
         CompositeData composite = JmxObservationCodec.asComposite(raw);
         JmxObservationCodec.requireCompositeTypeName(composite, JmxWireContract.OPEN_TYPE_SAMPLING_OBSERVATION_TYPE_NAME);
-        String agentInstanceId = JmxObservationCodec.getString(composite, JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID);
+        String agentInstanceId = JmxObservationCodec.getAgentInstanceId(
+                composite,
+                JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID
+        );
 
         boolean samplerEnabled = JmxObservationCodec.getBoolean(composite, JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_ENABLED);
         double samplingRatio = JmxObservationCodec.getDouble(composite, JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO);

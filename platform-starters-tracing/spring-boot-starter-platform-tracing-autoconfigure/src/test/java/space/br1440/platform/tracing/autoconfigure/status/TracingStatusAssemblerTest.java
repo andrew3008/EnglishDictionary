@@ -43,6 +43,8 @@ import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 class TracingStatusAssemblerTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final String AGENT_INSTANCE_ID = "97616500-30bf-4ff4-8847-2fe7cf114df9";
+    private static final String NEXT_AGENT_INSTANCE_ID = "030948f5-7be8-4e9d-af7c-075a9d7841d4";
 
     @ParameterizedTest
     @EnumSource(TracingControlChannel.class)
@@ -111,7 +113,7 @@ class TracingStatusAssemblerTest {
         AtomicReference<TracingDeploymentDiagnostics> state = new AtomicReference<>(diagnostics(AgentRuntimeState.AGENT_READY));
 
         AcceptedSettingsReadModel projection = new AcceptedSettingsReadModel(
-                new ExpectedSettingsRevision("runtime-1", 7L),
+                new ExpectedSettingsRevision(AGENT_INSTANCE_ID, 7L),
                 new AcceptedPolicySummary(true, 0.25, 3, "WARNING", true, true, "INFO")
         );
 
@@ -124,10 +126,12 @@ class TracingStatusAssemblerTest {
 
         TracingStatusSnapshot initial = assembler.assemble();
         assertThat(initial.settings().available()).isTrue();
+        assertThat(initial.settings().acceptedRevision().agentInstanceId())
+                .isEqualTo(initial.agent().get("agentInstanceId"));
         assertThat(initial.settings().accepted().samplingRouteRatiosCount()).isEqualTo(3);
         assertThat(initial.agent())
                 .containsEntry("contractId", "platform-tracing-jmx-wire-contract")
-                .containsEntry("runtimeEpoch", "runtime-epoch-1")
+                .containsEntry("agentInstanceId", AGENT_INSTANCE_ID)
                 .containsEntry("evidenceGeneration", 1L)
                 .containsEntry("batchId", "batch-1")
                 .containsEntry("agentDistributionSha256", "a".repeat(64))
@@ -145,7 +149,7 @@ class TracingStatusAssemblerTest {
         PlatformTracingJmxClient jmxClient = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
         ValidationValues values = new ValidationValues("ERROR", 42L, 7L, "accepted-state");
         when(jmxClient.validation().observation()).thenReturn(Optional.of(
-                new ValidationObservation("agent-instance", new JmxOwnerState.Present<>(values, 1L))));
+                new ValidationObservation(AGENT_INSTANCE_ID, new JmxOwnerState.Present<>(values, 1L))));
 
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 true,
@@ -176,7 +180,7 @@ class TracingStatusAssemblerTest {
                 new ProcessorSpanTimeoutValues.Scanner(6L, 1_700_000_000_004L, "RUNNING"));
         when(jmxClient.processorMetrics().observation()).thenReturn(Optional.of(
                         new ProcessorMetricsObservation(
-                                new ObservationCapture("agent-instance", 17L, 1_700_000_000_000L, 1_700_000_000_005L),
+                                new ObservationCapture(AGENT_INSTANCE_ID, 17L, 1_700_000_000_000L, 1_700_000_000_005L),
                                 new JmxOwnerState.Present<>(values, 2L),
                                 new JmxOwnerState.Absent<>(0L),
                                 new JmxOwnerState.Absent<>(0L)
@@ -222,7 +226,7 @@ class TracingStatusAssemblerTest {
                 .containsEntry("lastSuccessfulBackgroundScanEpochMillis", 1_700_000_000_004L)
                 .containsEntry("scannerState", "RUNNING");
         assertThat(captureOf(spanTimeout))
-                .containsEntry("agentInstanceId", "agent-instance")
+                .containsEntry("agentInstanceId", AGENT_INSTANCE_ID)
                 .containsEntry("sequence", 17L)
                 .containsEntry("startedAt", 1_700_000_000_000L)
                 .containsEntry("completedAt", 1_700_000_000_005L);
@@ -234,7 +238,7 @@ class TracingStatusAssemblerTest {
         PlatformTracingJmxClient absentOwner = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
         when(absentOwner.processorMetrics().observation()).thenReturn(Optional.of(
                 new ProcessorMetricsObservation(
-                        new ObservationCapture("agent-instance", 5L, 1_700_000_000_000L, 1_700_000_000_002L),
+                        new ObservationCapture(AGENT_INSTANCE_ID, 5L, 1_700_000_000_000L, 1_700_000_000_002L),
                         new JmxOwnerState.Absent<>(0L),
                         new JmxOwnerState.Absent<>(0L),
                         new JmxOwnerState.Absent<>(0L))));
@@ -249,7 +253,7 @@ class TracingStatusAssemblerTest {
         // then
         assertThat(absentOwnerSpanTimeout).containsEntry("present", false);
         assertThat(captureOf(absentOwnerSpanTimeout))
-                .containsEntry("agentInstanceId", "agent-instance")
+                .containsEntry("agentInstanceId", AGENT_INSTANCE_ID)
                 .containsEntry("sequence", 5L)
                 .containsEntry("startedAt", 1_700_000_000_000L)
                 .containsEntry("completedAt", 1_700_000_000_002L);
@@ -296,9 +300,9 @@ class TracingStatusAssemblerTest {
                 JmxWireContract.EXTENSION_READINESS_OBJECT_NAME,
                 JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT))
                 .thenReturn(
-                        ReadinessJmxTestFixtures.readySnapshot("runtime-epoch-1", 1L, "batch-1"),
-                        ReadinessJmxTestFixtures.readySnapshot("runtime-epoch-1", 1L, "batch-1"),
-                        ReadinessJmxTestFixtures.readySnapshot("runtime-epoch-2", 2L, "batch-2")
+                        ReadinessJmxTestFixtures.readySnapshot(AGENT_INSTANCE_ID, 1L, "batch-1"),
+                        ReadinessJmxTestFixtures.readySnapshot(AGENT_INSTANCE_ID, 1L, "batch-1"),
+                        ReadinessJmxTestFixtures.readySnapshot(NEXT_AGENT_INSTANCE_ID, 2L, "batch-2")
                 );
 
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
@@ -307,7 +311,7 @@ class TracingStatusAssemblerTest {
         );
 
         AcceptedSettingsReadModel projection = new AcceptedSettingsReadModel(
-                new ExpectedSettingsRevision("runtime-1", 7L),
+                new ExpectedSettingsRevision(AGENT_INSTANCE_ID, 7L),
                 new AcceptedPolicySummary(true, 0.25, 3, "WARNING", true, true, "INFO")
         );
 
@@ -374,7 +378,7 @@ class TracingStatusAssemblerTest {
             when(server.getAttribute(
                     JmxWireContract.EXTENSION_READINESS_OBJECT_NAME,
                     JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT))
-                    .thenReturn(ReadinessJmxTestFixtures.readySnapshot("runtime-epoch-1", 1L, "batch-1"));
+                    .thenReturn(ReadinessJmxTestFixtures.readySnapshot(AGENT_INSTANCE_ID, 1L, "batch-1"));
 
             AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard(server);
             AgentReadinessCoherenceTestSupport.pinCurrent(coherenceGuard);
@@ -398,7 +402,7 @@ class TracingStatusAssemblerTest {
                         ),
 
                         new TracingDeploymentDiagnostics.ReadinessAnchor(
-                                "runtime-epoch-1",
+                                AGENT_INSTANCE_ID,
                                 1L,
                                 "batch-1"
                         ),

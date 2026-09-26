@@ -23,7 +23,8 @@ public final class ScrubbingJmxView {
             JmxWireContract.ATTRIBUTE_SCRUBBING_OBSERVATION_SCRUBBING_OBSERVATION,
             JmxContractPoint.SCRUBBING_OBSERVATION,
             JmxOpenTypes.SCRUBBING_OBSERVATION,
-            ScrubbingJmxView::decode
+            ScrubbingJmxView::decode,
+            ScrubbingObservation::agentInstanceId
     );
 
     private final JmxReadExecutor executor;
@@ -49,7 +50,7 @@ public final class ScrubbingJmxView {
     private static ScrubbingObservation decode(Object raw) {
         CompositeData composite = JmxObservationCodec.asComposite(raw);
         JmxObservationCodec.requireCompositeTypeName(composite, JmxWireContract.OPEN_TYPE_SCRUBBING_OBSERVATION_TYPE_NAME);
-        String agentInstanceId = JmxObservationCodec.getString(
+        String agentInstanceId = JmxObservationCodec.getAgentInstanceId(
                 composite, JmxWireContract.FIELD_SCRUBBING_OBSERVATION_AGENT_INSTANCE_ID);
 
         JmxOwnerState<ScrubbingValues> values = JmxObservationCodec.ownerState(

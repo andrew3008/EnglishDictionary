@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import javax.management.AttributeNotFoundException;
 import javax.management.InstanceNotFoundException;
 import javax.management.IntrospectionException;
@@ -25,23 +26,42 @@ import javax.management.RuntimeOperationsException;
 public final class JmxReadExecutor {
 
     private static final Duration DEFAULT_WARN_RATE_LIMIT = Duration.ofMinutes(5);
+    private static final Consumer<String> NOOP_AGENT_INSTANCE_ID_VERIFIER = ignored -> {
+    };
 
     private final MBeanServerConnection connection;
     private final Clock clock;
     private final JmxReadStateRegistry registry;
     private final JmxWireGraphValidator wireValidator;
+    private final Consumer<String> agentInstanceIdVerifier;
     private final EnumMap<JmxDomain, ReentrantLock> transportLocks = new EnumMap<>(JmxDomain.class);
     private final AtomicLong observationSequence = new AtomicLong();
 
     public JmxReadExecutor(MBeanServerConnection connection) {
-        this(connection, Clock.systemUTC(), DEFAULT_WARN_RATE_LIMIT);
+        this(connection, NOOP_AGENT_INSTANCE_ID_VERIFIER);
+    }
+
+    public JmxReadExecutor(MBeanServerConnection connection,
+                           Consumer<String> agentInstanceIdVerifier) {
+        this(connection, Clock.systemUTC(), DEFAULT_WARN_RATE_LIMIT, agentInstanceIdVerifier);
     }
 
     public JmxReadExecutor(MBeanServerConnection connection, Clock clock, Duration warnRateLimit) {
+        this(connection, clock, warnRateLimit, NOOP_AGENT_INSTANCE_ID_VERIFIER);
+    }
+
+    JmxReadExecutor(MBeanServerConnection connection,
+                    Clock clock,
+                    Duration warnRateLimit,
+                    Consumer<String> agentInstanceIdVerifier) {
         this.connection = Objects.requireNonNull(connection, "connection");
         this.clock = Objects.requireNonNull(clock, "clock");
         this.registry = new JmxReadStateRegistry(clock, warnRateLimit);
         this.wireValidator = new JmxWireGraphValidator();
+        this.agentInstanceIdVerifier = Objects.requireNonNull(
+                agentInstanceIdVerifier,
+                "agentInstanceIdVerifier"
+        );
 
         for (JmxDomain domain : JmxDomain.values()) {
             transportLocks.put(domain, new ReentrantLock());
@@ -62,7 +82,7 @@ public final class JmxReadExecutor {
         TimedRead raw = readRaw(
                 attribute.point(),
                 () -> readExactAttribute(objectName, attribute));
-        return resolve(attribute.point(), attribute.decoder(), raw);
+        return resolve(attribute, raw);
     }
 
     public JmxMBeanRegistrationState registration(ObjectName objectName, JmxContractPoint point) {
@@ -102,9 +122,15 @@ public final class JmxReadExecutor {
         }
     }
 
-    private <T> Optional<T> resolve(JmxContractPoint point, JmxValueDecoder<T> decoder, TimedRead raw) {
+    private <T> Optional<T> resolve(JmxAttribute<T> attribute, TimedRead raw) {
+        JmxContractPoint point = attribute.point();
         return switch (raw.read()) {
-            case JmxRead.Present present -> resolvePresent(point, decoder, raw.sequence(), raw.observedAt(), present.value());
+            case JmxRead.Present present -> resolvePresent(
+                    attribute,
+                    raw.sequence(),
+                    raw.observedAt(),
+                    present.value()
+            );
 
             case JmxRead.Absent ignored -> {
                 registry.recordAbsent(point, raw.sequence(), raw.observedAt());
@@ -123,7 +149,11 @@ public final class JmxReadExecutor {
         };
     }
 
-    private <T> Optional<T> resolvePresent(JmxContractPoint point, JmxValueDecoder<T> decoder, long sequence, Instant observedAt, Object rawValue) {
+    private <T> Optional<T> resolvePresent(JmxAttribute<T> attribute,
+                                           long sequence,
+                                           Instant observedAt,
+                                           Object rawValue) {
+        JmxContractPoint point = attribute.point();
         if (rawValue == null) {
             registry.recordContractViolation(point, JmxDiagnosticKind.NULL_VALUE_FOR_REQUIRED_MEMBER, sequence, observedAt);
             return Optional.empty();
@@ -131,7 +161,11 @@ public final class JmxReadExecutor {
 
         try {
             wireValidator.validate(rawValue);
-            T decoded = decoder.decode(rawValue);
+            T decoded = attribute.decoder().decode(rawValue);
+            String agentInstanceId = attribute.agentInstanceIdExtractor().apply(decoded);
+            if (agentInstanceId != null) {
+                agentInstanceIdVerifier.accept(agentInstanceId);
+            }
             registry.recordPresent(point, sequence, observedAt);
             return Optional.of(decoded);
         } catch (JmxWireTypeViolationException ignored) {

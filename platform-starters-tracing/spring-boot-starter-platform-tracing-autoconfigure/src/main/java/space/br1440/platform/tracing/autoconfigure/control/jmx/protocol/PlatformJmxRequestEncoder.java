@@ -29,7 +29,7 @@ public final class PlatformJmxRequestEncoder {
             requestFields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID, parameters.attemptId());
             requestFields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_CANDIDATE_DIGEST, candidateDigest);
             requestFields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_ACCEPTED_SEQUENCE, parameters.expectedBase().acceptedSequence());
-            requestFields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_RUNTIME_INSTANCE_ID, parameters.expectedBase().runtimeInstanceId());
+            requestFields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_AGENT_INSTANCE_ID, parameters.expectedBase().agentInstanceId());
             requestFields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_RUNTIME_POLICY, runtimePolicy);
             requestFields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_SOURCE_AUTHORITY, parameters.sourceAuthority());
             requestFields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_SOURCE_REVISION, parameters.sourceRevision());

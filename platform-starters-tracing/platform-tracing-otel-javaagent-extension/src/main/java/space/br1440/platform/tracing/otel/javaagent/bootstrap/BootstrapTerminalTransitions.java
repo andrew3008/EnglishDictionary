@@ -47,7 +47,13 @@ final class BootstrapTerminalTransitions {
             activeSession.readiness().recordTerminalCleanupFailure(FAILED_ROLLBACK_INCOMPLETE);
         }
 
-        journal.publishFailed(activeSession, effectiveFailureCode, batchId, evidence);
+        journal.publishFailed(
+                activeSession.readiness(),
+                activeSession.agentInstanceId(),
+                effectiveFailureCode,
+                batchId,
+                evidence
+        );
         PlatformThrowables.propagateIfFatal(cause);
         PlatformThrowables.propagateIfFatal(cleanupFailure);
         return classified;
@@ -66,7 +72,13 @@ final class BootstrapTerminalTransitions {
             }
 
             lifecycle.markFailed(TRANSPORT_STALE, "shutdown", cause);
-            journal.publishFailed(activeSession, TRANSPORT_STALE, batchId, evidence);
+            journal.publishFailed(
+                    activeSession.readiness(),
+                    activeSession.agentInstanceId(),
+                    TRANSPORT_STALE,
+                    batchId,
+                    evidence
+            );
         }
     }
 
@@ -122,7 +134,11 @@ final class BootstrapTerminalTransitions {
 
     void publishSessionFailure(AutoconfigureSession failedSession, String failureCode) {
         if (failedSession != null) {
-            journal.publishFailed(failedSession, failureCode);
+            journal.publishFailed(
+                    failedSession.readiness(),
+                    failedSession.agentInstanceId(),
+                    failureCode
+            );
         }
     }
 
@@ -133,6 +149,12 @@ final class BootstrapTerminalTransitions {
                                            ExtensionRuntimeEvidence evidence) {
         lifecycle.markFailed(FAILED_ROLLBACK_INCOMPLETE, phase, cause);
         activeSession.readiness().recordTerminalCleanupFailure(FAILED_ROLLBACK_INCOMPLETE);
-        journal.publishFailed(activeSession, FAILED_ROLLBACK_INCOMPLETE, batchId, evidence);
+        journal.publishFailed(
+                activeSession.readiness(),
+                activeSession.agentInstanceId(),
+                FAILED_ROLLBACK_INCOMPLETE,
+                batchId,
+                evidence
+        );
     }
 }

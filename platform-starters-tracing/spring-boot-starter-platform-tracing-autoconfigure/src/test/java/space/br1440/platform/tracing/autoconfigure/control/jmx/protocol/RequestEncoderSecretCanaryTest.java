@@ -83,7 +83,7 @@ final class RequestEncoderSecretCanaryTest {
         assertAbsent((String) request.get("sourceAuthority"), List.of(CANARY_ROUTE));
         assertAbsent((String) request.get("applyTrigger"), List.of(CANARY_ROUTE));
         assertAbsent((String) request.get("sourceRevision"), List.of(CANARY_ROUTE));
-        assertAbsent((String) request.get("expectedRuntimeInstanceId"), List.of(CANARY_ROUTE));
+        assertAbsent((String) request.get("expectedAgentInstanceId"), List.of(CANARY_ROUTE));
 
         CompositeData policy = (CompositeData) request.get("runtimePolicy");
         TabularData routes = (TabularData) policy.get("samplingRouteRatios");
@@ -95,7 +95,7 @@ final class RequestEncoderSecretCanaryTest {
     @Test
     void applyResponse_containsNoRouteOrSecretCanary() throws Exception {
         try (FakeAgentPlatformJmxPlane agent =
-                     FakeAgentPlatformJmxPlane.compliant("agent-" + UUID.randomUUID(), 0L)) {
+                     FakeAgentPlatformJmxPlane.compliant(UUID.randomUUID().toString(), 0L)) {
             PlatformJmxTracingSettingsClient client = agent.client();
             AcceptedSettingsWithSequence warm = client.currentComplete()
                     .orElseThrow(() -> new IllegalStateException("fake Agent must warm currentComplete()"));
@@ -107,14 +107,14 @@ final class RequestEncoderSecretCanaryTest {
             Optional<AcceptedSettingsWithSequence> complete = client.currentComplete();
             assertThat(complete).isPresent();
             assertAbsent(complete.get().snapshot().toString(), ALL_CANARIES);
-            assertAbsent(complete.get().runtimeInstanceId(), ALL_CANARIES);
+            assertAbsent(complete.get().agentInstanceId(), ALL_CANARIES);
         }
     }
 
     @Test
     void projectionAndActuator_containNoRouteOrSecretCanary() {
         AcceptedSettingsWithSequence accepted = new AcceptedSettingsWithSequence(
-                7L, "runtime-" + UUID.randomUUID(), snapshotWithRouteCanary());
+                7L, UUID.randomUUID().toString(), snapshotWithRouteCanary());
 
         AcceptedSettingsReadModel projection = project(accepted);
         TracingStatusSnapshot.SettingsStatus body = TracingStatusSnapshot.SettingsStatus.available(
@@ -226,7 +226,7 @@ final class RequestEncoderSecretCanaryTest {
         return new CompositeDataSupport(
                 JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT,
                 new String[]{
-                        "acceptedSequence", "runtimeInstanceId",
+                        "acceptedSequence", "agentInstanceId",
                         "acceptedPolicyDigest", "lastApplyOutcome", "lastAttemptId", "failureCode",
                         "samplingEnabled", "samplingRatio", "samplingRouteRatios",
                         "validationLevel", "exporterEnabled",

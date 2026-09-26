@@ -18,6 +18,8 @@ import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
 import space.br1440.platform.tracing.test.assertions.SamplingAssertions;
 import space.br1440.platform.tracing.test.harness.SamplerHarness;
@@ -46,7 +48,8 @@ class SamplingRuntimeUpdateCharacterizationTest {
     @Test
     void routeRatioUpdateChangesReasonFromGlobalToRoute() {
         // given
-        TracingSettingsSource settings = TracingSettingsSource.isolatedSampling(true, Map.of(), INITIAL_ROUTE_RATIO);
+        TracingSettingsSource settings = TracingSettingsSourceTestFixtures.boundSampling(
+                AgentInstanceId.random(), true, Map.of(), INITIAL_ROUTE_RATIO);
         CompositeSampler sampler = new CompositeSampler(
                 settings,
                 CategoryBSamplingAccess.snapshot(List.of(), List.of("on"))
@@ -75,8 +78,8 @@ class SamplingRuntimeUpdateCharacterizationTest {
     @Test
     void parallelReadAfterValidUpdateDoesNotSeeInvalidRatio() throws InterruptedException {
         // given
-        TracingSettingsSource settings = TracingSettingsSource
-                .isolatedSampling(true, Map.of(), INITIAL_GLOBAL_RATIO);
+        TracingSettingsSource settings = TracingSettingsSourceTestFixtures.boundSampling(
+                AgentInstanceId.random(), true, Map.of(), INITIAL_GLOBAL_RATIO);
 
         CompositeSampler sampler = new CompositeSampler(
                 settings,

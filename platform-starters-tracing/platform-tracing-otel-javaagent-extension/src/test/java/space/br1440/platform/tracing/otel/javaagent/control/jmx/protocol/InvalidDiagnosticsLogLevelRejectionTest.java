@@ -6,7 +6,6 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
-
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
 
@@ -44,7 +43,7 @@ class InvalidDiagnosticsLogLevelRejectionTest {
         long sequenceBefore = store.current().acceptedSequence();
         CompositeData request = withDiagnosticsLogLevel(
                 JmxSettingsMutationFixtures.request(
-                        store.current().runtimeInstanceId(),
+                        store.current().agentInstanceId().toString(),
                         store.current().acceptedSequence(),
                         store.current().policy(),
                         UUID.randomUUID().toString()),

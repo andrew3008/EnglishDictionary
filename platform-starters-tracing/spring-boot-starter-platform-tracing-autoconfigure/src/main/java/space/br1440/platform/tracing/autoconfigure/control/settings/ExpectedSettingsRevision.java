@@ -1,13 +1,11 @@
 package space.br1440.platform.tracing.autoconfigure.control.settings;
 
-import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentInstanceIdValidator;
 
-public record ExpectedSettingsRevision(String runtimeInstanceId, long acceptedSequence) {
+public record ExpectedSettingsRevision(String agentInstanceId, long acceptedSequence) {
 
     public ExpectedSettingsRevision {
-        if (StringUtils.isNullOrBlank(runtimeInstanceId)) {
-            throw new IllegalArgumentException("runtimeInstanceId must not be blank");
-        }
+        agentInstanceId = AgentInstanceIdValidator.requireCanonical(agentInstanceId, "agentInstanceId");
 
         if (acceptedSequence < 0L) {
             throw new IllegalArgumentException("acceptedSequence must be >= 0, got " + acceptedSequence);

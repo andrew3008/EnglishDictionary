@@ -4,11 +4,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.function.Function;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
 
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
@@ -101,7 +101,7 @@ public final class ProcessorMetricsObservationSource {
     public ProcessorMetricsObservationSource(OwnerRegistrationSlot<SpanTimeoutProcessor> spanTimeoutSlot,
                                              OwnerRegistrationSlot<PlatformCompositeSpanProcessor> compositeSlot,
                                              OwnerRegistrationSlot<SpanLimitsMetricsProcessor> metricsSlot,
-                                             UUID agentInstanceId) {
+                                             AgentInstanceId agentInstanceId) {
         this.spanTimeoutSlot = Objects.requireNonNull(spanTimeoutSlot, "spanTimeoutSlot");
         this.compositeSlot = Objects.requireNonNull(compositeSlot, "compositeSlot");
         this.metricsSlot = Objects.requireNonNull(metricsSlot, "metricsSlot");

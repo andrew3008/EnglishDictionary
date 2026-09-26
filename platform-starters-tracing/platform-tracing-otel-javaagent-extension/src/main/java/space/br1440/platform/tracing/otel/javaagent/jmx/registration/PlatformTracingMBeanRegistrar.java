@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 
 import java.lang.management.ManagementFactory;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -8,6 +9,7 @@ import javax.management.MBeanServer;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
@@ -31,27 +33,43 @@ public final class PlatformTracingMBeanRegistrar {
     private final PlatformExtensionReadiness extensionReadiness;
     private final DiagnosticReadinessRegistrar diagnosticPlane;
     private final RuntimeControlsRegistrar runtimePlane;
+    private final AgentInstanceId agentInstanceId;
 
-    public PlatformTracingMBeanRegistrar() {
-        this(ManagementFactory.getPlatformMBeanServer(), new PlatformExtensionReadiness());
+    public PlatformTracingMBeanRegistrar(AgentInstanceId agentInstanceId) {
+        this(ManagementFactory.getPlatformMBeanServer(), agentInstanceId);
     }
 
-    public PlatformTracingMBeanRegistrar(MBeanServer mbeanServer) {
-        this(mbeanServer, new PlatformExtensionReadiness());
+    public PlatformTracingMBeanRegistrar(MBeanServer mbeanServer, AgentInstanceId agentInstanceId) {
+        this(mbeanServer, new PlatformExtensionReadiness(), agentInstanceId);
     }
 
-    PlatformTracingMBeanRegistrar(MBeanServer mbeanServer, PlatformExtensionReadiness extensionReadiness) {
+    PlatformTracingMBeanRegistrar(MBeanServer mbeanServer,
+                                  PlatformExtensionReadiness extensionReadiness,
+                                  AgentInstanceId agentInstanceId) {
+        AgentInstanceId requiredAgentInstanceId = Objects.requireNonNull(agentInstanceId, "agentInstanceId");
+        if (requiredAgentInstanceId.isUnbound()) {
+            throw new IllegalArgumentException("JMX registrar agentInstanceId must be bound");
+        }
         MBeanRegistrationScope scope = new MBeanRegistrationScope(mbeanServer, extensionReadiness);
         this.extensionReadiness = scope.extensionReadiness();
         this.diagnosticPlane = new DiagnosticReadinessRegistrar(scope);
-        this.runtimePlane = new RuntimeControlsRegistrar(scope, UUID.randomUUID());
+        this.agentInstanceId = requiredAgentInstanceId;
+        this.runtimePlane = new RuntimeControlsRegistrar(scope, requiredAgentInstanceId);
     }
 
     public AutoCloseable registerDiagnosticReadiness(Supplier<ExtensionReadinessWireSnapshot> projection) {
-        return diagnosticPlane.register(projection);
+        Objects.requireNonNull(projection, "projection");
+        return diagnosticPlane.register(() -> requireOwnedReadinessSnapshot(projection.get()));
     }
 
     public RuntimeRegistration registerRuntimeControls(TracingSettingsSource acceptedPolicy) {
+        Objects.requireNonNull(acceptedPolicy, "acceptedPolicy");
+        if (!agentInstanceId.equals(acceptedPolicy.current().agentInstanceId())) {
+            throw new IllegalArgumentException(
+                    "JMX registrar and tracing settings agentInstanceId values must match"
+            );
+        }
+
         return runtimePlane.register(acceptedPolicy);
     }
 
@@ -89,5 +107,22 @@ public final class PlatformTracingMBeanRegistrar {
 
     public PlatformExtensionReadiness extensionReadiness() {
         return extensionReadiness;
+    }
+
+    public AgentInstanceId agentInstanceId() {
+        return agentInstanceId;
+    }
+
+    private ExtensionReadinessWireSnapshot requireOwnedReadinessSnapshot(
+            ExtensionReadinessWireSnapshot snapshot) {
+        ExtensionReadinessWireSnapshot requiredSnapshot =
+                Objects.requireNonNull(snapshot, "Readiness projection must not return null");
+        if (!agentInstanceId.toString().equals(requiredSnapshot.agentInstanceId())) {
+            throw new IllegalStateException(
+                    "JMX registrar and readiness snapshot agentInstanceId values must match"
+            );
+        }
+
+        return requiredSnapshot;
     }
 }

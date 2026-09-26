@@ -111,7 +111,11 @@ class AgentReadinessClassifierTest {
     void rejectsReadySnapshotWithMixedGenerationIdentity() {
         // given
         AgentReadinessSnapshot snapshot = builder()
-                .anchorIdentity(new AgentReadinessSnapshot.AnchorIdentity("", 0L, ""))
+                .anchorIdentity(new AgentReadinessSnapshot.AnchorIdentity(
+                        ReadinessTestFixtures.AGENT_INSTANCE_ID,
+                        0L,
+                        ""
+                ))
                 .build();
 
         // when

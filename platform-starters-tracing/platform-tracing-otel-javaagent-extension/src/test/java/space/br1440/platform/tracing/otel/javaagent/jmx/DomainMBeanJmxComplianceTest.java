@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures.boundSampling;
 import static space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationTestFixtures.initializingReadinessProjection;
 
 import java.io.IOException;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
@@ -58,8 +60,9 @@ class DomainMBeanJmxComplianceTest {
     @Test
     void liveManagementContractMatchesCommittedBaseline() throws Exception {
         // given
-        registrar = new PlatformTracingMBeanRegistrar();
-        wireRequiredComponents(registrar, samplingPolicy());
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
+        registrar = new PlatformTracingMBeanRegistrar(agentInstanceId);
+        wireRequiredComponents(registrar, samplingPolicy(agentInstanceId));
 
         // when
         JmxManagementContractSnapshot.Snapshot snapshot = JmxManagementContractSnapshot.capture(server, OBJECT_NAMES);
@@ -91,8 +94,9 @@ class DomainMBeanJmxComplianceTest {
     @Test
     void platformDomainMBeansExposeNoMutatingOperations() throws Exception {
         // given
-        registrar = new PlatformTracingMBeanRegistrar();
-        wireRequiredComponents(registrar, samplingPolicy());
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
+        registrar = new PlatformTracingMBeanRegistrar(agentInstanceId);
+        wireRequiredComponents(registrar, samplingPolicy(agentInstanceId));
 
         // when/then
         for (ObjectName name : List.of(
@@ -117,7 +121,8 @@ class DomainMBeanJmxComplianceTest {
                 acceptedPolicy, CategoryBSamplingAccess.snapshot(Collections.emptyList(), Collections.emptyList()));
         ValidatingSpanProcessor validating = new ValidatingSpanProcessor(acceptedPolicy);
 
-        trackRegistration(registrar.registerDiagnosticReadiness(initializingReadinessProjection()));
+        trackRegistration(registrar.registerDiagnosticReadiness(
+                initializingReadinessProjection(registrar.agentInstanceId())));
         registrar.setCompositeSampler(sampler);
         registrar.setValidating(validating);
         trackRegistration(registrar.registerRuntimeControls(acceptedPolicy));
@@ -193,8 +198,8 @@ class DomainMBeanJmxComplianceTest {
         return "JMX management contract differs.";
     }
 
-    private static TracingSettingsSource samplingPolicy() {
-        return TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
+    private static TracingSettingsSource samplingPolicy(AgentInstanceId agentInstanceId) {
+        return boundSampling(agentInstanceId, true, Map.of(), 0.5);
     }
 
     private record Metadata(String generatedFromCommit, String javaVersion) {

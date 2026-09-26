@@ -26,11 +26,7 @@ import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPlatformJmxP
 
 class ConfigServerOutageTest {
 
-    private static final String RUNTIME_INSTANCE_ID = "instance-outage";
-
-    // -------------------------------------------------------------------------
-    // Shared test fixtures
-    // -------------------------------------------------------------------------
+    private static final String AGENT_INSTANCE_ID = "872314d1-579d-440b-9694-847b3963b7b0";
 
     private static CompleteTracingSettings sampleSnapshot() {
         return CompleteTracingSettings.builder()
@@ -46,28 +42,15 @@ class ConfigServerOutageTest {
 
     private static CompleteTracingSettingsReader readerWith(long sequence) {
         AcceptedSettingsWithSequence snap =
-                new AcceptedSettingsWithSequence(sequence, RUNTIME_INSTANCE_ID, sampleSnapshot());
+                new AcceptedSettingsWithSequence(sequence, AGENT_INSTANCE_ID, sampleSnapshot());
         return () -> Optional.of(snap);
     }
 
     private static CompleteTracingSettingsReader advancingReader(AtomicLong seq) {
         return () -> Optional.of(
-                new AcceptedSettingsWithSequence(seq.get(), RUNTIME_INSTANCE_ID, sampleSnapshot()));
+                new AcceptedSettingsWithSequence(seq.get(), AGENT_INSTANCE_ID, sampleSnapshot()));
     }
 
-    // =========================================================================
-    // SECTION 1 — Initial fail-closed
-    // =========================================================================
-
-    /**
-     * P5.3 proof item 1a: missing required Category A leaf during initial load.
-     * Plan §12 C-01 (initial phase): candidate REJECTED; application configuration
-     * readiness BLOCKED.
-     * <p>
-     * {@code deliverInitial()} MUST propagate the {@link TracingSettingsManifestException}
-     * so that the startup sequence can observe and block readiness.
-     * It MUST NOT swallow the exception and silently proceed.
-     */
     @Test
     void initial_missing_leaf_propagates_exception_and_blocks_readiness() {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -94,10 +77,6 @@ class ConfigServerOutageTest {
                 .isEqualTo(0);
     }
 
-    /**
-     * P5.3 proof item 1b: local-override provenance detected during initial load.
-     * Local-override keys are forbidden by §12 (fail-closed rejection).
-     */
     @Test
     void initial_local_override_leaf_propagates_exception_and_blocks_readiness() {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -123,9 +102,6 @@ class ConfigServerOutageTest {
         assertThat(applyCount.get()).isEqualTo(0);
     }
 
-    /**
-     * P5.3 proof item 1c: unknown-provenance key during initial load.
-     */
     @Test
     void initial_unknown_provenance_propagates_exception_and_blocks_readiness() {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -151,14 +127,6 @@ class ConfigServerOutageTest {
         assertThat(applyCount.get()).isEqualTo(0);
     }
 
-    /**
-     * P5.3 proof item 2a: Agent returns REJECTED on initial delivery.
-     * <p>
-     * Plan §12: initial load REJECTED → application configuration readiness BLOCKED.
-     * {@code deliverInitial()} MUST return {@code REJECTED} so the caller can observe
-     * and block readiness. It MUST NOT silently swallow the outcome.
-     * Accepted state (LKG) is NEVER established.
-     */
     @Test
     void initial_rejected_outcome_returned_to_caller_and_no_state_established() {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -184,10 +152,6 @@ class ConfigServerOutageTest {
                 .isEqualTo(1);
     }
 
-    /**
-     * P5.3 proof item 2b: Agent returns FAILED on initial delivery.
-     * FAILED → application configuration readiness BLOCKED.
-     */
     @Test
     void initial_failed_outcome_returned_to_caller_and_no_state_established() {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -206,13 +170,6 @@ class ConfigServerOutageTest {
                 .isEqualTo(TracingSettingsDeliveryResult.FAILED);
     }
 
-    /**
-     * Пункт P5.3.4: JMX-клиент записи выбрасывает исключение при начальной доставке.
-     * <p>
-     * Если {@code applySnapshot} выбрасывает исключение, оно должно выйти из
-     * {@code deliverInitial()}, чтобы запуск был заблокирован без молчаливого подавления
-     * или резервного пути.
-     */
     @Test
     void initial_writer_throws_exception_propagates_out_of_deliver_initial() {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -231,23 +188,6 @@ class ConfigServerOutageTest {
                 .hasMessageContaining("JMX transport unavailable");
     }
 
-    // =========================================================================
-    // SECTION 2 — Runtime outage: LKG retained
-    // =========================================================================
-
-    /**
-     * P5.3 proof item 5: manifest build failure during a runtime refresh.
-     * <p>
-     * Plan §12 C-01 (runtime phase): candidate REJECTED; accepted policy UNCHANGED;
-     * {@code acceptedSequence} UNCHANGED; LKG retained.
-     * <p>
-     * The coalescer MUST:
-     * <ul>
-     *   <li>NOT call {@code applySnapshot};</li>
-     *   <li>NOT throw or crash (runtime outage is non-fatal);</li>
-     *   <li>leave {@code lastKnownSequence} at its pre-outage value.</li>
-     * </ul>
-     */
     @Test
     void runtime_manifest_build_failure_skips_apply_and_retains_lkg() {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -284,10 +224,6 @@ class ConfigServerOutageTest {
                 .isEqualTo(1); // no second call
     }
 
-    /**
-     * P5.3 proof item 5b: local-override provenance during runtime refresh
-     * → apply skipped, LKG retained.
-     */
     @Test
     void runtime_local_override_detected_skips_apply_and_retains_lkg() {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -316,10 +252,6 @@ class ConfigServerOutageTest {
                 .isEqualTo(1);
     }
 
-    /**
-     * P5.3 proof item 5c: unknown-provenance key during runtime refresh
-     * → apply skipped, LKG retained.
-     */
     @Test
     void runtime_unknown_provenance_skips_apply_and_retains_lkg() {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -346,13 +278,6 @@ class ConfigServerOutageTest {
                 .isEqualTo(1);
     }
 
-    /**
-     * P5.3 proof item 6: Agent returns REJECTED during a runtime refresh.
-     * <p>
-     * Plan §12 C-01 (runtime phase): REJECTED → accepted policy UNCHANGED;
-     * {@code acceptedSequence} UNCHANGED; LKG retained.
-     * The coalescer MUST NOT update its local sequence cache on REJECTED.
-     */
     @Test
     void runtime_rejected_retains_lkg_and_does_not_update_sequence() {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -515,21 +440,10 @@ class ConfigServerOutageTest {
                 .isEqualTo(3L);
     }
 
-    // =========================================================================
-    // Раздел 3 — сквозные сценарии с FakeAgentPlatformJmxPlane
-    // =========================================================================
-
-    /**
-     * P5.3 proof item 10 (E2E): successful initial apply followed by runtime outage.
-     * <p>
-     * After {@code deliverInitial()} applies at sequence N, a subsequent runtime
-     * manifest-build failure MUST leave the Agent's accepted sequence at N; it
-     * MUST NOT decrement, reset, or corrupt the sequence.
-     */
     @Test
     void e2e_runtime_outage_after_initial_success_does_not_degrade_agent_sequence() throws Exception {
         try (FakeAgentPlatformJmxPlane agent =
-                     FakeAgentPlatformJmxPlane.compliant(RUNTIME_INSTANCE_ID, 0L)) {
+                     FakeAgentPlatformJmxPlane.compliant(AGENT_INSTANCE_ID, 0L)) {
 
             var client = agent.client();
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -558,16 +472,10 @@ class ConfigServerOutageTest {
         }
     }
 
-    /**
-     * P5.3 proof item 11 (E2E): initial REJECTED from real Agent.
-     * <p>
-     * Agent rejects the first snapshot (simulated via {@code setNextApplyOutcome("REJECTED")}).
-     * The accepted sequence in the Agent MUST remain at the baseline; no increment.
-     */
     @Test
     void e2e_initial_rejected_leaves_agent_sequence_at_baseline() throws Exception {
         try (FakeAgentPlatformJmxPlane agent =
-                     FakeAgentPlatformJmxPlane.compliant(RUNTIME_INSTANCE_ID, 5L)) {
+                     FakeAgentPlatformJmxPlane.compliant(AGENT_INSTANCE_ID, 5L)) {
 
             agent.setNextApplyOutcome("REJECTED");
             var client = agent.client();
@@ -589,13 +497,10 @@ class ConfigServerOutageTest {
         }
     }
 
-    /**
-     * P5.3 E2E: multiple consecutive runtime outages; Agent sequence stable throughout.
-     */
     @Test
     void e2e_multiple_runtime_outages_agent_sequence_stable() throws Exception {
         try (FakeAgentPlatformJmxPlane agent =
-                     FakeAgentPlatformJmxPlane.compliant(RUNTIME_INSTANCE_ID, 1L)) {
+                     FakeAgentPlatformJmxPlane.compliant(AGENT_INSTANCE_ID, 1L)) {
 
             var client = agent.client();
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -621,13 +526,10 @@ class ConfigServerOutageTest {
         }
     }
 
-    /**
-     * P5.3 E2E: recovery after multiple outages reaches the Agent correctly.
-     */
     @Test
     void e2e_recovery_after_multiple_outages_applies_to_agent() throws Exception {
         try (FakeAgentPlatformJmxPlane agent =
-                     FakeAgentPlatformJmxPlane.compliant(RUNTIME_INSTANCE_ID, 10L)) {
+                     FakeAgentPlatformJmxPlane.compliant(AGENT_INSTANCE_ID, 10L)) {
 
             var client = agent.client();
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -653,17 +555,6 @@ class ConfigServerOutageTest {
         }
     }
 
-    // =========================================================================
-    // SECTION 4 — ConfigServerTracingSettingsAdapter fan-out
-    // =========================================================================
-
-    /**
-     * P5.3 proof item 13: non-policy EnvironmentChangeEvent keys MUST NOT trigger coalescer.
-     * <p>
-     * Plan §12: "EnvironmentChangeEvent as observation trigger (keys — triggers only)".
-     * Events carrying keys outside {@code platform.tracing.policy.*} are irrelevant
-     * and MUST be silently ignored.
-     */
     @Test
     void adapter_non_policy_keys_do_not_trigger_coalescer() {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -698,10 +589,6 @@ class ConfigServerOutageTest {
                 .isEqualTo(0);
     }
 
-    /**
-     * P5.3 proof item 14: policy-namespace EnvironmentChangeEvent keys trigger
-     * coalescer exactly once per event, regardless of how many policy keys changed.
-     */
     @Test
     void adapter_policy_keys_trigger_coalescer_exactly_once_per_event() {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -746,9 +633,6 @@ class ConfigServerOutageTest {
                 .isEqualTo(3);
     }
 
-    /**
-     * P5.3 adapter: event with no keys (empty set) MUST NOT trigger coalescer.
-     */
     @Test
     void adapter_empty_key_set_does_not_trigger_coalescer() {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);

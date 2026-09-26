@@ -75,7 +75,7 @@ final class AgentContractFailureMessages {
             "At least one generated required capability is absent. missingRequired=%s.";
 
     static final String READINESS_GENERATION_INVALID_EXPLANATION =
-            "runtimeEpoch, evidenceGeneration, and batchId are not coherent.";
+            "agentInstanceId, evidenceGeneration, and batchId are not coherent.";
 
     static final String DISTRIBUTION_EVIDENCE_INVALID_EXPLANATION =
             "Controlled-agent distribution identity evidence is absent or invalid.";
@@ -145,7 +145,7 @@ final class AgentContractFailureMessages {
             case "READINESS_GENERATION_INCONSISTENT" -> generationInconsistentContext(readiness);
 
             case "READINESS_ANCHOR_CONTENT_DRIFT",
-                 "READINESS_PINNED_EPOCH_CHANGED",
+                 "READINESS_PINNED_ANCHOR_CHANGED",
                  "READINESS_ANCHOR_NOT_PINNED" -> requiredAnchorContext(readiness);
 
             case "EXTENSION_INITIALIZING_INCONSISTENT" -> initializingInconsistentContext(readiness);
@@ -205,7 +205,7 @@ final class AgentContractFailureMessages {
     private static String generationInconsistentContext(TracingDeploymentDiagnostics.AgentReadiness readiness) {
         TracingDeploymentDiagnostics.ReadinessAnchor anchor = readiness.readinessAnchor();
         return join(
-                missingOnlyField("runtimeEpoch", anchor.runtimeEpoch()),
+                missingOnlyField("agentInstanceId", anchor.agentInstanceId()),
                 requiredGeneration(anchor.evidenceGeneration()),
                 missingOnlyField("batchId", anchor.batchId())
         );
@@ -214,7 +214,7 @@ final class AgentContractFailureMessages {
     private static String requiredAnchorContext(TracingDeploymentDiagnostics.AgentReadiness readiness) {
         TracingDeploymentDiagnostics.ReadinessAnchor anchor = readiness.readinessAnchor();
         return join(
-                requiredField("runtimeEpoch", anchor.runtimeEpoch()),
+                requiredField("agentInstanceId", anchor.agentInstanceId()),
                 requiredGeneration(anchor.evidenceGeneration()),
                 requiredField("batchId", anchor.batchId())
         );

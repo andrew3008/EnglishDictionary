@@ -61,8 +61,9 @@ public final class ControlledAgentRuntimeProbe {
         verifyHermeticLaunch(probeArguments.controlledAgent());
         verifyApplicationClassLoaderIsolation();
         String upstreamVersion = verifyDistributionIdentity(probeArguments);
-        verifyReadiness(probeArguments.version(), upstreamVersion);
-        verifyProcessValidationState();
+        String agentInstanceId = verifyReadiness(probeArguments.version(), upstreamVersion);
+        verifyAcceptedSettingsIdentity(agentInstanceId);
+        verifyProcessValidationState(agentInstanceId);
 
         System.out.printf("CONTROLLED_AGENT_PROBE_OK version=%s schema=%s capabilities=%d%n",
                 probeArguments.version(), JmxWireContract.SCHEMA_ID, EXPECTED_CAPABILITIES.size());
@@ -191,7 +192,7 @@ public final class ControlledAgentRuntimeProbe {
         }
     }
 
-    private static void verifyReadiness(String expectedExtensionVersion, String expectedUpstreamVersion) throws Exception {
+    private static String verifyReadiness(String expectedExtensionVersion, String expectedUpstreamVersion) throws Exception {
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         long deadlineNanos = System.nanoTime() + READINESS_TIMEOUT.toNanos();
 
@@ -216,7 +217,11 @@ public final class ControlledAgentRuntimeProbe {
                 CompositeData repeated = readinessSnapshot(server);
                 verifyReadySnapshot(repeated, expectedExtensionVersion, expectedUpstreamVersion);
                 require(snapshot.equals(repeated), "Readiness snapshot changed between consecutive reads");
-                return;
+                return value(
+                        snapshot,
+                        JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_INSTANCE_ID,
+                        String.class
+                );
             }
 
             sleepPollInterval();
@@ -228,7 +233,31 @@ public final class ControlledAgentRuntimeProbe {
         );
     }
 
-    private static void verifyProcessValidationState() throws Exception {
+    private static void verifyAcceptedSettingsIdentity(String expectedAgentInstanceId) throws Exception {
+        MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+        require(server.isRegistered(JmxWireContract.SETTINGS_STATUS_OBJECT_NAME),
+                "Settings status MBean is not registered");
+
+        Object raw = server.getAttribute(
+                JmxWireContract.SETTINGS_STATUS_OBJECT_NAME,
+                JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT
+        );
+        require(raw instanceof CompositeData, "AcceptedPolicySnapshot must be CompositeData, got " + typeName(raw));
+
+        CompositeData snapshot = (CompositeData) raw;
+        require(JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT.equals(snapshot.getCompositeType()),
+                "AcceptedPolicySnapshot OpenType differs from the generated application contract");
+
+        String actualAgentInstanceId = value(
+                snapshot,
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_AGENT_INSTANCE_ID,
+                String.class
+        );
+        require(expectedAgentInstanceId.equals(actualAgentInstanceId),
+                "Accepted settings agentInstanceId differs from readiness agentInstanceId");
+    }
+
+    private static void verifyProcessValidationState(String expectedAgentInstanceId) throws Exception {
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         require(server.isRegistered(JmxWireContract.VALIDATION_OBSERVATION_OBJECT_NAME),
                 "Validation observation MBean is not registered");
@@ -242,6 +271,14 @@ public final class ControlledAgentRuntimeProbe {
         CompositeData observation = (CompositeData) raw;
         require(JmxOpenTypes.VALIDATION_OBSERVATION.equals(observation.getCompositeType()),
                 "ValidationObservation OpenType differs from the generated application contract");
+
+        String actualAgentInstanceId = value(
+                observation,
+                JmxWireContract.FIELD_VALIDATION_OBSERVATION_AGENT_INSTANCE_ID,
+                String.class
+        );
+        require(expectedAgentInstanceId.equals(actualAgentInstanceId),
+                "Validation observation agentInstanceId differs from readiness agentInstanceId");
 
         boolean ownerPresent = value(observation, JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT, Boolean.class);
         String validationLevel = value(observation, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_LEVEL, String.class);
@@ -359,7 +396,8 @@ public final class ControlledAgentRuntimeProbe {
     }
 
     private static void verifyEvidenceIdentity(CompositeData snapshot) {
-        requireNotBlank(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_RUNTIME_EPOCH, "Readiness runtimeEpoch");
+        requireNotBlank(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_INSTANCE_ID,
+                "Readiness agentInstanceId");
         requireNotBlank(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID, "Readiness batchId");
         requirePositive(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION, "Readiness evidenceGeneration");
     }
@@ -391,7 +429,7 @@ public final class ControlledAgentRuntimeProbe {
     private static <T> T value(CompositeData snapshot, String field, Class<T> expectedType) {
         Object raw = snapshot.get(field);
         require(expectedType.isInstance(raw),
-                "Readiness field has an unexpected type: field=%s, expected=%s, actual=%s"
+                "JMX field has an unexpected type: field=%s, expected=%s, actual=%s"
                         .formatted(field, expectedType.getName(), typeName(raw))
         );
         return expectedType.cast(raw);

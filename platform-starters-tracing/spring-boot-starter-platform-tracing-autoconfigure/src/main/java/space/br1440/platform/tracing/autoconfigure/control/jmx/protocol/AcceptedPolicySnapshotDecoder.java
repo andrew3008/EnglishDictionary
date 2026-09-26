@@ -6,6 +6,7 @@ import java.util.Map;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentInstanceIdValidator;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
@@ -19,7 +20,7 @@ public final class AcceptedPolicySnapshotDecoder {
 
     private static final String CONTRACT_POINT = JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT;
     private static final String ACCEPTED_SEQUENCE = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_SEQUENCE;
-    private static final String RUNTIME_INSTANCE_ID = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_RUNTIME_INSTANCE_ID;
+    private static final String AGENT_INSTANCE_ID = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_AGENT_INSTANCE_ID;
     private static final String SAMPLING_ENABLED = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ENABLED;
     private static final String SAMPLING_RATIO = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO;
     private static final String SAMPLING_ROUTE_RATIOS = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS;
@@ -39,10 +40,10 @@ public final class AcceptedPolicySnapshotDecoder {
         requirePayloadWithinLimit(response);
 
         long acceptedSequence = requireAcceptedSequence(response);
-        String runtimeInstanceId = requireRuntimeInstanceId(response);
+        String agentInstanceId = requireAgentInstanceId(response);
         CompleteTracingSettings snapshot = decodePolicy(response);
 
-        return new AcceptedSettingsWithSequence(acceptedSequence, runtimeInstanceId, snapshot);
+        return new AcceptedSettingsWithSequence(acceptedSequence, agentInstanceId, snapshot);
     }
 
     private static CompositeData requireCompositeData(Object raw) {
@@ -78,13 +79,13 @@ public final class AcceptedPolicySnapshotDecoder {
         return acceptedSequence;
     }
 
-    private static String requireRuntimeInstanceId(CompositeData response) {
-        String runtimeInstanceId = requireField(response, RUNTIME_INSTANCE_ID, String.class);
-        if (runtimeInstanceId.isBlank()) {
-            throw invalid(RUNTIME_INSTANCE_ID + " must not be blank");
+    private static String requireAgentInstanceId(CompositeData response) {
+        String agentInstanceId = requireField(response, AGENT_INSTANCE_ID, String.class);
+        try {
+            return AgentInstanceIdValidator.requireCanonical(agentInstanceId, AGENT_INSTANCE_ID);
+        } catch (IllegalArgumentException exception) {
+            throw invalid(exception.getMessage());
         }
-
-        return runtimeInstanceId;
     }
 
     private static CompleteTracingSettings decodePolicy(CompositeData response) {
@@ -133,8 +134,8 @@ public final class AcceptedPolicySnapshotDecoder {
     private static long logicalPayloadSize(CompositeData response) {
         long size = FIXED_LOGICAL_PAYLOAD_BYTES;
 
-        Object runtimeId = response.get(RUNTIME_INSTANCE_ID);
-        if (runtimeId instanceof String text) {
+        Object agentId = response.get(AGENT_INSTANCE_ID);
+        if (agentId instanceof String text) {
             size += JmxWireUtf8Meter.utf8Length(text);
         }
 

@@ -21,15 +21,16 @@ import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.ScrubberFactoryTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.loader.ExtensionRuleLoader;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.loader.ExtensionRuleLoader;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
@@ -49,7 +50,6 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         };
     }
 
-    /** ExtensionConfig with scrubbing.enabled = false, all other booleans also false. */
     private static ExtensionConfig scrubbingDisabledExtConfig() {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) { return null; }
@@ -123,7 +123,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         @Test
         void scrubbing_disabled_ext_config_no_scrubbing_processor() throws Exception {
             // given
-            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -133,8 +133,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
-                    otelOnlyConfig(),
-                    TracingSettingsSource.fromStartup(extensionConfig));
+                    TracingSettingsSource.fromStartup(extensionConfig, registrar.agentInstanceId()));
 
             // then
             assertThat(getScrubbing(registrar))
@@ -150,7 +149,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         @Test
         void scrubbing_enabled_default_rules_registers_processor() throws Exception {
             // given
-            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
             ExtensionConfig extensionConfig = scrubbingEnabledDefaultsExtConfig();
             ConfigProperties config = otelOnlyConfig();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
@@ -160,8 +159,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
-                    config,
-                    TracingSettingsSource.fromStartup(extensionConfig));
+                    TracingSettingsSource.fromStartup(extensionConfig, registrar.agentInstanceId()));
 
             // then
             assertThat(getScrubbing(registrar))

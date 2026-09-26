@@ -11,13 +11,30 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 
 class AcceptedPolicyAccessTest {
 
     @Test
+    void isolatedSourcesShareStableUnboundAgentInstanceId() {
+        // given
+        TracingSettingsSource first = TracingSettingsSource.isolatedDefaults();
+        TracingSettingsSource second = TracingSettingsSource.isolatedDefaults();
+
+        // when
+        AgentInstanceId firstAgentInstanceId = first.current().agentInstanceId();
+        AgentInstanceId secondAgentInstanceId = second.current().agentInstanceId();
+
+        // then
+        assertThat(firstAgentInstanceId).isSameAs(secondAgentInstanceId);
+        assertThat(firstAgentInstanceId.isUnbound()).isTrue();
+    }
+
+    @Test
     void allCategoryALeavesArePublishedThroughOneAcceptedEnvelope() {
         // given
-        TracingSettingsSource access = TracingSettingsSource.isolatedSampling(
+        TracingSettingsSource access = TracingSettingsSourceTestFixtures.boundSampling(
+                AgentInstanceId.random(),
                 true,
                 Map.of("/initial", 0.1d),
                 0.2d);
@@ -36,7 +53,7 @@ class AcceptedPolicyAccessTest {
 
         // then
         TracingSettingsRevision accepted = access.current();
-        assertThat(accepted.runtimeInstanceId()).isEqualTo(initial.runtimeInstanceId());
+        assertThat(accepted.agentInstanceId()).isEqualTo(initial.agentInstanceId());
         assertThat(accepted.acceptedSequence()).isEqualTo(initial.acceptedSequence() + 5L);
         assertThat(accepted.samplingEnabled()).isFalse();
         assertThat(accepted.samplingRatio()).isEqualTo(0.3d);
@@ -50,7 +67,7 @@ class AcceptedPolicyAccessTest {
     @Test
     void unchangedAndRejectedCandidatesDoNotPublishNewState() {
         // given
-        TracingSettingsSource access = TracingSettingsSource.isolatedDefaults();
+        TracingSettingsSource access = TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random());
         TracingSettingsRevision initial = access.current();
 
         // when/then

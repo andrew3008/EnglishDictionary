@@ -77,7 +77,10 @@ final class AgentReadinessProbe {
     private static AgentReadinessSnapshot decode(CompositeData snapshot) {
         String contractId = field(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_CONTRACT_ID, String.class);
         String schemaDigest = field(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_DIGEST, String.class);
-        String runtimeEpoch = field(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_RUNTIME_EPOCH, String.class);
+        String agentInstanceId = AgentInstanceIdValidator.requireCanonical(
+                field(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_INSTANCE_ID, String.class),
+                JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_INSTANCE_ID
+        );
         long evidenceGeneration = field(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION, Long.class);
         String batchId = field(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID, String.class);
         String lifecycle = token(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE);
@@ -113,7 +116,7 @@ final class AgentReadinessProbe {
 
         return new AgentReadinessSnapshot(
                 new AgentReadinessSnapshot.ContractIdentity(contractId, schemaDigest),
-                new AgentReadinessSnapshot.AnchorIdentity(runtimeEpoch, evidenceGeneration, batchId),
+                new AgentReadinessSnapshot.AnchorIdentity(agentInstanceId, evidenceGeneration, batchId),
                 new AgentReadinessSnapshot.LifecycleState(lifecycle, failureCode, capabilities, missingRequired),
                 new AgentReadinessSnapshot.DistributionIdentity(agentDistributionSha256, upstreamAgentVersion, extensionVersion),
                 new AgentReadinessSnapshot.ClassloaderTopology(extensionDefiningLoader, sdkDefiningLoader)

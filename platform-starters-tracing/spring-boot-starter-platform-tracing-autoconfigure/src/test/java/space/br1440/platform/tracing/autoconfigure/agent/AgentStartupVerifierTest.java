@@ -108,8 +108,8 @@ class AgentStartupVerifierTest {
         assertThat(diagnostics.runtimeState()).isEqualTo(AgentRuntimeState.AGENT_READY);
         assertThat(diagnostics.agentReadiness().contractIdentity().contractId())
                 .isEqualTo(ready.contractIdentity().contractId());
-        assertThat(diagnostics.agentReadiness().readinessAnchor().runtimeEpoch())
-                .isEqualTo(ready.anchorIdentity().runtimeEpoch());
+        assertThat(diagnostics.agentReadiness().readinessAnchor().agentInstanceId())
+                .isEqualTo(ready.anchorIdentity().agentInstanceId());
         assertThat(diagnostics.agentReadiness().readinessAnchor().evidenceGeneration())
                 .isEqualTo(ready.anchorIdentity().evidenceGeneration());
         assertThat(diagnostics.agentReadiness().readinessAnchor().batchId())
@@ -231,7 +231,7 @@ class AgentStartupVerifierTest {
         // then
         assertThatThrownBy(() -> coherenceGuard.readCoherently(() -> "untrusted"))
                 .isInstanceOf(AgentReadinessCoherenceException.class)
-                .hasMessageContaining(AgentReadinessCoherenceGuard.PINNED_EPOCH_CHANGED);
+                .hasMessageContaining(AgentReadinessCoherenceGuard.PINNED_ANCHOR_CHANGED);
     }
 
     @Test
@@ -564,7 +564,7 @@ class AgentStartupVerifierTest {
         return ReadinessTestFixtures.toBuilder(source)
                 .anchorIdentity(
                         new AgentReadinessSnapshot.AnchorIdentity(
-                                anchorIdentity.runtimeEpoch(),
+                                anchorIdentity.agentInstanceId(),
                                 evidenceGeneration,
                                 batchId
                         )

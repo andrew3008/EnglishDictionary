@@ -169,7 +169,7 @@ final class AgentReadinessClassifier {
     private static boolean inconsistentGeneration(AgentReadinessSnapshot snapshot, boolean requirePublishedBatch) {
         AgentReadinessSnapshot.AnchorIdentity anchorIdentity = snapshot.anchorIdentity();
         if (requirePublishedBatch) {
-            return anchorIdentity.runtimeEpoch().isBlank()
+            return anchorIdentity.agentInstanceId().isBlank()
                     || anchorIdentity.evidenceGeneration() <= 0L
                     || anchorIdentity.batchId().isBlank();
         }
@@ -178,7 +178,7 @@ final class AgentReadinessClassifier {
             return !anchorIdentity.batchId().isBlank();
         }
 
-        return anchorIdentity.runtimeEpoch().isBlank() || anchorIdentity.batchId().isBlank();
+        return anchorIdentity.agentInstanceId().isBlank() || anchorIdentity.batchId().isBlank();
     }
 
     private static Set<String> recomputeMissing(Set<String> capabilities) {

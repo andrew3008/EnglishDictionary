@@ -3,22 +3,22 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-import java.util.UUID;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
 
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
 class ScrubbingObservationSourceTest {
 
-    private static final UUID AGENT_INSTANCE_ID = UUID.randomUUID();
+    private static final AgentInstanceId AGENT_INSTANCE_ID = AgentInstanceId.random();
 
     private static ScrubbingRuntime enabledRuntime() {
         return ScrubbingRuntimeTestFixtures.fromBuiltInRules(

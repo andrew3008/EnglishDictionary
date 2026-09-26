@@ -1,9 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
@@ -18,6 +14,11 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 
 /**
  * Проверяет one-shot expected-base семантику runtime sampling updates.
@@ -27,8 +28,10 @@ class SamplerRuntimeUpdateConcurrencyTest {
     @Test
     void acceptedSequenceEqualsSuccessfulCommitsWithoutHiddenRetry() throws Exception {
         // given
-        TracingSettingsSource policy =
-                TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5d);
+        TracingSettingsSource policy = TracingSettingsSourceTestFixtures.boundSampling(
+                AgentInstanceId.random(), true, Map.of(), 0.5d
+        );
+
         int writers = 16;
         CountDownLatch start = new CountDownLatch(1);
         List<Future<SettingsUpdateStatus>> results = new ArrayList<>(writers);
@@ -65,8 +68,8 @@ class SamplerRuntimeUpdateConcurrencyTest {
     @Test
     void invalidCandidateKeepsLogicalLastKnownGood() {
         // given
-        TracingSettingsSource policy =
-                TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5d);
+        TracingSettingsSource policy = TracingSettingsSourceTestFixtures.boundSampling(
+                AgentInstanceId.random(), true, Map.of(), 0.5d);
         TracingSettingsRevision before = policy.current();
 
         // when

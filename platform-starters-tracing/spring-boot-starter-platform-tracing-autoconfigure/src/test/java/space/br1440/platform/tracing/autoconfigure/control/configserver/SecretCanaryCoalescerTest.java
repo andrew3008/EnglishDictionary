@@ -29,7 +29,10 @@ class SecretCanaryCoalescerTest {
         appender.start();
         logger.addAppender(appender);
 
-        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.compliant("agent-" + UUID.randomUUID(), 0L)) {
+        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.compliant(
+                UUID.randomUUID().toString(),
+                0L
+        )) {
             PlatformJmxTracingSettingsClient client = agent.client();
             MockEnvironment env = authoritativeEnv();
             env.getPropertySources().addFirst(new MapPropertySource(

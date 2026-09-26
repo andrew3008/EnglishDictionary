@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.control.settings;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Map;
 import java.util.Optional;
@@ -8,6 +9,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsMutationService;
 import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;
 import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliveryResult;
@@ -18,7 +21,9 @@ import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPlatformJmxP
 
 class TracingSettingsMutationServiceTest {
 
-    private static final String RUNTIME_INSTANCE_ID = "instance-1";
+    private static final String AGENT_INSTANCE_ID = "6f9f953d-f06f-48c5-b68b-f89ad09daee5";
+    private static final String BEFORE_RESTART_AGENT_INSTANCE_ID = "26b5d135-bf42-47e8-8821-bf16527b593c";
+    private static final String AFTER_RESTART_AGENT_INSTANCE_ID = "b59c3cc9-588e-4f07-ac77-653a6aaf4be7";
 
     private StubSnapshotReader reader;
     private StubSnapshotClient client;
@@ -168,14 +173,18 @@ class TracingSettingsMutationServiceTest {
     }
 
     @Test
-    void agentRestartBetweenReadAndApply_rejectsAsStaleWithoutOverwritingNewInstance() throws Exception {
-        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.compliant("instance-before-restart", 5L)) {
+    void agentRestartBetweenReadAndApplyFailsClosedBeforeMutation() throws Exception {
+        // given
+        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.compliant(
+                BEFORE_RESTART_AGENT_INSTANCE_ID,
+                5L
+        )) {
             var realClient = agent.client();
 
             CompleteTracingSettingsReader interleavingReader = () -> {
                 Optional<AcceptedSettingsWithSequence> observed = realClient.currentComplete();
                 try {
-                    agent.restartWithNewInstance("instance-after-restart", 0L);
+                    agent.restartWithNewInstance(AFTER_RESTART_AGENT_INSTANCE_ID, 0L);
                 } catch (Exception e) {
                     throw new IllegalStateException(e);
                 }
@@ -185,20 +194,16 @@ class TracingSettingsMutationServiceTest {
             TracingSettingsMutationService realAdapter =
                     new TracingSettingsMutationService(interleavingReader, realClient);
 
-            TracingSettingsDeliveryResult result = realAdapter.setSamplingEnabled(false);
-
-            assertThat(result)
-                    .as("expected base observed against the pre-restart instance must never be "
-                            + "accepted by the post-restart instance")
-                    .isEqualTo(TracingSettingsDeliveryResult.STALE);
-            assertThat(agent.lastResponseMessageCode()).isEqualTo("RUNTIME_INSTANCE_MISMATCH");
-            assertThat(agent.applyInvocationCount())
-                    .as("MutationService itself must not retry — exactly one applySnapshot call")
-                    .isEqualTo(1);
-            assertThat(agent.lastRequestRuntimeInstanceId()).isEqualTo("instance-before-restart");
-            assertThat(agent.currentAcceptedSequence())
-                    .as("the rejected write must not overwrite the new instance's own sequence baseline")
-                    .isEqualTo(0L);
+            // when
+            // then
+            assertThatThrownBy(() -> realAdapter.setSamplingEnabled(false))
+                    .isInstanceOf(AgentReadinessCoherenceException.class)
+                    .satisfies(failure -> assertThat(
+                            ((AgentReadinessCoherenceException) failure).failureCode())
+                            .isEqualTo(AgentReadinessCoherenceGuard.PINNED_ANCHOR_CHANGED));
+            assertThat(agent.applyInvocationCount()).isZero();
+            assertThat(agent.lastRequestAgentInstanceId()).isNull();
+            assertThat(agent.currentAcceptedSequence()).isZero();
         }
     }
 
@@ -217,7 +222,7 @@ class TracingSettingsMutationServiceTest {
         @Override
         public Optional<AcceptedSettingsWithSequence> currentComplete() {
             if (empty) return Optional.empty();
-            return Optional.of(new AcceptedSettingsWithSequence(42L, RUNTIME_INSTANCE_ID, snapshot));
+            return Optional.of(new AcceptedSettingsWithSequence(42L, AGENT_INSTANCE_ID, snapshot));
         }
     }
 

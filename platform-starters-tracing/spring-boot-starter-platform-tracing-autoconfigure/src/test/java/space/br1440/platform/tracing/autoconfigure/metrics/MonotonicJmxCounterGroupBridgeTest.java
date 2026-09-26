@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
@@ -15,8 +17,6 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 /**
  * Проверяет владелец-уровневую модель конкурентности {@link MonotonicJmxCounterGroupBridge}:
  * инициализацию, накопление дельт, честный reset при смене generation, {@code AGENT_INSTANCE_CHANGED}
@@ -27,8 +27,10 @@ class MonotonicJmxCounterGroupBridgeTest {
 
     private enum Key { A, B }
 
+    private static final String AGENT_INSTANCE_ID = "123e4567-e89b-12d3-a456-426614174000";
+    private static final String NEXT_AGENT_INSTANCE_ID = "123e4567-e89b-12d3-a456-426614174001";
     private static final long WINDOW_NANOS = 100_000_000L;
-    private static final Supplier<String> FIXED_AGENT_INSTANCE_ID = () -> "agent-1";
+    private static final Supplier<String> FIXED_AGENT_INSTANCE_ID = () -> AGENT_INSTANCE_ID;
 
     @Test
     void firstObservationPopulatesAccumulatedWithoutResetEvent() {
@@ -81,13 +83,13 @@ class MonotonicJmxCounterGroupBridgeTest {
         AtomicLong nanoTime = new AtomicLong(0);
         FakeSource source = new FakeSource();
         source.publish(Map.of(Key.A, 100L, Key.B, 40L), 1);
-        AtomicReference<String> agentInstanceId = new AtomicReference<>("agent-1");
+        AtomicReference<String> agentInstanceId = new AtomicReference<>(AGENT_INSTANCE_ID);
         MonotonicJmxCounterGroupBridge<Key> bridge = new MonotonicJmxCounterGroupBridge<>(
                 Key.class, source, agentInstanceId::get, nanoTime::get, WINDOW_NANOS);
         bridge.count(Key.A);
 
         nanoTime.addAndGet(WINDOW_NANOS + 1);
-        agentInstanceId.set("agent-2");
+        agentInstanceId.set(NEXT_AGENT_INSTANCE_ID);
         // Тот же generation, что и раньше: без различения identity это выглядело бы как отсутствие смены.
         source.publish(Map.of(Key.A, 3L, Key.B, 1L), 1);
 

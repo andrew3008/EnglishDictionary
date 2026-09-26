@@ -37,12 +37,12 @@ public record TracingDeploymentDiagnostics(boolean tracingEnabled,
     }
 
     /**
-     * Якорь поколения evidence: эпоха, монотонная генерация и идентификатор батча.
+     * Якорь поколения evidence: экземпляр агента, монотонная генерация и идентификатор батча.
      */
-    public record ReadinessAnchor(String runtimeEpoch, long evidenceGeneration, String batchId) {
+    public record ReadinessAnchor(String agentInstanceId, long evidenceGeneration, String batchId) {
 
         public ReadinessAnchor {
-            runtimeEpoch = normalize(runtimeEpoch);
+            agentInstanceId = normalize(agentInstanceId);
             batchId = normalize(batchId);
         }
     }

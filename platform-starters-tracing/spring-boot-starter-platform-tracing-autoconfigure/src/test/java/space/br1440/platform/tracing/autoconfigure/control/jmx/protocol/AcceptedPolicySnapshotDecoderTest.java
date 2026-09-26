@@ -21,17 +21,19 @@ import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpe
 
 class AcceptedPolicySnapshotDecoderTest {
 
+    private static final String AGENT_INSTANCE_ID = "ae1d3aae-817e-4c6f-b803-6e50732b1d76";
+
     @Test
     void decodesAcceptedCompleteWithNonEmptyRouteTable() throws OpenDataException {
-        String instanceId = "agent-instance-" + UUID.randomUUID();
+        String instanceId = UUID.randomUUID().toString();
         CompositeData wire = buildCompleteResponse(
                 42L, instanceId, Map.of("/api", 0.75d, "/health", 0.0d));
 
         var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
 
         assertThat(decoded.acceptedSequence()).isEqualTo(42L);
-        // runtimeInstanceId должен сохраняться при декодировании для обнаружения перезапуска
-        assertThat(decoded.runtimeInstanceId()).isEqualTo(instanceId);
+        // agentInstanceId должен сохраняться при декодировании для обнаружения перезапуска
+        assertThat(decoded.agentInstanceId()).isEqualTo(instanceId);
         var snap = decoded.snapshot();
         assertThat(snap.samplingEnabled()).isTrue();
         assertThat(snap.samplingRatio()).isEqualTo(0.5d);
@@ -47,10 +49,10 @@ class AcceptedPolicySnapshotDecoderTest {
     @Test
     void decodesAcceptedCompleteWithEmptyRouteTable() throws OpenDataException {
         var decoded = AcceptedPolicySnapshotDecoder.decode(
-                buildCompleteResponse(0L, "rid-zero", Map.of()));
+                buildCompleteResponse(0L, AGENT_INSTANCE_ID, Map.of()));
 
         assertThat(decoded.acceptedSequence()).isEqualTo(0L);
-        assertThat(decoded.runtimeInstanceId()).isEqualTo("rid-zero");
+        assertThat(decoded.agentInstanceId()).isEqualTo(AGENT_INSTANCE_ID);
         assertThat(decoded.snapshot().samplingRouteRatios()).isEmpty();
     }
 
@@ -88,7 +90,7 @@ class AcceptedPolicySnapshotDecoderTest {
     void decodeCompleteRouteRatioValuesAreCorrectlyMapped() throws OpenDataException {
         Map<String, Double> routes = Map.of("/slow", 0.1d, "/fast", 0.9d);
         var decoded = AcceptedPolicySnapshotDecoder.decode(
-                buildCompleteResponse(1L, "rid-map", routes));
+                buildCompleteResponse(1L, AGENT_INSTANCE_ID, routes));
 
         assertThat(decoded.snapshot().samplingRouteRatios())
                 .containsEntry("/slow", 0.1d)
@@ -97,7 +99,7 @@ class AcceptedPolicySnapshotDecoderTest {
 
     @Test
     void decodeCompleteRouteTableIndexNameIsRoutePrefix() throws OpenDataException {
-        CompositeData wire = buildCompleteResponse(5L, "rid-idx", Map.of("/x", 0.5d));
+        CompositeData wire = buildCompleteResponse(5L, AGENT_INSTANCE_ID, Map.of("/x", 0.5d));
         TabularData table = (TabularData) wire.get("samplingRouteRatios");
         assertThat(table.getTabularType().getIndexNames()).containsExactly("routePrefix");
         assertThat(table.getTabularType().getRowType().getTypeName())
@@ -107,7 +109,7 @@ class AcceptedPolicySnapshotDecoderTest {
     }
 
     static CompositeData buildCompleteResponse(long acceptedSequence,
-                                               String runtimeInstanceId,
+                                               String agentInstanceId,
                                                Map<String, Double> routes) throws OpenDataException {
 
         CompositeType routeRow = JmxOpenTypes.ROUTE_RATIO;
@@ -122,7 +124,7 @@ class AcceptedPolicySnapshotDecoderTest {
         // Для AcceptedCompleteSnapshot/v1 используется канонический порядок полей агента.
         String[] keys = {
                 "acceptedSequence",
-                "runtimeInstanceId",
+                "agentInstanceId",
                 "acceptedPolicyDigest",
                 "lastApplyOutcome",
                 "lastAttemptId",
@@ -139,7 +141,7 @@ class AcceptedPolicySnapshotDecoderTest {
 
         return new CompositeDataSupport(completeType, keys, new Object[]{
                 acceptedSequence,
-                runtimeInstanceId,
+                agentInstanceId,
                 "accepted-policy-digest",
                 "APPLIED",
                 "attempt-id",

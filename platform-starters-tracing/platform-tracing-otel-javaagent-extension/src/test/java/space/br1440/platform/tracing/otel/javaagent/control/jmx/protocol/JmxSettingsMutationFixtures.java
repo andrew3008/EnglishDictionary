@@ -2,8 +2,6 @@ package space.br1440.platform.tracing.otel.javaagent.control.jmx.protocol;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.UUID;
-
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.CompositeType;
@@ -14,11 +12,12 @@ import javax.management.openmbean.TabularDataSupport;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 
 final class JmxSettingsMutationFixtures {
 
@@ -26,7 +25,9 @@ final class JmxSettingsMutationFixtures {
     }
 
     static TracingSettingsStore store() {
-        return new TracingSettingsStore(UUID.randomUUID().toString(), settings(1.0d));
+        return new TracingSettingsStore(
+                AgentInstanceId.parse("00000000-0000-0000-0000-000000000001"),
+                settings(1.0d));
     }
 
     static TracingSettings settings(double ratio) {
@@ -37,7 +38,7 @@ final class JmxSettingsMutationFixtures {
     }
 
     static CompositeData request(
-            String runtimeId,
+            String agentInstanceId,
             long sequence,
             TracingSettings policy,
             String attemptId
@@ -90,8 +91,8 @@ final class JmxSettingsMutationFixtures {
                 JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_ACCEPTED_SEQUENCE,
                 sequence);
         requestFields.put(
-                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_RUNTIME_INSTANCE_ID,
-                runtimeId);
+                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_AGENT_INSTANCE_ID,
+                agentInstanceId);
         requestFields.put(
                 JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_RUNTIME_POLICY,
                 policyData);

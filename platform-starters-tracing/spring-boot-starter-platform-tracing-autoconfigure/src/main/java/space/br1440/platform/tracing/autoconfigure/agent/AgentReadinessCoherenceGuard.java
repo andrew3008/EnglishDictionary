@@ -13,8 +13,9 @@ public final class AgentReadinessCoherenceGuard {
 
     public static final String MIXED_GENERATION = AgentReadinessProbe.ProbeReason.MIXED_GENERATION.failureCode();
     public static final String CONTENT_DRIFT = "READINESS_ANCHOR_CONTENT_DRIFT";
-    public static final String PINNED_EPOCH_CHANGED = "READINESS_PINNED_EPOCH_CHANGED";
+    public static final String PINNED_ANCHOR_CHANGED = "READINESS_PINNED_ANCHOR_CHANGED";
     public static final String ANCHOR_NOT_PINNED = "READINESS_ANCHOR_NOT_PINNED";
+    public static final String JMX_AGENT_INSTANCE_MISMATCH = "JMX_AGENT_INSTANCE_MISMATCH";
 
     private final AgentReadinessProbe probe;
     private final ObjectName readinessName;
@@ -82,6 +83,26 @@ public final class AgentReadinessCoherenceGuard {
         return probe.read(readinessName);
     }
 
+    public void requirePinnedAgentInstanceId(String observedAgentInstanceId) {
+        String canonicalAgentInstanceId = AgentInstanceIdValidator.requireCanonical(
+                observedAgentInstanceId,
+                "agentInstanceId"
+        );
+        requireNotTerminal();
+
+        AgentReadinessSnapshot pinned = pinnedSnapshot.get();
+        if (pinned == null) {
+            throw failure(ANCHOR_NOT_PINNED);
+        }
+
+        if (!pinned.anchorIdentity().agentInstanceId().equals(canonicalAgentInstanceId)) {
+            terminalFailureCode.compareAndSet(null, JMX_AGENT_INSTANCE_MISMATCH);
+            throw failure(terminalFailureCode.get());
+        }
+
+        requireNotTerminal();
+    }
+
     private AgentReadinessSnapshot requireReadySnapshot(AgentReadinessProbe.ProbeResult result) {
         if (!(result instanceof AgentReadinessProbe.ProbeResult.Present(AgentReadinessSnapshot snapshot))) {
             throw failure(AgentReadinessProbe.ProbeResult.reasonOf(result).failureCode());
@@ -103,7 +124,7 @@ public final class AgentReadinessCoherenceGuard {
         }
 
         if (!pinned.anchorIdentity().equals(observed.anchorIdentity())) {
-            throw failure(PINNED_EPOCH_CHANGED);
+            throw failure(PINNED_ANCHOR_CHANGED);
         }
 
         if (!pinned.equals(observed)) {

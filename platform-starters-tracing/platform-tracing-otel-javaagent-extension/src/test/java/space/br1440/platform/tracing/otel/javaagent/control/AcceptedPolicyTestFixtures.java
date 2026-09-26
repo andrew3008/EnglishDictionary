@@ -1,19 +1,21 @@
 package space.br1440.platform.tracing.otel.javaagent.control;
 
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
-
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
+
 public final class AcceptedPolicyTestFixtures {
 
-    public static final String RUNTIME_INSTANCE_ID = "00000000-0000-0000-0000-000000000001";
+    public static final AgentInstanceId AGENT_INSTANCE_ID =
+            AgentInstanceId.parse("00000000-0000-0000-0000-000000000001");
 
     private AcceptedPolicyTestFixtures() {
     }

@@ -1,13 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.control;
 
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitOutcome;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitResult;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
@@ -21,13 +13,21 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitOutcome;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitResult;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
+
 class AcceptedPolicyPublicationTest {
 
     @Test
     void readersObserveCompleteImmutablePublishedState() throws Exception {
         // given
         TracingSettingsStore store = new TracingSettingsStore(
-                AcceptedPolicyTestFixtures.RUNTIME_INSTANCE_ID,
+                AcceptedPolicyTestFixtures.AGENT_INSTANCE_ID,
                 sequencePolicy(0L));
         CountDownLatch start = new CountDownLatch(1);
         AtomicLong violations = new AtomicLong();

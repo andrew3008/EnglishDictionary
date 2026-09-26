@@ -2,17 +2,17 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.export;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.UUID;
 import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 
 class ExportObservationSourceTest {
 
-    private static final UUID AGENT_INSTANCE_ID = UUID.randomUUID();
+    private static final AgentInstanceId AGENT_INSTANCE_ID = AgentInstanceId.random();
 
     @Test
     void bothOwnersAbsentEncodePresenceFalseWithoutSentinelNegatives() {

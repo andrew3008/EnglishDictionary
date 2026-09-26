@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.LongAdder;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationSnapshotPublisher;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
@@ -21,7 +22,7 @@ final class RuntimeControlsRegistrar {
     private final MBeanRegistrationScope scope;
     private final LongAdder sharedInvalidConfigCounter = new LongAdder();
     private final OwnerRegistrationSlots slots = new OwnerRegistrationSlots();
-    private final UUID agentInstanceId;
+    private final AgentInstanceId agentInstanceId;
 
     private long generation;
     private long activeGeneration;
@@ -29,7 +30,7 @@ final class RuntimeControlsRegistrar {
 
     private volatile ObservationSnapshotPublisher observationPublisher;
 
-    RuntimeControlsRegistrar(MBeanRegistrationScope scope, UUID agentInstanceId) {
+    RuntimeControlsRegistrar(MBeanRegistrationScope scope, AgentInstanceId agentInstanceId) {
         this.scope = Objects.requireNonNull(scope, "scope");
         this.agentInstanceId = Objects.requireNonNull(agentInstanceId, "agentInstanceId");
     }

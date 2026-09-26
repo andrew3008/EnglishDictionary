@@ -1,6 +1,12 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.lang.management.ManagementFactory;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import javax.management.MBeanServer;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,19 +17,12 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.Jmx
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxMBeanRegistrationState;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
 import space.br1440.platform.tracing.autoconfigure.support.DomainSnapshotEndpoints;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.SamplingObservationSource;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
-
-import javax.management.MBeanServer;
-import java.lang.management.ManagementFactory;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class PlatformTracingJmxClientTest {
 
@@ -120,7 +119,7 @@ class PlatformTracingJmxClientTest {
         );
 
         OwnerRegistrationSlot<CompositeSampler> slot = new OwnerRegistrationSlot<>();
-        SamplingObservationSource impl = new SamplingObservationSource(acceptedPolicy, slot, UUID.randomUUID());
+        SamplingObservationSource impl = new SamplingObservationSource(acceptedPolicy, slot, AgentInstanceId.random());
         server.registerMBean(
                 DomainSnapshotEndpoints.sampling(impl::getSamplingObservation),
                 DomainObjectNames.SAMPLING);

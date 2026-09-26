@@ -1,6 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent.control.settings.update;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
+import static space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures.boundDefaults;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -14,6 +16,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
 
@@ -22,7 +25,7 @@ class DiagnosticsLogLevelProjectionTest {
     @Test
     void applied_diagnostics_level_matches_effective_level() {
         // given
-        TracingSettingsSource source = TracingSettingsSource.isolatedDefaults();
+        TracingSettingsSource source = boundDefaults(AgentInstanceId.random());
         AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.INFO);
         TracingSettings candidate = withLevel(source.current().policy(), AgentLogLevel.DEBUG);
 
@@ -42,7 +45,7 @@ class DiagnosticsLogLevelProjectionTest {
     @Test
     void concurrent_applies_keep_effective_level_equal_to_the_store() throws Exception {
         // given
-        TracingSettingsSource source = TracingSettingsSource.isolatedDefaults();
+        TracingSettingsSource source = boundDefaults(AgentInstanceId.random());
         AgentLogLevel[] levels = {AgentLogLevel.DEBUG, AgentLogLevel.WARN};
 
         // when
@@ -65,6 +68,26 @@ class DiagnosticsLogLevelProjectionTest {
             assertThat(AgentLoggingRuntime.shared().effectiveLevel())
                     .isEqualTo(source.current().policy().diagnosticsLogLevel());
         }
+    }
+
+    @Test
+    void unbound_store_rejects_updater_apply() {
+        // given
+        TracingSettingsSource source = TracingSettingsSource.isolatedDefaults();
+        TracingSettingsRevision initial = source.current();
+        TracingSettings candidate = withLevel(initial.policy(), AgentLogLevel.DEBUG);
+
+        // when
+        Throwable failure = catchThrowable(() -> source.updater().apply(
+                attempt(),
+                initial.base(),
+                candidate));
+
+        // then
+        assertThat(failure)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Cannot apply tracing settings to an unbound store");
+        assertThat(source.current()).isSameAs(initial);
     }
 
     private static Thread applyThread(TracingSettingsSource source,

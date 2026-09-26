@@ -127,8 +127,8 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
             );
 
             fields.put(
-                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_RUNTIME_INSTANCE_ID,
-                    accepted.runtimeInstanceId()
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_AGENT_INSTANCE_ID,
+                    accepted.agentInstanceId().toString()
             );
 
             fields.put(

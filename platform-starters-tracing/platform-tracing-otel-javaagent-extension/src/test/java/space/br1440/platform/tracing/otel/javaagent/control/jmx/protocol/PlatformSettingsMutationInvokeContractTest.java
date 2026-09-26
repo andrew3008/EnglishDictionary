@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.UUID;
-
 import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
 import javax.management.MBeanServer;
@@ -147,7 +146,7 @@ final class PlatformSettingsMutationInvokeContractTest {
 
     private CompositeData validRequest() throws Exception {
         return JmxSettingsMutationFixtures.request(
-                store.current().runtimeInstanceId(),
+                store.current().agentInstanceId().toString(),
                 store.current().acceptedSequence(),
                 JmxSettingsMutationFixtures.settings(0.5d),
                 UUID.randomUUID().toString());

@@ -41,22 +41,18 @@ import io.opentelemetry.sdk.trace.samplers.Sampler;
 class PlatformAutoConfigurationCustomizerProcessorsTest {
 
     private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
-    private BootstrapCoordinator activeCoordinator;
+    private BootstrapCoordinator ownedCoordinator;
 
     @AfterEach
     void cleanup() {
-        if (activeCoordinator != null) {
-            activeCoordinator.close();
-            activeCoordinator = null;
+        if (ownedCoordinator != null) {
+            ownedCoordinator.close();
+            ownedCoordinator = null;
         }
     }
 
-    private BootstrapCoordinator trackActiveCoordinator(BootstrapCoordinator coordinator) {
-        activeCoordinator = coordinator;
-        return coordinator;
-    }
-
-    private static BootstrapAutoConfigurationCustomizerProvider newProvider(BootstrapCoordinator coordinator) {
+    private BootstrapAutoConfigurationCustomizerProvider newProvider(BootstrapCoordinator coordinator) {
+        ownedCoordinator = coordinator;
         return new BootstrapAutoConfigurationCustomizerProvider(coordinator);
     }
 
@@ -75,7 +71,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     void all_enabled_subsystems_are_added_to_tracer_provider_builder() {
         // given
         Recorder recorder = new Recorder();
-        newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
+        newProvider(BootstrapCoordinator.createDefault()).customize(recorder.proxy());
 
         recorder.primeWithConfig(new MapConfigProperties(Map.of()));
         SdkTracerProviderBuilder builder = SdkTracerProvider.builder();
@@ -98,7 +94,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     void sampler_customizer_creates_PlatformRuleBasedSampler() {
         // given
         Recorder recorder = new Recorder();
-        newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
+        newProvider(BootstrapCoordinator.createDefault()).customize(recorder.proxy());
 
         recorder.primeWithConfig(new MapConfigProperties(Map.of()));
 
@@ -116,7 +112,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     void sampler_customizer_with_explicit_ratio_creates_accepted_policy_with_default_ratio() {
         // given
         Recorder recorder = new Recorder();
-        newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
+        newProvider(BootstrapCoordinator.createDefault()).customize(recorder.proxy());
 
         recorder.primeWithConfig(new MapConfigProperties(Map.of("platform.tracing.sampling.ratio", "0.1")));
 
@@ -133,7 +129,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     @Test
     void MBean_registration_runs_after_activation() {
         // given
-        BootstrapCoordinator coordinator = trackActiveCoordinator(RuntimeEvidenceTestFixtures.coordinator());
+        BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
         Recorder recorder = new Recorder();
         newProvider(coordinator).customize(recorder.proxy());
 
@@ -156,7 +152,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     @Test
     void custom_sampling_ratio_is_reflected_in_registered_MBean() throws Exception {
         // given
-        BootstrapCoordinator coordinator = trackActiveCoordinator(RuntimeEvidenceTestFixtures.coordinator());
+        BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
         Recorder recorder = new Recorder();
         newProvider(coordinator).customize(recorder.proxy());
 
@@ -185,14 +181,14 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     @Test
     void extension_order_equals_100_priority_over_default() {
         // given/when/then
-        assertThat(newProvider(BootstrapCoordinator.create()).order()).isEqualTo(100);
+        assertThat(newProvider(BootstrapCoordinator.createDefault()).order()).isEqualTo(100);
     }
 
     @Test
     void without_explicit_ratio_default_ratio_is_used() {
         // given
         Recorder recorder = new Recorder();
-        newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
+        newProvider(BootstrapCoordinator.createDefault()).customize(recorder.proxy());
 
         recorder.primeWithConfig(new MapConfigProperties(Map.of()));
 
@@ -209,7 +205,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     void unknown_scrubbing_rule_name_does_not_crash_configuration() {
         // given
         Recorder recorder = new Recorder();
-        newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
+        newProvider(BootstrapCoordinator.createDefault()).customize(recorder.proxy());
 
         SdkTracerProviderBuilder builder = SdkTracerProvider.builder();
         Map<String, String> props = new HashMap<>();
@@ -234,7 +230,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     void disabling_all_subsystems_does_not_create_MBean_before_sampler_creation() {
         // given
         Recorder recorder = new Recorder();
-        newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
+        newProvider(BootstrapCoordinator.createDefault()).customize(recorder.proxy());
 
         Map<String, String> disableAll = Map.of(
                 "platform.tracing.javaagent.scrubbing.enabled", "false",
@@ -358,7 +354,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     @Test
     void setSamplingRatio_via_platform_JMX_is_rejected() throws Exception {
         // given
-        BootstrapCoordinator coordinator = trackActiveCoordinator(RuntimeEvidenceTestFixtures.coordinator());
+        BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
         Recorder recorder = new Recorder();
         newProvider(coordinator).customize(recorder.proxy());
 

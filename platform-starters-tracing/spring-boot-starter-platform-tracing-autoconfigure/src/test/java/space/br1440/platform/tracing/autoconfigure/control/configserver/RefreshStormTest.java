@@ -29,7 +29,7 @@ import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPlatformJmxP
 
 class RefreshStormTest {
 
-    private static final String RUNTIME_INSTANCE_ID = "instance-refresh-storm";
+    private static final String AGENT_INSTANCE_ID = "56d80714-8d7a-4861-aadb-73e238f44942";
 
     private static CompleteTracingSettings sampleSnapshot() {
         return CompleteTracingSettings.builder()
@@ -44,13 +44,13 @@ class RefreshStormTest {
     }
 
     private static CompleteTracingSettingsReader readerWith(long sequence) {
-        AcceptedSettingsWithSequence snap = new AcceptedSettingsWithSequence(sequence, RUNTIME_INSTANCE_ID, sampleSnapshot());
+        AcceptedSettingsWithSequence snap = new AcceptedSettingsWithSequence(sequence, AGENT_INSTANCE_ID, sampleSnapshot());
         return () -> Optional.of(snap);
     }
 
     private static CompleteTracingSettingsReader advancingReader(AtomicLong seq) {
         return () -> Optional.of(
-                new AcceptedSettingsWithSequence(seq.get(), RUNTIME_INSTANCE_ID, sampleSnapshot())
+                new AcceptedSettingsWithSequence(seq.get(), AGENT_INSTANCE_ID, sampleSnapshot())
         );
     }
 
@@ -447,7 +447,7 @@ class RefreshStormTest {
     @Test
     void stale_retry_sequence_is_reread_from_real_agent_not_local_cache() throws Exception {
         try (FakeAgentPlatformJmxPlane agent =
-                     FakeAgentPlatformJmxPlane.compliant(RUNTIME_INSTANCE_ID, 10L)) {
+                     FakeAgentPlatformJmxPlane.compliant(AGENT_INSTANCE_ID, 10L)) {
 
             var client = agent.client();
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -480,7 +480,7 @@ class RefreshStormTest {
     @Test
     void runtime_refresh_never_sends_unwarmed_sequence_minus_one() throws Exception {
         try (FakeAgentPlatformJmxPlane agent =
-                     FakeAgentPlatformJmxPlane.malformedAcceptedPolicySnapshot(RUNTIME_INSTANCE_ID)) {
+                     FakeAgentPlatformJmxPlane.malformedAcceptedPolicySnapshot(AGENT_INSTANCE_ID)) {
 
             var client = agent.client();
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);

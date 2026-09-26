@@ -75,6 +75,10 @@ class TracingControlEndpointAutoConfigurationTest {
                 .traceControlHeadersEnabled(true)
                 .diagnosticsLogLevel("INFO")
                 .build();
-        return () -> Optional.of(new AcceptedSettingsWithSequence(1L, "test-runtime", settings));
+        return () -> Optional.of(new AcceptedSettingsWithSequence(
+                1L,
+                "374ebf50-dbc0-401b-8308-8674788b28dd",
+                settings
+        ));
     }
 }

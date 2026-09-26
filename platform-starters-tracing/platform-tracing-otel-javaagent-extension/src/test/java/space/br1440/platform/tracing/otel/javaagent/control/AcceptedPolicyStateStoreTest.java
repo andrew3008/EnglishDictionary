@@ -20,6 +20,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCom
 import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 
 class AcceptedPolicyStateStoreTest {
 
@@ -29,7 +30,7 @@ class AcceptedPolicyStateStoreTest {
         try (ExecutorService executor = Executors.newFixedThreadPool(8)) {
             for (int round = 0; round < 100; round++) {
                 TracingSettingsStore store = new TracingSettingsStore(
-                        AcceptedPolicyTestFixtures.RUNTIME_INSTANCE_ID,
+                        AcceptedPolicyTestFixtures.AGENT_INSTANCE_ID,
                         AcceptedPolicyTestFixtures.policy(0.1d)
                 );
                 ExpectedSettingsRevision expected = store.current().base();
@@ -61,25 +62,25 @@ class AcceptedPolicyStateStoreTest {
     }
 
     @Test
-    void runtimeAndSequenceMismatchAreStaleWithoutMutation() {
+    void agentInstanceAndSequenceMismatchAreStaleWithoutMutation() {
         // given
         TracingSettingsStore store = new TracingSettingsStore(
-                AcceptedPolicyTestFixtures.RUNTIME_INSTANCE_ID,
+                AcceptedPolicyTestFixtures.AGENT_INSTANCE_ID,
                 AcceptedPolicyTestFixtures.policy(0.1d));
         TracingSettingsRevision initial = store.current();
 
         // when
-        SettingsCommitResult runtimeMismatch = store.commit(
+        SettingsCommitResult agentInstanceMismatch = store.commit(
                 new ExpectedSettingsRevision(
-                        "00000000-0000-0000-0000-000000000002",
+                        AgentInstanceId.parse("00000000-0000-0000-0000-000000000002"),
                         0L),
                 AcceptedPolicyTestFixtures.policy(0.2d));
         SettingsCommitResult sequenceMismatch = store.commit(
-                new ExpectedSettingsRevision(AcceptedPolicyTestFixtures.RUNTIME_INSTANCE_ID, 1L),
+                new ExpectedSettingsRevision(AcceptedPolicyTestFixtures.AGENT_INSTANCE_ID, 1L),
                 AcceptedPolicyTestFixtures.policy(0.3d));
 
         // then
-        assertThat(runtimeMismatch.outcome()).isEqualTo(SettingsCommitOutcome.STALE);
+        assertThat(agentInstanceMismatch.outcome()).isEqualTo(SettingsCommitOutcome.STALE);
         assertThat(sequenceMismatch.outcome()).isEqualTo(SettingsCommitOutcome.STALE);
         assertThat(store.current()).isSameAs(initial);
     }
@@ -106,7 +107,7 @@ class AcceptedPolicyStateStoreTest {
         allocationBean.setThreadAllocatedMemoryEnabled(true);
 
         TracingSettingsStore store = new TracingSettingsStore(
-                AcceptedPolicyTestFixtures.RUNTIME_INSTANCE_ID,
+                AcceptedPolicyTestFixtures.AGENT_INSTANCE_ID,
                 AcceptedPolicyTestFixtures.policy(0.1d));
         int warmupIterations = 200_000;
         int measuredIterations = 2_000_000;

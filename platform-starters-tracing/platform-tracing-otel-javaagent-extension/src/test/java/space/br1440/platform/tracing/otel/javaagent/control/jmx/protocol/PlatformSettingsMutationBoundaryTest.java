@@ -3,7 +3,6 @@ package space.br1440.platform.tracing.otel.javaagent.control.jmx.protocol;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.UUID;
-
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
 import javax.management.openmbean.CompositeData;
@@ -46,17 +45,17 @@ final class PlatformSettingsMutationBoundaryTest {
     @Test
     void appliesCompleteSnapshotAndRejectsStaleOrMalformedInput() throws Exception {
         // given
-        String runtimeId = store.current().runtimeInstanceId();
+        String agentInstanceId = store.current().agentInstanceId().toString();
         TracingSettings candidate = JmxSettingsMutationFixtures.settings(0.25d);
 
         // when
         CompositeData applied = invoke(JmxSettingsMutationFixtures.request(
-                runtimeId,
+                agentInstanceId,
                 0L,
                 candidate,
                 UUID.randomUUID().toString()));
         CompositeData stale = invoke(JmxSettingsMutationFixtures.request(
-                runtimeId,
+                agentInstanceId,
                 0L,
                 JmxSettingsMutationFixtures.settings(0.5d),
                 UUID.randomUUID().toString()));
@@ -83,12 +82,35 @@ final class PlatformSettingsMutationBoundaryTest {
     }
 
     @Test
+    void rejectsStaleAgentInstanceWithoutChangingAcceptedState() throws Exception {
+        // given
+        TracingSettingsRevision acceptedBefore = store.current();
+        CompositeData request = JmxSettingsMutationFixtures.request(
+                "00000000-0000-0000-0000-000000000002",
+                acceptedBefore.acceptedSequence(),
+                JmxSettingsMutationFixtures.settings(0.25d),
+                UUID.randomUUID().toString());
+
+        // when
+        CompositeData stale = invoke(request);
+
+        // then
+        assertThat(stale.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_OUTCOME))
+                .isEqualTo("STALE");
+        assertThat(stale.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_MESSAGE_CODE))
+                .isEqualTo("AGENT_INSTANCE_MISMATCH");
+        assertThat(stale.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_AGENT_INSTANCE_ID))
+                .isEqualTo(acceptedBefore.agentInstanceId().toString());
+        assertThat(store.current()).isSameAs(acceptedBefore);
+    }
+
+    @Test
     void rejectsCandidateDigestMismatchWithoutChangingAcceptedState() throws Exception {
         // given
         TracingSettingsRevision acceptedBefore = store.current();
         String attemptId = UUID.randomUUID().toString();
         CompositeData validRequest = JmxSettingsMutationFixtures.request(
-                acceptedBefore.runtimeInstanceId(),
+                acceptedBefore.agentInstanceId().toString(),
                 acceptedBefore.acceptedSequence(),
                 JmxSettingsMutationFixtures.settings(0.25d),
                 attemptId);

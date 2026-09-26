@@ -6,13 +6,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 
 public final class TracingSettingsStore {
 
     private final AtomicReference<TracingSettingsRevision> current;
 
-    public TracingSettingsStore(String runtimeInstanceId, TracingSettings initialPolicy) {
-        TracingSettingsRevision revision = new TracingSettingsRevision(runtimeInstanceId, 0L, initialPolicy);
+    public TracingSettingsStore(AgentInstanceId agentInstanceId, TracingSettings initialPolicy) {
+        TracingSettingsRevision revision = new TracingSettingsRevision(agentInstanceId, 0L, initialPolicy);
         this.current = new AtomicReference<>(revision);
     }
 
@@ -25,12 +26,16 @@ public final class TracingSettingsStore {
         Objects.requireNonNull(candidate, "candidate");
 
         TracingSettingsRevision currentRevision = current.get();
+        if (currentRevision.agentInstanceId().isUnbound()) {
+            throw new IllegalStateException("Cannot commit tracing settings to an unbound store");
+        }
+
         if (!matches(currentRevision, expectedRevision)) {
             return new SettingsCommitResult(SettingsCommitOutcome.STALE, currentRevision);
         }
 
         TracingSettingsRevision next = new TracingSettingsRevision(
-                currentRevision.runtimeInstanceId(),
+                currentRevision.agentInstanceId(),
                 Math.incrementExact(currentRevision.acceptedSequence()),
                 candidate
         );
@@ -45,6 +50,6 @@ public final class TracingSettingsStore {
     private static boolean matches(TracingSettingsRevision envelope,
                                    ExpectedSettingsRevision expectedBase) {
         return (envelope.acceptedSequence() == expectedBase.acceptedSequence())
-                && envelope.runtimeInstanceId().equals(expectedBase.runtimeInstanceId());
+                && envelope.agentInstanceId().equals(expectedBase.agentInstanceId());
     }
 }

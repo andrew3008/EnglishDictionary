@@ -3,12 +3,12 @@ package space.br1440.platform.tracing.otel.javaagent.processor.spantimeout;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.metrics.ProcessorMetricsObservationSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
@@ -49,7 +49,7 @@ class SpanTimeoutJmxRoundTripTest {
                     slot,
                     new OwnerRegistrationSlot<>(),
                     new OwnerRegistrationSlot<>(),
-                    UUID.randomUUID()
+                    AgentInstanceId.random()
             );
 
             // when

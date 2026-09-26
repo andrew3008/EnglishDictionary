@@ -13,6 +13,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsContractViolationException;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsManifestException;
@@ -24,7 +26,9 @@ import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPlatformJmxP
 
 class TracingSettingsRefreshCoalescerTest {
 
-    private static final String RUNTIME_INSTANCE_ID = "instance-1";
+    private static final String AGENT_INSTANCE_ID = "e326dc12-3447-42d8-8674-3699e783b5c0";
+    private static final String BEFORE_RESTART_AGENT_INSTANCE_ID = "be807e0b-32e9-4628-9243-0f20f2bc68e6";
+    private static final String AFTER_RESTART_AGENT_INSTANCE_ID = "dd97eef0-5d5b-43ea-9b66-bafb8e4168d2";
 
     private static CompleteTracingSettings sampleSnapshot() {
         return CompleteTracingSettings.builder()
@@ -40,7 +44,7 @@ class TracingSettingsRefreshCoalescerTest {
 
     private static CompleteTracingSettingsReader readerReturning(long sequence) {
         AcceptedSettingsWithSequence accepted =
-                new AcceptedSettingsWithSequence(sequence, RUNTIME_INSTANCE_ID, sampleSnapshot());
+                new AcceptedSettingsWithSequence(sequence, AGENT_INSTANCE_ID, sampleSnapshot());
         return () -> Optional.of(accepted);
     }
 
@@ -175,7 +179,10 @@ class TracingSettingsRefreshCoalescerTest {
 
     @Test
     void initialDeliveryWithRealClient_authoritativeReadThenApply_roundTrips() throws Exception {
-        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.compliant("instance-real-1", 5L)) {
+        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.compliant(
+                "10000000-0000-4000-8000-000000000001",
+                5L
+        )) {
             var client = agent.client();
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
             when(builder.build()).thenReturn(sampleSnapshot());
@@ -194,7 +201,10 @@ class TracingSettingsRefreshCoalescerTest {
 
     @Test
     void initialDeliveryWithRealClient_unchangedDelivery_reportsUnchanged() throws Exception {
-        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.compliant("instance-real-2", 9L)) {
+        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.compliant(
+                "10000000-0000-4000-8000-000000000002",
+                9L
+        )) {
             agent.setNextApplyOutcome("UNCHANGED");
             var client = agent.client();
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
@@ -209,7 +219,9 @@ class TracingSettingsRefreshCoalescerTest {
 
     @Test
     void initialDeliveryWithRealClient_readFailure_blocksWithoutFallback() throws Exception {
-        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.readFailingAcceptedPolicySnapshot("instance-real-3")) {
+        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.readFailingAcceptedPolicySnapshot(
+                "10000000-0000-4000-8000-000000000003"
+        )) {
             var client = agent.client();
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
             when(builder.build()).thenReturn(sampleSnapshot());
@@ -226,7 +238,9 @@ class TracingSettingsRefreshCoalescerTest {
 
     @Test
     void initialDeliveryWithRealClient_malformedResponse_neverSendsUnwarmedSequence() throws Exception {
-        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.malformedAcceptedPolicySnapshot("instance-real-4")) {
+        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.malformedAcceptedPolicySnapshot(
+                "10000000-0000-4000-8000-000000000004"
+        )) {
             var client = agent.client();
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
             when(builder.build()).thenReturn(sampleSnapshot());
@@ -244,8 +258,12 @@ class TracingSettingsRefreshCoalescerTest {
     }
 
     @Test
-    void realClient_agentRestartWithNewInstanceAndResetSequence_recoversOnNextRead() throws Exception {
-        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.compliant("instance-before-restart", 3L)) {
+    void realClientAgentRestartFailsClosedBeforeNextRead() throws Exception {
+        // given
+        try (FakeAgentPlatformJmxPlane agent = FakeAgentPlatformJmxPlane.compliant(
+                BEFORE_RESTART_AGENT_INSTANCE_ID,
+                3L
+        )) {
             var client = agent.client();
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
             when(builder.build()).thenReturn(sampleSnapshot());
@@ -255,15 +273,17 @@ class TracingSettingsRefreshCoalescerTest {
             assertThat(coalescer.deliverInitial()).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
             assertThat(agent.currentAcceptedSequence()).isEqualTo(4L);
 
-            agent.restartWithNewInstance("instance-after-restart", 0L);
+            agent.restartWithNewInstance(AFTER_RESTART_AGENT_INSTANCE_ID, 0L);
 
-            TracingSettingsDeliveryResult postRestart = coalescer.deliverInitial();
-
-            assertThat(postRestart).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
-            assertThat(agent.currentAcceptedSequence())
-                    .as("apply after restart must be evaluated against the new instance's own sequence, not "
-                            + "the pre-restart cached value")
-                    .isEqualTo(1L);
+            // when
+            // then
+            assertThatThrownBy(coalescer::deliverInitial)
+                    .isInstanceOf(AgentReadinessCoherenceException.class)
+                    .satisfies(failure -> assertThat(
+                            ((AgentReadinessCoherenceException) failure).failureCode())
+                            .isEqualTo(AgentReadinessCoherenceGuard.PINNED_ANCHOR_CHANGED));
+            assertThat(agent.applyInvocationCount()).isEqualTo(1);
+            assertThat(agent.currentAcceptedSequence()).isZero();
         }
     }
 }

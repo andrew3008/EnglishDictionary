@@ -1,12 +1,13 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap.session;
 
 import java.util.Objects;
-import java.util.UUID;
 import java.util.function.Function;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxMutationRegistrationAssessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
@@ -33,7 +34,10 @@ public final class AutoconfigureSessionFactory {
         return RemoteJmxMutationRegistrationAssessor.fromCurrentProcess();
     }
 
-    public AutoconfigureSession create(ConfigProperties config, ConfigurationFingerprint fingerprint) {
+    public AutoconfigureSession create(ConfigProperties config,
+                                       ConfigurationFingerprint fingerprint,
+                                       PlatformTracingMBeanRegistrar jmxRegistrar,
+                                       AgentInstanceId agentInstanceId) {
         ExtensionConfig extensionConfig = new ExtensionConfig(config);
         if (!extensionConfig.scrubbing().enabled()) {
             String message = "%s=false is forbidden by the secure Agent profile"
@@ -42,7 +46,7 @@ public final class AutoconfigureSessionFactory {
             throw new ConfigurationException(message);
         }
 
-        TracingSettingsSource policy = TracingSettingsSource.fromStartup(extensionConfig);
+        TracingSettingsSource policy = TracingSettingsSource.fromStartup(extensionConfig, agentInstanceId);
         ScrubbingRuntime scrubbingRuntime = scrubberFactory.buildRuntime(extensionConfig, config);
         RemoteJmxMutationRegistrationAssessor remoteJmxMutationRegistrationAssessor = Objects.requireNonNull(
                 remoteJmxAssessorFactory.apply(config),
@@ -50,10 +54,11 @@ public final class AutoconfigureSessionFactory {
         );
 
         AutoconfigureSession prepared = new AutoconfigureSession(
-                UUID.randomUUID(),
+                agentInstanceId,
                 fingerprint,
                 extensionConfig,
                 policy,
+                jmxRegistrar,
                 scrubbingRuntime,
                 remoteJmxMutationRegistrationAssessor
         );

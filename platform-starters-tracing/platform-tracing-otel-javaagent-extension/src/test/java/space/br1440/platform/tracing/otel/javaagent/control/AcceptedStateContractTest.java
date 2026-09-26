@@ -21,7 +21,7 @@ class AcceptedStateContractTest {
         // given/when/then
         assertThat(TracingSettingsRevision.class.getRecordComponents())
                 .extracting(RecordComponent::getName)
-                .containsExactly("runtimeInstanceId", "acceptedSequence", "policy");
+                .containsExactly("agentInstanceId", "acceptedSequence", "policy");
     }
 
     @Test

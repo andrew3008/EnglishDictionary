@@ -18,13 +18,14 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfi
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadinessSnapshot;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -48,7 +49,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
     void upstreamModeExportsThroughTheBoundaryWrap() {
         // given
         ScrubbingRuntime runtime = runtimeOfPassword();
-        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(registrar, runtime);
         List<SpanData> captured = new ArrayList<>();
         SpanExporter wrapped = factory.captureExporter(capturing(captured), TracingSettingsSource.isolatedDefaults());
@@ -77,7 +78,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
     void dropOldestResolvesExportModeThroughTheSameWrap() {
         // given
         ScrubbingRuntime runtime = runtimeOfPassword();
-        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(registrar, runtime);
         AtomicInteger delegateCalls = new AtomicInteger();
         SpanExporter wrapped = factory.captureExporter(new SpanExporter() {
@@ -117,7 +118,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
         assertThat(foreign.isProtectedBy(session)).isFalse();
 
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
-                new PlatformTracingMBeanRegistrar(), session);
+                new PlatformTracingMBeanRegistrar(AgentInstanceId.random()), session);
 
         // when
         Throwable failure = catchThrowable(
@@ -146,7 +147,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
                 .isTrue();
 
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
-                new PlatformTracingMBeanRegistrar(), session);
+                new PlatformTracingMBeanRegistrar(AgentInstanceId.random()), session);
 
         // when
         Throwable failure = catchThrowable(
@@ -167,7 +168,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
         ScrubbingRuntime session = runtimeOfPassword();
         List<SpanData> captured = new ArrayList<>();
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
-                new PlatformTracingMBeanRegistrar(), session);
+                new PlatformTracingMBeanRegistrar(AgentInstanceId.random()), session);
 
         SpanExporter firstCapture = factory.captureExporter(capturing(captured), TracingSettingsSource.isolatedDefaults());
         SpanExporter secondCapture = factory.captureExporter(firstCapture, TracingSettingsSource.isolatedDefaults());

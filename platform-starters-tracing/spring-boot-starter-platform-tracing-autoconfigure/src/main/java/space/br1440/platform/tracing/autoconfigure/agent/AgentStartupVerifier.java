@@ -358,7 +358,7 @@ public final class AgentStartupVerifier {
                         ),
 
                         new TracingDeploymentDiagnostics.ReadinessAnchor(
-                                anchorIdentity.runtimeEpoch(),
+                                anchorIdentity.agentInstanceId(),
                                 anchorIdentity.evidenceGeneration(),
                                 anchorIdentity.batchId()
                         ),

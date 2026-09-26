@@ -14,9 +14,9 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 
 class SecretCanaryAuditTest {
 
@@ -43,7 +43,7 @@ class SecretCanaryAuditTest {
                 AgentLogLevel.INFO
         );
         TracingSettingsStore store = new TracingSettingsStore(
-                AcceptedPolicyTestFixtures.RUNTIME_INSTANCE_ID,
+                AcceptedPolicyTestFixtures.AGENT_INSTANCE_ID,
                 policy
         );
         String digest = TracingSettingsDigest.sha256(policy);

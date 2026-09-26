@@ -8,7 +8,6 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
-
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanException;
 import javax.management.MBeanInfo;
@@ -23,16 +22,17 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 
 class PlatformSettingsStatusMBeanTest {
 
@@ -40,7 +40,7 @@ class PlatformSettingsStatusMBeanTest {
     void exposesExactGeneratedOpenMBeanContract() {
         // given
         TracingSettingsUpdater updater = updater(
-                UUID.randomUUID().toString(),
+                AgentInstanceId.from(UUID.randomUUID()),
                 settings(1.0d, Map.of()));
         PlatformSettingsStatusMBean mBean = new PlatformSettingsStatusMBean(updater);
 
@@ -95,10 +95,10 @@ class PlatformSettingsStatusMBeanTest {
     @Test
     void returnsCoherentGeneratedAcceptedPolicySnapshot() throws Exception {
         // given
-        String runtimeInstanceId = UUID.randomUUID().toString();
+        AgentInstanceId agentInstanceId = AgentInstanceId.from(UUID.randomUUID());
         TracingSettings initial = settings(1.0d, Map.of());
         TracingSettings candidate = settings(0.25d, Map.of("/orders", 0.5d));
-        TracingSettingsStore store = new TracingSettingsStore(runtimeInstanceId, initial);
+        TracingSettingsStore store = new TracingSettingsStore(agentInstanceId, initial);
         TracingSettingsUpdater updater = new TracingSettingsUpdater(store, new LastSettingsUpdate());
         SettingsUpdateAttempt attempt = new SettingsUpdateAttempt(
                 UUID.randomUUID().toString(),
@@ -121,8 +121,8 @@ class PlatformSettingsStatusMBeanTest {
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_SEQUENCE))
                 .isEqualTo(1L);
         assertThat(snapshot.get(
-                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_RUNTIME_INSTANCE_ID))
-                .isEqualTo(runtimeInstanceId);
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_AGENT_INSTANCE_ID))
+                .isEqualTo(agentInstanceId.toString());
         assertThat(snapshot.get(
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_POLICY_DIGEST))
                 .isEqualTo(TracingSettingsDigest.sha256(candidate));
@@ -166,23 +166,25 @@ class PlatformSettingsStatusMBeanTest {
                 .isEqualTo(0.5d);
     }
 
-    private static TracingSettingsUpdater updater(
-            String runtimeInstanceId,
-            TracingSettings settings
-    ) {
+    private static TracingSettingsUpdater updater(AgentInstanceId agentInstanceId,
+                                                  TracingSettings settings) {
         return new TracingSettingsUpdater(
-                new TracingSettingsStore(runtimeInstanceId, settings),
-                new LastSettingsUpdate());
+                new TracingSettingsStore(agentInstanceId, settings),
+                new LastSettingsUpdate()
+        );
     }
 
-    private static TracingSettings settings(
-            double samplingRatio,
-            Map<String, Double> routes
-    ) {
+    private static TracingSettings settings(double samplingRatio,
+                                            Map<String, Double> routes) {
         return TracingSettings.of(
                 true,
                 samplingRatio,
-                routes, SpanAttributeValidationLevel.WARNING, true, true, AgentLogLevel.INFO);
+                routes,
+                SpanAttributeValidationLevel.WARNING,
+                true,
+                true,
+                AgentLogLevel.INFO
+        );
     }
 
     private static final class ForeignStatusFailure extends RuntimeException {

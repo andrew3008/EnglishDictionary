@@ -16,6 +16,8 @@ import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionR
 
 class ExtensionReadinessWireSnapshotTest {
 
+    private static final String AGENT_INSTANCE_ID = "00000000-0000-0000-0000-000000000001";
+
     @Test
     void initializingRejectsAReadySnapshot() {
         // given
@@ -23,7 +25,7 @@ class ExtensionReadinessWireSnapshotTest {
 
         // when
         Throwable failure = catchThrowable(() ->
-                ExtensionReadinessWireSnapshot.initializing(ready, "epoch-1"));
+                ExtensionReadinessWireSnapshot.initializing(ready, AGENT_INSTANCE_ID));
 
         // then
         assertThat(failure)
@@ -39,7 +41,7 @@ class ExtensionReadinessWireSnapshotTest {
         // when
         Throwable failure = catchThrowable(() -> ExtensionReadinessWireSnapshot.ready(
                 initializing,
-                "epoch-1",
+                AGENT_INSTANCE_ID,
                 "batch-1",
                 1L,
                 evidence(initializing.extensionVersion())
@@ -60,7 +62,7 @@ class ExtensionReadinessWireSnapshotTest {
         // when
         Throwable failure = catchThrowable(() -> ExtensionReadinessWireSnapshot.ready(
                 failed,
-                "epoch-1",
+                AGENT_INSTANCE_ID,
                 "batch-1",
                 1L,
                 evidence(failed.extensionVersion())
@@ -80,7 +82,7 @@ class ExtensionReadinessWireSnapshotTest {
         // when
         Throwable failure = catchThrowable(() -> ExtensionReadinessWireSnapshot.failed(
                 initializing,
-                "epoch-1",
+                AGENT_INSTANCE_ID,
                 "batch-1",
                 1L,
                 evidence(initializing.extensionVersion())
@@ -107,7 +109,7 @@ class ExtensionReadinessWireSnapshotTest {
 
         // when
         ExtensionReadinessWireSnapshot snapshot =
-                ExtensionReadinessWireSnapshot.initializing(captured, "epoch-1");
+                ExtensionReadinessWireSnapshot.initializing(captured, AGENT_INSTANCE_ID);
 
         // then
         assertThat(snapshot.capabilities()).containsExactly("CONFIGURATION_LOADED");
@@ -127,7 +129,7 @@ class ExtensionReadinessWireSnapshotTest {
         // when
         ExtensionReadinessWireSnapshot snapshot = ExtensionReadinessWireSnapshot.failed(
                 captured,
-                "epoch-1",
+                AGENT_INSTANCE_ID,
                 "batch-1",
                 1L,
                 evidence(captured.extensionVersion())
@@ -146,8 +148,7 @@ class ExtensionReadinessWireSnapshotTest {
     void generatedManifestDefinesRequiredCapabilities() {
         // given
         PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
-        ExtensionReadinessWireSnapshot initial =
-                ExtensionReadinessWireSnapshot.initializing(readiness.snapshot(), "");
+        ExtensionReadinessWireSnapshot initial = ExtensionReadinessWireSnapshot.initializing();
 
         // when
         for (String capabilityName : JmxWireContract.REQUIRED_CAPABILITIES) {
@@ -172,7 +173,7 @@ class ExtensionReadinessWireSnapshotTest {
         // when
         ExtensionReadinessWireSnapshot snapshot = ExtensionReadinessWireSnapshot.ready(
                 captured,
-                "epoch-1",
+                AGENT_INSTANCE_ID,
                 "batch-1",
                 1L,
                 evidence(captured.extensionVersion())
@@ -188,14 +189,35 @@ class ExtensionReadinessWireSnapshotTest {
                 .isEqualTo(JmxWireContract.SCHEMA_ID);
         assertThat(wire.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_DIGEST))
                 .isEqualTo(JmxWireContract.SCHEMA_DIGEST_SHA256);
-        assertThat(wire.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_RUNTIME_EPOCH))
-                .isEqualTo("epoch-1");
+        assertThat(wire.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_INSTANCE_ID))
+                .isEqualTo(AGENT_INSTANCE_ID);
         assertThat(wire.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION))
                 .isEqualTo(1L);
         assertThat(wire.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID))
                 .isEqualTo("batch-1");
         assertThat((String[]) wire.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_MISSING_REQUIRED))
                 .isEmpty();
+    }
+
+    @Test
+    void failedRejectsBlankAgentInstanceId() {
+        // given
+        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
+        PlatformExtensionReadinessSnapshot failed = readiness.fail("SOME_FAILURE");
+
+        // when
+        Throwable failure = catchThrowable(() -> ExtensionReadinessWireSnapshot.failed(
+                failed,
+                "",
+                "",
+                0L,
+                ExtensionRuntimeEvidence.unavailable(failed.extensionVersion())
+        ));
+
+        // then
+        assertThat(failure)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("agentInstanceId must not be blank");
     }
 
     private static PlatformExtensionReadiness completeReadiness() {

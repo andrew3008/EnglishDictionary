@@ -1,13 +1,13 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap.session;
 
 import java.util.Objects;
-import java.util.UUID;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.factory.PlatformExportProcessorFactory;
 import space.br1440.platform.tracing.otel.javaagent.factory.PlatformSamplerFactory;
 import space.br1440.platform.tracing.otel.javaagent.factory.PlatformSpanProcessorFactory;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxMutationRegistrationAssessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
@@ -15,7 +15,7 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingR
 
 public final class AutoconfigureSession {
 
-    private final UUID sessionId;
+    private final AgentInstanceId agentInstanceId;
     private final ConfigurationFingerprint fingerprint;
     private final ExtensionConfig extensionConfig;
     private final TracingSettingsSource policy;
@@ -26,29 +26,31 @@ public final class AutoconfigureSession {
     private final PlatformExportProcessorFactory exportProcessorFactory;
     private final RemoteJmxMutationRegistrationAssessor remoteJmxMutationRegistrationAssessor;
 
-    public AutoconfigureSession(UUID sessionId,
+    public AutoconfigureSession(AgentInstanceId agentInstanceId,
                                 ConfigurationFingerprint fingerprint,
                                 ExtensionConfig extensionConfig,
                                 TracingSettingsSource policy,
+                                PlatformTracingMBeanRegistrar jmxRegistrar,
                                 ScrubbingRuntime scrubbingRuntime,
                                 RemoteJmxMutationRegistrationAssessor remoteJmxMutationRegistrationAssessor) {
-        this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
+        this.agentInstanceId = Objects.requireNonNull(agentInstanceId, "agentInstanceId");
         this.fingerprint = Objects.requireNonNull(fingerprint, "fingerprint");
         this.extensionConfig = Objects.requireNonNull(extensionConfig, "extensionConfig");
         this.policy = Objects.requireNonNull(policy, "policy");
+        this.jmxRegistrar = Objects.requireNonNull(jmxRegistrar, "jmxRegistrar");
         this.scrubbingRuntime = Objects.requireNonNull(scrubbingRuntime, "scrubbingRuntime");
         this.remoteJmxMutationRegistrationAssessor = Objects.requireNonNull(
                 remoteJmxMutationRegistrationAssessor,
                 "remoteJmxMutationRegistrationAssessor"
         );
-        this.jmxRegistrar = new PlatformTracingMBeanRegistrar();
+        requireSharedAgentInstanceId(this.agentInstanceId, this.policy, this.jmxRegistrar);
         this.samplerFactory = new PlatformSamplerFactory(jmxRegistrar);
         this.spanProcessorFactory = new PlatformSpanProcessorFactory(jmxRegistrar, scrubbingRuntime);
         this.exportProcessorFactory = new PlatformExportProcessorFactory(jmxRegistrar, scrubbingRuntime);
     }
 
-    public UUID sessionId() {
-        return sessionId;
+    public AgentInstanceId agentInstanceId() {
+        return agentInstanceId;
     }
 
     public ConfigurationFingerprint fingerprint() {
@@ -89,5 +91,21 @@ public final class AutoconfigureSession {
 
     public RemoteJmxMutationRegistrationAssessor remoteJmxMutationRegistrationAssessor() {
         return remoteJmxMutationRegistrationAssessor;
+    }
+
+    private static void requireSharedAgentInstanceId(AgentInstanceId expected,
+                                                     TracingSettingsSource policy,
+                                                     PlatformTracingMBeanRegistrar registrar) {
+        if (!expected.equals(registrar.agentInstanceId())) {
+            throw new IllegalArgumentException(
+                    "Autoconfigure session and JMX registrar agentInstanceId values must match"
+            );
+        }
+
+        if (!expected.equals(policy.current().agentInstanceId())) {
+            throw new IllegalArgumentException(
+                    "Autoconfigure session and tracing settings agentInstanceId values must match"
+            );
+        }
     }
 }

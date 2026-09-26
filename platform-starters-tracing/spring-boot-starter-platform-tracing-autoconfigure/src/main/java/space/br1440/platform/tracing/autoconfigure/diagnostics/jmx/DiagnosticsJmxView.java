@@ -19,7 +19,8 @@ public final class DiagnosticsJmxView {
             JmxWireContract.ATTRIBUTE_DIAGNOSTICS_OBSERVATION_DIAGNOSTICS_OBSERVATION,
             JmxContractPoint.DIAGNOSTICS_OBSERVATION,
             JmxOpenTypes.DIAGNOSTICS_OBSERVATION,
-            DiagnosticsJmxView::decode
+            DiagnosticsJmxView::decode,
+            DiagnosticsObservation::agentInstanceId
     );
 
     private final JmxReadExecutor executor;
@@ -45,8 +46,10 @@ public final class DiagnosticsJmxView {
     private static DiagnosticsObservation decode(Object raw) {
         CompositeData composite = JmxObservationCodec.asComposite(raw);
         JmxObservationCodec.requireCompositeTypeName(composite, JmxWireContract.OPEN_TYPE_DIAGNOSTICS_OBSERVATION_TYPE_NAME);
-        String agentInstanceId = JmxObservationCodec.getString(
-                composite, JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_AGENT_INSTANCE_ID);
+        String agentInstanceId = JmxObservationCodec.getAgentInstanceId(
+                composite,
+                JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_AGENT_INSTANCE_ID
+        );
 
         return new DiagnosticsObservation(
                 agentInstanceId,
@@ -55,7 +58,8 @@ public final class DiagnosticsJmxView {
                         composite,
                         JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_SAFE_WRAPPER_METRICS,
                         JmxWireContract.FIELD_SAFE_WRAPPER_METRICS_KEY,
-                        JmxWireContract.FIELD_SAFE_WRAPPER_METRICS_VALUE),
+                        JmxWireContract.FIELD_SAFE_WRAPPER_METRICS_VALUE
+                ),
                 JmxObservationCodec.getString(composite, JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_PLATFORM_LOG_LEVEL),
                 JmxObservationCodec.getBoolean(composite, JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_PROPAGATION_ENABLED));
     }

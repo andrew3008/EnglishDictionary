@@ -2,13 +2,13 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures.boundSampling;
 import static space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationTestFixtures.initializingReadinessProjection;
 
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
 import javax.management.MBeanServer;
 
 import org.junit.jupiter.api.AfterEach;
@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
@@ -40,7 +41,7 @@ class PlatformTracingMBeanRegistrarRegistrationTest {
     @Test
     void constructorDoesNotRegisterReadinessMBean() {
         // given/when
-        registrar = new PlatformTracingMBeanRegistrar();
+        registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
         // then
         assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isFalse();
     }
@@ -48,12 +49,13 @@ class PlatformTracingMBeanRegistrarRegistrationTest {
     @Test
     void diagnosticAndRuntimeRegistrationsAreGenerationSafe() throws Exception {
         // given
-        registrar = new PlatformTracingMBeanRegistrar();
-        TracingSettingsSource policyA = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.1d);
-        TracingSettingsSource policyB = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.9d);
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
+        registrar = new PlatformTracingMBeanRegistrar(agentInstanceId);
+        TracingSettingsSource policyA = boundSampling(agentInstanceId, true, Map.of(), 0.1d);
+        TracingSettingsSource policyB = boundSampling(agentInstanceId, true, Map.of(), 0.9d);
 
         AutoCloseable diagnostic = trackRegistration(
-                registrar.registerDiagnosticReadiness(initializingReadinessProjection()));
+                registrar.registerDiagnosticReadiness(initializingReadinessProjection(agentInstanceId)));
         assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isTrue();
 
         wireOwners(registrar, policyA);
@@ -76,7 +78,8 @@ class PlatformTracingMBeanRegistrarRegistrationTest {
                 .isTrue();
 
         // then
-        assertThatThrownBy(() -> registrar.registerDiagnosticReadiness(initializingReadinessProjection()))
+        assertThatThrownBy(() -> registrar.registerDiagnosticReadiness(
+                initializingReadinessProjection(agentInstanceId)))
                 .isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> registrar.registerRuntimeControls(policyA))
                 .isInstanceOf(IllegalStateException.class);
@@ -90,10 +93,12 @@ class PlatformTracingMBeanRegistrarRegistrationTest {
     @Test
     void closedRuntimeGenerationAllowsNewRegistrationWithoutOwners() throws Exception {
         // given
-        registrar = new PlatformTracingMBeanRegistrar();
-        trackRegistration(registrar.registerDiagnosticReadiness(initializingReadinessProjection()));
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
+        registrar = new PlatformTracingMBeanRegistrar(agentInstanceId);
+        trackRegistration(registrar.registerDiagnosticReadiness(
+                initializingReadinessProjection(agentInstanceId)));
 
-        TracingSettingsSource policy = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.2d);
+        TracingSettingsSource policy = boundSampling(agentInstanceId, true, Map.of(), 0.2d);
         AutoCloseable runtime = trackRegistration(registrar.registerRuntimeControls(policy));
         // when/then
         assertThatThrownBy(() -> registrar.registerRuntimeControls(policy))

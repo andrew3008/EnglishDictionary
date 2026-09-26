@@ -1,12 +1,12 @@
 package space.br1440.platform.tracing.otel.javaagent.factory;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures.boundSampling;
 
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
 import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
 import javax.management.MBeanServer;
@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
@@ -37,10 +38,9 @@ class PlatformSpanProcessorFactoryWiringTest {
         server = MBeanServerFactory.createMBeanServer(
                 "space.br1440.platform.tracing.test");
 
-        samplerHolder = TracingSettingsSource.isolatedSampling(
-                true, Collections.emptyMap(), 0.1d);
-
-        registrar = new PlatformTracingMBeanRegistrar(server);
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
+        samplerHolder = boundSampling(agentInstanceId, true, Collections.emptyMap(), 0.1d);
+        registrar = new PlatformTracingMBeanRegistrar(server, agentInstanceId);
     }
 
     @AfterEach
@@ -54,7 +54,7 @@ class PlatformSpanProcessorFactoryWiringTest {
         PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                 registrar, ScrubbingRuntimeTestFixtures.disabled());
         factory.registerSpanProcessors(
-                SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig(), samplerHolder);
+                SdkTracerProvider.builder(), minimalExtensionConfig(), samplerHolder);
 
         // when
         try (PlatformTracingMBeanRegistrar.RuntimeRegistration ignored =
@@ -72,7 +72,6 @@ class PlatformSpanProcessorFactoryWiringTest {
         factory.registerSpanProcessors(
                 SdkTracerProvider.builder(),
                 minimalExtensionConfig(),
-                minimalConfig(),
                 samplerHolder
         );
 
@@ -100,7 +99,7 @@ class PlatformSpanProcessorFactoryWiringTest {
         PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                 registrar, ScrubbingRuntimeTestFixtures.disabled());
         factory.registerSpanProcessors(
-                SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig(), samplerHolder);
+                SdkTracerProvider.builder(), minimalExtensionConfig(), samplerHolder);
 
         // when/then
         try (PlatformTracingMBeanRegistrar.RuntimeRegistration ignored =
@@ -128,7 +127,7 @@ class PlatformSpanProcessorFactoryWiringTest {
         PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                 registrar, ScrubbingRuntimeTestFixtures.disabled());
         factory.registerSpanProcessors(
-                SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig(), samplerHolder);
+                SdkTracerProvider.builder(), minimalExtensionConfig(), samplerHolder);
 
         // when/then
         try (PlatformTracingMBeanRegistrar.RuntimeRegistration ignored =

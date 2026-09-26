@@ -9,7 +9,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
@@ -19,8 +18,10 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 
 class AcceptedPolicyCoordinatorTest {
 
@@ -92,7 +93,7 @@ class AcceptedPolicyCoordinatorTest {
     }
 
     @Test
-    void runtimeMismatchIsReportedSeparately() {
+    void agentInstanceMismatchIsReportedSeparately() {
         // given
         TracingSettingsStore store = store();
         TracingSettingsUpdater updater = new TracingSettingsUpdater(
@@ -103,19 +104,19 @@ class AcceptedPolicyCoordinatorTest {
         SettingsUpdateResult result = updater.apply(
                 AcceptedPolicyTestFixtures.attempt(1L),
                 new ExpectedSettingsRevision(
-                        "00000000-0000-0000-0000-000000000002",
+                        AgentInstanceId.parse("00000000-0000-0000-0000-000000000002"),
                         0L),
                 AcceptedPolicyTestFixtures.policy(0.2d));
 
         // then
         assertThat(result.outcome()).isEqualTo(SettingsUpdateStatus.STALE);
-        assertThat(result.messageCode()).isEqualTo(SettingsRejectionReason.RUNTIME_INSTANCE_MISMATCH);
+        assertThat(result.messageCode()).isEqualTo(SettingsRejectionReason.AGENT_INSTANCE_MISMATCH);
         assertThat(store.current().acceptedSequence()).isZero();
     }
 
     private static TracingSettingsStore store() {
         return new TracingSettingsStore(
-                AcceptedPolicyTestFixtures.RUNTIME_INSTANCE_ID,
+                AcceptedPolicyTestFixtures.AGENT_INSTANCE_ID,
                 AcceptedPolicyTestFixtures.policy(0.1d)
         );
     }
@@ -130,7 +131,7 @@ class AcceptedPolicyCoordinatorTest {
         TracingSettingsRevision previous = current.get();
         current.set(
                 new TracingSettingsRevision(
-                        previous.runtimeInstanceId(),
+                        previous.agentInstanceId(),
                         acceptedSequence,
                         previous.policy()
                 )

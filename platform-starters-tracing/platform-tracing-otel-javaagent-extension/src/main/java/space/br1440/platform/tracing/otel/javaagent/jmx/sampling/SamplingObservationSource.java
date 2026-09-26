@@ -3,11 +3,11 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.sampling;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import javax.management.openmbean.CompositeData;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
@@ -29,8 +29,8 @@ public final class SamplingObservationSource {
             new ObservationSnapshotStore(JmxOpenTypes.SAMPLING_OBSERVATION);
 
     public SamplingObservationSource(TracingSettingsSource acceptedPolicy,
-                           OwnerRegistrationSlot<CompositeSampler> compositeSamplerSlot,
-                           UUID agentInstanceId) {
+                                     OwnerRegistrationSlot<CompositeSampler> compositeSamplerSlot,
+                                     AgentInstanceId agentInstanceId) {
         this.acceptedPolicy = Objects.requireNonNull(acceptedPolicy, "acceptedPolicy");
         this.compositeSamplerSlot = Objects.requireNonNull(compositeSamplerSlot, "compositeSamplerSlot");
         this.envelope = new ObservationCaptureEnvelope(agentInstanceId);
@@ -59,30 +59,28 @@ public final class SamplingObservationSource {
 
         Map<String, Object> values = new LinkedHashMap<>();
         openCapture.sealInto(values);
-        values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_ENABLED,
-                policySnapshot.samplerEnabled());
-        values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO,
-                policySnapshot.samplingRatio());
+        values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_ENABLED, policySnapshot.samplerEnabled());
+        values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO, policySnapshot.samplingRatio());
         values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIOS,
                 JmxOpenTypeSupport.stringDoubleMap(
                         JmxOpenTypes.SAMPLING_ROUTE_RATIOS,
                         JmxWireContract.FIELD_SAMPLING_ROUTE_RATIOS_KEY,
                         JmxWireContract.FIELD_SAMPLING_ROUTE_RATIOS_VALUE,
-                        policySnapshot.routeRatios()));
+                        policySnapshot.routeRatios()
+                )
+        );
         values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_DECISION_COUNTS,
                 JmxOpenTypeSupport.stringLongMap(
                         JmxOpenTypes.SAMPLER_DECISION_COUNTS,
                         JmxWireContract.FIELD_SAMPLER_DECISION_COUNTS_KEY,
                         JmxWireContract.FIELD_SAMPLER_DECISION_COUNTS_VALUE,
-                        samplerSnapshot.decisionCounts()));
-        values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_CONFIG_LAST_UPDATED_SOURCE,
-                CONFIG_LAST_UPDATED_SOURCE);
-        values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_PRESENT,
-                samplerSnapshot.present());
-        values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_GENERATION,
-                samplerState.generation());
-        values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_CAPTURED_OFFSET_NANOS,
-                offsetNanos);
+                        samplerSnapshot.decisionCounts()
+                )
+        );
+        values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_CONFIG_LAST_UPDATED_SOURCE, CONFIG_LAST_UPDATED_SOURCE);
+        values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_PRESENT, samplerSnapshot.present());
+        values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_GENERATION, samplerState.generation());
+        values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_CAPTURED_OFFSET_NANOS, offsetNanos);
         snapshotStore.publish(values);
     }
 
@@ -112,5 +110,4 @@ public final class SamplingObservationSource {
             return new SamplerOwnerSnapshot(true, sampler.getDecisionCounts());
         }
     }
-
 }

@@ -10,6 +10,7 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.OpenDataException;
 
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
@@ -23,7 +24,7 @@ public final class ExtensionReadinessWireSnapshot {
     private static final String FAILED = PlatformExtensionLifecycle.FAILED.name();
     private static final Pattern FAILURE_CODE_PATTERN = Pattern.compile("[A-Z][A-Z0-9_]{0,127}");
 
-    private final String runtimeEpoch;
+    private final String agentInstanceId;
     private final long evidenceGeneration;
     private final String batchId;
     private final String lifecycle;
@@ -33,7 +34,7 @@ public final class ExtensionReadinessWireSnapshot {
     private final ExtensionRuntimeEvidence evidence;
     private final CompositeData readinessSnapshot;
 
-    private ExtensionReadinessWireSnapshot(String runtimeEpoch,
+    private ExtensionReadinessWireSnapshot(String agentInstanceId,
                                            long evidenceGeneration,
                                            String batchId,
                                            String lifecycle,
@@ -41,7 +42,7 @@ public final class ExtensionReadinessWireSnapshot {
                                            String[] missingRequired,
                                            String failureCode,
                                            ExtensionRuntimeEvidence evidence) {
-        this.runtimeEpoch = Objects.requireNonNull(runtimeEpoch, "runtimeEpoch");
+        this.agentInstanceId = Objects.requireNonNull(agentInstanceId, "agentInstanceId");
         this.evidenceGeneration = evidenceGeneration;
         this.batchId = Objects.requireNonNull(batchId, "batchId");
         this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
@@ -69,11 +70,11 @@ public final class ExtensionReadinessWireSnapshot {
     }
 
     public static ExtensionReadinessWireSnapshot initializing(PlatformExtensionReadinessSnapshot readiness,
-                                                              String runtimeEpoch) {
+                                                              String agentInstanceId) {
         Objects.requireNonNull(readiness, "readiness");
         requireLifecycle(readiness, PlatformExtensionLifecycle.INITIALIZING, "INITIALIZING");
         return new ExtensionReadinessWireSnapshot(
-                Objects.requireNonNull(runtimeEpoch, "runtimeEpoch"),
+                requireAgentInstanceId(agentInstanceId),
                 0L,
                 "",
                 INITIALIZING,
@@ -85,7 +86,7 @@ public final class ExtensionReadinessWireSnapshot {
     }
 
     public static ExtensionReadinessWireSnapshot ready(PlatformExtensionReadinessSnapshot readiness,
-                                                       String runtimeEpoch,
+                                                       String agentInstanceId,
                                                        String batchId,
                                                        long evidenceGeneration,
                                                        ExtensionRuntimeEvidence evidence) {
@@ -97,10 +98,6 @@ public final class ExtensionReadinessWireSnapshot {
             throw new IllegalStateException(
                     "Cannot construct a READY wire snapshot with missing required capabilities"
             );
-        }
-
-        if (runtimeEpoch == null || runtimeEpoch.isBlank()) {
-            throw new IllegalArgumentException("READY runtimeEpoch must not be blank");
         }
 
         if (batchId == null || batchId.isBlank()) {
@@ -117,7 +114,7 @@ public final class ExtensionReadinessWireSnapshot {
 
         requireMatchingExtensionVersion(readiness, evidence);
         return new ExtensionReadinessWireSnapshot(
-                runtimeEpoch,
+                requireAgentInstanceId(agentInstanceId),
                 evidenceGeneration,
                 batchId,
                 READY,
@@ -129,7 +126,7 @@ public final class ExtensionReadinessWireSnapshot {
     }
 
     public static ExtensionReadinessWireSnapshot failed(PlatformExtensionReadinessSnapshot readiness,
-                                                        String runtimeEpoch,
+                                                        String agentInstanceId,
                                                         String batchId,
                                                         long evidenceGeneration,
                                                         ExtensionRuntimeEvidence evidence) {
@@ -140,7 +137,7 @@ public final class ExtensionReadinessWireSnapshot {
         requireMatchingExtensionVersion(readiness, requiredEvidence);
 
         return new ExtensionReadinessWireSnapshot(
-                (runtimeEpoch == null) ? "" : runtimeEpoch,
+                requireAgentInstanceId(agentInstanceId),
                 evidenceGeneration,
                 (batchId == null) ? "" : batchId,
                 FAILED,
@@ -155,8 +152,8 @@ public final class ExtensionReadinessWireSnapshot {
         return readinessSnapshot;
     }
 
-    public String runtimeEpoch() {
-        return runtimeEpoch;
+    public String agentInstanceId() {
+        return agentInstanceId;
     }
 
     public long evidenceGeneration() {
@@ -191,7 +188,7 @@ public final class ExtensionReadinessWireSnapshot {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_CONTRACT_ID, JmxWireContract.SCHEMA_ID);
         values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_DIGEST, JmxWireContract.SCHEMA_DIGEST_SHA256);
-        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_RUNTIME_EPOCH, runtimeEpoch);
+        values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_INSTANCE_ID, agentInstanceId);
         values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION, evidenceGeneration);
         values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID, batchId);
         values.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE, lifecycle);
@@ -230,6 +227,14 @@ public final class ExtensionReadinessWireSnapshot {
         }
 
         return failureCode;
+    }
+
+    private static String requireAgentInstanceId(String agentInstanceId) {
+        if (agentInstanceId == null || agentInstanceId.isBlank()) {
+            throw new IllegalArgumentException("agentInstanceId must not be blank");
+        }
+
+        return AgentInstanceId.parse(agentInstanceId).toString();
     }
 
     private static void requireLifecycle(PlatformExtensionReadinessSnapshot readiness,

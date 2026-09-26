@@ -1,19 +1,14 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import java.lang.management.ManagementFactory;
 import java.util.Collections;
-import java.util.UUID;
 import java.util.concurrent.atomic.LongAdder;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import io.opentelemetry.sdk.trace.ReadWriteSpan;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +20,9 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.Va
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
 import space.br1440.platform.tracing.autoconfigure.support.DomainSnapshotEndpoints;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.DiagnosticsObservationSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.export.ExportObservationSource;
@@ -35,11 +33,13 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.ScrubbingObser
 import space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationObservationSource;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 
+import io.opentelemetry.sdk.trace.ReadWriteSpan;
+
 class DomainAbsentOwnerEncodingRoundTripTest {
 
     private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
     private PlatformTracingJmxClient client;
-    private final UUID agentInstanceId = UUID.randomUUID();
+    private final AgentInstanceId agentInstanceId = AgentInstanceId.random();
 
     @BeforeEach
     void setUp() {

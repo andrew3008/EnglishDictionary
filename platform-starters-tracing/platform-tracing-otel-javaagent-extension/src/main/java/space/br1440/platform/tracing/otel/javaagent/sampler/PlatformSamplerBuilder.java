@@ -16,7 +16,7 @@ import lombok.experimental.UtilityClass;
 public final class PlatformSamplerBuilder {
 
     public static Sampler build(SamplingExtensionConfig sampling) {
-        TracingSettingsSource policyAccess = TracingSettingsSource.fromSampling(sampling);
+        TracingSettingsSource policyAccess = TracingSettingsSource.isolatedSampling(sampling);
         CompositeSampler compositeSampler = new CompositeSampler(policyAccess, categoryBOverrides(sampling));
         return new SafeSampler(compositeSampler);
     }

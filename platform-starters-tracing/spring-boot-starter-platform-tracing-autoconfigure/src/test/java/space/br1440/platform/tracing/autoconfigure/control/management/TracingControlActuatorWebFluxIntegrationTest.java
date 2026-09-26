@@ -45,7 +45,10 @@ class TracingControlActuatorWebFluxIntegrationTest {
 
     @Test
     void actuatorWriteOperationIsStackNeutral() throws Exception {
-        try (FakeAgentPlatformJmxPlane ignored = FakeAgentPlatformJmxPlane.compliant("runtime-instance-webflux", 5L);
+        try (FakeAgentPlatformJmxPlane ignored = FakeAgentPlatformJmxPlane.compliant(
+                "3f68c6e4-50f3-497a-9416-01b093ce3dfd",
+                5L
+        );
              ConfigurableApplicationContext context = boot()) {
             assertThat(context.getBeansOfType(TracingControlEndpoint.class)).hasSize(1);
 

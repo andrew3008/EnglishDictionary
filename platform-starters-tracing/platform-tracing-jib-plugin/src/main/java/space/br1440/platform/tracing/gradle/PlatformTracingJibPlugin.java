@@ -58,7 +58,8 @@ public final class PlatformTracingJibPlugin implements Plugin<Project> {
 
         project.getPluginManager().withPlugin(JAVA_PLUGIN_ID, applied -> configureClasspathGuard(project));
         project.getPluginManager().withPlugin(SPRING_BOOT_PLUGIN_ID, applied ->
-                configureBootRun(project, verifiedOutput, pin, runtimeGuard));
+                configureBootRun(project, verifiedOutput, pin, runtimeGuard)
+        );
         project.getPluginManager().withPlugin(
                 JIB_PLUGIN_ID,
                 applied -> JibIntegration.configure(project, verify, verifiedOutput, runtimeGuard, pin)
@@ -144,7 +145,8 @@ public final class PlatformTracingJibPlugin implements Plugin<Project> {
         }));
 
         project.getTasks().named(TASK_VERIFY_AGENT_NOT_ON_RUNTIME_CLASSPATH, VerifyAgentClasspathTask.class, task ->
-                task.getClasspathRoots().add(rootComponent(project, "runtimeClasspath")));
+                task.getClasspathRoots().add(rootComponent(project, "runtimeClasspath"))
+        );
         project.getTasks().named(CHECK_TASK_NAME, task -> task.dependsOn(guard));
         project.getTasks().matching(task -> "bootTestRun".equals(task.getName())).configureEach(task -> task.dependsOn(guard));
     }

@@ -2,8 +2,11 @@ package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx;
 
 import java.lang.management.ManagementFactory;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.Consumer;
 import javax.management.MBeanServer;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxDiagnosticSnapshot;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxReadExecutor;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
@@ -22,8 +25,26 @@ public final class PlatformTracingJmxClient {
         this(ManagementFactory.getPlatformMBeanServer());
     }
 
+    public PlatformTracingJmxClient(AgentReadinessCoherenceGuard coherenceGuard) {
+        this(ManagementFactory.getPlatformMBeanServer(), coherenceGuard);
+    }
+
     public PlatformTracingJmxClient(MBeanServer server) {
-        this.executor = new JmxReadExecutor(server);
+        this(server, ignored -> {
+        });
+    }
+
+    public PlatformTracingJmxClient(MBeanServer server,
+                                    AgentReadinessCoherenceGuard coherenceGuard) {
+        this(
+                server,
+                Objects.requireNonNull(coherenceGuard, "coherenceGuard")::requirePinnedAgentInstanceId
+        );
+    }
+
+    private PlatformTracingJmxClient(MBeanServer server,
+                                     Consumer<String> agentInstanceIdVerifier) {
+        this.executor = new JmxReadExecutor(server, agentInstanceIdVerifier);
         this.sampling = new SamplingJmxView(
                 executor,
                 JmxWireContract.SAMPLING_OBSERVATION_OBJECT_NAME);

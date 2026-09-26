@@ -6,22 +6,22 @@ import java.util.Objects;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 
-public record TracingSettingsRevision(String runtimeInstanceId,
+public record TracingSettingsRevision(AgentInstanceId agentInstanceId,
                                       long acceptedSequence,
                                       TracingSettings policy) {
 
     public TracingSettingsRevision {
         Objects.requireNonNull(policy, "policy");
-
-        runtimeInstanceId = RuntimeInstanceIds.requireCanonical(runtimeInstanceId);
+        Objects.requireNonNull(agentInstanceId, "agentInstanceId");
         if (acceptedSequence < 0L) {
             throw new IllegalArgumentException("acceptedSequence must not be negative");
         }
     }
 
     public ExpectedSettingsRevision base() {
-        return new ExpectedSettingsRevision(runtimeInstanceId, acceptedSequence);
+        return new ExpectedSettingsRevision(agentInstanceId, acceptedSequence);
     }
 
     public boolean samplingEnabled() {

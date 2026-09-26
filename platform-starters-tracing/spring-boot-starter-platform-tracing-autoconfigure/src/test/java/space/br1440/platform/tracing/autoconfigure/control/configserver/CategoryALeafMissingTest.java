@@ -1,23 +1,5 @@
 package space.br1440.platform.tracing.autoconfigure.control.configserver;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
-import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
-import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliveryResult;
-import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsManifestException;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliverySource;
-
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -26,16 +8,27 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
+import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
+import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsManifestException;
+import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;
+import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliverySource;
+import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
+import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
+
 @DisplayName("Category A leaf missing/deleted: readiness BLOCKED & runtime REJECTED")
 class CategoryALeafMissingTest {
 
-    // -------------------------------------------------------------------------
-    // Shared helpers
-    // -------------------------------------------------------------------------
-
-    /**
-     * Full valid 8-leaf snapshot used as LKG baseline.
-     */
     private static final CompleteTracingSettings LKG_SNAPSHOT =
             CompleteTracingSettings.builder()
                     .samplingEnabled(true)
@@ -48,18 +41,11 @@ class CategoryALeafMissingTest {
                     .build();
 
     private static final long LKG_SEQUENCE = 42L;
-    private static final String LKG_RUNTIME_INSTANCE = "agent-instance-abc";
+    private static final String LKG_AGENT_INSTANCE_ID = "d7468019-f52a-44a9-b3cd-3654c13ebc4d";
 
-    /**
-     * Constructs an AcceptedSettingsWithSequence representing the LKG state.
-     */
     private static AcceptedSettingsWithSequence lkgAcceptedState() {
-        return new AcceptedSettingsWithSequence(LKG_SEQUENCE, LKG_RUNTIME_INSTANCE, LKG_SNAPSHOT);
+        return new AcceptedSettingsWithSequence(LKG_SEQUENCE, LKG_AGENT_INSTANCE_ID, LKG_SNAPSHOT);
     }
-
-    // -------------------------------------------------------------------------
-    // Scenario A: initial missing leaf → readiness BLOCKED
-    // -------------------------------------------------------------------------
 
     @Nested
     @DisplayName("A: initial delivery — missing leaf → readiness BLOCKED")
@@ -110,9 +96,6 @@ class CategoryALeafMissingTest {
         @Test
         @DisplayName("deliverInitial throws for EACH of the 6 mandatory non-route-ratio leaves")
         void deliverInitial_throwsForEachMandatoryLeaf() {
-            // The manifest builder is responsible for failing per missing key;
-            // here we assert that ANY TracingSettingsManifestException propagates
-            // (not swallowed). The fixture simulates deletion of every leaf.
             String[] mandatoryLeaves = {
                     "platform.tracing.policy.sampling.enabled",
                     "platform.tracing.policy.sampling.ratio",
@@ -145,10 +128,6 @@ class CategoryALeafMissingTest {
             }
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Scenario B: runtime missing/deleted leaf → REJECTED; LKG immutable
-    // -------------------------------------------------------------------------
 
     @Nested
     @DisplayName("B: runtime refresh — missing/deleted leaf → REJECTED, LKG immutable")
@@ -222,8 +201,8 @@ class CategoryALeafMissingTest {
         }
 
         @Test
-        @DisplayName("runtimeInstanceId returned by reader is unchanged after runtime missing leaf")
-        void onRefreshEvent_runtimeInstanceId_isUnchangedWhenLeafMissing() {
+        @DisplayName("agentInstanceId returned by reader is unchanged after runtime missing leaf")
+        void onRefreshEvent_agentInstanceId_isUnchangedWhenLeafMissing() {
             ConfigServerSettingsManifestBuilder failingBuilder =
                     mock(ConfigServerSettingsManifestBuilder.class);
             when(failingBuilder.build())
@@ -242,8 +221,8 @@ class CategoryALeafMissingTest {
 
             assertThat(trackingReader.currentComplete())
                     .isPresent()
-                    .map(AcceptedSettingsWithSequence::runtimeInstanceId)
-                    .contains(LKG_RUNTIME_INSTANCE);
+                    .map(AcceptedSettingsWithSequence::agentInstanceId)
+                    .contains(LKG_AGENT_INSTANCE_ID);
         }
 
         @Test
@@ -261,7 +240,6 @@ class CategoryALeafMissingTest {
 
             coalescer.onRefreshEvent();
 
-            // No snapshot was submitted to the agent — LKG content in reader is intact
             assertThat(trackingReader.currentComplete())
                     .isPresent()
                     .map(AcceptedSettingsWithSequence::snapshot)
@@ -287,10 +265,6 @@ class CategoryALeafMissingTest {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Scenario C: default is NOT auto-restored; restores only via explicit push
-    // -------------------------------------------------------------------------
-
     @Nested
     @DisplayName("C: default restores ONLY via explicit Config Server push, not implicitly")
     class DefaultRestoreRequiresExplicitPush {
@@ -312,10 +286,8 @@ class CategoryALeafMissingTest {
             TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
                     oscillatingBuilder, client, reader, Runnable::run);
 
-            // Simulate the leaf going missing (runtime refresh)
             coalescer.onRefreshEvent();
 
-            // No implicit default must have been delivered
             assertThat(client.applyCallCount())
                     .as("agent applySnapshot must not be called with any implicit default")
                     .isZero();
@@ -324,7 +296,6 @@ class CategoryALeafMissingTest {
         @Test
         @DisplayName("after leaf-missing, an explicit Config Server push with full snapshot restores state")
         void explicitConfigServerPush_restoresAfterLeafMissing() {
-            // Phase 1: builder fails (leaf missing) — no delivery
             ConfigServerSettingsManifestBuilder failingBuilder =
                     mock(ConfigServerSettingsManifestBuilder.class);
             when(failingBuilder.build())
@@ -339,13 +310,9 @@ class CategoryALeafMissingTest {
             failingCoalescer.onRefreshEvent();
             assertThat(client.applyCallCount()).isZero();
 
-            // Phase 2: leaf is restored — Config Server pushes a NEW complete snapshot.
-            // This is modelled as a NEW coalescer that now has the full builder.
-            // (In production: Environment is updated, EnvironmentChangeEvent fires,
-            //  onRefreshEvent() triggers, manifestBuilder.build() now succeeds.)
             CompleteTracingSettings restoredSnapshot =
                     CompleteTracingSettings.builder()
-                            .samplingEnabled(false)   // deliberately different from LKG
+                            .samplingEnabled(false)
                             .samplingRatio(0.5)
                             .samplingRouteRatios(java.util.Map.of())
                             .validationLevel("ERROR")
@@ -376,9 +343,6 @@ class CategoryALeafMissingTest {
         @Test
         @DisplayName("helm defaults are never auto-injected when Config Server leaf goes missing at runtime")
         void helmDefaultsNotAutoInjected_whenConfigServerLeafMissing() {
-            // If a leaf is missing, the coalescer must NOT fall back to helmBootstrapDefaults.
-            // Proof: we confirm applySnapshot is never called with any snapshot
-            // (including the one produced by helmBootstrapDefaults()).
             assertThat(CompleteTracingSettings.helmBootstrapDefaults()).isNotNull();
 
             ConfigServerSettingsManifestBuilder failingBuilder =
@@ -395,22 +359,12 @@ class CategoryALeafMissingTest {
             coalescer.onRefreshEvent();
 
             assertThat(client.applyCallCount()).isZero();
-            // Verify that helmBootstrapDefaults was never submitted
-            // (no call at all, so last snapshot is null)
             assertThat(client.lastAppliedSnapshot())
                     .as("helm defaults must NEVER be auto-submitted on runtime leaf deletion")
                     .isNull();
         }
     }
 
-    // =========================================================================
-    // Test stubs
-    // =========================================================================
-
-    /**
-     * Tracking stub for {@link TracingSettingsApplier}.
-     * Records calls to applySnapshot; returns a configurable outcome.
-     */
     static final class TrackingSnapshotClient implements TracingSettingsApplier {
 
         private final TracingSettingsDeliveryResult outcome;
@@ -452,10 +406,6 @@ class CategoryALeafMissingTest {
         }
     }
 
-    /**
-     * Tracking stub for {@link CompleteTracingSettingsReader}.
-     * Holds a fixed LKG {@link AcceptedSettingsWithSequence} and counts reads.
-     */
     static final class TrackingSnapshotReader implements CompleteTracingSettingsReader {
 
         private final AtomicReference<AcceptedSettingsWithSequence> state;

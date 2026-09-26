@@ -22,7 +22,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
 
     @Test
     void fullRoundTripAllSevenLeavesNonEmptyRoutes() throws OpenDataException {
-        String rid = "agent-instance-" + UUID.randomUUID();
+        String rid = agentInstanceId();
         long seq = 77L;
         Map<String, Double> routes = Map.of(
                 "/api/v1", 1.0d,
@@ -34,7 +34,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
 
         assertThat(decoded.acceptedSequence()).isEqualTo(seq);
-        assertThat(decoded.runtimeInstanceId()).isEqualTo(rid);
+        assertThat(decoded.agentInstanceId()).isEqualTo(rid);
 
         var snap = decoded.snapshot();
         assertThat(snap.samplingEnabled()).isTrue();
@@ -51,7 +51,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
 
     @Test
     void fullRoundTripEmptyRouteTable() throws OpenDataException {
-        String rid = "rid-empty-" + UUID.randomUUID();
+        String rid = agentInstanceId();
         CompositeData wire = buildPinnedPayload(0L, rid, false, 0.0d, Map.of(),
                 "DISABLED", true, false, "ERROR"
         );
@@ -59,7 +59,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
 
         assertThat(decoded.acceptedSequence()).isEqualTo(0L);
-        assertThat(decoded.runtimeInstanceId()).isEqualTo(rid);
+        assertThat(decoded.agentInstanceId()).isEqualTo(rid);
         var snap = decoded.snapshot();
         assertThat(snap.samplingEnabled()).isFalse();
         assertThat(snap.samplingRatio()).isEqualTo(0.0d);
@@ -74,7 +74,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
     void sequenceIsPreservedExactly() throws OpenDataException {
         long[] seqs = {0L, 1L, 100L, Long.MAX_VALUE - 1};
         for (long seq : seqs) {
-            CompositeData wire = buildPinnedPayload(seq, "rid-seq-" + seq,
+            CompositeData wire = buildPinnedPayload(seq, agentInstanceId(),
                     true, 0.5d, Map.of(),
                     "WARNING", true, true, "INFO");
             var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
@@ -85,20 +85,20 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
     }
 
     @Test
-    void runtimeInstanceIdPreservedVerbatim() throws OpenDataException {
+    void canonicalAgentInstanceIdPreservedVerbatim() throws OpenDataException {
         String[] ids = {
-                "agent-instance-" + UUID.randomUUID(),
                 UUID.randomUUID().toString(),
-                "UPPERCASE-RID-SHOULD-PASS",
-                "rid-with-dashes-123"
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString()
         };
         for (String rid : ids) {
             CompositeData wire = buildPinnedPayload(1L, rid,
                     true, 0.5d, Map.of(),
                     "WARNING", true, true, "INFO");
             var decoded = AcceptedPolicySnapshotDecoder.decode(wire);
-            assertThat(decoded.runtimeInstanceId())
-                    .as("runtimeInstanceId must be preserved verbatim for: %s", rid)
+            assertThat(decoded.agentInstanceId())
+                    .as("agentInstanceId must be preserved verbatim for: %s", rid)
                     .isEqualTo(rid);
         }
     }
@@ -107,7 +107,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
     void samplingRatioBoundaryValuesAreValid() throws OpenDataException {
         for (double ratio : new double[]{0.0d, 1.0d}) {
             CompositeData wire = buildPinnedPayload(
-                    1L, "rid-boundary",
+                    1L, agentInstanceId(),
                     true, ratio, Map.of(),
                     "WARNING", true, true, "INFO"
             );
@@ -123,7 +123,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
     void allValidDiagnosticsLogLevelsAccepted() throws OpenDataException {
         for (String level : new String[]{"OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"}) {
             CompositeData wire = buildPinnedPayload(
-                    1L, "rid-level-" + level,
+                    1L, agentInstanceId(),
                     true, 0.5d, Map.of(),
                     "WARNING", true, true, level
             );
@@ -139,7 +139,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
     void routeKeyValueNotTransposed() throws OpenDataException {
         Map<String, Double> routes = Map.of("/distinct-prefix", 0.123d);
         CompositeData wire = buildPinnedPayload(
-                1L, "rid-swap",
+                1L, agentInstanceId(),
                 true, 0.5d, routes,
                 "WARNING", true, true, "INFO"
         );
@@ -157,7 +157,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
     void validationLevelsAreIndependent() throws OpenDataException {
         for (String level : new String[]{"WARNING", "ERROR", "DISABLED"}) {
             CompositeData wire = buildPinnedPayload(
-                    1L, "rid-level",
+                    1L, agentInstanceId(),
                     false, 0.5d, Map.of(),
                     level, false, false, "INFO"
             );
@@ -173,7 +173,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
     @Test
     void decodedSchemaFieldCountIsExactlySeven() throws OpenDataException {
         CompositeData wire = buildPinnedPayload(
-                1L, "rid-schema",
+                1L, agentInstanceId(),
                 true, 0.5d, Map.of(),
                 "WARNING", true, true, "INFO"
         );
@@ -191,13 +191,12 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         )).hasSize(7);
     }
 
-    /**
-     * Собирает {@code CompositeData} для {@code "AcceptedCompleteSnapshot/v1"} по независимо
-     * закреплённым литералам, чтобы обнаруживать синхронное расхождение сгенерированного кода
-     * и потребителя.
-     */
+    private static String agentInstanceId() {
+        return UUID.randomUUID().toString();
+    }
+
     private static CompositeData buildPinnedPayload(long acceptedSequence,
-                                                    String runtimeInstanceId,
+                                                    String agentInstanceId,
                                                     boolean samplingEnabled,
                                                     double samplingRatio,
                                                     Map<String, Double> routes,
@@ -228,7 +227,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         }
 
         String[] keys = {
-                "acceptedSequence", "runtimeInstanceId", "acceptedPolicyDigest",
+                "acceptedSequence", "agentInstanceId", "acceptedPolicyDigest",
                 "lastApplyOutcome", "lastAttemptId", "failureCode", "samplingEnabled",
                 "samplingRatio", "samplingRouteRatios", "validationLevel",
                 "exporterEnabled", "traceControlHeadersEnabled",
@@ -249,7 +248,7 @@ class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
         );
 
         return new CompositeDataSupport(ct, keys, new Object[]{
-                acceptedSequence, runtimeInstanceId, "accepted-policy-digest",
+                acceptedSequence, agentInstanceId, "accepted-policy-digest",
                 "APPLIED", "attempt-id", "", samplingEnabled,
                 samplingRatio, routeTable, validationLevel,
                 exporterEnabled, traceControlHeadersEnabled,

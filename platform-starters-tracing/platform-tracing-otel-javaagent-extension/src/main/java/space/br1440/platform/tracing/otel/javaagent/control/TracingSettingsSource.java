@@ -3,18 +3,18 @@ package space.br1440.platform.tracing.otel.javaagent.control;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 
 import space.br1440.platform.common.util.MapUtils;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 public final class TracingSettingsSource {
@@ -31,19 +31,21 @@ public final class TracingSettingsSource {
         this.updater = new TracingSettingsUpdater(store, diagnostics);
     }
 
-    public static TracingSettingsSource fromStartup(ExtensionConfig config) {
+    public static TracingSettingsSource fromStartup(ExtensionConfig config,
+                                                    AgentInstanceId agentInstanceId) {
         Objects.requireNonNull(config, "config");
+        Objects.requireNonNull(agentInstanceId, "agentInstanceId");
 
         SpanAttributeValidationLevel level = config.validation().requestedLevel();
         if (level.isDisabled()) {
             log.warn(AgentEventCode.VALID_POLICY, "Validation DISABLED");
         }
 
-        return create(config.sampling(), level);
+        return create(config.sampling(), level, agentInstanceId);
     }
 
-    public static TracingSettingsSource fromSampling(SamplingExtensionConfig sampling) {
-        return create(sampling, SpanAttributeValidationLevel.WARNING);
+    public static TracingSettingsSource isolatedSampling(SamplingExtensionConfig sampling) {
+        return create(sampling, SpanAttributeValidationLevel.WARNING, AgentInstanceId.unbound());
     }
 
     public static TracingSettingsSource isolatedDefaults() {
@@ -61,7 +63,7 @@ public final class TracingSettingsSource {
                 AgentLogLevel.INFO
         );
 
-        return new TracingSettingsSource(new TracingSettingsStore(UUID.randomUUID().toString(), settings));
+        return new TracingSettingsSource(new TracingSettingsStore(AgentInstanceId.unbound(), settings));
     }
 
     public static TracingSettingsSource isolatedSampling(boolean enabled,
@@ -77,7 +79,7 @@ public final class TracingSettingsSource {
                 AgentLogLevel.INFO
         );
 
-        return new TracingSettingsSource(new TracingSettingsStore(UUID.randomUUID().toString(), settings));
+        return new TracingSettingsSource(new TracingSettingsStore(AgentInstanceId.unbound(), settings));
     }
 
     public TracingSettingsRevision current() {
@@ -97,7 +99,8 @@ public final class TracingSettingsSource {
     }
 
     private static TracingSettingsSource create(SamplingExtensionConfig sampling,
-                                                SpanAttributeValidationLevel validationLevel) {
+                                                SpanAttributeValidationLevel validationLevel,
+                                                AgentInstanceId agentInstanceId) {
         Map<String, Double> routeRatios = parseRouteRatios(sampling.routeRatios());
         TracingSettings settings = TracingSettings.of(
                 sampling.enabled(),
@@ -109,7 +112,7 @@ public final class TracingSettingsSource {
                 AgentLogLevel.INFO
         );
 
-        return new TracingSettingsSource(new TracingSettingsStore(UUID.randomUUID().toString(), settings));
+        return new TracingSettingsSource(new TracingSettingsStore(agentInstanceId, settings));
     }
 
     private static Map<String, Double> parseRouteRatios(Map<String, String> source) {

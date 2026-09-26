@@ -9,8 +9,8 @@ class BootstrapSpiOrderContractTest {
     @Test
     void ACP_provider_and_AgentListener_use_same_documented_order() {
         // given/when
-        int providerOrder = new BootstrapAutoConfigurationCustomizerProvider(BootstrapCoordinator.create()).order();
-        int listenerOrder = new ActivationAgentListener(BootstrapCoordinator.create()).order();
+        int providerOrder = new BootstrapAutoConfigurationCustomizerProvider(BootstrapCoordinator.createDefault()).order();
+        int listenerOrder = new ActivationAgentListener(BootstrapCoordinator.createDefault()).order();
 
         // then
         assertThat(providerOrder).isEqualTo(100);

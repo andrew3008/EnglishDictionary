@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
@@ -15,6 +16,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.management.MBeanServer;
+import javax.management.MBeanServerFactory;
+import javax.management.openmbean.CompositeData;
+import javax.management.timer.Timer;
 import jakarta.annotation.Nonnull;
 
 import org.junit.jupiter.api.AfterEach;
@@ -30,7 +35,15 @@ import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.Autoconfig
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSessionFactory;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.VerificationFailureCode;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
+import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxAssessorTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxDenialReason;
@@ -90,8 +103,10 @@ class BootstrapCoordinatorTest {
         this.ownedCoordinator = coordinator;
 
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
+        String agentInstanceId = session.agentInstanceId().toString();
         satisfyReadinessBarrier(session);
         coordinator.activate();
+        assertThat(coordinator.currentWire().agentInstanceId()).isEqualTo(agentInstanceId);
 
         // when
         assertThatThrownBy(coordinator::activate)
@@ -105,6 +120,23 @@ class BootstrapCoordinatorTest {
         hooks.runHook();
         assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
         assertThat(coordinator.currentWire().failureCode()).isEqualTo("JMX_TRANSPORT_STALE");
+        assertThat(coordinator.currentWire().agentInstanceId()).isEqualTo(agentInstanceId);
+    }
+
+    @Test
+    void separateBootstrapOwnersReceiveDifferentAgentInstanceIds() {
+        // given
+        BootstrapCoordinator first = RuntimeEvidenceTestFixtures.coordinator();
+        BootstrapCoordinator second = RuntimeEvidenceTestFixtures.coordinator();
+
+        try (first; second) {
+            // when
+            AgentInstanceId firstId = first.prepare(config(Map.of())).agentInstanceId();
+            AgentInstanceId secondId = second.prepare(config(Map.of())).agentInstanceId();
+
+            // then
+            assertThat(firstId).isNotEqualTo(secondId);
+        }
     }
 
     @Test
@@ -218,6 +250,7 @@ class BootstrapCoordinatorTest {
     void second_prepare_with_identical_configuration_classified_as_SECOND_SDK_BUILD() {
         // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
+        this.ownedCoordinator = coordinator;
         coordinator.prepare(config(Map.of()));
 
         // when/then
@@ -228,9 +261,45 @@ class BootstrapCoordinatorTest {
     }
 
     @Test
+    void second_prepare_rejection_preserves_original_updated_policy_store() {
+        // given
+        BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
+        this.ownedCoordinator = coordinator;
+        AutoconfigureSession originalSession = coordinator.prepare(config(Map.of()));
+        TracingSettingsSource originalSource = originalSession.policy();
+        TracingSettingsStore originalStore = originalSource.store();
+        AgentInstanceId originalAgentInstanceId = originalSource.current().agentInstanceId();
+
+        assertThat(AcceptedPolicyMutationAccess.applyValidation(
+                originalSource,
+                SpanAttributeValidationLevel.ERROR
+        )).isEqualTo(SettingsUpdateStatus.APPLIED);
+        TracingSettingsRevision acceptedRevision = originalSource.current();
+        assertThat(acceptedRevision.acceptedSequence()).isEqualTo(1L);
+
+        // when
+        BootstrapException failure = catchThrowableOfType(
+                () -> coordinator.prepare(config(Map.of())),
+                BootstrapException.class
+        );
+        AutoconfigureSession retainedSession = coordinator.session();
+
+        // then
+        assertThat(failure.failure().code()).isEqualTo("SECOND_SDK_BUILD");
+        assertThat(retainedSession).isSameAs(originalSession);
+        assertThat(retainedSession.policy()).isSameAs(originalSource);
+        assertThat(retainedSession.policy().store()).isSameAs(originalStore);
+        assertThat(retainedSession.agentInstanceId()).isEqualTo(originalAgentInstanceId);
+        assertThat(retainedSession.policy().current()).isSameAs(acceptedRevision);
+        assertThat(retainedSession.policy().current().agentInstanceId()).isEqualTo(originalAgentInstanceId);
+        assertThat(retainedSession.policy().current().acceptedSequence()).isEqualTo(1L);
+    }
+
+    @Test
     void second_prepare_with_different_configuration_classified_as_CONFIGURATION_SPLIT_BRAIN() {
         // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
+        this.ownedCoordinator = coordinator;
         coordinator.prepare(config(Map.of()));
 
         // when/then
@@ -622,15 +691,118 @@ class BootstrapCoordinatorTest {
     }
 
     @Test
+    void prepare_failure_publishes_diagnostic_mbean_until_coordinator_close() throws Exception {
+        // given
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        AgentInstanceId agentInstanceId =
+                AgentInstanceId.parse("2545d2be-9095-4c83-9b37-c7737976a9ed");
+        BootstrapCoordinator coordinator = coordinator(server, agentInstanceId);
+
+        try (coordinator) {
+            // when
+            BootstrapException failure = catchThrowableOfType(
+                    () -> coordinator.prepare(invalidValidationLevelConfig()),
+                    BootstrapException.class
+            );
+
+            // then
+            assertThat(failure.failure().code()).isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+            assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
+            assertThat(coordinator.currentWire().failureCode())
+                    .isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
+            assertThat(coordinator.currentWire().agentInstanceId()).isEqualTo(agentInstanceId.toString());
+            assertThat(coordinator.currentWire().batchId()).isEmpty();
+            assertThat(coordinator.currentWire().evidenceGeneration()).isZero();
+            assertThat(coordinator.currentWire().evidence().complete()).isFalse();
+            assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isTrue();
+
+            CompositeData diagnostic = (CompositeData) server.getAttribute(
+                    DomainObjectNames.EXTENSION_READINESS,
+                    JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT
+            );
+            assertThat(diagnostic.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE))
+                    .isEqualTo("FAILED");
+            assertThat(diagnostic.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE))
+                    .isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
+            assertThat(diagnostic.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_INSTANCE_ID))
+                    .isEqualTo(agentInstanceId.toString());
+            assertThat(diagnostic.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID))
+                    .isEqualTo("");
+            assertThat(diagnostic.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION))
+                    .isEqualTo(0L);
+        }
+
+        assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isFalse();
+    }
+
+    @Test
+    void repeated_prepare_after_configuration_failure_preserves_primary_cause() {
+        // given
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        BootstrapCoordinator coordinator = coordinator(server, AgentInstanceId.random());
+
+        try (coordinator) {
+            BootstrapException first = catchThrowableOfType(
+                    () -> coordinator.prepare(invalidValidationLevelConfig()),
+                    BootstrapException.class
+            );
+
+            // when
+            BootstrapException repeated = catchThrowableOfType(
+                    () -> coordinator.prepare(invalidValidationLevelConfig()),
+                    BootstrapException.class
+            );
+
+            // then
+            assertThat(repeated.failure().code()).isEqualTo(first.failure().code());
+            assertThat(repeated.getCause()).isSameAs(first.getCause());
+            assertThat(coordinator.currentWire().failureCode()).isEqualTo(first.failure().code());
+            assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isTrue();
+        }
+    }
+
+    @Test
+    void diagnostic_registration_failure_is_suppressed_on_primary_configuration_cause() throws Exception {
+        // given
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        server.registerMBean(new Timer(), DomainObjectNames.EXTENSION_READINESS);
+        BootstrapCoordinator coordinator = coordinator(server, AgentInstanceId.random());
+
+        try (coordinator) {
+            // when
+            BootstrapException first = catchThrowableOfType(
+                    () -> coordinator.prepare(invalidValidationLevelConfig()),
+                    BootstrapException.class
+            );
+            BootstrapException repeated = catchThrowableOfType(
+                    () -> coordinator.prepare(invalidValidationLevelConfig()),
+                    BootstrapException.class
+            );
+
+            // then
+            assertThat(first.failure().code()).isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
+            assertThat(first.getCause().getSuppressed()).hasSize(1);
+            assertThat(first.getCause().getSuppressed()[0])
+                    .hasMessageContaining("ownership collision");
+            assertThat(repeated.getCause()).isSameAs(first.getCause());
+            assertThat(repeated.getCause().getSuppressed())
+                    .containsExactly(first.getCause().getSuppressed()[0]);
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+            assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
+            assertThat(coordinator.currentWire().failureCode())
+                    .isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
+        }
+    }
+
+    @Test
     void unknown_span_attribute_validation_level_classified_as_CONFIGURATION_INITIALIZATION_FAILED() {
         // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
+        this.ownedCoordinator = coordinator;
 
         // when/then
-        assertThatThrownBy(() -> coordinator.prepare(config(Map.of(
-                ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
-                "STRICT"
-        ))))
+        assertThatThrownBy(() -> coordinator.prepare(invalidValidationLevelConfig()))
                 .isInstanceOf(BootstrapException.class)
                 .extracting(failure -> ((BootstrapException) failure).failure().code())
                 .isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
@@ -643,6 +815,7 @@ class BootstrapCoordinatorTest {
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator(
                 ScrubberFactoryTestFixtures.factory(List::of)
         );
+        this.ownedCoordinator = coordinator;
 
         // when/then
         assertThatThrownBy(() -> coordinator.prepare(emptyBuiltInRulesConfig()))
@@ -655,6 +828,7 @@ class BootstrapCoordinatorTest {
     void fail_fast_missing_hmac_key_preserves_SANITIZER_HMAC_INITIALIZATION_FAILED() {
         // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
+        this.ownedCoordinator = coordinator;
 
         // when/then
         assertThatThrownBy(() -> coordinator.prepare(config(Map.of(
@@ -670,6 +844,7 @@ class BootstrapCoordinatorTest {
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator(ScrubberFactoryTestFixtures.factory(() -> {
             throw new IllegalStateException("rule source unavailable");
         }));
+        this.ownedCoordinator = coordinator;
 
         // when/then
         assertThatThrownBy(() -> coordinator.prepare(config(Map.of())))
@@ -696,6 +871,7 @@ class BootstrapCoordinatorTest {
         };
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator(
                 ScrubberFactoryTestFixtures.factory(() -> List.of(brokenMetadata)));
+        this.ownedCoordinator = coordinator;
 
         // when/then
         assertThatThrownBy(() -> coordinator.prepare(config(Map.of())))
@@ -761,6 +937,23 @@ class BootstrapCoordinatorTest {
                 session.readiness().markInstalled(capability);
             }
         }
+    }
+
+    private static BootstrapCoordinator coordinator(MBeanServer server, AgentInstanceId agentInstanceId) {
+        return new BootstrapCoordinator(
+                new CapturingShutdownHookRegistry(),
+                new PlatformScrubberFactory(),
+                RuntimeEvidenceTestFixtures.trustedVerifier(),
+                ignored -> RemoteJmxAssessorTestFixtures.allowingAssessor(),
+                new PlatformTracingMBeanRegistrar(server, agentInstanceId)
+        );
+    }
+
+    private static ConfigProperties invalidValidationLevelConfig() {
+        return config(Map.of(
+                ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
+                "STRICT"
+        ));
     }
 
     private static ConfigProperties emptyBuiltInRulesConfig() {

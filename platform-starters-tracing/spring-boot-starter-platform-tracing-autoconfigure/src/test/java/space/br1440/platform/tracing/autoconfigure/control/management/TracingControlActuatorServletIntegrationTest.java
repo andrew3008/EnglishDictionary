@@ -48,7 +48,10 @@ class TracingControlActuatorServletIntegrationTest {
 
     @Test
     void actuatorExposesAllWriteOperationsOnlyOnManagementPort() throws Exception {
-        try (FakeAgentPlatformJmxPlane ignored = FakeAgentPlatformJmxPlane.compliant("runtime-instance-servlet", 5L);
+        try (FakeAgentPlatformJmxPlane ignored = FakeAgentPlatformJmxPlane.compliant(
+                "f3dd5524-d013-44d9-af59-06cf962be3d2",
+                5L
+        );
              ConfigurableApplicationContext context = boot()) {
             assertThat(context.getBeansOfType(TracingControlEndpoint.class)).hasSize(1);
             assertThat(context.getBean(ActuatorAgentReadinessProbe.class)
@@ -92,7 +95,9 @@ class TracingControlActuatorServletIntegrationTest {
 
     @Test
     void incompatibleAgentBlocksActuatorControlStartup() throws Exception {
-        try (FakeAgentPlatformJmxPlane ignored = FakeAgentPlatformJmxPlane.missingAcceptedPolicySnapshot("runtime-instance-incompatible")) {
+        try (FakeAgentPlatformJmxPlane ignored = FakeAgentPlatformJmxPlane.missingAcceptedPolicySnapshot(
+                "a31ef6c8-1620-4746-b21b-c2345b74f5c4"
+        )) {
             assertThatThrownBy(TracingControlActuatorServletIntegrationTest::boot)
                     .isInstanceOf(Exception.class);
         }

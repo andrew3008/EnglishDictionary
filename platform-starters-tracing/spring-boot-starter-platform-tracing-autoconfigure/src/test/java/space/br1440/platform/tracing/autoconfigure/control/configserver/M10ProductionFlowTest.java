@@ -69,7 +69,7 @@ class M10ProductionFlowTest {
                     .build();
 
     private static final long BASE_SEQUENCE = 0L;
-    private static final String RUNTIME_ID = "agent-runtime-m10-test";
+    private static final String AGENT_INSTANCE_ID = "66f8525d-95e6-4cf8-a2ca-d384e6fd7b3c";
 
     // =========================================================================
     // M10 — Happy path: initial Config Server delivery → APPLIED
@@ -86,7 +86,7 @@ class M10ProductionFlowTest {
         void setUp() {
             client = new RecordingSnapshotClient();
             reader = new RecordingSnapshotReader(
-                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, RUNTIME_ID, M10_INITIAL));
+                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, AGENT_INSTANCE_ID, M10_INITIAL));
         }
 
         @Test
@@ -181,7 +181,7 @@ class M10ProductionFlowTest {
         void setUp() {
             client = new RecordingSnapshotClient();
             reader = new RecordingSnapshotReader(
-                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, RUNTIME_ID, M10_INITIAL));
+                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, AGENT_INSTANCE_ID, M10_INITIAL));
         }
 
         @Test
@@ -287,7 +287,7 @@ class M10ProductionFlowTest {
             client.enqueueOutcome(TracingSettingsDeliveryResult.APPLIED);
 
             RecordingSnapshotReader reader = new RecordingSnapshotReader(
-                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, RUNTIME_ID, M10_INITIAL));
+                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, AGENT_INSTANCE_ID, M10_INITIAL));
 
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
             when(builder.build()).thenReturn(M10_INITIAL, M10D_RETRY);
@@ -309,7 +309,7 @@ class M10ProductionFlowTest {
             client.enqueueOutcome(TracingSettingsDeliveryResult.APPLIED);
 
             RecordingSnapshotReader reader = new RecordingSnapshotReader(
-                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, RUNTIME_ID, M10_INITIAL));
+                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, AGENT_INSTANCE_ID, M10_INITIAL));
 
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
             when(builder.build()).thenReturn(M10_INITIAL, M10D_RETRY);
@@ -331,7 +331,7 @@ class M10ProductionFlowTest {
             client.enqueueOutcome(TracingSettingsDeliveryResult.APPLIED);
 
             RecordingSnapshotReader reader = new RecordingSnapshotReader(
-                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, RUNTIME_ID, M10_INITIAL));
+                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, AGENT_INSTANCE_ID, M10_INITIAL));
 
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
             when(builder.build()).thenReturn(M10_INITIAL, M10D_RETRY);
@@ -356,7 +356,7 @@ class M10ProductionFlowTest {
             client.enqueueOutcome(TracingSettingsDeliveryResult.STALE);
 
             RecordingSnapshotReader reader = new RecordingSnapshotReader(
-                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, RUNTIME_ID, M10_INITIAL));
+                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, AGENT_INSTANCE_ID, M10_INITIAL));
 
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
             when(builder.build()).thenReturn(M10_INITIAL, M10D_RETRY);
@@ -377,7 +377,7 @@ class M10ProductionFlowTest {
             client.setNextOutcome(TracingSettingsDeliveryResult.APPLIED);
 
             RecordingSnapshotReader reader = new RecordingSnapshotReader(
-                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, RUNTIME_ID, M10_INITIAL));
+                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, AGENT_INSTANCE_ID, M10_INITIAL));
 
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
             when(builder.build()).thenReturn(M10_INITIAL);
@@ -398,7 +398,7 @@ class M10ProductionFlowTest {
             client.setNextOutcome(TracingSettingsDeliveryResult.REJECTED);
 
             RecordingSnapshotReader reader = new RecordingSnapshotReader(
-                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, RUNTIME_ID, M10_INITIAL));
+                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, AGENT_INSTANCE_ID, M10_INITIAL));
 
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
             when(builder.build()).thenReturn(M10_INITIAL);
@@ -419,7 +419,7 @@ class M10ProductionFlowTest {
             client.setNextOutcome(TracingSettingsDeliveryResult.FAILED);
 
             RecordingSnapshotReader reader = new RecordingSnapshotReader(
-                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, RUNTIME_ID, M10_INITIAL));
+                    new AcceptedSettingsWithSequence(BASE_SEQUENCE, AGENT_INSTANCE_ID, M10_INITIAL));
 
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
             when(builder.build()).thenReturn(M10_INITIAL);

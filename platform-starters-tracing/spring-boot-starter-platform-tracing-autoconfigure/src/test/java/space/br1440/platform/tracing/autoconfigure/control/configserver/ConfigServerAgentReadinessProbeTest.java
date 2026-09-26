@@ -27,7 +27,7 @@ import space.br1440.platform.tracing.autoconfigure.control.settings.read.Complet
 
 class ConfigServerAgentReadinessProbeTest {
 
-    private static final String RUNTIME_INSTANCE_ID = "readiness-instance";
+    private static final String AGENT_INSTANCE_ID = "060130bb-9b7d-4d70-9806-0339966e4231";
     private static final int WEB_SERVER_PHASE = (SmartLifecycle.DEFAULT_PHASE - 2048);
 
     @Test
@@ -153,7 +153,7 @@ class ConfigServerAgentReadinessProbeTest {
 
     private static CompleteTracingSettingsReader readerReturning(CompleteTracingSettings snapshot) {
         AcceptedSettingsWithSequence accepted =
-                new AcceptedSettingsWithSequence(7L, RUNTIME_INSTANCE_ID, snapshot);
+                new AcceptedSettingsWithSequence(7L, AGENT_INSTANCE_ID, snapshot);
         return () -> Optional.of(accepted);
     }
 

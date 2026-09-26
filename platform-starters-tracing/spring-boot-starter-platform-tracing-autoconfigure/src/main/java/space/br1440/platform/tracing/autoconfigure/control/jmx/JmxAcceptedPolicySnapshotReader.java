@@ -35,19 +35,25 @@ final class JmxAcceptedPolicySnapshotReader {
     }
 
     AcceptedSettingsWithSequence readAcceptedPolicy() {
-        Object raw = readSnapshotAttribute();
-        return decodeSnapshot(raw);
+        try {
+            return coherenceGuard.readCoherently(() -> {
+                Object raw = readSnapshotAttribute();
+                AcceptedSettingsWithSequence accepted = decodeSnapshot(raw);
+                coherenceGuard.requirePinnedAgentInstanceId(accepted.agentInstanceId());
+                return accepted;
+            });
+        } catch (AgentReadinessCoherenceException coherenceFailure) {
+            client.publishTerminalFailure(coherenceFailure.failureCode(), coherenceFailure);
+            throw coherenceFailure;
+        }
     }
 
     private Object readSnapshotAttribute() {
         try {
-            return coherenceGuard.readCoherently(() -> platformMBeanServer.getAttribute(
+            return platformMBeanServer.getAttribute(
                     JmxWireContract.SETTINGS_STATUS_OBJECT_NAME,
-                    JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT)
+                    JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT
             );
-        } catch (AgentReadinessCoherenceException coherenceFailure) {
-            client.publishTerminalFailure(coherenceFailure.failureCode(), coherenceFailure);
-            throw coherenceFailure;
         } catch (AttributeNotFoundException attributeDrift) {
             throw client.terminalContractViolation(
                     JmxClientFailureCode.STATUS_ATTRIBUTE_DRIFT,
@@ -87,6 +93,7 @@ final class JmxAcceptedPolicySnapshotReader {
                     transportFailure);
         }
     }
+
     private AcceptedSettingsWithSequence decodeSnapshot(Object raw) {
         try {
             if (raw == null) {

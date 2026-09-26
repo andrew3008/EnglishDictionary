@@ -25,7 +25,8 @@ public final class ProcessorMetricsJmxView {
             JmxWireContract.ATTRIBUTE_PROCESSOR_METRICS_OBSERVATION_PROCESSOR_METRICS_OBSERVATION,
             JmxContractPoint.PROCESSOR_METRICS_OBSERVATION,
             JmxOpenTypes.PROCESSOR_METRICS_OBSERVATION,
-            ProcessorMetricsJmxView::decode
+            ProcessorMetricsJmxView::decode,
+            observation -> observation.capture().agentInstanceId()
     );
 
     private final JmxReadExecutor executor;
@@ -52,7 +53,10 @@ public final class ProcessorMetricsJmxView {
         CompositeData composite = JmxObservationCodec.asComposite(raw);
         JmxObservationCodec.requireCompositeTypeName(composite, JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_OBSERVATION_TYPE_NAME);
         ObservationCapture capture = new ObservationCapture(
-                JmxObservationCodec.getString(composite, JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_AGENT_INSTANCE_ID),
+                JmxObservationCodec.getAgentInstanceId(
+                        composite,
+                        JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_AGENT_INSTANCE_ID
+                ),
                 JmxObservationCodec.getPositiveLong(composite, JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_CAPTURE_SEQUENCE),
                 JmxObservationCodec.getPositiveLong(composite, JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_CAPTURE_STARTED_AT),
                 JmxObservationCodec.getPositiveLong(composite, JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_CAPTURE_COMPLETED_AT)

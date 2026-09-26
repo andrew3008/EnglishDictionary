@@ -2,12 +2,12 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.atomic.LongAdder;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.PlatformSettingsStatusMBean;
 import space.br1440.platform.tracing.otel.javaagent.control.jmx.protocol.PlatformSettingsMutationMBean;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
@@ -27,7 +27,7 @@ final class DomainMBeanFactory {
     static DomainMBeans build(OwnerRegistrationSlots slots,
                               TracingSettingsSource acceptedPolicy,
                               LongAdder sharedInvalidConfigCounter,
-                              UUID agentInstanceId) {
+                              AgentInstanceId agentInstanceId) {
         SamplingObservationSource sampling = new SamplingObservationSource(acceptedPolicy, slots.compositeSampler(), agentInstanceId);
         ScrubbingObservationSource scrubbing = new ScrubbingObservationSource(slots.scrubbing(), agentInstanceId);
         ValidationObservationSource validation = new ValidationObservationSource(slots.validating(), agentInstanceId);

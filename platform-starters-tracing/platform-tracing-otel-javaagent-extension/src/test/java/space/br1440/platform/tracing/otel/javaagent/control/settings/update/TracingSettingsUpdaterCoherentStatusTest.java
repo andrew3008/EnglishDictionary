@@ -20,9 +20,10 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 
 class TracingSettingsUpdaterCoherentStatusTest {
 
@@ -30,8 +31,9 @@ class TracingSettingsUpdaterCoherentStatusTest {
     void captureWaitsUntilAcceptedRevisionAndDiagnosticsArePublishedTogether() throws Exception {
         // given
         TracingSettingsStore store = new TracingSettingsStore(
-                UUID.randomUUID().toString(),
-                settings(1.0d));
+                AgentInstanceId.from(UUID.randomUUID()),
+                settings(1.0d)
+        );
         LastSettingsUpdate diagnostics = spy(new LastSettingsUpdate());
         CountDownLatch recordEntered = new CountDownLatch(1);
         CountDownLatch releaseRecord = new CountDownLatch(1);

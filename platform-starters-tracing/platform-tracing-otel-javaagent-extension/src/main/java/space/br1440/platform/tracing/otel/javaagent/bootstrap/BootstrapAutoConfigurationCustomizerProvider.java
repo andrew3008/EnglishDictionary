@@ -3,8 +3,8 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 import java.util.Map;
 import java.util.Objects;
 
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.TracePipelineSpiVerifier;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.TracePipelineSpiVerifier;
 import space.br1440.platform.tracing.otel.javaagent.configuration.PlatformTracingDefaultsProvider;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ObservingSenderPreference;
 import space.br1440.platform.tracing.otel.javaagent.propagation.BaggagePropagationCustomizer;
@@ -100,7 +100,7 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
                 bootstrap.execute("SPAN_PROCESSOR_INITIALIZATION_FAILED", () -> {
                     AutoconfigureSession session = bootstrap.session();
                     return session.spanProcessorFactory().registerSpanProcessors(
-                            builder, session.extensionConfig(), config, session.policy()
+                            builder, session.extensionConfig(), session.policy()
                     );
                 }));
 

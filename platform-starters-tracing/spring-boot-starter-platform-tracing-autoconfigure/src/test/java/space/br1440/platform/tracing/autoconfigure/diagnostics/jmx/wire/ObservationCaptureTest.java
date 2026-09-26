@@ -7,18 +7,20 @@ import org.junit.jupiter.api.Test;
 
 class ObservationCaptureTest {
 
+    private static final String AGENT_INSTANCE_ID = "123e4567-e89b-12d3-a456-426614174000";
+
     @Test
     void nonPositiveEnvelopeValuesAreRejected() {
         // given / when / then
-        assertThatThrownBy(() -> new ObservationCapture("agent-1", 0L, 1L, 1L))
+        assertThatThrownBy(() -> new ObservationCapture(AGENT_INSTANCE_ID, 0L, 1L, 1L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("sequence");
 
-        assertThatThrownBy(() -> new ObservationCapture("agent-1", 1L, 0L, 1L))
+        assertThatThrownBy(() -> new ObservationCapture(AGENT_INSTANCE_ID, 1L, 0L, 1L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("startedAtEpochMilli");
 
-        assertThatThrownBy(() -> new ObservationCapture("agent-1", 1L, 1L, -1L))
+        assertThatThrownBy(() -> new ObservationCapture(AGENT_INSTANCE_ID, 1L, 1L, -1L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("completedAtEpochMilli");
 
@@ -33,7 +35,7 @@ class ObservationCaptureTest {
         long completedAt = 1_700_000_000_000L;
 
         // when
-        ObservationCapture capture = new ObservationCapture("agent-1", 1L, startedAt, completedAt);
+        ObservationCapture capture = new ObservationCapture(AGENT_INSTANCE_ID, 1L, startedAt, completedAt);
 
         // then
         assertThat(capture.startedAtEpochMilli()).isEqualTo(startedAt);

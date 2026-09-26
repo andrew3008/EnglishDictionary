@@ -19,8 +19,8 @@ class BootstrapSpiConstructionCharacterizationTest {
         Set<ObjectName> before = platformTracingNames(server);
 
         // when
-        new BootstrapAutoConfigurationCustomizerProvider(BootstrapCoordinator.create());
-        new ActivationAgentListener(BootstrapCoordinator.create());
+        new BootstrapAutoConfigurationCustomizerProvider(BootstrapCoordinator.createDefault());
+        new ActivationAgentListener(BootstrapCoordinator.createDefault());
 
         // then
         assertThat(platformTracingNames(server))

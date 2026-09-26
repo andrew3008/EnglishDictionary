@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures.boundDefaults;
 
 import org.junit.jupiter.api.Test;
 
@@ -9,6 +10,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutati
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -94,7 +96,7 @@ class ValidatingSpanProcessorTest {
     @Test
     void warn_and_error_diagnostics_have_independent_throttling() {
         // given
-        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING);
+        TracingSettingsSource access = boundDefaults(AgentInstanceId.random());
         ValidatingSpanProcessor validator = new ValidatingSpanProcessor(() -> 1000L, access);
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(validator, Resource.empty())) {

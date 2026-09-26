@@ -3,10 +3,11 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
+import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadinessSnapshot;
 
 final class BootstrapReadinessJournal {
@@ -24,10 +25,10 @@ final class BootstrapReadinessJournal {
         return snapshot.get();
     }
 
-    void publishInitializing(AutoconfigureSession activeSession) {
+    void publishInitializing(PlatformExtensionReadiness readiness, AgentInstanceId agentInstanceId) {
         snapshot.set(ExtensionReadinessWireSnapshot.initializing(
-                activeSession.readiness().snapshot(),
-                activeSession.sessionId().toString()
+                readiness.snapshot(),
+                agentInstanceId.toString()
         ));
     }
 
@@ -35,39 +36,44 @@ final class BootstrapReadinessJournal {
         snapshot.set(Objects.requireNonNull(ready, "ready"));
     }
 
-    void publishFailed(AutoconfigureSession activeSession, String failureCode) {
+    void publishFailed(PlatformExtensionReadiness readiness,
+                       AgentInstanceId agentInstanceId,
+                       String failureCode) {
         ExtensionReadinessWireSnapshot current = snapshot.get();
-        PlatformExtensionReadinessSnapshot readiness = activeSession.readiness().snapshot();
-        boolean sameRuntimeEpoch = activeSession.sessionId().toString().equals(current.runtimeEpoch());
-        String batchId = sameRuntimeEpoch ? current.batchId() : "";
-        ExtensionRuntimeEvidence evidence = sameRuntimeEpoch
+        PlatformExtensionReadinessSnapshot readinessSnapshot = readiness.snapshot();
+        boolean sameAgentInstance = agentInstanceId.toString().equals(current.agentInstanceId());
+        String batchId = sameAgentInstance ? current.batchId() : "";
+        ExtensionRuntimeEvidence evidence = sameAgentInstance
                 ? current.evidence()
-                : ExtensionRuntimeEvidence.unavailable(readiness.extensionVersion());
-        publishFailed(activeSession, failureCode, batchId, evidence);
+                : ExtensionRuntimeEvidence.unavailable(readinessSnapshot.extensionVersion());
+        publishFailed(readiness, agentInstanceId, failureCode, batchId, evidence);
     }
 
-    void publishFailed(AutoconfigureSession activeSession,
+    void publishFailed(PlatformExtensionReadiness readiness,
+                       AgentInstanceId agentInstanceId,
                        String failureCode,
                        String batchId,
                        ExtensionRuntimeEvidence evidence) {
         synchronized (monitor) {
-            PlatformExtensionReadinessSnapshot readiness = activeSession.readiness().fail(failureCode);
-            String runtimeEpoch = activeSession.sessionId().toString();
+            PlatformExtensionReadinessSnapshot readinessSnapshot = readiness.fail(failureCode);
+            String agentInstanceIdValue = agentInstanceId.toString();
             ExtensionReadinessWireSnapshot current = snapshot.get();
-            String effectiveFailureCode = readiness.failureCode();
+            String effectiveFailureCode = readinessSnapshot.failureCode();
             if (PlatformExtensionLifecycle.FAILED.name().equals(current.lifecycle())
-                    && runtimeEpoch.equals(current.runtimeEpoch())
+                    && agentInstanceIdValue.equals(current.agentInstanceId())
                     && effectiveFailureCode.equals(current.failureCode())) {
                 return;
             }
 
-            long evidenceGeneration = runtimeEpoch.equals(current.runtimeEpoch())
-                    ? current.evidenceGeneration() + 1L
-                    : 1L;
+            long evidenceGeneration = batchId.isEmpty()
+                    ? 0L
+                    : agentInstanceIdValue.equals(current.agentInstanceId())
+                            ? current.evidenceGeneration() + 1L
+                            : 1L;
 
             snapshot.set(ExtensionReadinessWireSnapshot.failed(
-                    readiness,
-                    runtimeEpoch,
+                    readinessSnapshot,
+                    agentInstanceIdValue,
                     batchId,
                     evidenceGeneration,
                     evidence

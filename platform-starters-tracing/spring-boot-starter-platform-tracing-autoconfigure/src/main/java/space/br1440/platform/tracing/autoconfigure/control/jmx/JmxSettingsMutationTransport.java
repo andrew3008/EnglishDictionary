@@ -46,21 +46,25 @@ final class JmxSettingsMutationTransport {
         Objects.requireNonNull(expectedBase, "expectedBase");
 
         EncodedRequest request = encodeRequest(expectedBase, snapshot, source);
-        Object raw = invokeMutation(request.composite(), source);
-        return readOutcome(raw, expectedBase, request);
+        try {
+            return coherenceGuard.readCoherently(() -> {
+                Object raw = invokeMutation(request.composite(), source);
+                return readOutcome(raw, expectedBase, request);
+            });
+        } catch (AgentReadinessCoherenceException coherenceFailure) {
+            client.publishTerminalFailure(coherenceFailure.failureCode(), coherenceFailure);
+            throw coherenceFailure;
+        }
     }
 
     private Object invokeMutation(CompositeData encoded, TracingSettingsDeliverySource source) {
         try {
-            return coherenceGuard.readCoherently(() -> platformMBeanServer.invoke(
+            return platformMBeanServer.invoke(
                     JmxWireContract.SETTINGS_MUTATION_OBJECT_NAME,
                     JmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT,
                     new Object[]{encoded},
                     new String[]{CompositeData.class.getName()}
-            ));
-        } catch (AgentReadinessCoherenceException coherenceFailure) {
-            client.publishTerminalFailure(coherenceFailure.failureCode(), coherenceFailure);
-            throw coherenceFailure;
+            );
         } catch (InstanceNotFoundException disappearedEndpoint) {
             throw client.terminalGuardFailure(
                     JmxClientFailureCode.MUTATION_ENDPOINT_DISAPPEARED,
@@ -117,6 +121,8 @@ final class JmxSettingsMutationTransport {
         } catch (TracingSettingsContractViolationException ex) {
             client.invalidateAndNotify(JmxClientFailureCode.MUTATION_RESPONSE_CONTRACT_FAILED, ex);
             throw ex;
+        } catch (AgentReadinessCoherenceException coherenceFailure) {
+            throw coherenceFailure;
         } catch (RuntimeException unexpectedFailure) {
             throw client.terminalGuardFailure(
                     JmxClientFailureCode.MUTATION_UNEXPECTED_ERROR,
@@ -158,9 +164,9 @@ final class JmxSettingsMutationTransport {
         }
     }
 
-    private static TracingSettingsDeliveryResult parseOutcome(Object raw,
-                                                              ExpectedSettingsRevision expectedBase,
-                                                              EncodedRequest request) {
+    private TracingSettingsDeliveryResult parseOutcome(Object raw,
+                                                       ExpectedSettingsRevision expectedBase,
+                                                       EncodedRequest request) {
         if (!(raw instanceof CompositeData compositeData)) {
             String type = (raw == null) ? "null" : raw.getClass().getName();
             throw new TracingSettingsContractViolationException(
@@ -174,8 +180,9 @@ final class JmxSettingsMutationTransport {
         PlatformJmxResponse response;
         try {
             response = PlatformJmxResponse.decode(compositeData);
+            coherenceGuard.requirePinnedAgentInstanceId(response.agentInstanceId());
             response.validateCorrelation(
-                    expectedBase.runtimeInstanceId(),
+                    expectedBase.agentInstanceId(),
                     expectedBase.acceptedSequence(),
                     request.attemptId(),
                     candidateDigest

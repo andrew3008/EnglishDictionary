@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -14,17 +15,31 @@ import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
+import javax.management.MBeanServer;
+import javax.management.MBeanServerFactory;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSessionFactory;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
 import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
 
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;
+import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
 import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
+import io.opentelemetry.sdk.trace.SpanProcessor;
+import io.opentelemetry.sdk.trace.export.SpanExporter;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
 
 /**
@@ -44,7 +59,7 @@ import io.opentelemetry.sdk.trace.samplers.Sampler;
 class PlatformAutoConfigurationCustomizerTest {
 
     private static BootstrapAutoConfigurationCustomizerProvider newProvider() {
-        return new BootstrapAutoConfigurationCustomizerProvider(BootstrapCoordinator.create());
+        return new BootstrapAutoConfigurationCustomizerProvider(BootstrapCoordinator.createDefault());
     }
 
     @Test
@@ -208,7 +223,8 @@ class PlatformAutoConfigurationCustomizerTest {
     void disabling_all_processors_does_not_touch_tracer_provider_builder() {
         // given
         Recorder recorder = new Recorder();
-        newProvider().customize(recorder.proxy());
+        BootstrapCoordinator coordinator = BootstrapCoordinator.createDefault();
+        new BootstrapAutoConfigurationCustomizerProvider(coordinator).customize(recorder.proxy());
 
         ConfigProperties props = new MapConfigProperties(Map.of(
                 "platform.tracing.javaagent.scrubbing.enabled", "false",
@@ -218,15 +234,203 @@ class PlatformAutoConfigurationCustomizerTest {
                 "platform.tracing.metrics.enabled", "false"
         ));
 
-        // when/then
-        assertThatThrownBy(() -> recorder.primeWithConfig(props))
-                .isInstanceOf(BootstrapException.class)
-                .hasMessageContaining("scrubbing.enabled=false is forbidden");
+        try (coordinator) {
+            // when
+            assertThatThrownBy(() -> recorder.primeWithConfig(props))
+                    .isInstanceOf(BootstrapException.class)
+                    .hasMessageContaining("scrubbing.enabled=false is forbidden");
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("invalidConfigurations")
+    void invalid_configuration_publishes_sticky_failed_snapshot(InvalidConfiguration invalid) {
+        // given
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        BootstrapCoordinator coordinator = coordinator(server);
+        Recorder recorder = new Recorder();
+        new BootstrapAutoConfigurationCustomizerProvider(coordinator).customize(recorder.proxy());
+        ConfigProperties config = DefaultConfigProperties.createFromMap(invalid.properties());
+
+        try (coordinator) {
+            // when
+            BootstrapException first = catchThrowableOfType(
+                    () -> recorder.primeWithConfig(config),
+                    BootstrapException.class
+            );
+            BootstrapException repeated = catchThrowableOfType(
+                    () -> recorder.primeWithConfig(config),
+                    BootstrapException.class
+            );
+            BootstrapException exporterFailure = catchThrowableOfType(
+                    () -> recorder.spanExporterCustomizer.apply(null, config),
+                    BootstrapException.class
+            );
+            BootstrapException processorFailure = catchThrowableOfType(
+                    () -> recorder.spanProcessorCustomizer.apply(null, config),
+                    BootstrapException.class
+            );
+
+            // then
+            assertThat(first.failure().code()).isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
+            assertThat(first.getMessage()).contains(invalid.expectedProperty());
+            assertThat(first.failure().cause()).isSameAs(first.getCause());
+            assertThat(repeated.failure().code()).isEqualTo(first.failure().code());
+            assertThat(repeated.getCause()).isSameAs(first.getCause());
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+            assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
+            assertThat(coordinator.currentWire().failureCode())
+                    .isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
+            assertThat(coordinator.currentWire().agentInstanceId()).isNotBlank();
+            assertThat(coordinator.currentWire().batchId()).isEmpty();
+            assertThat(coordinator.currentWire().evidenceGeneration()).isZero();
+            assertThat(coordinator.currentWire().evidence().complete()).isFalse();
+
+            assertThat(exporterFailure.failure().code()).isEqualTo(first.failure().code());
+            assertThat(exporterFailure.getCause()).isSameAs(first.getCause());
+            assertThat(processorFailure.failure().code()).isEqualTo(first.failure().code());
+            assertThat(processorFailure.getCause()).isSameAs(first.getCause());
+
+            List<Throwable> readerFailures = causeChain(first)
+                    .stream()
+                    .filter(PlatformAutoConfigurationCustomizerTest::originatesFromExtensionConfigReader)
+                    .toList();
+            if (invalid.parsingFailure()) {
+                assertThat(first.getCause()).isInstanceOf(ConfigurationException.class);
+                assertThat(first.getCause().getMessage())
+                        .contains(invalid.expectedProperty() + "=" + invalid.rawValue());
+                assertThat(first.getCause().getStackTrace()[0].getClassName())
+                        .isEqualTo(DefaultConfigProperties.class.getName());
+                assertThat(readerFailures)
+                        .as("parse failure must remain the direct DefaultConfigProperties cause "
+                                + "without an ExtensionConfigReader wrapper")
+                        .isEmpty();
+            } else {
+                assertThat(readerFailures)
+                        .as("validation failure must originate from ExtensionConfigReader")
+                        .isNotEmpty()
+                        .allSatisfy(cause -> assertThat(cause.getMessage())
+                                .doesNotContain(invalid.rawValue()));
+            }
+        }
+    }
+
+    private static Stream<InvalidConfiguration> invalidConfigurations() {
+        return Stream.of(
+                invalidDuration("zero span timeout", ExtensionPropertyNames.SPAN_TIMEOUT_SPAN_TIMEOUT, "0"),
+                invalidDuration("zero trace timeout", ExtensionPropertyNames.SPAN_TIMEOUT_TRACE_TIMEOUT, "0"),
+                invalidDuration("zero scan interval", ExtensionPropertyNames.SPAN_TIMEOUT_SCAN_INTERVAL, "0"),
+                invalidInt("zero max tracked traces", ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_TRACES, "0"),
+                invalidInt(
+                        "zero max tracked spans per trace",
+                        ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_SPANS_PER_TRACE,
+                        "0"
+                ),
+                invalidInt("zero max tracked spans", ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_SPANS, "0"),
+                new InvalidConfiguration(
+                        "trace timeout below span timeout",
+                        Map.of(
+                                ExtensionPropertyNames.SPAN_TIMEOUT_SPAN_TIMEOUT, "10000",
+                                ExtensionPropertyNames.SPAN_TIMEOUT_TRACE_TIMEOUT, "5000"
+                        ),
+                        ExtensionPropertyNames.SPAN_TIMEOUT_TRACE_TIMEOUT,
+                        "5000",
+                        false
+                ),
+                invalidDuration(
+                        "zero classification slow threshold",
+                        ExtensionPropertyNames.CLASSIFICATION_SLOW_THRESHOLD,
+                        "0"
+                ),
+                invalidDuration(
+                        "zero classification normal threshold",
+                        ExtensionPropertyNames.CLASSIFICATION_NORMAL_THRESHOLD,
+                        "0"
+                ),
+                new InvalidConfiguration(
+                        "unordered classification thresholds",
+                        Map.of(
+                                ExtensionPropertyNames.CLASSIFICATION_SLOW_THRESHOLD, "1000",
+                                ExtensionPropertyNames.CLASSIFICATION_NORMAL_THRESHOLD, "2000"
+                        ),
+                        ExtensionPropertyNames.CLASSIFICATION_SLOW_THRESHOLD,
+                        "1000",
+                        false
+                ),
+                parsingFailure(
+                        "non-numeric duration",
+                        ExtensionPropertyNames.SPAN_TIMEOUT_SCAN_INTERVAL,
+                        "17qx"
+                ),
+                parsingFailure(
+                        "non-numeric integer",
+                        ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_TRACES,
+                        "17qx"
+                ),
+                invalidDuration(
+                        "negative duration",
+                        ExtensionPropertyNames.SPAN_TIMEOUT_SCAN_INTERVAL,
+                        "-1"
+                ),
+                parsingFailure(
+                        "integer overflow",
+                        ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_TRACES,
+                        "2147483648"
+                )
+        );
+    }
+
+    private static InvalidConfiguration invalidDuration(String description,
+                                                        String property,
+                                                        String value) {
+        return new InvalidConfiguration(description, Map.of(property, value), property, value, false);
+    }
+
+    private static InvalidConfiguration invalidInt(String description,
+                                                   String property,
+                                                   String value) {
+        return new InvalidConfiguration(description, Map.of(property, value), property, value, false);
+    }
+
+    private static InvalidConfiguration parsingFailure(String description,
+                                                       String property,
+                                                       String value) {
+        return new InvalidConfiguration(description, Map.of(property, value), property, value, true);
+    }
+
+    private static BootstrapCoordinator coordinator(MBeanServer server) {
+        return new BootstrapCoordinator(
+                (threadName, action) -> () -> {
+                },
+                new PlatformScrubberFactory(),
+                RuntimeEvidenceTestFixtures.trustedVerifier(),
+                AutoconfigureSessionFactory::currentProcessRemoteJmxAssessor,
+                new PlatformTracingMBeanRegistrar(server, AgentInstanceId.random())
+        );
+    }
+
+    private static List<Throwable> causeChain(Throwable failure) {
+        List<Throwable> causes = new ArrayList<>();
+        Throwable current = failure;
+        while (current != null && !causes.contains(current)) {
+            causes.add(current);
+            current = current.getCause();
+        }
+        return causes;
+    }
+
+    private static boolean originatesFromExtensionConfigReader(Throwable failure) {
+        StackTraceElement[] trace = failure.getStackTrace();
+        return trace.length > 0
+                && "space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfigReader"
+                .equals(trace[0].getClassName());
     }
 
     private static final class Recorder {
         BiFunction<Sampler, ConfigProperties, Sampler> samplerCustomizer;
         BiFunction<SdkTracerProviderBuilder, ConfigProperties, SdkTracerProviderBuilder> tracerProviderCustomizer;
+        BiFunction<SpanExporter, ConfigProperties, SpanExporter> spanExporterCustomizer;
+        BiFunction<SpanProcessor, ConfigProperties, SpanProcessor> spanProcessorCustomizer;
         Supplier<Map<String, String>> propertiesSupplier;
 
         private final List<Function<ConfigProperties, Map<String, String>>> propertiesCustomizers = new ArrayList<>();
@@ -263,8 +467,32 @@ class PlatformAutoConfigurationCustomizerTest {
                             yield proxyObj;
                         }
 
+                        case "addSpanExporterCustomizer" -> {
+                            this.spanExporterCustomizer =
+                                    (BiFunction<SpanExporter, ConfigProperties, SpanExporter>) args[0];
+                            yield proxyObj;
+                        }
+
+                        case "addSpanProcessorCustomizer" -> {
+                            this.spanProcessorCustomizer =
+                                    (BiFunction<SpanProcessor, ConfigProperties, SpanProcessor>) args[0];
+                            yield proxyObj;
+                        }
+
                         default -> proxyObj;
                     });
+        }
+    }
+
+    private record InvalidConfiguration(String description,
+                                        Map<String, String> properties,
+                                        String expectedProperty,
+                                        String rawValue,
+                                        boolean parsingFailure) {
+
+        @Override
+        public String toString() {
+            return description;
         }
     }
 

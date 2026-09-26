@@ -34,7 +34,11 @@ class TracingControlEndpointTest {
                 .diagnosticsLogLevel("INFO")
                 .build();
         CompleteTracingSettingsReader reader = () -> Optional.of(
-                new AcceptedSettingsWithSequence(10L, "test-runtime", initial));
+                new AcceptedSettingsWithSequence(
+                        10L,
+                        "d8d5f1af-fe12-4b2b-a05f-e3532b06329d",
+                        initial
+                ));
         applier = new CapturingApplier();
         endpoint = new TracingControlEndpoint(new TracingSettingsMutationService(reader, applier));
     }

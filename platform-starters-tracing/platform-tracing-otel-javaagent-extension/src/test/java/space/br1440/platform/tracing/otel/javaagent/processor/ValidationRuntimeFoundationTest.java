@@ -1,17 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
-
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.sdk.resources.Resource;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
-import space.br1440.platform.tracing.test.assertions.ValidationAssertions;
-import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
+import static org.assertj.core.api.Assertions.assertThat;
+import static space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures.boundDefaults;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -20,14 +10,27 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.test.assertions.ValidationAssertions;
+import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
+
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.sdk.resources.Resource;
 
 class ValidationRuntimeFoundationTest {
 
     @Test
     void processor_uses_updated_snapshot_without_reconstruct() {
         // given
-        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING);
+        TracingSettingsSource access = boundDefaults(AgentInstanceId.random());
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access);
         // when
         long initialSequence = processor.getPolicyVersion();
@@ -90,7 +93,7 @@ class ValidationRuntimeFoundationTest {
     @Test
     void concurrent_updateValidation_and_onEnding_never_throws() throws Exception {
         // given
-        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING);
+        TracingSettingsSource access = boundDefaults(AgentInstanceId.random());
         int threads = 6;
         CountDownLatch start = new CountDownLatch(1);
         CountDownLatch writersDone = new CountDownLatch(2);

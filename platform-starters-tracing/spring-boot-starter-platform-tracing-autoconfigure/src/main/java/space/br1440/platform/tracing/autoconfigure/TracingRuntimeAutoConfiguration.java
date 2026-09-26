@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Lazy;
 
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
@@ -80,6 +81,7 @@ public class TracingRuntimeAutoConfiguration {
     }
 
     @Bean
+    @Lazy(false)
     public TracingDeploymentDiagnostics platformTracingDeploymentDiagnostics(ConfigurableListableBeanFactory beanFactory,
                                                                              TracingBootstrapSettings bootstrapSettings,
                                                                              AgentStartupVerifier agentStartupVerifier) {

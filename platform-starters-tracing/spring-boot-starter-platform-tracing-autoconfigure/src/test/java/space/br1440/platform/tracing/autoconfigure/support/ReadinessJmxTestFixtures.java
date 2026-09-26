@@ -26,7 +26,7 @@ import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWir
 
 public final class ReadinessJmxTestFixtures {
 
-    public static final String RUNTIME_EPOCH = "test-runtime-epoch";
+    public static final String AGENT_INSTANCE_ID = "fe2c56ee-8f3d-4f43-b640-4bfc973d788c";
     public static final long EVIDENCE_GENERATION = 1L;
     public static final String BATCH_ID = "test-batch";
 
@@ -36,16 +36,16 @@ public final class ReadinessJmxTestFixtures {
     }
 
     public static CompositeData readySnapshot() {
-        return readySnapshot(RUNTIME_EPOCH, EVIDENCE_GENERATION, BATCH_ID);
+        return readySnapshot(AGENT_INSTANCE_ID, EVIDENCE_GENERATION, BATCH_ID);
     }
 
-    public static CompositeData readySnapshot(String runtimeEpoch,
+    public static CompositeData readySnapshot(String agentInstanceId,
                                               long evidenceGeneration,
                                               String batchId) {
         return composite(
                 JmxWireContract.SCHEMA_ID,
                 JmxWireContract.SCHEMA_DIGEST_SHA256,
-                runtimeEpoch,
+                agentInstanceId,
                 evidenceGeneration,
                 batchId,
                 "READY",
@@ -61,7 +61,7 @@ public final class ReadinessJmxTestFixtures {
 
     public static CompositeData composite(String contractId,
                                           String schemaDigest,
-                                          String runtimeEpoch,
+                                          String agentInstanceId,
                                           long evidenceGeneration,
                                           String batchId,
                                           String lifecycle,
@@ -77,7 +77,7 @@ public final class ReadinessJmxTestFixtures {
             Map<String, Object> fields = new LinkedHashMap<>();
             fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_CONTRACT_ID, contractId);
             fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_DIGEST, schemaDigest);
-            fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_RUNTIME_EPOCH, runtimeEpoch);
+            fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_INSTANCE_ID, agentInstanceId);
             fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION, evidenceGeneration);
             fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID, batchId);
             fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE, lifecycle);

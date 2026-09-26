@@ -4,17 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 
 class ValidationObservationSourceOffsetNanosTest {
@@ -26,7 +26,7 @@ class ValidationObservationSourceOffsetNanosTest {
     @Timeout(value = 5, unit = TimeUnit.SECONDS)
     void offsetNanosReflectsActualCaptureLatency_notTimeBeforeCapture() {
         // given
-        UUID agentInstanceId = UUID.randomUUID();
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
 
         ValidatingSpanProcessor validating = mock(ValidatingSpanProcessor.class);
         when(validating.validationLevel()).thenReturn(SpanAttributeValidationLevel.WARNING);
@@ -64,7 +64,7 @@ class ValidationObservationSourceOffsetNanosTest {
     @Timeout(value = 5, unit = TimeUnit.SECONDS)
     void offsetNanosStaysNearZero_whenCaptureIsInstantaneous() {
         // given
-        UUID agentInstanceId = UUID.randomUUID();
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
 
         OwnerRegistrationState.Absent<ValidatingSpanProcessor> absentState =
                 new OwnerRegistrationState.Absent<>(0L);
@@ -89,7 +89,7 @@ class ValidationObservationSourceOffsetNanosTest {
     @Test
     void ownerPresentFlagAndPayloadFields_reflectCapturedState() {
         // given
-        UUID agentInstanceId = UUID.randomUUID();
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
 
         ValidatingSpanProcessor validating = mock(ValidatingSpanProcessor.class);
         when(validating.validationLevel()).thenReturn(SpanAttributeValidationLevel.ERROR);
@@ -128,7 +128,7 @@ class ValidationObservationSourceOffsetNanosTest {
     @Test
     void absentOwner_yieldsDefaultSnapshot_notStalePreviousValues() {
         // given
-        UUID agentInstanceId = UUID.randomUUID();
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
 
         OwnerRegistrationState.Absent<ValidatingSpanProcessor> absentState = new OwnerRegistrationState.Absent<>(0L);
 

@@ -1,8 +1,6 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
-import org.junit.jupiter.api.Test;
-
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.DiagnosticsObservation;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Map;
@@ -10,12 +8,15 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.DiagnosticsObservation;
+
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 class PlatformTracingSafeWrapperMetricsBinderTest {
 
+    private static final String AGENT_INSTANCE_ID = "123e4567-e89b-12d3-a456-426614174000";
     private static final String FAILURES_METRIC = "platform.tracing.safe_wrapper.failures";
     private static final String SUPPRESSED_METRIC = "platform.tracing.safe_wrapper.suppressed_errors";
     private static final String DEGRADED_MODE_METRIC = "platform.tracing.safe_wrapper.degraded_mode";
@@ -80,7 +81,7 @@ class PlatformTracingSafeWrapperMetricsBinderTest {
     }
 
     private static DiagnosticsObservation observationWithSafeWrapperMetrics(Map<String, Long> safeWrapperMetrics) {
-        return new DiagnosticsObservation("agent-1", 0L, safeWrapperMetrics, "INFO", true);
+        return new DiagnosticsObservation(AGENT_INSTANCE_ID, 0L, safeWrapperMetrics, "INFO", true);
     }
 
     private SimpleMeterRegistry bindWith(Supplier<Optional<DiagnosticsObservation>> supplier) {

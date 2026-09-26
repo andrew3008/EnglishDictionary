@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -10,10 +11,12 @@ import javax.management.AttributeList;
 import javax.management.MBeanInfo;
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
+import javax.management.RuntimeMBeanException;
 import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
@@ -23,6 +26,10 @@ import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionR
 
 class PlatformExtensionReadinessJmxTest {
 
+    private static final AgentInstanceId AGENT_INSTANCE_ID =
+            AgentInstanceId.parse("00000000-0000-0000-0000-000000000001");
+    private static final AgentInstanceId ANOTHER_AGENT_INSTANCE_ID =
+            AgentInstanceId.parse("00000000-0000-0000-0000-000000000002");
     private static final String READINESS_ATTRIBUTE =
             JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT;
 
@@ -32,9 +39,13 @@ class PlatformExtensionReadinessJmxTest {
         MBeanServer server = MBeanServerFactory.createMBeanServer();
         try {
             PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
-            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(server, readiness);
+            PlatformTracingMBeanRegistrar registrar =
+                    new PlatformTracingMBeanRegistrar(server, readiness, AGENT_INSTANCE_ID);
             ExtensionReadinessWireSnapshot projection =
-                    ExtensionReadinessWireSnapshot.initializing(readiness.snapshot(), "");
+                    ExtensionReadinessWireSnapshot.initializing(
+                            readiness.snapshot(),
+                            AGENT_INSTANCE_ID.toString()
+                    );
 
             // when
             try (AutoCloseable ignored = registrar.registerDiagnosticReadiness(() -> projection)) {
@@ -62,9 +73,10 @@ class PlatformExtensionReadinessJmxTest {
             AtomicReference<ExtensionReadinessWireSnapshot> projection =
                     new AtomicReference<>(ExtensionReadinessWireSnapshot.initializing(
                             readiness.snapshot(),
-                            "epoch-1"
+                            AGENT_INSTANCE_ID.toString()
                     ));
-            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(server, readiness);
+            PlatformTracingMBeanRegistrar registrar =
+                    new PlatformTracingMBeanRegistrar(server, readiness, AGENT_INSTANCE_ID);
             try (AutoCloseable ignored = registrar.registerDiagnosticReadiness(projection::get)) {
                 // when
                 readiness.markInstalled(PlatformExtensionCapability.PLATFORM_SAMPLER_INSTALLED);
@@ -78,7 +90,7 @@ class PlatformExtensionReadinessJmxTest {
                 // when
                 projection.set(ExtensionReadinessWireSnapshot.initializing(
                         readiness.snapshot(),
-                        "epoch-1"
+                        AGENT_INSTANCE_ID.toString()
                 ));
 
                 // then
@@ -94,14 +106,56 @@ class PlatformExtensionReadinessJmxTest {
     }
 
     @Test
+    void mbeanRejectsSnapshotFromAnotherAgentInstanceAfterRegistration() throws Exception {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        try {
+            PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
+            AtomicReference<ExtensionReadinessWireSnapshot> projection =
+                    new AtomicReference<>(ExtensionReadinessWireSnapshot.initializing(
+                            readiness.snapshot(),
+                            AGENT_INSTANCE_ID.toString()
+                    ));
+            PlatformTracingMBeanRegistrar registrar =
+                    new PlatformTracingMBeanRegistrar(server, readiness, AGENT_INSTANCE_ID);
+            try (AutoCloseable ignored = registrar.registerDiagnosticReadiness(projection::get)) {
+                server.getAttribute(DomainObjectNames.EXTENSION_READINESS, READINESS_ATTRIBUTE);
+
+                // when
+                projection.set(ExtensionReadinessWireSnapshot.initializing(
+                        readiness.snapshot(),
+                        ANOTHER_AGENT_INSTANCE_ID.toString()
+                ));
+
+                // then
+                assertThatThrownBy(() -> server.getAttribute(
+                        DomainObjectNames.EXTENSION_READINESS,
+                        READINESS_ATTRIBUTE
+                ))
+                        .isInstanceOf(RuntimeMBeanException.class)
+                        .hasRootCauseInstanceOf(IllegalStateException.class)
+                        .hasRootCauseMessage(
+                                "JMX registrar and readiness snapshot agentInstanceId values must match"
+                        );
+            }
+        } finally {
+            MBeanServerFactory.releaseMBeanServer(server);
+        }
+    }
+
+    @Test
     void mbeanInfoExposesExactlyOneReadOnlyGeneratedCompositeAttributeAndNoOperations() throws Exception {
         // given
         MBeanServer server = MBeanServerFactory.createMBeanServer();
         try {
             PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
             ExtensionReadinessWireSnapshot projection =
-                    ExtensionReadinessWireSnapshot.initializing(readiness.snapshot(), "");
-            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(server, readiness);
+                    ExtensionReadinessWireSnapshot.initializing(
+                            readiness.snapshot(),
+                            AGENT_INSTANCE_ID.toString()
+                    );
+            PlatformTracingMBeanRegistrar registrar =
+                    new PlatformTracingMBeanRegistrar(server, readiness, AGENT_INSTANCE_ID);
             try (AutoCloseable ignored = registrar.registerDiagnosticReadiness(() -> projection)) {
                 // when
                 MBeanInfo info = server.getMBeanInfo(DomainObjectNames.EXTENSION_READINESS);
@@ -130,8 +184,11 @@ class PlatformExtensionReadinessJmxTest {
             PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
             AtomicInteger gets = new AtomicInteger();
             ExtensionReadinessWireSnapshot frozen =
-                    ExtensionReadinessWireSnapshot.initializing(readiness.snapshot(), "epoch-1");
-            try (AutoCloseable ignored = new PlatformTracingMBeanRegistrar(server, readiness)
+                    ExtensionReadinessWireSnapshot.initializing(
+                            readiness.snapshot(),
+                            AGENT_INSTANCE_ID.toString()
+                    );
+            try (AutoCloseable ignored = new PlatformTracingMBeanRegistrar(server, readiness, AGENT_INSTANCE_ID)
                     .registerDiagnosticReadiness(() -> {
                         gets.incrementAndGet();
                         return frozen;

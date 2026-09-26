@@ -34,6 +34,7 @@ class MalformedResponseAndManifestPayloadTest {
     private static final int MAX_ROUTE_ENTRIES = JmxWireContract.MAX_ROUTE_ENTRIES;
     private static final int MAX_ROUTE_PREFIX_LEN = JmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES;
     private static final int MAX_PAYLOAD_BYTES = JmxWireContract.MAX_LOGICAL_BYTES;
+    private static final String AGENT_INSTANCE_ID = "310ad563-bbe5-49cb-a72e-f3bb82bc32f2";
 
     // Подтипы коэффициентов маршрутов, повторяющие статическое состояние кодека
     private static final CompositeType ROUTE_ROW = routeRowType();
@@ -48,7 +49,7 @@ class MalformedResponseAndManifestPayloadTest {
     // Канонический CompositeType ответа applySnapshot
     private static final String[] RESPONSE_KEYS = {
             "acceptedSequence", "attemptId", "messageCode", "outcome", "payloadDigest",
-            "runtimeInstanceId", "violationCodes"
+            "agentInstanceId", "violationCodes"
     };
     private static final CompositeType RESPONSE_TYPE = responseType();
 
@@ -98,7 +99,7 @@ class MalformedResponseAndManifestPayloadTest {
     @Test
     void decode_complete_null_accepted_sequence_throws() throws OpenDataException {
         CompositeData cd = buildCompleteWith(Map.of(
-                "runtimeInstanceId", "inst-1",
+                "agentInstanceId", "310ad563-bbe5-49cb-a72e-f3bb82bc32f2",
                 "samplingEnabled", true,
                 "samplingRatio", 1.0,
                 "samplingRouteRatios", emptyRoutes(),
@@ -115,7 +116,7 @@ class MalformedResponseAndManifestPayloadTest {
     }
 
     @Test
-    void decode_complete_null_runtime_instance_id_throws() throws OpenDataException {
+    void decode_complete_null_agent_instance_id_throws() throws OpenDataException {
         CompositeData cd = buildCompleteWith(Map.of(
                 "acceptedSequence", 1L,
                 "samplingEnabled", true,
@@ -125,19 +126,19 @@ class MalformedResponseAndManifestPayloadTest {
                 "exporterEnabled", true,
                 "traceControlHeadersEnabled", true,
                 "diagnosticsLogLevel", "INFO"
-        ), /* nullFields= */ new String[]{"runtimeInstanceId"});
+        ), /* nullFields= */ new String[]{"agentInstanceId"});
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
-                .as("null runtimeInstanceId field MUST throw")
+                .as("null agentInstanceId field MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("runtimeInstanceId");
+                .hasMessageContaining("agentInstanceId");
     }
 
     @Test
     void decode_complete_null_diagnostics_log_level_throws() throws OpenDataException {
         CompositeData cd = buildCompleteWith(Map.of(
                 "acceptedSequence", 1L,
-                "runtimeInstanceId", "inst-1",
+                "agentInstanceId", "310ad563-bbe5-49cb-a72e-f3bb82bc32f2",
                 "samplingEnabled", true,
                 "samplingRatio", 1.0,
                 "samplingRouteRatios", emptyRoutes(),
@@ -156,7 +157,7 @@ class MalformedResponseAndManifestPayloadTest {
     void decode_complete_null_sampling_enabled_throws() throws OpenDataException {
         CompositeData cd = buildCompleteWith(Map.of(
                 "acceptedSequence", 1L,
-                "runtimeInstanceId", "inst-1",
+                "agentInstanceId", "310ad563-bbe5-49cb-a72e-f3bb82bc32f2",
                 "samplingRatio", 1.0,
                 "samplingRouteRatios", emptyRoutes(),
                 "validationLevel", "WARNING",
@@ -178,35 +179,35 @@ class MalformedResponseAndManifestPayloadTest {
     @Test
     void decode_complete_negative_sequence_throws() {
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
-                validCompleteCd(-1L, "inst", 1.0, emptyRoutes(), "INFO")))
+                validCompleteCd(-1L, AGENT_INSTANCE_ID, 1.0, emptyRoutes(), "INFO")))
                 .as("negative acceptedSequence MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("acceptedSequence");
     }
 
     @Test
-    void decode_complete_blank_runtime_instance_id_empty_throws() {
+    void decode_complete_blank_agent_instance_id_empty_throws() {
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
                 validCompleteCd(1L, "", 1.0, emptyRoutes(), "INFO")))
-                .as("blank (empty) runtimeInstanceId MUST throw")
+                .as("blank (empty) agentInstanceId MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("runtimeInstanceId");
+                .hasMessageContaining("agentInstanceId");
     }
 
     @Test
-    void decode_complete_blank_runtime_instance_id_whitespace_throws() {
+    void decode_complete_blank_agent_instance_id_whitespace_throws() {
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
                 validCompleteCd(1L, "   ", 1.0, emptyRoutes(), "INFO")))
-                .as("whitespace-only runtimeInstanceId MUST throw")
+                .as("whitespace-only agentInstanceId MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("runtimeInstanceId");
+                .hasMessageContaining("agentInstanceId");
     }
 
     @ParameterizedTest
     @ValueSource(doubles = {-0.001, 1.001, -1.0, 2.0, -100.0, 100.0})
     void decode_complete_out_of_range_sampling_ratio_throws(double ratio) {
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
-                validCompleteCd(1L, "inst", ratio, emptyRoutes(), "INFO")))
+                validCompleteCd(1L, AGENT_INSTANCE_ID, ratio, emptyRoutes(), "INFO")))
                 .as("out-of-range samplingRatio " + ratio + " MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("samplingRatio");
@@ -215,7 +216,7 @@ class MalformedResponseAndManifestPayloadTest {
     @Test
     void decode_complete_nan_sampling_ratio_throws() {
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
-                validCompleteCd(1L, "inst", Double.NaN, emptyRoutes(), "INFO")))
+                validCompleteCd(1L, AGENT_INSTANCE_ID, Double.NaN, emptyRoutes(), "INFO")))
                 .as("NaN samplingRatio MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("samplingRatio");
@@ -224,7 +225,7 @@ class MalformedResponseAndManifestPayloadTest {
     @Test
     void decode_complete_infinite_sampling_ratio_throws() {
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
-                validCompleteCd(1L, "inst", Double.POSITIVE_INFINITY, emptyRoutes(), "INFO")))
+                validCompleteCd(1L, AGENT_INSTANCE_ID, Double.POSITIVE_INFINITY, emptyRoutes(), "INFO")))
                 .as("+Infinity samplingRatio MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("samplingRatio");
@@ -234,7 +235,7 @@ class MalformedResponseAndManifestPayloadTest {
     @ValueSource(strings = {"VERBOSE", "ALL", "FATAL", "FINEST", "verbose", "info", "debug", "1", "null"})
     void decode_complete_unknown_log_level_throws(String level) {
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
-                validCompleteCd(1L, "inst", 1.0, emptyRoutes(), level)))
+                validCompleteCd(1L, AGENT_INSTANCE_ID, 1.0, emptyRoutes(), level)))
                 .as("unknown log level '" + level + "' MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("diagnosticsLogLevel");
@@ -243,7 +244,7 @@ class MalformedResponseAndManifestPayloadTest {
     @Test
     void decode_complete_empty_log_level_throws() {
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
-                validCompleteCd(1L, "inst", 1.0, emptyRoutes(), "")))
+                validCompleteCd(1L, AGENT_INSTANCE_ID, 1.0, emptyRoutes(), "")))
                 .as("empty diagnosticsLogLevel MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("diagnosticsLogLevel");
@@ -257,7 +258,7 @@ class MalformedResponseAndManifestPayloadTest {
     void decode_complete_empty_route_prefix_throws() throws OpenDataException {
         TabularData routes = routesWith("", 0.5);
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
-                validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
+                validCompleteCd(1L, AGENT_INSTANCE_ID, 1.0, routes, "INFO")))
                 .as("empty route prefix MUST throw")
                 .isInstanceOf(IllegalArgumentException.class);
     }
@@ -266,7 +267,7 @@ class MalformedResponseAndManifestPayloadTest {
     void decode_complete_blank_route_prefix_throws() throws OpenDataException {
         TabularData routes = routesWith("   ", 0.5);
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
-                validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
+                validCompleteCd(1L, AGENT_INSTANCE_ID, 1.0, routes, "INFO")))
                 .as("blank route prefix MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("must not be blank");
@@ -276,7 +277,7 @@ class MalformedResponseAndManifestPayloadTest {
     void decode_complete_iso_control_route_prefix_throws() throws OpenDataException {
         TabularData routes = routesWith("/api\u0001", 0.5);
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
-                validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
+                validCompleteCd(1L, AGENT_INSTANCE_ID, 1.0, routes, "INFO")))
                 .as("ISO-control route prefix MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("ISO control")
@@ -288,7 +289,7 @@ class MalformedResponseAndManifestPayloadTest {
         String longPrefix = "x".repeat(MAX_ROUTE_PREFIX_LEN + 1);
         TabularData routes = routesWith(longPrefix, 0.5);
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
-                validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
+                validCompleteCd(1L, AGENT_INSTANCE_ID, 1.0, routes, "INFO")))
                 .as("prefix length > 255 MUST throw")
                 .isInstanceOf(IllegalArgumentException.class);
     }
@@ -297,7 +298,7 @@ class MalformedResponseAndManifestPayloadTest {
     void decode_complete_route_ratio_below_zero_throws() throws OpenDataException {
         TabularData routes = routesWith("/api", -0.1);
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
-                validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
+                validCompleteCd(1L, AGENT_INSTANCE_ID, 1.0, routes, "INFO")))
                 .as("route ratio < 0.0 MUST throw")
                 .isInstanceOf(IllegalArgumentException.class);
     }
@@ -306,7 +307,7 @@ class MalformedResponseAndManifestPayloadTest {
     void decode_complete_route_ratio_above_one_throws() throws OpenDataException {
         TabularData routes = routesWith("/api", 1.1);
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
-                validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
+                validCompleteCd(1L, AGENT_INSTANCE_ID, 1.0, routes, "INFO")))
                 .as("route ratio > 1.0 MUST throw")
                 .isInstanceOf(IllegalArgumentException.class);
     }
@@ -315,7 +316,7 @@ class MalformedResponseAndManifestPayloadTest {
     void decode_complete_route_ratio_nan_throws() throws OpenDataException {
         TabularData routes = routesWith("/api", Double.NaN);
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
-                validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
+                validCompleteCd(1L, AGENT_INSTANCE_ID, 1.0, routes, "INFO")))
                 .as("NaN route ratio MUST throw")
                 .isInstanceOf(IllegalArgumentException.class);
     }
@@ -331,7 +332,7 @@ class MalformedResponseAndManifestPayloadTest {
         }
 
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
-                validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
+                validCompleteCd(1L, AGENT_INSTANCE_ID, 1.0, routes, "INFO")))
                 .as("more than " + MAX_ROUTE_ENTRIES + " route entries MUST throw")
                 .isInstanceOf(IllegalArgumentException.class);
     }
@@ -341,11 +342,11 @@ class MalformedResponseAndManifestPayloadTest {
     // =========================================================================
 
     @Test
-    void decode_complete_oversized_runtime_instance_id_throws() {
+    void decode_complete_oversized_agent_instance_id_throws() {
         String oversizedId = "x".repeat(MAX_PAYLOAD_BYTES + 1000);
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
                 validCompleteCd(1L, oversizedId, 1.0, emptyRoutes(), "INFO")))
-                .as("runtimeInstanceId exceeding payload bound MUST throw")
+                .as("agentInstanceId exceeding payload bound MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("logical payload");
     }
@@ -364,7 +365,7 @@ class MalformedResponseAndManifestPayloadTest {
         String bigId = "r".repeat(16_000);
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(
                 validCompleteCd(1L, bigId, 1.0, routes, "INFO")))
-                .as("routes + runtimeInstanceId exceeding payload bound MUST throw")
+                .as("routes + agentInstanceId exceeding payload bound MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("logical payload");
     }
@@ -468,7 +469,7 @@ class MalformedResponseAndManifestPayloadTest {
             return new CompositeDataSupport(
                     ACCEPTED_COMPLETE,
                     new String[]{
-                            "acceptedSequence", "runtimeInstanceId",
+                            "acceptedSequence", "agentInstanceId",
                             "acceptedPolicyDigest", "lastApplyOutcome", "lastAttemptId", "failureCode",
                             "samplingEnabled", "samplingRatio", "samplingRouteRatios",
                             "validationLevel", "exporterEnabled",
@@ -489,7 +490,7 @@ class MalformedResponseAndManifestPayloadTest {
     private CompositeData buildCompleteWith(Map<String, Object> nonNullValues,
                                             String[] nullFields) throws OpenDataException {
         String[] keys = {
-                "acceptedSequence", "runtimeInstanceId",
+                "acceptedSequence", "agentInstanceId",
                 "acceptedPolicyDigest", "lastApplyOutcome", "lastAttemptId", "failureCode",
                 "samplingEnabled", "samplingRatio", "samplingRouteRatios",
                 "validationLevel", "exporterEnabled",
@@ -511,7 +512,7 @@ class MalformedResponseAndManifestPayloadTest {
     private static Object defaultFor(String key) {
         return switch (key) {
             case "acceptedSequence" -> 1L;
-            case "runtimeInstanceId" -> "default-inst";
+            case "agentInstanceId" -> "310ad563-bbe5-49cb-a72e-f3bb82bc32f2";
             case "acceptedPolicyDigest" -> "accepted-policy-digest";
             case "lastApplyOutcome" -> "APPLIED";
             case "lastAttemptId" -> "attempt-id";
@@ -579,14 +580,14 @@ class MalformedResponseAndManifestPayloadTest {
                     "AcceptedCompleteSnapshot/v1",
                     "AcceptedCompleteSnapshot/v1",
                     new String[]{
-                            "acceptedSequence", "runtimeInstanceId",
+                            "acceptedSequence", "agentInstanceId",
                             "acceptedPolicyDigest", "lastApplyOutcome", "lastAttemptId", "failureCode",
                             "samplingEnabled", "samplingRatio", "samplingRouteRatios",
                             "validationLevel", "exporterEnabled",
                             "traceControlHeadersEnabled", "diagnosticsLogLevel"
                     },
                     new String[]{
-                            "acceptedSequence", "runtimeInstanceId",
+                            "acceptedSequence", "agentInstanceId",
                             "acceptedPolicyDigest", "lastApplyOutcome", "lastAttemptId", "failureCode",
                             "samplingEnabled", "samplingRatio", "samplingRouteRatios",
                             "validationLevel", "exporterEnabled",
@@ -665,7 +666,7 @@ class MalformedResponseAndManifestPayloadTest {
             case "messageCode" -> "NONE";
             case "outcome" -> "APPLIED";
             case "payloadDigest" -> "a".repeat(64);
-            case "runtimeInstanceId" -> "runtime-1";
+            case "agentInstanceId" -> "310ad563-bbe5-49cb-a72e-f3bb82bc32f2";
             case "violationCodes" -> new String[0];
             default -> throw new IllegalArgumentException("Unknown key: " + key);
         };

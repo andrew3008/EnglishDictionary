@@ -22,7 +22,6 @@ import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.SpanTi
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
-import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 
@@ -40,11 +39,9 @@ public final class PlatformSpanProcessorFactory {
 
     public SdkTracerProviderBuilder registerSpanProcessors(SdkTracerProviderBuilder tpBuilder,
                                                            ExtensionConfig extConfig,
-                                                           ConfigProperties config,
                                                            TracingSettingsSource acceptedPolicy) {
         Objects.requireNonNull(tpBuilder, "tpBuilder must not be null");
         Objects.requireNonNull(extConfig, "extConfig must not be null");
-        Objects.requireNonNull(config, "config must not be null");
         Objects.requireNonNull(acceptedPolicy, "acceptedPolicy must not be null");
 
         try {

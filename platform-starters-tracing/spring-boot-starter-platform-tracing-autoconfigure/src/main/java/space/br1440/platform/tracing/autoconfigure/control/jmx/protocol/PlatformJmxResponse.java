@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import javax.management.openmbean.CompositeData;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentInstanceIdValidator;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
@@ -14,7 +15,7 @@ public record PlatformJmxResponse(long acceptedSequence,
                                   MessageCode messageCode,
                                   Outcome outcome,
                                   String payloadDigest,
-                                  String runtimeInstanceId,
+                                  String agentInstanceId,
                                   List<MessageCode> violationCodes) {
 
     private static final String OPERATION = JmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT;
@@ -25,7 +26,7 @@ public record PlatformJmxResponse(long acceptedSequence,
     private static final String FIELD_MESSAGE_CODE = JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_MESSAGE_CODE;
     private static final String FIELD_OUTCOME = JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_OUTCOME;
     private static final String FIELD_PAYLOAD_DIGEST = JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_PAYLOAD_DIGEST;
-    private static final String FIELD_RUNTIME_INSTANCE_ID = JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_RUNTIME_INSTANCE_ID;
+    private static final String FIELD_AGENT_INSTANCE_ID = JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_AGENT_INSTANCE_ID;
     private static final String FIELD_VIOLATION_CODES = JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_VIOLATION_CODES;
 
     public enum Outcome {
@@ -47,13 +48,14 @@ public record PlatformJmxResponse(long acceptedSequence,
         TYPE_MISMATCH,
         INVALID_VALUE,
         LIMIT_EXCEEDED,
-        RUNTIME_INSTANCE_MISMATCH,
+        AGENT_INSTANCE_MISMATCH,
         ACCEPTED_SEQUENCE_MISMATCH,
         INTERNAL_FAILURE
     }
 
     public PlatformJmxResponse {
         violationCodes = List.copyOf(violationCodes);
+        agentInstanceId = AgentInstanceIdValidator.requireCanonical(agentInstanceId, FIELD_AGENT_INSTANCE_ID);
 
         requireNonNegative(acceptedSequence);
         requireValidDigest(payloadDigest);
@@ -70,19 +72,19 @@ public record PlatformJmxResponse(long acceptedSequence,
                 parseEnum(MessageCode.class, FIELD_MESSAGE_CODE, token(response, FIELD_MESSAGE_CODE)),
                 parseEnum(Outcome.class, FIELD_OUTCOME, token(response, FIELD_OUTCOME)),
                 token(response, FIELD_PAYLOAD_DIGEST),
-                token(response, FIELD_RUNTIME_INSTANCE_ID),
+                token(response, FIELD_AGENT_INSTANCE_ID),
                 parseViolationCodes(value(response, FIELD_VIOLATION_CODES, String[].class))
         );
     }
 
-    public void validateCorrelation(String expectedRuntimeInstanceId,
+    public void validateCorrelation(String expectedAgentInstanceId,
                                     long expectedAcceptedSequence,
                                     String expectedAttemptId,
                                     String candidateDigest) {
         requireMatchingAttempt(expectedAttemptId);
 
         if (outcome.isSuccessful()) {
-            requireMatchingRuntimeInstance(expectedRuntimeInstanceId);
+            requireMatchingAgentInstance(expectedAgentInstanceId);
             requireMatchingDigest(candidateDigest);
             requireExpectedSequenceProgression(expectedAcceptedSequence);
         }
@@ -177,9 +179,9 @@ public record PlatformJmxResponse(long acceptedSequence,
         }
     }
 
-    private void requireMatchingRuntimeInstance(String expectedRuntimeInstanceId) {
-        if (!runtimeInstanceId.equals(expectedRuntimeInstanceId)) {
-            throw invalid("successful response runtimeInstanceId does not match the request");
+    private void requireMatchingAgentInstance(String expectedAgentInstanceId) {
+        if (!agentInstanceId.equals(expectedAgentInstanceId)) {
+            throw invalid("successful response agentInstanceId does not match the request");
         }
     }
 

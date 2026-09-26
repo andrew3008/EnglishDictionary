@@ -24,9 +24,9 @@ record AgentReadinessSnapshot(ContractIdentity contractIdentity,
         }
     }
 
-    record AnchorIdentity(String runtimeEpoch, long evidenceGeneration, String batchId) {
+    record AnchorIdentity(String agentInstanceId, long evidenceGeneration, String batchId) {
         AnchorIdentity {
-            Objects.requireNonNull(runtimeEpoch, "runtimeEpoch");
+            agentInstanceId = AgentInstanceIdValidator.requireCanonical(agentInstanceId, "agentInstanceId");
             Objects.requireNonNull(batchId, "batchId");
         }
     }

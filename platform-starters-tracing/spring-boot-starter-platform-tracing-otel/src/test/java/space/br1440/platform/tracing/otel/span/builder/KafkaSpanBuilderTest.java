@@ -52,12 +52,15 @@ class KafkaSpanBuilderTest {
     @Test
     void kafkaBuilders_haveExpectedSemconvVersionMarker() {
         final String expected = "1.28.0";
+
         assertThat(KafkaProducerSpanBuilder.class.getAnnotation(KafkaSemconvVersion.class))
                 .isNotNull()
                 .extracting(KafkaSemconvVersion::value).isEqualTo(expected);
+
         assertThat(KafkaConsumerSpanBuilder.class.getAnnotation(KafkaSemconvVersion.class))
                 .isNotNull()
                 .extracting(KafkaSemconvVersion::value).isEqualTo(expected);
+
         assertThat(KafkaBatchSpanBuilder.class.getAnnotation(KafkaSemconvVersion.class))
                 .isNotNull()
                 .extracting(KafkaSemconvVersion::value).isEqualTo(expected);
@@ -115,7 +118,9 @@ class KafkaSpanBuilderTest {
     void kafkaBatchRootWithLinks_preservesRootAndLinks() {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10",
-                "0102030405060708");
+                "0102030405060708"
+        );
+
         manual.transport().kafka().consumer()
                 .batch("orders")
                 .root()

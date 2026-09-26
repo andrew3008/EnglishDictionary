@@ -40,6 +40,8 @@ import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWir
 
 class JmxViewTypeNameMismatchWiringTest {
 
+    private static final String AGENT_INSTANCE_ID = "123e4567-e89b-12d3-a456-426614174000";
+
     private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
     private ObjectName registeredName;
 
@@ -232,7 +234,7 @@ class JmxViewTypeNameMismatchWiringTest {
             );
 
             Map<String, Object> values = new LinkedHashMap<>();
-            values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID, "agent-wiring-test");
+            values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID, AGENT_INSTANCE_ID);
             values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE, 1L);
             values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_STARTED_AT, 1_700_000_000_000L);
             values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_COMPLETED_AT, 1_700_000_000_001L);

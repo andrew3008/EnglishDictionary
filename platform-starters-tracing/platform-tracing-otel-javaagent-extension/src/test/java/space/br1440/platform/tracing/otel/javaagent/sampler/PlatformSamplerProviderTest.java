@@ -12,6 +12,7 @@ import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.factory.PlatformSamplerFactory;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.runtime.propagation.control.DefaultInboundTraceControlExtractor;
 import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
@@ -64,12 +65,12 @@ class PlatformSamplerProviderTest {
     @DisplayName("inline-customizer идемпотентен: existing уже платформенный → нет повторной обёртки")
     void inline_customizer_idempotent_when_existing_is_platform() {
         // given
-        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
         PlatformSamplerFactory factory = new PlatformSamplerFactory(registrar);
 
         Sampler platform = new PlatformSamplerProvider().createSampler(config(Map.of()));
         SamplingExtensionConfig sampling = sampling(Map.of());
-        TracingSettingsSource compositionPolicy = TracingSettingsSource.fromSampling(sampling);
+        TracingSettingsSource compositionPolicy = TracingSettingsSource.isolatedSampling(sampling);
         // when
         Sampler result = factory.buildSampler(
                 platform,
@@ -107,7 +108,7 @@ class PlatformSamplerProviderTest {
     @DisplayName("регресс: повторная autoconfigure-сборка в одном JVM снова поднимает платформенный sampler")
     void idempotent_double_build_does_not_skip() {
         // given
-        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
         PlatformSamplerFactory factory = new PlatformSamplerFactory(registrar);
 
         // Дважды строим поверх не-платформенного existing — защита против статического флага «уже применён».
@@ -116,11 +117,11 @@ class PlatformSamplerProviderTest {
         Sampler first = factory.buildSampler(
                 Sampler.alwaysOn(),
                 sampling,
-                TracingSettingsSource.fromSampling(sampling));
+                TracingSettingsSource.isolatedSampling(sampling));
         Sampler second = factory.buildSampler(
                 Sampler.alwaysOn(),
                 sampling,
-                TracingSettingsSource.fromSampling(sampling));
+                TracingSettingsSource.isolatedSampling(sampling));
 
         // then
         assertThat(first).isInstanceOf(SafeSampler.class);

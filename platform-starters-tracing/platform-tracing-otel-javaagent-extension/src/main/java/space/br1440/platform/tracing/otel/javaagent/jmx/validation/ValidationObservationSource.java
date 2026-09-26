@@ -3,9 +3,9 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.validation;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import javax.management.openmbean.CompositeData;
 
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationCaptureEnvelope;
@@ -22,7 +22,7 @@ public final class ValidationObservationSource {
     private final ObservationSnapshotStore snapshotStore = new ObservationSnapshotStore(JmxOpenTypes.VALIDATION_OBSERVATION);
 
     public ValidationObservationSource(OwnerRegistrationSlot<ValidatingSpanProcessor> validatingSlot,
-                                       UUID agentInstanceId) {
+                                       AgentInstanceId agentInstanceId) {
         this.validatingSlot = Objects.requireNonNull(validatingSlot, "validatingSlot");
         this.envelope = new ObservationCaptureEnvelope(agentInstanceId);
         publishObservationSnapshot();

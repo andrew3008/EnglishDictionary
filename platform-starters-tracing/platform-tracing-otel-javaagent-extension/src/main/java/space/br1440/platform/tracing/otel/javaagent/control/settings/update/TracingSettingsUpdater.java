@@ -3,15 +3,15 @@ package space.br1440.platform.tracing.otel.javaagent.control.settings.update;
 import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
-import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitOutcome;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 public final class TracingSettingsUpdater {
 
@@ -33,6 +33,10 @@ public final class TracingSettingsUpdater {
         Objects.requireNonNull(attempt, "attempt");
         Objects.requireNonNull(expectedBase, "expectedBase");
         Objects.requireNonNull(candidate, "candidate");
+
+        if (store.current().agentInstanceId().isUnbound()) {
+            throw new IllegalStateException("Cannot apply tracing settings to an unbound store");
+        }
 
         synchronized (updateMonitor) {
             return applyUnderLock(attempt, expectedBase, candidate);
@@ -168,8 +172,8 @@ public final class TracingSettingsUpdater {
 
     private static SettingsRejectionReason staleCode(TracingSettingsRevision accepted,
                                                      ExpectedSettingsRevision expectedBase) {
-        if (!accepted.runtimeInstanceId().equals(expectedBase.runtimeInstanceId())) {
-            return SettingsRejectionReason.RUNTIME_INSTANCE_MISMATCH;
+        if (!accepted.agentInstanceId().equals(expectedBase.agentInstanceId())) {
+            return SettingsRejectionReason.AGENT_INSTANCE_MISMATCH;
         }
 
         if (accepted.acceptedSequence() != expectedBase.acceptedSequence()) {

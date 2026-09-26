@@ -18,7 +18,7 @@ import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWir
 
 final class PlatformJmxResponseContractTest {
 
-    private static final String RUNTIME_ID = "runtime-7";
+    private static final String AGENT_INSTANCE_ID = "d2bc38ab-602d-4af1-925b-7a786f6e7e4c";
     private static final String ATTEMPT_ID = "attempt-7";
     private static final String CANDIDATE_DIGEST = "a".repeat(64);
 
@@ -36,10 +36,10 @@ final class PlatformJmxResponseContractTest {
         assertThat(decoded.messageCode()).isEqualTo(PlatformJmxResponse.MessageCode.NONE);
         assertThat(decoded.outcome()).isEqualTo(PlatformJmxResponse.Outcome.APPLIED);
         assertThat(decoded.payloadDigest()).isEqualTo(CANDIDATE_DIGEST);
-        assertThat(decoded.runtimeInstanceId()).isEqualTo(RUNTIME_ID);
+        assertThat(decoded.agentInstanceId()).isEqualTo(AGENT_INSTANCE_ID);
         assertThat(decoded.violationCodes()).isEmpty();
         assertThatCode(() -> decoded.validateCorrelation(
-                RUNTIME_ID,
+                AGENT_INSTANCE_ID,
                 7L,
                 ATTEMPT_ID,
                 CANDIDATE_DIGEST))
@@ -74,14 +74,14 @@ final class PlatformJmxResponseContractTest {
 
         // then
         assertThatCode(() -> decoded.validateCorrelation(
-                RUNTIME_ID,
+                AGENT_INSTANCE_ID,
                 7L,
                 ATTEMPT_ID,
                 CANDIDATE_DIGEST))
                 .doesNotThrowAnyException();
 
         assertThatThrownBy(() -> decoded.validateCorrelation(
-                RUNTIME_ID,
+                AGENT_INSTANCE_ID,
                 6L,
                 ATTEMPT_ID,
                 CANDIDATE_DIGEST))
@@ -149,7 +149,7 @@ final class PlatformJmxResponseContractTest {
         // when
         // then
         assertThatThrownBy(() -> decoded.validateCorrelation(
-                RUNTIME_ID,
+                AGENT_INSTANCE_ID,
                 7L,
                 "different-attempt",
                 CANDIDATE_DIGEST))
@@ -162,10 +162,10 @@ final class PlatformJmxResponseContractTest {
                 ATTEMPT_ID,
                 CANDIDATE_DIGEST))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("runtimeInstanceId");
+                .hasMessageContaining("agentInstanceId");
 
         assertThatThrownBy(() -> decoded.validateCorrelation(
-                RUNTIME_ID,
+                AGENT_INSTANCE_ID,
                 8L,
                 ATTEMPT_ID,
                 CANDIDATE_DIGEST))
@@ -173,7 +173,7 @@ final class PlatformJmxResponseContractTest {
                 .hasMessageContaining("acceptedSequence");
 
         assertThatThrownBy(() -> decoded.validateCorrelation(
-                RUNTIME_ID,
+                AGENT_INSTANCE_ID,
                 7L,
                 ATTEMPT_ID,
                 "b".repeat(64)))
@@ -192,7 +192,7 @@ final class PlatformJmxResponseContractTest {
                 PlatformJmxResponse.MessageCode.NONE,
                 PlatformJmxResponse.Outcome.APPLIED,
                 CANDIDATE_DIGEST,
-                RUNTIME_ID,
+                AGENT_INSTANCE_ID,
                 List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("acceptedSequence must not be negative");
@@ -209,7 +209,7 @@ final class PlatformJmxResponseContractTest {
                 PlatformJmxResponse.MessageCode.NONE,
                 PlatformJmxResponse.Outcome.APPLIED,
                 "not-a-digest",
-                RUNTIME_ID,
+                AGENT_INSTANCE_ID,
                 List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("payloadDigest must be lowercase SHA-256 hexadecimal");
@@ -226,7 +226,7 @@ final class PlatformJmxResponseContractTest {
                 PlatformJmxResponse.MessageCode.INVALID_VALUE,
                 PlatformJmxResponse.Outcome.REJECTED,
                 CANDIDATE_DIGEST,
-                RUNTIME_ID,
+                AGENT_INSTANCE_ID,
                 List.of(PlatformJmxResponse.MessageCode.INVALID_VALUE, PlatformJmxResponse.MessageCode.INVALID_VALUE)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("duplicates");
@@ -243,7 +243,7 @@ final class PlatformJmxResponseContractTest {
                 PlatformJmxResponse.MessageCode.INVALID_VALUE,
                 PlatformJmxResponse.Outcome.APPLIED,
                 CANDIDATE_DIGEST,
-                RUNTIME_ID,
+                AGENT_INSTANCE_ID,
                 List.of(PlatformJmxResponse.MessageCode.INVALID_VALUE)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("successful outcome contains failure evidence");
@@ -256,7 +256,7 @@ final class PlatformJmxResponseContractTest {
         fields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_MESSAGE_CODE, "NONE");
         fields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_OUTCOME, "APPLIED");
         fields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_PAYLOAD_DIGEST, CANDIDATE_DIGEST);
-        fields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_RUNTIME_INSTANCE_ID, RUNTIME_ID);
+        fields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_AGENT_INSTANCE_ID, AGENT_INSTANCE_ID);
         fields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_VIOLATION_CODES,new String[0]);
         fields.putAll(overrides);
 

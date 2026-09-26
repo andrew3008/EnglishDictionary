@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
@@ -39,23 +40,6 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 
 class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
-
-    private static ConfigProperties scrubbingDisabledConfig() {
-        return new ConfigProperties() {
-            @Override public String getString(String name) { return null; }
-            @Override public Boolean getBoolean(String name) {
-                // scrubbing.enabled = false so collectScrubbingRules is never called
-                if ("platform.tracing.javaagent.scrubbing.enabled".equals(name)) return false;
-                return null;
-            }
-            @Override public Integer getInt(String name) { return null; }
-            @Override public Long getLong(String name) { return null; }
-            @Override public Double getDouble(String name) { return null; }
-            @Override public Duration getDuration(String name) { return null; }
-            @Override public List<String> getList(String name) { return null; }
-            @Override public Map<String, String> getMap(String name) { return null; }
-        };
-    }
 
     private static ExtensionConfig configWithAllDisabled() {
         return new ExtensionConfig(new ConfigProperties() {
@@ -184,7 +168,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void composite_contains_validation_and_enrichment() throws Exception {
             // given
-            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -194,8 +178,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
-                    scrubbingDisabledConfig(),
-                    TracingSettingsSource.fromStartup(extensionConfig));
+                    TracingSettingsSource.fromStartup(extensionConfig, registrar.agentInstanceId()));
 
             // then
             assertThat(getComposite(registrar).getProcessorErrorCounts().keySet())
@@ -206,7 +189,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void validation_owner_is_the_processor_installed_in_composite() throws Exception {
             // given
-            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -216,8 +199,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
-                    scrubbingDisabledConfig(),
-                    TracingSettingsSource.fromStartup(extensionConfig));
+                    TracingSettingsSource.fromStartup(extensionConfig, registrar.agentInstanceId()));
 
             // then
             ValidatingSpanProcessor validating = getValidating(registrar);
@@ -228,7 +210,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void no_metrics_set_when_all_disabled() throws Exception {
             // given
-            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -238,8 +220,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
-                    scrubbingDisabledConfig(),
-                    TracingSettingsSource.fromStartup(extensionConfig));
+                    TracingSettingsSource.fromStartup(extensionConfig, registrar.agentInstanceId()));
 
             // then
             assertThat(getMetrics(registrar)).as("no metrics when all disabled").isNull();
@@ -248,7 +229,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void no_span_timeout_set_when_all_disabled() throws Exception {
             // given
-            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -258,8 +239,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
-                    scrubbingDisabledConfig(),
-                    TracingSettingsSource.fromStartup(extensionConfig));
+                    TracingSettingsSource.fromStartup(extensionConfig, registrar.agentInstanceId()));
 
             // then
             assertThat(getSpanTimeout(registrar)).as("no span-timeout processor when all disabled").isNull();
@@ -269,7 +249,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
     @Test
     void factory_preserves_required_on_ending_order() throws Exception {
         // given
-        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
         ConfigProperties properties = allEnabledConfig();
         ExtensionConfig extensionConfig = new ExtensionConfig(properties);
         PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
@@ -279,8 +259,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         factory.registerSpanProcessors(
                 SdkTracerProvider.builder(),
                 extensionConfig,
-                properties,
-                TracingSettingsSource.fromStartup(extensionConfig));
+                TracingSettingsSource.fromStartup(extensionConfig, registrar.agentInstanceId()));
 
         PlatformCompositeSpanProcessor composite = getComposite(registrar);
         // then
@@ -315,7 +294,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
     @Test
     void factory_backed_pipeline_recordsValidationMarker_onlyForSpanWithoutProducerResult() throws Exception {
         // given
-        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
         ConfigProperties properties = allEnabledConfig();
         ExtensionConfig extensionConfig = new ExtensionConfig(properties);
         PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
@@ -328,8 +307,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         factory.registerSpanProcessors(
                 builder,
                 extensionConfig,
-                properties,
-                TracingSettingsSource.fromStartup(extensionConfig));
+                TracingSettingsSource.fromStartup(extensionConfig, registrar.agentInstanceId()));
 
         ValidatingSpanProcessor validating = getValidating(registrar);
         long violationsBefore = validating.getValidationViolationsTotal();
@@ -389,7 +367,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void metrics_enabled_registers_metrics_processor() throws Exception {
             // given
-            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -399,8 +377,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
-                    scrubbingDisabledConfig(),
-                    TracingSettingsSource.fromStartup(extensionConfig));
+                    TracingSettingsSource.fromStartup(extensionConfig, registrar.agentInstanceId()));
 
             // then
             assertThat(getMetrics(registrar))
@@ -412,7 +389,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void metrics_enabled_registers_composite() throws Exception {
             // given
-            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -422,8 +399,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
-                    scrubbingDisabledConfig(),
-                    TracingSettingsSource.fromStartup(extensionConfig));
+                    TracingSettingsSource.fromStartup(extensionConfig, registrar.agentInstanceId()));
 
             // then
             assertThat(getComposite(registrar))
@@ -434,7 +410,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void span_timeout_enabled_registers_span_timeout_processor() throws Exception {
             // given
-            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -444,8 +420,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
-                    scrubbingDisabledConfig(),
-                    TracingSettingsSource.fromStartup(extensionConfig));
+                    TracingSettingsSource.fromStartup(extensionConfig, registrar.agentInstanceId()));
 
             // then
             assertThat(getSpanTimeout(registrar))
@@ -457,7 +432,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void validation_enabled_registers_validating_processor() throws Exception {
             // given
-            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
 
@@ -467,8 +442,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
-                    scrubbingDisabledConfig(),
-                    TracingSettingsSource.fromStartup(extensionConfig));
+                    TracingSettingsSource.fromStartup(extensionConfig, registrar.agentInstanceId()));
 
             // then
             assertThat(getValidating(registrar))
@@ -485,7 +459,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void factoryAddsBaggageProcessorWithCanonicalDefaults() throws Exception {
             // given
-            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled());
             ExtensionConfig defaultConfig = new ExtensionConfig(new ConfigProperties() {
@@ -506,8 +480,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     defaultConfig,
-                    scrubbingDisabledConfig(),
-                    TracingSettingsSource.fromStartup(defaultConfig));
+                    TracingSettingsSource.fromStartup(defaultConfig, registrar.agentInstanceId()));
 
             // then
             assertThat(getComposite(registrar).getProcessorErrorCounts())
@@ -517,7 +490,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void factoryDoesNotAddSpanTimeoutProcessorByDefault() throws Exception {
             // given
-            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                     registrar, ScrubbingRuntimeTestFixtures.disabled()
             );
@@ -543,8 +516,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     defaultConfig,
-                    scrubbingDisabledConfig(),
-                    TracingSettingsSource.fromStartup(defaultConfig));
+                    TracingSettingsSource.fromStartup(defaultConfig, registrar.agentInstanceId()));
 
             // then
             assertThat(getSpanTimeout(registrar))

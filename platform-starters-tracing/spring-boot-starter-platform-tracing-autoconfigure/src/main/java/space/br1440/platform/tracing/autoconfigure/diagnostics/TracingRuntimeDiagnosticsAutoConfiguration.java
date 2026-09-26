@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 
@@ -23,7 +24,7 @@ public class TracingRuntimeDiagnosticsAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public PlatformTracingJmxClient platformTracingJmxClient() {
-        return new PlatformTracingJmxClient();
+    public PlatformTracingJmxClient platformTracingJmxClient(AgentReadinessCoherenceGuard coherenceGuard) {
+        return new PlatformTracingJmxClient(coherenceGuard);
     }
 }

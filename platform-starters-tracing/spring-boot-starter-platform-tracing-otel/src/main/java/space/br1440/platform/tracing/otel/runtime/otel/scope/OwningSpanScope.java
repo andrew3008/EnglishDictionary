@@ -23,6 +23,7 @@ public final class OwningSpanScope implements AutoCloseable {
     private final ExceptionRecorder exceptionRecorder;
     private final AtomicBoolean closed = new AtomicBoolean(false);
     private final AtomicBoolean resultDeclared = new AtomicBoolean(false);
+    private final AtomicBoolean failureLatched = new AtomicBoolean(false);
 
     public OwningSpanScope(@Nonnull Span span, @Nonnull Scope scope,
                            @Nonnull ExceptionRecorder exceptionRecorder) {
@@ -32,7 +33,6 @@ public final class OwningSpanScope implements AutoCloseable {
     }
 
     @Nonnull
-    @SuppressWarnings("resource")
     public static OwningSpanScope activate(@Nonnull Span span,
                                            @Nonnull ExceptionRecorder exceptionRecorder) {
         Objects.requireNonNull(span, "span");
@@ -99,6 +99,7 @@ public final class OwningSpanScope implements AutoCloseable {
     public OwningSpanScope recordException(@Nullable Throwable throwable) {
         exceptionRecorder.record(span, throwable);
         if (throwable != null) {
+            failureLatched.set(true);
             resultDeclared.set(true);
         }
 
@@ -106,6 +107,12 @@ public final class OwningSpanScope implements AutoCloseable {
     }
 
     private void applyResult(@Nonnull SpanResult result) {
+        if (result == SpanResult.FAILURE) {
+            failureLatched.set(true);
+        } else if (failureLatched.get()) {
+            return;
+        }
+
         span.setAttribute(PlatformAttributes.PLATFORM_RESULT, result.value());
         if (result == SpanResult.FAILURE) {
             span.setStatus(StatusCode.ERROR);

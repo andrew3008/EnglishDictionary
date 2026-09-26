@@ -3,10 +3,10 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.export;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import javax.management.openmbean.CompositeData;
 
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
@@ -28,7 +28,7 @@ public final class ExportObservationSource {
 
     public ExportObservationSource(OwnerRegistrationSlot<PlatformDropOldestExportSpanProcessor> processorSlot,
                                    OwnerRegistrationSlot<SafeSpanExporter> exporterSlot,
-                                   UUID agentInstanceId) {
+                                   AgentInstanceId agentInstanceId) {
         this.processorSlot = Objects.requireNonNull(processorSlot, "processorSlot");
         this.exporterSlot = Objects.requireNonNull(exporterSlot, "exporterSlot");
         this.envelope = new ObservationCaptureEnvelope(agentInstanceId);

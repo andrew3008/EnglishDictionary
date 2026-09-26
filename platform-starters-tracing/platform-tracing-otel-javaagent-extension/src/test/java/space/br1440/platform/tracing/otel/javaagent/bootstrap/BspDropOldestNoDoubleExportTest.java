@@ -1,17 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
-import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
-import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdkBuilder;
-import io.opentelemetry.sdk.common.CompletableResultCode;
-import io.opentelemetry.sdk.trace.data.SpanData;
-import io.opentelemetry.sdk.trace.export.SpanExporter;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-
-import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collection;
 import java.util.List;
@@ -20,7 +9,19 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
+
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
+import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdkBuilder;
+import io.opentelemetry.sdk.common.CompletableResultCode;
+import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.export.SpanExporter;
 
 /**
  * Гарантия отсутствия double-export при opt-in {@code DROP_OLDEST}: один и тот же span
@@ -47,9 +48,6 @@ class BspDropOldestNoDoubleExportTest {
         // given
         CountingExporter counting = new CountingExporter();
 
-        // ВАЖНО: подмена exporter'а через customizer должна быть зарегистрирована ДО
-        // платформенного customizer'а — тогда captureExporter платформы захватит наш
-        // counting, и PlatformDropOldestExportSpanProcessor будет строиться вокруг него.
         AutoConfiguredOpenTelemetrySdkBuilder builder = AutoConfiguredOpenTelemetrySdk.builder()
                 .setServiceClassLoader(
                         AutoConfigurationCustomizerTestClassLoader.withoutDiscoveredCustomizers())
@@ -63,13 +61,10 @@ class BspDropOldestNoDoubleExportTest {
                         "otel.bsp.schedule.delay", "100",
                         "otel.bsp.export.timeout", "1000",
                         "platform.tracing.queue.overflow-policy", "DROP_OLDEST",
-                        // PR-5 ALIGN_TO_EXTENSION_DEFAULTS changed the absent-ratio default from 1.0
-                        // to 0.1. This test measures BSP no-double-export, not sampling rates; it
-                        // needs all spans to pass through the sampler.
                         "platform.tracing.sampling.ratio", "1.0"
                 ))
                 .addSpanExporterCustomizer((existing, cfg) -> counting);
-        new BootstrapAutoConfigurationCustomizerProvider(BootstrapCoordinator.create()).customize(builder);
+        new BootstrapAutoConfigurationCustomizerProvider(BootstrapCoordinator.createDefault()).customize(builder);
 
         // when
         AutoConfiguredOpenTelemetrySdk sdk = builder.build();

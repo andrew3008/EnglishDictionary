@@ -20,14 +20,16 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 
 class LastSettingsUpdateConcurrencyTest {
 
     private static final int THREAD_COUNT = 32;
-    private static final String RUNTIME_INSTANCE_ID = "00000000-0000-0000-0000-000000000042";
+    private static final AgentInstanceId AGENT_INSTANCE_ID =
+            AgentInstanceId.parse("00000000-0000-0000-0000-000000000042");
     private static final Instant BASE_OBSERVED_AT = Instant.parse("2026-08-23T05:21:44Z");
 
     @Test
@@ -35,10 +37,10 @@ class LastSettingsUpdateConcurrencyTest {
         // given
         TracingSettings baseline = policy(0.10d);
         TracingSettings candidate = policy(0.91d);
-        TracingSettingsStore store = new TracingSettingsStore(RUNTIME_INSTANCE_ID, baseline);
+        TracingSettingsStore store = new TracingSettingsStore(AGENT_INSTANCE_ID, baseline);
         long expectedSequence = store.current().acceptedSequence();
         ExpectedSettingsRevision expectedBase =
-                new ExpectedSettingsRevision(RUNTIME_INSTANCE_ID, expectedSequence);
+                new ExpectedSettingsRevision(AGENT_INSTANCE_ID, expectedSequence);
 
         LastSettingsUpdate diagnostics = new LastSettingsUpdate();
         TracingSettingsUpdater updater = new TracingSettingsUpdater(store, diagnostics);

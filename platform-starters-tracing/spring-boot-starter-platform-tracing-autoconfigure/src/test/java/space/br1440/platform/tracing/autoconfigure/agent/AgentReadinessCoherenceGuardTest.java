@@ -70,7 +70,7 @@ final class AgentReadinessCoherenceGuardTest {
                 .isInstanceOf(AgentReadinessCoherenceException.class)
                 .satisfies(failure -> assertThat(
                         ((AgentReadinessCoherenceException) failure).failureCode())
-                        .isEqualTo(AgentReadinessCoherenceGuard.PINNED_EPOCH_CHANGED));
+                        .isEqualTo(AgentReadinessCoherenceGuard.PINNED_ANCHOR_CHANGED));
         assertThat(trustedReads).hasValue(0);
     }
 
@@ -133,6 +133,36 @@ final class AgentReadinessCoherenceGuardTest {
         assertThat(trustedReads).hasValue(0);
     }
 
+    @Test
+    void mismatchedAgentInstanceIdTerminallyInvalidatesPinnedTrust() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot ready = ReadinessTestFixtures.readySnapshot();
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(ready));
+        AgentReadinessCoherenceGuard guard = new AgentReadinessCoherenceGuard(server);
+        guard.pin(ready);
+        AtomicInteger trustedReads = new AtomicInteger();
+
+        // when
+        // then
+        assertThatThrownBy(() -> guard.requirePinnedAgentInstanceId(
+                "28215585-4a76-40df-a50d-16452a6fa684"
+        ))
+                .isInstanceOf(AgentReadinessCoherenceException.class)
+                .satisfies(failure -> assertThat(
+                        ((AgentReadinessCoherenceException) failure).failureCode())
+                        .isEqualTo(AgentReadinessCoherenceGuard.JMX_AGENT_INSTANCE_MISMATCH));
+
+        assertThat(guard.terminalFailureCode())
+                .isEqualTo(AgentReadinessCoherenceGuard.JMX_AGENT_INSTANCE_MISMATCH);
+        assertThatThrownBy(() -> guard.readCoherently(trustedReads::incrementAndGet))
+                .isInstanceOf(AgentReadinessCoherenceException.class)
+                .satisfies(failure -> assertThat(
+                        ((AgentReadinessCoherenceException) failure).failureCode())
+                        .isEqualTo(AgentReadinessCoherenceGuard.JMX_AGENT_INSTANCE_MISMATCH));
+        assertThat(trustedReads).hasValue(0);
+    }
+
     @SuppressWarnings("SameParameterValue")
     private static AgentReadinessSnapshot withLoader(AgentReadinessSnapshot source,
                                                      String extensionDefiningLoader) {
@@ -151,7 +181,7 @@ final class AgentReadinessCoherenceGuardTest {
         AgentReadinessSnapshot.AnchorIdentity anchorIdentity = source.anchorIdentity();
         return ReadinessTestFixtures.toBuilder(source)
                 .anchorIdentity(new AgentReadinessSnapshot.AnchorIdentity(
-                        anchorIdentity.runtimeEpoch(), evidenceGeneration, batchId)
+                        anchorIdentity.agentInstanceId(), evidenceGeneration, batchId)
                 )
                 .build();
     }

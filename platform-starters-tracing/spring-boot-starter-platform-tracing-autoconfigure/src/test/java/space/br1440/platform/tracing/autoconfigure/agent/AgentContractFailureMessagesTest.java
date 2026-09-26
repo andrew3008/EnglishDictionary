@@ -33,7 +33,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 "contract",
                 "digest",
-                "epoch",
+                "agent-instance",
                 1L,
                 "batch",
                 extensionVersion
@@ -61,7 +61,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 "",
                 "digest",
-                "epoch",
+                "agent-instance",
                 1L,
                 "batch",
                 "9.9.9"
@@ -81,7 +81,7 @@ class AgentContractFailureMessagesTest {
     }
 
     @Test
-    void formatsGenerationInconsistentContextWithMissingEpochAndBatch() {
+    void formatsGenerationInconsistentContextWithMissingAgentInstanceIdAndBatch() {
         // given
         TracingDeploymentDiagnostics diagnostics = diagnostics(
                 AgentRuntimeState.EXTENSION_INCOMPATIBLE,
@@ -103,7 +103,7 @@ class AgentContractFailureMessagesTest {
                 AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
                         AgentRuntimeState.EXTENSION_INCOMPATIBLE,
                         "READINESS_GENERATION_INCONSISTENT")
-                        + ", runtimeEpoch=<missing>, evidenceGeneration=0, batchId=<missing>. "
+                        + ", agentInstanceId=<missing>, evidenceGeneration=0, batchId=<missing>. "
                         + AgentContractFailureMessages.READINESS_GENERATION_INVALID_EXPLANATION
         );
     }
@@ -117,7 +117,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 "contract",
                 "digest",
-                "epoch",
+                "agent-instance",
                 0L,
                 "batch",
                 "1.2.0"
@@ -159,7 +159,7 @@ class AgentContractFailureMessagesTest {
                 AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
                         AgentRuntimeState.EXTENSION_INCOMPATIBLE,
                         "READINESS_GENERATION_INCONSISTENT")
-                        + ", runtimeEpoch=<missing>, evidenceGeneration=5. "
+                        + ", agentInstanceId=<missing>, evidenceGeneration=5. "
                         + AgentContractFailureMessages.READINESS_GENERATION_INVALID_EXPLANATION
         );
     }
@@ -173,7 +173,7 @@ class AgentContractFailureMessagesTest {
                 "INITIALIZING",
                 "contract",
                 "digest",
-                "epoch",
+                "agent-instance",
                 0L,
                 "batch",
                 "1.2.0"
@@ -201,7 +201,7 @@ class AgentContractFailureMessagesTest {
                 "INITIALIZING",
                 "contract",
                 "digest",
-                "epoch",
+                "agent-instance",
                 0L,
                 "",
                 "1.2.0"
@@ -229,7 +229,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 "contract",
                 "digest",
-                "epoch",
+                "agent-instance",
                 -1L,
                 "batch",
                 "1.2.0"
@@ -257,7 +257,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 "contract",
                 "digest",
-                "epoch",
+                "agent-instance",
                 1L,
                 "batch",
                 "1.2.0"
@@ -271,7 +271,7 @@ class AgentContractFailureMessagesTest {
                 AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
                         AgentRuntimeState.EXTENSION_INCOMPATIBLE,
                         "READINESS_ANCHOR_CONTENT_DRIFT")
-                        + ", runtimeEpoch=epoch, evidenceGeneration=1, batchId=batch. "
+                        + ", agentInstanceId=agent-instance, evidenceGeneration=1, batchId=batch. "
                         + AgentContractFailureMessages.DEFAULT_EXPLANATION_TEMPLATE.formatted("READY")
         );
     }
@@ -285,7 +285,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 "another-contract",
                 "digest",
-                "epoch",
+                "agent-instance",
                 1L,
                 "batch",
                 "1.2.0"
@@ -314,7 +314,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 JmxWireContract.SCHEMA_ID,
                 "0".repeat(64),
-                "epoch",
+                "agent-instance",
                 1L,
                 "batch",
                 "1.2.0"
@@ -344,7 +344,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 "",
                 "digest",
-                "epoch",
+                "agent-instance",
                 1L,
                 "batch",
                 "1.2.0"
@@ -396,7 +396,7 @@ class AgentContractFailureMessagesTest {
                 "FAILED",
                 "contract",
                 "digest",
-                "epoch",
+                "agent-instance",
                 1L,
                 "batch",
                 "1.2.0"
@@ -471,7 +471,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 "contract",
                 "digest",
-                "epoch",
+                "agent-instance",
                 1L,
                 "batch",
                 "development"
@@ -499,7 +499,7 @@ class AgentContractFailureMessagesTest {
                                                             String lifecycle,
                                                             String contractId,
                                                             String schemaDigest,
-                                                            String runtimeEpoch,
+                                                            String agentInstanceId,
                                                             long evidenceGeneration,
                                                             String batchId,
                                                             String extensionVersion) {
@@ -512,7 +512,7 @@ class AgentContractFailureMessagesTest {
 
                         new TracingDeploymentDiagnostics.ContractIdentity(contractId, schemaDigest),
 
-                        new TracingDeploymentDiagnostics.ReadinessAnchor(runtimeEpoch, evidenceGeneration, batchId),
+                        new TracingDeploymentDiagnostics.ReadinessAnchor(agentInstanceId, evidenceGeneration, batchId),
 
                         new TracingDeploymentDiagnostics.LifecycleState(
                                 lifecycle,

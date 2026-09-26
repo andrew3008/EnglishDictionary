@@ -11,7 +11,7 @@ import space.br1440.platform.tracing.autoconfigure.support.ReadinessJmxTestFixtu
 final class ReadinessTestFixtures {
 
     static final String APPLICATION_VERSION = "1.2.3";
-    static final String RUNTIME_EPOCH = "runtime-epoch-1";
+    static final String AGENT_INSTANCE_ID = "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a";
     static final String BATCH_ID = "batch-1";
     static final String SHA256 = "a".repeat(64);
     static final Set<String> COMPLETE_CAPABILITIES = Set.copyOf(JmxWireContract.REQUIRED_CAPABILITIES);
@@ -22,7 +22,7 @@ final class ReadinessTestFixtures {
     static AgentReadinessSnapshot readySnapshot() {
         return new AgentReadinessSnapshot(
                 new AgentReadinessSnapshot.ContractIdentity(JmxWireContract.SCHEMA_ID, JmxWireContract.SCHEMA_DIGEST_SHA256),
-                new AgentReadinessSnapshot.AnchorIdentity(RUNTIME_EPOCH, 1L, BATCH_ID),
+                new AgentReadinessSnapshot.AnchorIdentity(AGENT_INSTANCE_ID, 1L, BATCH_ID),
                 new AgentReadinessSnapshot.LifecycleState("READY", "", COMPLETE_CAPABILITIES, Set.of()),
                 new AgentReadinessSnapshot.DistributionIdentity(SHA256, "2.30.0", APPLICATION_VERSION),
                 new AgentReadinessSnapshot.ClassloaderTopology("agent-loader@1", "sdk-loader@2"));
@@ -31,7 +31,7 @@ final class ReadinessTestFixtures {
     static AgentReadinessSnapshot initializingSnapshot() {
         return new AgentReadinessSnapshot(
                 new AgentReadinessSnapshot.ContractIdentity(JmxWireContract.SCHEMA_ID, JmxWireContract.SCHEMA_DIGEST_SHA256),
-                new AgentReadinessSnapshot.AnchorIdentity(RUNTIME_EPOCH, 0L, ""),
+                new AgentReadinessSnapshot.AnchorIdentity(AGENT_INSTANCE_ID, 0L, ""),
                 new AgentReadinessSnapshot.LifecycleState("INITIALIZING", "", Set.of(), COMPLETE_CAPABILITIES),
                 new AgentReadinessSnapshot.DistributionIdentity("", "", APPLICATION_VERSION),
                 new AgentReadinessSnapshot.ClassloaderTopology("", ""));
@@ -65,7 +65,7 @@ final class ReadinessTestFixtures {
         return ReadinessJmxTestFixtures.composite(
                 contractIdentity.contractId(),
                 contractIdentity.schemaDigest(),
-                anchorIdentity.runtimeEpoch(),
+                anchorIdentity.agentInstanceId(),
                 anchorIdentity.evidenceGeneration(),
                 anchorIdentity.batchId(),
                 lifecycleState.lifecycle(),

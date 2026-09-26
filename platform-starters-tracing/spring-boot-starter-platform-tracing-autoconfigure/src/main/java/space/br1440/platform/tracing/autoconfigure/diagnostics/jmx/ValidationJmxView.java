@@ -22,7 +22,8 @@ public final class ValidationJmxView {
             JmxWireContract.ATTRIBUTE_VALIDATION_OBSERVATION_VALIDATION_OBSERVATION,
             JmxContractPoint.VALIDATION_OBSERVATION,
             JmxOpenTypes.VALIDATION_OBSERVATION,
-            ValidationJmxView::decode
+            ValidationJmxView::decode,
+            ValidationObservation::agentInstanceId
     );
 
     private final JmxReadExecutor executor;
@@ -56,7 +57,10 @@ public final class ValidationJmxView {
                 () -> decodeValues(composite)
         );
 
-        String agentInstanceId = JmxObservationCodec.getString(composite, JmxWireContract.FIELD_VALIDATION_OBSERVATION_AGENT_INSTANCE_ID);
+        String agentInstanceId = JmxObservationCodec.getAgentInstanceId(
+                composite,
+                JmxWireContract.FIELD_VALIDATION_OBSERVATION_AGENT_INSTANCE_ID
+        );
         return new ValidationObservation(agentInstanceId, values);
     }
 

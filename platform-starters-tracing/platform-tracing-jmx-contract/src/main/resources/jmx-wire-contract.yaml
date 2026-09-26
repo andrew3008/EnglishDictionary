@@ -171,7 +171,7 @@ openTypes:
       - { name: attemptId, type: string, required: true, nullable: false }
       - { name: candidateDigest, type: string, required: true, nullable: false }
       - { name: expectedAcceptedSequence, type: long, required: true, nullable: false }
-      - { name: expectedRuntimeInstanceId, type: string, required: true, nullable: false }
+      - { name: expectedAgentInstanceId, type: string, required: true, nullable: false }
       - { name: runtimePolicy, type: "composite:runtimePolicy", required: true, nullable: false }
       - { name: sourceAuthority, type: string, required: true, nullable: false }
       - { name: sourceRevision, type: string, required: true, nullable: false }
@@ -184,14 +184,14 @@ openTypes:
       - { name: messageCode, type: string, required: true, nullable: false }
       - { name: outcome, type: string, required: true, nullable: false }
       - { name: payloadDigest, type: string, required: true, nullable: false }
-      - { name: runtimeInstanceId, type: string, required: true, nullable: false }
+      - { name: agentInstanceId, type: string, required: true, nullable: false }
       - { name: violationCodes, type: stringArray, required: true, nullable: false }
   acceptedPolicySnapshot:
     kind: composite
     typeName: AcceptedCompleteSnapshot/v1
     fields:
       - { name: acceptedSequence, type: long, required: true, nullable: false }
-      - { name: runtimeInstanceId, type: string, required: true, nullable: false }
+      - { name: agentInstanceId, type: string, required: true, nullable: false }
       - { name: acceptedPolicyDigest, type: string, required: true, nullable: false }
       - { name: lastApplyOutcome, type: string, required: true, nullable: false }
       - { name: lastAttemptId, type: string, required: true, nullable: false }
@@ -209,7 +209,7 @@ openTypes:
     fields:
       - { name: contractId, type: string, required: true, nullable: false }
       - { name: schemaDigest, type: string, required: true, nullable: false }
-      - { name: runtimeEpoch, type: string, required: true, nullable: false }
+      - { name: agentInstanceId, type: string, required: true, nullable: false }
       - { name: evidenceGeneration, type: long, required: true, nullable: false }
       - { name: batchId, type: string, required: true, nullable: false }
       - { name: lifecycle, type: string, required: true, nullable: false }

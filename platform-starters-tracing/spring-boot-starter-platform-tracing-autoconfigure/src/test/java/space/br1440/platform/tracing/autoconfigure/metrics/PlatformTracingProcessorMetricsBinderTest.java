@@ -23,6 +23,8 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 @SuppressWarnings("DataFlowIssue")
 class PlatformTracingProcessorMetricsBinderTest {
 
+    private static final String AGENT_INSTANCE_ID = "123e4567-e89b-12d3-a456-426614174000";
+
     @Test
     void absentSpanTimeoutOwnerPreservesGenerationWithoutMapping() {
         JmxOwnerState<ProcessorSpanTimeoutValues> absent = new JmxOwnerState.Absent<>(1L);
@@ -71,7 +73,7 @@ class PlatformTracingProcessorMetricsBinderTest {
                 new ProcessorSpanTimeoutValues.Rejections(0L, 0L, 0L),
                 new ProcessorSpanTimeoutValues.Scanner(0L, 1_700_000_000_000L, "TERMINATED_ABNORMALLY"));
         when(client.processorMetrics().observation()).thenReturn(Optional.of(new ProcessorMetricsObservation(
-                new ObservationCapture("agent-1", 1L, 1_000L, 1_001L),
+                new ObservationCapture(AGENT_INSTANCE_ID, 1L, 1_000L, 1_001L),
                 new JmxOwnerState.Present<>(values, 1L),
                 new JmxOwnerState.Absent<>(0L),
                 new JmxOwnerState.Absent<>(0L)
@@ -109,7 +111,7 @@ class PlatformTracingProcessorMetricsBinderTest {
         // given
         PlatformTracingJmxClient client = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
         when(client.processorMetrics().observation()).thenReturn(Optional.of(new ProcessorMetricsObservation(
-                new ObservationCapture("agent-1", 1L, 1_000L, 1_001L),
+                new ObservationCapture(AGENT_INSTANCE_ID, 1L, 1_000L, 1_001L),
                 new JmxOwnerState.Absent<>(1L),
                 new JmxOwnerState.Absent<>(0L),
                 new JmxOwnerState.Absent<>(0L)

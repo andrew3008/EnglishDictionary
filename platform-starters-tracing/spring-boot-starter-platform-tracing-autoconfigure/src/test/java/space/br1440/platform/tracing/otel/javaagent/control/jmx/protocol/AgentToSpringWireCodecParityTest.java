@@ -28,12 +28,13 @@ import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpe
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.PlatformSettingsStatusMBean;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsStatusSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 
 class AgentToSpringWireCodecParityTest {
 
@@ -79,12 +80,12 @@ class AgentToSpringWireCodecParityTest {
     }
 
     @Test
-    void runtimeInstanceIdIsPreservedExactly() {
-        String runtimeId = uuid();
+    void agentInstanceIdIsPreservedExactly() {
+        String agentInstanceId = uuid();
         AcceptedSettingsWithSequence decoded = roundTrip(
-                envelope(3L, runtimeId, TracingSettings.of(
+                envelope(3L, agentInstanceId, TracingSettings.of(
                         true, 1.0, Map.of(), SpanAttributeValidationLevel.WARNING, true, true, AgentLogLevel.INFO)));
-        assertThat(decoded.runtimeInstanceId()).isEqualTo(runtimeId);
+        assertThat(decoded.agentInstanceId()).isEqualTo(agentInstanceId);
     }
 
     @Test
@@ -182,7 +183,7 @@ class AgentToSpringWireCodecParityTest {
     @Test
     void rejectsCompositeDataWithMissingField() {
         String[] keys = {
-                "acceptedSequence", "runtimeInstanceId", "acceptedPolicyDigest",
+                "acceptedSequence", "agentInstanceId", "acceptedPolicyDigest",
                 "lastApplyOutcome", "lastAttemptId", "failureCode",
                 "samplingEnabled", "samplingRatio", "samplingRouteRatios",
                 "validationLevel", "exporterEnabled", "traceControlHeadersEnabled"
@@ -264,9 +265,9 @@ class AgentToSpringWireCodecParityTest {
     }
 
     @Test
-    void rejectsBlankRuntimeInstanceId() {
+    void rejectsBlankAgentInstanceId() {
         assertRejected(validCompositeDataWith(fields -> fields.put(
-                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_RUNTIME_INSTANCE_ID,
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_AGENT_INSTANCE_ID,
                 "   ")));
     }
 
@@ -347,7 +348,7 @@ class AgentToSpringWireCodecParityTest {
         AcceptedSettingsWithSequence decoded = roundTrip(envelope);
 
         assertThat(decoded.acceptedSequence()).isEqualTo(envelope.acceptedSequence());
-        assertThat(decoded.runtimeInstanceId()).isEqualTo(envelope.runtimeInstanceId());
+        assertThat(decoded.agentInstanceId()).isEqualTo(envelope.agentInstanceId().toString());
         CompleteTracingSettings snapshot = decoded.snapshot();
         assertThat(snapshot.samplingEnabled()).isEqualTo(envelope.samplingEnabled());
         assertThat(snapshot.samplingRatio()).isEqualTo(envelope.samplingRatio());
@@ -373,8 +374,8 @@ class AgentToSpringWireCodecParityTest {
         }
     }
 
-    private static TracingSettingsRevision envelope(long sequence, String runtimeInstanceId, TracingSettings policy) {
-        return new TracingSettingsRevision(runtimeInstanceId, sequence, policy);
+    private static TracingSettingsRevision envelope(long sequence, String agentInstanceId, TracingSettings policy) {
+        return new TracingSettingsRevision(AgentInstanceId.parse(agentInstanceId), sequence, policy);
     }
 
     private static String uuid() {
@@ -392,7 +393,7 @@ class AgentToSpringWireCodecParityTest {
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_SEQUENCE,
                 0L);
         fields.put(
-                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_RUNTIME_INSTANCE_ID,
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_AGENT_INSTANCE_ID,
                 uuid());
         fields.put(
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_POLICY_DIGEST,
@@ -433,7 +434,7 @@ class AgentToSpringWireCodecParityTest {
 
     private static String[] validCompleteKeys() {
         return new String[]{
-                "acceptedSequence", "runtimeInstanceId", "acceptedPolicyDigest",
+                "acceptedSequence", "agentInstanceId", "acceptedPolicyDigest",
                 "lastApplyOutcome", "lastAttemptId", "failureCode",
                 "samplingEnabled", "samplingRatio", "samplingRouteRatios",
                 "validationLevel", "exporterEnabled", "traceControlHeadersEnabled",

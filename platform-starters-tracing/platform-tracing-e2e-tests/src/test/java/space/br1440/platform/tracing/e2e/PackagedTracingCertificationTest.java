@@ -72,11 +72,56 @@ class PackagedTracingCertificationTest {
 
         // then
         assertSuccessful(happy, "happy-path");
-        assertThat(happy.stdout()).contains(PackagedTracingCertificationApplication.PROCESS_OK_TOKEN);
+        assertThat(happy.stdout()).containsSubsequence(
+                PackagedTracingCertificationApplication.LIFECYCLE_SENTINEL_STARTED_TOKEN,
+                PackagedTracingCertificationApplication.APPLICATION_READY_TOKEN,
+                PackagedTracingCertificationApplication.PROCESS_OK_TOKEN
+        );
         assertThat(happy.stderr()).doesNotContain("No SLF4J providers were found")
                 .doesNotContain("Unable to load extension")
                 .doesNotContain("Failed to load extension")
                 .doesNotContain("FATAL");
+    }
+
+    @Test
+    void invalid_scan_interval_fails_before_lifecycle_start() throws Exception {
+        // given
+        String controlledSha = ControlledAgentArtifactMutator.sha256(controlledAgent);
+        PackagedProcessLauncher.LaunchRequest request = controlledRequest(
+                "invalid-scan-interval",
+                applicationBootJar,
+                controlledAgent,
+                controlledSha,
+                Map.of("platform.tracing.span-timeout.scan-interval", "0")
+        );
+
+        // when
+        PackagedProcessLauncher.ProcessResult result = launcher.launch(request);
+
+        // then
+        assertExtensionConfigurationFailure(result, "invalid-scan-interval");
+    }
+
+    @Test
+    void invalid_scan_interval_fails_before_lifecycle_start_with_lazy_initialization() throws Exception {
+        // given
+        String controlledSha = ControlledAgentArtifactMutator.sha256(controlledAgent);
+        PackagedProcessLauncher.LaunchRequest request = controlledRequest(
+                "invalid-scan-interval-lazy",
+                applicationBootJar,
+                controlledAgent,
+                controlledSha,
+                Map.of(
+                        "platform.tracing.span-timeout.scan-interval", "0",
+                        "spring.main.lazy-initialization", "true"
+                )
+        );
+
+        // when
+        PackagedProcessLauncher.ProcessResult result = launcher.launch(request);
+
+        // then
+        assertExtensionConfigurationFailure(result, "invalid-scan-interval-lazy");
     }
 
     @Test
@@ -187,10 +232,10 @@ class PackagedTracingCertificationTest {
                 "AGENT_MISSING", "CONTROLLED_AGENT_MISSING", null);
 
         assertFailure("distribution-mismatch", digestMismatch,
-                "EXTENSION_INCOMPATIBLE", "DISTRIBUTION_MISMATCH", "FAILED");
+                "EXTENSION_FAILED", "DISTRIBUTION_MISMATCH", "FAILED");
 
         assertFailure("accidental-remote-jmx", remoteConfigured,
-                "EXTENSION_INCOMPATIBLE",
+                "EXTENSION_FAILED",
                 "REMOTE_JMX_MANAGEMENT_AGENT_CONFIGURED",
                 "FAILED");
 
@@ -204,13 +249,13 @@ class PackagedTracingCertificationTest {
                 "EXTENSION_MISSING", "PLATFORM_EXTENSION_MISSING", null);
 
         assertFailure("build-metadata-removed", buildMetadataRemoved,
-                "EXTENSION_INCOMPATIBLE", "DEVELOPMENT_VERSION_FORBIDDEN", null);
+                "EXTENSION_FAILED", "DEVELOPMENT_VERSION_FORBIDDEN", null);
 
         assertFailure("build-version-mismatch", mismatchedBuildVersion,
-                "EXTENSION_INCOMPATIBLE", "DISTRIBUTION_MISMATCH", "FAILED");
+                "EXTENSION_FAILED", "DISTRIBUTION_MISMATCH", "FAILED");
 
         assertFailure("stale-topology-api", staleTopologyApi,
-                "EXTENSION_INCOMPATIBLE", "EXTENSION_LINKAGE_ERROR", "FAILED");
+                "EXTENSION_FAILED", "EXTENSION_LINKAGE_ERROR", "FAILED");
 
         assertThat(staleTopologyApi.combinedOutput())
                 .contains("extensionVersion=" + STALE_EXTENSION_VERSION);
@@ -368,6 +413,20 @@ class PackagedTracingCertificationTest {
                 .containsExactly(expected);
 
         assertThat(output).doesNotContain(PackagedTracingCertificationApplication.PROCESS_OK_TOKEN);
+    }
+
+    private static void assertExtensionConfigurationFailure(PackagedProcessLauncher.ProcessResult result,
+                                                            String scenario) {
+        assertFailure(
+                scenario,
+                result,
+                "EXTENSION_FAILED",
+                "CONFIGURATION_INITIALIZATION_FAILED",
+                "FAILED"
+        );
+        assertThat(result.combinedOutput())
+                .doesNotContain(PackagedTracingCertificationApplication.LIFECYCLE_SENTINEL_STARTED_TOKEN)
+                .doesNotContain(PackagedTracingCertificationApplication.APPLICATION_READY_TOKEN);
     }
 
     private static String resourceIdentityLine(String output) {

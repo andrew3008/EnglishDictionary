@@ -33,6 +33,7 @@ import io.opentelemetry.proto.trace.v1.Span;
 final class OtlpTraceCollector implements AutoCloseable {
 
     private static final String TRACES_PATH = "/v1/traces";
+    private static final int DRAIN_TIMEOUT_SECONDS = 5;
 
     private final HttpServer server;
     private final ExecutorService executor;
@@ -149,12 +150,21 @@ final class OtlpTraceCollector implements AutoCloseable {
 
     @Override
     public void close() {
-        server.stop(0);
-        executor.shutdownNow();
+        server.stop(DRAIN_TIMEOUT_SECONDS);
+        executor.shutdown();
         try {
-            executor.awaitTermination(5, TimeUnit.SECONDS);
+            boolean terminated = executor.awaitTermination(DRAIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            if (!terminated) {
+                executor.shutdownNow();
+                executor.awaitTermination(DRAIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                throw new IllegalStateException(
+                        "OTLP trace collector did not drain within %d seconds".formatted(DRAIN_TIMEOUT_SECONDS)
+                );
+            }
         } catch (InterruptedException interrupted) {
+            executor.shutdownNow();
             Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while draining OTLP trace collector", interrupted);
         }
     }
 

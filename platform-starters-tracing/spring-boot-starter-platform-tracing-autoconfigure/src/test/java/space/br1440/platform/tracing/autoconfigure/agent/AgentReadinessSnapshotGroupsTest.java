@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.autoconfigure.agent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -14,7 +15,7 @@ class AgentReadinessSnapshotGroupsTest {
             new AgentReadinessSnapshot.ContractIdentity("contract-1", "digest-1");
 
     private static final AgentReadinessSnapshot.AnchorIdentity ANCHOR_IDENTITY =
-            new AgentReadinessSnapshot.AnchorIdentity("runtime-epoch-1", 1L, "batch-1");
+            new AgentReadinessSnapshot.AnchorIdentity(ReadinessTestFixtures.AGENT_INSTANCE_ID, 1L, "batch-1");
 
     private static final AgentReadinessSnapshot.LifecycleState LIFECYCLE_STATE =
             new AgentReadinessSnapshot.LifecycleState("READY", "", Set.of("CAP"), Set.of());
@@ -91,13 +92,13 @@ class AgentReadinessSnapshotGroupsTest {
     }
 
     @Test
-    void anchorIdentityRejectsNullRuntimeEpoch() {
+    void anchorIdentityRejectsNullAgentInstanceId() {
         // given
         // when
         // then
-        assertThatNullPointerException()
-                .isThrownBy(() -> new AgentReadinessSnapshot.AnchorIdentity(null, 1L, "batch-1"))
-                .withMessageContaining("runtimeEpoch");
+        assertThatThrownBy(() -> new AgentReadinessSnapshot.AnchorIdentity(null, 1L, "batch-1"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("agentInstanceId");
     }
 
     @Test
