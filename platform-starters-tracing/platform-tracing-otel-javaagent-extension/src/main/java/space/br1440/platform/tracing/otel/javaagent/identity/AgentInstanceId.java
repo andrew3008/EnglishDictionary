@@ -23,6 +23,7 @@ public final class AgentInstanceId {
         if (isNil(requiredValue)) {
             throw new IllegalArgumentException("AgentInstanceId must not be a nil UUID");
         }
+
         return new AgentInstanceId(requiredValue);
     }
 
