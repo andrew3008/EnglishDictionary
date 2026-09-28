@@ -371,6 +371,7 @@ class PlatformTracingMBeanRegistrarTest {
         // given
         NoClassDefFoundError fatalFailure = new NoClassDefFoundError("simulated runtime MBean linkage failure");
         MBeanServer failingServer = new DelegatingMBeanServer(server) {
+
             @Override
             public ObjectInstance registerMBean(Object object, ObjectName name)
                     throws InstanceAlreadyExistsException,
@@ -379,12 +380,16 @@ class PlatformTracingMBeanRegistrarTest {
                 if (DomainObjectNames.VALIDATION.equals(name)) {
                     throw fatalFailure;
                 }
+
                 return super.registerMBean(object, name);
             }
         };
+
         TracingSettingsSource holder = boundSampling(agentInstanceId, true, Map.of(), 0.5);
-        PlatformTracingMBeanRegistrar registrar =
-                new PlatformTracingMBeanRegistrar(failingServer, holder.current().agentInstanceId());
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(
+                failingServer,
+                holder.current().agentInstanceId()
+        );
         wireComponentsExceptAcceptedPolicy(registrar, holder);
 
         // when
@@ -400,16 +405,14 @@ class PlatformTracingMBeanRegistrarTest {
         assertThat(server.isRegistered(DomainObjectNames.DIAGNOSTICS)).isFalse();
         assertThat(server.isRegistered(DomainObjectNames.SETTINGS_STATUS)).isFalse();
         assertThat(server.isRegistered(DomainObjectNames.SETTINGS_MUTATION)).isFalse();
+
         PlatformExtensionReadinessSnapshot readiness = registrar.extensionReadiness().snapshot();
-        assertThat(readiness.lifecycle())
-                .isEqualTo(PlatformExtensionLifecycle.FAILED);
-        assertThat(readiness.failureCode())
-                .isEqualTo("JMX_BATCH_REGISTRATION_FAILED");
+        assertThat(readiness.lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
+        assertThat(readiness.failureCode()).isEqualTo("JMX_BATCH_REGISTRATION_FAILED");
     }
 
-    private PlatformTracingMBeanRegistrar.RuntimeRegistration wireRequiredComponents(
-            PlatformTracingMBeanRegistrar registrar,
-            TracingSettingsSource acceptedPolicy) {
+    private PlatformTracingMBeanRegistrar.RuntimeRegistration wireRequiredComponents(PlatformTracingMBeanRegistrar registrar,
+                                                                                     TracingSettingsSource acceptedPolicy) {
         wireComponentsExceptAcceptedPolicy(registrar, acceptedPolicy);
         return trackRegistration(registrar.registerRuntimeControls(acceptedPolicy));
     }
@@ -417,9 +420,13 @@ class PlatformTracingMBeanRegistrarTest {
     private void wireComponentsExceptAcceptedPolicy(PlatformTracingMBeanRegistrar registrar,
                                                     TracingSettingsSource acceptedPolicy) {
         trackRegistration(registrar.registerDiagnosticReadiness(
-                initializingReadinessProjection(registrar.agentInstanceId())));
+                initializingReadinessProjection(registrar.agentInstanceId()))
+        );
+
         CompositeSampler sampler = new CompositeSampler(
-                acceptedPolicy, CategoryBSamplingAccess.snapshot(List.of(), List.of()));
+                acceptedPolicy,
+                CategoryBSamplingAccess.snapshot(List.of(), List.of())
+        );
         ValidatingSpanProcessor validating = new ValidatingSpanProcessor(acceptedPolicy);
 
         registrar.setCompositeSampler(sampler);

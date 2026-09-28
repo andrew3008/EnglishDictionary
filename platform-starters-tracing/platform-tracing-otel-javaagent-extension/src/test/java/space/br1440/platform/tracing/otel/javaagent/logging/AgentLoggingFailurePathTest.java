@@ -180,8 +180,9 @@ class AgentLoggingFailurePathTest {
         )) {
             // then
             assertThatThrownBy(() -> {
-                try (AgentLoggingRuntime.ScopedInstallation nested = runtime.installScoped(
-                        new PlatformStderrSink(new ByteArrayOutputStream()))) {
+                try (AgentLoggingRuntime.ScopedInstallation ignored1 = runtime.installScoped(
+                        new PlatformStderrSink(new ByteArrayOutputStream())
+                )) {
                     ignored.close();
                 }
             })
