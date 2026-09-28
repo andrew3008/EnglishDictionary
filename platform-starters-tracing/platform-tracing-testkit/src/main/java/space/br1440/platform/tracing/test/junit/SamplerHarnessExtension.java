@@ -10,13 +10,6 @@ import space.br1440.platform.tracing.test.harness.SamplerHarness;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-/**
- * Thin optional JUnit 5 Extension wrapping {@link SamplerHarness}.
- *
- * <p>Provides {@code @RegisterExtension} syntax and automatic per-test harness reset.
- *
- * @since 5.3
- */
 public final class SamplerHarnessExtension implements BeforeEachCallback, ParameterResolver {
 
     private static final ExtensionContext.Namespace NS =
@@ -29,12 +22,6 @@ public final class SamplerHarnessExtension implements BeforeEachCallback, Parame
         this.samplerFactory = samplerFactory;
     }
 
-    /**
-     * Creates an extension whose underlying {@link SamplerHarness} is built once from
-     * the supplied factory and reset before each test.
-     *
-     * @param samplerFactory supplier invoked once per test class to obtain the sampler
-     */
     public static SamplerHarnessExtension of(Supplier<Sampler> samplerFactory) {
         Objects.requireNonNull(samplerFactory, "samplerFactory");
         return new SamplerHarnessExtension(samplerFactory);
@@ -59,6 +46,7 @@ public final class SamplerHarnessExtension implements BeforeEachCallback, Parame
         return context.getStore(NS).getOrComputeIfAbsent(
                 HARNESS_KEY,
                 key -> new SamplerHarness(Objects.requireNonNull(samplerFactory.get(), "sampler")),
-                SamplerHarness.class);
+                SamplerHarness.class
+        );
     }
 }

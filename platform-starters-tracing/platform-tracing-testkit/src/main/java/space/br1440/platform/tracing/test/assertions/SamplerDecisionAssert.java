@@ -1,12 +1,13 @@
 package space.br1440.platform.tracing.test.assertions;
 
-import io.opentelemetry.api.common.AttributeKey;
-import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
-import io.opentelemetry.sdk.trace.samplers.SamplingResult;
+import java.util.Objects;
+
 import org.assertj.core.api.AbstractAssert;
 import org.assertj.core.api.Assertions;
 
-import java.util.Objects;
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
+import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 
 public final class SamplerDecisionAssert extends AbstractAssert<SamplerDecisionAssert, SamplingResult> {
 
@@ -28,7 +29,6 @@ public final class SamplerDecisionAssert extends AbstractAssert<SamplerDecisionA
         return this;
     }
 
-    /** Plan §5.2 alias for {@link #isRecordAndSample()}. */
     public SamplerDecisionAssert assertSampled() {
         return isRecordAndSample();
     }
@@ -43,7 +43,6 @@ public final class SamplerDecisionAssert extends AbstractAssert<SamplerDecisionA
         return this;
     }
 
-    /** Plan §5.2 alias for {@link #isRecordOnly()}. */
     public SamplerDecisionAssert assertRecordOnly() {
         return isRecordOnly();
     }
@@ -58,7 +57,6 @@ public final class SamplerDecisionAssert extends AbstractAssert<SamplerDecisionA
         return this;
     }
 
-    /** Plan §5.2 alias for {@link #isDrop()}. */
     public SamplerDecisionAssert assertDropped() {
         return isDrop();
     }
@@ -72,7 +70,6 @@ public final class SamplerDecisionAssert extends AbstractAssert<SamplerDecisionA
         return this;
     }
 
-    /** Exposes the raw {@link SamplingResult} for custom assertions. */
     public SamplingResult result() {
         return actual;
     }

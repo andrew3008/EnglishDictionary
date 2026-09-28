@@ -1,10 +1,10 @@
 package space.br1440.platform.tracing.test.assertions;
 
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
 import io.opentelemetry.sdk.trace.samplers.SamplingResult;
-import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-
 import lombok.experimental.UtilityClass;
 
 @UtilityClass

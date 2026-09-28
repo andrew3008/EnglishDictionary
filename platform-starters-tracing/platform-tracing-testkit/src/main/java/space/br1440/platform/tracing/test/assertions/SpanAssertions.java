@@ -1,13 +1,14 @@
 package space.br1440.platform.tracing.test.assertions;
 
+import java.util.List;
+
+import org.assertj.core.api.Assertions;
+
 import io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions;
 import io.opentelemetry.sdk.testing.assertj.SpanDataAssert;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import lombok.experimental.UtilityClass;
-import org.assertj.core.api.Assertions;
-
-import java.util.List;
 
 @UtilityClass
 public final class SpanAssertions {

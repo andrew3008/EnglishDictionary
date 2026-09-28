@@ -1,11 +1,10 @@
 package space.br1440.platform.tracing.test.assertions;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.sdk.trace.data.SpanData;
-
 import lombok.experimental.UtilityClass;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @UtilityClass
 public final class ScrubbingAssertions {

@@ -1,12 +1,12 @@
 package space.br1440.platform.tracing.test.assertions;
 
-import io.opentelemetry.api.common.AttributeKey;
-import io.opentelemetry.sdk.trace.data.SpanData;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.sdk.trace.data.SpanData;
 import lombok.experimental.UtilityClass;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @UtilityClass
 public final class ValidationAssertions {
@@ -16,6 +16,7 @@ public final class ValidationAssertions {
     public static void assertMissingRecorded(SpanData span, String... expectedKeys) {
         String missing = span.getAttributes().get(MISSING_KEY);
         assertThat(missing).isNotBlank();
+
         for (String key : expectedKeys) {
             assertThat(missing).contains(key);
         }

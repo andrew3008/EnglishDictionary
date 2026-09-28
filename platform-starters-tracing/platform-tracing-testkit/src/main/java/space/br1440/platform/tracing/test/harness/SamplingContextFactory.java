@@ -81,7 +81,9 @@ public final class SamplingContextFactory {
                         DEFAULT_TRACE_ID,
                         DEFAULT_SPAN_ID,
                         TraceFlags.getDefault(),
-                        TraceState.getDefault())));
+                        TraceState.getDefault())
+                )
+        );
     }
 
     public static Context withNotSampledParentAndQaTrace() {
@@ -90,6 +92,8 @@ public final class SamplingContextFactory {
                         DEFAULT_TRACE_ID,
                         DEFAULT_SPAN_ID,
                         TraceFlags.getDefault(),
-                        TraceState.getDefault())));
+                        TraceState.getDefault())
+                )
+        );
     }
 }
