@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures.boundSampling;
 import static space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationTestFixtures.initializingReadinessProjection;
 
@@ -13,6 +14,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.management.InstanceAlreadyExistsException;
@@ -27,11 +29,13 @@ import javax.management.ObjectName;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadinessSnapshot;
@@ -303,9 +307,13 @@ class PlatformTracingMBeanRegistrarTest {
     }
 
     @Test
+    @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
     void rollback_addSuppressed_present_when_rollback_fails() {
         // given
         final int[] registerCallCount = {0};
+        AgentLogCapture logs = new AgentLogCapture();
+        logs.install();
+        AtomicBoolean failureLoggedBeforeRollback = new AtomicBoolean();
         MBeanServer faultySpy = new DelegatingMBeanServer(server) {
             @Override
             public ObjectInstance registerMBean(Object object, ObjectName name)
@@ -324,6 +332,8 @@ class PlatformTracingMBeanRegistrarTest {
                     throws InstanceNotFoundException,
                     MBeanRegistrationException {
                 if (DomainObjectNames.SCRUBBING.equals(name)) {
+                    failureLoggedBeforeRollback.set(logs.events().stream()
+                            .anyMatch(event -> "MBEAN_BATCH_REGISTRATION_FAILED".equals(event.eventName())));
                     throw new InstanceNotFoundException("simulated rollback failure");
                 }
                 super.unregisterMBean(name);
@@ -335,17 +345,25 @@ class PlatformTracingMBeanRegistrarTest {
                 new PlatformTracingMBeanRegistrar(faultySpy, holder.current().agentInstanceId());
         wireComponentsExceptAcceptedPolicy(registrar, holder);
 
-        // when
         try {
-            registrar.registerRuntimeControls(holder);
-        } catch (JmxRegistrationException ex) {
+            // when
+            JmxRegistrationException ex = catchThrowableOfType(
+                    JmxRegistrationException.class,
+                    () -> registrar.registerRuntimeControls(holder)
+            );
+
             // then
             assertThat(ex.getCause()).isNotNull();
             assertThat(ex.getSuppressed()).isNotEmpty();
             assertThat(ex.rollbackIncomplete()).isTrue();
-            return;
+            assertThat(failureLoggedBeforeRollback).isFalse();
+            assertThat(logs.events())
+                    .filteredOn(event -> "MBEAN_BATCH_REGISTRATION_FAILED".equals(event.eventName()))
+                    .singleElement();
+            assertThat(logs.rendered()).doesNotContain("simulated rollback failure");
+        } finally {
+            logs.restore();
         }
-        assertThat(registerCallCount[0]).isGreaterThanOrEqualTo(0);
     }
 
     @Test

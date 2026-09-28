@@ -9,7 +9,7 @@ public final class AgentLoggingTestSupport {
         AgentLoggingRuntime.reset();
     }
 
-    static void install(PlatformStderrSink sink) {
-        AgentLoggingRuntime.shared().install(sink);
+    static AgentLoggingRuntime.ScopedInstallation install(PlatformStderrSink sink) {
+        return AgentLoggingRuntime.shared().installScoped(sink);
     }
 }

@@ -1,8 +1,5 @@
-package space.br1440.platform.tracing.otel.javaagent.logging;
+package space.br1440.platform.tracing.otel.javaagent.logging.schema;
 
-/**
- * Коды событий расширения платформы для OTEL агента.
- */
 public enum AgentEventCode {
 
     BOOT_INSTALLED("PTA-BOOT-001"),
@@ -63,19 +60,5 @@ public enum AgentEventCode {
 
     public String code() {
         return code;
-    }
-
-    static AgentEventCode fromCode(String code) {
-        if (code == null) {
-            return null;
-        }
-
-        for (AgentEventCode value : values()) {
-            if (value.code.equals(code)) {
-                return value;
-            }
-        }
-
-        return null;
     }
 }

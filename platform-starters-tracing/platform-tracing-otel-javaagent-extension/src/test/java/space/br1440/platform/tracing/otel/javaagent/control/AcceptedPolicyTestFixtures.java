@@ -10,7 +10,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Traci
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 public final class AcceptedPolicyTestFixtures {
 

@@ -5,8 +5,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 public final class PlatformLogControl {
 

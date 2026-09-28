@@ -31,8 +31,8 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ControlPlaneLogEvent;
 
 public final class PlatformSettingsStatusMBean implements DynamicMBean {
 
@@ -242,11 +242,8 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
     }
 
     private static void logCaptureFailure(RuntimeException failure) {
-        log.warn(
-                AgentEventCode.CTRL_PLANE,
-                "JMX settings status capture failed",
-                failure
-        );
+        log.log(ControlPlaneLogEvent.JMX_SETTINGS_STATUS_CAPTURE_FAILED,
+                fields -> fields.cause(failure));
     }
 
     @SuppressWarnings("SameParameterValue")

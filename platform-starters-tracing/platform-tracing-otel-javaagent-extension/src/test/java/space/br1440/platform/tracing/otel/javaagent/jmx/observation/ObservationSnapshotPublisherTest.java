@@ -16,11 +16,14 @@ import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationObservationSource;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class ObservationSnapshotPublisherTest {
 
     private static final Duration TEST_REFRESH_INTERVAL = Duration.ofMillis(10L);
@@ -204,6 +207,36 @@ class ObservationSnapshotPublisherTest {
             assertThat(published.await(2L, TimeUnit.SECONDS)).isTrue();
             assertThat(publisherThread.get().getName())
                     .isEqualTo("platform-tracing-jmx-observation-publisher");
+        }
+    }
+
+    @Test
+    void repeatedPublicationFailuresAreRateLimited() {
+        // given
+        AtomicInteger attempts = new AtomicInteger();
+        ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(
+                List.of(() -> {
+                    attempts.incrementAndGet();
+                    throw new IllegalStateException("simulated publication failure");
+                }),
+                Duration.ofHours(1L)
+        );
+        AgentLogCapture logs = new AgentLogCapture();
+        logs.install();
+
+        try (publisher) {
+            // when
+            for (int attempt = 0; attempt < 20; attempt++) {
+                publisher.publishSnapshot();
+            }
+
+            // then
+            assertThat(attempts).hasValue(20);
+            assertThat(logs.events())
+                    .filteredOn(event -> "JMX_OBSERVATION_SNAPSHOT_PUBLICATION_FAILED".equals(event.eventName()))
+                    .hasSizeLessThan(20);
+        } finally {
+            logs.restore();
         }
     }
 }

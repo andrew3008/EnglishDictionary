@@ -8,10 +8,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
@@ -20,6 +22,8 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadinessSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
@@ -104,6 +108,53 @@ class PlatformExportProcessorFactoryBoundaryTest {
         assertThat(readiness.has(PlatformExtensionCapability.EXPORT_PATH_PROTECTED)
                 || readiness.has(PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED))
                 .isTrue();
+    }
+
+    @Test
+    @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
+    @DisplayName("Blank overflow-policy сохраняет каталожную диагностику и включает DROP_OLDEST")
+    void blankOverflowPolicyLogsCatalogDiagnostic() {
+        // given
+        AgentLogCapture capture = new AgentLogCapture();
+        capture.install();
+
+        try {
+            ScrubbingRuntime runtime = runtimeOfPassword();
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
+            PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(registrar, runtime);
+            SpanExporter wrapped = factory.captureExporter(
+                    capturing(new ArrayList<>()),
+                    TracingSettingsSource.isolatedDefaults()
+            );
+
+            ExtensionConfig blankPolicy = new ExtensionConfig(stringConfig("   "));
+            SpanProcessor stock = SimpleSpanProcessor.create(wrapped);
+            try {
+                // when
+                SpanProcessor result = factory.maybeReplaceExportProcessor(
+                        stock,
+                        blankPolicy.queue(),
+                        stringConfig("   ")
+                );
+
+                // then
+                assertThat(result).isSameAs(stock);
+                assertThat(capture.events())
+                        .filteredOn(event -> event.message().equals(
+                                "Unknown overflow-policy; treating as DROP_OLDEST"))
+                        .singleElement()
+                        .satisfies(event -> {
+                            assertThat(event.eventCode()).isEqualTo(AgentEventCode.EXPORT_FACTORY);
+                            assertThat(event.fields()).containsEntry("name", "<blank>");
+                        });
+                assertThat(capture.events()).allSatisfy(event ->
+                        assertThat(event.eventCode()).isNotEqualTo(AgentEventCode.ENCODE_FALLBACK));
+            } finally {
+                stock.shutdown().join(2, TimeUnit.SECONDS);
+            }
+        } finally {
+            capture.restore();
+        }
     }
 
     @Test

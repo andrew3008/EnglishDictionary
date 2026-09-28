@@ -9,8 +9,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.SpanTimeoutLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.ratelimit.MinIntervalRateLimiter;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.AdmissionRejections.RejectionReason;
 import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.EmptyEvictionPlanner.EvictionCandidate;
 
@@ -37,7 +39,7 @@ final class InFlightTraceIndex {
     private final AtomicBoolean pressure = new AtomicBoolean();
     private final AtomicBoolean evicting = new AtomicBoolean();
     private final AtomicLong trackingEvictedTotal = new AtomicLong();
-    private final LogRateLimiter evictionLog;
+    private final MinIntervalRateLimiter evictionLog;
     private final AdmissionRejections rejections;
 
     InFlightTraceIndex(long spanTimeoutNanos,
@@ -63,7 +65,7 @@ final class InFlightTraceIndex {
         this.spanBudget = new AdmissionBudget("span", maxTrackedSpans);
         this.traceBudget = new AdmissionBudget("trace", maxTrackedTraces);
         this.afterFirstEvictionPlan = afterFirstEvictionPlan;
-        this.evictionLog = new LogRateLimiter(EVICTION_LOG_INTERVAL_NANOS, nanoTime);
+        this.evictionLog = new MinIntervalRateLimiter(EVICTION_LOG_INTERVAL_NANOS, nanoTime);
         this.rejections = new AdmissionRejections(maxTrackedSpansPerTrace, maxTrackedSpans, maxTrackedTraces, nanoTime);
     }
 
@@ -378,9 +380,9 @@ final class InFlightTraceIndex {
             return;
         }
 
-        log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT, "Span timeout evicted empty trace states under pressure",
-                "evicted", String.valueOf(evicted),
-                "capacity", String.valueOf(traceBudget.capacity()));
+        log.log(SpanTimeoutLogEvent.SPAN_TIMEOUT_EMPTY_TRACE_STATES_EVICTED, fields -> fields
+                .putLong(AgentLogField.EVICTED, evicted)
+                .putLong(AgentLogField.CAPACITY, traceBudget.capacity()));
     }
 
     private static final class AdmissionOutcome {

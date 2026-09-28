@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,14 +17,17 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-/**
- * Ставит byte-array sink на время теста и восстанавливает default.
- */
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
+
 public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallback {
+
+    public static final String RESOURCE_LOCK = "agent-logging-runtime";
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private ByteArrayOutputStream buffer;
+    private AgentLoggingRuntime.ScopedInstallation installation;
 
     @Override
     public void beforeEach(ExtensionContext context) {
@@ -36,13 +40,26 @@ public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallb
     }
 
     public void install() {
-        buffer = new ByteArrayOutputStream();
-        AgentLoggingTestSupport.install(new PlatformStderrSink(buffer));
+        if (installation != null) {
+            throw new IllegalStateException("Agent log capture is already installed");
+        }
+
+        ByteArrayOutputStream candidate = new ByteArrayOutputStream();
+        AgentLoggingRuntime.ScopedInstallation installed = AgentLoggingTestSupport.install(
+                new PlatformStderrSink(candidate)
+        );
+
+        buffer = candidate;
+        installation = installed;
         AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.TRACE);
     }
 
     public void restore() {
-        AgentLoggingTestSupport.reset();
+        if (installation != null) {
+            installation.close();
+            installation = null;
+        }
+
         buffer = null;
     }
 
@@ -54,14 +71,42 @@ public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallb
         if (buffer == null) {
             return List.of();
         }
+
         String text = buffer.toString(StandardCharsets.UTF_8);
         List<CapturedLogEvent> events = new ArrayList<>();
         for (String line : text.split("\n", -1)) {
             if (line.isBlank()) {
                 continue;
             }
+
             events.add(decode(line));
         }
+
+        return List.copyOf(events);
+    }
+
+    public List<JsonNode> jsonEvents() {
+        if (buffer == null) {
+            return List.of();
+        }
+
+        String text = buffer.toString(StandardCharsets.UTF_8);
+        List<JsonNode> events = new ArrayList<>();
+        for (String line : text.split("\n", -1)) {
+            if (line.isBlank()) {
+                continue;
+            }
+
+            try {
+                events.add(JSON.readTree(line));
+            } catch (IOException | RuntimeException failure) {
+                throw new IllegalStateException(
+                        "Captured log line is not a platform-log-event-v1 JSONL record",
+                        failure
+                );
+            }
+        }
+
         return List.copyOf(events);
     }
 
@@ -76,7 +121,15 @@ public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallb
                     .append(event.throwableDigest() == null ? "" : event.throwableDigest())
                     .append('\n');
         }
+
         return out.toString();
+    }
+
+    private static AgentEventCode eventCode(String code) {
+        return Arrays.stream(AgentEventCode.values())
+                .filter(candidate -> candidate.code().equals(code))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Unknown event code: " + code));
     }
 
     private static CapturedLogEvent decode(String line) {
@@ -88,14 +141,20 @@ public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallb
                     fields.put(entry.getKey(), entry.getValue().asText(""))
             );
 
+            JsonNode errorType = node.get("error_type");
             JsonNode errorStacktrace = node.get("error_stacktrace");
             return new CapturedLogEvent(
                     Instant.parse(node.path("timestamp").asText()),
                     AgentLogLevel.valueOf(node.path("level").asText()),
-                    AgentEventCode.fromCode(node.path("event_code").asText()),
+                    eventCode(node.path("event_code").asText()),
+                    node.path("event_name").asText(),
+                    node.has("original_event_name") ? node.path("original_event_name").asText() : null,
                     node.path("logger").asText(),
                     node.path("message").asText(),
                     fields,
+                    errorType == null || errorType.isNull() ? null : errorType.asText(),
+                    "true".equals(node.path("stacktrace_truncated").asText()),
+                    node.path("suppressed_count").asLong(0L),
                     errorStacktrace == null || errorStacktrace.isNull() ? null : errorStacktrace.asText()
             );
         } catch (IOException | RuntimeException failure) {

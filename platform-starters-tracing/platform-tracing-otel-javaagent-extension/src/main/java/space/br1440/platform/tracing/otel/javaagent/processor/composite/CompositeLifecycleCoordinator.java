@@ -3,8 +3,9 @@ package space.br1440.platform.tracing.otel.javaagent.processor.composite;
 import java.util.ArrayList;
 import java.util.List;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ExportPipelineLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
 import io.opentelemetry.sdk.common.CompletableResultCode;
@@ -89,7 +90,7 @@ final class CompositeLifecycleCoordinator {
                 results.add(observeDelegateResult(namedDelegate, operation, delegateResult, operationResult));
             } catch (Throwable failure) {
                 PlatformThrowables.propagateIfFatal(failure);
-                recordError(namedDelegate, operation, "threw an exception");
+                recordError(namedDelegate, operation, "THREW", failure);
                 results.add(CompletableResultCode.ofFailure());
             }
         }
@@ -102,12 +103,12 @@ final class CompositeLifecycleCoordinator {
                                                         CompletableResultCode delegateResult,
                                                         CompletableResultCode operationResult) {
         if (delegateResult == null) {
-            recordError(namedDelegate, operation, "returned null");
+            recordError(namedDelegate, operation, "RETURNED_NULL", null);
             return CompletableResultCode.ofFailure();
         }
 
         if ((delegateResult == operationResult) || (delegateResult == publishedShutdownResult())) {
-            recordError(namedDelegate, operation, "returned the composite lifecycle result");
+            recordError(namedDelegate, operation, "RETURNED_COMPOSITE_RESULT", null);
             return CompletableResultCode.ofFailure();
         }
 
@@ -116,7 +117,7 @@ final class CompositeLifecycleCoordinator {
             if (delegateResult.isSuccess()) {
                 observedResult.succeed();
             } else {
-                recordError(namedDelegate, operation, "completed with failure");
+                recordError(namedDelegate, operation, "ASYNC_FAILURE", null);
                 observedResult.fail();
             }
         });
@@ -130,12 +131,19 @@ final class CompositeLifecycleCoordinator {
         }
     }
 
-    private static void recordError(NamedDelegate namedDelegate, Operation operation, String failureKind) {
+    private static void recordError(NamedDelegate namedDelegate,
+                                    Operation operation,
+                                    String failureKind,
+                                    Throwable cause) {
         namedDelegate.errorCount().incrementAndGet();
-        log.warn(AgentEventCode.EXPORT_COMPOSITE_LIFECYCLE, "Composite processor lifecycle failed",
-                "phase", operation.displayName,
-                "delegate", namedDelegate.name(),
-                "kind", failureKind);
+        log.log(ExportPipelineLogEvent.COMPOSITE_PROCESSOR_LIFECYCLE_FAILED, fields -> {
+            fields.putString(AgentLogField.PHASE, operation.displayName)
+                    .putString(AgentLogField.DELEGATE, namedDelegate.name())
+                    .putString(AgentLogField.KIND, failureKind);
+            if (cause != null) {
+                fields.cause(cause);
+            }
+        });
     }
 
     private static void completeFrom(CompletableResultCode source, CompletableResultCode target) {

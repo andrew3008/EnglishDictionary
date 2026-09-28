@@ -20,7 +20,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
 
 class InvalidDiagnosticsLogLevelRejectionTest {
@@ -37,7 +37,8 @@ class InvalidDiagnosticsLogLevelRejectionTest {
                 store.current().policy().validationLevel(),
                 store.current().policy().exporterEnabled(),
                 store.current().policy().traceControlHeadersEnabled(),
-                AgentLogLevel.DEBUG);
+                AgentLogLevel.DEBUG
+        );
         updater.apply(attempt(), store.current().base(), debug);
         AgentLogLevel effectiveBefore = AgentLoggingRuntime.shared().effectiveLevel();
         long sequenceBefore = store.current().acceptedSequence();

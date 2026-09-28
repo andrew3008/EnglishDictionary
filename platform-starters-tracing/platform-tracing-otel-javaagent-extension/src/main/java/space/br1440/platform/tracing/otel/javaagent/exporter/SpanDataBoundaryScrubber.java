@@ -5,9 +5,9 @@ import java.util.List;
 import java.util.Objects;
 
 import space.br1440.platform.common.util.StringUtils;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
-import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingFailureLog;
+import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.api.common.Attributes;
@@ -35,7 +35,8 @@ final class SpanDataBoundaryScrubber {
             outcome = doScrub(spanData);
         } catch (Throwable t) {
             runtime.recordBoundaryCollapseFailure();
-            ScrubbingFailureLog.error(log, "boundary.scrub_failed", t);
+            PlatformThrowables.propagateIfFatal(t);
+            log.log(ScrubbingLogEvent.SCRUB_BOUNDARY_FAILED, fields -> fields.cause(t));
             outcome = collapseFailClosed(spanData);
         }
 
@@ -83,8 +84,7 @@ final class SpanDataBoundaryScrubber {
                 || events.criticalFailure()
                 || links.criticalFailure();
         if (criticalFailure) {
-            log.warn(AgentEventCode.SCRUB_EXPORT_BOUNDARY,
-                    "Critical scrubbing rule failed; collapsing all boundary surfaces");
+            log.log(ScrubbingLogEvent.CRITICAL_SCRUBBING_RULE_FAILED_AT_EXPORT_BOUNDARY);
             return SpanBoundaryOutcome.changed(collapseBoundarySurfaces(spanData));
         }
 
@@ -112,7 +112,9 @@ final class SpanDataBoundaryScrubber {
         try {
             return SpanBoundaryOutcome.changed(collapseBoundarySurfaces(spanData));
         } catch (Throwable t) {
-            ScrubbingFailureLog.error(log, "boundary.collapse_failed_dropping_span", t);
+            PlatformThrowables.propagateIfFatal(t);
+            log.log(ScrubbingLogEvent.SCRUB_BOUNDARY_COLLAPSE_FAILED_DROPPING_SPAN,
+                    fields -> fields.cause(t));
             return SpanBoundaryOutcome.drop();
         }
     }

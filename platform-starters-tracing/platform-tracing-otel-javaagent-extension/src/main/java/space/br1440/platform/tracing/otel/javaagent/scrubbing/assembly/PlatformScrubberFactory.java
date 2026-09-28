@@ -12,26 +12,28 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Supplier;
 
+import space.br1440.platform.common.util.ArrayUtils;
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.JavaAgentExtensionPaths;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ScrubbingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.factory.ScrubbingMissingKeyPolicy;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventType;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.StableScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.PriorityHardening;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuntimeRule;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.StableScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.loader.ExtensionRuleLoader;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
-import space.br1440.platform.common.util.ArrayUtils;
-import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
@@ -76,17 +78,42 @@ public final class PlatformScrubberFactory {
         } catch (SanitizerBootstrapException e) {
             throw e;
         } catch (RuntimeException e) {
-            throw classified(SanitizerBootstrapException.RULE_LOADING_FAILED, "Scrubbing rule collection failed", e);
+            throw classified(
+                    SanitizerBootstrapException.RULE_LOADING_FAILED,
+                    "Scrubbing rule collection failed",
+                    ScrubbingLogEvent.SCRUBBING_RULE_COLLECTION_FAILED,
+                    e
+            );
         }
     }
 
-    private static SanitizerBootstrapException classified(String code, String message, Throwable failure) {
+    private static SanitizerBootstrapException classified(String code,
+                                                           String message,
+                                                           AgentLogEventType eventType,
+                                                           Throwable failure) {
         PlatformThrowables.propagateIfFatal(failure);
-        if (log.isDebugEnabled()) {
-            log.debug(AgentEventCode.SCRUB_FAILURE, message);
-        }
+        log.log(eventType, fields -> fields.cause(failure));
+        return new SanitizerBootstrapException(
+                code,
+                message + " (" + failure.getClass().getName() + ")",
+                failure
+        );
+    }
 
-        return new SanitizerBootstrapException(code, message + " (" + failure.getClass().getName() + ")");
+    private static SanitizerBootstrapException classified(String code,
+                                                           String message,
+                                                           AgentLogEventType eventType,
+                                                           String name,
+                                                           Throwable failure) {
+        PlatformThrowables.propagateIfFatal(failure);
+        log.log(eventType, fields -> fields
+                .putString(AgentLogField.NAME, name)
+                .cause(failure));
+        return new SanitizerBootstrapException(
+                code,
+                message + " (" + failure.getClass().getName() + ")",
+                failure
+        );
     }
 
     private List<RuntimeRule> collectScrubbingRules(ScrubbingExtensionConfig scrubbing, ConfigProperties config) {
@@ -105,7 +132,8 @@ public final class PlatformScrubberFactory {
             if (rule != null) {
                 builtIn.add(rule);
             } else {
-                log.warn(AgentEventCode.SCRUB_UNKNOWN_BUILTIN, "Unknown built-in scrubbing rule", "name", name);
+                log.log(ScrubbingLogEvent.UNKNOWN_BUILT_IN_SCRUBBING_RULE,
+                        fields -> fields.putString(AgentLogField.NAME, name));
             }
         }
 
@@ -131,8 +159,12 @@ public final class PlatformScrubberFactory {
                     )
                     .forEach(bundledSpi::add);
         } catch (ServiceConfigurationError | RuntimeException failure) {
-            throw classified(SanitizerBootstrapException.RULE_LOADING_FAILED,
-                    "Bundled scrubbing rule loading failed", failure);
+            throw classified(
+                    SanitizerBootstrapException.RULE_LOADING_FAILED,
+                    "Bundled scrubbing rule loading failed",
+                    ScrubbingLogEvent.BUNDLED_SCRUBBING_RULE_LOADING_FAILED,
+                    failure
+            );
         }
 
         return bundledSpi;
@@ -146,8 +178,12 @@ public final class PlatformScrubberFactory {
             try {
                 stableRules.add(StableScrubbingRule.captureExternal(rule));
             } catch (RuntimeException failure) {
-                throw classified(SanitizerBootstrapException.RULE_METADATA_INVALID,
-                        "Bundled scrubbing rule metadata validation failed", failure);
+                throw classified(
+                        SanitizerBootstrapException.RULE_METADATA_INVALID,
+                        "Bundled scrubbing rule metadata validation failed",
+                        ScrubbingLogEvent.BUNDLED_SCRUBBING_RULE_METADATA_VALIDATION_FAILED,
+                        failure
+                );
             }
         }
 
@@ -199,7 +235,8 @@ public final class PlatformScrubberFactory {
                     origin
             ));
         } else {
-            log.debug(AgentEventCode.SCRUB_INITIALIZED, "Duplicate rule name ignored", "name", rule.name());
+            log.log(ScrubbingLogEvent.DUPLICATE_SCRUBBING_RULE_IGNORED,
+                    fields -> fields.putString(AgentLogField.NAME, rule.name()));
         }
     }
 
@@ -246,6 +283,8 @@ public final class PlatformScrubberFactory {
             throw classified(
                     SanitizerBootstrapException.RULE_LOADING_FAILED,
                     "Unable to canonicalize configured OpenTelemetry extension path '" + safeName + "'",
+                    ScrubbingLogEvent.EXTENSION_PATH_CANONICALIZATION_FAILED,
+                    safeName,
                     ex
             );
         }

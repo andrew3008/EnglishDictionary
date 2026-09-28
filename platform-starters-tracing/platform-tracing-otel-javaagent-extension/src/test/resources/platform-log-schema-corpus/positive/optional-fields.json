@@ -4,6 +4,8 @@
   "logger": "space.br1440.platform.logging.example.Owner",
   "message": "Scrubbing rule applied",
   "event_code": "APP-SCRUB-001",
+  "event_name": "SCRUBBING_RULE_APPLIED",
+  "suppressed_count": "17",
   "fields": {
     "kind": "optional",
     "count": "2"

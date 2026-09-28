@@ -4,14 +4,19 @@
   "title": "platform-log-event-v1",
   "type": "object",
   "additionalProperties": true,
-  "required": ["timestamp", "level", "logger", "message", "event_code"],
+  "required": ["timestamp", "level", "logger", "message", "event_code", "event_name"],
   "properties": {
     "timestamp": { "type": "string", "format": "date-time" },
     "level": { "type": "string", "enum": ["ERROR", "WARN", "INFO", "DEBUG", "TRACE"] },
     "logger": { "type": "string", "minLength": 1 },
     "message": { "type": "string", "minLength": 1, "maxLength": 512 },
     "event_code": { "type": "string", "pattern": "^[A-Z]{2,6}-[A-Z]+-[0-9]{3}$" },
+    "event_name": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$", "maxLength": 128 },
+    "original_event_name": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$", "maxLength": 128 },
     "fields": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 512 } },
-    "error_stacktrace": { "type": "string", "maxLength": 4119 }
+    "error_type": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "error_stacktrace": { "type": "string", "maxLength": 4119 },
+    "stacktrace_truncated": { "type": "string", "enum": ["true"] },
+    "suppressed_count": { "type": "string", "pattern": "^[1-9][0-9]*$" }
   }
 }

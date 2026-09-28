@@ -8,10 +8,11 @@ import java.util.Map;
 import java.util.Objects;
 import jakarta.annotation.Nonnull;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
-import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
-import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ExportPipelineLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.processor.PlatformEndingSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.common.CompletableResultCode;
@@ -122,6 +123,9 @@ public final class PlatformCompositeSpanProcessor implements PlatformEndingSpanP
     private void recordCallbackFailure(NamedDelegate namedDelegate, Throwable failure, String phase) {
         PlatformThrowables.propagateIfFatal(failure);
         namedDelegate.errorCount().incrementAndGet();
-        log.warn(AgentEventCode.EXPORT_CALLBACK, "Composite processor callback failed", failure, "phase", phase);
+        log.log(ExportPipelineLogEvent.COMPOSITE_PROCESSOR_CALLBACK_FAILED, fields -> fields
+                .putString(AgentLogField.PHASE, phase)
+                .putString(AgentLogField.DELEGATE, namedDelegate.name())
+                .cause(failure));
     }
 }

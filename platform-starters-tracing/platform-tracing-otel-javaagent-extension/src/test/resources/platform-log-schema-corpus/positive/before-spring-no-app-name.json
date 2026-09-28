@@ -4,6 +4,7 @@
   "logger": "space.br1440.platform.logging.example.Owner",
   "message": "Diagnostics before Spring context",
   "event_code": "APP-BOOT-003",
+  "event_name": "BEFORE_SPRING_DIAGNOSTICS",
   "fields": {
     "phase": "before-spring"
   }

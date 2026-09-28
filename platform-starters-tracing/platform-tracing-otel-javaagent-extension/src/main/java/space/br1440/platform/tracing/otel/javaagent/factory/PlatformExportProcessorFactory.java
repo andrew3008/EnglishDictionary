@@ -15,8 +15,9 @@ import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.otel.javaagent.configuration.QueueExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ExportPipelineLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
@@ -33,6 +34,8 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 public final class PlatformExportProcessorFactory {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(PlatformExportProcessorFactory.class);
+    private static final String SHUTDOWN_KIND_FAILED = "failed";
+    private static final String SHUTDOWN_KIND_TIMEOUT = "timeout";
 
     private final AtomicReference<SafeSpanExporter> capturedExporter = new AtomicReference<>();
     private final AtomicReference<ReplacementAwareSpanExporter> capturedStockExporter = new AtomicReference<>();
@@ -84,8 +87,8 @@ public final class PlatformExportProcessorFactory {
                 return safe;
             }
 
-            log.error(AgentEventCode.EXPORT_FACTORY, "Foreign SafeSpanExporter cannot be re-wrapped",
-                    "type", exporter.getClass().getName());
+            log.log(ExportPipelineLogEvent.FOREIGN_SAFE_SPAN_EXPORTER_REWRAP_REJECTED,
+                    fields -> fields.putString(AgentLogField.TYPE, exporter.getClass().getName()));
 
             throw new SanitizerBootstrapException(
                     SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER,
@@ -109,37 +112,38 @@ public final class PlatformExportProcessorFactory {
         }
 
         if (exporterCount.get() > 1) {
-            log.warn(AgentEventCode.EXPORT_FACTORY, "Multiple SpanExporters; falling back to stock BatchSpanProcessor",
-                    "count", String.valueOf(exporterCount.get()));
+            log.log(ExportPipelineLogEvent.MULTIPLE_SPAN_EXPORTERS_FALLBACK,
+                    fields -> fields.putLong(AgentLogField.COUNT, exporterCount.get()));
             markExportPathProtected();
             return processor;
         }
 
         SpanExporter exporter = capturedExporter.get();
         if (exporter == null) {
-            log.warn(AgentEventCode.EXPORT_FACTORY, "Captured SpanExporter is null; falling back");
+            log.log(ExportPipelineLogEvent.CAPTURED_SPAN_EXPORTER_NULL_FALLBACK);
             return processor;
         }
 
         if (!(processor instanceof BatchSpanProcessor)) {
-            log.warn(AgentEventCode.EXPORT_FACTORY, "Pipeline processor is not BatchSpanProcessor; falling back",
-                    "type", processor.getClass().getName());
+            log.log(ExportPipelineLogEvent.NON_BATCH_SPAN_PROCESSOR_FALLBACK,
+                    fields -> fields.putString(AgentLogField.TYPE, processor.getClass().getName()));
             markExportPathProtected();
             return processor;
         }
 
         ReplacementAwareSpanExporter stockExporter = capturedStockExporter.get();
         if (stockExporter == null) {
-            log.warn(AgentEventCode.EXPORT_FACTORY, "Replacement-aware exporter is absent; falling back");
+            log.log(ExportPipelineLogEvent.REPLACEMENT_AWARE_EXPORTER_ABSENT_FALLBACK);
             markExportPathProtected();
             return processor;
         }
 
         stockExporter.suppressReplacementShutdown();
         try {
-            processor.shutdown().join(5, TimeUnit.SECONDS);
+            // join не бросает исключение, если shutdown завершился ошибкой или не уложился в таймаут.
+            logUnsuccessfulStockShutdown(processor.shutdown().join(5, TimeUnit.SECONDS));
         } catch (RuntimeException e) {
-            log.warn(AgentEventCode.EXPORT_FACTORY, "Stock BatchSpanProcessor.shutdown() failed", e);
+            log.log(ExportPipelineLogEvent.STOCK_BATCH_SPAN_PROCESSOR_SHUTDOWN_FAILED, fields -> fields.cause(e));
         }
 
         PlatformDropOldestExportSpanProcessor replacement = PlatformDropOldestExportSpanProcessor
@@ -153,11 +157,21 @@ public final class PlatformExportProcessorFactory {
         markExportPathProtected();
 
         if (dropOldestEnabledLogged.compareAndSet(false, true)) {
-            log.info(AgentEventCode.EXPORT_FACTORY, "DROP_OLDEST export processor enabled", "count",
-                    String.valueOf(replacement.metricsSnapshot().queueCapacity()));
+            log.log(ExportPipelineLogEvent.DROP_OLDEST_EXPORT_PROCESSOR_ENABLED,
+                    fields -> fields.putLong(AgentLogField.COUNT, replacement.metricsSnapshot().queueCapacity()));
         }
 
         return replacement;
+    }
+
+    static void logUnsuccessfulStockShutdown(CompletableResultCode result) {
+        if (result != null && result.isSuccess()) {
+            return;
+        }
+
+        String kind = result != null && result.isDone() ? SHUTDOWN_KIND_FAILED : SHUTDOWN_KIND_TIMEOUT;
+        log.log(ExportPipelineLogEvent.STOCK_BATCH_SPAN_PROCESSOR_SHUTDOWN_UNSUCCESSFUL,
+                fields -> fields.putString(AgentLogField.KIND, kind));
     }
 
     private void markExportPathProtected() {
@@ -168,7 +182,8 @@ public final class PlatformExportProcessorFactory {
     }
 
     private static boolean isExplicitUpstream(QueueExtensionConfig queueConfig) {
-        String normalized = queueConfig.overflowPolicy().trim().toUpperCase(Locale.ROOT);
+        String configuredPolicy = queueConfig.overflowPolicy();
+        String normalized = configuredPolicy.trim().toUpperCase(Locale.ROOT);
         if (QueueOverflowPolicy.UPSTREAM.value().equals(normalized)) {
             return true;
         }
@@ -177,8 +192,9 @@ public final class PlatformExportProcessorFactory {
             return false;
         }
 
-        log.warn(AgentEventCode.EXPORT_FACTORY, "Unknown overflow-policy; treating as DROP_OLDEST",
-                "name", queueConfig.overflowPolicy());
+        String diagnosticValue = configuredPolicy.isBlank() ? "<blank>" : configuredPolicy;
+        log.log(ExportPipelineLogEvent.UNKNOWN_OVERFLOW_POLICY_DEFAULTED,
+                fields -> fields.putString(AgentLogField.NAME, diagnosticValue));
 
         return false;
     }

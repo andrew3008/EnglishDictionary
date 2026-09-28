@@ -1,8 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent.logging;
 
-import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
 
 class AgentLogTextSanitizerTest {
 
@@ -12,7 +12,7 @@ class AgentLogTextSanitizerTest {
         String safe = "resource-identity";
 
         // when
-        String normalized = AgentLogTextSanitizer.normalizeBounded(safe, AgentLogEvent.MAX_ARGUMENT_CHARS);
+        String normalized = AgentLogTextSanitizer.normalizeBounded(safe, AgentLogRecord.MAX_ARGUMENT_CHARS);
 
         // then
         assertThat(normalized).isSameAs(safe);
@@ -24,7 +24,7 @@ class AgentLogTextSanitizerTest {
         String safe = "ok \uD83D\uDE00";
 
         // when
-        String normalized = AgentLogTextSanitizer.normalizeBounded(safe, AgentLogEvent.MAX_ARGUMENT_CHARS);
+        String normalized = AgentLogTextSanitizer.normalizeBounded(safe, AgentLogRecord.MAX_ARGUMENT_CHARS);
 
         // then
         assertThat(normalized).isSameAs(safe);
@@ -34,7 +34,7 @@ class AgentLogTextSanitizerTest {
     void null_field_value_becomes_empty() {
         // given
         // when
-        String normalized = AgentLogTextSanitizer.normalizeBounded(null, AgentLogEvent.MAX_ARGUMENT_CHARS);
+        String normalized = AgentLogTextSanitizer.normalizeBounded(null, AgentLogRecord.MAX_ARGUMENT_CHARS);
 
         // then
         assertThat(normalized).isEmpty();
@@ -46,7 +46,7 @@ class AgentLogTextSanitizerTest {
         String raw = "a\r\n\t\u001B\u007F\u0085\u061C\u200E\u2028\u202A\u2066z";
 
         // when
-        String normalized = AgentLogTextSanitizer.normalizeBounded(raw, AgentLogEvent.MAX_ARGUMENT_CHARS);
+        String normalized = AgentLogTextSanitizer.normalizeBounded(raw, AgentLogRecord.MAX_ARGUMENT_CHARS);
 
         // then
         assertThat(normalized).isEqualTo("a???????????z");
@@ -58,7 +58,7 @@ class AgentLogTextSanitizerTest {
         String raw = "safe\u202Emalicious";
 
         // when
-        String normalized = AgentLogTextSanitizer.normalizeBounded(raw, AgentLogEvent.MAX_ARGUMENT_CHARS);
+        String normalized = AgentLogTextSanitizer.normalizeBounded(raw, AgentLogRecord.MAX_ARGUMENT_CHARS);
 
         // then
         assertThat(AgentLogTextSanitizer.isWireUnsafe(raw)).isTrue();
@@ -72,7 +72,7 @@ class AgentLogTextSanitizerTest {
         String raw = "a\uD83D" + "b\uDE00c";
 
         // when
-        String normalized = AgentLogTextSanitizer.normalizeBounded(raw, AgentLogEvent.MAX_ARGUMENT_CHARS);
+        String normalized = AgentLogTextSanitizer.normalizeBounded(raw, AgentLogRecord.MAX_ARGUMENT_CHARS);
 
         // then
         assertThat(normalized).isEqualTo("a\uFFFDb\uFFFDc");
@@ -82,13 +82,13 @@ class AgentLogTextSanitizerTest {
     void truncation_does_not_split_a_surrogate_pair() {
         // given
         String pair = "\uD83D\uDE00";
-        String raw = "x".repeat(AgentLogEvent.MAX_ARGUMENT_CHARS - 1) + pair;
+        String raw = "x".repeat(AgentLogRecord.MAX_ARGUMENT_CHARS - 1) + pair;
 
         // when
-        String normalized = AgentLogTextSanitizer.normalizeBounded(raw, AgentLogEvent.MAX_ARGUMENT_CHARS);
+        String normalized = AgentLogTextSanitizer.normalizeBounded(raw, AgentLogRecord.MAX_ARGUMENT_CHARS);
 
         // then
-        assertThat(normalized).hasSize(AgentLogEvent.MAX_ARGUMENT_CHARS - 1);
+        assertThat(normalized).hasSize(AgentLogRecord.MAX_ARGUMENT_CHARS - 1);
         assertThat(normalized).doesNotContain(pair);
         assertThat(normalized).doesNotContain("\uD83D");
     }
@@ -96,26 +96,26 @@ class AgentLogTextSanitizerTest {
     @Test
     void oversized_value_is_truncated_without_scanning_as_identity() {
         // given
-        String raw = "a".repeat(AgentLogEvent.MAX_ARGUMENT_CHARS + 16) + "\r\n";
+        String raw = "a".repeat(AgentLogRecord.MAX_ARGUMENT_CHARS + 16) + "\r\n";
 
         // when
-        String normalized = AgentLogTextSanitizer.normalizeBounded(raw, AgentLogEvent.MAX_ARGUMENT_CHARS);
+        String normalized = AgentLogTextSanitizer.normalizeBounded(raw, AgentLogRecord.MAX_ARGUMENT_CHARS);
 
         // then
-        assertThat(normalized).hasSize(AgentLogEvent.MAX_ARGUMENT_CHARS);
+        assertThat(normalized).hasSize(AgentLogRecord.MAX_ARGUMENT_CHARS);
         assertThat(normalized).doesNotContain("\r", "\n");
     }
 
     @Test
     void logger_uses_logger_bound() {
         // given
-        String raw = "l".repeat(AgentLogEvent.MAX_LOGGER_CHARS + 8);
+        String raw = "l".repeat(AgentLogRecord.MAX_LOGGER_CHARS + 8);
 
         // when
-        String normalized = AgentLogTextSanitizer.normalizeBounded(raw, AgentLogEvent.MAX_LOGGER_CHARS);
+        String normalized = AgentLogTextSanitizer.normalizeBounded(raw, AgentLogRecord.MAX_LOGGER_CHARS);
 
         // then
-        assertThat(normalized).hasSize(AgentLogEvent.MAX_LOGGER_CHARS);
+        assertThat(normalized).hasSize(AgentLogRecord.MAX_LOGGER_CHARS);
     }
 
     @Test

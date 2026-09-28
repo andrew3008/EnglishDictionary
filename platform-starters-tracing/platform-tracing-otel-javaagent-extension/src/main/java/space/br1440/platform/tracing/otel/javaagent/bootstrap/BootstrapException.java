@@ -18,8 +18,13 @@ final class BootstrapException extends RuntimeException {
     private static String message(BootstrapFailure failure) {
         Objects.requireNonNull(failure, "failure");
 
-        String causeMessage = (failure.cause() == null) ? "no recorded cause" : failure.cause().toString();
-        return "Platform bootstrap failure [%s] during phase '%s': %s"
-                .formatted(failure.code(), failure.phase(), causeMessage);
+        String baseMessage = "Platform bootstrap failure [%s] during phase '%s'"
+                .formatted(failure.code(), failure.phase());
+        if (failure.cause() == null) {
+            return baseMessage;
+        }
+
+        String causeMessage = failure.cause().toString();
+        return "%s: %s".formatted(baseMessage, causeMessage);
     }
 }

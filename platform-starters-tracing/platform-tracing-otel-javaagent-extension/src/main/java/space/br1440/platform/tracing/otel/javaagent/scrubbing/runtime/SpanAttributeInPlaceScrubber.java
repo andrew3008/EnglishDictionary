@@ -7,8 +7,11 @@ import java.util.concurrent.atomic.LongAdder;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
-import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventType;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
+import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.IpPrefixTruncator;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
@@ -51,7 +54,7 @@ final class SpanAttributeInPlaceScrubber {
         } catch (Throwable t) {
             actions.recordFailure();
             collapse.markAttributesUnverified();
-            ScrubbingFailureLog.error(log, "processor.snapshot_unavailable", t);
+            logFailure(ScrubbingLogEvent.SCRUB_PROCESSOR_SNAPSHOT_UNAVAILABLE, t);
             return;
         }
 
@@ -76,8 +79,13 @@ final class SpanAttributeInPlaceScrubber {
             actions.recordFailure();
             collapse.markAttributesUnverified();
             applyFailClosedSnapshot(span, attributes);
-            ScrubbingFailureLog.error(log, "processor.callback_failed", t);
+            logFailure(ScrubbingLogEvent.SCRUB_PROCESSOR_CALLBACK_FAILED, t);
         }
+    }
+
+    private void logFailure(AgentLogEventType eventType, Throwable failure) {
+        PlatformThrowables.propagateIfFatal(failure);
+        log.log(eventType, fields -> fields.cause(failure));
     }
 
     long droppedActions() {
@@ -118,7 +126,7 @@ final class SpanAttributeInPlaceScrubber {
                 applyFailClosed(span, key, key.getType());
             } catch (Throwable t) {
                 actions.recordFailure();
-                ScrubbingFailureLog.error(log, "processor.collapse_failed", t);
+                logFailure(ScrubbingLogEvent.SCRUB_PROCESSOR_COLLAPSE_FAILED, t);
             }
         });
     }
@@ -131,8 +139,8 @@ final class SpanAttributeInPlaceScrubber {
                 && ScrubbingDecision.SCRUBBING_FAILED_REASON.equals(decision.reason());
         if (failClosed) {
             actions.recordFailure();
-            log.warn(AgentEventCode.SCRUB_RULE_FAILED, "Applying fail-closed mask",
-                    "attribute", key.getKey());
+            log.log(ScrubbingLogEvent.SCRUBBING_FAIL_CLOSED_MASK_APPLIED,
+                    fields -> fields.putString(AgentLogField.ATTRIBUTE, key.getKey()));
             applyFailClosed(span, key, type);
             return;
         }
@@ -182,8 +190,8 @@ final class SpanAttributeInPlaceScrubber {
             case BOOLEAN_ARRAY -> span.setAttribute((AttributeKey<List<Boolean>>) key, List.of(SENTINEL_BOOLEAN));
 
             default -> {
-                log.warn(AgentEventCode.SCRUB_UNSUPPORTED_TYPE, "Unsupported attribute type",
-                        "type", String.valueOf(type));
+                log.log(ScrubbingLogEvent.UNSUPPORTED_SPAN_ATTRIBUTE_TYPE,
+                        fields -> fields.putString(AgentLogField.TYPE, type.name()));
                 collapse.markAttributesUnverified();
                 return false;
             }
@@ -234,8 +242,8 @@ final class SpanAttributeInPlaceScrubber {
             String truncated = IpPrefixTruncator.truncate(value);
             if (truncated == null) {
                 actions.recordFailure();
-                log.warn(AgentEventCode.SCRUB_RULE_FAILED, "IP prefix truncation failed; falling back to full mask",
-                        "reason", decision.reason());
+                log.log(ScrubbingLogEvent.IP_PREFIX_TRUNCATION_FALLBACK_TO_FULL_MASK,
+                        fields -> fields.putString(AgentLogField.REASON, decision.reason()));
                 return MASK;
             }
             return truncated;

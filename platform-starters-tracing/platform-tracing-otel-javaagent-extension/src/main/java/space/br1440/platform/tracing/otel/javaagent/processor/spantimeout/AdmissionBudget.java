@@ -4,8 +4,9 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.SpanTimeoutLogEvent;
 
 final class AdmissionBudget {
 
@@ -43,14 +44,16 @@ final class AdmissionBudget {
             int current = used.get();
             if (permitCount > current) {
                 invariantViolationTotal.incrementAndGet();
-                log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT_PERMIT_VIOLATION,
-                        "Permit release exceeded the acquired permit count",
-                        "kind", kind,
-                        "acquiredPermitCount", String.valueOf(current),
-                        "requestedReleaseCount", String.valueOf(permitCount),
-                        "operation", operationName,
-                        "traceId", (traceId == null) ? "" : traceId
-                );
+                log.log(SpanTimeoutLogEvent.SPAN_TIMEOUT_PERMIT_RELEASE_VIOLATION, fields -> {
+                    fields.putString(AgentLogField.KIND, kind)
+                            .putLong(AgentLogField.ACQUIRED_PERMIT_COUNT, current)
+                            .putLong(AgentLogField.REQUESTED_RELEASE_COUNT, permitCount)
+                            .putString(AgentLogField.OPERATION, operationName);
+
+                    if (traceId != null) {
+                        fields.putString(AgentLogField.TRACE_ID, traceId);
+                    }
+                });
 
                 return;
             }

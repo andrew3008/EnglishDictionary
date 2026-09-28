@@ -5,11 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
-/**
- * Контракт {@link PlatformLogControl}: порог детализации читается из принятой политики.
- */
 class PlatformLogControlTest {
 
     @Test

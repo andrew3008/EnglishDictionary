@@ -5,8 +5,9 @@ import java.util.Objects;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
-import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ExportPipelineLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
@@ -74,7 +75,7 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
         try {
             snapshot = span.toSpanData();
         } catch (RuntimeException e) {
-            log.warn(AgentEventCode.EXPORT_DROP_OLDEST, "toSpanData() failed", e);
+            log.log(ExportPipelineLogEvent.SPAN_TO_DATA_CONVERSION_FAILED, fields -> fields.cause(e));
             return;
         }
 
@@ -213,11 +214,8 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
             }
 
             if (maxExportBatchSize > maxQueueSize) {
-                log.warn(AgentEventCode.EXPORT_DROP_OLDEST,
-                        "Exceeds maxQueueSize; clamped to queue size",
-                        "name",
-                        "maxExportBatchSize"
-                );
+                log.log(ExportPipelineLogEvent.MAX_EXPORT_BATCH_SIZE_CLAMPED,
+                        fields -> fields.putString(AgentLogField.NAME, "maxExportBatchSize"));
 
                 maxExportBatchSize = maxQueueSize;
             }

@@ -17,8 +17,9 @@ import static space.br1440.platform.tracing.otel.javaagent.configuration.Extensi
 
 import java.time.Duration;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.SpanTimeoutLogEvent;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
@@ -55,14 +56,8 @@ public final class SpanTimeoutExtensionConfig {
             return;
         }
 
-        String message = """
-                Global tracked-span capacity is below per-trace capacity; effective single-trace \
-                capacity is bounded by the global budget\
-                """;
-
-        log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT,
-                message,
-                "maxTrackedSpans", String.valueOf(maxTrackedSpans),
-                "maxTrackedSpansPerTrace", String.valueOf(maxTrackedSpansPerTrace));
+        log.log(SpanTimeoutLogEvent.GLOBAL_TRACKED_SPAN_CAPACITY_BELOW_PER_TRACE_CAPACITY, fields -> fields
+                .putLong(AgentLogField.MAX_TRACKED_SPANS, maxTrackedSpans)
+                .putLong(AgentLogField.MAX_TRACKED_SPANS_PER_TRACE, maxTrackedSpansPerTrace));
     }
 }

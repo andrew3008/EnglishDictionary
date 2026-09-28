@@ -17,13 +17,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class InFlightTraceIndexTest {
 
     private static final long HOUR_NANOS = Duration.ofHours(1).toNanos();

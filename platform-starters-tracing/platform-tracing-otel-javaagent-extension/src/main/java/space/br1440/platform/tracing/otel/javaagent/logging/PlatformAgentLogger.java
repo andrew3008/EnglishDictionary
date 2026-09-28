@@ -1,128 +1,69 @@
 package space.br1440.platform.tracing.otel.javaagent.logging;
 
-import java.time.Instant;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
-import space.br1440.platform.common.util.ArrayUtils;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventType;
 
 public final class PlatformAgentLogger {
+
+    private static final AgentLogFieldsWriter NO_FIELDS = fields -> {
+    };
 
     private final String ownerName;
     private final AgentLoggingRuntime runtime;
 
-    private PlatformAgentLogger(String ownerName, AgentLoggingRuntime runtime) {
+    PlatformAgentLogger(String ownerName, AgentLoggingRuntime runtime) {
         this.ownerName = Objects.requireNonNull(ownerName, "ownerName");
         this.runtime = Objects.requireNonNull(runtime, "runtime");
     }
 
     public static PlatformAgentLogger get(Class<?> owner) {
         Objects.requireNonNull(owner, "owner");
-        String logger = AgentLogTextSanitizer.normalizeBounded(owner.getName(), AgentLogEvent.MAX_LOGGER_CHARS);
+
+        String logger = AgentLogTextSanitizer.normalizeBounded(owner.getName(), AgentLogRecord.MAX_LOGGER_CHARS);
         return new PlatformAgentLogger(logger, AgentLoggingRuntime.shared());
     }
 
-    public boolean isEnabled(AgentLogLevel eventLevel) {
-        return runtime.isEnabled(eventLevel);
+    public void log(AgentLogEventType eventType) {
+        log(eventType, NO_FIELDS);
     }
 
-    public boolean isDebugEnabled() {
-        return isEnabled(AgentLogLevel.DEBUG);
-    }
-
-    public EmitResult error(AgentEventCode eventCode, String message, Object... fields) {
-        return emit(AgentLogLevel.ERROR, eventCode, message, null, fields);
-    }
-
-    public EmitResult error(AgentEventCode eventCode, String message, Throwable error, Object... fields) {
-        return emit(AgentLogLevel.ERROR, eventCode, message, error, fields);
-    }
-
-    public EmitResult warn(AgentEventCode eventCode, String message, Object... fields) {
-        return emit(AgentLogLevel.WARN, eventCode, message, null, fields);
-    }
-
-    public EmitResult warn(AgentEventCode eventCode, String message, Throwable error, Object... fields) {
-        return emit(AgentLogLevel.WARN, eventCode, message, error, fields);
-    }
-
-    public EmitResult info(AgentEventCode eventCode, String message, Object... fields) {
-        return emit(AgentLogLevel.INFO, eventCode, message, null, fields);
-    }
-
-    public EmitResult debug(AgentEventCode eventCode, String message, Object... fields) {
-        return emit(AgentLogLevel.DEBUG, eventCode, message, null, fields);
-    }
-
-    public EmitResult emit(AgentLogLevel level,
-                           AgentEventCode eventCode,
-                           String message,
-                           Throwable error,
-                           Object... fields) {
-        if (level == null || eventCode == null) {
-            return EmitResult.REJECTED_BY_SECURITY_POLICY;
+    public void log(AgentLogEventType eventType, AgentLogFieldsWriter fieldsWriter) {
+        AgentLogEventType requiredEventType = Objects.requireNonNull(eventType, "eventType");
+        AgentLogFieldsWriter requiredFieldsWriter = Objects.requireNonNull(fieldsWriter, "fieldsWriter");
+        if (!runtime.permits(requiredEventType.level())) {
+            return;
         }
 
-        if (!runtime.isEnabled(level)) {
-            return EmitResult.FILTERED_BY_LEVEL;
-        }
-
-        try {
-            String sanitizedMessage = AgentLogTextSanitizer.normalizeBounded(message, AgentLogEvent.MAX_ARGUMENT_CHARS);
-            Map<String, String> sanitized = sanitizeFields(fields);
-            if (sanitizedMessage.isBlank() || sanitized == null || ownerName.isBlank()) {
-                return EmitResult.REJECTED_BY_SECURITY_POLICY;
-            }
-
-            return runtime.emit(new AgentLogEvent(
-                    Instant.now(),
-                    level,
-                    eventCode,
-                    ownerName,
-                    sanitizedMessage,
-                    sanitized,
-                    BoundedThrowableRenderer.render(error)
-            ));
-        } catch (RuntimeException invariantViolation) {
-            return runtime.emitFallback(level, eventCode, FallbackReason.INVARIANT_VIOLATION);
-        }
+        emitAdmitted(requiredEventType, requiredFieldsWriter);
     }
 
-    private static Map<String, String> sanitizeFields(Object[] fields) {
-        if (ArrayUtils.isNullOrEmpty(fields)) {
-            return Map.of();
-        }
+    EmitResult emitAdmitted(AgentLogEventType eventType, AgentLogFieldsWriter fieldsWriter) {
+        return emitAdmitted(eventType, fieldsWriter, 0L);
+    }
 
-        if ((fields.length & 1) != 0) {
-            return null;
-        }
+    EmitResult emitAdmitted(AgentLogEventType eventType,
+                            AgentLogFieldsWriter fieldsWriter,
+                            long suppressedCount) {
+        return runtime.emitAdmitted(ownerName, eventType, fieldsWriter, suppressedCount);
+    }
 
-        int pairCount = (fields.length / 2);
-        if (pairCount > AgentLogFieldNamePolicy.maxFields()) {
-            return null;
-        }
+    EmitResult emitRateTransitionAdmitted(AgentLogEventType markerType,
+                                          AgentLogFieldsWriter markerWriter,
+                                          AgentLogEventType problemType,
+                                          AgentLogFieldsWriter problemWriter,
+                                          long suppressedCount) {
+        return runtime.emitRateTransitionAdmitted(
+                ownerName,
+                markerType,
+                markerWriter,
+                problemType,
+                problemWriter,
+                suppressedCount
+        );
+    }
 
-        Map<String, String> sanitized = new LinkedHashMap<>(pairCount);
-        Set<String> seen = new HashSet<>(pairCount);
-        for (int i = 0; i < fields.length; i += 2) {
-            String name = (fields[i] == null) ? null : String.valueOf(fields[i]);
-            if ((name == null) || AgentLogFieldNamePolicy.isRejectedFieldName(name)) {
-                return null;
-            }
-
-            if (!seen.add(name.toLowerCase(Locale.ROOT))) {
-                return null;
-            }
-
-            String value = (fields[i + 1] == null) ? null : String.valueOf(fields[i + 1]);
-            sanitized.put(name, AgentLogTextSanitizer.normalizeBounded(value, AgentLogEvent.MAX_ARGUMENT_CHARS));
-        }
-
-        return Collections.unmodifiableMap(sanitized);
+    boolean permits(AgentLogEventType eventType) {
+        return runtime.permits(eventType.level());
     }
 }

@@ -5,8 +5,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
+import space.br1440.platform.tracing.otel.javaagent.logging.ratelimit.MinIntervalRateLimiter;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventType;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.SpanTimeoutLogEvent;
 
 final class AdmissionRejections {
 
@@ -21,18 +24,21 @@ final class AdmissionRejections {
         Objects.requireNonNull(nanoTime, "nanoTime");
 
         this.perTrace = new Slot(
-                "Span timeout rejected span tracking: per-trace tracked-span capacity reached",
-                perTraceCapacity, nanoTime
+                SpanTimeoutLogEvent.SPAN_TIMEOUT_PER_TRACE_CAPACITY_REACHED,
+                perTraceCapacity,
+                nanoTime
         );
 
         this.global = new Slot(
-                "Span timeout rejected span tracking: global tracked-span capacity reached",
-                spanCapacity, nanoTime
+                SpanTimeoutLogEvent.SPAN_TIMEOUT_GLOBAL_SPAN_CAPACITY_REACHED,
+                spanCapacity,
+                nanoTime
         );
 
         this.traceCapacity = new Slot(
-                "Span timeout rejected span tracking: tracked-trace capacity reached",
-                traceCapacity, nanoTime
+                SpanTimeoutLogEvent.SPAN_TIMEOUT_TRACKED_TRACE_CAPACITY_REACHED,
+                traceCapacity,
+                nanoTime
         );
     }
 
@@ -50,10 +56,9 @@ final class AdmissionRejections {
             return;
         }
 
-        log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT, slot.message,
-                "rejected", String.valueOf(slot.total.get()),
-                "limit", String.valueOf(slot.limit)
-        );
+        log.log(slot.eventType, fields -> fields
+                .putLong(AgentLogField.REJECTED, slot.total.get())
+                .putLong(AgentLogField.LIMIT, slot.limit));
     }
 
     long perTraceTotal() {
@@ -84,15 +89,15 @@ final class AdmissionRejections {
 
     private static final class Slot {
 
-        private final String message;
+        private final AgentLogEventType eventType;
         private final int limit;
         private final AtomicLong total = new AtomicLong();
-        private final LogRateLimiter limiter;
+        private final MinIntervalRateLimiter limiter;
 
-        private Slot(String message, int limit, LongSupplier nanoTime) {
-            this.message = message;
+        private Slot(AgentLogEventType eventType, int limit, LongSupplier nanoTime) {
+            this.eventType = eventType;
             this.limit = limit;
-            this.limiter = new LogRateLimiter(LOG_INTERVAL_NANOS, nanoTime);
+            this.limiter = new MinIntervalRateLimiter(LOG_INTERVAL_NANOS, nanoTime);
         }
     }
 }

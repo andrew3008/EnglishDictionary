@@ -1,11 +1,14 @@
 package space.br1440.platform.tracing.otel.javaagent.processor.dropoldest;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ExporterLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
-import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.data.SpanData;
@@ -13,9 +16,10 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 
 final class TimedSpanExporter {
 
-    private static final RateLimitedLogger log = new RateLimitedLogger(TimedSpanExporter.class);
+    private static final PlatformAgentLogger LIFECYCLE_LOG = PlatformAgentLogger.get(TimedSpanExporter.class);
 
     private final SpanExporter delegate;
+    private final RateLimitedLogger log;
     private final long exportTimeoutNanos;
     private final long shutdownTimeoutNanos;
     private final DropOldestExportMetrics metrics;
@@ -24,10 +28,25 @@ final class TimedSpanExporter {
                       long exportTimeoutNanos,
                       long shutdownTimeoutNanos,
                       DropOldestExportMetrics metrics) {
+        this(
+                delegate,
+                exportTimeoutNanos,
+                shutdownTimeoutNanos,
+                metrics,
+                new RateLimitedLogger(TimedSpanExporter.class)
+        );
+    }
+
+    TimedSpanExporter(SpanExporter delegate,
+                      long exportTimeoutNanos,
+                      long shutdownTimeoutNanos,
+                      DropOldestExportMetrics metrics,
+                      RateLimitedLogger log) {
         this.delegate = delegate;
         this.exportTimeoutNanos = exportTimeoutNanos;
         this.shutdownTimeoutNanos = shutdownTimeoutNanos;
         this.metrics = metrics;
+        this.log = Objects.requireNonNull(log, "log");
     }
 
     boolean export(List<SpanData> snapshots) {
@@ -37,13 +56,13 @@ final class TimedSpanExporter {
         } catch (Throwable failure) {
             PlatformThrowables.propagateIfFatal(failure);
             metrics.incrementFailures();
-            log.warn(AgentEventCode.EXPORT_TIMED, "exporter.export() threw", failure);
+            log.log(ExporterLogEvent.TIMED_EXPORT_THROWN, fields -> fields.cause(failure));
             return false;
         }
 
         if (resultCode == null) {
             metrics.incrementFailures();
-            log.warn(AgentEventCode.EXPORT_TIMED, "exporter.export() returned null");
+            log.log(ExporterLogEvent.TIMED_EXPORT_RETURNED_NULL);
             return false;
         }
 
@@ -51,14 +70,16 @@ final class TimedSpanExporter {
         if (!completed) {
             metrics.incrementTimeouts();
             metrics.incrementFailures();
-            log.warn(AgentEventCode.EXPORT_TIMED, "exporter.export() timed out", "timeoutMs",
-                    String.valueOf(TimeUnit.NANOSECONDS.toMillis(exportTimeoutNanos)));
+            log.log(ExporterLogEvent.TIMED_EXPORT_TIMED_OUT, fields -> fields.putLong(
+                    AgentLogField.TIMEOUT_MS,
+                    TimeUnit.NANOSECONDS.toMillis(exportTimeoutNanos)
+            ));
             return false;
         }
 
         if (!resultCode.isSuccess()) {
             metrics.incrementFailures();
-            log.warn(AgentEventCode.EXPORT_TIMED, "exporter.export() returned failure");
+            log.log(ExporterLogEvent.TIMED_EXPORT_RETURNED_FAILURE);
             return false;
         }
 
@@ -72,28 +93,30 @@ final class TimedSpanExporter {
         } catch (Throwable failure) {
             PlatformThrowables.propagateIfFatal(failure);
             metrics.incrementShutdownFailures();
-            log.warn(AgentEventCode.EXPORT_TIMED, "exporter.shutdown() failed", failure);
+            LIFECYCLE_LOG.log(ExporterLogEvent.TIMED_SHUTDOWN_FAILED, fields -> fields.cause(failure));
             return false;
         }
 
         if (resultCode == null) {
             metrics.incrementShutdownFailures();
-            log.warn(AgentEventCode.EXPORT_TIMED, "exporter.shutdown() returned null");
+            LIFECYCLE_LOG.log(ExporterLogEvent.TIMED_SHUTDOWN_RETURNED_NULL);
             return false;
         }
 
         boolean completed = resultCode.join(shutdownTimeoutNanos, TimeUnit.NANOSECONDS).isDone();
         if (!completed) {
             metrics.incrementShutdownFailures();
-            log.warn(AgentEventCode.EXPORT_TIMED, "exporter.shutdown() timed out", "timeoutMs",
-                    String.valueOf(TimeUnit.NANOSECONDS.toMillis(shutdownTimeoutNanos)));
+            LIFECYCLE_LOG.log(ExporterLogEvent.TIMED_SHUTDOWN_TIMED_OUT, fields -> fields.putLong(
+                    AgentLogField.TIMEOUT_MS,
+                    TimeUnit.NANOSECONDS.toMillis(shutdownTimeoutNanos)
+            ));
             return false;
         }
 
         boolean success = resultCode.isSuccess();
         if (!success) {
             metrics.incrementShutdownFailures();
-            log.warn(AgentEventCode.EXPORT_TIMED, "exporter.shutdown() returned failure");
+            LIFECYCLE_LOG.log(ExporterLogEvent.TIMED_SHUTDOWN_RETURNED_FAILURE);
         }
 
         return success;

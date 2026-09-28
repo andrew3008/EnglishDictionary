@@ -8,8 +8,9 @@ import java.util.Properties;
 
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.artifact.PlatformExtensionArtifact;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
 
 import lombok.experimental.UtilityClass;
 
@@ -33,7 +34,8 @@ final class ExtensionVersionResolver {
 
     static String resolve(URL metadata) {
         if (metadata == null) {
-            warnInvalidMetadata("Extension build metadata is missing; using development", "reason", "missing");
+            log.log(BootstrapLogEvent.EXTENSION_BUILD_METADATA_MISSING,
+                    fields -> fields.putString(AgentLogField.REASON, "missing"));
             return DEVELOPMENT_VERSION;
         }
 
@@ -41,13 +43,15 @@ final class ExtensionVersionResolver {
         try (InputStream stream = metadata.openStream()) {
             properties.load(stream);
         } catch (IOException | IllegalArgumentException failure) {
-            warnInvalidMetadata("Extension build metadata is unreadable; using development", "resource", metadata);
+            log.log(BootstrapLogEvent.EXTENSION_BUILD_METADATA_UNREADABLE,
+                    fields -> fields.putString(AgentLogField.RESOURCE, metadata.toExternalForm()));
             return DEVELOPMENT_VERSION;
         }
 
         String resolved = resolve(properties);
         if (DEVELOPMENT_VERSION.equals(resolved)) {
-            warnInvalidMetadata("Extension build metadata is invalid; using development", "resource", metadata);
+            log.log(BootstrapLogEvent.EXTENSION_BUILD_METADATA_INVALID,
+                    fields -> fields.putString(AgentLogField.RESOURCE, metadata.toExternalForm()));
         }
         return resolved;
     }
@@ -70,14 +74,5 @@ final class ExtensionVersionResolver {
 
     private static URL metadataResourceBeside(Class<?> extensionClass) {
         return extensionClass.getResource(METADATA_RESOURCE);
-    }
-
-    private static void warnInvalidMetadata(String message, String field, Object value) {
-        log.warn(
-                AgentEventCode.BOOT_ARTIFACT_VERSION,
-                message,
-                field,
-                String.valueOf(value)
-        );
     }
 }

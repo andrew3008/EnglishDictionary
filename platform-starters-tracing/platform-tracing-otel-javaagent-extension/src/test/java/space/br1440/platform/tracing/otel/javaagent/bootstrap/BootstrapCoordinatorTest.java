@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
@@ -25,6 +26,7 @@ import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
@@ -44,11 +46,12 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationException;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxAssessorTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxDenialReason;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxMutationRegistrationAssessor;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
@@ -62,6 +65,7 @@ import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
 @ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 @SuppressWarnings("resource")
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class BootstrapCoordinatorTest {
 
     private BootstrapCoordinator ownedCoordinator;
@@ -212,7 +216,9 @@ class BootstrapCoordinatorTest {
     @Test
     void diagnosticCleanupFailureOverridesTransportStaleDuringShutdown() throws Exception {
         // given
-        CapturingShutdownHookRegistry hooks = new CapturingShutdownHookRegistry();
+        IllegalArgumentException resourceCleanupFailure =
+                new IllegalArgumentException("simulated shutdown hook removal failure");
+        CapturingShutdownHookRegistry hooks = new CapturingShutdownHookRegistry(resourceCleanupFailure);
         BootstrapCoordinator coordinator = new BootstrapCoordinator(
                 hooks,
                 new PlatformScrubberFactory(),
@@ -225,24 +231,42 @@ class BootstrapCoordinatorTest {
         satisfyReadinessBarrier(session);
         coordinator.activate();
 
-        IllegalStateException diagnosticFailure = new IllegalStateException("simulated diagnostic readiness cleanup failure");
+        UnsupportedOperationException diagnosticFailure =
+                new UnsupportedOperationException("simulated diagnostic readiness cleanup failure");
+        AgentLogCapture logs = new AgentLogCapture();
+        logs.install();
 
-        try (AutoCloseable ignored = replaceDiagnosticHandle(
-                coordinator,
-                () -> {
-                    throw diagnosticFailure;
-                }
-        )) {
-            // when
-            hooks.runHook();
+        try {
+            try (AutoCloseable ignored = replaceDiagnosticHandle(
+                    coordinator,
+                    () -> {
+                        throw diagnosticFailure;
+                    }
+            )) {
+                // when
+                assertThatCode(hooks::runHook).doesNotThrowAnyException();
 
-            // then
-            assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
-            assertThat(coordinator.currentWire().failureCode())
-                    .isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
-            assertThat(coordinator.currentWire().evidenceGeneration()).isEqualTo(3L);
-            assertThat(session.readiness().snapshot().failureCode())
-                    .isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
+                // then
+                assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+                assertThat(coordinator.currentWire().failureCode())
+                        .isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
+                assertThat(coordinator.currentWire().evidenceGeneration()).isEqualTo(3L);
+                assertThat(session.readiness().snapshot().failureCode())
+                        .isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
+                assertThat(logs.events())
+                        .filteredOn(event -> event.eventCode() == AgentEventCode.BOOT_CLASSIFIED_FAILURE)
+                        .singleElement()
+                        .satisfies(event -> {
+                            assertThat(event.fields())
+                                    .containsEntry("phase", "shutdown")
+                                    .containsEntry("resourceLabel", "shutdown-completion");
+                            assertThat(event.throwableDigest())
+                                    .contains(IllegalArgumentException.class.getName())
+                                    .contains(UnsupportedOperationException.class.getName());
+                        });
+            }
+        } finally {
+            logs.restore();
         }
     }
 
@@ -397,7 +421,12 @@ class BootstrapCoordinatorTest {
         assertThat(eventsWithCode(outcome, AgentEventCode.BOOT_REMOTE_JMX_DENIED))
                 .as("the exception path is not a classified assessment denial")
                 .isEmpty();
-        assertThat(eventsWithCode(outcome, AgentEventCode.BOOT_CLASSIFIED_FAILURE)).isNotEmpty();
+        assertThat(eventsWithCode(outcome, AgentEventCode.BOOT_CLASSIFIED_FAILURE))
+                .singleElement()
+                .satisfies(event -> assertThat(event.fields())
+                        .containsEntry("failureCode", RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name())
+                        .containsEntry("phase", "activate")
+                        .containsEntry("subphase", "remote-jmx-assessment"));
     }
 
     private RemoteJmxDenialOutcome activateAndExpectRemoteJmxFailure(RemoteJmxMutationRegistrationAssessor assessor,
@@ -773,6 +802,8 @@ class BootstrapCoordinatorTest {
         MBeanServer server = MBeanServerFactory.newMBeanServer();
         server.registerMBean(new Timer(), DomainObjectNames.EXTENSION_READINESS);
         BootstrapCoordinator coordinator = coordinator(server, AgentInstanceId.random());
+        AgentLogCapture logs = new AgentLogCapture();
+        logs.install();
 
         try (coordinator) {
             // when
@@ -797,6 +828,45 @@ class BootstrapCoordinatorTest {
             assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
             assertThat(coordinator.currentWire().failureCode())
                     .isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
+            assertThat(logs.events())
+                    .filteredOn(event -> "BOOTSTRAP_PHASE_FAILED".equals(event.eventName()))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.throwableDigest())
+                            .contains(JmxRegistrationException.class.getName()));
+            assertThat(logs.rendered()).doesNotContain("ownership collision");
+        } finally {
+            logs.restore();
+        }
+    }
+
+    @Test
+    void knownConfigurationFailureLogsPropertyNameWithoutPropertyValue() {
+        // given
+        BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
+        this.ownedCoordinator = coordinator;
+        AgentLogCapture logs = new AgentLogCapture();
+        logs.install();
+
+        try {
+            // when
+            assertThatThrownBy(() -> coordinator.prepare(config(Map.of(
+                    ExtensionPropertyNames.SCRUBBING_ENABLED,
+                    "false"
+            )))).isInstanceOf(BootstrapException.class);
+
+            // then
+            assertThat(logs.events())
+                    .filteredOn(event -> "BOOTSTRAP_PHASE_FAILED".equals(event.eventName()))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.fields())
+                            .containsEntry("failureCode", "CONFIGURATION_INITIALIZATION_FAILED")
+                            .containsEntry("phase", "prepare")
+                            .containsEntry("subphase", "configuration-validation")
+                            .containsEntry("propertyName", ExtensionPropertyNames.SCRUBBING_ENABLED)
+                            .doesNotContainValue("false"));
+            assertThat(logs.rendered()).doesNotContain("=false");
+        } finally {
+            logs.restore();
         }
     }
 
@@ -846,16 +916,36 @@ class BootstrapCoordinatorTest {
     @Test
     void rule_source_failure_preserves_SANITIZER_RULE_LOADING_FAILED() {
         // given
+        IllegalStateException sourceFailure = new IllegalStateException("rule source unavailable");
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator(ScrubberFactoryTestFixtures.factory(() -> {
-            throw new IllegalStateException("rule source unavailable");
+            throw sourceFailure;
         }));
         this.ownedCoordinator = coordinator;
+        AgentLogCapture logs = new AgentLogCapture();
+        logs.install();
 
-        // when/then
-        assertThatThrownBy(() -> coordinator.prepare(config(Map.of())))
-                .isInstanceOf(BootstrapException.class)
-                .extracting(failure -> ((BootstrapException) failure).failure().code())
-                .isEqualTo("SANITIZER_RULE_LOADING_FAILED");
+        try {
+            // when
+            BootstrapException failure = catchThrowableOfType(
+                    BootstrapException.class,
+                    () -> coordinator.prepare(config(Map.of()))
+            );
+
+            // then
+            assertThat(failure.failure().code()).isEqualTo("SANITIZER_RULE_LOADING_FAILED");
+            assertThat(failure.failure().cause()).isInstanceOf(SanitizerBootstrapException.class);
+            SanitizerBootstrapException sanitizerFailure =
+                    (SanitizerBootstrapException) failure.failure().cause();
+            assertThat(sanitizerFailure.getCause()).isSameAs(sourceFailure);
+            assertThat(logs.events().stream()
+                    .filter(event -> "Scrubbing rule collection failed".equals(event.message()))
+                    .findFirst()
+                    .orElseThrow()
+                    .throwableDigest())
+                    .contains(IllegalStateException.class.getName());
+        } finally {
+            logs.restore();
+        }
     }
 
     @Test
@@ -1049,6 +1139,15 @@ class BootstrapCoordinatorTest {
     private static final class CapturingShutdownHookRegistry implements ShutdownHookRegistry {
 
         private final AtomicReference<Runnable> action = new AtomicReference<>();
+        private final RuntimeException removalFailure;
+
+        private CapturingShutdownHookRegistry() {
+            this(null);
+        }
+
+        private CapturingShutdownHookRegistry(RuntimeException removalFailure) {
+            this.removalFailure = removalFailure;
+        }
 
         @Override
         public Registration register(String threadName, Runnable registeredAction) {
@@ -1057,6 +1156,9 @@ class BootstrapCoordinatorTest {
             }
 
             return () -> {
+                if (removalFailure != null) {
+                    throw removalFailure;
+                }
             };
         }
 

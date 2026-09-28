@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.logging;
+package space.br1440.platform.tracing.otel.javaagent.logging.schema;
 
 import java.util.Locale;
 
@@ -21,7 +21,7 @@ public enum AgentLogLevel {
         this.eventLevel = eventLevel;
     }
 
-    boolean permits(AgentLogLevel eventLevel) {
+    public boolean permits(AgentLogLevel eventLevel) {
         if (eventLevel == null || !eventLevel.eventLevel) {
             return false;
         }
@@ -30,7 +30,7 @@ public enum AgentLogLevel {
     }
 
     @SuppressWarnings("UnusedReturnValue")
-    AgentLogLevel requireEventLevel() {
+    public AgentLogLevel requireEventLevel() {
         if (!eventLevel) {
             throw new IllegalArgumentException(name() + " is not a valid event level");
         }

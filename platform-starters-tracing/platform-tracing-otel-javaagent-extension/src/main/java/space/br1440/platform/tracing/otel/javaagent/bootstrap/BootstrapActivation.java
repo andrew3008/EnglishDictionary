@@ -19,10 +19,12 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRunti
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxDenialReason;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxRegistrationAssessment;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagationGate;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
+import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadinessSnapshot;
 
 final class BootstrapActivation {
@@ -96,13 +98,10 @@ final class BootstrapActivation {
             return;
         }
 
-        log.error(
-                AgentEventCode.BOOT_REMOTE_JMX_DENIED,
-                "Remote JMX mutation registration denied",
-                "failureCode", assessment.failureCode().name(),
-                "remediation", assessment.remediation(),
-                "offendingArguments", String.join(",", assessment.offendingArguments())
-        );
+        log.log(BootstrapLogEvent.REMOTE_JMX_MUTATION_REGISTRATION_DENIED, fields -> fields
+                .putString(AgentLogField.FAILURE_CODE, assessment.failureCode().name())
+                .putString(AgentLogField.REMEDIATION, assessment.remediation())
+                .putString(AgentLogField.OFFENDING_ARGUMENTS, String.join(",", assessment.offendingArguments())));
         throw new RemoteJmxRegistrationDeniedException(assessment);
     }
 
@@ -164,6 +163,7 @@ final class BootstrapActivation {
                 attempt.session(),
                 attempt.resources(),
                 failureCodeOf(attempt, failure),
+                attempt.phase().subphase(),
                 failure,
                 attempt.batchId(),
                 attempt.evidence()
@@ -180,31 +180,40 @@ final class BootstrapActivation {
     }
 
     private static void emitInstalled(ExtensionReadinessWireSnapshot ready) {
-        log.info(
-                AgentEventCode.BOOT_INSTALLED,
-                "Platform tracing extension installed",
-                "lifecycle", ready.lifecycle(),
-                "profile", INSTALLATION_PROFILE,
-                "protocolVersion", INSTALLATION_PROTOCOL_VERSION,
-                "extensionVersion", ready.evidence().extensionVersion()
-        );
+        log.log(BootstrapLogEvent.EXTENSION_INSTALLED, fields -> fields
+                .putEnum(AgentLogField.LIFECYCLE, PlatformExtensionLifecycle.valueOf(ready.lifecycle()))
+                .putString(AgentLogField.PROFILE, INSTALLATION_PROFILE)
+                .putLong(AgentLogField.PROTOCOL_VERSION, INSTALLATION_PROTOCOL_VERSION)
+                .putString(AgentLogField.EXTENSION_VERSION, ready.evidence().extensionVersion()));
     }
 
     private enum ActivationPhase {
-        DIAGNOSTIC_REGISTRATION(DIAGNOSTIC_MBEAN_REGISTRATION_FAILED),
-        REMOTE_JMX_ASSESSMENT(RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name()),
-        RUNTIME_EVIDENCE_VERIFICATION(RUNTIME_EVIDENCE_ATTESTATION_FAILED),
-        RUNTIME_BINDING(ACTIVATION_FAILED),
-        READINESS_PUBLICATION(ACTIVATION_FAILED);
+        DIAGNOSTIC_REGISTRATION(DIAGNOSTIC_MBEAN_REGISTRATION_FAILED, "diagnostic-registration"),
+        REMOTE_JMX_ASSESSMENT(
+                RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name(),
+                "remote-jmx-assessment"
+        ),
+        RUNTIME_EVIDENCE_VERIFICATION(
+                RUNTIME_EVIDENCE_ATTESTATION_FAILED,
+                "runtime-evidence-verification"
+        ),
+        RUNTIME_BINDING(ACTIVATION_FAILED, "runtime-binding"),
+        READINESS_PUBLICATION(ACTIVATION_FAILED, "readiness-publication");
 
         private final String failureCode;
+        private final String subphase;
 
-        ActivationPhase(String failureCode) {
+        ActivationPhase(String failureCode, String subphase) {
             this.failureCode = failureCode;
+            this.subphase = subphase;
         }
 
         String failureCode() {
             return failureCode;
+        }
+
+        String subphase() {
+            return subphase;
         }
     }
 

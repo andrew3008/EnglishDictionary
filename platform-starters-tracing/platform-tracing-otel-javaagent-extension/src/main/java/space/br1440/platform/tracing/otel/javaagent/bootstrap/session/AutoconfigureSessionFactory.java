@@ -43,7 +43,10 @@ public final class AutoconfigureSessionFactory {
             String message = "%s=false is forbidden by the secure Agent profile"
                     .formatted(ExtensionPropertyNames.SCRUBBING_ENABLED);
 
-            throw new ConfigurationException(message);
+            throw new ConfigurationPropertyException(
+                    ExtensionPropertyNames.SCRUBBING_ENABLED,
+                    new ConfigurationException(message)
+            );
         }
 
         TracingSettingsSource policy = TracingSettingsSource.fromStartup(extensionConfig, agentInstanceId);

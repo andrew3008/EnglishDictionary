@@ -25,7 +25,6 @@ final class PlatformTracingSafeWrapperMetricsBinder implements MeterBinder {
         registerCounter(registry, "failures", "sampler", "sampler.failures");
         registerCounter(registry, "failures", "propagator", "propagator.failures");
         registerCounter(registry, "failures", "resource", "resource.failures");
-        registerCounter(registry, "failures", "scope", "scope.failures");
 
         FunctionCounter.builder(PREFIX + "suppressed_errors", diagnosticsSource, PlatformTracingSafeWrapperMetricsBinder::suppressedErrors)
                 .description("Total number of errors suppressed by tracing safe wrappers")

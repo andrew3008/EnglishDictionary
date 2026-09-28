@@ -1,5 +1,19 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.parallel.ResourceLock;
+
+import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
+import space.br1440.platform.tracing.test.harness.SamplerHarness;
+
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Context;
@@ -7,19 +21,12 @@ import io.opentelemetry.sdk.trace.data.LinkData;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
 import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
 import io.opentelemetry.sdk.trace.samplers.SamplingResult;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
-import space.br1440.platform.tracing.test.harness.SamplerHarness;
-
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Failure-path тесты {@link SafeSampler}: падение делегата не уходит в application thread,
  * применяется fail-closed DROP, degraded-mode перестаёт дёргать стабильно падающий делегат.
  */
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class SafeSamplerTest {
 
     private static final Sampler ALWAYS_THROWS = new Sampler() {
@@ -35,6 +42,9 @@ class SafeSamplerTest {
         }
     };
 
+    @RegisterExtension
+    final AgentLogCapture logs = new AgentLogCapture();
+
     @Test
     void delegate_failure_is_not_thrown_and_falls_back_to_drop() {
         // given
@@ -47,6 +57,9 @@ class SafeSamplerTest {
         // then
         assertThat(result.getDecision()).isEqualTo(SamplingDecision.DROP);
         assertThat(diagnostics.getSamplerFailures()).isGreaterThanOrEqualTo(1);
+        assertThat(samplerEvent().fields()).containsEntry("reason", "THREW");
+        assertThat(samplerEvent().errorType()).isEqualTo(IllegalStateException.class.getName());
+        assertThat(samplerEvent().throwableDigest()).contains(IllegalStateException.class.getName());
     }
 
     @Test
@@ -81,6 +94,9 @@ class SafeSamplerTest {
         // then
         assertThat(result.getDecision()).isEqualTo(SamplingDecision.DROP);
         assertThat(diagnostics.getSamplerFailures()).isGreaterThanOrEqualTo(1);
+        assertThat(samplerEvent().fields()).containsEntry("reason", "RETURNED_NULL");
+        assertThat(samplerEvent().errorType()).isNull();
+        assertThat(samplerEvent().throwableDigest()).isNull();
     }
 
     @Test
@@ -114,5 +130,12 @@ class SafeSamplerTest {
         assertThat(delegateCalls.get())
                 .as("делегат вызывался не более порога открытия breaker")
                 .isLessThanOrEqualTo(5);
+    }
+
+    private CapturedLogEvent samplerEvent() {
+        return logs.events().stream()
+                .filter(event -> SafeSampler.class.getName().equals(event.logger()))
+                .findFirst()
+                .orElseThrow();
     }
 }

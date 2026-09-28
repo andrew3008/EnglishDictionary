@@ -4,16 +4,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.parallel.ResourceLock;
+
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
+import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
 import io.opentelemetry.sdk.resources.Resource;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
-import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
-
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class ValidationStartupErrorPolicyTest {
 
     @RegisterExtension
@@ -36,8 +39,10 @@ class ValidationStartupErrorPolicyTest {
                 .satisfies(event -> {
                     assertThat(event.eventCode()).isEqualTo(AgentEventCode.VALID_MISSING_ATTRIBUTES);
                     assertThat(event.message()).isEqualTo("Required span attributes are missing");
-                    assertThat(event.fields().toString())
-                            .doesNotContain("customer-secret-span-name", "platform.trace.type", "platform.trace.result");
+                    assertThat(event.fields())
+                            .containsEntry("count", "2")
+                            .containsEntry("missingKeys", PlatformAttributes.PLATFORM_TYPE + "," + PlatformAttributes.PLATFORM_RESULT);
+                    assertThat(event.fields().toString()).doesNotContain("customer-secret-span-name");
                 });
     }
 

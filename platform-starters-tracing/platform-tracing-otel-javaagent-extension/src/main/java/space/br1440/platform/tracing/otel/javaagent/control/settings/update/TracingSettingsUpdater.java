@@ -9,9 +9,10 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ControlPlaneLogEvent;
 
 public final class TracingSettingsUpdater {
 
@@ -57,7 +58,9 @@ public final class TracingSettingsUpdater {
         try {
             result = evaluate(expectedBase, candidate);
         } catch (RuntimeException exception) {
-            log.warn(AgentEventCode.CTRL_UPDATE, "Tracing settings update failed", exception, "attemptId", attempt.attemptId());
+            log.log(ControlPlaneLogEvent.TRACING_SETTINGS_UPDATE_FAILED, fields -> fields
+                    .putString(AgentLogField.ATTEMPT_ID, attempt.attemptId())
+                    .cause(exception));
             TracingSettingsRevision accepted = store.current();
             result = new SettingsUpdateResult(
                     SettingsUpdateStatus.FAILED,

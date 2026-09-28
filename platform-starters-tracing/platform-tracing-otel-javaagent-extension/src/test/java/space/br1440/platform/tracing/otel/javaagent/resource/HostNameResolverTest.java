@@ -1,12 +1,23 @@
 package space.br1440.platform.tracing.otel.javaagent.resource;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class HostNameResolverTest {
+
+    private static final String SECRET_MARKER = "hostname-failure-secret";
+
+    @RegisterExtension
+    final AgentLogCapture logs = new AgentLogCapture();
 
     @Test
     void hostname_from_env_HOSTNAME_lowercase() {
@@ -48,5 +59,31 @@ class HostNameResolverTest {
 
         // when/then
         assertThat(resolver.resolve()).isEqualTo(Optional.empty());
+    }
+
+    @Test
+    void lookup_failure_includes_type_without_arbitrary_message() {
+        // given
+        IllegalStateException failure = new IllegalStateException(SECRET_MARKER);
+
+        // when
+        String hostname = HostNameResolver.resolveLocalHostNameWithTimeout(() -> {
+            throw failure;
+        });
+
+        // then
+        assertThat(hostname).isNull();
+        assertThat(logs.events())
+                .filteredOn(event -> event.eventCode() == AgentEventCode.BOOT_HOSTNAME_FAILED)
+                .singleElement()
+                .satisfies(event -> {
+                    assertThat(event.fields())
+                            .containsOnlyKeys("failureType")
+                            .containsEntry("failureType", IllegalStateException.class.getName());
+                    assertThat(event.throwableDigest())
+                            .contains(IllegalStateException.class.getName())
+                            .doesNotContain(SECRET_MARKER);
+                });
+        assertThat(logs.rendered()).doesNotContain(SECRET_MARKER);
     }
 }

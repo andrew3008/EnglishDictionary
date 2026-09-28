@@ -3,5 +3,6 @@
   "level": "INFO",
   "logger": "",
   "message": "Platform logging started",
-  "event_code": "APP-BOOT-001"
+  "event_code": "APP-BOOT-001",
+  "event_name": "PLATFORM_LOGGING_STARTED"
 }

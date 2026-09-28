@@ -10,8 +10,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.SpanTimeoutLogEvent;
 
 final class SpanTimeoutScanner {
 
@@ -75,8 +76,7 @@ final class SpanTimeoutScanner {
         }
 
         if (state() == SpanTimeoutScannerState.TERMINATED_ABNORMALLY) {
-            log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT,
-                    "Span-timeout scanner had terminated abnormally before shutdown");
+            log.log(SpanTimeoutLogEvent.SPAN_TIMEOUT_SCANNER_PREVIOUSLY_TERMINATED_ABNORMALLY);
         }
 
         scanTask.cancel(false);
@@ -87,13 +87,12 @@ final class SpanTimeoutScanner {
             }
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT,
-                    "Interrupted while waiting for the span-timeout scanner to stop");
+            log.log(SpanTimeoutLogEvent.SPAN_TIMEOUT_SCANNER_STOP_INTERRUPTED);
             return false;
         }
 
-        log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT, "Span-timeout scanner did not stop within the shutdown timeout",
-                "timeoutMillis", String.valueOf(SHUTDOWN_TIMEOUT_MILLIS));
+        log.log(SpanTimeoutLogEvent.SPAN_TIMEOUT_SCANNER_STOP_TIMED_OUT,
+                fields -> fields.putLong(AgentLogField.TIMEOUT_MILLIS, SHUTDOWN_TIMEOUT_MILLIS));
         return false;
     }
 
@@ -124,7 +123,8 @@ final class SpanTimeoutScanner {
                 lastSuccessfulScanEpochMillis.set(epochMillis.getAsLong());
             }
         } catch (Throwable failure) {
-            log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT, "Span-timeout scanner terminated abnormally", failure);
+            log.log(SpanTimeoutLogEvent.SPAN_TIMEOUT_SCANNER_TERMINATED_ABNORMALLY,
+                    fields -> fields.cause(failure));
             throw failure;
         }
     }

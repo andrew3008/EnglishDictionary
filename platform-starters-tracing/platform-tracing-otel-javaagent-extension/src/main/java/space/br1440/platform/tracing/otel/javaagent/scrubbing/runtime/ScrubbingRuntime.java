@@ -7,8 +7,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
-import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuntimeRule;
 
@@ -17,12 +18,13 @@ import io.opentelemetry.sdk.trace.ReadWriteSpan;
 public final class ScrubbingRuntime {
 
     private static final RateLimitedLogger log = new RateLimitedLogger(ScrubbingRuntime.class);
+    private static final PlatformAgentLogger lifecycleLog = PlatformAgentLogger.get(ScrubbingRuntime.class);
 
     private final boolean enabled;
     private final ScrubbingPolicy policy;
     private final boolean hasHmacKey;
     private final HmacSha256Digest digest;
-    private final ScrubbingCollapseState collapseState = new ScrubbingCollapseState(log);
+    private final ScrubbingCollapseState collapseState = new ScrubbingCollapseState(lifecycleLog);
     private final ScrubbingBoundaryCounters boundaryCounters = new ScrubbingBoundaryCounters();
     private final ScrubbingInstallationBarrier installation = new ScrubbingInstallationBarrier();
     private final SpanAttributeInPlaceScrubber attributeScrubber;
@@ -48,7 +50,7 @@ public final class ScrubbingRuntime {
         }
 
         if (enabled && !hasHmacKey) {
-            log.warn(AgentEventCode.SCRUB_HMAC_MISSING, "Scrubbing HMAC key is not set");
+            lifecycleLog.log(ScrubbingLogEvent.SCRUBBING_HMAC_KEY_MISSING);
         }
 
         if (hasHmacKey) {

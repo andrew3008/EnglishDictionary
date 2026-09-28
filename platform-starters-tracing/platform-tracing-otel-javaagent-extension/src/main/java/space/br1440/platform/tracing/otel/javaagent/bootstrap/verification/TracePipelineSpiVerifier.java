@@ -14,8 +14,9 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
 
@@ -70,9 +71,8 @@ public final class TracePipelineSpiVerifier {
                 continue;
             }
 
-            log.error(AgentEventCode.BOOT_FORBIDDEN_SPI,
-                    "Unknown AutoConfigurationCustomizerProvider is not in the allowed upstream set",
-                    "name", binaryName);
+            log.log(BootstrapLogEvent.UNKNOWN_AUTO_CONFIGURATION_CUSTOMIZER_PROVIDER_FORBIDDEN,
+                    fields -> fields.putString(AgentLogField.NAME, binaryName));
 
             fail("Unknown AutoConfigurationCustomizerProvider " + binaryName
                     + " is not in the allowed upstream OTel Java Agent "
@@ -93,8 +93,8 @@ public final class TracePipelineSpiVerifier {
             return;
         }
 
-        log.error(AgentEventCode.BOOT_FORBIDDEN_SPI, "SdkTracerProviderConfigurer is forbidden",
-                "name", providerNames.toString());
+        log.log(BootstrapLogEvent.SDK_TRACER_PROVIDER_CONFIGURER_FORBIDDEN,
+                fields -> fields.putString(AgentLogField.NAME, providerNames.toString()));
 
         fail("SdkTracerProviderConfigurer is forbidden in the secure Controlled Agent profile: " + providerNames);
     }

@@ -9,17 +9,20 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ControlPlaneLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
 public final class ObservationSnapshotPublisher implements AutoCloseable {
 
-    private static final PlatformAgentLogger log = PlatformAgentLogger.get(ObservationSnapshotPublisher.class);
+    private static final PlatformAgentLogger lifecycleLog = PlatformAgentLogger.get(ObservationSnapshotPublisher.class);
 
     static final Duration DEFAULT_REFRESH_INTERVAL = Duration.ofSeconds(1L);
     private static final Duration SHUTDOWN_TIMEOUT = Duration.ofSeconds(1L);
 
     private final List<Runnable> publications;
+    private final RateLimitedLogger log = new RateLimitedLogger(ObservationSnapshotPublisher.class);
     private final long refreshIntervalNanos;
     private final AtomicReference<PublisherState> state = new AtomicReference<>(PublisherState.created());
 
@@ -78,11 +81,9 @@ public final class ObservationSnapshotPublisher implements AutoCloseable {
             try {
                 publication.run();
             } catch (RuntimeException failure) {
-                log.warn(
-                        AgentEventCode.CTRL_PLANE,
-                        "JMX observation snapshot publication failed",
-                        failure,
-                        "source", publication.getClass().getName());
+                log.log(ControlPlaneLogEvent.JMX_OBSERVATION_SNAPSHOT_PUBLICATION_FAILED, fields -> fields
+                        .putString(AgentLogField.SOURCE, publication.getClass().getName())
+                        .cause(failure));
             }
         }
     }
@@ -112,10 +113,8 @@ public final class ObservationSnapshotPublisher implements AutoCloseable {
         } catch (RejectedExecutionException rejected) {
             clearRefreshPending();
             if (!state.get().closed()) {
-                log.warn(
-                        AgentEventCode.CTRL_PLANE,
-                        "JMX observation snapshot publication request was rejected",
-                        rejected);
+                log.log(ControlPlaneLogEvent.JMX_OBSERVATION_SNAPSHOT_PUBLICATION_REJECTED,
+                        fields -> fields.cause(rejected));
             }
         }
     }
@@ -157,16 +156,12 @@ public final class ObservationSnapshotPublisher implements AutoCloseable {
     private static void awaitTermination(ScheduledExecutorService scheduler) {
         try {
             if (!scheduler.awaitTermination(SHUTDOWN_TIMEOUT.toNanos(), TimeUnit.NANOSECONDS)) {
-                log.warn(
-                        AgentEventCode.CTRL_PLANE,
-                        "JMX observation snapshot publisher did not stop within the shutdown timeout");
+                lifecycleLog.log(ControlPlaneLogEvent.JMX_OBSERVATION_SNAPSHOT_PUBLISHER_STOP_TIMEOUT);
             }
         } catch (InterruptedException interruption) {
             Thread.currentThread().interrupt();
-            log.warn(
-                    AgentEventCode.CTRL_PLANE,
-                    "Interrupted while stopping JMX observation snapshot publisher",
-                    interruption);
+            lifecycleLog.log(ControlPlaneLogEvent.JMX_OBSERVATION_SNAPSHOT_PUBLISHER_STOP_INTERRUPTED,
+                    fields -> fields.cause(interruption));
         }
     }
 

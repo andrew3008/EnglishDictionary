@@ -4,18 +4,18 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.LongSupplier;
-import java.util.stream.Collectors;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
+import space.br1440.platform.tracing.otel.javaagent.logging.ratelimit.MinIntervalRateLimiter;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ValidationLogEvent;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.context.Context;
@@ -49,21 +49,21 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
     private static final AttributeKey<String> VALIDATION_MISSING_KEY = AttributeKey.stringKey("platform.validation.missing");
     static final Duration MISSING_ATTRIBUTES_DIAGNOSTIC_THROTTLE_INTERVAL = Duration.ofSeconds(60);
 
-    private static final long NEVER_WARNED = (Long.MIN_VALUE / 2);
-
-    private final AtomicLong lastWarnDiagnosticAt = new AtomicLong(NEVER_WARNED);
-    private final AtomicLong lastErrorDiagnosticAt = new AtomicLong(NEVER_WARNED);
+    private final MinIntervalRateLimiter warnDiagnosticLimiter;
+    private final MinIntervalRateLimiter errorDiagnosticLimiter;
     private final LongAdder validationViolationsTotal = new LongAdder();
-    private final LongSupplier clock;
 
     private final TracingSettingsSource acceptedPolicy;
 
     public ValidatingSpanProcessor(TracingSettingsSource acceptedPolicy) {
-        this(System::currentTimeMillis, acceptedPolicy);
+        this(System::nanoTime, acceptedPolicy);
     }
 
-    ValidatingSpanProcessor(LongSupplier clock, TracingSettingsSource acceptedPolicy) {
-        this.clock = Objects.requireNonNull(clock, "clock");
+    ValidatingSpanProcessor(LongSupplier nanoTime, TracingSettingsSource acceptedPolicy) {
+        LongSupplier requiredNanoTime = Objects.requireNonNull(nanoTime, "nanoTime");
+        long diagnosticIntervalNanos = MISSING_ATTRIBUTES_DIAGNOSTIC_THROTTLE_INTERVAL.toNanos();
+        this.warnDiagnosticLimiter = new MinIntervalRateLimiter(diagnosticIntervalNanos, requiredNanoTime);
+        this.errorDiagnosticLimiter = new MinIntervalRateLimiter(diagnosticIntervalNanos, requiredNanoTime);
         this.acceptedPolicy = Objects.requireNonNull(acceptedPolicy, "acceptedPolicy");
     }
 
@@ -84,33 +84,34 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
             return;
         }
 
-        String missing = REQUIRED_ATTRIBUTES.stream()
+        List<String> missingNames = REQUIRED_ATTRIBUTES.stream()
                 .filter(e -> span.getAttribute(e.getKey()) == null)
                 .map(Map.Entry::getValue)
-                .collect(Collectors.joining(","));
+                .toList();
 
-        if (!missing.isEmpty()) {
+        if (!missingNames.isEmpty()) {
+            String missing = String.join(",", missingNames);
             span.setAttribute(VALIDATION_MISSING_KEY, missing);
             validationViolationsTotal.increment();
-            recordDiagnostic(level);
+            recordDiagnostic(level, missingNames.size(), missing);
         }
     }
 
-    private void recordDiagnostic(SpanAttributeValidationLevel level) {
-        long now = clock.getAsLong();
-        AtomicLong lastDiagnosticAt = level.isError() ? lastErrorDiagnosticAt : lastWarnDiagnosticAt;
-        long previous = lastDiagnosticAt.get();
-        long thresholdMs = MISSING_ATTRIBUTES_DIAGNOSTIC_THROTTLE_INTERVAL.toMillis();
-
-        if ((now - previous) < thresholdMs || !lastDiagnosticAt.compareAndSet(previous, now)) {
-            return;
-        }
-
+    private void recordDiagnostic(SpanAttributeValidationLevel level, int missingCount, String missingKeys) {
         if (level.isError()) {
-            log.error(AgentEventCode.VALID_MISSING_ATTRIBUTES, "Required span attributes are missing");
-        } else {
-            log.warn(AgentEventCode.VALID_MISSING_ATTRIBUTES, "Required span attributes are missing");
+            if (errorDiagnosticLimiter.tryAcquire()) {
+                logMissing(ValidationLogEvent.REQUIRED_SPAN_ATTRIBUTES_MISSING_ERROR, missingCount, missingKeys);
+            }
+        } else if (warnDiagnosticLimiter.tryAcquire()) {
+            logMissing(ValidationLogEvent.REQUIRED_SPAN_ATTRIBUTES_MISSING_WARN, missingCount, missingKeys);
         }
+    }
+
+    private static void logMissing(ValidationLogEvent event, int missingCount, String missingKeys) {
+        log.log(event, fields -> {
+            fields.putLong(AgentLogField.COUNT, missingCount);
+            fields.putString(AgentLogField.MISSING_KEYS, missingKeys);
+        });
     }
 
     @Override
@@ -141,10 +142,5 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
 
     public long getValidationViolationsTotal() {
         return validationViolationsTotal.sum();
-    }
-
-    long lastDiagnosticTimestampForTesting(SpanAttributeValidationLevel level) {
-        AtomicLong lastDiagnosticAt = level.isError() ? lastErrorDiagnosticAt : lastWarnDiagnosticAt;
-        return lastDiagnosticAt.get();
     }
 }

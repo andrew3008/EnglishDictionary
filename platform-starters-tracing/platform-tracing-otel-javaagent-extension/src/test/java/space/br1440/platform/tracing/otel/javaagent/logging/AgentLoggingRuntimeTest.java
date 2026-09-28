@@ -1,5 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent.logging;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -11,10 +14,14 @@ import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class AgentLoggingRuntimeTest {
 
     @AfterEach
@@ -27,16 +34,19 @@ class AgentLoggingRuntimeTest {
         // given
         PlatformLogEventEncoder encoder = new PlatformLogEventEncoder();
         LinkedHashMap<String, String> fields = new LinkedHashMap<>();
-        for (int i = 0; i < AgentLogFieldNamePolicy.MAX_FIELDS; i++) {
-            fields.put("f" + i, "x".repeat(AgentLogEvent.MAX_ARGUMENT_CHARS));
+        for (int i = 0; i < AgentLogRecord.MAX_FIELDS; i++) {
+            fields.put("f" + i, "x".repeat(AgentLogRecord.MAX_ARGUMENT_CHARS));
         }
-        AgentLogEvent oversized = new AgentLogEvent(
+
+        AgentLogRecord oversized = new AgentLogRecord(
                 Instant.parse("2026-08-16T19:00:00Z"),
                 AgentLogLevel.WARN,
                 AgentEventCode.SCRUB_FAILURE,
+                "SCRUB_BOUNDARY_FAILED",
                 getClass().getName(),
                 "scrub failed",
                 fields,
+                null,
                 null
         );
 
@@ -45,12 +55,13 @@ class AgentLoggingRuntimeTest {
 
         // then
         String json = new String(encoded, StandardCharsets.UTF_8);
-        assertThat(encoded.length).isLessThanOrEqualTo(AgentLogEvent.MAX_ENCODED_BYTES);
+        assertThat(encoded.length).isLessThanOrEqualTo(AgentLogRecord.MAX_ENCODED_BYTES);
         assertThat(encoded[encoded.length - 1]).isEqualTo((byte) '\n');
         assertThat(json).contains("\"event_code\":\"PTA-ENCODE-001\"");
         assertThat(json).contains("\"original_event_code\":\"PTA-SCRUB-013\"");
+        assertThat(json).contains("\"original_event_name\":\"SCRUB_BOUNDARY_FAILED\"");
         assertThat(json).contains("\"fallback_reason\":\"byte_budget\"");
-        assertThat(json).doesNotContain("x".repeat(AgentLogEvent.MAX_ARGUMENT_CHARS));
+        assertThat(json).doesNotContain("x".repeat(AgentLogRecord.MAX_ARGUMENT_CHARS));
     }
 
     @Test
@@ -58,13 +69,15 @@ class AgentLoggingRuntimeTest {
         // given
         // when
         // then
-        assertThatThrownBy(() -> new AgentLogEvent(
+        assertThatThrownBy(() -> new AgentLogRecord(
                 Instant.parse("2026-08-16T19:00:00Z"),
                 AgentLogLevel.OFF,
                 AgentEventCode.BOOT_INSTALLED,
+                "EXTENSION_INSTALLED",
                 getClass().getName(),
                 "Platform agent logging installed",
                 Map.of(),
+                null,
                 null
         ))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -74,13 +87,15 @@ class AgentLoggingRuntimeTest {
     @Test
     void sink_write_error_is_delivery_failed() {
         // given
-        AgentLoggingRuntime.shared().install(new PlatformStderrSink(new FailingOutputStream()));
+        AgentLoggingRuntime.shared().installScoped(new PlatformStderrSink(new FailingOutputStream()));
         AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.INFO);
         PlatformAgentLogger logger = PlatformAgentLogger.get(AgentLoggingRuntimeTest.class);
 
         // when
-        EmitResult result = logger.info(AgentEventCode.BOOT_INSTALLED, "Platform agent logging installed",
-                "kind", "PLATFORM_STDERR_DIRECT");
+        EmitResult result = logger.emitAdmitted(
+                BootstrapLogEvent.EXTENSION_INSTALLED,
+                fields -> fields.putString(AgentLogField.PROFILE, "PLATFORM_STDERR_DIRECT")
+        );
 
         // then
         assertThat(result).isEqualTo(EmitResult.DELIVERY_FAILED);
@@ -90,16 +105,16 @@ class AgentLoggingRuntimeTest {
     void disabled_event_level_is_filtered_before_sink() {
         // given
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        AgentLoggingRuntime.shared().install(new PlatformStderrSink(buffer));
+        AgentLoggingRuntime.shared().installScoped(new PlatformStderrSink(buffer));
         AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.ERROR);
         PlatformAgentLogger logger = PlatformAgentLogger.get(AgentLoggingRuntimeTest.class);
 
         // when
-        EmitResult result = logger.info(AgentEventCode.BOOT_INSTALLED, "Platform agent logging installed",
-                "kind", "PLATFORM_STDERR_DIRECT");
+        logger.log(BootstrapLogEvent.EXTENSION_INSTALLED, fields ->
+                fields.putString(AgentLogField.PROFILE, "PLATFORM_STDERR_DIRECT")
+        );
 
         // then
-        assertThat(result).isEqualTo(EmitResult.FILTERED_BY_LEVEL);
         assertThat(buffer.size()).isZero();
     }
 
@@ -107,7 +122,7 @@ class AgentLoggingRuntimeTest {
     void sink_ignores_system_err_replacement() {
         // given
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        AgentLoggingRuntime.shared().install(new PlatformStderrSink(buffer));
+        AgentLoggingRuntime.shared().installScoped(new PlatformStderrSink(buffer));
         AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.INFO);
         PlatformAgentLogger logger = PlatformAgentLogger.get(AgentLoggingRuntimeTest.class);
         PrintStream previous = System.err;
@@ -115,8 +130,10 @@ class AgentLoggingRuntimeTest {
 
         try {
             // when
-            EmitResult result = logger.info(AgentEventCode.BOOT_INSTALLED, "Platform agent logging installed",
-                "kind", "PLATFORM_STDERR_DIRECT");
+            EmitResult result = logger.emitAdmitted(
+                    BootstrapLogEvent.EXTENSION_INSTALLED,
+                    fields -> fields.putString(AgentLogField.PROFILE, "PLATFORM_STDERR_DIRECT")
+            );
 
             // then
             assertThat(result).isEqualTo(EmitResult.EMITTED);

@@ -1,9 +1,11 @@
 package space.br1440.platform.tracing.otel.javaagent.logging;
 
-import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 class AgentLogLevelTest {
 

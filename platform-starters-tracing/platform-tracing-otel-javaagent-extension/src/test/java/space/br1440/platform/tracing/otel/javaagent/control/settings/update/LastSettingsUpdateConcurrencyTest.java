@@ -23,13 +23,12 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Setti
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 class LastSettingsUpdateConcurrencyTest {
 
     private static final int THREAD_COUNT = 32;
-    private static final AgentInstanceId AGENT_INSTANCE_ID =
-            AgentInstanceId.parse("00000000-0000-0000-0000-000000000042");
+    private static final AgentInstanceId AGENT_INSTANCE_ID = AgentInstanceId.parse("00000000-0000-0000-0000-000000000042");
     private static final Instant BASE_OBSERVED_AT = Instant.parse("2026-08-23T05:21:44Z");
 
     @Test

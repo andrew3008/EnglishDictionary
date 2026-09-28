@@ -13,8 +13,9 @@ import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ControlPlaneLogEvent;
 
 final class MBeanBatchRegistrar {
 
@@ -108,35 +109,28 @@ final class MBeanBatchRegistrar {
     }
 
     private void rollbackAndThrow(List<OwnedDynamicMBean> journal, JmxRegistrationException primary) {
-        log.error(
-                AgentEventCode.CTRL_MBEAN_BATCH,
-                "MBean batch registration failed",
-                primary,
-                "count",
-                String.valueOf(journal.size())
-        );
-
         List<Throwable> cleanupFailures = unregisterOwnedInReverse(journal);
         cleanupFailures.forEach(primary::addSuppressed);
         if (!cleanupFailures.isEmpty()) {
             primary.markRollbackIncomplete();
         }
+
+        log.log(ControlPlaneLogEvent.MBEAN_BATCH_REGISTRATION_FAILED, fields -> fields
+                .putLong(AgentLogField.COUNT, journal.size())
+                .cause(primary));
+
         throw primary;
     }
 
     private void rollbackAndRethrow(List<OwnedDynamicMBean> journal, Error primary) {
-        log.error(
-                AgentEventCode.CTRL_MBEAN_BATCH,
-                "MBean batch registration failed",
-                primary,
-                "count",
-                String.valueOf(journal.size())
-        );
-
         List<Throwable> cleanupFailures = unregisterOwnedInReverse(journal);
         if (!cleanupFailures.isEmpty()) {
             primary.addSuppressed(rollbackIncompleteFailure(cleanupFailures));
         }
+
+        log.log(ControlPlaneLogEvent.MBEAN_BATCH_REGISTRATION_FAILED, fields -> fields
+                .putLong(AgentLogField.COUNT, journal.size())
+                .cause(primary));
 
         throw primary;
     }

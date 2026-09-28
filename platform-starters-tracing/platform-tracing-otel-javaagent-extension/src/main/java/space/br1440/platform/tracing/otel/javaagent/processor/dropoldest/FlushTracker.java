@@ -4,9 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.LongPredicate;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ExportPipelineLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
-import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 
 import io.opentelemetry.sdk.common.CompletableResultCode;
 
@@ -103,7 +103,7 @@ final class FlushTracker {
                 primary.addSuppressed(secondary);
             }
         }
-        log.warn(AgentEventCode.EXPORT_CALLBACK, "Flush completion callback failed", primary);
+        log.log(ExportPipelineLogEvent.FLUSH_COMPLETION_CALLBACK_FAILED, fields -> fields.cause(primary));
     }
 
     private static void markIfCovers(Generation generation, long sequence) {

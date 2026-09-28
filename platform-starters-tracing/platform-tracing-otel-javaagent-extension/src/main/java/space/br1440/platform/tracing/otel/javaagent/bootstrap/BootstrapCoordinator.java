@@ -12,6 +12,7 @@ import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.JvmShutd
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.ShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSessionFactory;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.ConfigurationPropertyException;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.ConfigurationFingerprint;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.ExtensionRuntimeVerifier;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
@@ -103,6 +104,13 @@ final class BootstrapCoordinator implements AutoCloseable {
             return prepared;
         } catch (SanitizerBootstrapException e) {
             throw failPreparation(e.code(), e);
+        } catch (ConfigurationPropertyException e) {
+            throw failPreparation(
+                    CONFIGURATION_INITIALIZATION_FAILED,
+                    "configuration-validation",
+                    e.propertyName(),
+                    e.failure()
+            );
         } catch (RuntimeException | Error e) {
             PlatformThrowables.propagateIfFatal(e);
             throw failPreparation(CONFIGURATION_INITIALIZATION_FAILED, e);
@@ -150,7 +158,10 @@ final class BootstrapCoordinator implements AutoCloseable {
         try {
             diagnosticHandle.close();
         } catch (RuntimeException | Error failure) {
-            cleanupFailure = BootstrapCleanupFailures.aggregate(cleanupFailure, failure);
+            cleanupFailure = BootstrapCleanupFailures.aggregate(
+                    cleanupFailure,
+                    BootstrapCleanupFailures.withResourceLabel("diagnostic-readiness", failure)
+            );
         }
 
         if (cleanupFailure != null) {
@@ -168,15 +179,31 @@ final class BootstrapCoordinator implements AutoCloseable {
     }
 
     private BootstrapException failPreparation(String code, Throwable cause) {
-        BootstrapException classified = lifecycle.fail(code, PREPARE_PHASE, cause);
+        return failPreparation(code, "configuration-initialization", null, cause);
+    }
+
+    private BootstrapException failPreparation(String code,
+                                               String subphase,
+                                               String propertyName,
+                                               Throwable cause) {
         try {
             journal.publishFailed(readiness, agentInstanceId, code);
             registerDiagnosticReadiness();
         } catch (RuntimeException | Error diagnosticFailure) {
-            cause.addSuppressed(diagnosticFailure);
+            if (diagnosticFailure != cause) {
+                cause.addSuppressed(diagnosticFailure);
+            }
+            BootstrapException classified = lifecycle.fail(
+                    code,
+                    PREPARE_PHASE,
+                    subphase,
+                    propertyName,
+                    cause
+            );
             PlatformThrowables.propagateIfFatal(diagnosticFailure);
+            return classified;
         }
-        return classified;
+        return lifecycle.fail(code, PREPARE_PHASE, subphase, propertyName, cause);
     }
 
     private void registerDiagnosticReadiness() {

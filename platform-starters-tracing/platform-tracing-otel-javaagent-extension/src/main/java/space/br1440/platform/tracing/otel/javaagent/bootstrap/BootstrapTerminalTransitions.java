@@ -10,8 +10,9 @@ import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.Bootstra
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
 final class BootstrapTerminalTransitions {
@@ -33,6 +34,7 @@ final class BootstrapTerminalTransitions {
     BootstrapException terminalizeActivationFailure(AutoconfigureSession activeSession,
                                                     BootstrapResources resources,
                                                     String failureCode,
+                                                    String subphase,
                                                     Throwable cause,
                                                     String batchId,
                                                     ExtensionRuntimeEvidence evidence) {
@@ -42,7 +44,7 @@ final class BootstrapTerminalTransitions {
                         activeSession.readiness().snapshot().failureCode()
                 );
         String effectiveFailureCode = rollbackIncomplete ? FAILED_ROLLBACK_INCOMPLETE : failureCode;
-        BootstrapException classified = lifecycle.fail(effectiveFailureCode, "activate", cause);
+        BootstrapException classified = lifecycle.fail(effectiveFailureCode, "activate", subphase, cause);
         if (rollbackIncomplete) {
             activeSession.readiness().recordTerminalCleanupFailure(FAILED_ROLLBACK_INCOMPLETE);
         }
@@ -87,30 +89,38 @@ final class BootstrapTerminalTransitions {
                           ExtensionRuntimeEvidence evidence,
                           Throwable cleanupFailure) {
         Throwable terminalFailure = cleanupFailure;
-        Throwable diagnosticCleanupFailure = null;
+        Throwable completionFailure = null;
         try {
             diagnosticHandle.close();
         } catch (RuntimeException | Error failure) {
-            diagnosticCleanupFailure = failure;
-            terminalFailure = BootstrapCleanupFailures.aggregate(terminalFailure, failure);
+            Throwable labeledFailure = BootstrapCleanupFailures.withResourceLabel(
+                    "diagnostic-readiness",
+                    failure
+            );
+            terminalFailure = BootstrapCleanupFailures.aggregate(terminalFailure, labeledFailure);
+            completionFailure = labeledFailure;
         }
 
         if (terminalFailure == null) {
             return;
         }
 
-        publishRollbackIncomplete(activeSession, "shutdown", terminalFailure, batchId, evidence);
-        log.warn(
-                AgentEventCode.BOOT_CLASSIFIED_FAILURE,
-                "Platform bootstrap shutdown cleanup failed",
-                terminalFailure,
-                "phase",
-                "shutdown"
-        );
+        try {
+            publishRollbackIncomplete(activeSession, "shutdown", terminalFailure, batchId, evidence);
+        } catch (RuntimeException | Error failure) {
+            terminalFailure = BootstrapCleanupFailures.aggregate(terminalFailure, failure);
+            completionFailure = BootstrapCleanupFailures.aggregate(completionFailure, failure);
+        }
 
-        if (diagnosticCleanupFailure != null) {
+        if (completionFailure != null) {
             BootstrapCleanupFailures.rethrow(terminalFailure);
         }
+
+        Throwable failureToLog = terminalFailure;
+        log.log(BootstrapLogEvent.BOOTSTRAP_SHUTDOWN_CLEANUP_FAILED, fields -> fields
+                .putString(AgentLogField.PHASE, "shutdown")
+                .putString(AgentLogField.RESOURCE_LABEL, BootstrapCleanupFailures.resourceLabel(failureToLog))
+                .cause(failureToLog));
     }
 
     void completeCloseFailure(Throwable cleanupFailure) {

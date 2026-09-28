@@ -13,8 +13,9 @@ import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ResourceIdentityLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -82,7 +83,8 @@ public final class PlatformResourceCustomizer {
                 throw (Error) failure;
             }
 
-            log.warn(AgentEventCode.BOOT_RESOURCE_IDENTITY, "Resource customization failed", failure);
+            log.log(ResourceIdentityLogEvent.RESOURCE_CUSTOMIZATION_FAILED,
+                    fields -> fields.cause(failure));
             diagnostics.recordResourceFailure();
             return existing;
         }
@@ -137,12 +139,12 @@ public final class PlatformResourceCustomizer {
         );
 
         if (missing.isEmpty()) {
-            log.info(AgentEventCode.BOOT_RESOURCE_IDENTITY, "Resource identity resolved",
-                    "service", service,
-                    "environment", environment,
-                    "version", version,
-                    "kind", mode.name(),
-                    "count", "0");
+            log.log(ResourceIdentityLogEvent.RESOURCE_IDENTITY_RESOLVED, fields -> fields
+                    .putString(AgentLogField.SERVICE, service)
+                    .putString(AgentLogField.ENVIRONMENT, environment)
+                    .putString(AgentLogField.VERSION, version)
+                    .putString(AgentLogField.KIND, mode.name())
+                    .putLong(AgentLogField.COUNT, 0L));
             return;
         }
 
@@ -153,13 +155,12 @@ public final class PlatformResourceCustomizer {
             );
         }
 
-        log.warn(AgentEventCode.BOOT_RESOURCE_IDENTITY, "Resource identity incomplete",
-                "service", service,
-                "environment", environment,
-                "version", version,
-                "kind", mode.name(),
-                "missingKeys", keys
-        );
+        log.log(ResourceIdentityLogEvent.RESOURCE_IDENTITY_INCOMPLETE, fields -> fields
+                .putString(AgentLogField.SERVICE, service)
+                .putString(AgentLogField.ENVIRONMENT, environment)
+                .putString(AgentLogField.VERSION, version)
+                .putString(AgentLogField.KIND, mode.name())
+                .putString(AgentLogField.MISSING_KEYS, keys));
     }
 
     private Optional<String> resolveContainerId(ConfigProperties config) {

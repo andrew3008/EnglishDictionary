@@ -9,8 +9,8 @@ import java.util.Optional;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.processor.BaggageSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ClassificationSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.EnrichingSpanProcessor;
@@ -49,7 +49,7 @@ public final class PlatformSpanProcessorFactory {
             installComposite(tpBuilder, delegates);
             return tpBuilder;
         } catch (Throwable t) {
-            log.error(AgentEventCode.BOOT_PROCESSOR_REGISTRATION, "Span processor registration failed", t);
+            log.log(BootstrapLogEvent.SPAN_PROCESSOR_REGISTRATION_FAILED, fields -> fields.cause(t));
             throw t;
         }
     }

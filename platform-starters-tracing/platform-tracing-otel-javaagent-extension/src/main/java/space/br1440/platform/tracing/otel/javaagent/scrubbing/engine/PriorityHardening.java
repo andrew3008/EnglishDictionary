@@ -3,8 +3,9 @@ package space.br1440.platform.tracing.otel.javaagent.scrubbing.engine;
 import java.util.Comparator;
 import java.util.List;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
 
 import lombok.experimental.UtilityClass;
 
@@ -50,8 +51,8 @@ public final class PriorityHardening {
 
     private static ExecutableRule clampIfNeeded(ExecutableRule wrapper) {
         if (!wrapper.isCritical() && wrapper.getEffectivePriority() < CUSTOM_PRIORITY_FLOOR) {
-            log.warn(AgentEventCode.SCRUB_PRIORITY_FLOOR, "Scrubbing priority floor applied",
-                    "name", wrapper.getRuleClass().getName());
+            log.log(ScrubbingLogEvent.SCRUBBING_PRIORITY_FLOOR_APPLIED,
+                    fields -> fields.putString(AgentLogField.NAME, wrapper.getRuleClass().getName()));
 
             return wrapper.withEffectivePriority(CUSTOM_PRIORITY_FLOOR);
         }

@@ -28,25 +28,22 @@ class PlatformTracingSafeWrapperMetricsBinderTest {
         assertThat(failureCounter(registry, "sampler")).isZero();
         assertThat(failureCounter(registry, "propagator")).isZero();
         assertThat(failureCounter(registry, "resource")).isZero();
-        assertThat(failureCounter(registry, "scope")).isZero();
         assertThat(registry.get(SUPPRESSED_METRIC).functionCounter().count()).isZero();
         assertThat(registry.get(DEGRADED_MODE_METRIC).gauge().value()).isNaN();
         assertThat(registry.get(LAST_FAILURE_METRIC).gauge().value()).isNaN();
     }
 
     @Test
-    void presentObservationReadsAllFourComponentFailureCountersByTag() {
+    void presentObservationReadsComponentFailureCountersByTag() {
         DiagnosticsObservation observation = observationWithSafeWrapperMetrics(Map.of(
                 "sampler.failures", 4L,
                 "propagator.failures", 1L,
-                "resource.failures", 0L,
-                "scope.failures", 9L));
+                "resource.failures", 0L));
         SimpleMeterRegistry registry = bindWith(() -> Optional.of(observation));
 
         assertThat(failureCounter(registry, "sampler")).isEqualTo(4.0);
         assertThat(failureCounter(registry, "propagator")).isEqualTo(1.0);
         assertThat(failureCounter(registry, "resource")).isZero();
-        assertThat(failureCounter(registry, "scope")).isEqualTo(9.0);
     }
 
     @Test

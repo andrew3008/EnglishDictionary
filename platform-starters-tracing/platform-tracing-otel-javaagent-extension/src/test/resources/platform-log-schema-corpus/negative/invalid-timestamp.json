@@ -3,5 +3,6 @@
   "level": "INFO",
   "logger": "space.br1440.platform.logging.example.Owner",
   "message": "Platform logging started",
-  "event_code": "APP-BOOT-001"
+  "event_code": "APP-BOOT-001",
+  "event_name": "PLATFORM_LOGGING_STARTED"
 }

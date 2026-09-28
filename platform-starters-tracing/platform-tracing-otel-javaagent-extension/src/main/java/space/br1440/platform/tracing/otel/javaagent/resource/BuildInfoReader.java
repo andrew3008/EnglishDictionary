@@ -7,6 +7,7 @@ import java.util.Properties;
 import java.util.function.Function;
 
 import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
 final class BuildInfoReader {
 
@@ -48,7 +49,8 @@ final class BuildInfoReader {
             }
 
             return Optional.empty();
-        } catch (Exception | LinkageError failure) {
+        } catch (Throwable failure) {
+            PlatformThrowables.propagateIfFatal(failure);
             return Optional.empty();
         }
     }

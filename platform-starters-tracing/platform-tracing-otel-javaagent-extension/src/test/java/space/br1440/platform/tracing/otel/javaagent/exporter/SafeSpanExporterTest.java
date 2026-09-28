@@ -21,6 +21,7 @@ import jakarta.annotation.Nonnull;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
@@ -29,7 +30,9 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseObservation;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseScope;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
@@ -42,6 +45,7 @@ import io.opentelemetry.sdk.trace.data.EventData;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class SafeSpanExporterTest {
 
     private static Collection<SpanData> spansOfSize(int n) {
@@ -94,6 +98,122 @@ class SafeSpanExporterTest {
         assertThat(safe.getExportFailures()).as("один упавший batch").isEqualTo(1);
         assertThat(safe.getDroppedSpans()).as("пять потерянных span'ов").isEqualTo(5);
         assertThat(safe.getExportedSpans()).isZero();
+    }
+
+    @Test
+    @DisplayName("Successful export logs one fixed recovery event after an emitted failure")
+    void successfulExportLogsOneFixedRecoveryEventAfterFailure() {
+        // given
+        AtomicInteger calls = new AtomicInteger();
+        SpanExporter sequencedDelegate = new SpanExporter() {
+            @Override
+            public CompletableResultCode export(Collection<SpanData> spans) {
+                return calls.getAndIncrement() == 0
+                        ? CompletableResultCode.ofFailure()
+                        : CompletableResultCode.ofSuccess();
+            }
+
+            @Override
+            public CompletableResultCode flush() {
+                return CompletableResultCode.ofSuccess();
+            }
+
+            @Override
+            public CompletableResultCode shutdown() {
+                return CompletableResultCode.ofSuccess();
+            }
+        };
+        RateLimitedLogger recoveryLog = new RateLimitedLogger(SafeSpanExporterTest.class);
+        SafeSpanExporter safe = new SafeSpanExporter(
+                sequencedDelegate,
+                TracingSettingsSource.isolatedDefaults(),
+                ScrubbingRuntimeTestFixtures.disabled(),
+                recoveryLog
+        );
+        AgentLogCapture capture = new AgentLogCapture();
+        capture.install();
+        try {
+            // when
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+
+            // then
+            assertThat(capture.events())
+                    .filteredOn(event -> event.eventCode() == AgentEventCode.RATE_RECOVERY)
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.message()).isEqualTo(
+                            "SafeSpanExporter: export recovered after a series of failures"
+                    ));
+        } finally {
+            capture.restore();
+        }
+    }
+
+    @Test
+    void exporterInstancesDoNotShareRecoveryState() {
+        // given
+        AtomicInteger firstCalls = new AtomicInteger();
+        SafeSpanExporter first = safeExporter(failingOnceDelegate(firstCalls));
+        SafeSpanExporter second = safeExporter(delegate(CompletableResultCode.ofSuccess()));
+        AgentLogCapture capture = new AgentLogCapture();
+        capture.install();
+
+        try {
+            // when
+            first.export(spansOfSize(1));
+            second.export(spansOfSize(1));
+            first.export(spansOfSize(1));
+
+            // then
+            assertThat(capture.events())
+                    .filteredOn(event -> event.eventCode() == AgentEventCode.RATE_RECOVERY)
+                    .singleElement();
+        } finally {
+            capture.restore();
+        }
+    }
+
+    @Test
+    void shutdownFailureIsNotSuppressedByRoutineFailureStorm() {
+        // given
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
+            @Override
+            public CompletableResultCode export(Collection<SpanData> spans) {
+                return CompletableResultCode.ofFailure();
+            }
+
+            @Override
+            public CompletableResultCode flush() {
+                return CompletableResultCode.ofSuccess();
+            }
+
+            @Override
+            public CompletableResultCode shutdown() {
+                return CompletableResultCode.ofFailure();
+            }
+        });
+        AgentLogCapture capture = new AgentLogCapture();
+        capture.install();
+
+        try {
+            for (int attempt = 0; attempt < 20; attempt++) {
+                safe.export(spansOfSize(1));
+            }
+
+            // when
+            safe.shutdown();
+
+            // then
+            assertThat(capture.events())
+                    .filteredOn(event -> "SAFE_EXPORT_RETURNED_FAILURE".equals(event.eventName()))
+                    .hasSizeLessThan(20);
+            assertThat(capture.events())
+                    .filteredOn(event -> "SAFE_SHUTDOWN_RETURNED_FAILURE".equals(event.eventName()))
+                    .singleElement();
+        } finally {
+            capture.restore();
+        }
     }
 
     @Test
@@ -212,6 +332,77 @@ class SafeSpanExporterTest {
         // then
         assertThat(result.isSuccess()).isFalse();
         assertThat(safe.getShutdownFailures()).isEqualTo(1);
+    }
+
+    @Test
+    void flushNullResultLogsExporterTypeWithoutRawTransportData() {
+        // given
+        LifecycleSpanExporter delegate = new LifecycleSpanExporter(
+                null,
+                CompletableResultCode.ofSuccess()
+        );
+        SafeSpanExporter safe = new SafeSpanExporter(
+                delegate,
+                TracingSettingsSource.isolatedDefaults(),
+                ScrubbingRuntimeTestFixtures.disabled(),
+                new RateLimitedLogger(SafeSpanExporterTest.class)
+        );
+        AgentLogCapture logs = new AgentLogCapture();
+        logs.install();
+
+        try {
+            // when
+            CompletableResultCode result = safe.flush();
+
+            // then
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(safe.getFlushFailures()).isEqualTo(1);
+            assertThat(logs.events())
+                    .filteredOn(event -> "SAFE_FLUSH_RETURNED_NULL".equals(event.eventName()))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.fields())
+                            .containsOnly(Map.entry("exporterType", "LifecycleSpanExporter")));
+            assertThat(logs.rendered()).doesNotContain("endpoint", "transport message");
+        } finally {
+            logs.restore();
+        }
+    }
+
+    @Test
+    void shutdownAsyncFailureIsObservedAndLogged() {
+        // given
+        CompletableResultCode pendingShutdown = new CompletableResultCode();
+        LifecycleSpanExporter delegate = new LifecycleSpanExporter(
+                CompletableResultCode.ofSuccess(),
+                pendingShutdown
+        );
+        SafeSpanExporter safe = new SafeSpanExporter(
+                delegate,
+                TracingSettingsSource.isolatedDefaults(),
+                ScrubbingRuntimeTestFixtures.disabled(),
+                new RateLimitedLogger(SafeSpanExporterTest.class)
+        );
+        AgentLogCapture logs = new AgentLogCapture();
+        logs.install();
+
+        try {
+            CompletableResultCode result = safe.shutdown();
+
+            // when
+            pendingShutdown.fail();
+
+            // then
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(safe.getShutdownFailures()).isEqualTo(1);
+            assertThat(logs.events())
+                    .filteredOn(event -> "SAFE_SHUTDOWN_RETURNED_FAILURE".equals(event.eventName()))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.fields())
+                            .containsOnly(Map.entry("exporterType", "LifecycleSpanExporter")));
+            assertThat(logs.rendered()).doesNotContain("endpoint", "transport message");
+        } finally {
+            logs.restore();
+        }
     }
 
     @Test
@@ -390,8 +581,8 @@ class SafeSpanExporterTest {
     }
 
     @Test
-    @DisplayName("SP-04: flush() null-результат → ofFailure() без NPE, flushFailures не растёт")
-    void flushNullResultTreatedAsFailureWithoutIncrementingFailureCounter() {
+    @DisplayName("SP-04: flush() null-результат → ofFailure() без NPE, flushFailures растёт")
+    void flushNullResultTreatedAsFailureAndIncrementsFailureCounter() {
         // given
         SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override
@@ -416,12 +607,12 @@ class SafeSpanExporterTest {
         // then
         assertThat(result).isNotNull();
         assertThat(result.isSuccess()).isFalse();
-        assertThat(safe.getFlushFailures()).as("null-результат не считается flush-исключением").isZero();
+        assertThat(safe.getFlushFailures()).isEqualTo(1);
     }
 
     @Test
-    @DisplayName("SP-04: shutdown() null-результат → ofFailure() без NPE, shutdownFailures не растёт")
-    void shutdownNullResultTreatedAsFailureWithoutIncrementingFailureCounter() {
+    @DisplayName("SP-04: shutdown() null-результат → ofFailure() без NPE, shutdownFailures растёт")
+    void shutdownNullResultTreatedAsFailureAndIncrementsFailureCounter() {
         // given
         SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override
@@ -446,7 +637,7 @@ class SafeSpanExporterTest {
         // then
         assertThat(result).isNotNull();
         assertThat(result.isSuccess()).isFalse();
-        assertThat(safe.getShutdownFailures()).as("null-результат не считается shutdown-исключением").isZero();
+        assertThat(safe.getShutdownFailures()).isEqualTo(1);
     }
 
     @Test
@@ -497,6 +688,27 @@ class SafeSpanExporterTest {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
                 return exportResult;
+            }
+
+            @Override
+            public CompletableResultCode flush() {
+                return CompletableResultCode.ofSuccess();
+            }
+
+            @Override
+            public CompletableResultCode shutdown() {
+                return CompletableResultCode.ofSuccess();
+            }
+        };
+    }
+
+    private static SpanExporter failingOnceDelegate(AtomicInteger calls) {
+        return new SpanExporter() {
+            @Override
+            public CompletableResultCode export(Collection<SpanData> spans) {
+                return calls.getAndIncrement() == 0
+                        ? CompletableResultCode.ofFailure()
+                        : CompletableResultCode.ofSuccess();
             }
 
             @Override
@@ -1070,15 +1282,48 @@ class SafeSpanExporterTest {
     }
 
     @Test
-    @DisplayName("No-op constructors are package-private: an external customizer cannot build a disabled boundary")
-    void noOpConstructorsAreNotPartOfThePublicSurface() {
-        // when/then
-        for (Constructor<?> constructor : SafeSpanExporter.class.getDeclaredConstructors()) {
-            boolean carriesRuntime = List.of(constructor.getParameterTypes()).contains(ScrubbingRuntime.class);
+    @DisplayName("Only the production constructor is public")
+    void onlyProductionConstructorIsPublic() {
+        // when
+        Constructor<?>[] constructors = SafeSpanExporter.class.getDeclaredConstructors();
+
+        // then
+        for (Constructor<?> constructor : constructors) {
+            boolean productionSignature = List.of(constructor.getParameterTypes()).equals(List.of(
+                    SpanExporter.class,
+                    TracingSettingsSource.class,
+                    ScrubbingRuntime.class
+            ));
             assertThat(Modifier.isPublic(constructor.getModifiers()))
-                    .as("constructor %s must be public only when it requires an explicit ScrubbingRuntime",
-                            constructor)
-                    .isEqualTo(carriesRuntime);
+                    .as("only the production constructor may be public: %s", constructor)
+                    .isEqualTo(productionSignature);
+        }
+    }
+
+    private static final class LifecycleSpanExporter implements SpanExporter {
+
+        private final CompletableResultCode flushResult;
+        private final CompletableResultCode shutdownResult;
+
+        private LifecycleSpanExporter(CompletableResultCode flushResult,
+                                      CompletableResultCode shutdownResult) {
+            this.flushResult = flushResult;
+            this.shutdownResult = shutdownResult;
+        }
+
+        @Override
+        public CompletableResultCode export(Collection<SpanData> spans) {
+            return CompletableResultCode.ofSuccess();
+        }
+
+        @Override
+        public CompletableResultCode flush() {
+            return flushResult;
+        }
+
+        @Override
+        public CompletableResultCode shutdown() {
+            return shutdownResult;
         }
     }
 

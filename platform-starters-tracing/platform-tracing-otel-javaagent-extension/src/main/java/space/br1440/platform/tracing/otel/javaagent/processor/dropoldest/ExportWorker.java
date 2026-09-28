@@ -3,8 +3,9 @@ package space.br1440.platform.tracing.otel.javaagent.processor.dropoldest;
 import java.util.ArrayList;
 import java.util.List;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventType;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ExportPipelineLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
 import io.opentelemetry.sdk.common.CompletableResultCode;
@@ -63,10 +64,10 @@ final class ExportWorker implements Runnable {
             return;
         }
 
-        String message = loopFailed
-                ? "Export worker terminated abnormally"
-                : "Exporter shutdown failed after worker drain completed";
-        log.error(AgentEventCode.EXPORT_WORKER, message, failure);
+        AgentLogEventType eventType = loopFailed
+                ? ExportPipelineLogEvent.EXPORT_WORKER_TERMINATED_ABNORMALLY
+                : ExportPipelineLogEvent.EXPORTER_SHUTDOWN_FAILED_AFTER_WORKER_DRAIN;
+        log.log(eventType, fields -> fields.cause(failure));
     }
 
     private WorkerStopReason exportUntilShutdown() {
@@ -97,10 +98,8 @@ final class ExportWorker implements Runnable {
         }
     }
 
-    private void terminate(
-            WorkerStopReason stopReason,
-            FailureCollector failures
-    ) {
+    private void terminate(WorkerStopReason stopReason,
+                           FailureCollector failures) {
         boolean exporterShutdownSucceeded = false;
         try {
             exporterShutdownSucceeded = exporter.shutdown();

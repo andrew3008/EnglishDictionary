@@ -1,26 +1,30 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
-import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.logging.BoundedThrowableRenderer;
-import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
 
 /**
  * DEBUG не является более доверенным приёмником, чем WARN/ERROR.
  */
-class ScrubbingFailureLogPrivacyTest {
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
+class ScrubbingFailureLoggingPrivacyTest {
 
     private static final String SECRET = "card=4111111111111111";
 
@@ -39,19 +43,22 @@ class ScrubbingFailureLogPrivacyTest {
     }
 
     @Test
-    @DisplayName("Neither ERROR nor DEBUG publishes the exception message, its cause or a rendered stack trace")
-    void debugChannelNeverCarriesTheSensitiveInput() {
+    @DisplayName("A throttled scrubbing ERROR publishes no exception message or DEBUG duplicate")
+    void typedErrorNeverCarriesTheSensitiveInput() {
         // given
         Throwable failure = new IllegalStateException(
                 "rule failed on " + SECRET,
                 new IllegalArgumentException("nested " + SECRET));
 
         // when
-        ScrubbingFailureLog.error(new RateLimitedLogger(getClass()), "test.rule_failed", failure);
+        new RateLimitedLogger(getClass()).log(
+                ScrubbingLogEvent.SCRUB_PROCESSOR_CALLBACK_FAILED,
+                fields -> fields.cause(failure)
+        );
 
         // then
         List<CapturedLogEvent> events = capture.events();
-        assertThat(events).isNotEmpty();
+        assertThat(events).hasSize(1);
         assertThat(events).allSatisfy(event -> {
             assertThat(event.message()).doesNotContain(SECRET, "rule failed on", "nested ");
             assertThat(event.fields().values().toString())
@@ -68,21 +75,6 @@ class ScrubbingFailureLogPrivacyTest {
                     .contains("java.lang.IllegalStateException")
                     .contains("java.lang.IllegalArgumentException");
         });
-    }
-
-    @Test
-    @DisplayName("Detail is skipped entirely when the DEBUG channel is disabled")
-    void detailIsNotRenderedWhenDebugIsDisabled() {
-        // given
-        AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.WARN);
-
-        // when
-        ScrubbingFailureLog.warn(new RateLimitedLogger(getClass()),
-                "test.rule_failed", new IllegalStateException(SECRET));
-
-        // then
-        assertThat(capture.events())
-                .noneMatch(event -> event.level() == AgentLogLevel.DEBUG);
     }
 
     @Test
@@ -188,7 +180,10 @@ class ScrubbingFailureLogPrivacyTest {
             }
         };
 
-        // when/then
-        assertThrows(OutOfMemoryError.class, () -> BoundedThrowableRenderer.render(hostile));
+        // when
+        Executable action = () -> BoundedThrowableRenderer.render(hostile);
+
+        // then
+        assertThrows(OutOfMemoryError.class, action);
     }
 }

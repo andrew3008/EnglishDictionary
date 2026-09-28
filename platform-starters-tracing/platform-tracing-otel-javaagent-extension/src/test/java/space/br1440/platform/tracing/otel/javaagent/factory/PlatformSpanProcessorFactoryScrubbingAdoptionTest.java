@@ -187,19 +187,28 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         }
 
         @Test
-        void bundled_rule_metadata_failure_does_not_expose_exception_message() {
+        void bundled_rule_metadata_failure_preserves_cause_without_exposing_it_in_the_message() {
             // given
+            IllegalStateException metadataFailure = new IllegalStateException("secret-canary");
             SpanAttributeScrubbingRule unsafeRule = new SpanAttributeScrubbingRule() {
                 @Nonnull
-                @Override public String name() { return "unsafe"; }
-                @Override public boolean critical() { throw new IllegalStateException("secret-canary"); }
+                @Override
+                public String name() {
+                    return "unsafe";
+                }
+
+                @Override public boolean critical() {
+                    throw metadataFailure;
+                }
+
                 @Nonnull
                 @Override public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
                     return ScrubbingDecision.keep();
                 }
             };
             PlatformScrubberFactory factory = ScrubberFactoryTestFixtures.factory(
-                    () -> List.of(unsafeRule));
+                    () -> List.of(unsafeRule)
+            );
             ExtensionConfig extensionConfig = scrubbingEnabledDefaultsExtConfig();
 
             // when/then
@@ -207,10 +216,11 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
                     .isInstanceOf(SanitizerBootstrapException.class)
                     .hasMessage("Bundled scrubbing rule metadata validation failed "
                             + "(java.lang.IllegalStateException)")
-                    .hasNoCause()
+                    .hasCause(metadataFailure)
                     .satisfies(failure -> {
                         assertThat(((SanitizerBootstrapException) failure).code())
                                 .isEqualTo(SanitizerBootstrapException.RULE_METADATA_INVALID);
+
                         assertThat(failure.getMessage()).doesNotContain("secret-canary");
                     });
         }

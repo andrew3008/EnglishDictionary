@@ -1,8 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.loader;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -14,7 +13,10 @@ import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
 class ExtensionRuleLoaderTest {
 
@@ -58,6 +60,40 @@ class ExtensionRuleLoaderTest {
             assertThat(loader.getFailedEntries())
                     .extracting(ExtensionRuleLoader.FailedEntry::reason)
                     .containsExactly(FailedProviderReason.FORBIDDEN_CLASSES);
+        }
+    }
+
+    @Test
+    void corrupt_jar_is_recorded_as_UNREADABLE_FILE(@TempDir Path dir) throws IOException {
+        // given
+        Path jar = dir.resolve("corrupt.jar");
+        Files.writeString(jar, "not a jar");
+
+        // when
+        try (ExtensionRuleLoader loader = loader()) {
+            loader.load(jar.toString());
+
+            // then
+            assertThat(loader.getFailedEntries())
+                    .extracting(ExtensionRuleLoader.FailedEntry::reason)
+                    .containsExactly(FailedProviderReason.UNREADABLE_FILE);
+        }
+    }
+
+    @Test
+    void corrupt_jar_in_ERROR_mode_preserves_inspection_cause(@TempDir Path dir) throws IOException {
+        // given
+        Path jar = dir.resolve("corrupt.jar");
+        Files.writeString(jar, "not a jar");
+
+        // when
+        // then
+        try (ExtensionRuleLoader loader =
+                     new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.ERROR, Set.of())) {
+            assertThatThrownBy(() -> loader.load(jar.toString()))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("UNREADABLE_FILE")
+                    .hasCauseInstanceOf(IOException.class);
         }
     }
 

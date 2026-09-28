@@ -4,6 +4,7 @@
   "logger": "space.br1440.platform.logging.example.Owner",
   "message": "Policy rejected the update",
   "event_code": "APP-CTRL-001",
+  "event_name": "POLICY_UPDATE_REJECTED",
   "fields": {
     "kind": "rejected"
   }

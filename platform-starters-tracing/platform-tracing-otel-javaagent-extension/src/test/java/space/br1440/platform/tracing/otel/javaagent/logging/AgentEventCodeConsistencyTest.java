@@ -6,6 +6,8 @@ import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AgentEventCodeConsistencyTest {

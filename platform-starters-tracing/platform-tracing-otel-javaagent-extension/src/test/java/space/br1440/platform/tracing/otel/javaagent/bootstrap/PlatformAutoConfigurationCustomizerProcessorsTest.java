@@ -241,7 +241,8 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         // when/then
         assertThatThrownBy(() -> recorder.primeWithConfig(new MapConfigProperties(disableAll)))
                 .isInstanceOf(BootstrapException.class)
-                .hasMessageContaining("scrubbing.enabled=false is forbidden");
+                .satisfies(failure -> assertThat(failure.getCause())
+                        .hasMessageContaining("scrubbing.enabled=false is forbidden"));
 
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isFalse();
     }

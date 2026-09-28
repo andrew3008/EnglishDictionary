@@ -3,17 +3,17 @@ package space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
-import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
 
 final class ScrubbingCollapseState {
 
-    private final RateLimitedLogger log;
+    private final PlatformAgentLogger log;
     private final AtomicBoolean attributesVerified = new AtomicBoolean(true);
     private final LongAdder collapseModeActivations = new LongAdder();
     private final LongAdder collapsedSpans = new LongAdder();
 
-    ScrubbingCollapseState(RateLimitedLogger log) {
+    ScrubbingCollapseState(PlatformAgentLogger log) {
         this.log = log;
     }
 
@@ -24,7 +24,7 @@ final class ScrubbingCollapseState {
     void markAttributesUnverified() {
         if (attributesVerified.compareAndSet(true, false)) {
             collapseModeActivations.increment();
-            log.error(AgentEventCode.SCRUB_BOUNDARY_COLLAPSE, "Scrubbing boundary collapsed");
+            log.log(ScrubbingLogEvent.SCRUBBING_BOUNDARY_COLLAPSED);
         }
     }
 

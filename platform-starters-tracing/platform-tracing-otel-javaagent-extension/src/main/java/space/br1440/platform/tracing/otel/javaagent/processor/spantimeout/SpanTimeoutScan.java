@@ -8,8 +8,11 @@ import java.util.function.LongSupplier;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanResult;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.SpanTimeoutLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.ratelimit.MinIntervalRateLimiter;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
+import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 
@@ -21,7 +24,7 @@ final class SpanTimeoutScan {
 
     private final InFlightTraceIndex index;
     private final LongSupplier nanoTime;
-    private final LogRateLimiter scanLog;
+    private final MinIntervalRateLimiter scanLog;
     private final AtomicLong forcedSpanEndAttemptsTotal = new AtomicLong();
     private final AtomicLong forcedTraceEndAttemptsTotal = new AtomicLong();
     private final AtomicLong scanFailuresTotal = new AtomicLong();
@@ -30,7 +33,7 @@ final class SpanTimeoutScan {
     SpanTimeoutScan(InFlightTraceIndex index, LongSupplier nanoTime) {
         this.index = Objects.requireNonNull(index, "index");
         this.nanoTime = Objects.requireNonNull(nanoTime, "nanoTime");
-        this.scanLog = new LogRateLimiter(SCAN_LOG_INTERVAL_NANOS, this.nanoTime);
+        this.scanLog = new MinIntervalRateLimiter(SCAN_LOG_INTERVAL_NANOS, this.nanoTime);
     }
 
     boolean run() {
@@ -70,10 +73,11 @@ final class SpanTimeoutScan {
         try {
             action.run();
         } catch (Throwable failure) {
-            rethrowIfFatal(failure);
+            PlatformThrowables.propagateIfFatal(failure);
             outcome.failed = true;
-            log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT, "Span-timeout scan stage failed", failure,
-                    "stage", stage);
+            log.log(SpanTimeoutLogEvent.SPAN_TIMEOUT_SCAN_STAGE_FAILED, fields -> fields
+                    .putString(AgentLogField.STAGE, stage)
+                    .cause(failure));
         }
     }
 
@@ -83,7 +87,7 @@ final class SpanTimeoutScan {
             try {
                 forceEnd(candidate, outcome);
             } catch (Throwable failure) {
-                rethrowIfFatal(failure);
+                PlatformThrowables.propagateIfFatal(failure);
                 recordForceEndFailure(candidate, failure, outcome);
             } finally {
                 index.releaseCandidatePermit(candidate, "force-end");
@@ -96,11 +100,11 @@ final class SpanTimeoutScan {
                                        ScanOutcome outcome) {
         outcome.recordFailure(candidate, failure);
         forceEndFailuresTotal.incrementAndGet();
-        log.debug(AgentEventCode.EXPORT_SPAN_TIMEOUT, "Span timeout failed to force-end span",
-                "traceId", candidate.traceId(),
-                "spanId", candidate.spanId(),
-                "reason", candidate.reason().value(),
-                "failureType", failure.getClass().getName());
+        log.log(SpanTimeoutLogEvent.SPAN_TIMEOUT_FORCE_END_FAILED, fields -> fields
+                .putString(AgentLogField.TRACE_ID, candidate.traceId())
+                .putString(AgentLogField.SPAN_ID, candidate.spanId())
+                .putString(AgentLogField.REASON, candidate.reason().value())
+                .putString(AgentLogField.FAILURE_TYPE, failure.getClass().getName()));
     }
 
     private void releaseUnprocessed(ArrayDeque<ExpiredSpan> batch) {
@@ -136,10 +140,10 @@ final class SpanTimeoutScan {
         outcome.sample(candidate);
         span.end();
 
-        log.debug(AgentEventCode.EXPORT_SPAN_TIMEOUT, "Span timeout force-ended span",
-                "traceId", candidate.traceId(),
-                "spanId", candidate.spanId(),
-                "reason", candidate.reason().value());
+        log.log(SpanTimeoutLogEvent.SPAN_TIMEOUT_FORCE_ENDED, fields -> fields
+                .putString(AgentLogField.TRACE_ID, candidate.traceId())
+                .putString(AgentLogField.SPAN_ID, candidate.spanId())
+                .putString(AgentLogField.REASON, candidate.reason().value()));
     }
 
     private void logScanOutcome(ScanOutcome outcome) {
@@ -152,33 +156,22 @@ final class SpanTimeoutScan {
         }
 
         if (outcome.failures == 0) {
-            log.info(AgentEventCode.EXPORT_SPAN_TIMEOUT, "Span timeout force-ended spans",
-                    "spanTimeoutAttempts", String.valueOf(outcome.spanAttempts),
-                    "traceTimeoutAttempts", String.valueOf(outcome.traceAttempts),
-                    "failures", "0",
-                    "sampleTraceId", outcome.sampleTraceId,
-                    "sampleSpanId", outcome.sampleSpanId);
+            log.log(SpanTimeoutLogEvent.SPAN_TIMEOUT_FORCE_END_SUMMARY, fields -> fields
+                    .putLong(AgentLogField.SPAN_TIMEOUT_ATTEMPTS, outcome.spanAttempts)
+                    .putLong(AgentLogField.TRACE_TIMEOUT_ATTEMPTS, outcome.traceAttempts)
+                    .putLong(AgentLogField.FAILURES, 0L)
+                    .putString(AgentLogField.SAMPLE_TRACE_ID, outcome.sampleTraceId)
+                    .putString(AgentLogField.SAMPLE_SPAN_ID, outcome.sampleSpanId));
             return;
         }
 
-        log.warn(AgentEventCode.EXPORT_SPAN_TIMEOUT, "Span timeout force-ended spans with failures",
-                "spanTimeoutAttempts", String.valueOf(outcome.spanAttempts),
-                "traceTimeoutAttempts", String.valueOf(outcome.traceAttempts),
-                "failures", String.valueOf(outcome.failures),
-                "sampleTraceId", outcome.sampleTraceId,
-                "sampleSpanId", outcome.sampleSpanId,
-                "failureSample", outcome.failureSample);
-    }
-
-    private static void rethrowIfFatal(Throwable failure) {
-        if (isFatal(failure)) {
-            throw (Error) failure;
-        }
-    }
-
-    private static boolean isFatal(Throwable failure) {
-        return (failure instanceof VirtualMachineError)
-                || (failure instanceof LinkageError);
+        log.log(SpanTimeoutLogEvent.SPAN_TIMEOUT_FORCE_END_SUMMARY_WITH_FAILURES, fields -> fields
+                .putLong(AgentLogField.SPAN_TIMEOUT_ATTEMPTS, outcome.spanAttempts)
+                .putLong(AgentLogField.TRACE_TIMEOUT_ATTEMPTS, outcome.traceAttempts)
+                .putLong(AgentLogField.FAILURES, outcome.failures)
+                .putString(AgentLogField.SAMPLE_TRACE_ID, outcome.failureTraceId)
+                .putString(AgentLogField.SAMPLE_SPAN_ID, outcome.failureSpanId)
+                .putString(AgentLogField.FAILURE_SAMPLE, outcome.failureSample));
     }
 
     private static final class ScanOutcome {
@@ -189,6 +182,8 @@ final class SpanTimeoutScan {
         private int failures;
         private String sampleTraceId = "";
         private String sampleSpanId = "";
+        private String failureTraceId = "";
+        private String failureSpanId = "";
         private String failureSample = "";
 
         private void sample(ExpiredSpan candidate) {
@@ -202,8 +197,11 @@ final class SpanTimeoutScan {
             failed = true;
             failures++;
 
-            sample(candidate);
-            failureSample = failure.getClass().getName();
+            if (failureSample.isEmpty()) {
+                failureTraceId = candidate.traceId();
+                failureSpanId = candidate.spanId();
+                failureSample = failure.getClass().getName();
+            }
         }
     }
 }

@@ -13,11 +13,14 @@ import jakarta.annotation.Nullable;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseObservation;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseScope;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventType;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ExporterLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
-import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingBoundaryMetrics;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingFailureLog;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.sdk.common.CompletableResultCode;
@@ -26,12 +29,14 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 
 public final class SafeSpanExporter implements SpanExporter {
 
-    private static final RateLimitedLogger log = new RateLimitedLogger(SafeSpanExporter.class);
+    private static final PlatformAgentLogger LIFECYCLE_LOG = PlatformAgentLogger.get(SafeSpanExporter.class);
 
     private final SpanExporter delegate;
     private final TracingSettingsSource acceptedPolicy;
     private final ScrubbingRuntime scrubbingRuntime;
     private final SpanDataBoundaryScrubber boundaryScrubber;
+    private final RateLimitedLogger log;
+    private final String exporterType;
 
     private final LongAdder exportBatches = new LongAdder();
     private final LongAdder exportFailures = new LongAdder();
@@ -46,11 +51,22 @@ public final class SafeSpanExporter implements SpanExporter {
 
     private final LongAdder gatedSpans = new LongAdder();
 
-    public SafeSpanExporter(SpanExporter delegate, TracingSettingsSource acceptedPolicy, ScrubbingRuntime scrubbingRuntime) {
+    public SafeSpanExporter(SpanExporter delegate,
+                            TracingSettingsSource acceptedPolicy,
+                            ScrubbingRuntime scrubbingRuntime) {
+        this(delegate, acceptedPolicy, scrubbingRuntime, new RateLimitedLogger(SafeSpanExporter.class));
+    }
+
+    SafeSpanExporter(SpanExporter delegate,
+                     TracingSettingsSource acceptedPolicy,
+                     ScrubbingRuntime scrubbingRuntime,
+                     RateLimitedLogger log) {
         this.delegate = Objects.requireNonNull(delegate, "delegate");
         this.acceptedPolicy = Objects.requireNonNull(acceptedPolicy, "acceptedPolicy");
         this.scrubbingRuntime = Objects.requireNonNull(scrubbingRuntime, "scrubbingRuntime");
+        this.log = Objects.requireNonNull(log, "log");
         this.boundaryScrubber = new SpanDataBoundaryScrubber(this.scrubbingRuntime);
+        this.exporterType = exporterType(delegate);
     }
 
     public boolean isProtectedBy(ScrubbingRuntime expectedRuntime) {
@@ -87,22 +103,20 @@ public final class SafeSpanExporter implements SpanExporter {
         long startedAt = System.nanoTime();
 
         ExportResponseObservation observation = new ExportResponseObservation(effectiveCount);
-        CompletableResultCode result;
         try (ExportResponseScope.Handle ignored = ExportResponseScope.open(observation)) {
-            result = delegate.export(batch);
+            CompletableResultCode result = delegate.export(batch);
+            if (result == null) {
+                recordSyncFailure(effectiveCount, startedAt, ExporterLogEvent.SAFE_EXPORT_RETURNED_NULL);
+                return CompletableResultCode.ofFailure();
+            }
+
+            result.whenComplete(() -> onExportComplete(result, observation, startedAt));
+            return result;
         } catch (Throwable ex) {
             PlatformThrowables.propagateIfFatal(ex);
-            recordSyncFailure(effectiveCount, startedAt, "export() threw", ex);
+            recordSyncFailure(effectiveCount, startedAt, ExporterLogEvent.SAFE_EXPORT_THROWN, ex);
             return CompletableResultCode.ofFailure();
         }
-
-        if (result == null) {
-            recordSyncFailure(effectiveCount, startedAt, "export() returned null");
-            return CompletableResultCode.ofFailure();
-        }
-
-        result.whenComplete(() -> onExportComplete(result, observation, startedAt));
-        return result;
     }
 
     private Collection<SpanData> applyBoundaryScrubbing(Collection<SpanData> batch) {
@@ -154,13 +168,15 @@ public final class SafeSpanExporter implements SpanExporter {
 
             if (result.isSuccess()) {
                 recordAcceptedSpans(observation, count);
-                log.logRecoveryOnce("SafeSpanExporter: export recovered after a series of failures");
+                log.tryLogRecoveryOnce();
             } else {
-                recordFailureMetrics(count, "export() returned failure");
+                recordFailureMetrics(count, ExporterLogEvent.SAFE_EXPORT_RETURNED_FAILURE);
             }
         } catch (Throwable ex) {
             PlatformThrowables.propagateIfFatal(ex);
-            log.warn(AgentEventCode.EXPORT_SAFE_EXPORTER, "completion callback failed", ex);
+            log.log(ExporterLogEvent.EXPORT_COMPLETION_CALLBACK_FAILED, fields -> fields
+                    .putString(AgentLogField.EXPORTER_TYPE, exporterType)
+                    .cause(ex));
         }
     }
 
@@ -174,7 +190,8 @@ public final class SafeSpanExporter implements SpanExporter {
 
             case NOT_DETERMINED -> {
                 acceptedUnknownBatches.increment();
-                log.warn(AgentEventCode.EXPORT_SAFE_EXPORTER, "OTLP response did not yield a usable accepted span count");
+                log.log(ExporterLogEvent.EXPORT_ACCEPTED_SPAN_COUNT_UNAVAILABLE, fields -> fields
+                        .putString(AgentLogField.EXPORTER_TYPE, exporterType));
             }
 
             case ALL_ACCEPTED, NOT_OBSERVED -> exportedSpans.add(count);
@@ -184,12 +201,16 @@ public final class SafeSpanExporter implements SpanExporter {
     @Override
     public CompletableResultCode flush() {
         try {
-            CompletableResultCode result = delegate.flush();
-            return (result == null) ? CompletableResultCode.ofFailure() : result;
+            return observeLifecycleResult(
+                    delegate.flush(),
+                    flushFailures,
+                    ExporterLogEvent.SAFE_FLUSH_RETURNED_NULL,
+                    ExporterLogEvent.SAFE_FLUSH_RETURNED_FAILURE
+            );
         } catch (Throwable ex) {
             PlatformThrowables.propagateIfFatal(ex);
             flushFailures.increment();
-            logExportFailure("flush() threw", ex);
+            logExportFailure(ExporterLogEvent.SAFE_FLUSH_THROWN, ex);
             return CompletableResultCode.ofFailure();
         }
     }
@@ -197,12 +218,15 @@ public final class SafeSpanExporter implements SpanExporter {
     @Override
     public CompletableResultCode shutdown() {
         try {
-            CompletableResultCode result = delegate.shutdown();
-            return (result == null) ? CompletableResultCode.ofFailure() : result;
+            return observeShutdownResult(
+                    delegate.shutdown(),
+                    ExporterLogEvent.SAFE_SHUTDOWN_RETURNED_NULL,
+                    ExporterLogEvent.SAFE_SHUTDOWN_RETURNED_FAILURE
+            );
         } catch (Throwable ex) {
             PlatformThrowables.propagateIfFatal(ex);
             shutdownFailures.increment();
-            logExportFailure("shutdown() threw", ex);
+            logLifecycleFailure(ExporterLogEvent.SAFE_SHUTDOWN_THROWN, ex);
             return CompletableResultCode.ofFailure();
         }
     }
@@ -213,36 +237,93 @@ public final class SafeSpanExporter implements SpanExporter {
             scrubbingRuntime.recordBoundarySpansDroppedFailClosed(originalCount);
         }
 
-        ScrubbingFailureLog.error(log, "BOUNDARY_BATCH_PREPARATION_FAILED", failure);
+        log.log(ScrubbingLogEvent.SCRUB_BOUNDARY_BATCH_PREPARATION_FAILED, fields -> fields.cause(failure));
     }
 
     @SuppressWarnings("SameParameterValue")
-    private void recordSyncFailure(int count, long startedAt, String message) {
-        recordSyncFailure(count, startedAt, message, null);
+    private void recordSyncFailure(int count, long startedAt, AgentLogEventType eventType) {
+        recordSyncFailure(count, startedAt, eventType, null);
     }
 
-    private void recordSyncFailure(int count, long startedAt, String message, Throwable error) {
+    private void recordSyncFailure(int count,
+                                   long startedAt,
+                                   AgentLogEventType eventType,
+                                   Throwable error) {
         lastExportDurationNanos.set(System.nanoTime() - startedAt);
-        recordFailureMetrics(count, message, error);
+        recordFailureMetrics(count, eventType, error);
     }
 
     @SuppressWarnings("SameParameterValue")
-    private void recordFailureMetrics(int count, String message) {
-        recordFailureMetrics(count, message, null);
+    private void recordFailureMetrics(int count, AgentLogEventType eventType) {
+        recordFailureMetrics(count, eventType, null);
     }
 
-    private void recordFailureMetrics(int count, String message, Throwable error) {
+    private void recordFailureMetrics(int count, AgentLogEventType eventType, Throwable error) {
         exportFailures.increment();
         droppedSpans.add(count);
-        logExportFailure(message, error);
+        logExportFailure(eventType, error);
     }
 
-    private void logExportFailure(String message, Throwable error) {
+    private void logExportFailure(AgentLogEventType eventType, Throwable error) {
         if (error != null) {
-            log.warn(AgentEventCode.EXPORT_SAFE_EXPORTER, message, error);
+            log.log(eventType, fields -> fields
+                    .putString(AgentLogField.EXPORTER_TYPE, exporterType)
+                    .cause(error));
         } else {
-            log.warn(AgentEventCode.EXPORT_SAFE_EXPORTER, message);
+            log.log(eventType, fields -> fields.putString(AgentLogField.EXPORTER_TYPE, exporterType));
         }
+    }
+
+    private void logLifecycleFailure(AgentLogEventType eventType, Throwable error) {
+        if (error != null) {
+            LIFECYCLE_LOG.log(eventType, fields -> fields
+                    .putString(AgentLogField.EXPORTER_TYPE, exporterType)
+                    .cause(error));
+        } else {
+            LIFECYCLE_LOG.log(eventType, fields -> fields.putString(AgentLogField.EXPORTER_TYPE, exporterType));
+        }
+    }
+
+    private CompletableResultCode observeLifecycleResult(CompletableResultCode result,
+                                                         LongAdder failures,
+                                                         AgentLogEventType returnedNullEvent,
+                                                         AgentLogEventType returnedFailureEvent) {
+        if (result == null) {
+            failures.increment();
+            logExportFailure(returnedNullEvent, null);
+            return CompletableResultCode.ofFailure();
+        }
+
+        result.whenComplete(() -> {
+            if (!result.isSuccess()) {
+                failures.increment();
+                logExportFailure(returnedFailureEvent, null);
+            }
+        });
+        return result;
+    }
+
+    private CompletableResultCode observeShutdownResult(CompletableResultCode result,
+                                                         AgentLogEventType returnedNullEvent,
+                                                         AgentLogEventType returnedFailureEvent) {
+        if (result == null) {
+            shutdownFailures.increment();
+            logLifecycleFailure(returnedNullEvent, null);
+            return CompletableResultCode.ofFailure();
+        }
+
+        result.whenComplete(() -> {
+            if (!result.isSuccess()) {
+                shutdownFailures.increment();
+                logLifecycleFailure(returnedFailureEvent, null);
+            }
+        });
+        return result;
+    }
+
+    private static String exporterType(SpanExporter delegate) {
+        String simpleName = delegate.getClass().getSimpleName();
+        return simpleName.isEmpty() ? delegate.getClass().getName() : simpleName;
     }
 
     public long getExportFailures() {

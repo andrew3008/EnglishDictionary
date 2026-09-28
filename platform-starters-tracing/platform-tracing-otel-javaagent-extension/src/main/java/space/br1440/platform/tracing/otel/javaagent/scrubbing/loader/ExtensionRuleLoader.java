@@ -17,13 +17,14 @@ import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
 
-import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
-import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
-import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.StableScrubbingRule;
 import space.br1440.platform.common.util.ArrayUtils;
 import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
+import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.StableScrubbingRule;
 
 /**
  * Загрузчик внешних кастомных правил {@link SpanAttributeScrubbingRule} из свойства
@@ -96,7 +97,7 @@ public final class ExtensionRuleLoader implements AutoCloseable {
                 provider = iterator.next();
             } catch (ServiceConfigurationError | RuntimeException e) {
                 PlatformThrowables.propagateFatalCauseChain(e);
-                failOrWarn("<unknown>", FailedProviderReason.SERVICE_CONFIGURATION_ERROR, e.getClass().getName());
+                failOrWarn("<unknown>", FailedProviderReason.SERVICE_CONFIGURATION_ERROR, e.getClass().getName(), e);
                 break;
             }
 
@@ -105,7 +106,7 @@ public final class ExtensionRuleLoader implements AutoCloseable {
                 providerType = provider.type();
             } catch (ServiceConfigurationError | RuntimeException e) {
                 PlatformThrowables.propagateFatalCauseChain(e);
-                failOrWarn("<unknown>", FailedProviderReason.SERVICE_CONFIGURATION_ERROR, e.getClass().getName());
+                failOrWarn("<unknown>", FailedProviderReason.SERVICE_CONFIGURATION_ERROR, e.getClass().getName(), e);
                 continue;
             }
 
@@ -119,7 +120,7 @@ public final class ExtensionRuleLoader implements AutoCloseable {
                 rule = provider.get();
             } catch (ServiceConfigurationError | RuntimeException e) {
                 PlatformThrowables.propagateFatalCauseChain(e);
-                failOrWarn(providerName, FailedProviderReason.INSTANTIATION_ERROR, e.getClass().getName());
+                failOrWarn(providerName, FailedProviderReason.INSTANTIATION_ERROR, e.getClass().getName(), e);
                 continue;
             }
 
@@ -127,7 +128,7 @@ public final class ExtensionRuleLoader implements AutoCloseable {
                 rules.add(StableScrubbingRule.captureExternal(rule));
             } catch (RuntimeException e) {
                 PlatformThrowables.propagateFatalCauseChain(e);
-                failOrWarn(providerName, FailedProviderReason.INVALID_METADATA, e.getClass().getName());
+                failOrWarn(providerName, FailedProviderReason.INVALID_METADATA, e.getClass().getName(), e);
             }
         }
 
@@ -192,7 +193,15 @@ public final class ExtensionRuleLoader implements AutoCloseable {
             return;
         }
 
-        if (!isJarClean(jar)) {
+        boolean clean;
+        try {
+            clean = isJarClean(jar);
+        } catch (IOException e) {
+            failOrWarn(jar.getName(), FailedProviderReason.UNREADABLE_FILE, "jar-inspection", e);
+            return;
+        }
+
+        if (!clean) {
             failOrWarn(jar.getName(), FailedProviderReason.FORBIDDEN_CLASSES, "forbidden-classes");
             return;
         }
@@ -200,11 +209,11 @@ public final class ExtensionRuleLoader implements AutoCloseable {
         try {
             urls.add(jar.toURI().toURL());
         } catch (IOException e) {
-            failOrWarn(jar.getName(), FailedProviderReason.UNREADABLE_FILE, "url-conversion");
+            failOrWarn(jar.getName(), FailedProviderReason.UNREADABLE_FILE, "url-conversion", e);
         }
     }
 
-    private boolean isJarClean(File jar) {
+    private boolean isJarClean(File jar) throws IOException {
         try (java.util.jar.JarFile jf = new java.util.jar.JarFile(jar)) {
             return jf.stream().noneMatch(entry -> {
                 String name = entry.getName();
@@ -220,8 +229,6 @@ public final class ExtensionRuleLoader implements AutoCloseable {
 
                 return false;
             });
-        } catch (IOException e) {
-            return false;
         }
     }
 
@@ -229,21 +236,35 @@ public final class ExtensionRuleLoader implements AutoCloseable {
         try {
             return f.getCanonicalPath();
         } catch (IOException e) {
-            failOrWarn(f.getName(), FailedProviderReason.UNREADABLE_FILE, "canonicalization");
+            failOrWarn(f.getName(), FailedProviderReason.UNREADABLE_FILE, "canonicalization", e);
             return null;
         }
     }
 
     private void failOrWarn(String name, FailedProviderReason reason, String safeDetails) {
+        failOrWarn(name, reason, safeDetails, null);
+    }
+
+    private void failOrWarn(String name,
+                            FailedProviderReason reason,
+                            String safeDetails,
+                            Throwable cause) {
         failedEntries.add(new FailedEntry(name, reason));
         if (validationMode == ValidationMode.ERROR) {
-            throw new IllegalStateException("ERROR validation failed for '" + name + "': " + reason + " (" + safeDetails + ")");
+            throw new IllegalStateException(
+                    "ERROR validation failed for '" + name + "': " + reason + " (" + safeDetails + ")",
+                    cause
+            );
         }
 
-        log.warn(AgentEventCode.SCRUB_EXTENSION_SKIPPED, "Extension scrubbing rule skipped",
-                "name", name,
-                "reason", String.valueOf(reason),
-                "detail", safeDetails);
+        log.log(ScrubbingLogEvent.EXTENSION_SCRUBBING_RULE_SKIPPED, fields -> {
+            fields.putString(AgentLogField.NAME, name)
+                    .putString(AgentLogField.REASON, reason.name())
+                    .putString(AgentLogField.FAILURE_CONTEXT, safeDetails);
+            if (cause != null) {
+                fields.cause(cause);
+            }
+        });
     }
 
     public int getFailedProviders() {
@@ -259,7 +280,9 @@ public final class ExtensionRuleLoader implements AutoCloseable {
         if (urlClassLoader != null) {
             try {
                 urlClassLoader.close();
-            } catch (IOException ignored) {
+            } catch (IOException failure) {
+                log.log(ScrubbingLogEvent.EXTENSION_CLASSLOADER_CLOSE_FAILED,
+                        fields -> fields.cause(failure));
             }
         }
     }

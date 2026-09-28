@@ -238,7 +238,8 @@ class PlatformAutoConfigurationCustomizerTest {
             // when
             assertThatThrownBy(() -> recorder.primeWithConfig(props))
                     .isInstanceOf(BootstrapException.class)
-                    .hasMessageContaining("scrubbing.enabled=false is forbidden");
+                    .satisfies(failure -> assertThat(failure.getCause())
+                            .hasMessageContaining("scrubbing.enabled=false is forbidden"));
         }
     }
 
@@ -281,7 +282,7 @@ class PlatformAutoConfigurationCustomizerTest {
 
             // then
             assertThat(first.failure().code()).isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
-            assertThat(first.getMessage()).contains(invalid.expectedProperty());
+            assertThat(first.getCause()).hasMessageContaining(invalid.expectedProperty());
             assertThat(first.failure().cause()).isSameAs(first.getCause());
             assertThat(repeated.failure().code()).isEqualTo(first.failure().code());
             assertThat(repeated.getCause()).isSameAs(first.getCause());

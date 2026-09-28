@@ -8,10 +8,13 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
@@ -25,7 +28,11 @@ import io.opentelemetry.sdk.trace.ReadableSpan;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.internal.ExtendedSpanProcessor;
 
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class PlatformCompositeSpanProcessorTest {
+
+    @RegisterExtension
+    final AgentLogCapture logs = new AgentLogCapture();
 
     @Test
     @SuppressWarnings("resource")
@@ -122,6 +129,16 @@ class PlatformCompositeSpanProcessorTest {
             assertThat(okCalls.get()).isEqualTo(1);
             assertThat(composite.getProcessorErrorCounts())
                     .containsEntry("test_faulty", 1L);
+            assertThat(logs.events())
+                    .filteredOn(event -> "COMPOSITE_PROCESSOR_CALLBACK_FAILED".equals(event.eventName()))
+                    .singleElement()
+                    .satisfies(event -> {
+                        assertThat(event.fields())
+                                .containsEntry("phase", "onStart")
+                                .containsEntry("delegate", "test_faulty");
+                        assertThat(event.throwableDigest()).contains(RuntimeException.class.getName());
+                    });
+            assertThat(logs.rendered()).doesNotContain("simulated onStart failure");
         }
     }
 

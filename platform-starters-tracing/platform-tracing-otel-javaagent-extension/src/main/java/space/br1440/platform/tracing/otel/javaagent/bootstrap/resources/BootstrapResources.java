@@ -5,7 +5,13 @@ import java.util.Deque;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
+
 public final class BootstrapResources implements AutoCloseable {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(BootstrapResources.class);
 
     private final Deque<Registration> registrations = new ArrayDeque<>();
     private final ShutdownHookRegistry hookRegistry;
@@ -60,7 +66,7 @@ public final class BootstrapResources implements AutoCloseable {
                 try {
                     shutdownHook.close();
                 } catch (RuntimeException | Error failure) {
-                    aggregate = aggregate(aggregate, failure);
+                    aggregate = aggregate(aggregate, failure, "shutdown-hook");
                 }
                 shutdownHook = null;
             }
@@ -70,7 +76,7 @@ public final class BootstrapResources implements AutoCloseable {
                 try {
                     registration.close();
                 } catch (RuntimeException | Error failure) {
-                    aggregate = aggregate(aggregate, failure);
+                    aggregate = aggregate(aggregate, failure, null);
                 }
             }
 
@@ -80,13 +86,13 @@ public final class BootstrapResources implements AutoCloseable {
         }
     }
 
-    private static Throwable aggregate(Throwable aggregate, Throwable failure) {
+    private static Throwable aggregate(Throwable aggregate, Throwable failure, String resourceLabel) {
         if (aggregate == null && failure instanceof Error) {
             return failure;
         }
 
         if (aggregate == null) {
-            return new IllegalStateException("Platform bootstrap resource cleanup failed", failure);
+            return labeledFailure(failure, resourceLabel);
         }
 
         if (failure instanceof Error && !(aggregate instanceof Error)) {
@@ -94,8 +100,16 @@ public final class BootstrapResources implements AutoCloseable {
             return failure;
         }
 
-        aggregate.addSuppressed(failure);
+        aggregate.addSuppressed(labeledFailure(failure, resourceLabel));
         return aggregate;
+    }
+
+    private static Throwable labeledFailure(Throwable failure, String resourceLabel) {
+        if (failure instanceof BootstrapResourceCleanupException || resourceLabel == null) {
+            return failure;
+        }
+
+        return new BootstrapResourceCleanupException(resourceLabel, failure);
     }
 
     private static void rethrow(Throwable failure) {
@@ -112,12 +126,24 @@ public final class BootstrapResources implements AutoCloseable {
             close();
         } catch (RuntimeException | Error failure) {
             cleanupFailure = failure;
-            System.err.println("[platform-tracing] shutdown-hook resource cleanup failed: " + failure);
         } finally {
             try {
                 completion.accept(cleanupFailure);
             } catch (RuntimeException | Error failure) {
-                System.err.println("[platform-tracing] shutdown-hook completion failed: " + failure);
+                Throwable completionFailure = BootstrapCleanupFailures.withResourceLabel(
+                        "shutdown-completion",
+                        failure
+                );
+
+                Throwable terminalFailure = BootstrapCleanupFailures.aggregate(
+                        cleanupFailure,
+                        completionFailure
+                );
+
+                log.log(BootstrapLogEvent.BOOTSTRAP_SHUTDOWN_COMPLETION_FAILED, fields -> fields
+                        .putString(AgentLogField.PHASE, "shutdown")
+                        .putString(AgentLogField.RESOURCE_LABEL, "shutdown-completion")
+                        .cause(terminalFailure));
             }
         }
     }

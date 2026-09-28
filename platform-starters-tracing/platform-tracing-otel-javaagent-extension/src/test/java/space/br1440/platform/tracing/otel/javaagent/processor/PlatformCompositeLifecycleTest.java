@@ -14,15 +14,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 import io.opentelemetry.sdk.trace.ReadableSpan;
 import io.opentelemetry.sdk.trace.SpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class PlatformCompositeLifecycleTest {
+
+    @RegisterExtension
+    final AgentLogCapture logs = new AgentLogCapture();
 
     @Test
     void repeatedAndConcurrentShutdownUsesOneSharedResultAndInvokesDelegateOnce() throws Exception {
@@ -240,6 +248,20 @@ class PlatformCompositeLifecycleTest {
                     .containsEntry("throwing", 1L)
                     .containsEntry("failed", 1L)
                     .containsEntry("later", 0L);
+            List<CapturedLogEvent> lifecycleFailures = logs.events().stream()
+                    .filter(event -> "COMPOSITE_PROCESSOR_LIFECYCLE_FAILED".equals(event.eventName()))
+                    .toList();
+            assertThat(lifecycleFailures)
+                    .extracting(event -> event.fields().get("kind"))
+                    .containsExactly("RETURNED_NULL", "THREW", "ASYNC_FAILURE");
+            assertThat(lifecycleFailures)
+                    .extracting(event -> event.fields().get("delegate"))
+                    .containsExactly("null_result", "throwing", "failed");
+            assertThat(lifecycleFailures.get(1).errorType())
+                    .isEqualTo(IllegalStateException.class.getName());
+            assertThat(lifecycleFailures.get(1).throwableDigest())
+                    .contains(IllegalStateException.class.getName());
+            assertThat(logs.rendered()).doesNotContain("test failure");
         }
     }
 

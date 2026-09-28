@@ -2,8 +2,9 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap.resources;
 
 import java.util.Objects;
 
-public interface Registration {
+public interface Registration extends AutoCloseable {
 
+    @Override
     void close();
 
     static Registration adapt(AutoCloseable closeable, String label) {
@@ -14,7 +15,7 @@ public interface Registration {
             try {
                 closeable.close();
             } catch (Exception failure) {
-                throw new IllegalStateException("Bootstrap cleanup failed for '" + label + "'", failure);
+                throw new BootstrapResourceCleanupException(label, failure);
             }
         };
     }

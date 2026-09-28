@@ -1,11 +1,17 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker;
 
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.LongSupplier;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
+import space.br1440.platform.tracing.otel.javaagent.logging.ratelimit.MinIntervalRateLimiter;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventType;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
 
 public final class RuleCircuitBreaker {
 
@@ -16,12 +22,11 @@ public final class RuleCircuitBreaker {
     private final String ruleName;
     private final int failureThreshold;
     private final long cooldownMs;
-    private final long logThrottleMs;
+    private final MinIntervalRateLimiter logThrottle;
 
     private final AtomicReference<State> state = new AtomicReference<>(State.CLOSED);
     private final AtomicInteger failureCount = new AtomicInteger(0);
     private final AtomicLong openedAtMs = new AtomicLong(0);
-    private final AtomicLong lastLoggedMs = new AtomicLong(0);
     private final AtomicLong totalFailures = new AtomicLong(0);
     private final AtomicInteger probeInProgress = new AtomicInteger(0);
 
@@ -30,10 +35,21 @@ public final class RuleCircuitBreaker {
     }
 
     public RuleCircuitBreaker(String ruleName, int failureThreshold, long cooldownMs, long logThrottleMs) {
+        this(ruleName, failureThreshold, cooldownMs, logThrottleMs, System::nanoTime);
+    }
+
+    RuleCircuitBreaker(String ruleName,
+                       int failureThreshold,
+                       long cooldownMs,
+                       long logThrottleMs,
+                       LongSupplier nanoTime) {
         this.ruleName = ruleName;
         this.failureThreshold = failureThreshold;
         this.cooldownMs = cooldownMs;
-        this.logThrottleMs = logThrottleMs;
+        LongSupplier monotonicClock = Objects.requireNonNull(nanoTime, "nanoTime");
+        this.logThrottle = logThrottleMs > 0L
+                ? new MinIntervalRateLimiter(TimeUnit.MILLISECONDS.toNanos(logThrottleMs), monotonicClock)
+                : null;
     }
 
     public State acquireExecutionState() {
@@ -64,38 +80,38 @@ public final class RuleCircuitBreaker {
     }
 
     public void recordFailure(Throwable throwable) {
+        Objects.requireNonNull(throwable, "throwable");
         totalFailures.incrementAndGet();
 
         if (state.get() == State.HALF_OPEN) {
             openedAtMs.set(System.currentTimeMillis());
             state.set(State.OPEN);
             probeInProgress.set(0);
-            throttledWarn("Circuit breaker probe failed; returning to OPEN", throwable);
+            throttledWarn(ScrubbingLogEvent.SCRUBBING_CIRCUIT_PROBE_FAILED, throwable);
             return;
         }
 
         int failures = failureCount.incrementAndGet();
         if (failures >= failureThreshold && state.compareAndSet(State.CLOSED, State.OPEN)) {
             openedAtMs.set(System.currentTimeMillis());
-            throttledWarn("Circuit breaker opened after consecutive failures", throwable);
+            logWarn(ScrubbingLogEvent.SCRUBBING_CIRCUIT_OPENED, throwable);
         } else {
-            throttledWarn("Recorded rule failure", throwable);
+            throttledWarn(ScrubbingLogEvent.SCRUBBING_RULE_FAILURE_RECORDED, throwable);
         }
     }
 
-    private void throttledWarn(String message, Throwable throwable) {
-        long now = System.currentTimeMillis();
-        long last = lastLoggedMs.get();
-        if ((now - last) >= logThrottleMs && lastLoggedMs.compareAndSet(last, now)) {
-            String exceptionType = (throwable != null) ? throwable.getClass().getName() : "unknown";
-            String exceptionMessage = (throwable != null) ? String.valueOf(throwable.getMessage()) : "n/a";
-            log.warn(AgentEventCode.SCRUB_CIRCUIT_OPEN, message,
-                    "name", ruleName,
-                    "count", String.valueOf(failureCount.get()),
-                    "exceptionType", exceptionType,
-                    "exceptionMessage", exceptionMessage
-            );
+    private void throttledWarn(AgentLogEventType eventType, Throwable throwable) {
+        if (logThrottle == null || logThrottle.tryAcquire()) {
+            logWarn(eventType, throwable);
         }
+    }
+
+    private void logWarn(AgentLogEventType eventType, Throwable throwable) {
+        log.log(eventType, fields -> fields
+                .putString(AgentLogField.NAME, ruleName)
+                .putLong(AgentLogField.COUNT, failureCount.get())
+                .putString(AgentLogField.FAILURE_TYPE, throwable.getClass().getName())
+                .cause(throwable));
     }
 
     public State getState() {

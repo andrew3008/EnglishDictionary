@@ -13,13 +13,16 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Last
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.SamplingLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ValidationLogEvent;
 
 public final class TracingSettingsSource {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(TracingSettingsSource.class);
+    private static final String ROUTE_RATIO_NOT_A_NUMBER = "not-a-number";
 
     private final TracingSettingsStore store;
     private final LastSettingsUpdate diagnostics;
@@ -38,7 +41,7 @@ public final class TracingSettingsSource {
 
         SpanAttributeValidationLevel level = config.validation().requestedLevel();
         if (level.isDisabled()) {
-            log.warn(AgentEventCode.VALID_POLICY, "Validation DISABLED");
+            log.log(ValidationLogEvent.VALIDATION_DISABLED);
         }
 
         return create(config.sampling(), level, agentInstanceId);
@@ -129,6 +132,13 @@ public final class TracingSettingsSource {
             try {
                 parsed.put(entry.getKey(), Double.parseDouble(entry.getValue().trim()));
             } catch (NumberFormatException ignored) {
+                // Сообщение NumberFormatException содержит исходную строку, поэтому в лог уходит только причина.
+                if (!entry.getKey().isBlank()) {
+                    log.log(SamplingLogEvent.INVALID_ROUTE_RATIO, fields -> {
+                        fields.putString(AgentLogField.NAME, entry.getKey());
+                        fields.putString(AgentLogField.REASON, ROUTE_RATIO_NOT_A_NUMBER);
+                    });
+                }
             }
         }
 

@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.resource;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -24,7 +25,9 @@ class BuildInfoReaderTest {
     void readsBuildVersionFromRoot() {
         // given
         Function<String, InputStream> loader = loaderOf(Map.of(
-                "META-INF/build-info.properties", "build.version=2.17.4\nbuild.name=demo\n"));
+                "META-INF/build-info.properties",
+                "build.version=2.17.4\nbuild.name=demo\n"
+        ));
 
         // when/then
         assertThat(new BuildInfoReader(loader).readVersion()).contains("2.17.4");
@@ -68,5 +71,18 @@ class BuildInfoReaderTest {
 
         // when/then
         assertThat(new BuildInfoReader(broken).readVersion()).isEqualTo(Optional.empty());
+    }
+
+    @Test
+    void linkageErrorIsPropagated() {
+        // given
+        LinkageError failure = new LinkageError("build-info dependency is unavailable");
+        BuildInfoReader reader = new BuildInfoReader(path -> {
+            throw failure;
+        });
+
+        // when
+        // then
+        assertThatThrownBy(reader::readVersion).isSameAs(failure);
     }
 }

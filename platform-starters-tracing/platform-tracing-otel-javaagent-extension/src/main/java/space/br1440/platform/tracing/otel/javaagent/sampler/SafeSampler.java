@@ -4,11 +4,12 @@ import java.util.List;
 import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
+import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.SamplingLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.resilience.CircuitBreaker;
 import space.br1440.platform.tracing.otel.javaagent.resilience.DegradedModeController;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
-import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.SpanKind;
@@ -21,11 +22,10 @@ import lombok.NonNull;
 
 public final class SafeSampler implements Sampler, PlatformManagedSampler {
 
-    private static final RateLimitedLogger log = new RateLimitedLogger(SafeSampler.class);
-
     private final Sampler delegate;
     private final TracingDiagnostics diagnostics;
     private final DegradedModeController degradedController;
+    private final RateLimitedLogger log = new RateLimitedLogger(SafeSampler.class);
 
     SafeSampler(Sampler delegate) {
         this(delegate, TracingDiagnostics.shared());
@@ -56,12 +56,15 @@ public final class SafeSampler implements Sampler, PlatformManagedSampler {
 
                 degradedController.recordFailure(DegradedModeController.Component.SAMPLER);
                 diagnostics.recordSamplerFailure();
-                log.warn(AgentEventCode.SAMPLE_FALLBACK, "Sampler fell back to parent-based sampling");
+                log.log(SamplingLogEvent.SAMPLER_FAILED_CLOSED_TO_DROP, fields ->
+                        fields.putString(AgentLogField.REASON, "RETURNED_NULL"));
             } catch (Throwable ex) {
                 PlatformThrowables.propagateIfFatal(ex);
                 degradedController.recordFailure(DegradedModeController.Component.SAMPLER);
                 diagnostics.recordSamplerFailure();
-                log.warn(AgentEventCode.SAMPLE_FALLBACK, "Sampler fell back to parent-based sampling", ex);
+                log.log(SamplingLogEvent.SAMPLER_FAILED_CLOSED_TO_DROP, fields -> fields
+                        .putString(AgentLogField.REASON, "THREW")
+                        .cause(ex));
             }
         }
 

@@ -16,6 +16,8 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.logging.ratelimit.MinIntervalRateLimiter;
+
 class SpanTimeoutArchitectureGateTest {
 
     @Test
@@ -67,7 +69,7 @@ class SpanTimeoutArchitectureGateTest {
     }
 
     @Test
-    void logRateLimitingIsOwnedOnlyByLogRateLimiter() {
+    void logRateLimitingIsOwnedOnlyByMinIntervalRateLimiter() {
         // given/when
         List<String> rawLogClocks = Stream.concat(
                         Stream.of(SpanTimeoutScan.class, SpanTimeoutScanner.class, InFlightTraceIndex.class,
@@ -78,13 +80,21 @@ class SpanTimeoutArchitectureGateTest {
                 .map(Field::getName)
                 .filter(name -> name.endsWith("LogNanos"))
                 .toList();
+        List<String> intervalGates = Stream.concat(
+                        Stream.of(SpanTimeoutScan.class, SpanTimeoutScanner.class, InFlightTraceIndex.class,
+                                AdmissionRejections.class),
+                        Arrays.stream(AdmissionRejections.class.getDeclaredClasses()))
+                .flatMap(type -> Arrays.stream(type.getDeclaredFields()))
+                        .filter(field -> field.getType() == MinIntervalRateLimiter.class)
+                .map(field -> field.getDeclaringClass().getSimpleName() + "." + field.getName())
+                .toList();
 
         // then
-        assertThat(rawLogClocks).as("no hand-rolled log clocks outside LogRateLimiter").isEmpty();
-        assertThat(Arrays.stream(LogRateLimiter.class.getDeclaredFields())
-                .filter(field -> AtomicLong.class.isAssignableFrom(field.getType()))
-                .map(Field::getName))
-                .containsExactly("lastAcquiredNanos");
+        assertThat(rawLogClocks).as("no hand-rolled log clocks outside MinIntervalRateLimiter").isEmpty();
+        assertThat(intervalGates).containsExactlyInAnyOrder(
+                "SpanTimeoutScan.scanLog",
+                "InFlightTraceIndex.evictionLog",
+                "Slot.limiter");
     }
 
     @Test
@@ -172,7 +182,6 @@ class SpanTimeoutArchitectureGateTest {
         assertThat(Modifier.isPublic(InFlightTraceIndex.class.getModifiers())).isFalse();
         assertThat(Modifier.isPublic(SpanTimeoutScan.class.getModifiers())).isFalse();
         assertThat(Modifier.isPublic(SpanTimeoutScanner.class.getModifiers())).isFalse();
-        assertThat(Modifier.isPublic(LogRateLimiter.class.getModifiers())).isFalse();
         assertThat(Modifier.isPublic(AdmissionRejections.class.getModifiers())).isFalse();
         assertThat(Modifier.isPublic(EmptyEvictionPlanner.class.getModifiers())).isFalse();
         assertThat(Modifier.isPublic(ExpiredSpan.class.getModifiers())).isFalse();

@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures.boundDefaults;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
@@ -11,6 +13,10 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -20,7 +26,11 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.data.SpanData;
 
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class ValidatingSpanProcessorTest {
+
+    @RegisterExtension
+    AgentLogCapture capture = new AgentLogCapture();
 
     private static ValidatingSpanProcessor warnLevel() {
         return new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING));
@@ -49,6 +59,28 @@ class ValidatingSpanProcessorTest {
     }
 
     @Test
+    void missing_required_attribute_log_contains_count_and_fixed_key_name() {
+        // given
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(warnLevel(), Resource.empty())) {
+            // when
+            h.tracer("test").spanBuilder("op")
+                    .setAttribute(PlatformAttributes.PLATFORM_TYPE, "HTTP")
+                    .startSpan()
+                    .end();
+
+            CapturedLogEvent event = capture.events().stream()
+                    .filter(candidate -> "REQUIRED_SPAN_ATTRIBUTES_MISSING_WARN".equals(candidate.eventName()))
+                    .findFirst()
+                    .orElseThrow();
+
+            // then
+            assertThat(event.fields())
+                    .containsEntry("count", "1")
+                    .containsEntry("missingKeys", PlatformAttributes.PLATFORM_RESULT);
+        }
+    }
+
+    @Test
     void does_not_record_violation_when_span_type_and_result_attributes_are_set() {
         // given
         try (SpanProcessorHarness h = SpanProcessorHarness.of(warnLevel(), Resource.empty())) {
@@ -65,7 +97,7 @@ class ValidatingSpanProcessorTest {
     }
 
     @Test
-    void throttling_suppresses_repeated_warn_and_does_not_move_timestamp() {
+    void throttling_suppresses_repeated_warn_diagnostics() {
         // given
         ValidatingSpanProcessor validator = new ValidatingSpanProcessor(
                 () -> 1000L,
@@ -79,7 +111,6 @@ class ValidatingSpanProcessorTest {
                 tracer.spanBuilder("op").startSpan().end();
             }
 
-            // Ð’ÑÐµ 1000 span'Ð¾Ð² Ð¿Ð¾Ð»ÑƒÑ‡Ð¸Ð»Ð¸ Ð°Ñ‚Ñ€Ð¸Ð±ÑƒÑ‚ platform.validation.missing â€” ÑÑ‚Ð¾ ÐºÐ¾Ð½Ñ‚Ñ€Ð°ÐºÑ‚.
             // then
             assertThat(h.exporter().getFinishedSpanItems()).hasSize(1000);
             for (SpanData data : h.exporter().getFinishedSpanItems()) {
@@ -87,9 +118,10 @@ class ValidatingSpanProcessorTest {
             }
         }
 
-        // Throttling: Ð¼ÐµÑ‚ÐºÐ° Ð²Ñ€ÐµÐ¼ÐµÐ½Ð¸ Ð´Ð»Ñ ÑƒÐ½Ð¸ÐºÐ°Ð»ÑŒÐ½Ð¾Ð³Ð¾ missing-Ð½Ð°Ð±Ð¾Ñ€Ð° Ð·Ð°Ñ„Ð¸ÐºÑÐ¸Ñ€Ð¾Ð²Ð°Ð½Ð° Ð¾Ð´Ð¸Ð½ Ñ€Ð°Ð· Ð¸
-        // Ð½Ðµ Ð´Ð²Ð¸Ð³Ð°Ð»Ð°ÑÑŒ Ð¿Ð¾Ð²Ñ‚Ð¾Ñ€Ð½Ð¾ â€” Ð·Ð½Ð°Ñ‡Ð¸Ñ‚, Ð¿Ð¾Ð²Ñ‚Ð¾Ñ€Ð½Ñ‹Ðµ WARN'Ñ‹ Ð² Ð»Ð¾Ð³Ðµ Ð¿Ð¾Ð´Ð°Ð²Ð»ÐµÐ½Ñ‹.
-        assertThat(validator.lastDiagnosticTimestampForTesting(SpanAttributeValidationLevel.WARNING)).isEqualTo(1000L);
+        assertThat(capture.events())
+                .filteredOn(event -> event.eventCode() == AgentEventCode.VALID_MISSING_ATTRIBUTES)
+                .filteredOn(event -> event.level() == AgentLogLevel.WARN)
+                .hasSize(1);
         assertThat(validator.getValidationViolationsTotal()).isEqualTo(1000L);
     }
 
@@ -98,18 +130,25 @@ class ValidatingSpanProcessorTest {
         // given
         TracingSettingsSource access = boundDefaults(AgentInstanceId.random());
         ValidatingSpanProcessor validator = new ValidatingSpanProcessor(() -> 1000L, access);
+        SettingsUpdateStatus updateStatus;
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(validator, Resource.empty())) {
-        // when
+            // when
             h.tracer("test").spanBuilder("warn").startSpan().end();
-            // then
-            assertThat(AcceptedPolicyMutationAccess.applyValidation(access, SpanAttributeValidationLevel.ERROR))
-                    .isEqualTo(SettingsUpdateStatus.APPLIED);
+            updateStatus = AcceptedPolicyMutationAccess.applyValidation(access, SpanAttributeValidationLevel.ERROR);
             h.tracer("test").spanBuilder("error").startSpan().end();
         }
 
-        assertThat(validator.lastDiagnosticTimestampForTesting(SpanAttributeValidationLevel.WARNING)).isEqualTo(1000L);
-        assertThat(validator.lastDiagnosticTimestampForTesting(SpanAttributeValidationLevel.ERROR)).isEqualTo(1000L);
+        // then
+        assertThat(updateStatus).isEqualTo(SettingsUpdateStatus.APPLIED);
+        assertThat(capture.events())
+                .filteredOn(event -> event.eventCode() == AgentEventCode.VALID_MISSING_ATTRIBUTES)
+                .filteredOn(event -> event.level() == AgentLogLevel.WARN)
+                .hasSize(1);
+        assertThat(capture.events())
+                .filteredOn(event -> event.eventCode() == AgentEventCode.VALID_MISSING_ATTRIBUTES)
+                .filteredOn(event -> event.level() == AgentLogLevel.ERROR)
+                .hasSize(1);
         assertThat(validator.getValidationViolationsTotal()).isEqualTo(2L);
     }
 

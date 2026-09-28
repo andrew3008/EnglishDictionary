@@ -20,21 +20,19 @@ class TracingDiagnosticsTest {
         d.recordSamplerFailure();
         d.recordPropagatorFailure();
         d.recordResourceFailure();
-        d.recordScopeFailure();
         d.setDegradedMode(true);
 
         // then
         assertThat(d.getSamplerFailures()).isEqualTo(1);
         assertThat(d.getPropagatorFailures()).isEqualTo(1);
         assertThat(d.getResourceFailures()).isEqualTo(1);
-        assertThat(d.getScopeFailures()).isEqualTo(1);
-        // suppressed_errors — надмножество: по одному инкременту на каждый специфичный отказ.
-        assertThat(d.getSuppressedErrors()).isEqualTo(4);
+        assertThat(d.getSuppressedErrors()).isEqualTo(3);
         assertThat(d.getLastFailureEpochMs()).isGreaterThan(0);
 
         Map<String, Long> snapshot = d.snapshot();
         assertThat(snapshot).containsEntry("sampler.failures", 1L)
-                .containsEntry("safe_wrapper.suppressed_errors", 4L)
-                .containsEntry("degraded_mode.enabled", 1L);
+                .containsEntry("safe_wrapper.suppressed_errors", 3L)
+                .containsEntry("degraded_mode.enabled", 1L)
+                .doesNotContainKey("scope.failures");
     }
 }

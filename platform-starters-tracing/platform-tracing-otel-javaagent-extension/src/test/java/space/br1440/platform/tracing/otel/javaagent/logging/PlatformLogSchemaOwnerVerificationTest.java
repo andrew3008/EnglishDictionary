@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.logging;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -16,8 +18,6 @@ import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SchemaValidatorsConfig;
 import com.networknt.schema.SpecVersion;
 import com.networknt.schema.ValidationMessage;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class PlatformLogSchemaOwnerVerificationTest {
 
@@ -65,7 +65,7 @@ class PlatformLogSchemaOwnerVerificationTest {
         assertThat(schemaNode.path("properties").path("event_code").path("pattern").asText())
                 .isEqualTo(EVENT_CODE_PATTERN);
         assertThat(schemaNode.path("required")).extracting(JsonNode::asText)
-                .containsExactly("timestamp", "level", "logger", "message", "event_code");
+                .containsExactly("timestamp", "level", "logger", "message", "event_code", "event_name");
         assertThat(schemaNode.path("properties").path("logger").path("minLength").asInt()).isEqualTo(1);
         assertThat(schemaNode.path("properties").path("message").path("minLength").asInt()).isEqualTo(1);
         assertThat(schemaNode.path("properties").path("message").path("maxLength").asInt()).isEqualTo(512);
@@ -121,16 +121,18 @@ class PlatformLogSchemaOwnerVerificationTest {
         // given
         JsonNode longMessage = JSON.readTree("""
                 {"timestamp":"2026-08-16T19:00:00Z","level":"INFO","logger":"l",\
-                "message":"%s","event_code":"APP-BOOT-001"}
+                "message":"%s","event_code":"APP-BOOT-001","event_name":"PLATFORM_LOGGING_STARTED"}
                 """.formatted("x".repeat(513)));
         JsonNode longField = JSON.readTree("""
                 {"timestamp":"2026-08-16T19:00:00Z","level":"INFO","logger":"l",\
                 "message":"Platform logging started","event_code":"APP-BOOT-001",\
+                "event_name":"PLATFORM_LOGGING_STARTED",\
                 "fields":{"kind":"%s"}}
                 """.formatted("x".repeat(513)));
         JsonNode longDigest = JSON.readTree("""
                 {"timestamp":"2026-08-16T19:00:00Z","level":"ERROR","logger":"l",\
                 "message":"Platform logging started","event_code":"APP-BOOT-001",\
+                "event_name":"PLATFORM_LOGGING_STARTED",\
                 "error_stacktrace":"%s"}
                 """.formatted("x".repeat(4120)));
 

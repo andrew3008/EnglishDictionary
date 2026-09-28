@@ -7,8 +7,8 @@ import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanResult;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
-import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ResourceIdentityLogEvent;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
@@ -24,7 +24,7 @@ import io.opentelemetry.sdk.trace.data.StatusData;
  */
 public final class EnrichingSpanProcessor implements PlatformEndingSpanProcessor, ProcessorDiagnosticIdentity {
 
-    private static final PlatformAgentLogger log = PlatformAgentLogger.get(EnrichingSpanProcessor.class);
+    private static final RateLimitedLogger log = new RateLimitedLogger(EnrichingSpanProcessor.class);
 
     private static final String DIAGNOSTIC_ID = "enrichment";
 
@@ -173,9 +173,7 @@ public final class EnrichingSpanProcessor implements PlatformEndingSpanProcessor
                 return value;
             }
         } catch (RuntimeException e) {
-            if (log.isDebugEnabled()) {
-                log.debug(AgentEventCode.BOOT_UPSTREAM_SERVICE, "Failed to extract upstream service name");
-            }
+            log.log(ResourceIdentityLogEvent.UPSTREAM_SERVICE_EXTRACTION_FAILED);
         }
 
         return null;

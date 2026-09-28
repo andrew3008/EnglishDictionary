@@ -5,8 +5,9 @@ import java.util.Objects;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.ConfigurationFingerprint;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
 
 final class BootstrapLifecycleState {
 
@@ -188,13 +189,34 @@ final class BootstrapLifecycleState {
     }
 
     BootstrapException fail(String code, String phase, Throwable cause) {
+        return fail(code, phase, phase, null, cause);
+    }
+
+    BootstrapException fail(String code, String phase, String subphase, Throwable cause) {
+        return fail(code, phase, subphase, null, cause);
+    }
+
+    BootstrapException fail(String code,
+                            String phase,
+                            String subphase,
+                            String propertyName,
+                            Throwable cause) {
         synchronized (monitor) {
-            if (state != BootstrapState.FAILED) {
-                this.failure = new BootstrapFailure(code, phase, cause);
-                this.state = BootstrapState.FAILED;
+            if (state == BootstrapState.FAILED) {
+                logFailure(
+                        BootstrapLogEvent.BOOTSTRAP_OPERATION_REJECTED,
+                        code,
+                        phase,
+                        subphase,
+                        propertyName,
+                        cause
+                );
+                return new BootstrapException(failure);
             }
 
-            log.warn(AgentEventCode.BOOT_CLASSIFIED_FAILURE, "Bootstrap phase failed", cause, "phase", phase);
+            this.failure = new BootstrapFailure(code, phase, cause);
+            this.state = BootstrapState.FAILED;
+            logFailure(BootstrapLogEvent.BOOTSTRAP_PHASE_FAILED, code, phase, subphase, propertyName, cause);
 
             return new BootstrapException(failure);
         }
@@ -204,7 +226,11 @@ final class BootstrapLifecycleState {
     BootstrapException rejectWithoutStateChange(String code, String phase, Throwable cause) {
         synchronized (monitor) {
             BootstrapFailure rejection = new BootstrapFailure(code, phase, cause);
-            log.warn(AgentEventCode.BOOT_CLASSIFIED_FAILURE, "Bootstrap operation rejected", cause, "phase", phase);
+            log.log(BootstrapLogEvent.BOOTSTRAP_OPERATION_REJECTED, fields -> fields
+                    .putString(AgentLogField.FAILURE_CODE, code)
+                    .putString(AgentLogField.PHASE, phase)
+                    .putString(AgentLogField.SUBPHASE, phase)
+                    .cause(cause));
             return new BootstrapException(rejection);
         }
     }
@@ -229,6 +255,23 @@ final class BootstrapLifecycleState {
         return state == BootstrapState.FAILED
                 || state == BootstrapState.CLOSED
                 || state == BootstrapState.CLOSING;
+    }
+
+    private static void logFailure(BootstrapLogEvent event,
+                                   String code,
+                                   String phase,
+                                   String subphase,
+                                   String propertyName,
+                                   Throwable cause) {
+        log.log(event, fields -> {
+            fields.putString(AgentLogField.FAILURE_CODE, code)
+                    .putString(AgentLogField.PHASE, phase)
+                    .putString(AgentLogField.SUBPHASE, subphase);
+            if (propertyName != null) {
+                fields.putString(AgentLogField.PROPERTY_NAME, propertyName);
+            }
+            fields.cause(cause);
+        });
     }
 
     record CloseTransition(boolean started, BootstrapResources resources) {

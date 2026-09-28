@@ -13,7 +13,6 @@ public final class TracingDiagnostics {
     private final LongAdder samplerFailures = new LongAdder();
     private final LongAdder propagatorFailures = new LongAdder();
     private final LongAdder resourceFailures = new LongAdder();
-    private final LongAdder scopeFailures = new LongAdder();
     private final LongAdder suppressedErrors = new LongAdder();
 
     private final AtomicBoolean degradedModeEnabled = new AtomicBoolean(false);
@@ -35,11 +34,6 @@ public final class TracingDiagnostics {
 
     public void recordResourceFailure() {
         resourceFailures.increment();
-        onAnyFailure();
-    }
-
-    public void recordScopeFailure() {
-        scopeFailures.increment();
         onAnyFailure();
     }
 
@@ -68,10 +62,6 @@ public final class TracingDiagnostics {
         return resourceFailures.sum();
     }
 
-    public long getScopeFailures() {
-        return scopeFailures.sum();
-    }
-
     public long getSuppressedErrors() {
         return suppressedErrors.sum();
     }
@@ -85,7 +75,6 @@ public final class TracingDiagnostics {
         snapshot.put("sampler.failures", getSamplerFailures());
         snapshot.put("propagator.failures", getPropagatorFailures());
         snapshot.put("resource.failures", getResourceFailures());
-        snapshot.put("scope.failures", getScopeFailures());
         snapshot.put("safe_wrapper.suppressed_errors", getSuppressedErrors());
         snapshot.put("degraded_mode.enabled", degradedModeEnabled.get() ? 1L : 0L);
         snapshot.put("last_failure.epoch_ms", getLastFailureEpochMs());
