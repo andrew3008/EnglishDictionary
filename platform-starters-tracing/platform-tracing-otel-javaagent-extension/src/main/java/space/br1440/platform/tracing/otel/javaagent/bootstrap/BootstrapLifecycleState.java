@@ -192,10 +192,6 @@ final class BootstrapLifecycleState {
         return fail(code, phase, phase, null, cause);
     }
 
-    BootstrapException fail(String code, String phase, String subphase, Throwable cause) {
-        return fail(code, phase, subphase, null, cause);
-    }
-
     BootstrapException fail(String code,
                             String phase,
                             String subphase,

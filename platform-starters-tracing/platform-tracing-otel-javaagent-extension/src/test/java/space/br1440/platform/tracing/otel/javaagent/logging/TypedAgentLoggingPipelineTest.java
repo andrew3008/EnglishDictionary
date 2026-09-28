@@ -138,7 +138,7 @@ class TypedAgentLoggingPipelineTest {
     @Test
     void forbidden_cause_emits_one_fixed_fallback_without_caller_values() {
         // given
-        IllegalStateException failure = failureWithoutFrames("private-forbidden-cause");
+        IllegalStateException failure = failureWithoutFrames();
         AgentLogFieldsWriter writer = fields -> fields
                 .putString(AgentLogField.PROFILE, "private-profile")
                 .cause(failure);
@@ -285,8 +285,8 @@ class TypedAgentLoggingPipelineTest {
         }
     }
 
-    private static IllegalStateException failureWithoutFrames(String message) {
-        IllegalStateException failure = new IllegalStateException(message);
+    private static IllegalStateException failureWithoutFrames() {
+        IllegalStateException failure = new IllegalStateException("private-forbidden-cause");
         failure.setStackTrace(new StackTraceElement[0]);
         return failure;
     }

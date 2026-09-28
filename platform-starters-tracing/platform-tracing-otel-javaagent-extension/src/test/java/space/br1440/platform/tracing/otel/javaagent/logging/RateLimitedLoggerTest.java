@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import jakarta.annotation.Nonnull;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -100,33 +101,31 @@ class RateLimitedLoggerTest {
     void concurrentTransitionHasOneMarkerAndOneSlowAdmission() throws Exception {
         // given
         int threadCount = 32;
+
         AtomicLong clock = new AtomicLong();
         RateLimitedLogger logger = logger(clock, 2.0d);
-        assertThat(warn(logger))
-                .isEqualTo(EmitResult.EMITTED);
-        assertThat(warn(logger))
-                .isEqualTo(EmitResult.EMITTED);
+        assertThat(warn(logger)).isEqualTo(EmitResult.EMITTED);
+        assertThat(warn(logger)).isEqualTo(EmitResult.EMITTED);
+
         CountDownLatch ready = new CountDownLatch(threadCount);
         CountDownLatch start = new CountDownLatch(1);
-        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-        List<Future<EmitResult>> futures = new ArrayList<>(threadCount);
-        for (int index = 0; index < threadCount; index++) {
-            futures.add(executor.submit(() -> {
-                ready.countDown();
-                start.await();
-                return warn(logger);
-            }));
-        }
-
-        // when
         List<EmitResult> results = new ArrayList<>(threadCount);
-        try {
+        try (ExecutorService executor = Executors.newFixedThreadPool(threadCount)) {
+            List<Future<EmitResult>> futures = new ArrayList<>(threadCount);
+            for (int index = 0; index < threadCount; index++) {
+                futures.add(executor.submit(() -> {
+                    ready.countDown();
+                    start.await();
+                    return warn(logger);
+                }));
+            }
+
+            // when
             assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
             start.countDown();
             for (Future<EmitResult> future : futures) {
                 results.add(future.get(10, TimeUnit.SECONDS));
             }
-        } finally {
             executor.shutdownNow();
             assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
         }
@@ -484,7 +483,7 @@ class RateLimitedLoggerTest {
         }
 
         @Override
-        public void write(byte[] buffer, int offset, int length) throws IOException {
+        public void write(@Nonnull byte[] buffer, int offset, int length) throws IOException {
             if (writeAttempts.incrementAndGet() == failedAttempt) {
                 throw new IOException("Simulated log delivery failure");
             }
@@ -516,7 +515,7 @@ class RateLimitedLoggerTest {
         }
 
         @Override
-        public void write(byte[] buffer, int offset, int length) {
+        public void write(@Nonnull byte[] buffer, int offset, int length) {
             writeAttempts.incrementAndGet();
             payload.write(buffer, offset, length);
             callback.accept(new String(buffer, offset, length, StandardCharsets.UTF_8));

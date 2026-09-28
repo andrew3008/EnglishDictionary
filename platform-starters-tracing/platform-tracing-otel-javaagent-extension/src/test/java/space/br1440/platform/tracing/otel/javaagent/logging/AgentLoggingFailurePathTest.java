@@ -9,6 +9,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
+import jakarta.annotation.Nonnull;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -174,10 +175,16 @@ class AgentLoggingFailurePathTest {
                 new PlatformLogEventEncoder(), new PlatformStderrSink(new ByteArrayOutputStream()), AgentLogLevel.INFO);
 
         // when
-        try (AgentLoggingRuntime.ScopedInstallation ignored =
-                     runtime.installScoped(new PlatformStderrSink(new ByteArrayOutputStream()))) {
+        try (AgentLoggingRuntime.ScopedInstallation ignored = runtime.installScoped(
+                new PlatformStderrSink(new ByteArrayOutputStream())
+        )) {
             // then
-            assertThatThrownBy(() -> runtime.installScoped(new PlatformStderrSink(new ByteArrayOutputStream())))
+            assertThatThrownBy(() -> {
+                try (AgentLoggingRuntime.ScopedInstallation nested = runtime.installScoped(
+                        new PlatformStderrSink(new ByteArrayOutputStream()))) {
+                    ignored.close();
+                }
+            })
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessage("Agent logging test sink is already installed");
         }
@@ -214,7 +221,7 @@ class AgentLoggingFailurePathTest {
         }
 
         @Override
-        public void write(byte[] bytes, int offset, int length) throws IOException {
+        public void write(@Nonnull byte[] bytes, int offset, int length) throws IOException {
             attempts.incrementAndGet();
             throw new IOException("Sink write failed");
         }
@@ -235,7 +242,7 @@ class AgentLoggingFailurePathTest {
         }
 
         @Override
-        public void write(byte[] bytes, int offset, int length) {
+        public void write(@Nonnull byte[] bytes, int offset, int length) {
             attempts.incrementAndGet();
             written.write(bytes, offset, Math.min(length, 16));
             throw new IllegalStateException("Sink failed after a partial write");
@@ -264,7 +271,7 @@ class AgentLoggingFailurePathTest {
         }
 
         @Override
-        public void write(byte[] bytes, int offset, int length) {
+        public void write(@Nonnull byte[] bytes, int offset, int length) {
             throw failure;
         }
     }
@@ -286,11 +293,12 @@ class AgentLoggingFailurePathTest {
         }
 
         @Override
-        public void write(byte[] bytes, int offset, int length) {
+        public void write(@Nonnull byte[] bytes, int offset, int length) {
             if (!recursed) {
                 recursed = true;
                 nestedResult = emit(logger);
             }
+
             delegate.write(bytes, offset, length);
         }
 

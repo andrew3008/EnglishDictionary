@@ -190,6 +190,7 @@ class SpanTimeoutScanRobustnessTest {
     }
 
     @Test
+    @SuppressWarnings("removal")
     void threadDeathFromManualScanIsPropagated() {
         // given
         AtomicLong clock = new AtomicLong();

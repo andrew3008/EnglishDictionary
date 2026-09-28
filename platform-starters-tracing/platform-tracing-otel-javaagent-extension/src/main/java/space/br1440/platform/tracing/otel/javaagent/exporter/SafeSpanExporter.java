@@ -201,12 +201,7 @@ public final class SafeSpanExporter implements SpanExporter {
     @Override
     public CompletableResultCode flush() {
         try {
-            return observeLifecycleResult(
-                    delegate.flush(),
-                    flushFailures,
-                    ExporterLogEvent.SAFE_FLUSH_RETURNED_NULL,
-                    ExporterLogEvent.SAFE_FLUSH_RETURNED_FAILURE
-            );
+            return observeLifecycleResult(delegate.flush(), flushFailures);
         } catch (Throwable ex) {
             PlatformThrowables.propagateIfFatal(ex);
             flushFailures.increment();
@@ -218,11 +213,7 @@ public final class SafeSpanExporter implements SpanExporter {
     @Override
     public CompletableResultCode shutdown() {
         try {
-            return observeShutdownResult(
-                    delegate.shutdown(),
-                    ExporterLogEvent.SAFE_SHUTDOWN_RETURNED_NULL,
-                    ExporterLogEvent.SAFE_SHUTDOWN_RETURNED_FAILURE
-            );
+            return observeShutdownResult(delegate.shutdown());
         } catch (Throwable ex) {
             PlatformThrowables.propagateIfFatal(ex);
             shutdownFailures.increment();
@@ -285,37 +276,33 @@ public final class SafeSpanExporter implements SpanExporter {
     }
 
     private CompletableResultCode observeLifecycleResult(CompletableResultCode result,
-                                                         LongAdder failures,
-                                                         AgentLogEventType returnedNullEvent,
-                                                         AgentLogEventType returnedFailureEvent) {
+                                                         LongAdder failures) {
         if (result == null) {
             failures.increment();
-            logExportFailure(returnedNullEvent, null);
+            logExportFailure(ExporterLogEvent.SAFE_FLUSH_RETURNED_NULL, null);
             return CompletableResultCode.ofFailure();
         }
 
         result.whenComplete(() -> {
             if (!result.isSuccess()) {
                 failures.increment();
-                logExportFailure(returnedFailureEvent, null);
+                logExportFailure(ExporterLogEvent.SAFE_FLUSH_RETURNED_FAILURE, null);
             }
         });
         return result;
     }
 
-    private CompletableResultCode observeShutdownResult(CompletableResultCode result,
-                                                         AgentLogEventType returnedNullEvent,
-                                                         AgentLogEventType returnedFailureEvent) {
+    private CompletableResultCode observeShutdownResult(CompletableResultCode result) {
         if (result == null) {
             shutdownFailures.increment();
-            logLifecycleFailure(returnedNullEvent, null);
+            logLifecycleFailure(ExporterLogEvent.SAFE_SHUTDOWN_RETURNED_NULL, null);
             return CompletableResultCode.ofFailure();
         }
 
         result.whenComplete(() -> {
             if (!result.isSuccess()) {
                 shutdownFailures.increment();
-                logLifecycleFailure(returnedFailureEvent, null);
+                logLifecycleFailure(ExporterLogEvent.SAFE_SHUTDOWN_RETURNED_FAILURE, null);
             }
         });
         return result;

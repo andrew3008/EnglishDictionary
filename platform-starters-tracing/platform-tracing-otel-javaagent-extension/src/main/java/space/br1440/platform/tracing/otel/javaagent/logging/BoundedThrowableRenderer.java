@@ -208,7 +208,7 @@ public final class BoundedThrowableRenderer {
         Set<Throwable> seen = newIdentitySet();
         Throwable current = root;
 
-        for (int causeDepth = 0; causeDepth <= MAX_CAUSES; causeDepth++) {
+        for (int causeDepth = 0; ; causeDepth++) {
             seen.add(current);
             nodes.add(new ThrowableSnapshot(
                     current,
@@ -231,8 +231,6 @@ public final class BoundedThrowableRenderer {
 
             current = cause;
         }
-
-        throw new IllegalStateException("Primary cause chain capture exceeded its fixed bound");
     }
 
     private static int[] allocatePrimaryFrames(List<ThrowableSnapshot> nodes) {

@@ -44,7 +44,7 @@ final class BootstrapTerminalTransitions {
                         activeSession.readiness().snapshot().failureCode()
                 );
         String effectiveFailureCode = rollbackIncomplete ? FAILED_ROLLBACK_INCOMPLETE : failureCode;
-        BootstrapException classified = lifecycle.fail(effectiveFailureCode, "activate", subphase, cause);
+        BootstrapException classified = lifecycle.fail(effectiveFailureCode, "activate", subphase, null, cause);
         if (rollbackIncomplete) {
             activeSession.readiness().recordTerminalCleanupFailure(FAILED_ROLLBACK_INCOMPLETE);
         }

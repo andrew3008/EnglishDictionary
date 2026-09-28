@@ -35,13 +35,6 @@ public final class PriorityHardening {
             Comparator.comparingInt(ExecutableRule::getEffectivePriority)
                     .thenComparing(wrapper -> wrapper.getRuleClass().getName());
 
-    public static List<ExecutableRule> sortAndClamp(List<ExecutableRule> wrappers) {
-        return wrappers.stream()
-                .map(PriorityHardening::clampIfNeeded)
-                .sorted(BY_PRIORITY_THEN_CLASS_NAME)
-                .toList();
-    }
-
     public static List<RuntimeRule> sortAndClampRuntimeRules(List<RuntimeRule> rules) {
         return rules.stream()
                 .map(r -> new RuntimeRule(clampIfNeeded(r.executable()), r.origin()))

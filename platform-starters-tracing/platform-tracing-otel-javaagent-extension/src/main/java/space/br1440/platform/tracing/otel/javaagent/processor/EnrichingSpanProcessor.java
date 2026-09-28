@@ -45,7 +45,6 @@ public final class EnrichingSpanProcessor implements PlatformEndingSpanProcessor
     private static final class DbSemanticAttributeKeys {
         static final AttributeKey<String> SYSTEM_NAME = AttributeKey.stringKey("db.system.name");
 
-        @Deprecated
         static final AttributeKey<String> LEGACY_SYSTEM = AttributeKey.stringKey("db.system");
 
         private DbSemanticAttributeKeys() {

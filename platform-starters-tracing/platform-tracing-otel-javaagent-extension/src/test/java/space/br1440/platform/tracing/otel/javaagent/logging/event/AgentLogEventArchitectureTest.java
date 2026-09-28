@@ -17,6 +17,7 @@ import com.tngtech.archunit.lang.ArchRule;
 class AgentLogEventArchitectureTest {
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule log_event_types_are_domain_enums = classes()
             .that().implement(AgentLogEventType.class)
             .should().beEnums()
@@ -24,6 +25,7 @@ class AgentLogEventArchitectureTest {
             .andShould().resideInAPackage(AgentLogEventType.class.getPackageName());
 
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule definitions_are_created_only_by_domain_enums = noClasses()
             .that().doNotImplement(AgentLogEventType.class)
             .should().callMethodWhere(target(declaredIn(AgentLogEventDefinition.class))

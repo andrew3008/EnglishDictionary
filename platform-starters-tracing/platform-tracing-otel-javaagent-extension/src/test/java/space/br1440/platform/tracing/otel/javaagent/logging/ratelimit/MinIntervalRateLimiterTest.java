@@ -112,8 +112,7 @@ class MinIntervalRateLimiterTest {
             });
         }
 
-        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-        try {
+        try (ExecutorService executor = Executors.newFixedThreadPool(threadCount)) {
             // when
             List<Future<Void>> completed = executor.invokeAll(attempts);
             for (Future<Void> attempt : completed) {
@@ -122,8 +121,6 @@ class MinIntervalRateLimiterTest {
 
             // then
             assertThat(acquired).hasValue(1);
-        } finally {
-            executor.shutdownNow();
         }
     }
 
@@ -153,11 +150,11 @@ class MinIntervalRateLimiterTest {
         MinIntervalRateLimiter minInterval = new MinIntervalRateLimiter(intervalNanos, clock::get);
 
         // when
-        long initialTokenPermits = countTokenPermits(tokenBucket, 6);
-        long initialMinIntervalPermits = countMinIntervalPermits(minInterval, 6);
+        long initialTokenPermits = countTokenPermits(tokenBucket);
+        long initialMinIntervalPermits = countMinIntervalPermits(minInterval);
         clock.addAndGet(intervalNanos * 10L);
-        long refilledTokenPermits = countTokenPermits(tokenBucket, 6);
-        long resumedMinIntervalPermits = countMinIntervalPermits(minInterval, 6);
+        long refilledTokenPermits = countTokenPermits(tokenBucket);
+        long resumedMinIntervalPermits = countMinIntervalPermits(minInterval);
 
         // then
         assertThat(initialTokenPermits).isEqualTo(5L);
@@ -166,9 +163,9 @@ class MinIntervalRateLimiterTest {
         assertThat(resumedMinIntervalPermits).isEqualTo(1L);
     }
 
-    private static long countTokenPermits(TokenBucketRateLimiter limiter, int attempts) {
+    private static long countTokenPermits(TokenBucketRateLimiter limiter) {
         long permits = 0L;
-        for (int i = 0; i < attempts; i++) {
+        for (int i = 0; i < 6; i++) {
             if (limiter.trySpend(1.0d)) {
                 permits++;
             }
@@ -176,9 +173,9 @@ class MinIntervalRateLimiterTest {
         return permits;
     }
 
-    private static long countMinIntervalPermits(MinIntervalRateLimiter limiter, int attempts) {
+    private static long countMinIntervalPermits(MinIntervalRateLimiter limiter) {
         long permits = 0L;
-        for (int i = 0; i < attempts; i++) {
+        for (int i = 0; i < 6; i++) {
             if (limiter.tryAcquire()) {
                 permits++;
             }

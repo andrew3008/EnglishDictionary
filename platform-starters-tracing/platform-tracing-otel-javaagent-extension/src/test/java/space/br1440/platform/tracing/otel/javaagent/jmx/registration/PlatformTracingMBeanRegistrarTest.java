@@ -359,7 +359,7 @@ class PlatformTracingMBeanRegistrarTest {
             assertThat(failureLoggedBeforeRollback).isFalse();
             assertThat(logs.events())
                     .filteredOn(event -> "MBEAN_BATCH_REGISTRATION_FAILED".equals(event.eventName()))
-                    .singleElement();
+                    .hasSize(1);
             assertThat(logs.rendered()).doesNotContain("simulated rollback failure");
         } finally {
             logs.restore();

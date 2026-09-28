@@ -20,6 +20,7 @@ class LoggingPackageStructureArchTest {
 
     // given/when/then
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule logging_layers = layeredArchitecture()
             .consideringOnlyDependenciesInLayers()
             .layer("Facade").definedBy(LOGGING)
@@ -33,12 +34,14 @@ class LoggingPackageStructureArchTest {
 
     // given/when/then
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule ratelimit_is_a_pure_primitive = classes()
             .that().resideInAPackage(LOGGING + ".ratelimit..")
             .should().onlyDependOnClassesThat().resideInAnyPackage(LOGGING + ".ratelimit..", "java..");
 
     // given/when/then
     @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule severity_throttle_is_owned_by_rate_limited_logger = classes()
             .that().belongToAnyOf(SeverityThrottle.class)
             .should().onlyHaveDependentClassesThat()

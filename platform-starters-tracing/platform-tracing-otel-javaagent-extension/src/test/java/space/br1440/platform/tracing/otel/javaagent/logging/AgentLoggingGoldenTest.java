@@ -205,8 +205,8 @@ class AgentLoggingGoldenTest {
                 .putString(AgentLogField.SERVICE, "orders");
 
         // when
-        byte[] forwardPayload = encode(ResourceIdentityLogEvent.RESOURCE_IDENTITY_RESOLVED, forward);
-        byte[] reversePayload = encode(ResourceIdentityLogEvent.RESOURCE_IDENTITY_RESOLVED, reverse);
+        byte[] forwardPayload = encode(forward);
+        byte[] reversePayload = encode(reverse);
 
         // then
         assertThat(forwardPayload).isEqualTo(reversePayload);
@@ -215,7 +215,7 @@ class AgentLoggingGoldenTest {
     private JsonNode singleEvent() {
         List<JsonNode> events = capture.jsonEvents();
         assertThat(events).hasSize(1);
-        return events.get(0);
+        return events.getFirst();
     }
 
     private static List<JsonNode> withoutTimestamps(List<JsonNode> events) {
@@ -247,7 +247,8 @@ class AgentLoggingGoldenTest {
         return event;
     }
 
-    private static byte[] encode(AgentLogEventType eventType, AgentLogFieldsWriter fieldsWriter) {
+    private static byte[] encode(AgentLogFieldsWriter fieldsWriter) {
+        AgentLogEventType eventType = ResourceIdentityLogEvent.RESOURCE_IDENTITY_RESOLVED;
         AgentLogFieldsBuilder fields = new AgentLogFieldsBuilder(eventType);
         fieldsWriter.write(fields);
         AgentLogFieldsBuilder.Snapshot snapshot = fields.snapshot();

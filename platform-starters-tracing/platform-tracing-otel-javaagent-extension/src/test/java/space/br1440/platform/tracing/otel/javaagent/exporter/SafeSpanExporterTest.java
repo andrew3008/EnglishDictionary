@@ -168,7 +168,7 @@ class SafeSpanExporterTest {
             // then
             assertThat(capture.events())
                     .filteredOn(event -> event.eventCode() == AgentEventCode.RATE_RECOVERY)
-                    .singleElement();
+                    .hasSize(1);
         } finally {
             capture.restore();
         }
@@ -210,7 +210,7 @@ class SafeSpanExporterTest {
                     .hasSizeLessThan(20);
             assertThat(capture.events())
                     .filteredOn(event -> "SAFE_SHUTDOWN_RETURNED_FAILURE".equals(event.eventName()))
-                    .singleElement();
+                    .hasSize(1);
         } finally {
             capture.restore();
         }
@@ -1300,16 +1300,8 @@ class SafeSpanExporterTest {
         }
     }
 
-    private static final class LifecycleSpanExporter implements SpanExporter {
-
-        private final CompletableResultCode flushResult;
-        private final CompletableResultCode shutdownResult;
-
-        private LifecycleSpanExporter(CompletableResultCode flushResult,
-                                      CompletableResultCode shutdownResult) {
-            this.flushResult = flushResult;
-            this.shutdownResult = shutdownResult;
-        }
+    private record LifecycleSpanExporter(CompletableResultCode flushResult,
+                                         CompletableResultCode shutdownResult) implements SpanExporter {
 
         @Override
         public CompletableResultCode export(Collection<SpanData> spans) {

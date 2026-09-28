@@ -87,48 +87,11 @@ class AgentLoggingRuntimeTest {
     @Test
     void sink_write_error_is_delivery_failed() {
         // given
-        AgentLoggingRuntime.shared().installScoped(new PlatformStderrSink(new FailingOutputStream()));
-        AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.INFO);
-        PlatformAgentLogger logger = PlatformAgentLogger.get(AgentLoggingRuntimeTest.class);
+        try (AgentLoggingRuntime.ScopedInstallation ignored = AgentLoggingRuntime.shared()
+                .installScoped(new PlatformStderrSink(new FailingOutputStream()))) {
+            AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.INFO);
+            PlatformAgentLogger logger = PlatformAgentLogger.get(AgentLoggingRuntimeTest.class);
 
-        // when
-        EmitResult result = logger.emitAdmitted(
-                BootstrapLogEvent.EXTENSION_INSTALLED,
-                fields -> fields.putString(AgentLogField.PROFILE, "PLATFORM_STDERR_DIRECT")
-        );
-
-        // then
-        assertThat(result).isEqualTo(EmitResult.DELIVERY_FAILED);
-    }
-
-    @Test
-    void disabled_event_level_is_filtered_before_sink() {
-        // given
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        AgentLoggingRuntime.shared().installScoped(new PlatformStderrSink(buffer));
-        AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.ERROR);
-        PlatformAgentLogger logger = PlatformAgentLogger.get(AgentLoggingRuntimeTest.class);
-
-        // when
-        logger.log(BootstrapLogEvent.EXTENSION_INSTALLED, fields ->
-                fields.putString(AgentLogField.PROFILE, "PLATFORM_STDERR_DIRECT")
-        );
-
-        // then
-        assertThat(buffer.size()).isZero();
-    }
-
-    @Test
-    void sink_ignores_system_err_replacement() {
-        // given
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        AgentLoggingRuntime.shared().installScoped(new PlatformStderrSink(buffer));
-        AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.INFO);
-        PlatformAgentLogger logger = PlatformAgentLogger.get(AgentLoggingRuntimeTest.class);
-        PrintStream previous = System.err;
-        System.setErr(new PrintStream(OutputStream.nullOutputStream()));
-
-        try {
             // when
             EmitResult result = logger.emitAdmitted(
                     BootstrapLogEvent.EXTENSION_INSTALLED,
@@ -136,10 +99,53 @@ class AgentLoggingRuntimeTest {
             );
 
             // then
-            assertThat(result).isEqualTo(EmitResult.EMITTED);
-            assertThat(buffer.toString(StandardCharsets.UTF_8)).contains("\"event_code\":\"PTA-BOOT-001\"");
-        } finally {
-            System.setErr(previous);
+            assertThat(result).isEqualTo(EmitResult.DELIVERY_FAILED);
+        }
+    }
+
+    @Test
+    void disabled_event_level_is_filtered_before_sink() {
+        // given
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        try (AgentLoggingRuntime.ScopedInstallation ignored = AgentLoggingRuntime.shared()
+                .installScoped(new PlatformStderrSink(buffer))) {
+            AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.ERROR);
+            PlatformAgentLogger logger = PlatformAgentLogger.get(AgentLoggingRuntimeTest.class);
+
+            // when
+            logger.log(BootstrapLogEvent.EXTENSION_INSTALLED, fields ->
+                    fields.putString(AgentLogField.PROFILE, "PLATFORM_STDERR_DIRECT")
+            );
+
+            // then
+            assertThat(buffer.size()).isZero();
+        }
+    }
+
+    @Test
+    void sink_ignores_system_err_replacement() {
+        // given
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        try (AgentLoggingRuntime.ScopedInstallation ignored = AgentLoggingRuntime.shared()
+                .installScoped(new PlatformStderrSink(buffer))) {
+            AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.INFO);
+            PlatformAgentLogger logger = PlatformAgentLogger.get(AgentLoggingRuntimeTest.class);
+            PrintStream previous = System.err;
+            System.setErr(new PrintStream(OutputStream.nullOutputStream()));
+
+            try {
+                // when
+                EmitResult result = logger.emitAdmitted(
+                        BootstrapLogEvent.EXTENSION_INSTALLED,
+                        fields -> fields.putString(AgentLogField.PROFILE, "PLATFORM_STDERR_DIRECT")
+                );
+
+                // then
+                assertThat(result).isEqualTo(EmitResult.EMITTED);
+                assertThat(buffer.toString(StandardCharsets.UTF_8)).contains("\"event_code\":\"PTA-BOOT-001\"");
+            } finally {
+                System.setErr(previous);
+            }
         }
     }
 

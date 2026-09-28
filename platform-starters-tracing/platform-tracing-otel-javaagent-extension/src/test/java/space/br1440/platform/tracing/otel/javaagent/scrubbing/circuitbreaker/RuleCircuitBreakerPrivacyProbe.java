@@ -11,8 +11,7 @@ public final class RuleCircuitBreakerPrivacyProbe {
     }
 
     private static RuntimeException secretFailure(String secret) {
-        RuntimeException root = new RuntimeException(secret);
-        root.initCause(new SecretToStringFailure(secret));
+        RuntimeException root = new RuntimeException(secret, new SecretToStringFailure(secret));
         root.addSuppressed(new IllegalStateException(secret));
         return root;
     }

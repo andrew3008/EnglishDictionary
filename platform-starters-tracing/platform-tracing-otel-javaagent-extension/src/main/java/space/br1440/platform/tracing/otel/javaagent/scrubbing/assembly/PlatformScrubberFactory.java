@@ -19,10 +19,10 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfi
 import space.br1440.platform.tracing.otel.javaagent.configuration.JavaAgentExtensionPaths;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ScrubbingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.factory.ScrubbingMissingKeyPolicy;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventType;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
@@ -88,9 +88,9 @@ public final class PlatformScrubberFactory {
     }
 
     private static SanitizerBootstrapException classified(String code,
-                                                           String message,
-                                                           AgentLogEventType eventType,
-                                                           Throwable failure) {
+                                                          String message,
+                                                          AgentLogEventType eventType,
+                                                          Throwable failure) {
         PlatformThrowables.propagateIfFatal(failure);
         log.log(eventType, fields -> fields.cause(failure));
         return new SanitizerBootstrapException(
@@ -100,17 +100,15 @@ public final class PlatformScrubberFactory {
         );
     }
 
-    private static SanitizerBootstrapException classified(String code,
-                                                           String message,
-                                                           AgentLogEventType eventType,
-                                                           String name,
-                                                           Throwable failure) {
+    private static SanitizerBootstrapException classified(String message,
+                                                          String name,
+                                                          Throwable failure) {
         PlatformThrowables.propagateIfFatal(failure);
-        log.log(eventType, fields -> fields
+        log.log(ScrubbingLogEvent.EXTENSION_PATH_CANONICALIZATION_FAILED, fields -> fields
                 .putString(AgentLogField.NAME, name)
                 .cause(failure));
         return new SanitizerBootstrapException(
-                code,
+                SanitizerBootstrapException.RULE_LOADING_FAILED,
                 message + " (" + failure.getClass().getName() + ")",
                 failure
         );
@@ -208,8 +206,8 @@ public final class PlatformScrubberFactory {
     }
 
     private static List<RuntimeRule> mergeRules(List<SpanAttributeScrubbingRule> builtIn,
-                                                 List<SpanAttributeScrubbingRule> bundledSpi,
-                                                 List<SpanAttributeScrubbingRule> custom) {
+                                                List<SpanAttributeScrubbingRule> bundledSpi,
+                                                List<SpanAttributeScrubbingRule> custom) {
         Set<String> seenNames = new LinkedHashSet<>();
         List<RuntimeRule> rules = new ArrayList<>();
         for (SpanAttributeScrubbingRule rule : builtIn) {
@@ -281,9 +279,7 @@ public final class PlatformScrubberFactory {
         } catch (IOException ex) {
             String safeName = StringUtils.hasText(f.getName()) ? f.getName() : "<unnamed>";
             throw classified(
-                    SanitizerBootstrapException.RULE_LOADING_FAILED,
                     "Unable to canonicalize configured OpenTelemetry extension path '" + safeName + "'",
-                    ScrubbingLogEvent.EXTENSION_PATH_CANONICALIZATION_FAILED,
                     safeName,
                     ex
             );
