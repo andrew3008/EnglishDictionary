@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
@@ -70,7 +71,7 @@ record AgentLogRecord(Instant timestamp,
     private static void requireBounded(String value, int max, String name) {
         Objects.requireNonNull(value, name);
 
-        if (value.isBlank() || value.length() > max) {
+        if (!StringUtils.hasText(value) || value.length() > max) {
             throw new IllegalArgumentException(name);
         }
     }

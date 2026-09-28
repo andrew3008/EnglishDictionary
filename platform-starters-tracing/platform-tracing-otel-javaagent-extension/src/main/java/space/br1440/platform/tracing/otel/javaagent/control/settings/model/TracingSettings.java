@@ -6,6 +6,7 @@ import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.TreeMap;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
@@ -82,7 +83,7 @@ public record TracingSettings(boolean samplingEnabled,
     private static String requireRoutePrefix(String routePrefix) {
         Objects.requireNonNull(routePrefix, "routePrefix");
 
-        if (routePrefix.isBlank()) {
+        if (!StringUtils.hasText(routePrefix)) {
             throw new IllegalArgumentException("routePrefix must not be blank");
         }
 

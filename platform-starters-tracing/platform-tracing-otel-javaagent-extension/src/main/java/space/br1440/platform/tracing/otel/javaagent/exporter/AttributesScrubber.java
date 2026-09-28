@@ -8,15 +8,17 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import space.br1440.platform.common.util.MapUtils;
+import space.br1440.platform.common.util.SetUtils;
 import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ScrubbingKeyNormalizer;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.IpPrefixTruncator;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeOutcome;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ScrubbingKeyNormalizer;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.AttributeType;
@@ -185,7 +187,7 @@ final class AttributesScrubber {
         }
 
         private boolean changed() {
-            return (replacements != null && !replacements.isEmpty()) || (drops != null && !drops.isEmpty());
+            return !MapUtils.isNullOrEmpty(replacements) || !SetUtils.isNullOrEmpty(drops);
         }
 
         private boolean criticalFailure() {

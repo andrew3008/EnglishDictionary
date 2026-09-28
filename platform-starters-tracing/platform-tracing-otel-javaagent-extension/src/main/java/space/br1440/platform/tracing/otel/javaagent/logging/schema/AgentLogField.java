@@ -2,6 +2,8 @@ package space.br1440.platform.tracing.otel.javaagent.logging.schema;
 
 import java.util.Objects;
 
+import space.br1440.platform.common.util.StringUtils;
+
 public enum AgentLogField {
 
     ACQUIRED_PERMIT_COUNT("acquiredPermitCount", Kind.LONG),
@@ -69,7 +71,7 @@ public enum AgentLogField {
     }
 
     AgentLogField(String wireName, Kind kind, boolean allowsBlank) {
-        if (wireName == null || wireName.isBlank()) {
+        if (StringUtils.isNullOrBlank(wireName)) {
             throw new IllegalArgumentException("wireName must not be blank");
         }
 

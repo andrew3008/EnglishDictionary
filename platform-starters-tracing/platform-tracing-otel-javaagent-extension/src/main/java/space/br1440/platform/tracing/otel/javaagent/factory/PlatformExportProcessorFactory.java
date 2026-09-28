@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import jakarta.annotation.Nonnull;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.configuration.QueueExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
@@ -192,7 +193,7 @@ public final class PlatformExportProcessorFactory {
             return false;
         }
 
-        String diagnosticValue = configuredPolicy.isBlank() ? "<blank>" : configuredPolicy;
+        String diagnosticValue = StringUtils.hasText(configuredPolicy) ? configuredPolicy : "<blank>";
         log.log(ExportPipelineLogEvent.UNKNOWN_OVERFLOW_POLICY_DEFAULTED,
                 fields -> fields.putString(AgentLogField.NAME, diagnosticValue));
 

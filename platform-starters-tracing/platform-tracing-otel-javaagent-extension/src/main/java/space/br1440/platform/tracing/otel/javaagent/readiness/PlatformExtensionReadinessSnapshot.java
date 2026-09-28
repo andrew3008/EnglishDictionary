@@ -5,6 +5,8 @@ import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
 
+import space.br1440.platform.common.util.StringUtils;
+
 /**
  * Неизменяемое представление состояния готовности расширения на определённый момент времени (point-in-time).
  * <p>
@@ -135,7 +137,7 @@ public final class PlatformExtensionReadinessSnapshot {
 
     @SuppressWarnings("SameParameterValue")
     private static String requireText(String value, String name) {
-        if (value == null || value.isBlank()) {
+        if (StringUtils.isNullOrBlank(value)) {
             throw new IllegalArgumentException(name + " must not be blank");
         }
 

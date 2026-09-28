@@ -4,6 +4,7 @@ import java.util.Objects;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 
@@ -28,7 +29,7 @@ public final class StableScrubbingRule implements SpanAttributeScrubbingRule {
         Objects.requireNonNull(rule, "rule");
 
         String name = Objects.requireNonNull(rule.name(), "rule.name()");
-        if (name.isBlank()) {
+        if (!StringUtils.hasText(name)) {
             throw new IllegalArgumentException("External scrubbing rule name must not be blank");
         }
 

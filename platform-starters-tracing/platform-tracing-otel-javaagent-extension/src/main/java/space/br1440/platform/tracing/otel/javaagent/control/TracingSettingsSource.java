@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import space.br1440.platform.common.util.MapUtils;
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
@@ -13,11 +14,11 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Last
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.SamplingLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ValidationLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 public final class TracingSettingsSource {
 
@@ -132,8 +133,7 @@ public final class TracingSettingsSource {
             try {
                 parsed.put(entry.getKey(), Double.parseDouble(entry.getValue().trim()));
             } catch (NumberFormatException ignored) {
-                // Сообщение NumberFormatException содержит исходную строку, поэтому в лог уходит только причина.
-                if (!entry.getKey().isBlank()) {
+                if (StringUtils.hasText(entry.getKey())) {
                     log.log(SamplingLogEvent.INVALID_ROUTE_RATIO, fields -> {
                         fields.putString(AgentLogField.NAME, entry.getKey());
                         fields.putString(AgentLogField.REASON, ROUTE_RATIO_NOT_A_NUMBER);

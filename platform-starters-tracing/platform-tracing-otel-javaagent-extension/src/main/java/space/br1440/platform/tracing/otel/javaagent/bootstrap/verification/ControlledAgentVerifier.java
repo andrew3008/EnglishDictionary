@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
 
@@ -66,7 +67,7 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
     }
 
     private static String requireReleaseVersion(String extensionVersion) {
-        if (extensionVersion == null || extensionVersion.isBlank()) {
+        if (StringUtils.isNullOrBlank(extensionVersion)) {
             throw failure(
                     VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
                     "Extension version is not set"
@@ -86,7 +87,7 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
     private AgentDistributionDigest readExpectedDistributionDigest() {
         String property = ExtensionPropertyNames.CONTROLLED_AGENT_EXPECTED_SHA256;
         String value = environment.systemProperty(property);
-        if (value == null || value.isBlank()) {
+        if (StringUtils.isNullOrBlank(value)) {
             throw failure(
                     VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
                     "Expected controlled agent SHA-256 is not set: " + property
@@ -149,7 +150,7 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
     private static void verifyExtensionMatchesDistribution(Map<String, String> identity,
                                                            String extensionVersion) {
         String distributionVersion = identity.get(DISTRIBUTION_VERSION_KEY);
-        if (distributionVersion == null || distributionVersion.isBlank()) {
+        if (StringUtils.isNullOrBlank(distributionVersion)) {
             throw failure(
                     VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
                     "Controlled agent identity has no " + DISTRIBUTION_VERSION_KEY
@@ -183,7 +184,7 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
         }
 
         String name = loader.getName();
-        String loaderName = (name == null || name.isBlank()) ? loader.getClass().getName() : name;
+        String loaderName = StringUtils.isNullOrBlank(name) ? loader.getClass().getName() : name;
         return loaderName + "@" + Integer.toHexString(System.identityHashCode(loader));
     }
 

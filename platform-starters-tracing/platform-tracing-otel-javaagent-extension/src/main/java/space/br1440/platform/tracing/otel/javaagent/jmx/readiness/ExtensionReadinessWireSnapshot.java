@@ -10,6 +10,7 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.OpenDataException;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
@@ -100,7 +101,7 @@ public final class ExtensionReadinessWireSnapshot {
             );
         }
 
-        if (batchId == null || batchId.isBlank()) {
+        if (StringUtils.isNullOrBlank(batchId)) {
             throw new IllegalArgumentException("READY batchId must not be blank");
         }
 
@@ -230,7 +231,7 @@ public final class ExtensionReadinessWireSnapshot {
     }
 
     private static String requireAgentInstanceId(String agentInstanceId) {
-        if (agentInstanceId == null || agentInstanceId.isBlank()) {
+        if (StringUtils.isNullOrBlank(agentInstanceId)) {
             throw new IllegalArgumentException("agentInstanceId must not be blank");
         }
 

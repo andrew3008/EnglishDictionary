@@ -5,6 +5,7 @@ import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
@@ -85,7 +86,7 @@ public final class AgentLogEventDefinition {
     }
 
     private static String requireNonBlank(String message) {
-        if (message == null || message.isBlank()) {
+        if (StringUtils.isNullOrBlank(message)) {
             throw new IllegalArgumentException("message must not be blank");
         }
 
