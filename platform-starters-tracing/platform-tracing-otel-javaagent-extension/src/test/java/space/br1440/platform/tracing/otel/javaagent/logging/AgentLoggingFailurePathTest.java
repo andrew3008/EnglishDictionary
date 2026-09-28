@@ -207,7 +207,11 @@ class AgentLoggingFailurePathTest {
 
     private PlatformAgentLogger logger(PlatformLogEventEncoder encoder, OutputStream sink) {
         AgentLoggingRuntime runtime = new AgentLoggingRuntime(
-                encoder, new PlatformStderrSink(sink), AgentLogLevel.TRACE);
+                encoder,
+                new PlatformStderrSink(sink),
+                AgentLogLevel.TRACE
+        );
+
         return new PlatformAgentLogger(getClass().getName(), runtime);
     }
 
