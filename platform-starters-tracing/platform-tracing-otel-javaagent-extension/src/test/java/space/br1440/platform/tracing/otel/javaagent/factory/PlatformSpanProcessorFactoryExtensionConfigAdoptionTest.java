@@ -358,7 +358,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
     }
 
     @Test
-    void factory_start_delegates_do_not_write_required_platform_attributes() throws Exception {
+    void factory_start_delegates_do_not_write_required_platform_attributes() {
         // given
         PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
         ConfigProperties properties = allEnabledConfig();
@@ -390,7 +390,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
     }
 
     @Test
-    void factory_backed_pipeline_reclassifies_client_with_db_system_as_database() throws Exception {
+    void factory_backed_pipeline_reclassifies_client_with_db_system_as_database() {
         // given
         PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
         ConfigProperties properties = allEnabledConfig();

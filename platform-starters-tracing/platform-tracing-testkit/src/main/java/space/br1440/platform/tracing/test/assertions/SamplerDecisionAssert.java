@@ -19,76 +19,63 @@ public final class SamplerDecisionAssert extends AbstractAssert<SamplerDecisionA
         return new SamplerDecisionAssert(actual);
     }
 
-    public SamplerDecisionAssert isRecordAndSample() {
+    public void isRecordAndSample() {
         isNotNull();
 
         if (actual.getDecision() != SamplingDecision.RECORD_AND_SAMPLE) {
             failWithMessage("Expected RECORD_AND_SAMPLE, but was: %s", actual.getDecision());
         }
-
-        return this;
     }
 
-    public SamplerDecisionAssert assertSampled() {
-        return isRecordAndSample();
+    public void assertSampled() {
+        isRecordAndSample();
     }
 
-    public SamplerDecisionAssert isRecordOnly() {
+    public void isRecordOnly() {
         isNotNull();
 
         if (actual.getDecision() != SamplingDecision.RECORD_ONLY) {
             failWithMessage("Expected RECORD_ONLY, but was: %s", actual.getDecision());
         }
-
-        return this;
     }
 
-    public SamplerDecisionAssert assertRecordOnly() {
-        return isRecordOnly();
-    }
-
-    public SamplerDecisionAssert isDrop() {
+    public void isDrop() {
         isNotNull();
 
         if (actual.getDecision() != SamplingDecision.DROP) {
             failWithMessage("Expected DROP, but was: %s", actual.getDecision());
         }
-
-        return this;
     }
 
-    public SamplerDecisionAssert assertDropped() {
-        return isDrop();
+    public void assertDropped() {
+        isDrop();
     }
 
-    public SamplerDecisionAssert hasDecision(SamplingDecision expected) {
+    public void hasDecision(SamplingDecision expected) {
         isNotNull();
         Objects.requireNonNull(expected, "expected");
         if (actual.getDecision() != expected) {
             failWithMessage("Expected %s, but was: %s", expected, actual.getDecision());
         }
-        return this;
     }
 
     public SamplingResult result() {
         return actual;
     }
 
-    public <T> SamplerDecisionAssert hasAttribute(AttributeKey<T> key, T expectedValue) {
+    public <T> void hasAttribute(AttributeKey<T> key, T expectedValue) {
         isNotNull();
         T actualValue = actual.getAttributes().get(key);
         Assertions.assertThat(actualValue)
                 .as("attribute '%s' in SamplingResult", key.getKey())
                 .isEqualTo(Objects.requireNonNull(expectedValue, "expectedValue"));
-        return this;
     }
 
-    public SamplerDecisionAssert hasNoAttribute(AttributeKey<?> key) {
+    public void hasNoAttribute(AttributeKey<?> key) {
         isNotNull();
         Object actualValue = actual.getAttributes().get(key);
         Assertions.assertThat(actualValue)
                 .as("attribute '%s' in SamplingResult must be absent", key.getKey())
                 .isNull();
-        return this;
     }
 }

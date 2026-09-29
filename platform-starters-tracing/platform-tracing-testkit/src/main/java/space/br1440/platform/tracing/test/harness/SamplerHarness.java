@@ -4,7 +4,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import jakarta.annotation.Nullable;
 
 import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
 
@@ -42,11 +41,6 @@ public final class SamplerHarness {
         return this;
     }
 
-    public SamplerHarness spanName(String spanName) {
-        this.spanName = Objects.requireNonNull(spanName, "spanName");
-        return this;
-    }
-
     public SamplerHarness spanKind(SpanKind spanKind) {
         this.spanKind = Objects.requireNonNull(spanKind, "spanKind");
         return this;
@@ -61,13 +55,8 @@ public final class SamplerHarness {
         return this;
     }
 
-    public SamplerHarness withParent(Context parent) {
-        return parentContext(parent);
-    }
-
-    public <T> SamplerHarness putAttribute(AttributeKey<T> key, T value) {
-        attributes.put(key, value);
-        return this;
+    public void withParent(Context parent) {
+        parentContext(parent);
     }
 
     public SamplerHarness putStringAttribute(String key, String value) {
@@ -89,11 +78,6 @@ public final class SamplerHarness {
 
     public SamplerHarness withUrlPath(String path) {
         return putStringAttribute("url.path", path);
-    }
-
-    public SamplerHarness links(@Nullable List<LinkData> links) {
-        this.links = (links == null) ? Collections.emptyList() : List.copyOf(links);
-        return this;
     }
 
     public Attributes attributesSnapshot() {

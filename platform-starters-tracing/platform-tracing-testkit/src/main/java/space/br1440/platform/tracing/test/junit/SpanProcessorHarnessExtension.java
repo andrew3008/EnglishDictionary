@@ -100,7 +100,7 @@ public final class SpanProcessorHarnessExtension implements BeforeAllCallback, B
         }
 
         @Override
-        public void close() throws Exception {
+        public void close() {
             harness.close();
         }
     }
