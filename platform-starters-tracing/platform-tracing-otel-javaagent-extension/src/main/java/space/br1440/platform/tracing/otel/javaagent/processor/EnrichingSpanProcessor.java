@@ -21,6 +21,7 @@ import io.opentelemetry.sdk.trace.data.StatusData;
 /**
  * Обогащает span platform-специфичными атрибутами: тип (HTTP/DB/Kafka/internal), результат
  * (success/failure) и, для ошибочных CLIENT-спанов, имя upstream remote-сервиса.
+ * Default {@code platform.trace.type} пишется в {@code onEnding}, после validation.
  */
 public final class EnrichingSpanProcessor implements PlatformEndingSpanProcessor, ProcessorDiagnosticIdentity {
 
@@ -67,23 +68,28 @@ public final class EnrichingSpanProcessor implements PlatformEndingSpanProcessor
 
     @Override
     public void onStart(@Nonnull Context parentContext, @Nonnull ReadWriteSpan span) {
-        if (span.getAttribute(PLATFORM_TYPE_KEY) == null) {
-            span.setAttribute(PLATFORM_TYPE_KEY, defaultTypeFor(span.getKind()));
-        }
+        // type не пишется здесь: ValidatingSpanProcessor должен увидеть исходный null
     }
 
     @Override
     public boolean isStartRequired() {
-        return true;
+        return false;
     }
 
     @Override
     public void onEnding(ReadWriteSpan span) {
         StatusData status = span.toSpanData().getStatus();
 
-        applyDefaultResult(span, status);
+        applyDefaultType(span);
         reclassifyAsDatabaseIfNeeded(span);
+        applyDefaultResult(span, status);
         recordRemoteServiceOnError(span, status);
+    }
+
+    private static void applyDefaultType(ReadWriteSpan span) {
+        if (span.getAttribute(PLATFORM_TYPE_KEY) == null) {
+            span.setAttribute(PLATFORM_TYPE_KEY, defaultTypeFor(span.getKind()));
+        }
     }
 
     private void applyDefaultResult(ReadWriteSpan span, StatusData status) {

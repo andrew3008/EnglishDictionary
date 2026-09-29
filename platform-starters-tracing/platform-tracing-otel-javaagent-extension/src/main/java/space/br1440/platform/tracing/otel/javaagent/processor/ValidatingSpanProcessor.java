@@ -27,6 +27,11 @@ import io.opentelemetry.sdk.trace.ReadableSpan;
  *
  * <p>Маркер {@code platform.validation.missing} фиксирует исходное нарушение producer-контракта
  * и сохраняется, даже если enrichment затем дополнил итоговый span значениями по умолчанию.
+ *
+ * <p>При уровне, отличном от {@code DISABLED}, каждый span без заранее заданного producer-ом
+ * {@code platform.trace.type} экспортируется с этим маркером. Log event ограничен одним разом
+ * в 60 с отдельно для WARNING и ERROR. Сам атрибут не ограничивается. Всплеск маркера на
+ * span'ах автоинструментации — ожидаемый сигнал восстановленного контракта, а не инцидент.
  */
 public final class ValidatingSpanProcessor implements PlatformEndingSpanProcessor, ProcessorDiagnosticIdentity {
 

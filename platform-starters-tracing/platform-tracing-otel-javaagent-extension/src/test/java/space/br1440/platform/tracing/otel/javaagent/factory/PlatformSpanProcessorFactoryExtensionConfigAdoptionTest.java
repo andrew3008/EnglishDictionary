@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -31,11 +32,15 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
+import io.opentelemetry.sdk.trace.ReadWriteSpan;
+import io.opentelemetry.sdk.trace.ReadableSpan;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
+import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 
@@ -292,7 +297,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
     }
 
     @Test
-    void factory_backed_pipeline_recordsValidationMarker_onlyForSpanWithoutProducerResult() throws Exception {
+    void factory_backed_pipeline_recordsTypeOmissionBeforeDefaultEnrichment() throws Exception {
         // given
         PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
         ConfigProperties properties = allEnabledConfig();
@@ -336,20 +341,86 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
             // then
             AttributeKey<String> missingKey = AttributeKey.stringKey("platform.validation.missing");
+            AttributeKey<String> typeKey = AttributeKey.stringKey(PlatformAttributes.PLATFORM_TYPE);
+            AttributeKey<String> resultKey = AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT);
             assertThat(withoutResultData.getAttributes().get(missingKey))
-                    .isEqualTo(PlatformAttributes.PLATFORM_RESULT);
+                    .isEqualTo(PlatformAttributes.PLATFORM_TYPE + "," + PlatformAttributes.PLATFORM_RESULT);
             assertThat(withResultData.getAttributes().get(missingKey))
-                    .as("negative control: producer-declared result must not be flagged as missing")
-                    .isNull();
-            assertThat(withoutResultData.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT)))
-                    .isEqualTo("success");
-            assertThat(withResultData.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT)))
-                    .isEqualTo("success");
+                    .isEqualTo(PlatformAttributes.PLATFORM_TYPE);
+            assertThat(withoutResultData.getAttributes().get(typeKey)).isEqualTo("http_server");
+            assertThat(withoutResultData.getAttributes().get(resultKey)).isEqualTo("success");
+            assertThat(withResultData.getAttributes().get(typeKey)).isEqualTo("http_server");
+            assertThat(withResultData.getAttributes().get(resultKey)).isEqualTo("success");
 
             long violationsAfter = validating.getValidationViolationsTotal();
-            assertThat(violationsAfter - violationsBefore)
-                    .as("exactly one violation for the span without a producer-declared result")
-                    .isEqualTo(1L);
+            assertThat(violationsAfter - violationsBefore).isEqualTo(2L);
+        }
+    }
+
+    @Test
+    void factory_start_delegates_do_not_write_required_platform_attributes() throws Exception {
+        // given
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
+        ConfigProperties properties = allEnabledConfig();
+        ExtensionConfig extensionConfig = new ExtensionConfig(properties);
+        PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
+                registrar, new PlatformScrubberFactory().buildRuntime(extensionConfig, properties)
+        );
+
+        SdkTracerProviderBuilder builder = SdkTracerProvider.builder();
+        factory.registerSpanProcessors(
+                builder,
+                extensionConfig,
+                TracingSettingsSource.fromStartup(extensionConfig, registrar.agentInstanceId())
+        );
+        StartAttributeProbe probe = new StartAttributeProbe();
+        builder.addSpanProcessor(probe);
+
+        try (OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(builder.build()).build()) {
+            Tracer tracer = sdk.getTracer("t");
+
+            // when
+            Span span = tracer.spanBuilder("start-probe").setSpanKind(SpanKind.SERVER).startSpan();
+            span.end();
+
+            // then
+            assertThat(probe.type()).isNull();
+            assertThat(probe.result()).isNull();
+        }
+    }
+
+    @Test
+    void factory_backed_pipeline_reclassifies_client_with_db_system_as_database() throws Exception {
+        // given
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
+        ConfigProperties properties = allEnabledConfig();
+        ExtensionConfig extensionConfig = new ExtensionConfig(properties);
+        PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
+                registrar, new PlatformScrubberFactory().buildRuntime(extensionConfig, properties)
+        );
+
+        InMemorySpanExporter exporter = InMemorySpanExporter.create();
+        SdkTracerProviderBuilder builder = SdkTracerProvider.builder()
+                .addSpanProcessor(SimpleSpanProcessor.create(exporter));
+        factory.registerSpanProcessors(
+                builder,
+                extensionConfig,
+                TracingSettingsSource.fromStartup(extensionConfig, registrar.agentInstanceId())
+        );
+
+        try (OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(builder.build()).build()) {
+            Tracer tracer = sdk.getTracer("t");
+
+            // when
+            Span span = tracer.spanBuilder("db-client").setSpanKind(SpanKind.CLIENT).startSpan();
+            span.setAttribute("db.system", "postgresql");
+            span.end();
+            sdk.getSdkTracerProvider().forceFlush().join(2, TimeUnit.SECONDS);
+
+            // then
+            SpanData data = spanNamed(exporter.getFinishedSpanItems(), "db-client");
+            assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TYPE)))
+                    .isEqualTo("database");
         }
     }
 
@@ -588,6 +659,40 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             assertThat(cfg.baggage().processorDenyPatterns())
                     .as("baggage.processor.denyPatterns default")
                     .containsExactly("password", "secret", "token");
+        }
+    }
+
+    private static final class StartAttributeProbe implements SpanProcessor {
+
+        private final AtomicReference<String> type = new AtomicReference<>();
+        private final AtomicReference<String> result = new AtomicReference<>();
+
+        @Override
+        public void onStart(Context parentContext, ReadWriteSpan span) {
+            type.set(span.getAttribute(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TYPE)));
+            result.set(span.getAttribute(AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT)));
+        }
+
+        @Override
+        public boolean isStartRequired() {
+            return true;
+        }
+
+        @Override
+        public void onEnd(ReadableSpan span) {
+        }
+
+        @Override
+        public boolean isEndRequired() {
+            return false;
+        }
+
+        private String type() {
+            return type.get();
+        }
+
+        private String result() {
+            return result.get();
         }
     }
 }
