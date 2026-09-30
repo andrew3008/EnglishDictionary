@@ -1,5 +1,5 @@
 apiVersion: v2
 name: platform-tracing
-description: Managed OTEL_* environment for services running the controlled Platform Tracing Java agent.
+description: Renders validated OTEL_* and PLATFORM_TRACING_* container env for services running the Platform Tracing Java agent.
 type: library
-version: 0.1.0
+version: 1.0.0

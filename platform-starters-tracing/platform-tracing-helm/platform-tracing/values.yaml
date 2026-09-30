@@ -1,9 +1,0 @@
-platformTracing:
-  serviceName: ""
-  controlChannel: ""
-  spanAttributeValidationLevel: ""
-  export:
-    endpoint: http://otel-collector.ops-system.svc.cluster.local:4317
-  resourceAttributes:
-    serviceVersion: ""
-    deploymentEnvironmentName: ""
