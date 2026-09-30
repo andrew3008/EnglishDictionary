@@ -9,7 +9,6 @@ platformJavaLibrary {
 }
 
 group = rootProject.group
-version = rootProject.version
 
 tasks.named('jar', Jar).configure {
     archiveBaseName = 'spring-boot-starter-header-based-routing'

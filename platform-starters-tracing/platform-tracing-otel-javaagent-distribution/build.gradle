@@ -42,7 +42,6 @@ def extensionMavenArtifactId = 'platform-tracing-otel-javaagent-extension'
 def embeddedExtensionJarName = 'platform-tracing-otel-javaagent-extension.jar'
 def extensionEntryPath = 'extensions/' + embeddedExtensionJarName
 def identityEntryPath = 'META-INF/platform-tracing/javaagent-distribution.properties'
-def standaloneExtensionJarName = extensionMavenArtifactId + '-' + project.version + '.jar'
 
 def otelJavaAgent = configurations.create('otelJavaAgent') {
     canBeConsumed = false
@@ -146,7 +145,8 @@ def allowedExtensionCoordinates = [
 
 def packageStandaloneExtension = tasks.named('shadowJar') {
     group = 'build'
-    archiveFileName = standaloneExtensionJarName
+    archiveFileName = extensionMavenArtifactId + '-' + project.version + '.jar'
+    // Плагин Shadow по умолчанию назначает classifier all.
     archiveClassifier.set('')
     destinationDirectory.set(layout.buildDirectory.dir('libs'))
 
@@ -184,7 +184,7 @@ def packageStandaloneExtension = tasks.named('shadowJar') {
     manifest {
         attributes(
                 'Implementation-Title': 'platform-tracing-otel-javaagent-extension',
-                'Implementation-Version': project.version.toString(),
+                'Implementation-Version': project.version,
                 'Platform-Log-Schema-Version': extensionSchemaIdentity.map { it.get('schema.semanticVersion') },
                 'Platform-Log-Schema-SHA256': extensionSchemaIdentity.map { it.get('schema.sha256') }
         )
@@ -202,7 +202,7 @@ def validateControlledAgentInputs = tasks.register('validateControlledAgentInput
     inputs.file(otelJavaAgentFile)
     inputs.file(agentExtensionFile)
     inputs.file(standaloneExtensionJarFile)
-    inputs.property('distributionVersion', project.version.toString())
+    inputs.property('distributionVersion', project.version)
     inputs.property('otelJavaAgentCoordinate', resolvedOtelJavaAgentCoordinate)
     inputs.property('extensionCoordinates', agentExtensionArtifactCoordinates)
 
@@ -325,12 +325,12 @@ artifacts {
 }
 
 Provider<RegularFile> controlledAgentPinFile = layout.buildDirectory.file('controlled-agent/controlled-agent-pin.properties') as Provider<RegularFile>
-def controlledAgentVersion = project.version.toString()
 
 def writeControlledAgentPin = tasks.register('writeControlledAgentPin') {
     group = 'build'
     description = 'Writes the controlled Java agent pin (version and SHA-256) consumed by the Gradle plugin'
     dependsOn publishControlledJavaAgent
+    def controlledAgentVersion = project.version.toString()
 
     inputs.file(controlledAgentJarFile)
             .withPropertyName('controlledAgentJar')
