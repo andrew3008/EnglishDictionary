@@ -37,8 +37,7 @@ class AutoconfigureSessionIdentityTest {
         // given
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
         TracingSettingsSource policy = TracingSettingsSource.isolatedDefaults();
-        PlatformTracingMBeanRegistrar registrar =
-                new PlatformTracingMBeanRegistrar(agentInstanceId);
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(agentInstanceId);
 
         // when
         Throwable failure = catchThrowable(() -> session(agentInstanceId, policy, registrar));
@@ -54,7 +53,6 @@ class AutoconfigureSessionIdentityTest {
                                 PlatformTracingMBeanRegistrar registrar) {
         new AutoconfigureSession(
                 agentInstanceId,
-                mock(ConfigurationFingerprint.class),
                 mock(ExtensionConfig.class),
                 policy,
                 registrar,

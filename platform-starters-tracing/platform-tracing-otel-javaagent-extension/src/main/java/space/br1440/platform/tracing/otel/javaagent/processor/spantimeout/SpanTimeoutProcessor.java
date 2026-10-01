@@ -7,9 +7,10 @@ import java.util.function.LongSupplier;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.SpanTimeoutLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.processor.ProcessorDiagnosticIdentity;
 
 import io.opentelemetry.context.Context;
@@ -19,17 +20,25 @@ import io.opentelemetry.sdk.trace.ReadableSpan;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 
 /**
- * Процессор span timeout, принудительно завершающий «зависшие» span'ы и trace'ы.
+ * {@link SpanProcessor}, принудительно завершающий span'ы, которые не были закрыты в отведённое время.
  * <p>
- * По SRE ADR устанавливается два таймаута:
+ * Контролируются два лимита:
  * <ul>
- *   <li>{@code spanTimeout} (по умолчанию 30 с) — максимальная длительность одного span'а.</li>
- *   <li>{@code traceTimeout} (по умолчанию 60 с) — максимальный возраст трассы; при превышении
- *       все ещё живые span'ы трассы принудительно закрываются.</li>
+ *   <li><b>span</b> — максимальное время от {@code startNanos} span'а до его завершения
+ *       ({@link ExtensionPropertyNames#SPAN_TIMEOUT_MAX_SPAN_AGE});</li>
+ *   <li><b>trace</b> — максимальное время отслеживания {@code traceId} в текущем процессе
+ *       ({@link ExtensionPropertyNames#SPAN_TIMEOUT_MAX_TRACE_AGE}); при превышении
+ *       принудительно завершаются все незакрытые span'ы этого trace.</li>
  * </ul>
- * При срабатывании таймаута на span проставляются атрибуты {@link PlatformAttributes#PLATFORM_TIMEOUT}
- * ({@code span} | {@code trace}) и {@link PlatformAttributes#PLATFORM_RESULT} = {@code timeout};
- * статус span не изменяется. Затем выполняется {@code span.end()}; экспорт идёт по обычной цепочке процессоров.
+ * При принудительном завершении процессор:
+ * <ol>
+ *   <li>устанавливает {@link PlatformAttributes#PLATFORM_TIMEOUT} = {@code span} | {@code trace}
+ *       и {@link PlatformAttributes#PLATFORM_RESULT} = {@code timeout};</li>
+ *   <li>не изменяет статус span'а;</li>
+ *   <li>вызывает {@code span.end()}, после чего span проходит обычную цепочку процессоров и экспорт.</li>
+ * </ol>
+ * Лимиты проверяются периодически ({@link ExtensionPropertyNames#SPAN_TIMEOUT_SCAN_INTERVAL}),
+ * поэтому span может быть завершён позже лимита, но не более чем на один интервал.
  */
 public final class SpanTimeoutProcessor implements SpanProcessor, ProcessorDiagnosticIdentity {
 

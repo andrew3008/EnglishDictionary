@@ -18,8 +18,8 @@ public final class BaggagePropagationCustomizer {
         if (baggage.propagationEnabled()) {
             outboundPolicy = new FilteringBaggagePropagator(
                     propagator,
-                    new HashSet<>(baggage.propagationOutboundAllowedKeys()),
-                    baggage.propagationOutboundDenyPatterns()
+                    new HashSet<>(baggage.outboundHeaderAllowedKeys()),
+                    baggage.outboundHeaderDenyPatterns()
             );
         }
 

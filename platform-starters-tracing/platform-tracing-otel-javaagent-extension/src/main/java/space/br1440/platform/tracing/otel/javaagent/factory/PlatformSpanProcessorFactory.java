@@ -68,16 +68,13 @@ public final class PlatformSpanProcessorFactory {
     }
 
     private Optional<SpanProcessor> baggageProcessor(ExtensionConfig extConfig) {
-        if (!extConfig.baggage().processorEnabled()) {
-            return Optional.empty();
-        }
-
-        List<String> allowlist = extConfig.baggage().processorAllowedKeys();
+        List<String> allowlist = extConfig.baggage().spanAttributesAllowedKeys();
         if (allowlist.isEmpty()) {
             return Optional.empty();
         }
 
-        List<String> denyPatterns = extConfig.baggage().processorDenyPatterns();
+        List<String> denyPatterns = extConfig.baggage().spanAttributesDenyPatterns();
+
         BaggageSpanProcessor processor = new BaggageSpanProcessor(
                 new HashSet<>(allowlist),
                 new ArrayList<>(denyPatterns)
@@ -120,8 +117,8 @@ public final class PlatformSpanProcessorFactory {
         }
 
         SpanTimeoutProcessor spanTimeout = SpanTimeoutProcessor.start(
-                extConfig.spanTimeout().spanTimeout(),
-                extConfig.spanTimeout().traceTimeout(),
+                extConfig.spanTimeout().maxSpanAge(),
+                extConfig.spanTimeout().maxTraceAge(),
                 extConfig.spanTimeout().scanInterval(),
                 extConfig.spanTimeout().maxTrackedTraces(),
                 extConfig.spanTimeout().maxTrackedSpansPerTrace(),

@@ -1,40 +1,33 @@
 package space.br1440.platform.tracing.otel.javaagent;
 
-import io.opentelemetry.context.propagation.TextMapPropagator;
-import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
-import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdkBuilder;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.Map;
+import java.util.Objects;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+
 import space.br1440.platform.tracing.otel.javaagent.testsupport.BootstrapIsolatedClassLoader;
 
-import java.util.Map;
+import io.opentelemetry.context.propagation.TextMapPropagator;
+import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
+import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdkBuilder;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * Интеграция Фазы 15: реальный {@link AutoConfiguredOpenTelemetrySdk} с зарегистрированными
- * платформенными SPI ({@code ConfigurableSamplerProvider}, {@code ConfigurablePropagatorProvider})
- * и ENV-aware дефолтом {@code otel.propagators}.
- * <p>
- * SPI расширения подхватываются ServiceLoader'ом из {@code META-INF/services} на test-classpath —
- * как это делает Java Agent в проде.
- */
-@DisplayName("Phase 15 SPI: named sampler/propagator через реальный autoconfigure")
+@DisplayName("SPI: named sampler/propagator через реальный autoconfigure")
 @ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 class PlatformSpiAutoconfigureIntegrationTest {
 
     private static AutoConfiguredOpenTelemetrySdkBuilder baseBuilder() {
         return AutoConfiguredOpenTelemetrySdk.builder()
-                // Fresh classloader per build isolates the shared ExtensionRuntime
-                // coordinator across the several real-ServiceLoader builds in this suite
-                // (r5 plan §3 acceptance #9).
                 .setServiceClassLoader(BootstrapIsolatedClassLoader.freshBootstrapClassLoader())
                 .disableShutdownHook()
                 .addPropertiesSupplier(() -> Map.of(
                         "otel.metrics.exporter", "none",
                         "otel.logs.exporter", "none",
-                        "otel.traces.exporter", "none"));
+                        "otel.traces.exporter", "none")
+                );
     }
 
     @Test
@@ -46,7 +39,6 @@ class PlatformSpiAutoconfigureIntegrationTest {
                 .build();
         try {
             // when
-            // SdkTracerProvider.toString() печатает sampler=<getDescription()> (мы добавили toString).
             String description = sdk.getOpenTelemetrySdk().getSdkTracerProvider().toString();
 
             // then
@@ -58,8 +50,6 @@ class PlatformSpiAutoconfigureIntegrationTest {
         }
     }
 
-    // ---- PR-2: propagator defaults (ENV-aware) ------------------------------------------------
-
     @Test
     @DisplayName("default: otel.propagators не задан → platform-trace-control добавлен")
     void default_propagators_include_platform() {
@@ -70,7 +60,6 @@ class PlatformSpiAutoconfigureIntegrationTest {
             TextMapPropagator root = sdk.getOpenTelemetrySdk().getPropagators().getTextMapPropagator();
 
             // then
-            // Платформенные заголовки должны участвовать в fields() (X-Trace-On и др.).
             assertThat(root.fields())
                     .as("platform-trace-control дописан в otel.propagators по умолчанию")
                     .contains("X-Trace-On", "X-QA-Trace", "X-Request-Id");
@@ -83,8 +72,6 @@ class PlatformSpiAutoconfigureIntegrationTest {
     @DisplayName("ENV-aware: otel.propagators задан через property-source → platform всё равно добавлен")
     void env_propagators_still_get_platform() {
         // given
-        // Имитация ENV/sysprop: значение приходит из property-source (не из нашего supplier'а дефолтов).
-        // addPropertiesSupplier здесь моделирует пользовательский ввод otel.propagators.
         AutoConfiguredOpenTelemetrySdk sdk = baseBuilder()
                 .addPropertiesSupplier(() -> Map.of("otel.propagators", "tracecontext,baggage"))
                 .build();
@@ -116,8 +103,6 @@ class PlatformSpiAutoconfigureIntegrationTest {
 
             // then
             assertThat(root.fields()).contains("X-Trace-On", "X-QA-Trace", "X-Request-Id");
-            // fields() — это набор: дубликат platform-trace-control не добавил бы лишних полей,
-            // но и не сломал бы composite. Проверяем, что W3C сохранён.
             assertThat(root.fields()).contains("traceparent");
         } finally {
             sdk.getOpenTelemetrySdk().close();
@@ -139,11 +124,10 @@ class PlatformSpiAutoconfigureIntegrationTest {
             java.util.Collection<String> fields = root.fields();
 
             // then
-            // Проверяем результат применения customizer к individual named propagator до final
-            // composite, а не внутренний lifecycle через reflection.
             assertThat(fields).containsExactlyInAnyOrder(
                     "traceparent", "tracestate", "baggage",
-                    "X-Trace-On", "X-QA-Trace", "X-Request-Id");
+                    "X-Trace-On", "X-QA-Trace", "X-Request-Id"
+            );
         } finally {
             sdk.getOpenTelemetrySdk().close();
         }
@@ -156,7 +140,7 @@ class PlatformSpiAutoconfigureIntegrationTest {
         AutoConfiguredOpenTelemetrySdk sdk = baseBuilder()
                 .addPropertiesSupplier(() -> Map.of(
                         "otel.propagators", "tracecontext,baggage",
-                        "platform.tracing.baggage.propagation.outbound-allowed-keys", "tenant_class"))
+                        "platform.tracing.baggage.outbound-header.allowed-keys", "tenant_class"))
                 .build();
         try {
             TextMapPropagator root = sdk.getOpenTelemetrySdk().getPropagators().getTextMapPropagator();
@@ -166,18 +150,20 @@ class PlatformSpiAutoconfigureIntegrationTest {
                     io.opentelemetry.api.baggage.Baggage.builder()
                             .put("tenant_class", "DF 28",
                                     io.opentelemetry.api.baggage.BaggageEntryMetadata.create("verified=true"))
+                            .put("traffic_source", "organic")
                             .put("internal_secret", "leak")
                             .build());
             Map<String, String> carrier = new java.util.HashMap<>();
 
             // when
-            root.inject(ctx, carrier, (c, k, v) -> c.put(k, v));
+            root.inject(ctx, carrier, (c, k, v) -> Objects.requireNonNull(c, "carrier").put(k, v));
 
             // then
             String header = carrier.get("baggage");
             assertThat(header)
                     .as("итоговый final SDK propagator обязан кодировать пробел как %%20")
                     .contains("tenant_class=DF%2028")
+                    .doesNotContain("traffic_source")
                     .doesNotContain("internal_secret")
                     .doesNotContain("leak");
 

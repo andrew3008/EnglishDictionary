@@ -13,7 +13,6 @@ import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.Shutdown
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSessionFactory;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.ConfigurationPropertyException;
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.ConfigurationFingerprint;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.ExtensionRuntimeVerifier;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
@@ -90,13 +89,11 @@ final class BootstrapCoordinator implements AutoCloseable {
     AutoconfigureSession prepare(ConfigProperties config) {
         Objects.requireNonNull(config, "config");
 
-        ConfigurationFingerprint fingerprint = ConfigurationFingerprint.of(config);
-        lifecycle.beginPrepare(fingerprint);
+        lifecycle.beginPrepare();
 
         try {
             AutoconfigureSession prepared = sessionFactory.create(
                     config,
-                    fingerprint,
                     jmxRegistrar,
                     agentInstanceId
             );
@@ -193,6 +190,7 @@ final class BootstrapCoordinator implements AutoCloseable {
             if (diagnosticFailure != cause) {
                 cause.addSuppressed(diagnosticFailure);
             }
+
             BootstrapException classified = lifecycle.fail(
                     code,
                     PREPARE_PHASE,

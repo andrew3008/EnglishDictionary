@@ -23,8 +23,8 @@ public final class ExtensionDefaults {
     public static final Duration DEFAULT_CLASSIFICATION_NORMAL_THRESHOLD = Duration.ofSeconds(1);
 
     public static final boolean DEFAULT_SPAN_TIMEOUT_ENABLED = false;
-    public static final Duration DEFAULT_SPAN_TIMEOUT_SPAN_TIMEOUT = Duration.ofSeconds(30);
-    public static final Duration DEFAULT_SPAN_TIMEOUT_TRACE_TIMEOUT = Duration.ofSeconds(60);
+    public static final Duration DEFAULT_SPAN_TIMEOUT_MAX_SPAN_AGE = Duration.ofSeconds(30);
+    public static final Duration DEFAULT_SPAN_TIMEOUT_MAX_TRACE_AGE = Duration.ofSeconds(60);
     public static final Duration DEFAULT_SPAN_TIMEOUT_SCAN_INTERVAL = Duration.ofSeconds(5);
     public static final int DEFAULT_SPAN_TIMEOUT_MAX_TRACKED_TRACES = 10_000;
     public static final int DEFAULT_SPAN_TIMEOUT_MAX_TRACKED_SPANS_PER_TRACE = 1_024;
@@ -34,15 +34,13 @@ public final class ExtensionDefaults {
     public static final Duration DEFAULT_DROP_OLDEST_SHUTDOWN_TIMEOUT = Duration.ofSeconds(10);
 
     public static final boolean DEFAULT_BAGGAGE_PROPAGATION_ENABLED = true;
-    public static final List<String> DEFAULT_BAGGAGE_PROPAGATION_OUTBOUND_ALLOWED_KEYS =
+    public static final List<String> DEFAULT_BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS =
             List.of("traffic_source", "tenant_class", "platform.correlation.id");
-    public static final List<String> DEFAULT_BAGGAGE_PROPAGATION_OUTBOUND_DENY_PATTERNS =
+    public static final List<String> DEFAULT_BAGGAGE_OUTBOUND_HEADER_DENY_PATTERNS =
             List.of("password", "secret", "token");
-
-    public static final boolean DEFAULT_BAGGAGE_PROCESSOR_ENABLED = true;
-    public static final List<String> DEFAULT_BAGGAGE_PROCESSOR_ALLOWED_KEYS =
+    public static final List<String> DEFAULT_BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS =
             List.of("traffic_source", "tenant_class", "platform.correlation.id");
-    public static final List<String> DEFAULT_BAGGAGE_PROCESSOR_DENY_PATTERNS =
+    public static final List<String> DEFAULT_BAGGAGE_SPAN_ATTRIBUTES_DENY_PATTERNS =
             List.of("password", "secret", "token");
 
     public static final boolean DEFAULT_ENABLED = true;

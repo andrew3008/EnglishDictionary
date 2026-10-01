@@ -191,8 +191,8 @@ class ExtensionConfigTest {
 
         // then
         assertThat(config.spanTimeout().enabled()).isFalse();
-        assertThat(config.spanTimeout().spanTimeout()).isEqualTo(Duration.ofSeconds(30));
-        assertThat(config.spanTimeout().traceTimeout()).isEqualTo(Duration.ofSeconds(60));
+        assertThat(config.spanTimeout().maxSpanAge()).isEqualTo(Duration.ofSeconds(30));
+        assertThat(config.spanTimeout().maxTraceAge()).isEqualTo(Duration.ofSeconds(60));
         assertThat(config.spanTimeout().scanInterval()).isEqualTo(Duration.ofSeconds(5));
         assertThat(config.spanTimeout().maxTrackedTraces()).isEqualTo(10_000);
         assertThat(config.spanTimeout().maxTrackedSpansPerTrace()).isEqualTo(1_024);
@@ -244,14 +244,16 @@ class ExtensionConfigTest {
 
         // then
         assertThat(config.baggage().propagationEnabled()).isTrue();
-        assertThat(config.baggage().propagationOutboundAllowedKeys())
-                .containsExactly("traffic_source", "tenant_class", "platform.correlation.id");
-        assertThat(config.baggage().propagationOutboundDenyPatterns()).containsExactly("password", "secret", "token");
 
-        assertThat(config.baggage().processorEnabled()).isTrue();
-        assertThat(config.baggage().processorAllowedKeys())
+        assertThat(config.baggage().outboundHeaderAllowedKeys())
                 .containsExactly("traffic_source", "tenant_class", "platform.correlation.id");
-        assertThat(config.baggage().processorDenyPatterns()).containsExactly("password", "secret", "token");
+
+        assertThat(config.baggage().outboundHeaderDenyPatterns()).containsExactly("password", "secret", "token");
+
+        assertThat(config.baggage().spanAttributesAllowedKeys())
+                .containsExactly("traffic_source", "tenant_class", "platform.correlation.id");
+
+        assertThat(config.baggage().spanAttributesDenyPatterns()).containsExactly("password", "secret", "token");
     }
 
     @Test
@@ -276,10 +278,11 @@ class ExtensionConfigTest {
     void spanTimeout_reads_explicit_span_timeout() {
         // given
         ExtensionConfig config = new ExtensionConfig(
-                durationConfig(ExtensionPropertyNames.SPAN_TIMEOUT_SPAN_TIMEOUT, Duration.ofSeconds(10)));
+                durationConfig(ExtensionPropertyNames.SPAN_TIMEOUT_MAX_SPAN_AGE, Duration.ofSeconds(10))
+        );
 
         // then
-        assertThat(config.spanTimeout().spanTimeout()).isEqualTo(Duration.ofSeconds(10));
+        assertThat(config.spanTimeout().maxSpanAge()).isEqualTo(Duration.ofSeconds(10));
     }
 
     @Test
@@ -294,35 +297,37 @@ class ExtensionConfigTest {
     @Test
     void spanTimeout_rejects_non_positive_span_timeout() {
         // given
-        ConfigProperties config = durationConfig(ExtensionPropertyNames.SPAN_TIMEOUT_SPAN_TIMEOUT, Duration.ZERO);
+        ConfigProperties config = durationConfig(ExtensionPropertyNames.SPAN_TIMEOUT_MAX_SPAN_AGE, Duration.ZERO);
 
         // when / then
         assertThatThrownBy(() -> new ExtensionConfig(config))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("platform.tracing.span-timeout.span must be greater than zero");
+                .hasMessage("platform.tracing.span-timeout.max-span-age must be greater than zero");
     }
 
     @Test
     void spanTimeout_rejects_zero_trace_timeout() {
         // given
-        ConfigProperties config = durationConfig(ExtensionPropertyNames.SPAN_TIMEOUT_TRACE_TIMEOUT, Duration.ZERO);
+        ConfigProperties config = durationConfig(ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACE_AGE, Duration.ZERO);
 
         // when / then
         assertThatThrownBy(() -> new ExtensionConfig(config))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("platform.tracing.span-timeout.trace must be greater than zero");
+                .hasMessage("platform.tracing.span-timeout.max-trace-age must be greater than zero");
     }
 
     @Test
     void spanTimeout_rejects_negative_trace_timeout() {
         // given
         ConfigProperties config = durationConfig(
-                ExtensionPropertyNames.SPAN_TIMEOUT_TRACE_TIMEOUT, Duration.ofSeconds(-1));
+                ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACE_AGE,
+                Duration.ofSeconds(-1)
+        );
 
         // when / then
         assertThatThrownBy(() -> new ExtensionConfig(config))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("platform.tracing.span-timeout.trace must be greater than zero");
+                .hasMessage("platform.tracing.span-timeout.max-trace-age must be greater than zero");
     }
 
     @Test
@@ -388,11 +393,11 @@ class ExtensionConfigTest {
     void spanTimeout_rejects_trace_timeout_shorter_than_span_timeout() {
         // when/then
         assertThatThrownBy(() -> new ExtensionConfig(durationsConfig(Map.of(
-                ExtensionPropertyNames.SPAN_TIMEOUT_SPAN_TIMEOUT, Duration.ofSeconds(10),
-                ExtensionPropertyNames.SPAN_TIMEOUT_TRACE_TIMEOUT, Duration.ofSeconds(5)))))
+                ExtensionPropertyNames.SPAN_TIMEOUT_MAX_SPAN_AGE, Duration.ofSeconds(10),
+                ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACE_AGE, Duration.ofSeconds(5)))))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("platform.tracing.span-timeout.trace must be greater than or equal to "
-                        + "platform.tracing.span-timeout.span");
+                .hasMessage("platform.tracing.span-timeout.max-trace-age must be greater than or equal to "
+                        + "platform.tracing.span-timeout.max-span-age");
     }
 
     @Test
@@ -426,26 +431,26 @@ class ExtensionConfigTest {
     }
 
     @Test
-    void baggage_reads_explicit_propagation_allowlist() {
+    void baggage_reads_explicit_outbound_header_allowlist() {
         // given
         ExtensionConfig config = new ExtensionConfig(listConfig(
-                ExtensionPropertyNames.BAGGAGE_PROPAGATION_OUTBOUND_ALLOWED_KEYS,
+                ExtensionPropertyNames.BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS,
                 List.of("x-tenant-id", "x-request-id")));
 
         // then
-        assertThat(config.baggage().propagationOutboundAllowedKeys())
+        assertThat(config.baggage().outboundHeaderAllowedKeys())
                 .containsExactly("x-tenant-id", "x-request-id");
     }
 
     @Test
-    void baggage_reads_explicit_processor_allowlist() {
+    void baggage_reads_explicit_span_attributes_allowlist() {
         // given
         ExtensionConfig config = new ExtensionConfig(listConfig(
-                ExtensionPropertyNames.BAGGAGE_PROCESSOR_ALLOWED_KEYS,
+                ExtensionPropertyNames.BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS,
                 List.of("x-tenant-id", "x-request-id")));
 
         // then
-        assertThat(config.baggage().processorAllowedKeys())
+        assertThat(config.baggage().spanAttributesAllowedKeys())
                 .containsExactly("x-tenant-id", "x-request-id");
     }
 
@@ -506,10 +511,12 @@ class ExtensionConfigTest {
         void baggage_allowlistKeys_is_unmodifiable_when_provided() {
             // given
             ExtensionConfig cfg = new ExtensionConfig(listConfig(
-                    ExtensionPropertyNames.BAGGAGE_PROPAGATION_OUTBOUND_ALLOWED_KEYS, List.of("x-tenant")));
+                    ExtensionPropertyNames.BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS,
+                    List.of("x-tenant"))
+            );
 
             // when
-            List<String> result = cfg.baggage().propagationOutboundAllowedKeys();
+            List<String> result = cfg.baggage().outboundHeaderAllowedKeys();
 
             // then
             assertThatThrownBy(() -> result.add("extra"))

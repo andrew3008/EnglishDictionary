@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
@@ -48,13 +49,25 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
     private static ExtensionConfig configWithAllDisabled() {
         return new ExtensionConfig(new ConfigProperties() {
-            @Override public String getString(String name) { return null; }
+            @Override public String getString(String name) {
+                if (ExtensionPropertyNames.BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS.equals(name)) {
+                    return "";
+                }
+
+                return null;
+            }
             @Override public Boolean getBoolean(String name) { return false; }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return null; }
-            @Override public List<String> getList(String name) { return null; }
+            @Override public List<String> getList(String name) {
+                if (ExtensionPropertyNames.BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS.equals(name)) {
+                    return List.of();
+                }
+
+                return null;
+            }
             @Override public Map<String, String> getMap(String name) { return null; }
         });
     }
@@ -559,6 +572,59 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         }
 
         @Test
+        void empty_processor_allowlist_does_not_register_baggage_processor() throws Exception {
+            // given
+            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
+
+            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
+                    registrar,
+                    ScrubbingRuntimeTestFixtures.disabled()
+            );
+
+            ExtensionConfig extensionConfig = new ExtensionConfig(new ConfigProperties() {
+                @Override public String getString(String name) {
+                    if (ExtensionPropertyNames.BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS.equals(name)) {
+                        return "";
+                    }
+
+                    return null;
+                }
+
+                @Override public Boolean getBoolean(String name) {
+                    if ("platform.tracing.javaagent.scrubbing.enabled".equals(name)) {
+                        return false;
+                    }
+
+                    return null;
+                }
+
+                @Override public Integer getInt(String name) { return null; }
+                @Override public Long getLong(String name) { return null; }
+                @Override public Double getDouble(String name) { return null; }
+                @Override public Duration getDuration(String name) { return null; }
+                @Override public List<String> getList(String name) {
+                    if (ExtensionPropertyNames.BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS.equals(name)) {
+                        return List.of();
+                    }
+
+                    return null;
+                }
+
+                @Override public Map<String, String> getMap(String name) { return null; }
+            });
+
+            // when
+            factory.registerSpanProcessors(
+                    SdkTracerProvider.builder(),
+                    extensionConfig,
+                    TracingSettingsSource.fromStartup(extensionConfig, registrar.agentInstanceId()));
+
+            // then
+            assertThat(getComposite(registrar).getProcessorErrorCounts())
+                    .doesNotContainKey("baggage");
+        }
+
+        @Test
         void factoryDoesNotAddSpanTimeoutProcessorByDefault() throws Exception {
             // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
@@ -616,11 +682,11 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             });
 
             // then
-            assertThat(cfg.spanTimeout().spanTimeout())
-                    .as("span-timeout span default")
+            assertThat(cfg.spanTimeout().maxSpanAge())
+                    .as("span-timeout max-span-age default")
                     .isEqualTo(Duration.ofSeconds(30));
-            assertThat(cfg.spanTimeout().traceTimeout())
-                    .as("span-timeout trace default")
+            assertThat(cfg.spanTimeout().maxTraceAge())
+                    .as("span-timeout max-trace-age default")
                     .isEqualTo(Duration.ofSeconds(60));
             assertThat(cfg.spanTimeout().scanInterval())
                     .as("span-timeout scanInterval default")
@@ -637,7 +703,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         }
 
         @Test
-        @DisplayName("Baggage defaults: enabled with canonical allowlist and deny patterns")
+        @DisplayName("Baggage defaults: canonical allowlist and deny patterns")
         void default_baggage_matches_extension_defaults() {
             // given
             ExtensionConfig cfg = new ExtensionConfig(new ConfigProperties() {
@@ -652,12 +718,11 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             });
 
             // then
-            assertThat(cfg.baggage().processorEnabled()).as("baggage.processor.enabled default").isTrue();
-            assertThat(cfg.baggage().processorAllowedKeys())
-                    .as("baggage.processor.allowedKeys default")
+            assertThat(cfg.baggage().spanAttributesAllowedKeys())
+                    .as("baggage.span-attributes.allowed-keys default")
                     .containsExactly("traffic_source", "tenant_class", "platform.correlation.id");
-            assertThat(cfg.baggage().processorDenyPatterns())
-                    .as("baggage.processor.denyPatterns default")
+            assertThat(cfg.baggage().spanAttributesDenyPatterns())
+                    .as("baggage.span-attributes.deny-patterns default")
                     .containsExactly("password", "secret", "token");
         }
     }

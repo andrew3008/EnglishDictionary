@@ -320,17 +320,23 @@ class BootstrapCoordinatorTest {
     }
 
     @Test
-    void second_prepare_with_different_configuration_classified_as_CONFIGURATION_SPLIT_BRAIN() {
+    void second_prepare_is_rejected_as_SECOND_SDK_BUILD_regardless_of_configuration() {
         // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
         this.ownedCoordinator = coordinator;
-        coordinator.prepare(config(Map.of()));
 
-        // when/then
-        assertThatThrownBy(() -> coordinator.prepare(config(Map.of(ExtensionPropertyNames.SAMPLING_RATIO, "0.42"))))
-                .isInstanceOf(BootstrapException.class)
-                .extracting(failure -> ((BootstrapException) failure).failure().code())
-                .isEqualTo("CONFIGURATION_SPLIT_BRAIN");
+        AutoconfigureSession originalSession = coordinator.prepare(config(Map.of()));
+
+        // when
+        BootstrapException failure = catchThrowableOfType(
+                BootstrapException.class,
+                () -> coordinator.prepare(config(Map.of(ExtensionPropertyNames.SAMPLING_RATIO, "0.42")))
+        );
+
+        // then
+        assertThat(failure.failure().code()).isEqualTo("SECOND_SDK_BUILD");
+        assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+        assertThat(coordinator.session()).isSameAs(originalSession);
     }
 
     @Test

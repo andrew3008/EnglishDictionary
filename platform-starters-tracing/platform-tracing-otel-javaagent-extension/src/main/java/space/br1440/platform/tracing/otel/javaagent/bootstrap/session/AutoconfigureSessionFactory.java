@@ -22,7 +22,7 @@ public final class AutoconfigureSessionFactory {
     private final Function<ConfigProperties, RemoteJmxMutationRegistrationAssessor> remoteJmxAssessorFactory;
 
     public AutoconfigureSessionFactory(PlatformScrubberFactory scrubberFactory,
-                                Function<ConfigProperties, RemoteJmxMutationRegistrationAssessor> remoteJmxAssessorFactory) {
+                                       Function<ConfigProperties, RemoteJmxMutationRegistrationAssessor> remoteJmxAssessorFactory) {
         this.scrubberFactory = Objects.requireNonNull(scrubberFactory, "scrubberFactory");
         this.remoteJmxAssessorFactory = Objects.requireNonNull(
                 remoteJmxAssessorFactory,
@@ -35,7 +35,6 @@ public final class AutoconfigureSessionFactory {
     }
 
     public AutoconfigureSession create(ConfigProperties config,
-                                       ConfigurationFingerprint fingerprint,
                                        PlatformTracingMBeanRegistrar jmxRegistrar,
                                        AgentInstanceId agentInstanceId) {
         ExtensionConfig extensionConfig = new ExtensionConfig(config);
@@ -58,7 +57,6 @@ public final class AutoconfigureSessionFactory {
 
         AutoconfigureSession prepared = new AutoconfigureSession(
                 agentInstanceId,
-                fingerprint,
                 extensionConfig,
                 policy,
                 jmxRegistrar,

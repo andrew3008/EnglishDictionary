@@ -4,10 +4,9 @@ import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.ConfigurationFingerprint;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
 final class BootstrapLifecycleState {
 
@@ -24,9 +23,7 @@ final class BootstrapLifecycleState {
         return monitor;
     }
 
-    void beginPrepare(ConfigurationFingerprint fingerprint) {
-        Objects.requireNonNull(fingerprint, "fingerprint");
-
+    void beginPrepare() {
         synchronized (monitor) {
             if (terminal()) {
                 throw stickyFailure("prepare");
@@ -41,10 +38,8 @@ final class BootstrapLifecycleState {
             }
 
             if (state != BootstrapState.NEW) {
-                boolean sameConfiguration = session != null && fingerprint.equals(session.fingerprint());
-                String code = sameConfiguration ? "SECOND_SDK_BUILD" : "CONFIGURATION_SPLIT_BRAIN";
                 throw fail(
-                        code,
+                        "SECOND_SDK_BUILD",
                         "prepare",
                         new IllegalStateException(
                                 "Bootstrap coordinator already prepared/activated for this JVM; a second "

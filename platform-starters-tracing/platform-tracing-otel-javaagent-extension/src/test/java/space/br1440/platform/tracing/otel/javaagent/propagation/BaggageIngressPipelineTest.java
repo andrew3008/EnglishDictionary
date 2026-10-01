@@ -47,8 +47,8 @@ class BaggageIngressPipelineTest {
     static OtelSdkExtension otel = OtelSdkExtension.builder()
             .scope(ScopeMode.METHOD)
             .addSpanProcessor(new BaggageSpanProcessor(
-                    new HashSet<>(ExtensionDefaults.DEFAULT_BAGGAGE_PROCESSOR_ALLOWED_KEYS),
-                    ExtensionDefaults.DEFAULT_BAGGAGE_PROCESSOR_DENY_PATTERNS
+                    new HashSet<>(ExtensionDefaults.DEFAULT_BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS),
+                    ExtensionDefaults.DEFAULT_BAGGAGE_SPAN_ATTRIBUTES_DENY_PATTERNS
             ))
             .build();
 

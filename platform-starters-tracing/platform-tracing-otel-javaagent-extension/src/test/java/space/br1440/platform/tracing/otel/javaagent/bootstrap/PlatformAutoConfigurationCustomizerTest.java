@@ -326,8 +326,8 @@ class PlatformAutoConfigurationCustomizerTest {
 
     private static Stream<InvalidConfiguration> invalidConfigurations() {
         return Stream.of(
-                invalidDuration("zero span timeout", ExtensionPropertyNames.SPAN_TIMEOUT_SPAN_TIMEOUT, "0"),
-                invalidDuration("zero trace timeout", ExtensionPropertyNames.SPAN_TIMEOUT_TRACE_TIMEOUT, "0"),
+                invalidDuration("zero span timeout", ExtensionPropertyNames.SPAN_TIMEOUT_MAX_SPAN_AGE, "0"),
+                invalidDuration("zero trace timeout", ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACE_AGE, "0"),
                 invalidDuration("zero scan interval", ExtensionPropertyNames.SPAN_TIMEOUT_SCAN_INTERVAL, "0"),
                 invalidInt("zero max tracked traces", ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACKED_TRACES),
                 invalidInt(
@@ -338,10 +338,10 @@ class PlatformAutoConfigurationCustomizerTest {
                 new InvalidConfiguration(
                         "trace timeout below span timeout",
                         Map.of(
-                                ExtensionPropertyNames.SPAN_TIMEOUT_SPAN_TIMEOUT, "10000",
-                                ExtensionPropertyNames.SPAN_TIMEOUT_TRACE_TIMEOUT, "5000"
+                                ExtensionPropertyNames.SPAN_TIMEOUT_MAX_SPAN_AGE, "10000",
+                                ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACE_AGE, "5000"
                         ),
-                        ExtensionPropertyNames.SPAN_TIMEOUT_TRACE_TIMEOUT,
+                        ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACE_AGE,
                         "5000",
                         false
                 ),

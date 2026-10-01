@@ -39,13 +39,11 @@ class ConfigurationOwnershipArchTest {
         ArchRule rule = noClasses()
                 .that().resideOutsideOfPackages(CONFIGURATION, RESOURCE)
                 .and().doNotHaveSimpleName("AutoconfigureSessionFactory")
-                .and().doNotHaveSimpleName("ConfigurationFingerprint")
                 .should().dependOnClassesThat().haveFullyQualifiedName(EXTENSION_PROPERTY_NAMES)
                 .because("ExtensionPropertyNames keys have a single reader per owner "
                         + "(configuration facades / resource SPI / paths helper); "
-                        + "autoconfigure session factory/fingerprint may reference keys for fail-closed "
-                        + "messages and content hashing only; other packages must not become "
-                        + "second readers (S7 G-S7-1 / r5 S6 rename)");
+                        + "autoconfigure session factory may reference keys for fail-closed "
+                        + "messages only; other packages must not become second readers");
 
         // when/then
         rule.check(EXTENSION_PRODUCTION_CLASSES);

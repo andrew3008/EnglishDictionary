@@ -126,6 +126,27 @@ class ControlledAgentRuntimeTest {
     }
 
     @Test
+    void invalid_max_span_age_environment_fails_bootstrap_without_platform_export()
+            throws IOException, InterruptedException, URISyntaxException {
+        // given
+        AgentTestFixture fixture = AgentTestFixture.load();
+        String spanName = "extension-configuration-max-span-age-" + UUID.randomUUID();
+
+        try (OtlpTraceCollector collector = OtlpTraceCollector.startAcceptingAllSpans()) {
+            // when
+            ChildProcessResult result = runMaxSpanAgeEnvironmentProbe(fixture, collector.tracesEndpoint(), spanName);
+
+            // then
+            assertProcessCompletedSuccessfully(result);
+            assertThat(result.stdout()).contains(InvalidExtensionConfigurationProbe.MAIN_REACHED_MARKER);
+            assertExtensionConfigurationProbeReadiness(
+                    result, "FAILED", "CONFIGURATION_INITIALIZATION_FAILED", spanName
+            );
+            assertThat(collector.receivedSpans()).isEmpty();
+        }
+    }
+
+    @Test
     void controlled_agent_starts_with_attested_identity_and_ready_extension() throws IOException, InterruptedException, URISyntaxException {
         // given
         AgentTestFixture fixture = AgentTestFixture.load();
@@ -203,6 +224,42 @@ class ControlledAgentRuntimeTest {
                 )
         );
         removeContaminatingEnvironment(processBuilder.environment());
+        processBuilder.redirectOutput(stdoutFile.toFile());
+        processBuilder.redirectError(stderrFile.toFile());
+
+        Process process = processBuilder.start();
+        boolean finished = process.waitFor(WAIT_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        if (!finished) {
+            process.destroyForcibly().waitFor(KILL_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        }
+
+        String stdout = Files.readString(stdoutFile, StandardCharsets.UTF_8);
+        String stderr = Files.readString(stderrFile, StandardCharsets.UTF_8);
+        Integer exitCode = finished ? process.exitValue() : null;
+        return new ChildProcessResult(finished, exitCode, stdout, stderr);
+    }
+
+    private ChildProcessResult runMaxSpanAgeEnvironmentProbe(AgentTestFixture fixture,
+                                                              String tracesEndpoint,
+                                                              String spanName)
+            throws IOException, InterruptedException, URISyntaxException {
+        Path javaExecutable = javaExecutable();
+        Path probeClassPath = probeClassPath(InvalidExtensionConfigurationProbe.class);
+        Path stdoutFile = temporaryDirectory.resolve("extension-configuration-max-span-age.stdout.log");
+        Path stderrFile = temporaryDirectory.resolve("extension-configuration-max-span-age.stderr.log");
+
+        ProcessBuilder processBuilder = new ProcessBuilder(
+                invalidExtensionConfigurationChildCommand(
+                        javaExecutable,
+                        probeClassPath,
+                        fixture,
+                        tracesEndpoint,
+                        spanName,
+                        false
+                )
+        );
+        removeContaminatingEnvironment(processBuilder.environment());
+        processBuilder.environment().put("PLATFORM_TRACING_SPAN_TIMEOUT_MAX_SPAN_AGE", "0");
         processBuilder.redirectOutput(stdoutFile.toFile());
         processBuilder.redirectError(stderrFile.toFile());
 
