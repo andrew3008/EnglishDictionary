@@ -69,6 +69,7 @@ dependencyResolutionManagement {
 
 rootProject.name = 'spring-boot-platform-starters'
 
+include('platform-spring-boot-plugin')
 include('spring-boot-starter-platform-bom')
 include('spring-boot-starter-platform-metrics')
 include('spring-boot-starter-platform-logging')

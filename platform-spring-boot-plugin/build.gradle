@@ -1,0 +1,18 @@
+plugins {
+    id 'platform.gradle-plugin-publish'
+}
+
+dependencies {
+    implementation "org.springframework.boot:spring-boot-gradle-plugin:${libs.versions.springBoot.get()}"
+}
+
+gradlePlugin {
+    plugins {
+        platformSpringBoot {
+            id = 'platform.spring-boot'
+            implementationClass = 'space.br1440.platform.starters.gradle.PlatformSpringBootPlugin'
+            displayName = 'Platform Spring Boot'
+            description = 'Applies the Spring Boot Gradle plugin at the version owned by the starters reactor.'
+        }
+    }
+}
