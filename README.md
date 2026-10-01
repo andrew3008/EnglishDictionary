@@ -16,7 +16,7 @@
 |--------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
 | [`spring-boot-starter-platform-bom`](./spring-boot-starter-platform-bom) | Bill of Materials: импорт `spring-boot-dependencies` и дополнительные constraints для зависимостей стартеров |
 
-Подключение у потребителя: `api platform("space.br1440.platform.starters:spring-boot-starter-platform-bom:<версия>")` (или эквивалент в Maven).
+Подключение у потребителя: `implementation platform("space.br1440.platform:platform-bom:${platformVersion}")`. Версию монорепозитория стартеров солюшен не задаёт.
 
 ### Стартеры — отдельные каталоги в корне
 

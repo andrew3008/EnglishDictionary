@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    api platform("space.br1440.platform:platform-bom:${libs.versions.platformBom.get()}")
+    api platform("org.springframework.boot:spring-boot-dependencies:${libs.versions.springBoot.get()}")
     api platform("org.springframework.cloud:spring-cloud-dependencies:${libs.versions.bom.springcloud.get()}")
     api platform("io.opentelemetry:opentelemetry-bom:${libs.versions.bom.opentelemetry.get()}")
     api platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom:${libs.versions.bom.otelinstrumentation.get()}")
