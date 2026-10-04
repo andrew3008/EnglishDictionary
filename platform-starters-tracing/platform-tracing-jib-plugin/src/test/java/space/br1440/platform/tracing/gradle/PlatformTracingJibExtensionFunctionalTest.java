@@ -17,6 +17,7 @@ class PlatformTracingJibExtensionFunctionalTest extends FunctionalTestSupport {
 
     private static final String JIB_PINNED = "3.5.3";
     private static final String JIB_FLOOR = "3.3.2";
+    private static final String JIB_SOLUTION = "3.4.4";
     private static final String JIB_PLUGIN_ID = "com.google.cloud.tools.jib";
     private static final String PLATFORM_EXTENSION_CLASS = "space.br1440.platform.tracing.gradle.PlatformTracingJibExtension";
     private static final String REGISTRATION_VIOLATION = "jib.pluginExtensions must contain exactly one registration of " + PLATFORM_EXTENSION_CLASS;
@@ -153,6 +154,45 @@ class PlatformTracingJibExtensionFunctionalTest extends FunctionalTestSupport {
 
         // then
         assertThat(result.getOutput()).contains(VERIFY_TASK, ":jibBuildTar");
+    }
+
+    @Test
+    void solution_jib_344_wires_verify_before_the_image_task() throws IOException {
+        // given
+        Path project = jibConsumer("graph-344", JIB_SOLUTION, "jib-first", minimalJibBlock(""));
+
+        // when
+        BuildResult result = runOnline(project, "jibBuildTar", "--dry-run");
+
+        // then
+        assertThat(result.getOutput()).contains(VERIFY_TASK, ":jibBuildTar");
+    }
+
+    @Test
+    void solution_jib_344_packages_the_verified_agent_bytes() throws IOException {
+        // given
+        Path project = jibConsumer("image-344", JIB_SOLUTION, "tracing-first", minimalJibBlock(""));
+
+        // when
+        BuildResult result = runOnline(project, "jibBuildTar");
+
+        // then
+        assertThat(outcomeOf(result, VERIFY_TASK)).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(outcomeOf(result, ":jibBuildTar")).isEqualTo(TaskOutcome.SUCCESS);
+        ImageTarInspector image = ImageTarInspector.read(project.resolve(IMAGE_TAR));
+        List<String> agents = image.entrypoint().stream()
+                .filter(token -> token.startsWith("-javaagent:"))
+                .toList();
+        assertThat(agents).containsExactly("-javaagent:" + IMAGE_AGENT_PATH);
+        String expectedShaPrefix = "-Dplatform.tracing.controlled-agent.expected-sha256=";
+        String expectedSha = image.entrypoint().stream()
+                .filter(token -> token.startsWith(expectedShaPrefix))
+                .map(token -> token.substring(expectedShaPrefix.length()))
+                .findFirst()
+                .orElseThrow();
+        String packagedSha = Sha256Digest.hexOf(writeLayerFile(project, image));
+        String verifiedSha = Sha256Digest.hexOf(CONTROLLED_AGENT_JAR);
+        assertThat(packagedSha).isEqualTo(verifiedSha).isEqualTo(expectedSha);
     }
 
     @Test
