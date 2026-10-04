@@ -65,23 +65,28 @@ class PlatformKafkaOutboundAutoConfigurationTest {
 
     @Test
     void userPropagationKeepsCustomizerWhenTracingDisabled() {
+        // given
+        PlatformOutboundPropagation user = (decision, control) -> OutboundPropagationHeaders.EMPTY;
+
         // when
         new ApplicationContextRunner()
                 .withConfiguration(AutoConfigurations.of(
                         PlatformKafkaOutboundAutoConfiguration.class,
                         TracingControlChannelAutoConfiguration.class,
                         TracingRuntimeAutoConfiguration.class,
-                        RequestContextSupplierAutoConfiguration.class))
+                        RequestContextSupplierAutoConfiguration.class,
+                        PlatformOutboundPropagationAutoConfiguration.class))
                 .withPropertyValues(
                         "platform.tracing.enabled=false",
                         "platform.tracing.control.channel=STATIC",
                         "platform.tracing.kafka.propagate-platform-headers=true")
-                .withBean(PlatformOutboundPropagation.class,
-                        () -> (decision, control) -> OutboundPropagationHeaders.EMPTY)
+                .withBean(PlatformOutboundPropagation.class, () -> user)
                 .run(context -> {
                     // then
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasSingleBean(RequestIdentityBoundarySupport.class);
+                    assertThat(context).hasSingleBean(PlatformOutboundPropagation.class);
+                    assertThat(context.getBean(PlatformOutboundPropagation.class)).isSameAs(user);
                     assertThat(context).hasSingleBean(PlatformKafkaProducerFactoryCustomizer.class);
                 });
     }
