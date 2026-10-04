@@ -144,7 +144,7 @@ class TracedAspectOrderingTest {
 
         @Traced("kafka.work")
         @KafkaListener(topics = "t")
-        public void onMessage(ConsumerRecord<String, String> record) {
+        public void onMessage(@SuppressWarnings("unused") ConsumerRecord<String, String> record) {
             events.add("business");
         }
     }
