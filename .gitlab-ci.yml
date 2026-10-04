@@ -3,7 +3,78 @@ include:
     inputs:
       kubedock-enabled: true
   - component: $CI_SERVER_FQDN/pe/cicd/catalog/semantic-release/gitlab-ci@~latest
+  - project: pe/cicd/templates
+    ref: v0.0.8
+    file:
+      - /templates/infra/vault/base.yaml
 
+platform-tracing-helm:
+  stage: publish
+  needs: []
+  interruptible: false
+  extends: .base-vault-secrets
+  image:
+    name: r.1440.space/pe/cicd/images/helm:v3.16.4-1
+    entrypoint: [""]
+  tags:
+    - k8s-amd64
+  variables:
+    HARBOR_REGISTRY: r.1440.space
+    CHART_DIR: platform-starters-tracing/platform-tracing-helm/platform-tracing
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - platform-starters-tracing/platform-tracing-helm/**/*
+      when: manual
+      allow_failure: true
+    - when: never
+  script:
+    - |
+      set -eu
+      cd "$CI_PROJECT_DIR/$CHART_DIR"
+      chart_name=$(awk -F': *' '/^name:/ {print $2; exit}' Chart.yaml)
+      chart_version=$(awk -F': *' '/^version:/ {print $2; exit}' Chart.yaml)
+      if [ "$chart_name" != "platform-tracing" ]; then
+        echo "chart name must stay platform-tracing, got '$chart_name'" >&2
+        exit 1
+      fi
+      case "$chart_version" in
+        [0-9]*.[0-9]*.[0-9]*) ;;
+        *) echo "Chart.yaml version must be unquoted semver, got '$chart_version'" >&2; exit 1 ;;
+      esac
+      if ! helm unittest --help >/dev/null 2>&1; then
+        plugin_dir="${HELM_PLUGINS:-$HOME/.local/share/helm/plugins}/unittest"
+        mkdir -p "$plugin_dir"
+        curl -fsSL -o "$plugin_dir/plugin.tgz" https://github.com/helm-unittest/helm-unittest/releases/download/v0.8.1/helm-unittest-linux-amd64-0.8.1.tgz
+        tar -xzf "$plugin_dir/plugin.tgz" -C "$plugin_dir"
+        chmod 755 "$plugin_dir/untt"
+      fi
+      (
+        cd tests/chart
+        helm dependency build
+        helm unittest .
+      )
+      (
+        cd tests/agent-consumer
+        helm dependency build
+        helm unittest .
+      )
+      sh tests/characterization/verify-base-chart.sh
+      sh tests/chart/expect-template-failure.sh
+      helm lint --strict .
+      printf '%s' "$HARBOR_PASSWORD" | helm registry login "$HARBOR_REGISTRY" --username "$HARBOR_USERNAME" --password-stdin
+      chart_ref="oci://${HARBOR_REGISTRY}/pe/charts/${chart_name}"
+      if helm show chart "$chart_ref" --version "$chart_version" >/dev/null 2>/tmp/helm-show.err; then
+        echo "${chart_ref}:${chart_version} already exists; bump version in Chart.yaml" >&2
+        exit 1
+      fi
+      if ! grep -Eqi 'not found|404' /tmp/helm-show.err; then
+        echo "existence check failed with unexpected error:" >&2
+        cat /tmp/helm-show.err >&2
+        exit 1
+      fi
+      helm package .
+      helm push "${chart_name}-${chart_version}.tgz" "oci://${HARBOR_REGISTRY}/pe/charts"
 
 variables:
   GRADLE_IMAGE: r.1440.space/dockerhub/gradle:8.12.0-jdk21
