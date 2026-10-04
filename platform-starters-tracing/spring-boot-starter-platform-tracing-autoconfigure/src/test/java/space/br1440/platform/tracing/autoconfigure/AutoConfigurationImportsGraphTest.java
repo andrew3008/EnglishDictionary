@@ -37,7 +37,8 @@ class AutoConfigurationImportsGraphTest {
         List<String> lines = moduleImportLines();
         List<String> candidates = ImportCandidates.load(
                 AutoConfiguration.class,
-                AutoConfigurationImportsGraphTest.class.getClassLoader()).getCandidates();
+                AutoConfigurationImportsGraphTest.class.getClassLoader()
+        ).getCandidates();
 
         // then
         assertThat(lines).isNotEmpty();
