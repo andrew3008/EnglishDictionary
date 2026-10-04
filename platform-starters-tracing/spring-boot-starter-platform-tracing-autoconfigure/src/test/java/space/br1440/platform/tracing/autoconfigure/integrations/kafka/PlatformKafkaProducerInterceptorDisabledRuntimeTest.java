@@ -26,9 +26,9 @@ class PlatformKafkaProducerInterceptorDisabledRuntimeTest {
     void disabledConfigurationDoesNotComposeRequestId() {
         TracingRuntime runtime = NoOpTracingRuntime.disabledByConfiguration("platform.tracing.enabled=false");
         RequestIdentityBoundarySupport identityBoundary = new RequestIdentityBoundarySupport(runtime);
-        PlatformKafkaProducerInterceptor<String, String> interceptor = interceptor(identityBoundary);
 
-        try (CorrelationScope ignored = runtime.openRequestIdentityScope("request-42");
+        try (PlatformKafkaProducerInterceptor<String, String> interceptor = interceptor(identityBoundary);
+             CorrelationScope ignored = runtime.openRequestIdentityScope("request-42");
              CorrelationScope ignored1 = runtime.openCorrelationScope("workflow-99")) {
             assertThat(runtime.currentRequestId()).contains("request-42");
             assertThat(runtime.currentCorrelationId()).contains("workflow-99");
@@ -76,6 +76,7 @@ class PlatformKafkaProducerInterceptorDisabledRuntimeTest {
         return new String(record.headers().lastHeader(name).value(), StandardCharsets.UTF_8);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static byte[] bytes(String value) {
         return value.getBytes(StandardCharsets.UTF_8);
     }
