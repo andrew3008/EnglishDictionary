@@ -59,8 +59,8 @@ public final class PlatformKafkaProducerInterceptor<K, V> implements ProducerInt
     @Override
     public void configure(Map<String, ?> configs) {
         Object policyObj = configs.get(CONFIG_POLICY);
-        if (policyObj instanceof OutboundPropagationPolicy p) {
-            this.policy = p;
+        if (policyObj instanceof OutboundPropagationPolicy propagationPolicy) {
+            this.policy = propagationPolicy;
         }
 
         Object propagationObj = configs.get(CONFIG_PROPAGATION);
@@ -74,10 +74,14 @@ public final class PlatformKafkaProducerInterceptor<K, V> implements ProducerInt
         }
     }
 
-    private static void apply(Headers carrier, OutboundPropagationHeaders headers) {
+    private void apply(Headers carrier, OutboundPropagationHeaders headers) {
         headers.forceTrace().ifPresent(header -> set(carrier, header));
         headers.qaTrace().ifPresent(header -> set(carrier, header));
-        headers.requestId().ifPresent(header -> set(carrier, header));
+
+        if (identityBoundary == null || !identityBoundary.tracingDisabledByConfiguration()) {
+            headers.requestId().ifPresent(header -> set(carrier, header));
+        }
+
         headers.correlationId().ifPresent(header -> set(carrier, header));
     }
 
