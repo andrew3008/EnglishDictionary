@@ -10,13 +10,11 @@ import org.springframework.context.annotation.Bean;
 
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot;
+import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 
-/**
- * Авто-конфигурация поставщика {@link RequestTraceContextSnapshot} для платформенного решения по error-handling'у.
- */
-@AutoConfiguration
+@AutoConfiguration(after = TracingRuntimeAutoConfiguration.class)
 public class RequestContextSupplierAutoConfiguration {
 
     @Bean

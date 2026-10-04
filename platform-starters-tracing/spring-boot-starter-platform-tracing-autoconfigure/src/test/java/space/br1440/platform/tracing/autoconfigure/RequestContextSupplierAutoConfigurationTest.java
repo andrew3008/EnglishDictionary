@@ -1,29 +1,30 @@
 package space.br1440.platform.tracing.autoconfigure;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.function.Supplier;
+
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
+
 import space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot;
 import space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestContextSupplierAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestTraceContextSnapshotSupplier;
 
-import java.util.function.Supplier;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * Тесты {@link RequestContextSupplierAutoConfiguration}.
- * <p>
- * Главная цель — закрепить инвариант: bean {@code platformRequestTraceContextSnapshotSupplier}
- * регистрируется <b>всегда</b> при наличии модуля на classpath, в т.ч. при выключенной трассировке
- * ({@code platform.tracing.enabled=false}). Без этого инварианта downstream-слой (error-handling)
- * не получит снимок контекста для маппинга в {@code RequestContext}.
- */
 class RequestContextSupplierAutoConfigurationTest {
 
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(RequestContextSupplierAutoConfiguration.class));
+
+    @Test
+    void processedAfterTracingRuntimeAutoConfiguration() {
+        // given
+        assertThat(RequestContextSupplierAutoConfiguration.class.getAnnotation(AutoConfiguration.class).after())
+                .contains(TracingRuntimeAutoConfiguration.class);
+    }
 
     @Test
     void supplier_registers_by_default() {
@@ -36,7 +37,6 @@ class RequestContextSupplierAutoConfigurationTest {
 
     @Test
     void supplier_registers_when_tracing_disabled() {
-        // Главный регресс-тест: при platform.tracing.enabled=false bean всё равно есть.
         runner.withPropertyValues("platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasBean("platformRequestTraceContextSnapshotSupplier");
@@ -45,7 +45,6 @@ class RequestContextSupplierAutoConfigurationTest {
                     Supplier<RequestTraceContextSnapshot> supplier =
                             (Supplier<RequestTraceContextSnapshot>) context.getBean("platformRequestTraceContextSnapshotSupplier");
 
-                    // Smoke-проверка: вызов get() не бросает исключений при отсутствии активного span'а.
                     RequestTraceContextSnapshot ctx = supplier.get();
                     assertThat(ctx).isNotNull();
                     assertThat(ctx.traceId()).isNull();
@@ -66,9 +65,6 @@ class RequestContextSupplierAutoConfigurationTest {
                 });
     }
 
-    /**
-     * Кастомная конфигурация для проверки {@code @ConditionalOnMissingBean(name=...)}.
-     */
     static class CustomSupplierConfig {
 
         @Bean(name = "platformRequestTraceContextSnapshotSupplier")
