@@ -35,7 +35,7 @@ import lombok.extern.slf4j.Slf4j;
  * и {@link TracedAttribute}.
  * <p>
  * <b>Ordering.</b> {@link Ordered#HIGHEST_PRECEDENCE}{@code + 1} — span охватывает
- * {@code @Transactional} и платформенные Kafka-аспекты с default {@link Ordered#LOWEST_PRECEDENCE}.
+ * Kafka request-identity aspect и transaction advice с дефолтным {@link Ordered#LOWEST_PRECEDENCE}.
  * <p>
  * <b>Ограничения.</b> Только публичные не-{@code final} методы Spring-бинов при внешнем вызове;
  * self-invocation — silent no-op. Async/reactive возвращаемые типы и {@code @Async} запрещены

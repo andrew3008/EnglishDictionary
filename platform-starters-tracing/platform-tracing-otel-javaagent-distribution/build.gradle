@@ -374,7 +374,8 @@ testing {
 
             suite.dependencies.implementation.add(otelProtoCoordinate)
             suite.dependencies.implementation.add(protobufJavaCoordinate)
-            suite.dependencies.compileOnly.add(otelApiModule + ':' + otelSdkVersion)
+            suite.dependencies.implementation.add(project.dependencies.project([path: tracingApiProjectPath]))
+            suite.dependencies.implementation.add(otelApiModule + ':' + otelSdkVersion)
         }
     }
 }

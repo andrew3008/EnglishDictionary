@@ -33,6 +33,7 @@ import org.junit.jupiter.api.io.TempDir;
 import com.sun.tools.attach.AttachNotSupportedException;
 import com.sun.tools.attach.VirtualMachine;
 
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 class ControlledAgentRuntimeTest {
@@ -80,6 +81,32 @@ class ControlledAgentRuntimeTest {
             StimulusSpan stimulus = assertSpanAttributeValidationDiagnosticObserved(result);
             assertInvalidSpanExportedWithViolationMarker(collector, stimulus);
             assertErrorDiagnosticEmitted(result);
+        }
+    }
+
+    @Test
+    void controlled_agent_copies_request_id_from_local_parent_onto_exported_child() throws Exception {
+        // given
+        AgentTestFixture fixture = AgentTestFixture.load();
+
+        try (OtlpTraceCollector collector = OtlpTraceCollector.startAcceptingAllSpans()) {
+
+            // when
+            ChildProcessResult result = runRequestIdPropagationProbe(fixture, collector.tracesEndpoint());
+
+            // then
+            assertProcessCompletedSuccessfully(result);
+            assertThat(result.stdout()).contains(RequestIdPropagationProbe.OK_PREFIX);
+            OtlpTraceCollector.ReceivedSpan child = awaitExportedSpan(collector, RequestIdPropagationProbe.CHILD_SPAN_NAME);
+            OtlpTraceCollector.ReceivedSpan parent = awaitExportedSpan(collector, RequestIdPropagationProbe.PARENT_SPAN_NAME);
+            assertThat(RequestIdPropagationProbe.REQUEST_ID_KEY)
+                    .isEqualTo(PlatformAttributes.PLATFORM_REQUEST_ID);
+            assertThat(child.stringAttributes())
+                    .containsEntry(RequestIdPropagationProbe.REQUEST_ID_KEY, RequestIdPropagationProbe.REQUEST_ID);
+            assertThat(parent.stringAttributes())
+                    .containsEntry(RequestIdPropagationProbe.REQUEST_ID_KEY, RequestIdPropagationProbe.REQUEST_ID);
+            assertThat(child.traceId()).isEqualTo(parent.traceId());
+            assertThat(child.parentSpanId()).isEqualTo(parent.spanId());
         }
     }
 
@@ -438,6 +465,33 @@ class ControlledAgentRuntimeTest {
         return new ChildProcessResult(finished, exitCode, stdout, stderr);
     }
 
+    private ChildProcessResult runRequestIdPropagationProbe(AgentTestFixture fixture, String tracesEndpoint)
+            throws IOException, InterruptedException, URISyntaxException {
+        Path javaExecutable = javaExecutable();
+        Path probeClassPath = probeClassPath(RequestIdPropagationProbe.class);
+        Path stdoutFile = temporaryDirectory.resolve("request-id-propagation-child.stdout.log");
+        Path stderrFile = temporaryDirectory.resolve("request-id-propagation-child.stderr.log");
+
+        ProcessBuilder processBuilder = new ProcessBuilder(
+                requestIdPropagationChildCommand(javaExecutable, probeClassPath, fixture, tracesEndpoint)
+        );
+        removeContaminatingEnvironment(processBuilder.environment());
+        processBuilder.redirectOutput(stdoutFile.toFile());
+        processBuilder.redirectError(stderrFile.toFile());
+
+        Process process = processBuilder.start();
+        boolean finished = process.waitFor(WAIT_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        if (!finished) {
+            process.destroyForcibly().waitFor(KILL_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        }
+
+        String stdout = Files.readString(stdoutFile, StandardCharsets.UTF_8);
+        String stderr = Files.readString(stderrFile, StandardCharsets.UTF_8);
+        Integer exitCode = finished ? process.exitValue() : null;
+
+        return new ChildProcessResult(finished, exitCode, stdout, stderr);
+    }
+
     private ChildProcessResult runOtlpPartialSuccessProbe(AgentTestFixture fixture, String tracesEndpoint)
             throws IOException, InterruptedException, URISyntaxException {
         Path javaExecutable = javaExecutable();
@@ -562,6 +616,25 @@ class ControlledAgentRuntimeTest {
         assertThat(exported.stringAttributes().get(VALIDATION_MISSING_ATTRIBUTE_KEY))
                 .as("The marker must name the producer-owned attribute that was missing")
                 .contains("platform.trace.result");
+    }
+
+    private static OtlpTraceCollector.ReceivedSpan awaitExportedSpan(OtlpTraceCollector collector, String spanName) {
+        try {
+            return await("export of span " + spanName)
+                    .atMost(EXPORT_TIMEOUT)
+                    .pollInterval(EXPORT_POLL_INTERVAL)
+                    .until(() -> collector.receivedSpans().stream()
+                                    .filter(span -> spanName.equals(span.name()))
+                                    .findFirst(),
+                            Optional::isPresent)
+                    .orElseThrow();
+        } catch (ConditionTimeoutException timeout) {
+            throw new AssertionError(
+                    "The span was never exported: name=%s receivedSpans=%s"
+                            .formatted(spanName, collector.receivedSpans()),
+                    timeout
+            );
+        }
     }
 
     private static OtlpTraceCollector.ReceivedSpan awaitExportedSpan(OtlpTraceCollector collector, StimulusSpan stimulus) {
@@ -784,6 +857,36 @@ class ControlledAgentRuntimeTest {
         command.add("-cp");
         command.add(probeClassPath + File.pathSeparator + openTelemetryApiClasspathEntries());
         command.add(SpanAttributeValidationDiagnosticProbe.class.getName());
+        return command;
+    }
+
+    private static List<String> requestIdPropagationChildCommand(Path javaExecutable,
+                                                                 Path probeClassPath,
+                                                                 AgentTestFixture fixture,
+                                                                 String tracesEndpoint) {
+        List<String> command = new ArrayList<>();
+        command.add(javaExecutable.toString());
+        command.add("-Dfile.encoding=UTF-8");
+        command.add("-Dsun.stdout.encoding=UTF-8");
+        command.add("-Dsun.stderr.encoding=UTF-8");
+        command.add("-Dotel.traces.exporter=otlp");
+        command.add("-Dotel.exporter.otlp.traces.protocol=http/protobuf");
+        command.add("-Dotel.exporter.otlp.traces.endpoint=" + tracesEndpoint);
+        command.add("-Dotel.exporter.otlp.traces.compression=none");
+        command.add("-Dotel.metrics.exporter=none");
+        command.add("-Dotel.logs.exporter=none");
+        command.add("-Dotel.bsp.schedule.delay=200");
+        command.add("-Dplatform.tracing.sampling.enabled=true");
+        command.add("-Dplatform.tracing.sampling.ratio=1.0");
+        command.add("-Dplatform.tracing.service.name=controlled-agent-runtime-test");
+        command.add("-Dplatform.tracing.service.version=1.0.0");
+        command.add("-Dplatform.tracing.service.environment=test");
+        command.add("-Dplatform.tracing.resource.validation-mode=ERROR");
+        command.add("-Dplatform.tracing.controlled-agent.expected-sha256=" + fixture.expectedControlledAgentSha());
+        command.add("-javaagent:" + fixture.controlledAgent());
+        command.add("-cp");
+        command.add(probeClassPath + File.pathSeparator + openTelemetryApiClasspathEntries());
+        command.add(RequestIdPropagationProbe.class.getName());
         return command;
     }
 

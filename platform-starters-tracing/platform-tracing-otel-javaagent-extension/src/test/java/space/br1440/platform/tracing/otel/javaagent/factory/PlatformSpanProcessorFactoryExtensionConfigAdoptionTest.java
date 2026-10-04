@@ -200,8 +200,8 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
             // then
             assertThat(getComposite(registrar).getProcessorErrorCounts().keySet())
-                    .as("validation and enrichment are mandatory factory delegates")
-                    .containsExactly("validation", "enrichment");
+                    .as("validation, enrichment, and request id propagation are mandatory factory delegates")
+                    .containsExactly("validation", "enrichment", "request_id_propagation");
         }
 
         @Test

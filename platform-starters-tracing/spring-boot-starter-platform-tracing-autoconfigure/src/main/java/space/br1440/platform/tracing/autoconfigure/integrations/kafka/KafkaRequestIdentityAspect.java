@@ -1,25 +1,43 @@
 package space.br1440.platform.tracing.autoconfigure.integrations.kafka;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.springframework.core.Ordered;
 
 import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
+import space.br1440.platform.tracing.api.span.enrich.SpanEnricher;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdBoundarySupport;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Aspect
-public final class KafkaRequestIdentityAspect {
+public final class KafkaRequestIdentityAspect implements Ordered {
+
+    static final int ORDER = Ordered.LOWEST_PRECEDENCE - 100;
 
     private final RequestIdentityBoundarySupport identityBoundary;
+    private final SpanEnricher spanEnricher;
+    private final AtomicBoolean seedFailureLogged = new AtomicBoolean();
 
-    public KafkaRequestIdentityAspect(RequestIdentityBoundarySupport identityBoundary) {
-        this.identityBoundary = identityBoundary;
+    public KafkaRequestIdentityAspect(RequestIdentityBoundarySupport identityBoundary,
+                                      SpanEnricher spanEnricher) {
+        this.identityBoundary = Objects.requireNonNull(identityBoundary, "identityBoundary must not be null");
+        this.spanEnricher = Objects.requireNonNull(spanEnricher, "spanEnricher must not be null");
+    }
+
+    @Override
+    public int getOrder() {
+        return ORDER;
     }
 
     @Around("@annotation(org.springframework.kafka.annotation.KafkaListener)")
@@ -31,7 +49,18 @@ public final class KafkaRequestIdentityAspect {
 
         String requestId = resolveAndAttach(record);
         try (CorrelationScope ignored = identityBoundary.openRequestScope(requestId)) {
+            seedRequestId(requestId);
             return joinPoint.proceed();
+        }
+    }
+
+    private void seedRequestId(String requestId) {
+        try {
+            spanEnricher.enrichCurrentSpan(enrichment -> enrichment.requestId(requestId));
+        } catch (RuntimeException failure) {
+            if (seedFailureLogged.compareAndSet(false, true)) {
+                log.warn("Failed to seed request id on the current span: {}", failure.getClass().getName());
+            }
         }
     }
 

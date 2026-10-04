@@ -10,6 +10,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
@@ -28,17 +29,20 @@ import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBound
 import space.br1440.platform.tracing.autoconfigure.integrations.kafka.KafkaRequestIdentityAspect;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
+import space.br1440.platform.tracing.otel.span.enrich.DefaultSpanEnricher;
 import space.br1440.platform.tracing.test.TraceOperationsTestExtension;
 
 /**
- * Доказывает относительный ordering: {@link TracedAspect} внешний к {@code @Transactional}
- * и к платформенному Kafka-аспекту с default {@link Ordered#LOWEST_PRECEDENCE}.
+ * Порядок advice в {@link AspectJProxyFactory}.
+ * {@link TransactionBoundaryAspect} — stub с {@link Ordered#LOWEST_PRECEDENCE}, не {@code TransactionInterceptor}.
+ * Порядок production beans относительно настоящего transaction advice доказывает
+ * {@code KafkaRequestIdentityOrderAndSeedTest}.
  */
 @ExtendWith(TraceOperationsTestExtension.class)
 class TracedAspectOrderingTest {
 
     @Test
-    void tracedAspectIsOuterRelativeToTransactionalAdvice(TraceOperations tracing) {
+    void tracedAspectIsOuterRelativeToLowestPrecedenceStub(TraceOperations tracing) {
         // given
         List<String> events = new ArrayList<>();
         RecordingTransactionManager txManager = new RecordingTransactionManager(events);
@@ -64,8 +68,10 @@ class TracedAspectOrderingTest {
         // given
         List<String> events = new ArrayList<>();
         TracingRuntime runtime = NoOpTracingRuntime.noop();
-        KafkaRequestIdentityAspect kafkaAspect =
-                new KafkaRequestIdentityAspect(new RequestIdentityBoundarySupport(runtime));
+        KafkaRequestIdentityAspect kafkaAspect = new KafkaRequestIdentityAspect(
+                new RequestIdentityBoundarySupport(runtime),
+                new DefaultSpanEnricher()
+        );
         AspectJProxyFactory factory = new AspectJProxyFactory(new KafkaListenerService(events));
         factory.addAspect(new RecordingTracedAspect(new TracedAspect(tracing), events));
         factory.addAspect(new RecordingKafkaAspect(kafkaAspect, events));
@@ -174,8 +180,7 @@ class TracedAspectOrderingTest {
     }
 
     /**
-     * Записывает enter/exit вокруг {@link KafkaRequestIdentityAspect} с order
-     * {@link Ordered#LOWEST_PRECEDENCE} (как у аспекта без явного Ordered).
+     * Записывает enter/exit вокруг {@link KafkaRequestIdentityAspect}, сохраняя его order.
      */
     @Aspect
     static final class RecordingKafkaAspect implements Ordered {
@@ -199,12 +204,12 @@ class TracedAspectOrderingTest {
 
         @Override
         public int getOrder() {
-            return Ordered.LOWEST_PRECEDENCE;
+            return delegate.getOrder();
         }
     }
 
     /**
-     * Упрощённый transaction advice с {@link Ordered#LOWEST_PRECEDENCE}.
+     * Stub transaction advice с {@link Ordered#LOWEST_PRECEDENCE}.
      */
     @Aspect
     static final class TransactionBoundaryAspect implements Ordered {
@@ -244,18 +249,18 @@ class TracedAspectOrderingTest {
         }
 
         @Override
-        public TransactionStatus getTransaction(TransactionDefinition definition)
+        public @NotNull TransactionStatus getTransaction(TransactionDefinition definition)
                 throws TransactionException {
             return new SimpleTransactionStatus();
         }
 
         @Override
-        public void commit(TransactionStatus status) throws TransactionException {
+        public void commit(@NotNull TransactionStatus status) throws TransactionException {
             events.add("tx:commit");
         }
 
         @Override
-        public void rollback(TransactionStatus status) throws TransactionException {
+        public void rollback(@NotNull TransactionStatus status) throws TransactionException {
             events.add("tx:rollback");
         }
     }

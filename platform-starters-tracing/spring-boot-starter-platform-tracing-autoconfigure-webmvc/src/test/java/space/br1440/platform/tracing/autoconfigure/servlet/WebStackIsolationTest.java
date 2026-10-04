@@ -31,28 +31,58 @@ class WebStackIsolationTest {
 
     @Test
     void servletApplicationActivatesOnlyServletBeans() {
-        new WebApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(
-                        ServletTracingAutoConfiguration.class,
-                        ReactiveTracingAutoConfiguration.class))
-                .withBean(TraceOperations.class,
-                        () -> space.br1440.platform.tracing.otel.facade.NoopTraceOperations.INSTANCE)
-                .withBean(TracingProperties.class, TracingProperties::new)
-                .withBean(RequestIdentityBoundarySupport.class,
-                        () -> new RequestIdentityBoundarySupport(NoOpTracingRuntime.noop()))
-                .withBean(InboundTraceControlExtractor.class, DefaultInboundTraceControlExtractor::new)
-                .run(context -> {
-                    assertThat(context).hasSingleBean(PlatformServerRequestObservationConvention.class);
-                    assertThat(context).hasBean("platformTraceResponseHeaderServletFilterRegistration");
+        // when
+        servletRunner().run(context -> {
+            // then
+            assertThat(context).hasNotFailed();
+            assertThat(context).hasSingleBean(PlatformServerRequestObservationConvention.class);
+            assertThat(context).hasBean("platformTraceResponseHeaderServletFilterRegistration");
 
-                    assertThat(context).doesNotHaveBean(PlatformReactiveServerRequestObservationConvention.class);
-                    assertThat(context).doesNotHaveBean(TraceResponseHeaderWebFilter.class);
+            assertThat(context).doesNotHaveBean(PlatformReactiveServerRequestObservationConvention.class);
+            assertThat(context).doesNotHaveBean(TraceResponseHeaderWebFilter.class);
+        });
+    }
+
+    @Test
+    void servletRequestIdFilterAbsentWhenTracingDisabled() {
+        // when
+        servletRunner()
+                .withPropertyValues("platform.tracing.enabled=false")
+                .run(context -> {
+                    // then
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).doesNotHaveBean("platformTraceResponseHeaderServletFilterRegistration");
                 });
     }
 
     @Test
     void reactiveApplicationActivatesOnlyReactiveBeans() {
-        new ReactiveWebApplicationContextRunner()
+        // when
+        reactiveRunner().run(context -> {
+            // then
+            assertThat(context).hasNotFailed();
+            assertThat(context).hasSingleBean(PlatformReactiveServerRequestObservationConvention.class);
+            assertThat(context).hasSingleBean(TraceResponseHeaderWebFilter.class);
+
+            assertThat(context).doesNotHaveBean(PlatformServerRequestObservationConvention.class);
+            assertThat(context).doesNotHaveBean(TraceResponseHeaderServletFilter.class);
+        });
+    }
+
+    @Test
+    void reactiveRequestIdFilterAbsentWhenTracingDisabled() {
+        // when
+        reactiveRunner()
+                .withPropertyValues("platform.tracing.enabled=false")
+                .run(context -> {
+                    // then
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).doesNotHaveBean(TraceResponseHeaderWebFilter.class);
+                });
+    }
+
+    private static WebApplicationContextRunner servletRunner() {
+        return new WebApplicationContextRunner()
                 .withConfiguration(AutoConfigurations.of(
                         ServletTracingAutoConfiguration.class,
                         ReactiveTracingAutoConfiguration.class))
@@ -61,13 +91,19 @@ class WebStackIsolationTest {
                 .withBean(TracingProperties.class, TracingProperties::new)
                 .withBean(RequestIdentityBoundarySupport.class,
                         () -> new RequestIdentityBoundarySupport(NoOpTracingRuntime.noop()))
-                .withBean(InboundTraceControlExtractor.class, DefaultInboundTraceControlExtractor::new)
-                .run(context -> {
-                    assertThat(context).hasSingleBean(PlatformReactiveServerRequestObservationConvention.class);
-                    assertThat(context).hasSingleBean(TraceResponseHeaderWebFilter.class);
+                .withBean(InboundTraceControlExtractor.class, DefaultInboundTraceControlExtractor::new);
+    }
 
-                    assertThat(context).doesNotHaveBean(PlatformServerRequestObservationConvention.class);
-                    assertThat(context).doesNotHaveBean(TraceResponseHeaderServletFilter.class);
-                });
+    private static ReactiveWebApplicationContextRunner reactiveRunner() {
+        return new ReactiveWebApplicationContextRunner()
+                .withConfiguration(AutoConfigurations.of(
+                        ServletTracingAutoConfiguration.class,
+                        ReactiveTracingAutoConfiguration.class))
+                .withBean(TraceOperations.class,
+                        () -> space.br1440.platform.tracing.otel.facade.NoopTraceOperations.INSTANCE)
+                .withBean(TracingProperties.class, TracingProperties::new)
+                .withBean(RequestIdentityBoundarySupport.class,
+                        () -> new RequestIdentityBoundarySupport(NoOpTracingRuntime.noop()))
+                .withBean(InboundTraceControlExtractor.class, DefaultInboundTraceControlExtractor::new);
     }
 }

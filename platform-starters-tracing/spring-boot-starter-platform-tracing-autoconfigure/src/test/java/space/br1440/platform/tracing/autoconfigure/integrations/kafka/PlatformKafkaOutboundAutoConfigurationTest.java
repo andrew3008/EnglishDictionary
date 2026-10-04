@@ -7,9 +7,14 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders;
+import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
+import space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestContextSupplierAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 
@@ -43,6 +48,42 @@ class PlatformKafkaOutboundAutoConfigurationTest {
                 .withPropertyValues("platform.tracing.kafka.mode=disabled")
                 .run(context -> assertThat(context)
                         .hasSingleBean(PlatformKafkaProducerFactoryCustomizer.class));
+    }
+
+    @Test
+    void tracingDisabledOmitsProducerCustomizerWithPlatformPropagation() {
+        // when
+        contextRunner
+                .withPropertyValues("platform.tracing.enabled=false")
+                .run(context -> {
+                    // then
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).doesNotHaveBean(PlatformOutboundPropagation.class);
+                    assertThat(context).doesNotHaveBean(PlatformKafkaProducerFactoryCustomizer.class);
+                });
+    }
+
+    @Test
+    void userPropagationKeepsCustomizerWhenTracingDisabled() {
+        // when
+        new ApplicationContextRunner()
+                .withConfiguration(AutoConfigurations.of(
+                        PlatformKafkaOutboundAutoConfiguration.class,
+                        TracingControlChannelAutoConfiguration.class,
+                        TracingRuntimeAutoConfiguration.class,
+                        RequestContextSupplierAutoConfiguration.class))
+                .withPropertyValues(
+                        "platform.tracing.enabled=false",
+                        "platform.tracing.control.channel=STATIC",
+                        "platform.tracing.kafka.propagate-platform-headers=true")
+                .withBean(PlatformOutboundPropagation.class,
+                        () -> (decision, control) -> OutboundPropagationHeaders.EMPTY)
+                .run(context -> {
+                    // then
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).hasSingleBean(RequestIdentityBoundarySupport.class);
+                    assertThat(context).hasSingleBean(PlatformKafkaProducerFactoryCustomizer.class);
+                });
     }
 
     @Test

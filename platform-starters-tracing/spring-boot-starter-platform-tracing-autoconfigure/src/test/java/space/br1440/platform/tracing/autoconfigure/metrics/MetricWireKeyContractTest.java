@@ -71,6 +71,7 @@ class MetricWireKeyContractTest {
                 .containsExactlyInAnyOrder(
                         "baggage",
                         "enrichment",
+                        "request_id_propagation",
                         "scrubbing",
                         "validation",
                         "classification",

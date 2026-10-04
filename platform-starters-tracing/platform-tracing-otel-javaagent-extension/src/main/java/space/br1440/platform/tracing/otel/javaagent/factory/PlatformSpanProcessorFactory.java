@@ -14,6 +14,7 @@ import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEv
 import space.br1440.platform.tracing.otel.javaagent.processor.BaggageSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ClassificationSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.EnrichingSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.RequestIdPropagatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
@@ -60,6 +61,7 @@ public final class PlatformSpanProcessorFactory {
         baggageProcessor(extConfig).ifPresent(delegates::add);
         validatingProcessor(acceptedPolicy, delegates);
         delegates.add(new EnrichingSpanProcessor());
+        delegates.add(new RequestIdPropagatingSpanProcessor());
         classificationProcessor(extConfig).ifPresent(delegates::add);
         spanTimeoutProcessor(extConfig).ifPresent(delegates::add);
         metricsProcessor(extConfig).ifPresent(delegates::add);

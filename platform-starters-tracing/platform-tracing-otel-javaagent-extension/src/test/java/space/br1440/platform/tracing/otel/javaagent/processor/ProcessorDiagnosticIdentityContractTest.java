@@ -25,7 +25,7 @@ class ProcessorDiagnosticIdentityContractTest {
             "space.br1440.platform.tracing.otel.javaagent.processor..";
 
     @Test
-    void identityContractIsOwnedByExactlySevenDomainProcessorsAndNotAnExternalSpi() {
+    void identityContractIsOwnedByExactlyEightDomainProcessorsAndNotAnExternalSpi() {
         // given
         // then
         assertThat(Modifier.isPublic(ProcessorDiagnosticIdentity.class.getModifiers())).isTrue();
@@ -39,6 +39,7 @@ class ProcessorDiagnosticIdentityContractTest {
             List<ProcessorDiagnosticIdentity> processors = List.of(
                     new BaggageSpanProcessor(Set.of(), List.of()),
                     new EnrichingSpanProcessor(),
+                    new RequestIdPropagatingSpanProcessor(),
                     ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of()),
                     new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING)),
                     new ClassificationSpanProcessor(Duration.ofSeconds(5), Duration.ofSeconds(1)),
@@ -51,6 +52,7 @@ class ProcessorDiagnosticIdentityContractTest {
                     .containsExactly(
                             "baggage",
                             "enrichment",
+                            "request_id_propagation",
                             "scrubbing",
                             "validation",
                             "classification",
@@ -101,6 +103,7 @@ class ProcessorDiagnosticIdentityContractTest {
                 .containsExactlyInAnyOrder(
                         "BaggageSpanProcessor",
                         "EnrichingSpanProcessor",
+                        "RequestIdPropagatingSpanProcessor",
                         "ScrubbingSpanProcessor",
                         "ValidatingSpanProcessor",
                         "ClassificationSpanProcessor",

@@ -138,11 +138,15 @@ final class OtlpTraceCollector implements AutoCloseable {
         }
 
         HexFormat hex = HexFormat.of();
+        String parentSpanId = span.getParentSpanId().isEmpty()
+                ? ""
+                : hex.formatHex(span.getParentSpanId().toByteArray());
         return new ReceivedSpan(
                 hex.formatHex(span.getTraceId().toByteArray()),
                 hex.formatHex(span.getSpanId().toByteArray()),
                 span.getName(),
-                Map.copyOf(attributes)
+                Map.copyOf(attributes),
+                parentSpanId
         );
     }
 
@@ -175,6 +179,10 @@ final class OtlpTraceCollector implements AutoCloseable {
         }
     }
 
-    record ReceivedSpan(String traceId, String spanId, String name, Map<String, String> stringAttributes) {
+    record ReceivedSpan(String traceId,
+                        String spanId,
+                        String name,
+                        Map<String, String> stringAttributes,
+                        String parentSpanId) {
     }
 }

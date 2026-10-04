@@ -5,6 +5,7 @@ enum ProcessorCompositeErrorKey {
     TOTAL(null),
     BAGGAGE("baggage"),
     ENRICHMENT("enrichment"),
+    REQUEST_ID_PROPAGATION("request_id_propagation"),
     SCRUBBING("scrubbing"),
     VALIDATION("validation"),
     CLASSIFICATION("classification"),
