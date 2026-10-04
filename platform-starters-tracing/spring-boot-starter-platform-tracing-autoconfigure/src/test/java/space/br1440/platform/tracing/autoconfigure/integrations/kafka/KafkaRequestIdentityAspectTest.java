@@ -162,6 +162,7 @@ class KafkaRequestIdentityAspectTest {
         return value.getBytes(StandardCharsets.UTF_8);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static String header(ConsumerRecord<?, ?> record, String name) {
         return new String(record.headers().lastHeader(name).value(), StandardCharsets.UTF_8);
     }

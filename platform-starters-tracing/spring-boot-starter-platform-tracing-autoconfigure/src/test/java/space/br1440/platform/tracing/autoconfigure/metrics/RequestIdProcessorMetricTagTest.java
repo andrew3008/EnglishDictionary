@@ -13,7 +13,6 @@ import static org.mockito.Mockito.withSettings;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
 
@@ -43,49 +42,50 @@ class RequestIdProcessorMetricTagTest {
     private static final String PROCESSOR_TAG = "request_id_propagation";
 
     @Test
-    void binderPublishesRequestIdPropagationErrorsWithoutTheRequestId() throws Exception {
+    void binderPublishesRequestIdPropagationErrorsWithoutTheRequestId() {
         // given
-        PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(
-                List.of(new RequestIdPropagatingSpanProcessor()));
-        AttributeKey<String> requestIdKey = AttributeKey.stringKey(PlatformAttributes.PLATFORM_REQUEST_ID);
-        Span parent = mock(Span.class, withSettings()
-                .extraInterfaces(ReadableSpan.class)
-                .defaultAnswer(CALLS_REAL_METHODS));
-        ReadableSpan readableParent = (ReadableSpan) parent;
-        doReturn(CANONICAL_REQUEST_ID).when(readableParent).getAttribute(requestIdKey);
-        ReadWriteSpan child = mock(ReadWriteSpan.class);
-        when(child.getAttribute(any())).thenReturn(null);
-        doThrow(new IllegalStateException("attribute write failed"))
-                .when(child)
-                .setAttribute(requestIdKey, CANONICAL_REQUEST_ID);
+        try (PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(
+                List.of(new RequestIdPropagatingSpanProcessor())
+        )) {
+            AttributeKey<String> requestIdKey = AttributeKey.stringKey(PlatformAttributes.PLATFORM_REQUEST_ID);
+            Span parent = mock(Span.class, withSettings()
+                    .extraInterfaces(ReadableSpan.class)
+                    .defaultAnswer(CALLS_REAL_METHODS));
+            ReadableSpan readableParent = (ReadableSpan) parent;
+            doReturn(CANONICAL_REQUEST_ID).when(readableParent).getAttribute(requestIdKey);
+            ReadWriteSpan child = mock(ReadWriteSpan.class);
+            when(child.getAttribute(any())).thenReturn(null);
+            doThrow(new IllegalStateException("attribute write failed"))
+                    .when(child)
+                    .setAttribute(requestIdKey, CANONICAL_REQUEST_ID);
 
-        // when
-        composite.onStart(Context.root().with(parent), child);
-        Map<String, Long> counts = composite.getProcessorErrorCounts();
-        composite.shutdown().join(1, TimeUnit.SECONDS);
+            // when
+            composite.onStart(Context.root().with(parent), child);
+            Map<String, Long> counts = composite.getProcessorErrorCounts();
 
-        // then
-        assertThat(counts).containsEntry(PROCESSOR_TAG, 1L);
-        long total = counts.values().stream().mapToLong(Long::longValue).sum();
-        PlatformTracingJmxClient client = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
-        when(client.processorMetrics().observation()).thenReturn(Optional.of(new ProcessorMetricsObservation(
-                new ObservationCapture(AGENT_INSTANCE_ID, 1L, 1_000L, 1_001L),
-                new JmxOwnerState.Absent<>(0L),
-                new JmxOwnerState.Present<>(new ProcessorCompositeValues(total, counts), 1L),
-                new JmxOwnerState.Absent<>(0L)
-        )));
-        SimpleMeterRegistry registry = new SimpleMeterRegistry();
-        new PlatformTracingProcessorMetricsBinder(client).bindTo(registry);
+            // then
+            assertThat(counts).containsEntry(PROCESSOR_TAG, 1L);
+            long total = counts.values().stream().mapToLong(Long::longValue).sum();
+            PlatformTracingJmxClient client = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
+            when(client.processorMetrics().observation()).thenReturn(Optional.of(new ProcessorMetricsObservation(
+                    new ObservationCapture(AGENT_INSTANCE_ID, 1L, 1_000L, 1_001L),
+                    new JmxOwnerState.Absent<>(0L),
+                    new JmxOwnerState.Present<>(new ProcessorCompositeValues(total, counts), 1L),
+                    new JmxOwnerState.Absent<>(0L)
+            )));
+            SimpleMeterRegistry registry = new SimpleMeterRegistry();
+            new PlatformTracingProcessorMetricsBinder(client).bindTo(registry);
 
-        assertThat(registry.get(ERRORS_BY_NAME)
-                .tag("processor", PROCESSOR_TAG)
-                .functionCounter()
-                .count()).isEqualTo(1.0);
-        assertThat(registry.getMeters()).isNotEmpty();
-        for (Meter meter : registry.getMeters()) {
-            for (Tag tag : meter.getId().getTags()) {
-                assertThat(tag.getKey()).isNotEqualTo(PlatformAttributes.PLATFORM_REQUEST_ID);
-                assertThat(tag.getValue()).isNotEqualTo(CANONICAL_REQUEST_ID);
+            assertThat(registry.get(ERRORS_BY_NAME)
+                    .tag("processor", PROCESSOR_TAG)
+                    .functionCounter()
+                    .count()).isEqualTo(1.0);
+            assertThat(registry.getMeters()).isNotEmpty();
+            for (Meter meter : registry.getMeters()) {
+                for (Tag tag : meter.getId().getTags()) {
+                    assertThat(tag.getKey()).isNotEqualTo(PlatformAttributes.PLATFORM_REQUEST_ID);
+                    assertThat(tag.getValue()).isNotEqualTo(CANONICAL_REQUEST_ID);
+                }
             }
         }
     }
