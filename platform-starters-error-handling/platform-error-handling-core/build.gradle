@@ -15,7 +15,7 @@ ext {
             clickhouse  : '0.9.8',
             expressly   : '5.0.0',
             feign       : '13.5',
-            minio       : '8.5.14',
+            minio       : '8.6.0',
             netty       : '4.1.121.Final',
             protobufJava: '4.29.3',
             resilience4j: '2.3.0',
