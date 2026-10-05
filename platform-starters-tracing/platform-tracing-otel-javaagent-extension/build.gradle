@@ -9,9 +9,6 @@ platformJavaLibrary {
     bomProjectPath = ':spring-boot-starter-platform-bom'
 }
 
-def jolVersion = '0.17'
-def autoServiceVersion = '1.1.1'
-
 def jmxContractProjectPath = ':platform-starters-tracing:platform-tracing-jmx-contract'
 def generateJmxWireContract = "${jmxContractProjectPath}:generateJmxWireContract"
 def generatedJmxContractRoot = project(jmxContractProjectPath).layout.buildDirectory
@@ -82,15 +79,15 @@ dependencies {
     compileOnly 'io.opentelemetry:opentelemetry-exporter-sender-okhttp'
     compileOnly 'io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api'
 
-    compileOnly libs.lombok
-    annotationProcessor libs.lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
 
     testImplementation project(':platform-starters-tracing:platform-tracing-testkit')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'org.mockito:mockito-core'
-    testImplementation "org.openjdk.jol:jol-core:${jolVersion}"
-    testImplementation libs.jsonschema.validator
+    testImplementation "org.openjdk.jol:jol-core:${libs.versions.jol.get()}"
+    testImplementation "com.networknt:json-schema-validator:${libs.versions.json.schema.validator.get()}"
 
     testImplementation 'io.opentelemetry:opentelemetry-sdk'
     testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'
@@ -102,8 +99,8 @@ dependencies {
     testImplementation 'io.opentelemetry:opentelemetry-exporter-logging-otlp'
     testImplementation 'io.opentelemetry:opentelemetry-exporter-otlp'
 
-    testCompileOnly "com.google.auto.service:auto-service-annotations:${autoServiceVersion}"
-    testAnnotationProcessor "com.google.auto.service:auto-service:${autoServiceVersion}"
+    testCompileOnly "com.google.auto.service:auto-service-annotations:${libs.versions.auto.service.get()}"
+    testAnnotationProcessor "com.google.auto.service:auto-service:${libs.versions.auto.service.get()}"
 
     testRuntimeOnly project(path: ':spring-boot-starter-platform-logging', configuration: 'platformLogMaskingElements')
     testRuntimeOnly 'ch.qos.logback:logback-classic'

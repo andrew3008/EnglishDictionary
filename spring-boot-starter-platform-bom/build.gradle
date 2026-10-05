@@ -35,6 +35,8 @@ dependencies {
         api "com.squareup.okhttp3:okhttp:${libs.versions.bom.okhttp.get()}"
         api "io.github.resilience4j:resilience4j-timelimiter:${libs.versions.bom.resilience.get()}"
         api "io.minio:minio:${libs.versions.bom.minio.get()}"
+        api "org.zalando:logbook-core:${libs.versions.bom.logbook.get()}"
+        api "org.zalando:logbook-servlet:${libs.versions.bom.logbook.get()}"
 
         // тестирование и архитектурные проверки
         api "com.tngtech.archunit:archunit-junit5:${libs.versions.archunit.get()}"

@@ -453,6 +453,7 @@ class ControlledAgentArtifactTest {
                         SCHEMA_IDENTITY,
                         EXTENSION_BUILD_METADATA
                 )
+                .anyMatch(name -> name.startsWith("jakarta/annotation/") && name.endsWith(".class"))
                 .doesNotContain(LOG_EVENT_SCHEMA_RESOURCE);
     }
 

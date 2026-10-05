@@ -5,7 +5,7 @@ plugins {
     id 'platform.java-library-publish'
     id 'platform.java-library'
     id 'platform.testing'
-    id 'com.github.spotbugs' version '6.1.2'
+    alias(libs.plugins.postgresReadWriteSplitJdbc.spotbugs)
 }
 
 platformJavaLibrary {
@@ -42,9 +42,9 @@ dependencies {
 
     compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
 
-    compileOnly libs.lombok
+    compileOnly 'org.projectlombok:lombok'
 
-    annotationProcessor libs.lombok
+    annotationProcessor 'org.projectlombok:lombok'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -64,17 +64,17 @@ dependencies {
     testImplementation 'com.h2database:h2'
 
     testImplementation libs.bundles.testcontainers
-    testImplementation libs.testcontainers.postgresql
-    testImplementation libs.testcontainers.toxiproxy
+    testImplementation "org.testcontainers:postgresql:${libs.versions.testcontainers.get()}"
+    testImplementation "org.testcontainers:toxiproxy:${libs.versions.testcontainers.get()}"
 
     testImplementation 'org.postgresql:postgresql'
-    testImplementation libs.awaitility
-    testImplementation libs.archunit.junit5
+    testImplementation "org.awaitility:awaitility:${libs.versions.awaitility.get()}"
+    testImplementation 'com.tngtech.archunit:archunit-junit5'
 
     testImplementation 'ch.qos.logback:logback-classic'
 
-    testCompileOnly libs.lombok
-    testAnnotationProcessor libs.lombok
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
 tasks.named('spotbugsMain') {

@@ -29,9 +29,9 @@ dependencies {
     compileOnly 'org.slf4j:slf4j-api'
     compileOnly 'jakarta.servlet:jakarta.servlet-api'
     compileOnly 'org.springframework:spring-webmvc'
-    compileOnly libs.lombok
+    compileOnly 'org.projectlombok:lombok'
 
-    annotationProcessor libs.lombok
+    annotationProcessor 'org.projectlombok:lombok'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -39,6 +39,6 @@ dependencies {
     testImplementation 'jakarta.servlet:jakarta.servlet-api'
     testImplementation 'io.micrometer:micrometer-tracing-bridge-brave'
     testImplementation 'io.micrometer:micrometer-tracing-test'
+    testImplementation 'com.tngtech.archunit:archunit-junit5'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    testImplementation libs.archunit.junit5
 }

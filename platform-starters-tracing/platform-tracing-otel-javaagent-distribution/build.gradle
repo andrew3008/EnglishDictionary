@@ -1,12 +1,6 @@
 import org.gradle.api.plugins.jvm.JvmTestSuite
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.AtomicMoveNotSupportedException
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.StandardCopyOption
-import java.security.MessageDigest
-import java.util.zip.ZipFile
+import space.br1440.platform.tracing.gradle.AgentDistributionFiles
 
 plugins {
     id 'platform.java-library-publish'
@@ -29,9 +23,8 @@ def tracingApiProjectPath = ':platform-starters-tracing:spring-boot-starter-plat
 def runtimePolicyProjectPath = ':platform-starters-tracing:platform-tracing-runtime-policy'
 def commonUtilProjectPath = ':platform-starters-common:platform-starters-common-util'
 def junitJupiterVersion = libs.versions.junit.jupiter.get()
-def assertjCoordinate = 'org.assertj:assertj-core:' + libs.versions.assertj.get()
 def awaitilityCoordinate = 'org.awaitility:awaitility:' + libs.versions.awaitility.get()
-def jakartaAnnotationApiCoordinate = 'jakarta.annotation:jakarta.annotation-api:2.1.1'
+def jakartaAnnotationApiInclude = 'jakarta.annotation:jakarta.annotation-api:.*'
 def otelProtoCoordinate = 'io.opentelemetry.proto:opentelemetry-proto:' + libs.versions.bom.otelproto.get()
 def protobufJavaCoordinate = 'com.google.protobuf:protobuf-java:' + libs.versions.bom.protobuf.get()
 def shadedPrefix = 'space.br1440.platform.tracing.otel.javaagent.shaded.'
@@ -123,7 +116,7 @@ Provider<Map<String, String>> agentExtensionArtifactCoordinates =
         } as Provider<Map<String, String>>
 
 Provider<Map<String, String>> extensionSchemaIdentity = agentExtensionFile.map { File library ->
-    readExtensionSchemaIdentity(library)
+    AgentDistributionFiles.readExtensionSchemaIdentity(library)
 }
 
 Provider<RegularFile> controlledAgentJarFile = layout.buildDirectory.file('libs/platform-tracing-javaagent-' + project.version + '.jar') as Provider<RegularFile>
@@ -135,12 +128,15 @@ def allowedExtensionCoordinates = [
         'project:' + tracingApiProjectPath,
         'project:' + runtimePolicyProjectPath,
         'project:' + commonUtilProjectPath,
-        jakartaAnnotationApiCoordinate,
         otelProtoCoordinate,
         protobufJavaCoordinate,
         otelApiModule + ':' + otelSdkVersion,
         otelContextModule + ':' + otelSdkVersion,
         otelCommonModule + ':' + otelSdkVersion
+] as Set
+
+def platformFollowedExtensionModules = [
+        'jakarta.annotation:jakarta.annotation-api'
 ] as Set
 
 def packageStandaloneExtension = tasks.named('shadowJar') {
@@ -169,7 +165,7 @@ def packageStandaloneExtension = tasks.named('shadowJar') {
         include(project(tracingApiProjectPath))
         include(project(runtimePolicyProjectPath))
         include(project(commonUtilProjectPath))
-        include(dependency(jakartaAnnotationApiCoordinate))
+        include(dependency(jakartaAnnotationApiInclude))
         include(dependency(otelProtoCoordinate))
         include(dependency(protobufJavaCoordinate))
 
@@ -209,37 +205,41 @@ def validateControlledAgentInputs = tasks.register('validateControlledAgentInput
     outputs.file(identityFile)
 
     def allowedCoordinates = allowedExtensionCoordinates
+    def followedModules = platformFollowedExtensionModules
     def reservedEntries = [extensionEntryPath, identityEntryPath] as Set
     def publishedExtensionPath = extensionEntryPath
     def resolvedDistributionVersion = project.version.toString()
 
     doLast {
-        validateExtensionAllowlist(agentExtensionArtifactCoordinates.get(), allowedCoordinates)
+        AgentDistributionFiles.validateExtensionAllowlist(
+                agentExtensionArtifactCoordinates.get(),
+                allowedCoordinates,
+                followedModules
+        )
 
         File agent = otelJavaAgentFile.get()
         File library = agentExtensionFile.get()
         File packaged = standaloneExtensionJarFile.get().asFile
 
-        Map<String, String> pin = readZipProperties(
+        Map<String, String> pin = AgentDistributionFiles.readZipProperties(
                 library,
                 'META-INF/platform-tracing/otel-javaagent-acp-pin.properties'
         )
 
         String reviewed = pin.get('otel.javaagent.sha256')
-        String actual = sha256Hex(agent)
+        String actual = AgentDistributionFiles.sha256Hex(agent)
         if (reviewed == null || reviewed != actual) {
-            throw new GradleException(
-                    'Resolved OTel Java agent SHA-256 ' + actual
-                            + ' does not match reviewed ' + reviewed)
+            String message = "Resolved OTel Java agent SHA-256 %s does not match reviewed %s".formatted(actual, reviewed)
+            throw new GradleException(message)
         }
 
-        rejectReservedOtelEntries(agent, reservedEntries)
-        writeIdentityFile(
+        AgentDistributionFiles.rejectReservedOtelEntries(agent, reservedEntries)
+        AgentDistributionFiles.writeIdentityFile(
                 identityFile.get().asFile,
                 resolvedDistributionVersion,
                 resolvedOtelJavaAgentCoordinate,
                 actual,
-                sha256Hex(packaged),
+                AgentDistributionFiles.sha256Hex(packaged),
                 publishedExtensionPath
         )
     }
@@ -297,8 +297,10 @@ def publishControlledJavaAgent = tasks.register('publishControlledJavaAgent') {
     outputs.file(controlledAgentJarFile)
 
     doLast {
-        publishAtomically(stagingAgentJarFile.get().asFile.toPath(),
-                controlledAgentJarFile.get().asFile.toPath())
+        AgentDistributionFiles.publishAtomically(
+                stagingAgentJarFile.get().asFile.toPath(),
+                controlledAgentJarFile.get().asFile.toPath()
+        )
     }
 }
 
@@ -340,7 +342,10 @@ def writeControlledAgentPin = tasks.register('writeControlledAgentPin') {
 
     doLast {
         File jar = controlledAgentJarFile.get().asFile
-        String content = 'agent.sha256=' + sha256Hex(jar) + '\n' + 'agent.version=' + controlledAgentVersion + '\n'
+        String content = 'agent.sha256=%s\nagent.version=%s\n'.formatted(
+                AgentDistributionFiles.sha256Hex(jar),
+                controlledAgentVersion
+        )
 
         File target = controlledAgentPinFile.get().asFile
         target.parentFile.mkdirs()
@@ -364,12 +369,12 @@ testing {
     suites {
         register('controlledAgentArtifactTest', JvmTestSuite) { JvmTestSuite suite ->
             suite.useJUnitJupiter(junitJupiterVersion)
-            suite.dependencies.implementation.add(assertjCoordinate)
+            suite.dependencies.implementation.add("org.assertj:assertj-core:${libs.versions.assertj.get()}")
         }
 
         register('controlledAgentRuntimeTest', JvmTestSuite) { JvmTestSuite suite ->
             suite.useJUnitJupiter(junitJupiterVersion)
-            suite.dependencies.implementation.add(assertjCoordinate)
+            suite.dependencies.implementation.add("org.assertj:assertj-core:${libs.versions.assertj.get()}")
             suite.dependencies.implementation.add(awaitilityCoordinate)
 
             suite.dependencies.implementation.add(otelProtoCoordinate)
@@ -568,125 +573,4 @@ tasks.named('javadocJar', Jar) {
 
 tasks.withType(GenerateModuleMetadata).configureEach {
     enabled = false
-}
-
-static Map<String, String> readExtensionSchemaIdentity(File library) {
-    Map<String, String> values = readZipProperties(library, 'META-INF/platform-tracing/agent-logging-schema.properties')
-    if (values.get('schema.semanticVersion') == null || values.get('schema.sha256') == null) {
-        throw new GradleException('Extension schema identity is incomplete in ' + library)
-    }
-
-    values
-}
-
-static Map<String, String> readZipProperties(File archive, String entryName) {
-    Map<String, String> values = new LinkedHashMap<>()
-    ZipFile zip = new ZipFile(archive, StandardCharsets.UTF_8)
-    try {
-        def entry = zip.getEntry(entryName)
-        if (entry == null) {
-            throw new GradleException(entryName + ' is missing from ' + archive)
-        }
-
-        String content = new String(zip.getInputStream(entry).bytes, StandardCharsets.UTF_8)
-        for (String line : content.readLines()) {
-            int delimiter = line.indexOf('=')
-            if (delimiter > 0 && delimiter < line.length() - 1) {
-                values.put(line.substring(0, delimiter), line.substring(delimiter + 1))
-            }
-        }
-    } finally {
-        zip.close()
-    }
-
-    values
-}
-
-static void validateExtensionAllowlist(Map<String, String> coordinates, Set<String> allowed) {
-    coordinates.values().each { String coordinate ->
-        if (!allowed.contains(coordinate)) {
-            throw new GradleException('Extension runtime dependency is not allowlisted: ' + coordinate)
-        }
-    }
-}
-
-static void rejectReservedOtelEntries(File agent, Set<String> reservedEntries) {
-    ZipFile zip = new ZipFile(agent, StandardCharsets.UTF_8)
-    try {
-        zip.entries().each { entry ->
-            String name = entry.name
-            String normalized = name.toLowerCase(Locale.ROOT)
-            if (normalized.startsWith('extensions/') || normalized == 'extensions') {
-                throw new GradleException('OTel Java agent already contains extension content: ' + name)
-            }
-
-            if (reservedEntries.any { String reserved -> reserved.equalsIgnoreCase(name) }) {
-                throw new GradleException('OTel Java agent already contains reserved entry: ' + name)
-            }
-        }
-    } finally {
-        zip.close()
-    }
-}
-
-static String sha256Hex(File file) {
-    byte[] digest = MessageDigest.getInstance('SHA-256').digest(file.bytes)
-    StringBuilder result = new StringBuilder(digest.length * 2)
-    digest.each { byte value ->
-        result.append(String.format('%02x', value & 0xFF))
-    }
-    result.toString()
-}
-
-static void writeIdentityFile(File identity,
-                              String version,
-                              String upstreamCoordinate,
-                              String upstreamSha256,
-                              String extensionSha256,
-                              String extensionPath) {
-    TreeMap<String, String> values = new TreeMap<>()
-    values.put('format.version', '1')
-    values.put('distribution.group', 'space.br1440.platform.starters.tracing')
-    values.put('distribution.artifact', 'platform-tracing-javaagent')
-    values.put('distribution.version', version)
-    values.put('upstream.coordinate', upstreamCoordinate)
-    values.put('upstream.sha256', upstreamSha256)
-    values.put('extension.path', extensionPath)
-    values.put('extension.sha256', extensionSha256)
-    values.put('minimum.java', '21')
-
-    StringBuilder content = new StringBuilder()
-    values.each { String key, String value ->
-        content.append(key).append('=').append(value).append('\n')
-    }
-    identity.parentFile.mkdirs()
-    identity.setText(content.toString(), 'UTF-8')
-}
-
-static void publishAtomically(Path source, Path target) {
-    Path parent = target.getParent()
-    if (parent == null) {
-        throw new GradleException('Published agent output must have a parent directory: ' + target)
-    }
-
-    Files.createDirectories(parent)
-    Path temporary = Files.createTempFile(parent, '.' + target.getFileName() + '.', '.tmp')
-    try {
-        Files.copy(source, temporary, StandardCopyOption.REPLACE_EXISTING)
-        try {
-            Files.move(
-                    temporary,
-                    target,
-                    StandardCopyOption.ATOMIC_MOVE,
-                    StandardCopyOption.REPLACE_EXISTING
-            )
-        } catch (AtomicMoveNotSupportedException exception) {
-            throw new GradleException(
-                    'Atomic move is not supported for controlled agent output: ' + target,
-                    exception
-            )
-        }
-    } finally {
-        Files.deleteIfExists(temporary)
-    }
 }

@@ -4,100 +4,26 @@
 #
 #  Назначение
 #  ----------
-#  Каталог согласует координаты нескольких модулей и даёт type-safe accessor
-#  для намеренно версионированных объявлений, включая локальную matrix одного
-#  модуля. Такой alias не делает зависимость межмодульной и не включает её
-#  в BOM. Каталог применяется во вспомогательных и тестовых конфигурациях
-#  сборки платформенных стартеров (выражения вида `libs.archunit.junit5`,
-#  `libs.bundles.testcontainers`).
+#  Каталог — реестр номеров в `[versions]`. Он не публикуется и не заменяет
+#  стартовый BOM. Скрипт сборки называет группу и артефакт сам.
 #
-#  Сам каталог потребителям платформы не доставляется (`libs.versions.toml` не публикуется).
-#  См. также регламент в `spring-boot-starter-platform-bom/build.gradle`.
+#  Закрытый список форм в `*.gradle`. Другие обращения к каталогу запрещены:
+#   * полная координата: без номера, либо двойные кавычки и
+#     `${libs.versions.<ключ>.get()}`;
+#   * `libs.bundles.testcontainers`;
+#   * `alias(libs.plugins.<имя>)`.
+#  Одинарные кавычки вокруг `${libs` запрещены: Groovy не интерполирует такую строку.
 #
 #  Разграничение с платформенным BOM
 #  ---------------------------------
-#  Каталог и BOM (`spring-boot-starter-platform-bom`) решают разные задачи и
-#  не должны дублировать друг друга:
-#
-#   * BOM публикуется потребителям платформы и управляет версиями
-#     зависимостей, входящих в API стартеров (используются в `src/main`).
-#   * Каталог — внутренний инструмент монорепозитория. Он не публикуется
-#     и не влияет на граф версий потребителей; здесь хранятся версии,
-#     которые нужны исключительно при сборке/тестировании самих стартеров.
-#
-#  Исключение: BOM-версии в каталоге
-#  ----------------------------------
-#  Версии сторонних зависимостей, публикуемых в BOM-constraints, также хранятся
-#  здесь — в секции `[versions]` с префиксом `bom-`. Это исключение из общего
-#  правила «каталог только для тестовых конфигураций», обоснованное следующим:
-#   * единственная альтернатива для версии, публикуемой в BOM, — локальная
-#     map. `ext` не устарел; локальная map не даёт IDE-навигации к объявлению
-#     версии;
-#   * потребители BOM получают инлайновые версии в опубликованном POM;
-#     внутренний источник (TOML vs ext) для них невидим.
-#  Ключи BOM-версий намеренно отделены префиксом `bom-`, чтобы отличать их
-#  от тестовых/вспомогательных версий при ревью и автоматическом обновлении.
-#
-#  Соглашение по именованию BOM-ключей:
-#  Дефис в `[versions]` создаёт вложенную группу в генерируемых акцессорах
-#  (аналогично `[libraries]`). Ключ `bom-logstash` генерирует акцессор
-#  `libs.versions.bom.logstash.get()`. Поэтому часть после `bom-` должна быть
-#  однословным alias без дефисов, чтобы избежать глубокой вложенности:
-#    Правильно:  bom-logstash    → libs.versions.bom.logstash.get()
+#  BOM (`spring-boot-starter-platform-bom`) публикуется и управляет версиями
+#  зависимостей потребителей. Каталог — внутренний реестр монорепозитория.
+#  Версии constraint BOM хранятся в `[versions]` с префиксом `bom-`.
+#  Дефис создаёт вложенный accessor: `bom-logstash` даёт
+#  `libs.versions.bom.logstash.get()`. Часть после `bom-` — одно слово без дефисов.
+#    Правильно: bom-logstash → libs.versions.bom.logstash.get()
 #    Неправильно: bom-logstash-logback-encoder → libs.versions.bom.logstash.logback.encoder.get()
-#
-#  Регламент включения зависимости в каталог
-#  -----------------------------------------
-#  В каталог помещается dependency declaration при условиях ниже.
-#   1. Зависимость используется в тестовых конфигурациях стартеров
-#      (`testImplementation`, `testRuntimeOnly`, `testCompileOnly`,
-#      `testAnnotationProcessor`) или во вспомогательных конфигурациях
-#      сборки, не публикуемых потребителям.
-#   2. Зависимость нужна больше чем одному модулю, либо модуль намеренно
-#      задаёт явную версию. Второе условие не означает, что строка
-#      `"g:a:${v}"` в `build.gradle` лишена навигации: для такой строки это
-#      всегда истинно. Alias одного модуля допустим только при явной версии:
-#      отклонение от platform или отсутствие управления platform. Совпадение
-#      с platform этим условием не покрывается и в каталог не входит.
-#      `ext`, локальные map и строковая интерполяция для новых и изменяемых
-#      dependency declarations не применяются, если зависимость представима
-#      library alias. Значения, не связанные с зависимостями, в каталог
-#      не помещаются.
-#   3. Если версией управляет импортированная platform и отклонения нет,
-#      зависимость остаётся неверсионным GAV в `build.gradle` и в каталог
-#      не входит. Явная версия в `[versions]` допустима только для намеренной
-#      compatibility version, отличной от platform, с комментарием секции
-#      модуля и подтверждением тестом или `dependencyInsight`. Запись каталога
-#      задаёт requested version и не гарантирует resolved. Точная фиксация
-#      ниже platform записывается rich version `{ strictly = "..." }`
-#      в `[versions]`; library alias ссылается на неё через `version.ref`.
-#      `strictly` не пишется в строке `[libraries]` и применяется, только когда
-#      нижняя версия входит в тестовый контракт. Если platform подключён как
-#      `enforcedPlatform`, `strictly` даёт ошибку разрешения, а не понижение.
-#
-#  Регламент сопровождения
-#  -----------------------
-#   * Имя ключа в `[versions]` совпадает с базовым артефактом или
-#     согласованным семейством (например, `testcontainers` — общая
-#     версия для группы артефактов `org.testcontainers:*`).
-#   * Версия библиотеки задаётся один раз в секции `[versions]`, а в секции
-#     `[libraries]` указывается только ссылка на этот ключ через `version.ref`.
-#     Записывать номер версии прямо в строке библиотеки запрещено: это лишает
-#     каталог единого источника правды и приводит к рассинхронизации версий.
-#
-#     Правильно (версия в `[versions]`, ссылка в `[libraries]`):
-#         [versions]
-#         testcontainers = "1.21.3"
-#
-#         [libraries]
-#         testcontainers-core = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
-#
-#     Неправильно (версия записана непосредственно в строке библиотеки):
-#         [libraries]
-#         testcontainers-core = { module = "org.testcontainers:testcontainers", version = "1.21.3" }
-#   * При удалениии зависимости соответствующие записи из
-#     `[versions]`, `[libraries]` и `[bundles]` удаляются одновременно с
-#     удалением её упоминаний из `build.gradle` модулей.
+#  Номер в строке `[libraries]` запрещён: только `version.ref`.
 # =============================================================================
 
 [versions]
@@ -125,6 +51,7 @@ bom-protobuf    = "4.35.1"
 bom-otelinstrumentation = "2.30.0"
 bom-otelextension = "2.30.0-alpha"
 bom-springcloud = "2025.0.0"
+bom-logbook     = "4.0.4"
 
 # -----------------------------------------------------------------------------------
 # Тестовые и вспомогательные зависимости (только для сборки/тестирования стартеров)
@@ -140,29 +67,41 @@ awaitility               = "4.3.0"
 jedis                    = "7.0.0"
 lombok                   = "1.18.46"
 
-# -----------------------------------------------------------------------------------
-# Dependencies для модуля "platform-error-handling-core"
-# -----------------------------------------------------------------------------------
-errorHandlingCore-clickhouseClientV2 = "0.9.8"
-errorHandlingCore-expressly = "5.0.0"
+# ------------------------------------------------------------------------
+# Зависимости для модуля "platform-error-handling-core"
+# ------------------------------------------------------------------------
+expressly = "5.0.0"
+clickhouse-client-v2 = "0.9.8"
+
+# ------------------------------------------------------------------------
+# Зависимости для модуля "spring-boot-starter-platform-leader-election"
+# ------------------------------------------------------------------------
+jetbrains-annotations = "26.1.0"
+
+# ------------------------------------------------------------------------
+# Зависимости для модуля "platform-tracing-otel-javaagent-extension"
+# ------------------------------------------------------------------------
+jol = "0.17"
+auto-service = "1.1.1"
+
+# ------------------------------------------------------------------------
+# Зависимости для модуля "platform-tracing-jib-plugin"
+# ------------------------------------------------------------------------
+jib-gradle-plugin = "3.3.2"
+jib-extension-api = "0.4.0"
+
+# ----------------------------------------------------------------------------------------
+# Зависимости для модуля "spring-boot-starter-platform-postgres-read-write-split-jdbc"
+# ----------------------------------------------------------------------------------------
+postgresReadWriteSplitJdbc-spotbugs = "6.1.2"
 
 [libraries]
-archunit-junit5             = { module = "com.tngtech.archunit:archunit-junit5",      version.ref = "archunit" }
-jsonschema-validator        = { module = "com.networknt:json-schema-validator",       version.ref = "json-schema-validator" }
-testcontainers-core         = { module = "org.testcontainers:testcontainers",         version.ref = "testcontainers" }
-testcontainers-junit        = { module = "org.testcontainers:junit-jupiter",          version.ref = "testcontainers" }
-testcontainers-postgresql   = { module = "org.testcontainers:postgresql",             version.ref = "testcontainers" }
-testcontainers-kafka        = { module = "org.testcontainers:kafka",                  version.ref = "testcontainers" }
-testcontainers-toxiproxy    = { module = "org.testcontainers:toxiproxy",              version.ref = "testcontainers" }
-testcontainers-minio        = { module = "org.testcontainers:minio",                  version.ref = "testcontainers" }
-byte-buddy                  = { module = "net.bytebuddy:byte-buddy",                  version.ref = "byte-buddy" }
-blockhound                  = { module = "io.projectreactor.tools:blockhound",        version.ref = "blockhound" }
-opentelemetry-api           = { module = "io.opentelemetry:opentelemetry-api" }
-awaitility                  = { module = "org.awaitility:awaitility",                 version.ref = "awaitility" }
-jedis                       = { module = "redis.clients:jedis",                       version.ref = "jedis" }
-lombok                      = { module = "org.projectlombok:lombok",                  version.ref = "lombok" }
-errorHandlingCore-clickhouseClientV2 = { module = "com.clickhouse:client-v2", version.ref = "errorHandlingCore-clickhouseClientV2" }
-errorHandlingCore-expressly = { module = "org.glassfish.expressly:expressly", version.ref = "errorHandlingCore-expressly" }
+testcontainers-core  = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
+testcontainers-junit = { module = "org.testcontainers:junit-jupiter",  version.ref = "testcontainers" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }
+postgresReadWriteSplitJdbc-spotbugs = { id = "com.github.spotbugs", version.ref = "postgresReadWriteSplitJdbc-spotbugs" }
 
 [bundles]
 testcontainers = ["testcontainers-core", "testcontainers-junit"]

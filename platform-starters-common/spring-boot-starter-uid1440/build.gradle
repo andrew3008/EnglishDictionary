@@ -24,11 +24,11 @@ publishing {
 dependencies {
     api 'com.github.f4b6a3:uuid-creator'
 
-    compileOnly libs.lombok
-    annotationProcessor libs.lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
 
     testImplementation 'org.junit.jupiter:junit-jupiter'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testImplementation 'org.assertj:assertj-core'
-    testImplementation libs.archunit.junit5
+    testImplementation 'com.tngtech.archunit:archunit-junit5'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

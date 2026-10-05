@@ -31,17 +31,17 @@ dependencies {
 
     compileOnly 'io.micrometer:micrometer-core'
 
-    compileOnly libs.lombok
-    annotationProcessor libs.lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-    testImplementation libs.archunit.junit5
+    testImplementation 'com.tngtech.archunit:archunit-junit5'
     testImplementation libs.bundles.testcontainers
-    testImplementation libs.testcontainers.postgresql
-    testImplementation libs.testcontainers.kafka
+    testImplementation "org.testcontainers:postgresql:${libs.versions.testcontainers.get()}"
+    testImplementation "org.testcontainers:kafka:${libs.versions.testcontainers.get()}"
 
     testImplementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
@@ -56,7 +56,7 @@ dependencies {
 
     testImplementation 'jakarta.validation:jakarta.validation-api'
     testImplementation 'org.hibernate.validator:hibernate-validator'
-    testImplementation libs.errorHandlingCore.expressly
+    testImplementation "org.glassfish.expressly:expressly:${libs.versions.expressly.get()}"
 
     testImplementation 'org.springframework.security:spring-security-core'
     testImplementation 'org.springframework.security:spring-security-oauth2-core'
@@ -78,7 +78,7 @@ dependencies {
     testImplementation('io.minio:minio') {
         exclude group: 'at.yawk.lz4', module: 'lz4-java'
     }
-    testImplementation(libs.errorHandlingCore.clickhouseClientV2) {
+    testImplementation("com.clickhouse:client-v2:${libs.versions.clickhouse.client.v2.get()}") {
         exclude group: 'at.yawk.lz4', module: 'lz4-java'
     }
 

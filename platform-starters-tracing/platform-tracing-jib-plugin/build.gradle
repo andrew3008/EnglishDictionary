@@ -5,8 +5,6 @@ plugins {
 
 group = 'space.br1440.platform.starters.tracing'
 
-def jibGradlePluginFloorVersion = '3.3.2'
-def jibGradlePluginExtensionApiVersion = '0.4.0'
 def distributionProjectPath = ':platform-starters-tracing:platform-tracing-otel-javaagent-distribution'
 
 def jibPluginVersionFile = layout.buildDirectory.file('generated/jib-plugin-version.txt')
@@ -45,16 +43,16 @@ dependencies {
     add(controlledAgentDistribution.name, project(path: distributionProjectPath, configuration: 'controlledAgentElements'))
     add(controlledAgentPin.name, project(path: distributionProjectPath, configuration: 'controlledAgentPinElements'))
 
-    compileOnly "com.google.cloud.tools:jib-gradle-plugin-extension-api:${jibGradlePluginExtensionApiVersion}"
-    compileOnly "com.google.cloud.tools:jib-gradle-plugin:${jibGradlePluginFloorVersion}"
+    compileOnly "com.google.cloud.tools:jib-gradle-plugin-extension-api:${libs.versions.jib.extension.api.get()}"
+    compileOnly "com.google.cloud.tools:jib-gradle-plugin:${libs.versions.jib.gradle.plugin.get()}"
 
-    compileOnly libs.lombok
-    annotationProcessor libs.lombok
+    compileOnly "org.projectlombok:lombok:${libs.versions.lombok.get()}"
+    annotationProcessor "org.projectlombok:lombok:${libs.versions.lombok.get()}"
 
     testImplementation gradleApi()
     testImplementation gradleTestKit()
-    testImplementation "com.google.cloud.tools:jib-gradle-plugin-extension-api:${jibGradlePluginExtensionApiVersion}"
-    testImplementation "com.google.cloud.tools:jib-gradle-plugin:${jibGradlePluginFloorVersion}"
+    testImplementation "com.google.cloud.tools:jib-gradle-plugin-extension-api:${libs.versions.jib.extension.api.get()}"
+    testImplementation "com.google.cloud.tools:jib-gradle-plugin:${libs.versions.jib.gradle.plugin.get()}"
     testImplementation "org.junit.jupiter:junit-jupiter:${libs.versions.junit.jupiter.get()}"
     testImplementation "org.assertj:assertj-core:${libs.versions.assertj.get()}"
 

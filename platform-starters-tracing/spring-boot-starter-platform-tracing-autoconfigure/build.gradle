@@ -82,16 +82,16 @@ dependencies {
     compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
     compileOnly 'org.springframework.kafka:spring-kafka'
     compileOnly 'org.springframework.cloud:spring-cloud-context'
-    compileOnly libs.lombok
+    compileOnly 'org.projectlombok:lombok'
 
-    annotationProcessor libs.lombok
+    annotationProcessor 'org.projectlombok:lombok'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
     testImplementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webflux')
     testImplementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webmvc')
     testImplementation project(':platform-starters-tracing:platform-tracing-testkit')
     testImplementation project(':platform-starters-tracing:platform-tracing-otel-javaagent-extension')
-    testImplementation libs.archunit.junit5
+    testImplementation 'com.tngtech.archunit:archunit-junit5'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-web'
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux'

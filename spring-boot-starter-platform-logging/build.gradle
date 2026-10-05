@@ -14,8 +14,8 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'org.aspectj:aspectjweaver'
 
-    api 'org.zalando:logbook-core:4.0.4'
-    implementation 'org.zalando:logbook-servlet:4.0.4'
+    api 'org.zalando:logbook-core'
+    implementation 'org.zalando:logbook-servlet'
     compileOnly 'org.jspecify:jspecify'
 
     compileOnly 'jakarta.servlet:jakarta.servlet-api'
@@ -24,9 +24,9 @@ dependencies {
     compileOnly 'org.springframework.grpc:spring-grpc-server-web-spring-boot-starter'
     compileOnly 'org.springframework.boot:spring-boot-starter-webflux'
     compileOnly 'org.springframework.boot:spring-boot-configuration-processor'
-    compileOnly libs.lombok
+    compileOnly 'org.projectlombok:lombok'
 
-    annotationProcessor libs.lombok
+    annotationProcessor 'org.projectlombok:lombok'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
     testImplementation 'org.junit.jupiter:junit-jupiter'

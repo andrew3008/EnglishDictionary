@@ -21,18 +21,18 @@ dependencies {
     testImplementation 'io.minio:minio'
 
     compileOnly 'org.springframework.boot:spring-boot-starter-validation'
-    compileOnly libs.lombok
+    compileOnly 'org.projectlombok:lombok'
 
-    annotationProcessor libs.lombok
+    annotationProcessor 'org.projectlombok:lombok'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     testImplementation libs.bundles.testcontainers
-    testImplementation libs.testcontainers.kafka
-    testImplementation libs.testcontainers.postgresql
-    testImplementation libs.testcontainers.minio
+    testImplementation "org.testcontainers:kafka:${libs.versions.testcontainers.get()}"
+    testImplementation "org.testcontainers:postgresql:${libs.versions.testcontainers.get()}"
+    testImplementation "org.testcontainers:minio:${libs.versions.testcontainers.get()}"
 
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
 
@@ -43,6 +43,6 @@ dependencies {
 
     testImplementation 'org.springframework.boot:spring-boot-starter-validation'
 
-    testCompileOnly libs.lombok
-    testAnnotationProcessor libs.lombok
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
 }
