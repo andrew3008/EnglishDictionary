@@ -17,14 +17,12 @@ dependencies {
     implementation 'io.micrometer:context-propagation'
 
     compileOnly 'org.springframework.boot:spring-boot-starter-security'
-
     compileOnly 'io.micrometer:micrometer-core'
-
     compileOnly 'jakarta.validation:jakarta.validation-api'
 
+    compileOnly libs.lombok
+    annotationProcessor libs.lombok
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testCompileOnly 'org.junit.platform:junit-platform-launcher'

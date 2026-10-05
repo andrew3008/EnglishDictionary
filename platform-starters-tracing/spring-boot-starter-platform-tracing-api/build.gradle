@@ -13,9 +13,8 @@ platformJavaLibrary {
 dependencies {
     api 'jakarta.annotation:jakarta.annotation-api'
 
-    compileOnly 'org.projectlombok:lombok'
-
-    annotationProcessor 'org.projectlombok:lombok'
+    compileOnly libs.lombok
+    annotationProcessor libs.lombok
 
     testImplementation project(':platform-starters-tracing:platform-tracing-testkit')
     testImplementation 'org.junit.jupiter:junit-jupiter'

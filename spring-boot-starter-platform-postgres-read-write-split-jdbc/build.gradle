@@ -42,10 +42,10 @@ dependencies {
 
     compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
 
-    compileOnly 'org.projectlombok:lombok'
+    compileOnly libs.lombok
 
+    annotationProcessor libs.lombok
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-    annotationProcessor 'org.projectlombok:lombok'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -73,8 +73,8 @@ dependencies {
 
     testImplementation 'ch.qos.logback:logback-classic'
 
-    testCompileOnly 'org.projectlombok:lombok'
-    testAnnotationProcessor 'org.projectlombok:lombok'
+    testCompileOnly libs.lombok
+    testAnnotationProcessor libs.lombok
 }
 
 tasks.named('spotbugsMain') {

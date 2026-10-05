@@ -124,6 +124,7 @@ byte-buddy               = "1.15.10"
 blockhound               = "1.0.17.RELEASE"
 awaitility               = "4.3.0"
 jedis                    = "7.0.0"
+lombok                   = "1.18.46"
 
 [libraries]
 archunit-junit5             = { module = "com.tngtech.archunit:archunit-junit5",      version.ref = "archunit" }
@@ -139,6 +140,7 @@ blockhound                  = { module = "io.projectreactor.tools:blockhound",  
 opentelemetry-api           = { module = "io.opentelemetry:opentelemetry-api" }
 awaitility                  = { module = "org.awaitility:awaitility",                 version.ref = "awaitility" }
 jedis                       = { module = "redis.clients:jedis",                       version.ref = "jedis" }
+lombok                      = { module = "org.projectlombok:lombok",                  version.ref = "lombok" }
 
 [bundles]
 testcontainers = ["testcontainers-core", "testcontainers-junit"]

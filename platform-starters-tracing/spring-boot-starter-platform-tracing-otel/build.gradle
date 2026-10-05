@@ -18,9 +18,8 @@ dependencies {
     implementation project(':platform-starters-common:platform-starters-common-util')
     implementation 'org.slf4j:slf4j-api'
 
-    compileOnly 'org.projectlombok:lombok'
-
-    annotationProcessor 'org.projectlombok:lombok'
+    compileOnly libs.lombok
+    annotationProcessor libs.lombok
 
     testImplementation project(':platform-starters-tracing:platform-tracing-testkit')
     testImplementation 'org.junit.jupiter:junit-jupiter'

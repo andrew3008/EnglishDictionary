@@ -29,9 +29,9 @@ dependencies {
     compileOnly 'org.springframework.cloud:spring-cloud-openfeign-core'
     compileOnly 'io.grpc:grpc-api'
     compileOnly 'org.springframework.grpc:spring-grpc-server-web-spring-boot-starter'
+    compileOnly libs.lombok
 
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor libs.lombok
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

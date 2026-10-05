@@ -19,20 +19,15 @@ dependencies {
     compileOnly 'org.jspecify:jspecify'
 
     compileOnly 'jakarta.servlet:jakarta.servlet-api'
-
     compileOnly 'org.springframework.boot:spring-boot-starter-web'
-
     compileOnly 'org.springframework.boot:spring-boot-starter-security'
-
     compileOnly 'org.springframework.grpc:spring-grpc-server-web-spring-boot-starter'
-
     compileOnly 'org.springframework.boot:spring-boot-starter-webflux'
-
     compileOnly 'org.springframework.boot:spring-boot-configuration-processor'
+    compileOnly libs.lombok
 
+    annotationProcessor libs.lombok
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
 
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -54,6 +49,7 @@ def preparePlatformLogMasking = tasks.register('preparePlatformLogMasking', Sync
     from('src/main/resources/space/br1440/platform/logging') {
         include 'platform-log-masking-rules.yaml'
     }
+
     into layout.buildDirectory.dir('platform-log-masking')
 }
 

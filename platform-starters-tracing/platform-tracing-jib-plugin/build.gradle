@@ -5,7 +5,6 @@ plugins {
 
 group = 'space.br1440.platform.starters.tracing'
 
-def lombokVersion = '1.18.46'
 def jibGradlePluginFloorVersion = '3.3.2'
 def jibGradlePluginExtensionApiVersion = '0.4.0'
 def distributionProjectPath = ':platform-starters-tracing:platform-tracing-otel-javaagent-distribution'
@@ -49,8 +48,8 @@ dependencies {
     compileOnly "com.google.cloud.tools:jib-gradle-plugin-extension-api:${jibGradlePluginExtensionApiVersion}"
     compileOnly "com.google.cloud.tools:jib-gradle-plugin:${jibGradlePluginFloorVersion}"
 
-    compileOnly "org.projectlombok:lombok:${lombokVersion}"
-    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    compileOnly libs.lombok
+    annotationProcessor libs.lombok
 
     testImplementation gradleApi()
     testImplementation gradleTestKit()
@@ -58,6 +57,7 @@ dependencies {
     testImplementation "com.google.cloud.tools:jib-gradle-plugin:${jibGradlePluginFloorVersion}"
     testImplementation "org.junit.jupiter:junit-jupiter:${libs.versions.junit.jupiter.get()}"
     testImplementation "org.assertj:assertj-core:${libs.versions.assertj.get()}"
+
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

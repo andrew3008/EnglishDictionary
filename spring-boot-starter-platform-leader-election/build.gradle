@@ -16,20 +16,15 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-aop'
 
     compileOnly 'org.springframework.boot:spring-boot-autoconfigure'
-
     compileOnly 'org.aspectj:aspectjweaver'
-
     compileOnly 'io.lettuce:lettuce-core'
-
     compileOnly 'io.micrometer:micrometer-core'
-
     compileOnly 'org.springframework.boot:spring-boot-starter-validation'
-
     compileOnly 'org.jetbrains:annotations:26.1.0'
+    compileOnly libs.lombok
 
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor libs.lombok
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

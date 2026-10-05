@@ -24,10 +24,10 @@ dependencies {
     compileOnly 'jakarta.servlet:jakarta.servlet-api'
     compileOnly 'org.springframework.boot:spring-boot-starter-web'
     compileOnly 'org.springframework.boot:spring-boot-actuator-autoconfigure'
-    compileOnly 'org.projectlombok:lombok'
+    compileOnly libs.lombok
 
+    annotationProcessor libs.lombok
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-    annotationProcessor 'org.projectlombok:lombok'
 
     testImplementation project(':platform-starters-tracing:platform-tracing-testkit')
     testImplementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webflux')
