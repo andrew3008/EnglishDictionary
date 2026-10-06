@@ -26,22 +26,23 @@ def generatedRoot = layout.buildDirectory.dir('generated/jmx-wire-contract')
 def generatedApplicationContractSources = generatedRoot.map { it.dir('application/java') }
 def jmxApplicationContractSourcesUsage = 'platform-jmx-application-contract-sources'
 
-// Сгенерированные исходники передаются потребителям как отдельный вариант проекта.
 def jmxApplicationContractSourcesElements = configurations.register('jmxApplicationContractSourcesElements') {
     canBeConsumed = true
     canBeResolved = false
 
     attributes {
         attribute(
-                Usage.USAGE_ATTRIBUTE,
+                Usage.USAGE_ATTRIBUTE as Attribute<Object>,
                 objects.named(Usage, jmxApplicationContractSourcesUsage)
         )
+
         attribute(
-                Category.CATEGORY_ATTRIBUTE,
+                Category.CATEGORY_ATTRIBUTE as Attribute<Object>,
                 objects.named(Category, Category.DOCUMENTATION)
         )
+
         attribute(
-                DocsType.DOCS_TYPE_ATTRIBUTE,
+                DocsType.DOCS_TYPE_ATTRIBUTE as Attribute<Object>,
                 objects.named(DocsType, DocsType.SOURCES)
         )
     }

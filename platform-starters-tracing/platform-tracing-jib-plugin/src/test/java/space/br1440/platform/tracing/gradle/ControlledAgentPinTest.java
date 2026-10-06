@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
 import org.gradle.api.GradleException;
 import org.junit.jupiter.api.Test;
@@ -72,12 +73,15 @@ class ControlledAgentPinTest {
     void packaged_pin_resource_bytes_are_utf8_without_cr_and_end_with_lf() throws IOException {
         // given
         byte[] bytes;
-        try (InputStream stream = ControlledAgentPin.class.getResourceAsStream(
-                "/META-INF/platform-tracing/controlled-agent-pin.properties")) {
+        try (InputStream stream = Objects.requireNonNull(
+                ControlledAgentPin.class.getResourceAsStream(
+                        "/META-INF/platform-tracing/controlled-agent-pin.properties"),
+                "Controlled agent pin resource is missing")) {
             bytes = stream.readAllBytes();
         }
+
         ControlledAgentPin pin = ControlledAgentPin.load();
-        String expected = "agent.sha256=" + pin.sha256() + "\nagent.version=" + pin.version() + "\n";
+        String expected = "agent.sha256=%s\nagent.version=%s\n".formatted(pin.sha256(), pin.version());
 
         // when
         String text = new String(bytes, StandardCharsets.UTF_8);

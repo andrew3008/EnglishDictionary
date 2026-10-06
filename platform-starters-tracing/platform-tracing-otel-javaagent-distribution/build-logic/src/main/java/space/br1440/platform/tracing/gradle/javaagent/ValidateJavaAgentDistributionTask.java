@@ -3,7 +3,6 @@ package space.br1440.platform.tracing.gradle.javaagent;
 import java.nio.file.Path;
 
 import org.gradle.api.DefaultTask;
-import org.gradle.api.GradleException;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
