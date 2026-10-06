@@ -23,6 +23,30 @@ dependencies {
 
 def contractManifest = layout.projectDirectory.file('src/main/resources/jmx-wire-contract.yaml')
 def generatedRoot = layout.buildDirectory.dir('generated/jmx-wire-contract')
+def generatedApplicationContractSources = generatedRoot.map { it.dir('application/java') }
+def jmxApplicationContractSourcesUsage = 'platform-jmx-application-contract-sources'
+
+// Сгенерированные исходники передаются потребителям как отдельный вариант проекта.
+def jmxApplicationContractSourcesElements = configurations.register('jmxApplicationContractSourcesElements') {
+    canBeConsumed = true
+    canBeResolved = false
+
+    attributes {
+        attribute(
+                Usage.USAGE_ATTRIBUTE,
+                objects.named(Usage, jmxApplicationContractSourcesUsage)
+        )
+        attribute(
+                Category.CATEGORY_ATTRIBUTE,
+                objects.named(Category, Category.DOCUMENTATION)
+        )
+        attribute(
+                DocsType.DOCS_TYPE_ATTRIBUTE,
+                objects.named(DocsType, DocsType.SOURCES)
+        )
+    }
+}
+
 def guardedSourceRoots = files(
         project(':platform-starters-tracing:platform-tracing-otel-javaagent-extension')
                 .layout.projectDirectory.dir('src/main/java/space/br1440/platform/tracing/otel/javaagent/control/jmx'),
@@ -52,7 +76,7 @@ tasks.register('validateJmxWireContract', JavaExec) {
     inputs.file(contractManifest)
 }
 
-tasks.register('generateJmxWireContract', JavaExec) {
+def generateJmxWireContract = tasks.register('generateJmxWireContract', JavaExec) {
     group = 'build'
     dependsOn tasks.named('classes')
 
@@ -65,6 +89,17 @@ tasks.register('generateJmxWireContract', JavaExec) {
     inputs.file(contractManifest)
     inputs.files(sourceSets.main.output.classesDirs)
     outputs.dir(generatedRoot)
+}
+
+artifacts {
+    add(jmxApplicationContractSourcesElements.name, generatedApplicationContractSources) {
+        builtBy generateJmxWireContract
+        type = 'directory'
+    }
+}
+
+tasks.named('assemble') {
+    dependsOn generateJmxWireContract
 }
 
 tasks.register('verifyJmxWireContract', JavaExec) {
@@ -122,8 +157,4 @@ tasks.named('check') {
     dependsOn tasks.named('verifyJmxWireContract')
     dependsOn tasks.named('compileGeneratedJmxWireContract')
     dependsOn tasks.named('verifyNoManualJmxWireLiterals')
-}
-
-tasks.named('jar') {
-    enabled = false
 }

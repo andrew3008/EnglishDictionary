@@ -1,4 +1,6 @@
 pluginManagement {
+    includeBuild('platform-starters-tracing/platform-tracing-otel-javaagent-distribution/build-logic')
+
     def platformConventionsVersion = '1.0.6'
 
     repositories {
@@ -34,7 +36,6 @@ pluginManagement {
         id 'platform.publishing-repositories' version platformConventionsVersion
         id 'platform.gradle-plugin-publish' version platformConventionsVersion
         id 'platform.testing' version platformConventionsVersion
-        id 'com.gradleup.shadow' version '9.2.2'
     }
 }
 

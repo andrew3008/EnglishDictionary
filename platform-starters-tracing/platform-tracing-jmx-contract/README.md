@@ -13,8 +13,9 @@ runtime API: extension и Spring application получают разные Java-
 - `verifyNoManualJmxWireLiterals` — отвергает рукописные wire-литералы в production-исходниках
   обеих плоскостей.
 
-Все четыре verification-задачи навешены на `check` модуля: пайплайн CI не меняется, поэтому
-задача, доступная только по имени, гейтом не является.
+`check` запускает `verifyJmxWireContract`, `compileGeneratedJmxWireContract` и
+`verifyNoManualJmxWireLiterals`; генерация входит в их граф зависимостей.
+`validateJmxWireContract` остаётся отдельной диагностической задачей.
 
 Generated output:
 

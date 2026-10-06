@@ -41,7 +41,9 @@
 
 ### Трассировка (`platform-starters-tracing/`)
 
-Публикуемые application-артефакты семейства и controlled javaagent используют группу `space.br1440.platform.starters.tracing`. Внутренние сборочные варианты Maven-координат не имеют.
+Публикуемые application-артефакты семейства, controlled javaagent и упакованное расширение
+используют группу `space.br1440.platform.starters.tracing`. Внутренние Gradle-варианты
+не являются Maven publications.
 
 | Gradle-проект                                                                           | Каталог                                                                                                                                                                                                                   |
 |-----------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -54,8 +56,8 @@
 | `:platform-starters-tracing:spring-boot-starter-platform-tracing-mvc`                   | [`spring-boot-starter-platform-tracing-mvc`](platform-starters-tracing/spring-boot-starter-platform-tracing-mvc)                                                                                                          |
 | `:platform-starters-tracing:spring-boot-starter-platform-tracing-webflux`               | [`spring-boot-starter-platform-tracing-webflux`](platform-starters-tracing/spring-boot-starter-platform-tracing-webflux)                                                                                                  |
 | `:platform-starters-tracing:platform-tracing-testkit`                                   | [`platform-tracing-testkit`](platform-starters-tracing/platform-tracing-testkit) — внутренние тестовые fixtures, не публикуются                                                                                           |
-| `:platform-starters-tracing:platform-tracing-otel-javaagent-extension`                  | [`platform-tracing-otel-javaagent-extension`](platform-starters-tracing/platform-tracing-otel-javaagent-extension) — внутренний модуль исходного кода и тестов; упаковкой управляет distribution, отдельно не публикуется |
-| `:platform-starters-tracing:platform-tracing-otel-javaagent-distribution`               | [`platform-tracing-otel-javaagent-distribution`](platform-starters-tracing/platform-tracing-otel-javaagent-distribution) — единственный владелец deployable-артефакта `platform-tracing-javaagent`                        |
+| `:platform-starters-tracing:platform-tracing-otel-javaagent-extension`                  | [`platform-tracing-otel-javaagent-extension`](platform-starters-tracing/platform-tracing-otel-javaagent-extension) — внутренний модуль исходного кода и тестов; напрямую не публикуется                                                                 |
+| `:platform-starters-tracing:platform-tracing-otel-javaagent-distribution`               | [`platform-tracing-otel-javaagent-distribution`](platform-starters-tracing/platform-tracing-otel-javaagent-distribution) — владелец artifact-only публикаций controlled agent и standalone extension                                              |
 | `:platform-starters-tracing:platform-tracing-jib-plugin`                               | [`platform-tracing-jib-plugin`](platform-starters-tracing/platform-tracing-jib-plugin) — Gradle-плагин `platform.tracing-jib`; работает и без Jib (guard, argfile, bootRun); не входит в BOM                         |
 
 Controlled Platform Agent поставляется артефактом

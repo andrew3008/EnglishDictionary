@@ -1,0 +1,40 @@
+plugins {
+    id 'java-gradle-plugin'
+}
+
+group = 'space.br1440.platform.tracing.gradle'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    // Shadow 9.2.2 — последняя версия, совместимая с Gradle 8.14.
+    // Обновить после перехода wrapper на Gradle 9.2+.
+    implementation 'com.gradleup.shadow:shadow-gradle-plugin:9.2.2'
+
+    // Apache Ant является транзитивной зависимостью плагина Shadow и используется исключительно при сборке.
+    // Ограничение обеспечивает использование исправленной версии; Apache Ant не включается в публикуемый агент.
+    constraints { DependencyConstraintHandler constraintHandler ->
+        constraintHandler.add('implementation', 'org.apache.ant:ant:1.10.18') { DependencyConstraint constraint ->
+            constraint.because('CVE-2026-78254 is fixed in Apache Ant 1.10.18')
+        }
+    }
+}
+
+gradlePlugin {
+    plugins {
+        register('javaAgentDistribution') { PluginDeclaration plugin ->
+            plugin.setId('platform.javaagent-distribution')
+            plugin.setImplementationClass('space.br1440.platform.tracing.gradle.javaagent.JavaAgentDistributionPlugin')
+            plugin.setDisplayName('Platform Tracing OpenTelemetry Java agent distribution')
+            plugin.setDescription('Builds and verifies the controlled Platform Tracing OpenTelemetry Java agent distribution')
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

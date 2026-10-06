@@ -3,6 +3,10 @@ package space.br1440.platform.tracing.gradle;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+
 import org.gradle.api.GradleException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -62,5 +66,25 @@ class ControlledAgentPinTest {
         // then
         assertThat(pin.version()).isEqualTo(System.getProperty("platformTracing.pluginVersion"));
         assertThat(pin.sha256()).matches("[0-9a-f]{64}");
+    }
+
+    @Test
+    void packaged_pin_resource_bytes_are_utf8_without_cr_and_end_with_lf() throws IOException {
+        // given
+        byte[] bytes;
+        try (InputStream stream = ControlledAgentPin.class.getResourceAsStream(
+                "/META-INF/platform-tracing/controlled-agent-pin.properties")) {
+            bytes = stream.readAllBytes();
+        }
+        ControlledAgentPin pin = ControlledAgentPin.load();
+        String expected = "agent.sha256=" + pin.sha256() + "\nagent.version=" + pin.version() + "\n";
+
+        // when
+        String text = new String(bytes, StandardCharsets.UTF_8);
+
+        // then
+        assertThat(bytes).doesNotContain((byte) 0x0D);
+        assertThat(bytes[bytes.length - 1]).isEqualTo((byte) 0x0A);
+        assertThat(text).isEqualTo(expected);
     }
 }
