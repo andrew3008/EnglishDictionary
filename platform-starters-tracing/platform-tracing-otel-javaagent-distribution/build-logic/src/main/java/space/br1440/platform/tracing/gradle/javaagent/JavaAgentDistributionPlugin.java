@@ -12,6 +12,7 @@ import org.gradle.api.tasks.testing.Test;
 import com.github.jengelman.gradle.plugins.shadow.ShadowExtension;
 import com.github.jengelman.gradle.plugins.shadow.ShadowPlugin;
 
+@SuppressWarnings("unused")
 public final class JavaAgentDistributionPlugin implements Plugin<Project> {
 
     @Override
