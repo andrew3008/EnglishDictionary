@@ -5,7 +5,7 @@
 ## Сборка и плагины
 
 - Сборка **только из корня репозитория**: `./gradlew <задача>` или `./gradlew :<путь-проекта>:<задача>`.
-- Корпоративные convention-плагины `platform.*` версии `1.0.6` загружаются из Nexus-репозиториев, настроенных в корневом [`settings.gradle`](./settings.gradle). Локальный included build используется только для build logic javaagent. `mavenLocal()` доступен только как локальный opt-in через `-PallowMavenLocal=true` и запрещён в CI.
+- `mavenLocal()` доступен только как локальный opt-in через `-PallowMavenLocal=true` и запрещён в CI.
 - Каталог версий для сборки: [`gradle/libs.versions.toml`](./gradle/libs.versions.toml). SpringBoot-приложениям, которые используют стартеры платформы, он не поставляется; опубликованные POM содержат уже разрешённые версии.
 
 ## Состав репозитория

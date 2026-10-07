@@ -1,7 +1,7 @@
 pluginManagement {
     includeBuild('platform-starters-tracing/build-logic')
 
-    def platformConventionsVersion = '1.0.6'
+    def platformConventionsVersion = '1.1.0'
 
     repositories {
         maven {
@@ -72,6 +72,19 @@ rootProject.name = 'spring-boot-platform-starters'
 
 include('platform-spring-boot-plugin')
 include('spring-boot-starter-platform-bom')
+
+include('platform-starters-common')
+include('platform-starters-common:spring-boot-starter-platform-common-uid1440')
+include('platform-starters-common:spring-boot-starter-platform-common-header-based-routing')
+include('platform-starters-common:spring-boot-starter-platform-common-x-trace-id')
+include('platform-starters-common:platform-starters-common-util')
+project(':platform-starters-common:spring-boot-starter-platform-common-uid1440').projectDir =
+        file("${rootDir}/platform-starters-common/spring-boot-starter-uid1440")
+project(':platform-starters-common:spring-boot-starter-platform-common-header-based-routing').projectDir =
+        file("${rootDir}/platform-starters-common/spring-boot-starter-header-based-routing")
+project(':platform-starters-common:spring-boot-starter-platform-common-x-trace-id').projectDir =
+        file("${rootDir}/platform-starters-common/spring-boot-starter-x-trace-id")
+
 include('spring-boot-starter-platform-metrics')
 include('spring-boot-starter-platform-logging')
 include('spring-boot-starter-platform-leader-election')
@@ -99,15 +112,3 @@ include('platform-starters-error-handling')
 include('platform-starters-error-handling:platform-error-handling-core')
 include('platform-starters-error-handling:spring-boot-starter-platform-error-handling-mvc')
 include('platform-starters-error-handling:spring-boot-starter-platform-error-handling-webflux')
-
-include('platform-starters-common')
-include('platform-starters-common:spring-boot-starter-platform-common-uid1440')
-include('platform-starters-common:spring-boot-starter-platform-common-header-based-routing')
-include('platform-starters-common:spring-boot-starter-platform-common-x-trace-id')
-include('platform-starters-common:platform-starters-common-util')
-project(':platform-starters-common:spring-boot-starter-platform-common-uid1440').projectDir =
-        file("${rootDir}/platform-starters-common/spring-boot-starter-uid1440")
-project(':platform-starters-common:spring-boot-starter-platform-common-header-based-routing').projectDir =
-        file("${rootDir}/platform-starters-common/spring-boot-starter-header-based-routing")
-project(':platform-starters-common:spring-boot-starter-platform-common-x-trace-id').projectDir =
-        file("${rootDir}/platform-starters-common/spring-boot-starter-x-trace-id")
