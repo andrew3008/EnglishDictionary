@@ -15,8 +15,6 @@ platformJavaLibrary {
 
 def extensionProjectPath = ':platform-starters-tracing:platform-tracing-otel-javaagent-extension'
 def tracingApiProjectPath = ':platform-starters-tracing:spring-boot-starter-platform-tracing-api'
-def runtimePolicyProjectPath = ':platform-starters-tracing:platform-tracing-runtime-policy'
-def commonUtilProjectPath = ':platform-starters-common:platform-starters-common-util'
 def jmxContractProjectPath = ':platform-starters-tracing:platform-tracing-jmx-contract'
 
 def upstreamJavaAgent = "io.opentelemetry.javaagent:opentelemetry-javaagent:${libs.versions.bom.otelinstrumentation.get()}"
@@ -28,35 +26,10 @@ def awaitility = "org.awaitility:awaitility:${libs.versions.awaitility.get()}"
 dependencies {
     otelJavaAgent upstreamJavaAgent
 
-    // Shadow JAR содержит только перечисленные прямые зависимости.
-    // API OpenTelemetry входит в состав javaagent и намеренно не упаковывается повторно.
-    agentExtension platform(project(platformBomProjectPath))
-    agentExtensionLibrary(project(extensionProjectPath)) {
-        transitive = false
-    }
-    agentExtension(project(tracingApiProjectPath)) {
-        transitive = false
-    }
-    agentExtension(project(runtimePolicyProjectPath)) {
-        transitive = false
-    }
-    agentExtension(project(commonUtilProjectPath)) {
-        transitive = false
-    }
-    agentExtension('jakarta.annotation:jakarta.annotation-api') {
-        transitive = false
-    }
-    agentExtension(otelProto) {
-        transitive = false
-    }
-    agentExtension(protobufJava) {
-        transitive = false
-    }
+    packagedJavaAgentExtension project(extensionProjectPath)
 
-    // Runtime-тест компилируется с исходниками JMX-контракта, опубликованными producer-модулем.
     jmxApplicationContractSources project(jmxContractProjectPath)
 
-    // Специализированные наборы тестовых исходников наследуют стандартные тестовые конфигурации.
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

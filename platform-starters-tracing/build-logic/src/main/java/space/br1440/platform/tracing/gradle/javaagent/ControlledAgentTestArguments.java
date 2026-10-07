@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.gradle.javaagent;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.gradle.api.file.DirectoryProperty;
@@ -12,6 +13,7 @@ import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.process.CommandLineArgumentProvider;
 
+@SuppressWarnings("unused")
 public abstract class ControlledAgentTestArguments implements CommandLineArgumentProvider {
 
     @InputFile
@@ -24,31 +26,31 @@ public abstract class ControlledAgentTestArguments implements CommandLineArgumen
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
-    public abstract RegularFileProperty getExtensionLibraryJar();
-
-    @InputFile
-    @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getUpstreamAgentJar();
 
     @Input
     public abstract Property<String> getDistributionVersion();
 
     @Input
-    public abstract Property<String> getUpstreamCoordinate();
+    public abstract Property<String> getExpectedOtelSdkVersion();
 
     @Internal
     public abstract DirectoryProperty getTestRepositoryRoot();
 
     @Override
     public Iterable<String> asArguments() {
-        return List.of(
-                "-DplatformTracing.controlledAgentJar=" + getControlledAgentJar().get().getAsFile().getAbsolutePath(),
-                "-DplatformTracing.extensionJar=" + getExtensionJar().get().getAsFile().getAbsolutePath(),
-                "-DplatformTracing.extensionLibraryJar=" + getExtensionLibraryJar().get().getAsFile().getAbsolutePath(),
-                "-DplatformTracing.otelJavaAgentJar=" + getUpstreamAgentJar().get().getAsFile().getAbsolutePath(),
-                "-DplatformTracing.distributionVersion=" + getDistributionVersion().get(),
-                "-DplatformTracing.otelJavaAgentCoordinate=" + getUpstreamCoordinate().get(),
-                "-DplatformTracing.testRepository=" + getTestRepositoryRoot().get().getAsFile().getAbsolutePath()
-        );
+        List<String> arguments = new ArrayList<>();
+
+        arguments.add("-DplatformTracing.controlledAgentJar=" + getControlledAgentJar().get().getAsFile().getAbsolutePath());
+        arguments.add("-DplatformTracing.extensionJar=" + getExtensionJar().get().getAsFile().getAbsolutePath());
+        arguments.add("-DplatformTracing.otelJavaAgentJar=" + getUpstreamAgentJar().get().getAsFile().getAbsolutePath());
+        arguments.add("-DplatformTracing.distributionVersion=" + getDistributionVersion().get());
+        arguments.add("-DplatformTracing.expectedOtelSdkVersion=" + getExpectedOtelSdkVersion().get());
+
+        if (getTestRepositoryRoot().isPresent()) {
+            arguments.add("-DplatformTracing.testRepository=" + getTestRepositoryRoot().get().getAsFile().getAbsolutePath());
+        }
+
+        return List.copyOf(arguments);
     }
 }

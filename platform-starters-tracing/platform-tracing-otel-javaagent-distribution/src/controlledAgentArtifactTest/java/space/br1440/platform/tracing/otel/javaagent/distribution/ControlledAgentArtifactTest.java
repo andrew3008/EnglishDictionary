@@ -42,6 +42,7 @@ class ControlledAgentArtifactTest {
     private static final String EXTENSION_ENTRY = "extensions/platform-tracing-otel-javaagent-extension.jar";
     private static final String IDENTITY_ENTRY = "META-INF/platform-tracing/javaagent-distribution.properties";
     private static final String MANIFEST_ENTRY = "META-INF/MANIFEST.MF";
+    private static final String OTEL_SDK_VERSION_ENTRY = "inst/io/opentelemetry/sdk/version.properties";
     private static final String ACP_PIN_RESOURCE = "META-INF/platform-tracing/otel-javaagent-acp-pin.properties";
     private static final String SCHEMA_IDENTITY = "META-INF/platform-tracing/agent-logging-schema.properties";
     private static final String EXTENSION_BUILD_METADATA =
@@ -50,6 +51,20 @@ class ControlledAgentArtifactTest {
     private static final String LOG_EVENT_SCHEMA_RESOURCE = "platform-log-event.schema.json";
     private static final String ACP_PIN_PROVIDERS_CLASS =
             "space/br1440/platform/tracing/otel/javaagent/bootstrap/verification/UpstreamCustomizerProviderAllowlist.class";
+    private static final Map<String, String> EXPECTED_SERVICE_DESCRIPTORS = Map.of(
+            "META-INF/services/io.opentelemetry.javaagent.extension.AgentListener",
+            "space.br1440.platform.tracing.otel.javaagent.bootstrap.ActivationAgentListener",
+            "META-INF/services/io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider",
+            "space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapAutoConfigurationCustomizerProvider",
+            "META-INF/services/io.opentelemetry.sdk.autoconfigure.spi.ConfigurablePropagatorProvider",
+            "space.br1440.platform.tracing.otel.javaagent.propagation.TraceControlPropagatorProvider",
+            "META-INF/services/io.opentelemetry.sdk.autoconfigure.spi.traces.ConfigurableSamplerProvider",
+            "space.br1440.platform.tracing.otel.javaagent.sampler.PlatformSamplerProvider",
+            "META-INF/services/io.opentelemetry.sdk.common.export.GrpcSenderProvider",
+            "space.br1440.platform.tracing.otel.javaagent.exporter.response.ObservingGrpcSenderProvider",
+            "META-INF/services/io.opentelemetry.sdk.common.export.HttpSenderProvider",
+            "space.br1440.platform.tracing.otel.javaagent.exporter.response.ObservingHttpSenderProvider"
+    );
 
     private static final String EXTENSION_IMPLEMENTATION_TITLE = "platform-tracing-otel-javaagent-extension";
     private static final String OTEL_JAVAAGENT_COORDINATE = "io.opentelemetry.javaagent:opentelemetry-javaagent:2.30.0";
@@ -60,11 +75,8 @@ class ControlledAgentArtifactTest {
     private static final String EXPECTED_GROUP_ID = "space.br1440.platform.starters.tracing";
     private static final String GROUP_PATH = "space/br1440/platform/starters/tracing";
     private static final String AGENT_ARTIFACT_ID = "platform-tracing-javaagent";
-    private static final String EXTENSION_ARTIFACT_ID = "platform-tracing-otel-javaagent-extension";
     private static final String AGENT_POM_NAME = "Platform Tracing Controlled OpenTelemetry Java Agent";
     private static final String AGENT_POM_DESCRIPTION = "Controlled OpenTelemetry Java agent distribution with the platform tracing extension embedded";
-    private static final String EXTENSION_POM_NAME = "Platform Tracing OTel Java agent extension";
-    private static final String EXTENSION_POM_DESCRIPTION = "Standalone platform OpenTelemetry Java agent extension artifact";
     private static final List<String> CHECKSUM_SIDECAR_SUFFIXES = List.of(".sha1", ".md5", ".sha256", ".sha512");
 
     private static final List<String> FORBIDDEN_EXTENSION_PREFIXES = List.of(
@@ -115,28 +127,25 @@ class ControlledAgentArtifactTest {
     }
 
     @Test
-    void test_repository_contains_matching_extension_and_agent_artifacts() throws IOException {
+    void test_repository_contains_only_agent_gav() throws IOException {
         // given
         Path repositoryRoot = requiredDirectory("platformTracing.testRepository");
         String version = requiredProperty("platformTracing.distributionVersion");
         ArtifactPaths paths = ArtifactPaths.resolve();
 
         RepositoryGav agentGav = RepositoryGav.resolve(repositoryRoot, AGENT_ARTIFACT_ID, version);
-        RepositoryGav extensionGav = RepositoryGav.resolve(repositoryRoot, EXTENSION_ARTIFACT_ID, version);
 
         // when
+        Set<String> publishedGavs = listPublishedGavs(repositoryRoot);
         Set<String> agentFiles = listFileNames(agentGav.directory());
-        Set<String> extensionFiles = listFileNames(extensionGav.directory());
 
         // then
+        assertThat(publishedGavs)
+                .containsExactly("%s/%s/%s".formatted(GROUP_PATH, AGENT_ARTIFACT_ID, version));
         assertRepositoryLayout(agentFiles, agentGav);
-        assertRepositoryLayout(extensionFiles, extensionGav);
 
         assertPomContract(agentGav.pomFile(), AGENT_ARTIFACT_ID, version, AGENT_POM_NAME, AGENT_POM_DESCRIPTION);
-        assertPomContract(
-                extensionGav.pomFile(), EXTENSION_ARTIFACT_ID, version, EXTENSION_POM_NAME, EXTENSION_POM_DESCRIPTION);
-
-        assertRepositoryByteInvariant(paths, agentGav, extensionGav);
+        assertRepositoryByteInvariant(paths, agentGav);
     }
 
     @Test
@@ -229,11 +238,11 @@ class ControlledAgentArtifactTest {
     @Test
     void repository_layout_contract_rejects_unexpected_classifier_artifact() {
         // given
-        RepositoryGav gav = RepositoryGav.resolve(Path.of("."), EXTENSION_ARTIFACT_ID, "0.0.0");
+        RepositoryGav gav = RepositoryGav.resolve(Path.of("."), AGENT_ARTIFACT_ID, "0.0.0");
         Set<String> files = new LinkedHashSet<>(Set.of(
                 gav.jarFileName(),
                 gav.pomFileName(),
-                "%s-0.0.0-all.jar".formatted(EXTENSION_ARTIFACT_ID)));
+                "%s-0.0.0-all.jar".formatted(AGENT_ARTIFACT_ID)));
 
         // expect
         assertThatThrownBy(() -> assertRepositoryLayout(files, gav))
@@ -241,22 +250,14 @@ class ControlledAgentArtifactTest {
                 .hasMessageContaining("-all.jar");
     }
 
-    private void assertRepositoryByteInvariant(ArtifactPaths paths, RepositoryGav agentGav, RepositoryGav extensionGav)
+    private void assertRepositoryByteInvariant(ArtifactPaths paths, RepositoryGav agentGav)
             throws IOException {
-        byte[] repoExtensionBytes = Files.readAllBytes(extensionGav.jarFile());
         byte[] localStandaloneExtensionBytes = Files.readAllBytes(paths.extension());
         byte[] embeddedExtensionBytes = readNestedEntry(agentGav.jarFile(), EXTENSION_ENTRY);
         Properties repoAgentIdentity = loadProperties(readNestedEntry(agentGav.jarFile(), IDENTITY_ENTRY));
 
-        String repoExtensionSha256 = sha256Hex(repoExtensionBytes);
         String localStandaloneSha256 = sha256Hex(localStandaloneExtensionBytes);
         String embeddedInRepoAgentSha256 = sha256Hex(embeddedExtensionBytes);
-
-        assertThat(repoExtensionSha256)
-                .as("repository extension artifact vs standalone extension artifact: repository=%s standalone=%s",
-                        repoExtensionSha256,
-                        localStandaloneSha256)
-                .isEqualTo(localStandaloneSha256);
 
         assertThat(embeddedInRepoAgentSha256)
                 .as("embedded %s in repository agent vs standalone extension artifact: embedded=%s standalone=%s",
@@ -314,6 +315,7 @@ class ControlledAgentArtifactTest {
         return false;
     }
 
+    @SuppressWarnings("SameParameterValue")
     private void assertPomContract(Path pomFile,
                                    String expectedArtifactId,
                                    String expectedVersion,
@@ -350,6 +352,7 @@ class ControlledAgentArtifactTest {
     private static Document parseXml(Path file) throws IOException {
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            //noinspection HttpUrlsUsage -- идентификатор feature Xerces, не сетевой запрос
             factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
             factory.setXIncludeAware(false);
             factory.setExpandEntityReferences(false);
@@ -397,6 +400,15 @@ class ControlledAgentArtifactTest {
         }
     }
 
+    private static Set<String> listPublishedGavs(Path repositoryRoot) throws IOException {
+        try (Stream<Path> entries = Files.walk(repositoryRoot)) {
+            return entries.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().endsWith(".pom"))
+                    .map(path -> repositoryRoot.relativize(path.getParent()).toString().replace('\\', '/'))
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+        }
+    }
+
     @SuppressWarnings("SameParameterValue")
     private static Path requiredDirectory(String name) {
         Path path = Path.of(requiredProperty(name));
@@ -437,6 +449,7 @@ class ControlledAgentArtifactTest {
 
         // then
         assertExtensionSurfaceIsAllowlisted(entries.keySet());
+        assertServiceDescriptors(entries);
         assertExtensionManifestMatches(manifest, version, schema);
         assertThat(buildMetadata)
                 .containsEntry("format.version", "1")
@@ -454,7 +467,27 @@ class ControlledAgentArtifactTest {
                         EXTENSION_BUILD_METADATA
                 )
                 .anyMatch(name -> name.startsWith("jakarta/annotation/") && name.endsWith(".class"))
+                .anyMatch(name -> name.startsWith("space/br1440/platform/tracing/otel/javaagent/shaded/com/google/protobuf/"))
+                .anyMatch(name -> name.startsWith("space/br1440/platform/tracing/otel/javaagent/shaded/io/opentelemetry/proto/"))
                 .doesNotContain(LOG_EVENT_SCHEMA_RESOURCE);
+    }
+
+    private void assertServiceDescriptors(Map<String, byte[]> entries) {
+        Set<String> actualDescriptors = entries.keySet().stream()
+                .filter(name -> name.startsWith("META-INF/services/"))
+                .filter(name -> !"META-INF/services/".equals(name))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        assertThat(actualDescriptors).containsExactlyInAnyOrderElementsOf(EXPECTED_SERVICE_DESCRIPTORS.keySet());
+        EXPECTED_SERVICE_DESCRIPTORS.forEach((path, expectedProvider) -> {
+            List<String> providerLines = new String(entries.get(path), StandardCharsets.UTF_8)
+                    .lines()
+                    .filter(line -> !line.isBlank())
+                    .toList();
+            assertThat(providerLines)
+                    .as(path)
+                    .containsExactly(expectedProvider);
+        });
     }
 
     private void assertExtensionManifestMatches(Manifest manifest, String version, Properties schema) {
@@ -466,6 +499,9 @@ class ControlledAgentArtifactTest {
 
         assertThat(manifest.getMainAttributes().getValue("Platform-Log-Schema-SHA256"))
                 .isEqualTo(schema.getProperty("schema.sha256"));
+
+        assertThat(manifest.getMainAttributes().getValue("Platform-Log-Schema-Version"))
+                .isEqualTo(schema.getProperty("schema.semanticVersion"));
     }
 
     @Test
@@ -485,6 +521,21 @@ class ControlledAgentArtifactTest {
         assertThat(pin.getProperty("format.version")).isEqualTo(EXPECTED_PIN_FORMAT_VERSION);
         assertThat(pin.getProperty("otel.javaagent.sha256"))
                 .isEqualTo(sha256Hex(Files.readAllBytes(otel)));
+    }
+
+    @Test
+    void upstream_agent_sdk_version_matches_version_catalog() throws IOException {
+        // given
+        Path otel = requiredPath("platformTracing.otelJavaAgentJar");
+        String expectedSdkVersion = requiredProperty("platformTracing.expectedOtelSdkVersion");
+
+        // when
+        Properties sdkVersion = loadProperties(readNestedEntry(otel, OTEL_SDK_VERSION_ENTRY));
+
+        // then
+        assertThat(sdkVersion.getProperty("sdk.version"))
+                .as("OpenTelemetry SDK version embedded in the upstream javaagent")
+                .isEqualTo(expectedSdkVersion);
     }
 
     @Test
@@ -589,9 +640,7 @@ class ControlledAgentArtifactTest {
     private static String requiredProperty(String name) {
         String value = System.getProperty(name);
         if (value == null || value.isBlank()) {
-            throw new IllegalStateException(
-                    "Required test system property is missing: %s".formatted(name)
-            );
+            throw new IllegalStateException("Required test system property is missing: %s".formatted(name));
         }
 
         return value;
@@ -622,6 +671,8 @@ class ControlledAgentArtifactTest {
     }
 
     private record RepositoryGav(Path directory, String artifactId, String version) {
+
+        @SuppressWarnings("SameParameterValue")
         static RepositoryGav resolve(Path repositoryRoot, String artifactId, String version) {
             return new RepositoryGav(
                     repositoryRoot.resolve(GROUP_PATH).resolve(artifactId).resolve(version),

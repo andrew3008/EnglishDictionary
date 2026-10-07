@@ -6,6 +6,7 @@ import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.process.CommandLineArgumentProvider;
 
+@SuppressWarnings("unused")
 public abstract class OtlpProbeClasspathArguments implements CommandLineArgumentProvider {
 
     @Classpath

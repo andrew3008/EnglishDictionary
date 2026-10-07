@@ -31,7 +31,8 @@ final class DistributionFiles {
         try (InputStream input = new DigestInputStream(Files.newInputStream(file), digest)) {
             input.transferTo(OutputStream.nullOutputStream());
         } catch (IOException exception) {
-            throw new GradleException("Cannot compute SHA-256 of " + file, exception);
+            String message = "Cannot compute SHA-256 of " + file;
+            throw new GradleException(message, exception);
         }
 
         return HexFormat.of().formatHex(digest.digest());
@@ -41,7 +42,8 @@ final class DistributionFiles {
         try (ZipFile zip = new ZipFile(jar.toFile(), StandardCharsets.UTF_8)) {
             ZipEntry entry = zip.getEntry(entryName);
             if (entry == null) {
-                throw new GradleException(entryName + " is missing from " + jar);
+                String message = entryName + " is missing from " + jar;
+                throw new GradleException(message);
             }
 
             try (Reader reader = new InputStreamReader(zip.getInputStream(entry), StandardCharsets.UTF_8)) {
@@ -60,7 +62,8 @@ final class DistributionFiles {
             Files.createDirectories(destination.getParent());
             Files.writeString(destination, content, StandardCharsets.UTF_8);
         } catch (IOException exception) {
-            throw new GradleException("Cannot write " + description + " " + destination, exception);
+            String message = "Cannot write " + description + " " + destination;
+            throw new GradleException(message, exception);
         }
     }
 
@@ -72,6 +75,7 @@ final class DistributionFiles {
         try {
             Files.createDirectories(parent);
             temporary = Files.createTempFile(parent, "." + destination.getFileName() + ".", ".tmp");
+
             Files.copy(stagedFile, temporary, StandardCopyOption.REPLACE_EXISTING);
             Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (AtomicMoveNotSupportedException exception) {
@@ -87,7 +91,8 @@ final class DistributionFiles {
         try {
             return MessageDigest.getInstance("SHA-256");
         } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is mandatory for every Java SE platform", exception);
+            String message = "SHA-256 is mandatory for every Java SE platform";
+            throw new IllegalStateException(message, exception);
         }
     }
 

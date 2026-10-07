@@ -1,0 +1,35 @@
+plugins {
+    id 'groovy-gradle-plugin'
+}
+
+group = 'space.br1440.platform.tracing.gradle'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    implementation 'com.gradleup.shadow:shadow-gradle-plugin:9.2.2'
+
+    // Apache Ant используется плагином Shadow только во время сборки и не попадает в javaagent.
+    // Ограничение фиксирует исправленную версию транзитивной зависимости для CVE-2026-78254.
+    constraints { DependencyConstraintHandler constraintHandler ->
+        constraintHandler.add('implementation', 'org.apache.ant:ant:1.10.18') { DependencyConstraint constraint ->
+            constraint.because('CVE-2026-78254 is fixed in Apache Ant 1.10.18')
+        }
+    }
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
+    testImplementation 'org.assertj:assertj-core:3.27.7'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.13.4'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+}

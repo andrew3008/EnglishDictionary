@@ -15,6 +15,7 @@ import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.work.DisableCachingByDefault;
 
+@SuppressWarnings("unused")
 @DisableCachingByDefault(because = "The task writes a small local integrity pin")
 public abstract class WriteJavaAgentPinTask extends DefaultTask {
 
@@ -39,14 +40,10 @@ public abstract class WriteJavaAgentPinTask extends DefaultTask {
         }
 
         Path agentJar = getAgentJar().get().getAsFile().toPath();
-
         String content = "agent.sha256=%s\nagent.version=%s\n"
                 .formatted(DistributionFiles.sha256Hex(agentJar), agentVersion);
 
-        DistributionFiles.writeUtf8(
-                getPinFile().get().getAsFile().toPath(),
-                content,
-                "controlled agent pin"
-        );
+        Path pinFilePath = getPinFile().get().getAsFile().toPath();
+        DistributionFiles.writeUtf8(pinFilePath, content,"controlled agent pin");
     }
 }

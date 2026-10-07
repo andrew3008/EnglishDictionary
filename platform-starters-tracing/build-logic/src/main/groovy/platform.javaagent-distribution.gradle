@@ -1,0 +1,366 @@
+import org.gradle.api.artifacts.Configuration
+import org.gradle.api.artifacts.ConfigurationPublications
+import org.gradle.api.artifacts.VersionCatalogsExtension
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
+import org.gradle.api.artifacts.component.ProjectComponentIdentifier
+import org.gradle.api.attributes.Attribute
+import org.gradle.api.attributes.Bundling
+import org.gradle.api.attributes.Category
+import org.gradle.api.attributes.DocsType
+import org.gradle.api.attributes.LibraryElements
+import org.gradle.api.attributes.Usage
+import org.gradle.api.file.DuplicatesStrategy
+import org.gradle.api.plugins.JavaPlugin
+import org.gradle.api.publish.PublishingExtension
+import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.publish.maven.tasks.AbstractPublishToMaven
+import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
+import org.gradle.api.publish.tasks.GenerateModuleMetadata
+import org.gradle.api.tasks.Delete
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.SourceSet
+import org.gradle.api.tasks.Sync
+import org.gradle.api.tasks.bundling.AbstractArchiveTask
+import org.gradle.api.tasks.bundling.Jar
+import org.gradle.api.tasks.testing.Test
+
+import space.br1440.platform.tracing.gradle.javaagent.ControlledAgentTestArguments
+import space.br1440.platform.tracing.gradle.javaagent.OtlpProbeClasspathArguments
+import space.br1440.platform.tracing.gradle.javaagent.PrepareControlledAgentIdentityTask
+import space.br1440.platform.tracing.gradle.javaagent.PromoteControlledAgentTask
+import space.br1440.platform.tracing.gradle.javaagent.WriteJavaAgentPinTask
+
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+def agentArtifactId = 'platform-tracing-javaagent'
+def embeddedExtensionName = 'platform-tracing-otel-javaagent-extension.jar'
+def extensionEntryPath = "extensions/${embeddedExtensionName}"
+def identityEntryPath = 'META-INF/platform-tracing/javaagent-distribution.properties'
+def artifactTestName = 'controlledAgentArtifactTest'
+def runtimeTestName = 'controlledAgentRuntimeTest'
+def testRepositoryName = 'testRepository'
+def packagedExtensionLibraryElements = 'javaagent-extension-jar'
+def expectedOtelSdkVersion = extensions.getByType(VersionCatalogsExtension)
+        .named('libs')
+        .findVersion('bom.opentelemetry')
+        .get()
+        .getRequiredVersion()
+
+def otelJavaAgent = configurations.create('otelJavaAgent') {
+    canBeConsumed = false
+    canBeResolved = true
+    transitive = false
+}
+
+def packagedExtension = configurations.create('packagedJavaAgentExtension') {
+    canBeConsumed = false
+    canBeResolved = true
+    transitive = false
+    attributes {
+        attribute(Usage.USAGE_ATTRIBUTE as Attribute<Object>, objects.named(Usage, Usage.JAVA_RUNTIME))
+        attribute(Category.CATEGORY_ATTRIBUTE as Attribute<Object>, objects.named(Category, Category.LIBRARY))
+        attribute(Bundling.BUNDLING_ATTRIBUTE as Attribute<Object>, objects.named(Bundling, Bundling.SHADOWED))
+        attribute(
+                LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE as Attribute<Object>,
+                objects.named(LibraryElements, packagedExtensionLibraryElements)
+        )
+    }
+}
+
+def singleArtifact = { Configuration configuration ->
+    configuration.incoming.artifacts.resolvedArtifacts.map { artifacts ->
+        def resolved = artifacts.toList()
+        if (resolved.size() != 1) {
+            throw new GradleException("${configuration.name} must resolve to exactly one artifact, got "
+                    + "${resolved.size()}: ${resolved}")
+        }
+        resolved.first()
+    }
+}
+
+def upstreamArtifact = singleArtifact(otelJavaAgent)
+def upstreamAgentFile = upstreamArtifact.map { artifact -> artifact.file }
+def upstreamCoordinate = upstreamArtifact.map { artifact ->
+    def component = artifact.id.componentIdentifier
+    if (component instanceof ModuleComponentIdentifier) {
+        return "${component.group}:${component.module}:${component.version}"
+    }
+    if (component instanceof ProjectComponentIdentifier) {
+        return "project:${component.projectPath}"
+    }
+    throw new GradleException("Unsupported upstream javaagent component identifier: ${component}")
+}
+def packagedExtensionArtifact = singleArtifact(packagedExtension)
+def packagedExtensionFile = packagedExtensionArtifact.map { artifact -> artifact.file }
+
+def controlledAgentJar = layout.buildDirectory.file("libs/${agentArtifactId}-${project.version}.jar")
+def identityFile = layout.buildDirectory.file('controlled-agent/staging/javaagent-distribution.properties')
+def stagingTree = layout.buildDirectory.dir('controlled-agent/staging-tree')
+def pinFile = layout.buildDirectory.file('controlled-agent/controlled-agent-pin.properties')
+def testRepository = layout.buildDirectory.dir('test-repository')
+
+def prepareIdentity = tasks.register('prepareControlledAgentIdentity', PrepareControlledAgentIdentityTask) { task ->
+    task.group = 'build'
+    task.description = 'Validates agent inputs and writes the controlled distribution identity'
+    task.getUpstreamAgentJar().fileProvider(upstreamAgentFile)
+    task.getPackagedExtensionJar().fileProvider(packagedExtensionFile)
+    task.getDistributionVersion().set(project.version.toString())
+    task.getUpstreamCoordinate().set(upstreamCoordinate)
+    task.getExtensionPath().set(extensionEntryPath)
+    task.getReservedEntries().set([extensionEntryPath, identityEntryPath] as Set)
+    task.getIdentityFile().set(identityFile)
+}
+
+def syncStaging = tasks.register('syncControlledAgentStaging', Sync) {
+    group = 'build'
+    dependsOn(prepareIdentity)
+
+    from(upstreamAgentFile.map { file -> project.zipTree(file) })
+
+    from(packagedExtensionFile) {
+        into 'extensions'
+        rename { embeddedExtensionName }
+    }
+
+    from(identityFile) {
+        into 'META-INF/platform-tracing'
+    }
+
+    into(stagingTree)
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+}
+
+def assembleJar = tasks.register('assembleControlledJavaAgentJar', Jar) {
+    group = 'build'
+    dependsOn(syncStaging)
+    archiveFileName = controlledAgentJar.map { file -> file.asFile.name }
+    destinationDirectory = layout.buildDirectory.dir('controlled-agent/staging')
+
+    from(stagingTree) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
+
+    manifest.from(stagingTree.map { directory -> directory.file('META-INF/MANIFEST.MF').asFile })
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    metadataCharset = 'UTF-8'
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+}
+
+def promoteAgent = tasks.register('promoteControlledAgent', PromoteControlledAgentTask) { task ->
+    task.group = 'build'
+    task.dependsOn(assembleJar)
+    task.getStagedJar().set(assembleJar.flatMap { archiveTask -> archiveTask.archiveFile })
+    task.getPublishedJar().set(controlledAgentJar)
+}
+
+def assembleAgent = tasks.register('assembleControlledJavaAgent') {
+    group = 'build'
+    description = 'Assembles the published controlled Java agent'
+    dependsOn(promoteAgent)
+}
+
+def writePin = tasks.register('writeControlledAgentPin', WriteJavaAgentPinTask) { task ->
+    task.group = 'build'
+    task.description = 'Writes the controlled Java agent version and SHA-256 pin'
+    task.dependsOn(promoteAgent)
+    task.getAgentJar().set(controlledAgentJar)
+    task.getAgentVersion().set(project.version.toString())
+    task.getPinFile().set(pinFile)
+}
+
+tasks.named('assemble') {
+    dependsOn(assembleAgent, writePin)
+}
+
+def createConsumable = { String name ->
+    configurations.create(name) {
+        canBeConsumed = true
+        canBeResolved = false
+    }
+}
+
+def controlledAgentElements = createConsumable('controlledAgentElements')
+artifacts.add(controlledAgentElements.name, controlledAgentJar) {
+    builtBy(assembleAgent)
+    type = 'jar'
+}
+
+def controlledAgentPinElements = createConsumable('controlledAgentPinElements')
+artifacts.add(controlledAgentPinElements.name, pinFile) {
+    builtBy(writePin)
+    type = 'properties'
+}
+
+def replaceOutgoingArtifact = { Configuration configuration, artifact, builtBy ->
+    ConfigurationPublications outgoing = configuration.outgoing
+    outgoing.artifacts.clear()
+    outgoing.variants.clear()
+    outgoing.artifact(artifact) {
+        it.builtBy(builtBy)
+        it.type = 'jar'
+    }
+}
+
+['apiElements', 'runtimeElements'].each { configurationName ->
+    configurations.named(configurationName).configure { configuration ->
+        replaceOutgoingArtifact(configuration, controlledAgentJar, assembleAgent)
+    }
+}
+configurations.named('default').configure { configuration ->
+    configuration.outgoing.artifacts.clear()
+    configuration.outgoing.variants.clear()
+}
+tasks.named('jar', Jar) {
+    enabled = false
+}
+
+def standardTestImplementation = configurations.named(JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME)
+def standardTestRuntimeOnly = configurations.named(JavaPlugin.TEST_RUNTIME_ONLY_CONFIGURATION_NAME)
+def createTestSourceSet = { String name ->
+    def sourceSet = sourceSets.create(name)
+
+    configurations.named(sourceSet.implementationConfigurationName).configure { configuration ->
+        configuration.extendsFrom(standardTestImplementation.get())
+    }
+
+    configurations.named(sourceSet.runtimeOnlyConfigurationName).configure { configuration ->
+        configuration.extendsFrom(standardTestRuntimeOnly.get())
+    }
+
+    sourceSet
+}
+
+def artifactTestSourceSet = createTestSourceSet(artifactTestName)
+def runtimeTestSourceSet = createTestSourceSet(runtimeTestName)
+
+def registerTestTask = { SourceSet sourceSet, String taskDescription ->
+    tasks.register(sourceSet.name, Test) { Test task ->
+        task.group = 'verification'
+        task.description = taskDescription
+        task.enabled = true
+        task.testClassesDirs = sourceSet.output.classesDirs
+        task.classpath = sourceSet.runtimeClasspath
+        task.useJUnitPlatform()
+        task.dependsOn(assembleAgent)
+
+        ControlledAgentTestArguments arguments = objects.newInstance(ControlledAgentTestArguments)
+        arguments.getControlledAgentJar().set(controlledAgentJar)
+        arguments.getExtensionJar().fileProvider(packagedExtensionFile)
+        arguments.getUpstreamAgentJar().fileProvider(upstreamAgentFile)
+        arguments.getDistributionVersion().set(project.version.toString())
+        arguments.getExpectedOtelSdkVersion().set(expectedOtelSdkVersion)
+        task.jvmArgumentProviders.add(arguments)
+    }
+}
+
+def artifactTest = registerTestTask(
+        artifactTestSourceSet,
+        'Runs the controlled agent artifact test suite.'
+)
+def runtimeTest = registerTestTask(
+        runtimeTestSourceSet,
+        'Runs the controlled agent runtime test suite.'
+)
+
+artifactTest.configure {
+    def arguments = jvmArgumentProviders.find { provider ->
+        provider instanceof ControlledAgentTestArguments
+    } as ControlledAgentTestArguments
+    arguments.getTestRepositoryRoot().set(testRepository)
+}
+
+def otlpProbeClasspath = configurations.create('otlpProbeApiRuntimeClasspath') {
+    canBeConsumed = false
+    canBeResolved = true
+}
+runtimeTest.configure {
+    OtlpProbeClasspathArguments arguments = objects.newInstance(OtlpProbeClasspathArguments)
+    arguments.getClasspath().from(otlpProbeClasspath)
+    jvmArgumentProviders.add(arguments)
+}
+
+def jmxContractSources = configurations.create('jmxApplicationContractSources') {
+    canBeConsumed = false
+    canBeResolved = true
+    transitive = false
+    attributes {
+        attribute(
+                Usage.USAGE_ATTRIBUTE as Attribute<Object>,
+                objects.named(Usage, 'platform-jmx-application-contract-sources')
+        )
+        attribute(Category.CATEGORY_ATTRIBUTE as Attribute<Object>, objects.named(Category, Category.DOCUMENTATION))
+        attribute(DocsType.DOCS_TYPE_ATTRIBUTE as Attribute<Object>, objects.named(DocsType, DocsType.SOURCES))
+    }
+}
+
+def syncRuntimeTestJmxContractSources = tasks.register('syncControlledAgentRuntimeTestJmxContractSources', Sync) {
+    from(jmxContractSources)
+    into(layout.buildDirectory.dir('generated/sources/controlledAgentRuntimeTest/jmxContract/java'))
+}
+runtimeTestSourceSet.java.srcDir(syncRuntimeTestJmxContractSources)
+
+tasks.named('check') {
+    dependsOn(artifactTest, runtimeTest)
+}
+
+PublishingExtension publishingExtension = extensions.getByType(PublishingExtension)
+publishingExtension.repositories {
+    maven {
+        name = testRepositoryName
+        url = testRepository
+    }
+}
+
+publishingExtension.publications.create('mavenJava', MavenPublication) { MavenPublication publication ->
+    publication.artifactId = agentArtifactId
+
+    publication.artifact(controlledAgentJar) {
+        builtBy(assembleAgent)
+        extension = 'jar'
+    }
+
+    publication.pom {
+        name = 'Platform Tracing Controlled OpenTelemetry Java Agent'
+        description = 'Controlled OpenTelemetry Java agent distribution with the platform tracing extension embedded'
+    }
+}
+
+def resetTestRepository = tasks.register('resetTestRepository', Delete) {
+    delete(testRepository)
+}
+
+def targetsTestRepository = { AbstractPublishToMaven task ->
+    task instanceof PublishToMavenRepository
+            && task.repository != null
+            && task.repository.name == testRepositoryName
+}
+
+def testRepositoryPublications = tasks.withType(AbstractPublishToMaven).matching(targetsTestRepository)
+tasks.withType(AbstractPublishToMaven).configureEach { task ->
+    if (targetsTestRepository(task)) {
+        task.dependsOn(resetTestRepository)
+    } else {
+        task.dependsOn(tasks.named('check'))
+    }
+}
+
+def repositoryInventory = fileTree(testRepository)
+repositoryInventory.exclude('**/maven-metadata*')
+artifactTest.configure {
+    dependsOn(testRepositoryPublications)
+    inputs.files(repositoryInventory)
+            .withPropertyName('publishedRepositoryArtifacts')
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
+tasks.withType(GenerateModuleMetadata).configureEach {
+    enabled = false
+}
+
+tasks.matching { task -> task.name == 'sourcesJar' || task.name == 'javadocJar' }.configureEach {
+    enabled = false
+}

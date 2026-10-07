@@ -14,16 +14,13 @@ import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.work.DisableCachingByDefault;
 
+@SuppressWarnings("unused")
 @DisableCachingByDefault(because = "The validation is lightweight and its output is local build metadata")
-public abstract class ValidateJavaAgentDistributionTask extends DefaultTask {
+public abstract class PrepareControlledAgentIdentityTask extends DefaultTask {
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getUpstreamAgentJar();
-
-    @InputFile
-    @PathSensitive(PathSensitivity.NONE)
-    public abstract RegularFileProperty getExtensionLibraryJar();
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
@@ -45,12 +42,12 @@ public abstract class ValidateJavaAgentDistributionTask extends DefaultTask {
     public abstract RegularFileProperty getIdentityFile();
 
     @TaskAction
-    public void validate() {
+    public void prepare() {
         Path upstreamAgentJar = getUpstreamAgentJar().get().getAsFile().toPath();
         Path packagedExtensionJar = getPackagedExtensionJar().get().getAsFile().toPath();
         String upstreamSha256 = JavaAgentDistribution.requireReviewedUpstreamSha256(
                 upstreamAgentJar,
-                getExtensionLibraryJar().get().getAsFile().toPath()
+                packagedExtensionJar
         );
         JavaAgentDistribution.requireNoPlatformEntries(upstreamAgentJar, getReservedEntries().get());
 

@@ -11,8 +11,9 @@ import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.work.DisableCachingByDefault;
 
+@SuppressWarnings("unused")
 @DisableCachingByDefault(because = "Publishing requires an atomic replacement in the destination directory")
-public abstract class PublishJavaAgentTask extends DefaultTask {
+public abstract class PromoteControlledAgentTask extends DefaultTask {
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
@@ -22,9 +23,9 @@ public abstract class PublishJavaAgentTask extends DefaultTask {
     public abstract RegularFileProperty getPublishedJar();
 
     @TaskAction
-    public void publish() {
-        Path stagedJarPath = getStagedJar().get().getAsFile().toPath();
-        Path publishedJarPath = getPublishedJar().get().getAsFile().toPath();
-        DistributionFiles.publishAtomically(stagedJarPath, publishedJarPath);
+    public void promote() {
+        Path stagedJar = getStagedJar().get().getAsFile().toPath();
+        Path publishedJar = getPublishedJar().get().getAsFile().toPath();
+        DistributionFiles.publishAtomically(stagedJar, publishedJar);
     }
 }

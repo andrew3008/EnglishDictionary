@@ -1,7 +1,9 @@
 package space.br1440.platform.tracing.gradle.javaagent;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
@@ -20,7 +22,6 @@ public final class JavaAgentDistribution {
 
     static final String MAVEN_ARTIFACT_ID = "platform-tracing-javaagent";
 
-    private static final String SCHEMA_ENTRY = "META-INF/platform-tracing/agent-logging-schema.properties";
     private static final String UPSTREAM_PIN_ENTRY = "META-INF/platform-tracing/otel-javaagent-acp-pin.properties";
     private static final String UPSTREAM_PIN_KEY = "otel.javaagent.sha256";
     private static final String EXTENSIONS_DIRECTORY = "extensions";
@@ -29,16 +30,16 @@ public final class JavaAgentDistribution {
     private JavaAgentDistribution() {
     }
 
-    public static String requireReviewedUpstreamSha256(Path upstreamAgentJar, Path extensionLibraryJar) {
-        String raw = DistributionFiles.readJarProperties(extensionLibraryJar, UPSTREAM_PIN_ENTRY)
+    public static String requireReviewedUpstreamSha256(Path upstreamAgentJar, Path packagedExtensionJar) {
+        String raw = DistributionFiles.readJarProperties(packagedExtensionJar, UPSTREAM_PIN_ENTRY)
                 .getProperty(UPSTREAM_PIN_KEY);
 
         if (raw == null) {
-            String message = UPSTREAM_PIN_KEY + " is missing in " + entryOf(extensionLibraryJar, UPSTREAM_PIN_ENTRY);
+            String message = UPSTREAM_PIN_KEY + " is missing in " + entryOf(packagedExtensionJar, UPSTREAM_PIN_ENTRY);
             throw new GradleException(message);
         }
 
-        String reviewed = requireSha256(UPSTREAM_PIN_KEY + " in " + extensionLibraryJar, raw.strip());
+        String reviewed = requireSha256(UPSTREAM_PIN_KEY + " in " + packagedExtensionJar, raw.strip());
         String actual = DistributionFiles.sha256Hex(upstreamAgentJar);
         if (!reviewed.equals(actual)) {
             String message = "Upstream OpenTelemetry Java agent %s does not match reviewed pin: expected %s, actual %s"
@@ -85,6 +86,7 @@ public final class JavaAgentDistribution {
         );
     }
 
+    @SuppressWarnings("unused")
     public record ExtensionSchema(String semanticVersion, String sha256) {
 
         public ExtensionSchema {
@@ -92,18 +94,28 @@ public final class JavaAgentDistribution {
             requireSha256("schema.sha256", sha256);
         }
 
-        public static ExtensionSchema readFrom(Path extensionJar) {
-            Properties properties = DistributionFiles.readJarProperties(extensionJar, SCHEMA_ENTRY);
+        public static ExtensionSchema readFromProperties(Path schemaFile) {
+            Properties properties = new Properties();
+            try (BufferedReader reader = Files.newBufferedReader(schemaFile, StandardCharsets.UTF_8)) {
+                properties.load(reader);
+            } catch (IOException exception) {
+                throw new GradleException("Cannot read extension schema " + schemaFile, exception);
+            }
+
+            return fromProperties(properties, schemaFile.toString());
+        }
+
+        private static ExtensionSchema fromProperties(Properties properties, String source) {
             String version = properties.getProperty("schema.semanticVersion");
             String sha256 = properties.getProperty("schema.sha256");
             if (version == null || sha256 == null) {
-                throw new GradleException("Extension schema is incomplete in " + entryOf(extensionJar, SCHEMA_ENTRY));
+                throw new GradleException("Extension schema is incomplete in " + source);
             }
 
             try {
                 return new ExtensionSchema(version.strip(), sha256.strip());
             } catch (GradleException exception) {
-                String message = "Extension schema is invalid in " + entryOf(extensionJar, SCHEMA_ENTRY);
+                String message = "Extension schema is invalid in " + source;
                 throw new GradleException(message, exception);
             }
         }
@@ -174,6 +186,7 @@ public final class JavaAgentDistribution {
         }
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static String entryOf(Path jar, String entryName) {
         return jar + "!/" + entryName;
     }

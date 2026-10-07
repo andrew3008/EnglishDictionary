@@ -1,6 +1,7 @@
 plugins {
     id 'platform.java-library'
     id 'platform.testing'
+    id 'platform.javaagent-extension-packaging'
 }
 
 group = 'space.br1440.platform.starters.tracing'

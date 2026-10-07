@@ -5,7 +5,7 @@
 ## Сборка и плагины
 
 - Сборка **только из корня репозитория**: `./gradlew <задача>` или `./gradlew :<путь-проекта>:<задача>`.
-- Convention-плагины `platform.*` версии `1.0.4` загружаются из Nexus-репозиториев, настроенных в корневом [`settings.gradle`](./settings.gradle). Локальный composite build в репозитории не подключён. `mavenLocal()` доступен только как локальный opt-in через `-PallowMavenLocal=true` и запрещён в CI.
+- Корпоративные convention-плагины `platform.*` версии `1.0.6` загружаются из Nexus-репозиториев, настроенных в корневом [`settings.gradle`](./settings.gradle). Локальный included build используется только для build logic javaagent. `mavenLocal()` доступен только как локальный opt-in через `-PallowMavenLocal=true` и запрещён в CI.
 - Каталог версий для сборки: [`gradle/libs.versions.toml`](./gradle/libs.versions.toml). SpringBoot-приложениям, которые используют стартеры платформы, он не поставляется; опубликованные POM содержат уже разрешённые версии.
 
 ## Состав репозитория
@@ -57,7 +57,7 @@
 | `:platform-starters-tracing:spring-boot-starter-platform-tracing-webflux`               | [`spring-boot-starter-platform-tracing-webflux`](platform-starters-tracing/spring-boot-starter-platform-tracing-webflux)                                                                                                  |
 | `:platform-starters-tracing:platform-tracing-testkit`                                   | [`platform-tracing-testkit`](platform-starters-tracing/platform-tracing-testkit) — внутренние тестовые fixtures, не публикуются                                                                                           |
 | `:platform-starters-tracing:platform-tracing-otel-javaagent-extension`                  | [`platform-tracing-otel-javaagent-extension`](platform-starters-tracing/platform-tracing-otel-javaagent-extension) — внутренний модуль исходного кода и тестов; напрямую не публикуется                                                                 |
-| `:platform-starters-tracing:platform-tracing-otel-javaagent-distribution`               | [`platform-tracing-otel-javaagent-distribution`](platform-starters-tracing/platform-tracing-otel-javaagent-distribution) — владелец artifact-only публикаций controlled agent и standalone extension                                              |
+| `:platform-starters-tracing:platform-tracing-otel-javaagent-distribution`               | [`platform-tracing-otel-javaagent-distribution`](platform-starters-tracing/platform-tracing-otel-javaagent-distribution) — владелец artifact-only публикации controlled agent                                                                       |
 | `:platform-starters-tracing:platform-tracing-jib-plugin`                               | [`platform-tracing-jib-plugin`](platform-starters-tracing/platform-tracing-jib-plugin) — Gradle-плагин `platform.tracing-jib`; работает и без Jib (guard, argfile, bootRun); не входит в BOM                         |
 
 Controlled Platform Agent поставляется артефактом
@@ -148,8 +148,9 @@ BOM или публикации tracing-платформы.
 
 Конфигурация репозиториев Nexus и агрегаторы `publishAllToNexus` / `publishAllToMavenLocal`
 задаются convention-плагином `platform.java-library-publish`, для BOM — BOM-модулем.
-Controlled javaagent публикуется той же convention-публикацией `mavenJava`: в неё
-подставляется собранный `platform-tracing-javaagent` JAR, без отдельного extension-артефакта.
+Для Controlled javaagent convention-плагин `platform.javaagent-distribution` создаёт публикацию
+`mavenJava` и передаёт в неё собранный `platform-tracing-javaagent` JAR без отдельного
+extension-артефакта. Плагин `platform.publishing-repositories` задаёт только репозитории публикации.
 
 ## Полный список Gradle-проектов
 

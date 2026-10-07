@@ -1,5 +1,5 @@
 pluginManagement {
-    includeBuild('platform-starters-tracing/platform-tracing-otel-javaagent-distribution/build-logic')
+    includeBuild('platform-starters-tracing/build-logic')
 
     def platformConventionsVersion = '1.0.6'
 
