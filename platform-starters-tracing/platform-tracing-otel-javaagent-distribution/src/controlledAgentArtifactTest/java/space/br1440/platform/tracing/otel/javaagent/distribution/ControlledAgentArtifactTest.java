@@ -352,7 +352,7 @@ class ControlledAgentArtifactTest {
     private static Document parseXml(Path file) throws IOException {
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            //noinspection HttpUrlsUsage -- идентификатор feature Xerces, не сетевой запрос
+            //noinspection HttpUrlsUsage -- идентификатор feature Xerces для запрета DOCTYPE, не сетевой запрос
             factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
             factory.setXIncludeAware(false);
             factory.setExpandEntityReferences(false);
