@@ -44,7 +44,7 @@ platform-tracing-helm:
       esac
       helm lint --strict .
       printf '%s' "$HARBOR_PASSWORD" | helm registry login "$HARBOR_REGISTRY" --username "$HARBOR_USERNAME" --password-stdin
-      chart_ref="oci://${HARBOR_REGISTRY}/pe/charts/${chart_name}"
+      chart_ref="oci://${HARBOR_REGISTRY}/platform/charts/${chart_name}"
       if helm show chart "$chart_ref" --version "$chart_version" >/dev/null 2>/tmp/helm-show.err; then
         echo "${chart_ref}:${chart_version} already exists; bump version in Chart.yaml" >&2
         exit 1
@@ -55,7 +55,7 @@ platform-tracing-helm:
         exit 1
       fi
       helm package .
-      helm push "${chart_name}-${chart_version}.tgz" "oci://${HARBOR_REGISTRY}/pe/charts"
+      helm push "${chart_name}-${chart_version}.tgz" "oci://${HARBOR_REGISTRY}/platform/charts"
 
 variables:
   GRADLE_IMAGE: r.1440.space/dockerhub/gradle:8.12.0-jdk21
