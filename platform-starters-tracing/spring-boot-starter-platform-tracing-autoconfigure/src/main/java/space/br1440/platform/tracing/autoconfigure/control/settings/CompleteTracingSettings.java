@@ -9,10 +9,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireUtf8Meter;
+
 public final class CompleteTracingSettings {
 
-    private static final int MAX_ROUTE_RATIOS = 100;
-    private static final int MAX_ROUTE_KEY_LENGTH = 255;
     private static final Set<String> VALID_LOG_LEVELS = Set.of("OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE");
     private static final Set<String> VALID_VALIDATION_LEVELS = Set.of("WARNING", "ERROR", "DISABLED");
 
@@ -147,8 +148,11 @@ public final class CompleteTracingSettings {
     }
 
     private static Map<String, Double> canonicalizeRoutes(Map<String, Double> routes) {
-        if (routes.size() > MAX_ROUTE_RATIOS) {
-            throw new IllegalArgumentException("samplingRouteRatios must contain at most " + MAX_ROUTE_RATIOS + " entries");
+        if (routes.size() > JmxWireContract.MAX_ROUTE_ENTRIES) {
+            String message = "samplingRouteRatios must contain at most %d entries"
+                    .formatted(JmxWireContract.MAX_ROUTE_ENTRIES);
+
+            throw new IllegalArgumentException(message);
         }
 
         Map<String, Double> canonical = new LinkedHashMap<>(routes.size());
@@ -174,8 +178,11 @@ public final class CompleteTracingSettings {
             throw new IllegalArgumentException("route prefix must not be blank");
         }
 
-        if (routePrefix.length() > MAX_ROUTE_KEY_LENGTH) {
-            throw new IllegalArgumentException("route prefix must contain at most " + MAX_ROUTE_KEY_LENGTH + " UTF-16 code units");
+        if (JmxWireUtf8Meter.utf8Length(routePrefix) > JmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES) {
+            String message = "route prefix must contain at most %d UTF-8 bytes"
+                    .formatted(JmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES);
+
+            throw new IllegalArgumentException(message);
         }
 
         if (routePrefix.chars().anyMatch(Character::isISOControl)) {

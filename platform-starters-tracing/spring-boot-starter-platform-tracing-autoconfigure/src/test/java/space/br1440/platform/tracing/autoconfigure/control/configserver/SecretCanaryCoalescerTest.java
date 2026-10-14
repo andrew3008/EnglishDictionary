@@ -23,7 +23,7 @@ class SecretCanaryCoalescerTest {
     private static final String CANARY_TOKEN = "CANARY_TOKEN_z9Qx7mK2vL4pR8nW";
 
     @Test
-    void runtimeManifestFailureLog_doesNotEchoRouteOrTokenCanary() throws Exception {
+    void runtimeManifestFailureLog_includesRouteKeyAndOmitsToken() throws Exception {
         Logger logger = (Logger) LoggerFactory.getLogger(TracingSettingsRefreshCoalescer.class);
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
         appender.start();
@@ -42,18 +42,19 @@ class SecretCanaryCoalescerTest {
             ConfigServerSettingsManifestBuilder builder = new ConfigServerSettingsManifestBuilder(
                     env, new ConfigServerSettingsProvenanceClassifier(env));
             TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                    builder, client, client, Runnable::run);
+                    builder, client, Runnable::run
+            );
 
             coalescer.onRefreshEvent();
 
             String logs = appender.list.stream()
                     .map(ILoggingEvent::getFormattedMessage)
                     .reduce("", (a, b) -> a + "\n" + b);
-            assertThat(logs).contains("Config Server manifest build failed");
+            assertThat(logs).contains("Config Server manifest rejected locally");
             assertThat(logs)
-                    .as("the rejection under test is the value parse failure, not a provenance rejection")
-                    .contains("Invalid double value for a sampling.route-ratios entry");
-            assertThat(logs).doesNotContain(CANARY_ROUTE);
+                    .as("the rejection under test is the value conversion failure, not a provenance rejection")
+                    .contains("platform.tracing.policy.sampling.route-ratios." + CANARY_ROUTE)
+                    .contains("not convertible to Double");
             assertThat(logs).doesNotContain(CANARY_TOKEN);
         } finally {
             logger.detachAppender(appender);

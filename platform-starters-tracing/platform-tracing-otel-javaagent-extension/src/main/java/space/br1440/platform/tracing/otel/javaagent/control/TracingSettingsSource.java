@@ -6,19 +6,20 @@ import java.util.Objects;
 
 import space.br1440.platform.common.util.MapUtils;
 import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ControlSettingsExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.SamplingLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ValidationLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 public final class TracingSettingsSource {
 
@@ -26,13 +27,13 @@ public final class TracingSettingsSource {
     private static final String ROUTE_RATIO_NOT_A_NUMBER = "not-a-number";
 
     private final TracingSettingsStore store;
-    private final LastSettingsUpdate diagnostics;
     private final TracingSettingsUpdater updater;
 
     private TracingSettingsSource(TracingSettingsStore store) {
         this.store = Objects.requireNonNull(store, "store");
-        this.diagnostics = new LastSettingsUpdate();
-        this.updater = new TracingSettingsUpdater(store, diagnostics);
+        this.updater = store.current().agentInstanceId().isUnbound()
+                ? null
+                : new TracingSettingsUpdater(store, AgentLoggingRuntime.shared()::applyLevel);
     }
 
     public static TracingSettingsSource fromStartup(ExtensionConfig config,
@@ -45,45 +46,60 @@ public final class TracingSettingsSource {
             log.log(ValidationLogEvent.VALIDATION_DISABLED);
         }
 
-        return create(config.sampling(), level, agentInstanceId);
+        return create(
+                config.sampling(),
+                config.controlSettings(),
+                level,
+                agentInstanceId);
     }
 
     public static TracingSettingsSource isolatedSampling(SamplingExtensionConfig sampling) {
-        return create(sampling, SpanAttributeValidationLevel.WARNING, AgentInstanceId.unbound());
+        return create(
+                sampling,
+                ControlSettingsExtensionConfig.defaults(),
+                ExtensionDefaults.DEFAULT_SPAN_ATTRIBUTE_VALIDATION_LEVEL,
+                AgentInstanceId.unbound());
     }
 
     public static TracingSettingsSource isolatedDefaults() {
-        return isolatedValidation(SpanAttributeValidationLevel.WARNING);
+        return isolatedValidation(ExtensionDefaults.DEFAULT_SPAN_ATTRIBUTE_VALIDATION_LEVEL);
     }
 
     public static TracingSettingsSource isolatedValidation(SpanAttributeValidationLevel validationLevel) {
-        TracingSettings settings = TracingSettings.of(
-                true,
-                1.0d,
-                Map.of(),
-                validationLevel,
-                true,
-                true,
-                AgentLogLevel.INFO
-        );
-
-        return new TracingSettingsSource(new TracingSettingsStore(AgentInstanceId.unbound(), settings));
+        return createIsolated(
+                ExtensionDefaults.DEFAULT_ENABLED,
+                ExtensionDefaults.DEFAULT_SAMPLING_RATIO,
+                parseRouteRatios(ExtensionDefaults.DEFAULT_SAMPLING_ROUTE_RATIOS),
+                validationLevel);
     }
 
     public static TracingSettingsSource isolatedSampling(boolean enabled,
                                                          Map<String, Double> routeRatios,
                                                          double defaultRatio) {
-        TracingSettings settings = TracingSettings.of(
+        return createIsolated(
                 enabled,
                 defaultRatio,
                 routeRatios,
-                SpanAttributeValidationLevel.DISABLED,
-                true,
-                true,
-                AgentLogLevel.INFO
+                SpanAttributeValidationLevel.DISABLED);
+    }
+
+    private static TracingSettingsSource createIsolated(boolean samplingEnabled,
+                                                        double samplingRatio,
+                                                        Map<String, Double> routeRatios,
+                                                        SpanAttributeValidationLevel validationLevel) {
+        ControlSettingsExtensionConfig controlSettings = ControlSettingsExtensionConfig.defaults();
+        TracingSettings settings = TracingSettings.of(
+                samplingEnabled,
+                samplingRatio,
+                routeRatios,
+                validationLevel,
+                controlSettings.exporterEnabled(),
+                controlSettings.traceControlHeadersEnabled(),
+                controlSettings.diagnosticsLogLevel()
         );
 
-        return new TracingSettingsSource(new TracingSettingsStore(AgentInstanceId.unbound(), settings));
+        TracingSettingsStore store = new TracingSettingsStore(AgentInstanceId.unbound(), settings);
+        return new TracingSettingsSource(store);
     }
 
     public TracingSettingsRevision current() {
@@ -95,14 +111,22 @@ public final class TracingSettingsSource {
     }
 
     public TracingSettingsUpdater updater() {
+        if (updater == null) {
+            throw new IllegalStateException("Cannot apply tracing settings to an unbound store");
+        }
         return updater;
     }
 
-    public LastSettingsUpdate diagnostics() {
-        return diagnostics;
+    public void projectDiagnosticsLevel() {
+        if (updater == null) {
+            AgentLoggingRuntime.shared().applyLevel(current().policy().diagnosticsLogLevel());
+            return;
+        }
+        updater.projectDiagnosticsLevel();
     }
 
     private static TracingSettingsSource create(SamplingExtensionConfig sampling,
+                                                ControlSettingsExtensionConfig controlSettings,
                                                 SpanAttributeValidationLevel validationLevel,
                                                 AgentInstanceId agentInstanceId) {
         Map<String, Double> routeRatios = parseRouteRatios(sampling.routeRatios());
@@ -111,12 +135,13 @@ public final class TracingSettingsSource {
                 sampling.ratio(),
                 routeRatios,
                 validationLevel,
-                true,
-                true,
-                AgentLogLevel.INFO
+                controlSettings.exporterEnabled(),
+                controlSettings.traceControlHeadersEnabled(),
+                controlSettings.diagnosticsLogLevel()
         );
 
-        return new TracingSettingsSource(new TracingSettingsStore(agentInstanceId, settings));
+        TracingSettingsStore store = new TracingSettingsStore(agentInstanceId, settings);
+        return new TracingSettingsSource(store);
     }
 
     private static Map<String, Double> parseRouteRatios(Map<String, String> source) {

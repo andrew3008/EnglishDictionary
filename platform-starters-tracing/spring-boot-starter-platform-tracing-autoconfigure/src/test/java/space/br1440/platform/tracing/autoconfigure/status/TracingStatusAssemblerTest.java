@@ -5,15 +5,17 @@ import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.management.MBeanServer;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,9 +26,13 @@ import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingControlChannel;
-import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedPolicySummary;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsReadModel;
+import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
+import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedSettings;
+import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedSettingsAuthority;
+import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedTracingSettingsReader;
+import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsRevision;
+import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsContractViolationException;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorMetricsObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorSpanTimeoutValues;
@@ -39,6 +45,11 @@ import space.br1440.platform.tracing.autoconfigure.support.ReadinessJmxTestFixtu
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 class TracingStatusAssemblerTest {
 
@@ -66,16 +77,17 @@ class TracingStatusAssemblerTest {
     }
 
     @Test
-    void reasonPriorityStartsWithDisabledThenControlChannel() {
+    void reasonPriorityStartsWithDisabledThenAgentAvailability() {
         // given
         TracingStatusAssembler disabled = assembler(
                 false,
-                TracingControlChannel.STATIC,
+                TracingControlChannel.NONE,
                 diagnostics(AgentRuntimeState.AGENT_MISSING)
         );
-        TracingStatusAssembler staticChannel = assembler(
+
+        TracingStatusAssembler unavailable = assembler(
                 true,
-                TracingControlChannel.STATIC,
+                TracingControlChannel.NONE,
                 diagnostics(AgentRuntimeState.AGENT_MISSING)
         );
 
@@ -83,12 +95,11 @@ class TracingStatusAssemblerTest {
         // then
         assertThat(disabled.assemble().settings().reason())
                 .isEqualTo(SettingsAbsenceReason.TRACING_DISABLED);
-        assertThat(staticChannel.assemble().settings().reason())
-                .isEqualTo(SettingsAbsenceReason.CONTROL_CHANNEL_HAS_NO_ACCEPTED_SETTINGS);
+        assertAgentUnavailable(unavailable.assemble());
     }
 
     @Test
-    void writeChannelDistinguishesAgentUnavailableAndPolicyNotAccepted() {
+    void writeChannelDistinguishesAgentUnavailableAndSettingsUnreadable() {
         TracingStatusAssembler unavailable = assembler(
                 true,
                 TracingControlChannel.CONFIG_SERVER,
@@ -101,26 +112,19 @@ class TracingStatusAssemblerTest {
                 diagnostics(AgentRuntimeState.AGENT_READY)
         );
 
-        assertThat(unavailable.assemble().settings().reason())
-                .isEqualTo(SettingsAbsenceReason.AGENT_UNAVAILABLE);
-
+        assertAgentUnavailable(unavailable.assemble());
         assertThat(notAccepted.assemble().settings().reason())
-                .isEqualTo(SettingsAbsenceReason.SETTINGS_NOT_ACCEPTED);
+                .isEqualTo(SettingsAbsenceReason.SETTINGS_UNREADABLE);
     }
 
     @Test
     void acceptedPolicyIsSecretSafeAndPostStartAgentLossIsObserved() {
-        AtomicReference<TracingDeploymentDiagnostics> state = new AtomicReference<>(diagnostics(AgentRuntimeState.AGENT_READY));
-
-        AcceptedSettingsReadModel projection = new AcceptedSettingsReadModel(
-                new ExpectedSettingsRevision(AGENT_INSTANCE_ID, 7L),
-                new AcceptedPolicySummary(true, 0.25, 3, "WARNING", true, true, "INFO")
-        );
+        AcceptedSettings projection = acceptedPolicy();
 
         TracingStatusAssembler assembler = assembler(
                 true,
                 TracingControlChannel.CONFIG_SERVER,
-                state,
+                diagnostics(AgentRuntimeState.AGENT_READY),
                 projection
         );
 
@@ -128,7 +132,8 @@ class TracingStatusAssemblerTest {
         assertThat(initial.settings().available()).isTrue();
         assertThat(initial.settings().acceptedRevision().agentInstanceId())
                 .isEqualTo(initial.agent().get("agentInstanceId"));
-        assertThat(initial.settings().accepted().samplingRouteRatiosCount()).isEqualTo(3);
+        assertThat(initial.settings().accepted().samplingRouteRatios()).hasSize(3);
+        assertThat(initial.settings().sourceAuthority()).isEqualTo("CONFIG_SERVER");
         assertThat(initial.agent())
                 .containsEntry("contractId", "platform-tracing-jmx-wire-contract")
                 .containsEntry("agentInstanceId", AGENT_INSTANCE_ID)
@@ -138,22 +143,28 @@ class TracingStatusAssemblerTest {
                 .containsEntry("extensionDefiningLoader", "agent-loader@1")
                 .containsEntry("sdkDefiningLoader", "sdk-loader@2");
 
-        state.set(diagnostics(AgentRuntimeState.AGENT_MISSING));
-        TracingStatusSnapshot degraded = assembler.assemble();
+        TracingStatusSnapshot degraded = assembler(
+                true,
+                TracingControlChannel.CONFIG_SERVER,
+                diagnostics(AgentRuntimeState.AGENT_MISSING),
+                projection
+        ).assemble();
         assertThat(degraded.settings().available()).isFalse();
-        assertThat(degraded.settings().reason()).isEqualTo(SettingsAbsenceReason.AGENT_UNAVAILABLE);
+        assertAgentUnavailable(degraded);
     }
 
     @Test
     void runtimeValidationSectionIncludesViolationCounter() {
-        PlatformTracingJmxClient jmxClient = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
+        PlatformTracingJmxClient jmxClient = jmxClient();
         ValidationValues values = new ValidationValues("ERROR", 42L, 7L, "accepted-state");
         when(jmxClient.validation().observation()).thenReturn(Optional.of(
-                new ValidationObservation(AGENT_INSTANCE_ID, new JmxOwnerState.Present<>(values, 1L))));
+                new ValidationObservation(AGENT_INSTANCE_ID, new JmxOwnerState.Present<>(values, 1L))
+        ));
 
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 true,
-                TracingControlChannel.STATIC);
+                TracingControlChannel.NONE
+        );
 
         TracingStatusAssembler assembler = new TracingStatusAssembler(
                 NoopTraceOperations.INSTANCE,
@@ -162,7 +173,8 @@ class TracingStatusAssemblerTest {
                 jmxClient,
                 Optional::empty,
                 diagnostics(AgentRuntimeState.AGENT_READY),
-                stableCoherenceGuard());
+                stableCoherenceGuard()
+        );
 
         @SuppressWarnings("unchecked")
         Map<String, Object> validation = (Map<String, Object>) assembler.assemble().runtime().get("validation");
@@ -172,7 +184,7 @@ class TracingStatusAssemblerTest {
     @Test
     void runtimeSpanTimeoutSectionExposesLiveAndBoundedState() {
         // given
-        PlatformTracingJmxClient jmxClient = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
+        PlatformTracingJmxClient jmxClient = jmxClient();
         ProcessorSpanTimeoutValues values = new ProcessorSpanTimeoutValues(
                 new ProcessorSpanTimeoutValues.ForceEnd(11L, 4L, 13L),
                 new ProcessorSpanTimeoutValues.Tracking(3, 1, 7, 10_000, 9L, 60_000, 1_024, 0L),
@@ -189,7 +201,7 @@ class TracingStatusAssemblerTest {
         );
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 true,
-                TracingControlChannel.STATIC);
+                TracingControlChannel.NONE);
         TracingStatusAssembler assembler = new TracingStatusAssembler(
                 NoopTraceOperations.INSTANCE,
                 NoOpTracingRuntime.noop(),
@@ -203,7 +215,6 @@ class TracingStatusAssemblerTest {
         TracingStatusSnapshot snapshot = assembler.assemble();
 
         // then
-        assertThat(snapshot.schemaVersion()).isEqualTo(TracingStatusSnapshot.CURRENT_SCHEMA_VERSION);
         @SuppressWarnings("unchecked")
         Map<String, Object> spanTimeout = (Map<String, Object>) snapshot.runtime().get("spanTimeout");
         assertThat(spanTimeout)
@@ -228,14 +239,14 @@ class TracingStatusAssemblerTest {
         assertThat(captureOf(spanTimeout))
                 .containsEntry("agentInstanceId", AGENT_INSTANCE_ID)
                 .containsEntry("sequence", 17L)
-                .containsEntry("startedAt", 1_700_000_000_000L)
-                .containsEntry("completedAt", 1_700_000_000_005L);
+                .containsEntry("startedAtEpochMillis", 1_700_000_000_000L)
+                .containsEntry("completedAtEpochMillis", 1_700_000_000_005L);
     }
 
     @Test
     void spanTimeoutCaptureIsPublishedWhenOwnerIsAbsentAndBlankWhenObservationIsUnreadable() {
         // given
-        PlatformTracingJmxClient absentOwner = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
+        PlatformTracingJmxClient absentOwner = jmxClient();
         when(absentOwner.processorMetrics().observation()).thenReturn(Optional.of(
                 new ProcessorMetricsObservation(
                         new ObservationCapture(AGENT_INSTANCE_ID, 5L, 1_700_000_000_000L, 1_700_000_000_002L),
@@ -243,7 +254,7 @@ class TracingStatusAssemblerTest {
                         new JmxOwnerState.Absent<>(0L),
                         new JmxOwnerState.Absent<>(0L))));
 
-        PlatformTracingJmxClient unreadable = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
+        PlatformTracingJmxClient unreadable = jmxClient();
         when(unreadable.processorMetrics().observation()).thenReturn(Optional.empty());
 
         // when
@@ -255,21 +266,21 @@ class TracingStatusAssemblerTest {
         assertThat(captureOf(absentOwnerSpanTimeout))
                 .containsEntry("agentInstanceId", AGENT_INSTANCE_ID)
                 .containsEntry("sequence", 5L)
-                .containsEntry("startedAt", 1_700_000_000_000L)
-                .containsEntry("completedAt", 1_700_000_000_002L);
+                .containsEntry("startedAtEpochMillis", 1_700_000_000_000L)
+                .containsEntry("completedAtEpochMillis", 1_700_000_000_002L);
 
         assertThat(unreadableSpanTimeout).containsEntry("present", false);
         assertThat(captureOf(unreadableSpanTimeout))
                 .containsEntry("agentInstanceId", null)
                 .containsEntry("sequence", null)
-                .containsEntry("startedAt", null)
-                .containsEntry("completedAt", null);
+                .containsEntry("startedAtEpochMillis", null)
+                .containsEntry("completedAtEpochMillis", null);
     }
 
     private static Map<String, Object> spanTimeoutSectionOf(PlatformTracingJmxClient jmxClient) {
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 true,
-                TracingControlChannel.STATIC);
+                TracingControlChannel.NONE);
         TracingStatusAssembler assembler = new TracingStatusAssembler(
                 NoopTraceOperations.INSTANCE,
                 NoOpTracingRuntime.noop(),
@@ -310,10 +321,7 @@ class TracingStatusAssemblerTest {
                 TracingControlChannel.CONFIG_SERVER
         );
 
-        AcceptedSettingsReadModel projection = new AcceptedSettingsReadModel(
-                new ExpectedSettingsRevision(AGENT_INSTANCE_ID, 7L),
-                new AcceptedPolicySummary(true, 0.25, 3, "WARNING", true, true, "INFO")
-        );
+        AcceptedSettings projection = acceptedPolicy();
 
         AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard(server);
         AgentReadinessCoherenceTestSupport.pinCurrent(coherenceGuard);
@@ -321,7 +329,7 @@ class TracingStatusAssemblerTest {
                 NoopTraceOperations.INSTANCE,
                 NoOpTracingRuntime.noop(),
                 settings,
-                mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS),
+                jmxClient(),
                 () -> Optional.of(projection),
                 diagnostics(AgentRuntimeState.AGENT_READY),
                 coherenceGuard
@@ -336,20 +344,200 @@ class TracingStatusAssemblerTest {
                 .containsEntry("failureCode", AgentReadinessCoherenceGuard.MIXED_GENERATION);
         assertThat(snapshot.runtime()).isEmpty();
         assertThat(snapshot.settings().available()).isFalse();
-        assertThat(snapshot.settings().reason()).isEqualTo(SettingsAbsenceReason.AGENT_UNAVAILABLE);
+        assertAgentUnavailable(snapshot);
         assertThat(snapshot.jmxContractDiagnostics()).isEmpty();
+    }
+
+    @Test
+    void settingsContractFailureDoesNotEscapeAndReportsSettingsUnreadable() {
+        // given
+        AcceptedTracingSettingsReader reader = () -> {
+            throw new TracingSettingsContractViolationException("STATUS_METADATA_NOT_PASSED");
+        };
+        TracingStatusAssembler assembler = assembler(reader);
+
+        // when
+        TracingStatusSnapshot snapshot = assembler.assemble();
+
+        // then
+        assertThat(snapshot.settings().available()).isFalse();
+        assertThat(snapshot.settings().reason()).isEqualTo(SettingsAbsenceReason.SETTINGS_UNREADABLE);
+    }
+
+    @Test
+    void settingsGuardFailureDoesNotEscapeAndReportsAgentUnavailable() {
+        // given
+        AcceptedTracingSettingsReader reader = () -> {
+            throw new TracingConfigurationGuardException("STATUS_TRANSPORT_FAILED");
+        };
+        TracingStatusAssembler assembler = assembler(reader);
+
+        // when
+        TracingStatusSnapshot snapshot = assembler.assemble();
+
+        // then
+        assertAgentUnavailable(snapshot);
+        assertThat(snapshot.agent())
+                .containsEntry("failureCode", AgentReadinessCoherenceGuard.ANCHOR_NOT_PINNED);
+    }
+
+    @Test
+    void settingsCoherenceFailureIsNotReportedAsSettingsUnreadable() {
+        AgentReadinessCoherenceGuard coherenceGuard = stableCoherenceGuard();
+        AcceptedTracingSettingsReader reader = () -> {
+            coherenceGuard.requirePinnedAgentInstanceId(NEXT_AGENT_INSTANCE_ID);
+            return Optional.of(acceptedPolicy());
+        };
+        TracingStatusAssembler assembler = new TracingStatusAssembler(
+                NoopTraceOperations.INSTANCE,
+                NoOpTracingRuntime.noop(),
+                new TracingBootstrapSettings(true, TracingControlChannel.NONE),
+                jmxClient(),
+                reader,
+                diagnostics(AgentRuntimeState.AGENT_READY),
+                coherenceGuard
+        );
+
+        TracingStatusSnapshot snapshot = assembler.assemble();
+
+        assertThat(snapshot.agent())
+                .containsEntry("state", AgentRuntimeState.EXTENSION_INCOMPATIBLE.name())
+                .containsEntry("failureCode", AgentReadinessCoherenceGuard.JMX_AGENT_INSTANCE_MISMATCH);
+        assertAgentUnavailable(snapshot);
+    }
+
+    @Test
+    void repeatedSettingsReadFailureLogsWarnThenDebug() {
+        // given
+        Logger logger = (Logger) LoggerFactory.getLogger(SettingsStatusResolver.class);
+        Level previousLevel = logger.getLevel();
+        logger.setLevel(Level.DEBUG);
+
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+
+        AcceptedTracingSettingsReader reader = () -> {
+            throw new IllegalStateException("Synthetic settings read failure");
+        };
+        TracingStatusAssembler assembler = assembler(reader);
+
+        try {
+            // when
+            TracingStatusSnapshot first = assembler.assemble();
+            TracingStatusSnapshot second = assembler.assemble();
+
+            // then
+            assertThat(first.settings().reason()).isEqualTo(SettingsAbsenceReason.SETTINGS_UNREADABLE);
+            assertThat(second.settings().reason()).isEqualTo(SettingsAbsenceReason.SETTINGS_UNREADABLE);
+            assertThat(appender.list).filteredOn(event -> event.getLevel() == Level.WARN).hasSize(1);
+            assertThat(appender.list).filteredOn(event -> event.getLevel() == Level.DEBUG).hasSize(1);
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previousLevel);
+            appender.stop();
+        }
+    }
+
+    @Test
+    void settingsReadRecoveryResetsFailureTransitionLogging() {
+        // given
+        Logger logger = (Logger) LoggerFactory.getLogger(SettingsStatusResolver.class);
+        Level previousLevel = logger.getLevel();
+        logger.setLevel(Level.DEBUG);
+
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+
+        AtomicInteger reads = new AtomicInteger();
+        AcceptedTracingSettingsReader reader = () -> {
+            int read = reads.getAndIncrement();
+            if (read == 1) {
+                return Optional.of(acceptedPolicy());
+            }
+
+            throw new IllegalStateException("Synthetic settings read failure");
+        };
+        TracingStatusAssembler assembler = assembler(reader);
+
+        try {
+            // when
+            TracingStatusSnapshot first = assembler.assemble();
+            TracingStatusSnapshot recovered = assembler.assemble();
+            TracingStatusSnapshot failedAgain = assembler.assemble();
+
+            // then
+            assertThat(first.settings().reason()).isEqualTo(SettingsAbsenceReason.SETTINGS_UNREADABLE);
+            assertThat(recovered.settings().available()).isTrue();
+            assertThat(failedAgain.settings().reason()).isEqualTo(SettingsAbsenceReason.SETTINGS_UNREADABLE);
+            assertThat(appender.list).filteredOn(event -> event.getLevel() == Level.WARN).hasSize(2);
+            assertThat(appender.list).filteredOn(event -> event.getLevel() == Level.INFO).hasSize(1);
+            assertThat(appender.list).filteredOn(event -> event.getLevel() == Level.DEBUG).isEmpty();
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previousLevel);
+            appender.stop();
+        }
+    }
+
+    @Test
+    void guardFailureDoesNotCloseTheUnreadableEpisode() {
+        Logger logger = (Logger) LoggerFactory.getLogger(SettingsStatusResolver.class);
+        Level previousLevel = logger.getLevel();
+        logger.setLevel(Level.DEBUG);
+
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+
+        AtomicInteger reads = new AtomicInteger();
+        AcceptedTracingSettingsReader reader = () -> {
+            int read = reads.getAndIncrement();
+            if (read == 0) {
+                throw new IllegalStateException("Synthetic settings read failure");
+            }
+            if (read == 1) {
+                throw new TracingConfigurationGuardException("STATUS_TRANSPORT_FAILED");
+            }
+            return Optional.of(acceptedPolicy());
+        };
+        TracingStatusAssembler assembler = assembler(reader);
+
+        try {
+            TracingStatusSnapshot unreadable = assembler.assemble();
+            TracingStatusSnapshot guardFailure = assembler.assemble();
+            TracingStatusSnapshot recovered = assembler.assemble();
+
+            assertThat(unreadable.settings().reason()).isEqualTo(SettingsAbsenceReason.SETTINGS_UNREADABLE);
+            assertAgentUnavailable(guardFailure);
+            assertThat(recovered.settings().available()).isTrue();
+            assertThat(appender.list).filteredOn(event -> event.getLevel() == Level.WARN).hasSize(1);
+            assertThat(appender.list).filteredOn(event -> event.getLevel() == Level.INFO).hasSize(1);
+            assertThat(appender.list).filteredOn(event -> event.getLevel() == Level.DEBUG).isEmpty();
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previousLevel);
+            appender.stop();
+        }
+    }
+
+    private static PlatformTracingJmxClient jmxClient() {
+        PlatformTracingJmxClient client = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
+        when(client.jmxContractDiagnostics()).thenReturn(List.of());
+        return client;
     }
 
     private static TracingStatusAssembler assembler(boolean enabled,
                                                     TracingControlChannel controlChannel,
                                                     TracingDeploymentDiagnostics diagnostics) {
-        return assembler(enabled, controlChannel, new AtomicReference<>(diagnostics), null);
+        return assembler(enabled, controlChannel, diagnostics, null);
     }
 
     private static TracingStatusAssembler assembler(boolean enabled,
                                                     TracingControlChannel controlChannel,
-                                                    AtomicReference<TracingDeploymentDiagnostics> diagnostics,
-                                                    AcceptedSettingsReadModel projection) {
+                                                    TracingDeploymentDiagnostics diagnostics,
+                                                    AcceptedSettings projection) {
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 enabled,
                 controlChannel);
@@ -362,9 +550,21 @@ class TracingStatusAssemblerTest {
                 NoopTraceOperations.INSTANCE,
                 runtime,
                 settings,
-                mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS),
+                jmxClient(),
                 () -> Optional.ofNullable(projection),
-                diagnostics::get,
+                diagnostics,
+                stableCoherenceGuard()
+        );
+    }
+
+    private static TracingStatusAssembler assembler(AcceptedTracingSettingsReader reader) {
+        return new TracingStatusAssembler(
+                NoopTraceOperations.INSTANCE,
+                NoOpTracingRuntime.noop(),
+                new TracingBootstrapSettings(true, TracingControlChannel.NONE),
+                jmxClient(),
+                reader,
+                diagnostics(AgentRuntimeState.AGENT_READY),
                 stableCoherenceGuard()
         );
     }
@@ -426,5 +626,27 @@ class TracingStatusAssemblerTest {
                         )
                 )
         );
+    }
+
+    private static AcceptedSettings acceptedPolicy() {
+        return new AcceptedSettings(
+                new SettingsRevision(AGENT_INSTANCE_ID, 7L),
+                CompleteTracingSettings.builder()
+                        .samplingEnabled(true)
+                        .samplingRatio(0.25d)
+                        .samplingRouteRatios(Map.of("/a", 0.1d, "/b", 0.2d, "/c", 0.3d))
+                        .validationLevel("WARNING")
+                        .exporterEnabled(true)
+                        .traceControlHeadersEnabled(true)
+                        .diagnosticsLogLevel("INFO")
+                        .build(),
+                AcceptedSettingsAuthority.CONFIG_SERVER
+        );
+    }
+
+    private static void assertAgentUnavailable(TracingStatusSnapshot snapshot) {
+        assertThat(snapshot.settings().reason()).isEqualTo(SettingsAbsenceReason.AGENT_UNAVAILABLE);
+        assertThat(snapshot.agent().get("failureCode")).isInstanceOf(String.class);
+        assertThat((String) snapshot.agent().get("failureCode")).isNotBlank();
     }
 }

@@ -8,9 +8,9 @@ import java.util.TreeMap;
 
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireUtf8Meter;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 public record TracingSettings(boolean samplingEnabled,
                               double samplingRatio,

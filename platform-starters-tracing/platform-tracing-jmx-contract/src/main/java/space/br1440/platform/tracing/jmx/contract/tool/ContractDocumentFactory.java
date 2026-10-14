@@ -15,7 +15,8 @@ final class ContractDocumentFactory {
 
     private static final Set<String> TOP_LEVEL_KEYS = Set.of(
             "schema", "planes", "objectNames", "endpoints",
-            "openTypes", "capabilities", "readinessEvidence", "wireGraph", "policyDigest"
+            "openTypes", "capabilities", "readinessEvidence", "wireGraph", "policyDigest",
+            "writer", "sourceAuthority", "outcome", "messageCode"
     );
 
     static ContractDocument load(Path path) throws IOException {
@@ -30,6 +31,7 @@ final class ContractDocumentFactory {
         Map<String, Object> objectNames = ContractValues.map(root.get("objectNames"), "objectNames");
         Map<String, Object> openTypes = ContractValues.map(root.get("openTypes"), "openTypes");
         ContractSectionValidators.validateAll(root, schema, objectNames, openTypes);
+        WireGraphWorstCase.requireMinimalBudget(root);
 
         Map<String, Object> descriptorSurface = new LinkedHashMap<>();
         descriptorSurface.put("objectNames", root.get("objectNames"));

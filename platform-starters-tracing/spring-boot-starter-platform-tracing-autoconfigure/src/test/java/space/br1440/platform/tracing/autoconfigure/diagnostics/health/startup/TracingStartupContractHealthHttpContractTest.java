@@ -14,6 +14,8 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.web.client.RestTemplate;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 
 class TracingStartupContractHealthHttpContractTest {
@@ -27,6 +29,9 @@ class TracingStartupContractHealthHttpContractTest {
             "org.springframework.boot.actuate.autoconfigure.tracing.MicrometerTracingAutoConfiguration",
             "org.springframework.boot.actuate.autoconfigure.logging.OpenTelemetryLoggingAutoConfiguration",
             "org.springframework.boot.actuate.autoconfigure.metrics.export.otlp.OtlpMetricsExportAutoConfiguration",
+            "org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration",
+            "org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration",
+            "org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.attributes.SpanAttributeValidationAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.exception.ExceptionRecordingAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.span.SpanEnrichmentAutoConfiguration",
@@ -43,17 +48,20 @@ class TracingStartupContractHealthHttpContractTest {
 
     @Test
     void enabledContractExposesTracingStartupContractKeyOverHttpAndOmitsLegacyTracingKey() {
+        // given
         try (ControlledAgentTestRuntime ignored = ControlledAgentTestRuntime.start()) {
             try (ConfigurableApplicationContext context = boot(
                     "platform.tracing.enabled=true",
-                    "platform.tracing.control.channel=STATIC",
+                    "platform.tracing.control.channel=NONE",
                     "server.port=0",
                     "management.endpoints.web.exposure.include=health",
                     "management.endpoint.health.show-details=always")) {
                 RestTemplate rest = new RestTemplateBuilder().build();
                 int port = context.getEnvironment().getRequiredProperty("local.server.port", Integer.class);
+                // when
                 String body = rest.getForObject("http://localhost:" + port + "/actuator/health", String.class);
 
+                // then
                 assertThat(body).contains("\"tracingStartupContract\"");
                 assertThat(body).doesNotContain("\"tracing\":");
             }
@@ -64,6 +72,7 @@ class TracingStartupContractHealthHttpContractTest {
         List<String> allProperties = new ArrayList<>(List.of(properties));
         String excluded = String.join(",", EXCLUDED_UNRELATED_AUTOCONFIGURATIONS);
         allProperties.add("spring.autoconfigure.exclude=" + excluded);
+        allProperties.add("spring.cloud.config.enabled=false");
 
         return new SpringApplicationBuilder(EmptyApp.class)
                 .web(WebApplicationType.SERVLET)
@@ -73,9 +82,14 @@ class TracingStartupContractHealthHttpContractTest {
     }
 
     private static void registerAgentStartupVerifier(ConfigurableApplicationContext context) {
+        AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard();
+        context.getBeanFactory().registerSingleton(
+                "agentReadinessCoherenceGuard",
+                coherenceGuard
+        );
         context.getBeanFactory().registerSingleton(
                 AGENT_STARTUP_VERIFIER_BEAN_NAME,
-                ControlledAgentTestRuntime.verifier()
+                new AgentStartupVerifier(coherenceGuard, "1.2.3")
         );
     }
 

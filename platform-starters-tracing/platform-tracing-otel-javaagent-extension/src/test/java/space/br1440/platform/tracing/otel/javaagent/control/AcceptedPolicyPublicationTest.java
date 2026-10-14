@@ -16,7 +16,8 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitOutcome;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
@@ -26,9 +27,10 @@ class AcceptedPolicyPublicationTest {
     @Test
     void readersObserveCompleteImmutablePublishedState() throws Exception {
         // given
-        TracingSettingsStore store = new TracingSettingsStore(
+        TracingSettingsStore store = AcceptedPolicyTestFixtures.bootstrapAgentDefaultsStore(
                 AcceptedPolicyTestFixtures.AGENT_INSTANCE_ID,
-                sequencePolicy(0L));
+                sequencePolicy(0L)
+        );
         CountDownLatch start = new CountDownLatch(1);
         AtomicLong violations = new AtomicLong();
 
@@ -51,12 +53,18 @@ class AcceptedPolicyPublicationTest {
             Future<?> writer = executor.submit(() -> {
                 start.await();
                 for (long sequence = 1L; sequence <= 20_000L; sequence++) {
-                    ExpectedSettingsRevision expected = store.current().base();
-                    SettingsCommitResult result = store.commit(expected, sequencePolicy(sequence));
+                    SettingsRevision expected = store.current().base();
+                    SettingsCommitResult result = store.commit(
+                            expected,
+                            sequencePolicy(sequence),
+                            SettingsSourceAuthority.CONFIG_SERVER
+                    );
+
                     if (result.outcome() != SettingsCommitOutcome.APPLIED) {
                         violations.incrementAndGet();
                     }
                 }
+
                 return null;
             });
 

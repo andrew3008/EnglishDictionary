@@ -22,5 +22,6 @@ public final class ContractSectionValidators {
         ReadinessEvidenceSectionValidator.validate(context);
         WireGraphSectionValidator.validate(context);
         PolicyDigestSectionValidator.validate(context);
+        TokenSectionValidator.validate(context);
     }
 }

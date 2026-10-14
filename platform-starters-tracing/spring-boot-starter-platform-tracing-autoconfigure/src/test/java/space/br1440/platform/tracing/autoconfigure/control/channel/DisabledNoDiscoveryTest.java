@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.assertj.AssertableApplicationContex
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingControlChannel;
 import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxTracingSettingsClient;
 import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsControlAutoConfiguration;
@@ -26,13 +27,13 @@ class DisabledNoDiscoveryTest {
             .withConfiguration(AutoConfigurations.of(TracingControlChannelAutoConfiguration.class));
 
     @Test
-    void disabledWithStatic_noDiscoveryBeansCreated() {
+    void disabledWithNone_noDiscoveryBeansCreated() {
         // given
         // when
         // then
         actuatorStackRunner
                 .withPropertyValues(
-                        "platform.tracing.control.channel=STATIC",
+                        "platform.tracing.control.channel=NONE",
                         "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -55,17 +56,17 @@ class DisabledNoDiscoveryTest {
     }
 
     @Test
-    void disabledWithStatic_bootstrapFlagsAreFalse() {
+    void disabledWithoutChannel_bootstrapFlagsAreFalse() {
         // given
         // when
         // then
         bootstrapRunner
-                .withPropertyValues(
-                        "platform.tracing.control.channel=STATIC",
-                        "platform.tracing.enabled=false")
+                .withPropertyValues("platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context.getBean(TracingBootstrapSettings.class).tracingEnabled()).isFalse();
+                    assertThat(context.getBean(TracingBootstrapSettings.class).controlChannel())
+                            .isEqualTo(TracingControlChannel.NONE);
                 });
     }
 

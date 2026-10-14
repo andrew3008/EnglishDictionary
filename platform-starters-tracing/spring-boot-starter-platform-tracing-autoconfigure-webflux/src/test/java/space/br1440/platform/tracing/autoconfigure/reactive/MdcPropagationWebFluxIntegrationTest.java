@@ -1,72 +1,175 @@
 package space.br1440.platform.tracing.autoconfigure.reactive;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.time.Duration;
+
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.LazyInitializationExcludeFilter;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.reactor.ReactorAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ApplicationContext;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.context.ApplicationContextInitializer;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.TestPropertySource;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.TracingRuntimeDiagnosticsAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.status.TracingStatusAutoConfiguration;
+
+import io.micrometer.context.ContextRegistry;
+import reactor.core.publisher.Hooks;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+import reactor.util.context.Context;
 
 /**
- * Интеграционный тест поднятия {@link TracingReactorEagerInitConfiguration} в реактивном
- * приложении при {@code spring.main.lazy-initialization=false}.
+ * Контракт реактивного приложения: автоматическое распространение контекста Reactor
+ * включается и при выключенном трейсинге. MDC нужен логированию, а не только трейсингу,
+ * поэтому {@code platform.tracing.enabled=false}.
  *
- * <h3>W2 — защита от lazy-init</h3>
- * Тест проверяет, что:
- * <ul>
- *   <li>{@link TracingReactorEagerInitConfiguration} зарегистрирован как auto-configuration в
- *       реактивном контексте;</li>
- *   <li>{@link LazyInitializationExcludeFilter}, исключающий {@link ReactorAutoConfiguration}
- *       из ленивой инициализации, поднялся как bean — это гарантирует, что
- *       {@code Hooks.enableAutomaticContextPropagation()} вызовется на старте JVM, а не при
- *       первом запросе. Иначе trace-контекст теряется в реактивных цепочках, и MDC
- *       {@code traceId} в логах остаётся пустым (известный баг Spring Boot 3.5).</li>
- * </ul>
- * Реальная проверка propagation MDC через {@code subscribeOn(Schedulers.boundedElastic)} требует
- * полной интеграции Micrometer Tracing bridge + Slf4JEventListener, что выходит за рамки
- * unit-теста; этот сценарий покрывается E2E-тестами с поднятым реактивным сервером и реальным
- * OTel Java Agent (см. {@code platform-tracing-e2e-tests}).
+ * <p>Дефолт Boot для {@code spring.reactor.context-propagation} — {@code LIMITED}. Хук
+ * включает {@link ReactorAutoConfiguration} только в режиме {@code AUTO}, который задаёт
+ * {@link TracingReactorEagerInitConfiguration}. Перед стартом контекста хук выключается:
+ * иначе более ранний тест в той же JVM делает проверку распространения зелёной без этой
+ * конфигурации.
+ *
+ * <p>{@code WebEnvironment.MOCK}: Netty не стартует. {@code NONE} переводит приложение в
+ * не-web, и {@code @ConditionalOnWebApplication(REACTIVE)} не регистрирует конфигурацию.
  */
-@ExtendWith(SpringExtension.class)
 @SpringBootTest(
-        classes = MdcPropagationWebFluxIntegrationTest.WebFluxMdcTestApp.class,
+        classes = MdcPropagationWebFluxIntegrationTest.ReactiveTestApp.class,
+        webEnvironment = SpringBootTest.WebEnvironment.MOCK,
         properties = {
-                "spring.main.lazy-initialization=false",
-                "spring.application.name=mdc-webflux-propagation-test",
+                "spring.main.web-application-type=reactive",
                 "platform.tracing.enabled=false",
-                "platform.tracing.control.channel=STATIC",
-                "spring.autoconfigure.exclude=space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration",
-                "spring.main.web-application-type=reactive"
+                "platform.tracing.control.channel=NONE"
         })
+@ContextConfiguration(initializers = MdcPropagationWebFluxIntegrationTest.DisableAutomaticContextPropagation.class)
 class MdcPropagationWebFluxIntegrationTest {
 
-    @Autowired
-    private ApplicationContext context;
+    private static final String PLATFORM_REACTOR_FILTER =
+            "platformTracingEagerReactorAutoConfigurationFilter";
+    private static final String PROBE_KEY = "mdc-propagation-probe";
+    private static final ThreadLocal<String> PROBE = new ThreadLocal<>();
 
-    @Test
-    void reactorEagerInitConfigurationIsActive() {
-        assertThat(context.getBeansOfType(TracingReactorEagerInitConfiguration.class))
-                .as("TracingReactorEagerInitConfiguration must start in reactive applications")
-                .isNotEmpty();
+    @Autowired
+    private ConfigurableApplicationContext context;
+
+    @BeforeEach
+    void registerProbeAccessor() {
+        ContextRegistry.getInstance().registerThreadLocalAccessor(PROBE_KEY, PROBE::get, PROBE::set, PROBE::remove);
+    }
+
+    @AfterEach
+    void removeProbeAccessor() {
+        ContextRegistry.getInstance().removeThreadLocalAccessor(PROBE_KEY);
+        PROBE.remove();
+    }
+
+    @AfterAll
+    static void releaseAutomaticContextPropagation() {
+        Hooks.disableAutomaticContextPropagation();
     }
 
     @Test
-    void lazyInitExcludeFilterRegistered() {
-        // Если filter подхвачен, ReactorAutoConfiguration инициализируется eagerly даже при
-        // lazy-init=true — что и активирует Hooks.enableAutomaticContextPropagation.
-        assertThat(context.getBeansOfType(LazyInitializationExcludeFilter.class))
-                .as("LazyInitializationExcludeFilter for ReactorAutoConfiguration must be registered")
-                .isNotEmpty();
+    @DisplayName("конфигурация eager-init зарегистрирована")
+    void eagerInitConfigurationIsRegistered() {
+        assertThat(context.getEnvironment().getProperty("spring.main.lazy-initialization", Boolean.class, false))
+                .as("outer context keeps Boot's default lazy-initialization")
+                .isFalse();
+        assertThat(context.getBeanFactory().getBeanNamesForType(TracingReactorEagerInitConfiguration.class, false, false))
+                .as("TracingReactorEagerInitConfiguration must be registered in a reactive application")
+                .hasSize(1);
+    }
+
+    @Test
+    @DisplayName("ThreadLocal переживает смену потока внутри реактивной цепочки")
+    void threadLocalIsRestoredAcrossThreadHop() {
+        assertThreadLocalRestoredAcrossThreadHop();
+    }
+
+    @Nested
+    @TestPropertySource(properties = "spring.main.lazy-initialization=true")
+    @DisplayName("при lazy-initialization=true")
+    class LazyInitialization {
+
+        @Autowired
+        private ConfigurableApplicationContext context;
+
+        @Test
+        @DisplayName("фильтр стартера исключает ReactorAutoConfiguration из lazy-init")
+        void platformFilterExcludesReactorAutoConfiguration() {
+            assertThat(this.context.getEnvironment().getProperty("spring.main.lazy-initialization", Boolean.class))
+                    .as("nested context must actually run with lazy-initialization=true")
+                    .isTrue();
+
+            ConfigurableListableBeanFactory beanFactory = this.context.getBeanFactory();
+            String reactorBeanName = reactorAutoConfigurationBeanName(beanFactory);
+            assertThat(beanFactory.containsSingleton(reactorBeanName))
+                    .as("ReactorAutoConfiguration must already be instantiated; the check must not create it")
+                    .isTrue();
+
+            assertThat(beanFactory.containsBeanDefinition(PLATFORM_REACTOR_FILTER)).isTrue();
+            LazyInitializationExcludeFilter filter = this.context.getBean(
+                    PLATFORM_REACTOR_FILTER, LazyInitializationExcludeFilter.class);
+            BeanDefinition definition = beanFactory.getBeanDefinition(reactorBeanName);
+            assertThat(filter.isExcluded(reactorBeanName, definition, ReactorAutoConfiguration.class))
+                    .as("platformTracingEagerReactorAutoConfigurationFilter must exclude ReactorAutoConfiguration")
+                    .isTrue();
+        }
+
+        @Test
+        @DisplayName("ThreadLocal переживает смену потока")
+        void threadLocalIsRestoredAcrossThreadHop() {
+            assertThreadLocalRestoredAcrossThreadHop();
+        }
+    }
+
+    private static void assertThreadLocalRestoredAcrossThreadHop() {
+        String observed = Mono.fromCallable(PROBE::get)
+                .subscribeOn(Schedulers.boundedElastic())
+                .contextWrite(Context.of(PROBE_KEY, "expected"))
+                .block(Duration.ofSeconds(5));
+
+        assertThat(observed)
+                .as("Hooks.enableAutomaticContextPropagation must be active")
+                .isEqualTo("expected");
+    }
+
+    private static String reactorAutoConfigurationBeanName(ConfigurableListableBeanFactory beanFactory) {
+        String[] names = beanFactory.getBeanNamesForType(ReactorAutoConfiguration.class, false, false);
+        assertThat(names)
+                .as("ReactorAutoConfiguration bean name must be resolvable without initializing it")
+                .hasSize(1);
+        return names[0];
+    }
+
+    static final class DisableAutomaticContextPropagation
+            implements ApplicationContextInitializer<ConfigurableApplicationContext> {
+
+        @Override
+        public void initialize(ConfigurableApplicationContext applicationContext) {
+            Hooks.disableAutomaticContextPropagation();
+        }
     }
 
     @SpringBootConfiguration
-    @EnableAutoConfiguration
-    static class WebFluxMdcTestApp {
+    @EnableAutoConfiguration(exclude = {
+            TracingRuntimeAutoConfiguration.class,
+            TracingRuntimeDiagnosticsAutoConfiguration.class,
+            TracingStatusAutoConfiguration.class
+    })
+    static class ReactiveTestApp {
     }
 }

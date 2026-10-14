@@ -12,6 +12,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 
@@ -23,23 +25,8 @@ import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 
-/**
- * Гарантия отсутствия double-export при opt-in {@code DROP_OLDEST}: один и тот же span
- * должен экспортироваться <b>ровно один раз</b>, не дважды (стоковый BSP + платформенный).
- *
- * <p><b>Механизм:</b> используем custom {@link SpanExporter} (in-memory счётчик) вместо
- * Collector'а — это даёт точное наблюдение, не зависящее от сетевой доступности OTLP
- * (в smoke-тесте {@code space.br1440.platform.tracing.e2e.smoke.BspDropOldestSafetyAgentSmokeTest}
- * OTLP заведомо unreachable, что делает double-export невозможным к измерению через
- * collector).</p>
- *
- * <p>Тест использует реальный {@link AutoConfiguredOpenTelemetrySdk} с платформенным
- * {@link BootstrapAutoConfigurationCustomizerProvider}, подмешивая custom exporter через
- * {@code addSpanExporterCustomizer}. После shutdown'а проверяется, что каждый ended span
- * экспортирован ровно 1 раз (по {@code spanId}). Любая утечка стокового BSP с тем же
- * exporter'ом дала бы 2× экспорт.</p>
- */
 @ExtendWith(AutoConfiguredSdkIsolationExtension.class)
+@ResourceLock(Resources.SYSTEM_PROPERTIES)
 class BspDropOldestNoDoubleExportTest {
 
     @Test
@@ -75,7 +62,7 @@ class BspDropOldestNoDoubleExportTest {
             for (int i = 0; i < totalSpans; i++) {
                 tracer.spanBuilder("nde-" + i).startSpan().end();
             }
-            // Форсируем дренаж: всех ended spans должны попасть в counting ровно один раз.
+
             sdk.getOpenTelemetrySdk().getSdkTracerProvider().forceFlush().join(5, TimeUnit.SECONDS);
         } finally {
             sdk.getOpenTelemetrySdk().getSdkTracerProvider().shutdown().join(5, TimeUnit.SECONDS);

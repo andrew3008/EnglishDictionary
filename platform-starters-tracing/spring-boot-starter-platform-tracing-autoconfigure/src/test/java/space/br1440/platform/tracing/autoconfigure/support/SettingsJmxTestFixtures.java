@@ -3,6 +3,8 @@ package space.br1440.platform.tracing.autoconfigure.support;
 import javax.management.MBeanInfo;
 import javax.management.MBeanNotificationInfo;
 import javax.management.MBeanOperationInfo;
+import javax.management.openmbean.CompositeType;
+import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.OpenMBeanAttributeInfo;
 import javax.management.openmbean.OpenMBeanAttributeInfoSupport;
 import javax.management.openmbean.OpenMBeanConstructorInfo;
@@ -11,6 +13,8 @@ import javax.management.openmbean.OpenMBeanOperationInfo;
 import javax.management.openmbean.OpenMBeanOperationInfoSupport;
 import javax.management.openmbean.OpenMBeanParameterInfo;
 import javax.management.openmbean.OpenMBeanParameterInfoSupport;
+import javax.management.openmbean.OpenType;
+import javax.management.openmbean.SimpleType;
 
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
@@ -45,10 +49,55 @@ public final class SettingsJmxTestFixtures {
     }
 
     public static MBeanInfo mutationInfo() {
+        return mutationInfo(JmxOpenTypes.APPLY_SNAPSHOT_REQUEST);
+    }
+
+    public static MBeanInfo legacyMutationInfo() throws OpenDataException {
+        CompositeType legacyRequest = new CompositeType(
+                JmxOpenTypes.APPLY_SNAPSHOT_REQUEST.getTypeName(),
+                "legacy request",
+                new String[]{
+                        "attemptId",
+                        "candidateDigest",
+                        "expectedAcceptedSequence",
+                        "expectedAgentInstanceId",
+                        "runtimePolicy",
+                        "sourceAuthority",
+                        "applyTrigger",
+                        "sourceRevision",
+                        "updateTarget"
+                },
+                new String[]{
+                        "attemptId",
+                        "candidateDigest",
+                        "expectedAcceptedSequence",
+                        "expectedAgentInstanceId",
+                        "runtimePolicy",
+                        "sourceAuthority",
+                        "applyTrigger",
+                        "sourceRevision",
+                        "updateTarget"
+                },
+                new OpenType<?>[]{
+                        SimpleType.STRING,
+                        SimpleType.STRING,
+                        SimpleType.LONG,
+                        SimpleType.STRING,
+                        JmxOpenTypes.RUNTIME_POLICY,
+                        SimpleType.STRING,
+                        SimpleType.STRING,
+                        SimpleType.STRING,
+                        SimpleType.STRING
+                }
+        );
+        return mutationInfo(legacyRequest);
+    }
+
+    private static MBeanInfo mutationInfo(CompositeType requestType) {
         OpenMBeanParameterInfo request = new OpenMBeanParameterInfoSupport(
                 JmxWireContract.PARAMETER_SETTINGS_MUTATION_APPLY_SNAPSHOT_REQUEST,
                 "request",
-                JmxOpenTypes.APPLY_SNAPSHOT_REQUEST
+                requestType
         );
 
         OpenMBeanOperationInfo operation = new OpenMBeanOperationInfoSupport(

@@ -32,7 +32,7 @@ class ControlChannelBootstrapLifecycleTest {
     void environmentMutationAfterStartDoesNotCreateActuatorWriter() {
         // given
         actuatorStackRunner
-                .withPropertyValues("platform.tracing.control.channel=STATIC")
+                .withPropertyValues("platform.tracing.control.channel=NONE")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).doesNotHaveBean(TracingSettingsMutationService.class);
@@ -46,7 +46,7 @@ class ControlChannelBootstrapLifecycleTest {
                     assertThat(context.getEnvironment().getProperty("platform.tracing.control.channel"))
                             .isEqualTo("ACTUATOR");
                     assertThat(context.getBean(TracingBootstrapSettings.class).controlChannel())
-                            .isEqualTo(TracingControlChannel.STATIC);
+                            .isEqualTo(TracingControlChannel.NONE);
                     assertThat(context).doesNotHaveBean(TracingSettingsMutationService.class);
                 });
     }

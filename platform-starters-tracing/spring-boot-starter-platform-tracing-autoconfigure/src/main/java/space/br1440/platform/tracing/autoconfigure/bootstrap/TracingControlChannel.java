@@ -3,11 +3,10 @@ package space.br1440.platform.tracing.autoconfigure.bootstrap;
 public enum TracingControlChannel {
 
     /**
-     * Write-клиент не создаётся. Sampling и validation level — только agent bootstrap-свойства.
-     * {@code exporter.enabled}, {@code propagation.trace-control-headers.enabled}, {@code diagnostics.log-level}
-     * остаются на seed-значении ({@code true}/{@code true}/{@code INFO}) до рестарта — осознанное ограничение.
+     * После agent bootstrap принятая политика остаётся неизменной до рестарта.
+     * Spring подключает только read-path для статуса и не создаёт write-компоненты.
      */
-    STATIC,
+    NONE,
 
     /**
      * Полный манифест {@code platform.tracing.policy.*} из Spring Cloud Config Server.
@@ -19,7 +18,7 @@ public enum TracingControlChannel {
     CONFIG_SERVER,
 
     /**
-     * Изменение одного параметра политики через {@code POST /management/tracingControl/{group}/{setting}}.
+     * Изменение одного параметра политики через POST-операции Actuator endpoint {@code tracingControl}.
      * Читает текущую применённую политику агента, заменяет в ней одно поле и отправляет её целиком
      * с проверкой, что версия на агенте за это время не изменилась.
      * Не имеет собственной авторизации — защита на стороне Actuator security. Для dev/pre-prod.

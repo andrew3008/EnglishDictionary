@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.control.jmx.protocol;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -8,16 +9,19 @@ import java.util.UUID;
 import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.ApplySnapshotRequestParameters;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PlatformJmxRequestEncoder;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
-import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsRejectionReason;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 /**
  * Проверяет межмодульный паритет транспортного кодека от Spring к агенту.
@@ -44,17 +48,23 @@ class SpringToAgentWireCodecParityTest {
 
     @Test
     void expectedBaseAttemptMetadataDigestAndPolicyRoundTripThroughRealAgentDecoder() {
+        String agentInstanceId = UUID.randomUUID().toString();
+        String attemptId = UUID.randomUUID().toString();
         DecodedSettingsUpdate decoded = roundTrip(
-                UUID.randomUUID().toString(), 42L,
-                UUID.randomUUID().toString(), "CONFIG_SERVER", "REFRESH", "revision-abc",
+                agentInstanceId, 42L, attemptId, "CONFIG_SERVER",
                 settings(true, 0.42d, Map.of("/checkout", 0.6d, "/search", 0.2d),
                         "WARNING", true, true, "DEBUG"));
 
-        assertThat(decoded.expectedBase().agentInstanceId().toString()).isNotBlank();
-        assertThat(decoded.expectedBase().acceptedSequence()).isEqualTo(42L);
-        assertThat(decoded.attempt().sourceAuthority()).isEqualTo(SettingsSourceAuthority.CONFIG_SERVER);
-        assertThat(decoded.attempt().applyTrigger()).isEqualTo(SettingsUpdateTrigger.REFRESH);
-        assertThat(decoded.attempt().sourceRevision()).isEqualTo("revision-abc");
+        assertThat(decoded.expectedBase()).isEqualTo(
+                new space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsRevision(
+                        AgentInstanceId.parse(agentInstanceId),
+                        42L
+                )
+        );
+        assertThat(decoded.attempt().attemptId()).isEqualTo(attemptId);
+        assertThat(decoded.attempt().writer()).isEqualTo(
+                space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter.CONFIG_SERVER
+        );
         TracingSettings settings = decoded.settings();
         assertThat(settings.samplingEnabled()).isTrue();
         assertThat(settings.samplingRatio()).isEqualTo(0.42d);
@@ -68,61 +78,69 @@ class SpringToAgentWireCodecParityTest {
     @Test
     void emptyRouteRatiosRoundTrip() {
         DecodedSettingsUpdate decoded = roundTrip(
-                UUID.randomUUID().toString(), 0L,
-                UUID.randomUUID().toString(), "HELM", "INITIAL", "",
-                settings(false, 0.0d, Map.of(), "DISABLED", false, false, "OFF"));
+                UUID.randomUUID().toString(), 0L, UUID.randomUUID().toString(), "ACTUATOR",
+                settings(false, 0.0d, Map.of(), "DISABLED", false, false, "OFF")
+        );
 
         assertThat(decoded.expectedBase().acceptedSequence()).isEqualTo(0L);
         assertThat(decoded.settings().samplingRouteRatios()).isEmpty();
-        assertThat(decoded.attempt().sourceAuthority()).isEqualTo(SettingsSourceAuthority.HELM);
-        assertThat(decoded.attempt().applyTrigger()).isEqualTo(SettingsUpdateTrigger.INITIAL);
+        assertThat(decoded.attempt().writer()).isEqualTo(
+                space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter.ACTUATOR
+        );
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"BOOTSTRAP", "FOO"})
+    void unsupportedWriterIsRejectedByRealAgentDecoder(String writer) {
+        // given
+        CompleteTracingSettings settings =
+                settings(false, 0.0d, Map.of(), "DISABLED", false, false, "OFF");
+
+        // when
+        // then
+        assertThatThrownBy(() -> roundTrip(
+                UUID.randomUUID().toString(),
+                0L,
+                UUID.randomUUID().toString(),
+                writer,
+                settings
+        ))
+                .isInstanceOfSatisfying(
+                        JmxControlDecodeException.class,
+                        exception -> assertThat(exception.messageCode())
+                                .isEqualTo(SettingsRejectionReason.INVALID_VALUE)
+                );
     }
 
     @Test
     void agentInstanceIdIsPreservedExactly() {
         String agentInstanceId = UUID.randomUUID().toString();
         DecodedSettingsUpdate decoded = roundTrip(
-                agentInstanceId, 5L, UUID.randomUUID().toString(), "CONFIG_SERVER", "REFRESH", "rev",
+                agentInstanceId, 5L, UUID.randomUUID().toString(), "CONFIG_SERVER",
                 settings(true, 0.5d, Map.of(), "WARNING", true, true, "INFO"));
 
         assertThat(decoded.expectedBase().agentInstanceId().toString()).isEqualTo(agentInstanceId);
     }
 
-    @Test
-    void samplingEnabledOneHotRoundTripsThroughRealSpringEncoder() {
-        assertBooleanOneHot(true, "DISABLED", false, false);
-    }
-
-    @Test
-    void validationLevelErrorOneHotRoundTripsThroughRealSpringEncoder() {
-        assertBooleanOneHot(false, "ERROR", false, false);
-    }
-
-    @Test
-    void validationLevelWarningOneHotRoundTripsThroughRealSpringEncoder() {
-        assertBooleanOneHot(false, "WARNING", false, false);
-    }
-
-    @Test
-    void validationLevelDisabledOneHotRoundTripsThroughRealSpringEncoder() {
-        assertBooleanOneHot(false, "DISABLED", false, false);
-    }
-
-    @Test
-    void exporterEnabledOneHotRoundTripsThroughRealSpringEncoder() {
-        assertBooleanOneHot(false, "DISABLED", true, false);
-    }
-
-    @Test
-    void traceControlHeadersEnabledOneHotRoundTripsThroughRealSpringEncoder() {
-        assertBooleanOneHot(false, "DISABLED", false, true);
+    @ParameterizedTest
+    @CsvSource({
+            "true, DISABLED, false, false",
+            "false, ERROR, false, false",
+            "false, WARNING, false, false",
+            "false, DISABLED, true, false",
+            "false, DISABLED, false, true"
+    })
+    void singleLeafRoundTripsThroughRealSpringEncoder(boolean samplingEnabled,
+                                                      String validationLevel,
+                                                      boolean exporterEnabled,
+                                                      boolean traceControlHeadersEnabled) {
+        assertBooleanOneHot(samplingEnabled, validationLevel, exporterEnabled, traceControlHeadersEnabled);
     }
 
     private static void assertBooleanOneHot(boolean samplingEnabled, String validationLevel,
                                             boolean exporterEnabled, boolean traceControlHeadersEnabled) {
         DecodedSettingsUpdate decoded = roundTrip(
-                UUID.randomUUID().toString(), 1L,
-                UUID.randomUUID().toString(), "CONFIG_SERVER", "REFRESH", "rev",
+                UUID.randomUUID().toString(), 1L, UUID.randomUUID().toString(), "CONFIG_SERVER",
                 settings(samplingEnabled, 0.5d, Map.of(),
                         validationLevel, exporterEnabled, traceControlHeadersEnabled, "INFO"));
 
@@ -134,17 +152,15 @@ class SpringToAgentWireCodecParityTest {
     }
 
     private static DecodedSettingsUpdate roundTrip(String agentInstanceId, long acceptedSequence,
-                                                   String attemptId, String sourceAuthority, String applyTrigger, String sourceRevision,
+                                                   String attemptId, String writer,
                                                    CompleteTracingSettings settings) {
-        ExpectedSettingsRevision expectedBase = new ExpectedSettingsRevision(agentInstanceId, acceptedSequence);
+        SettingsRevision expectedBase = new SettingsRevision(agentInstanceId, acceptedSequence);
 
         CompositeData wire = PlatformJmxRequestEncoder.encodeApplyRequest(
                 ApplySnapshotRequestParameters.builder()
                         .expectedBase(expectedBase)
                         .attemptId(attemptId)
-                        .sourceAuthority(sourceAuthority)
-                        .applyTrigger(applyTrigger)
-                        .sourceRevision(sourceRevision)
+                        .writer(writer)
                         .policy(settings)
                         .build()
         );

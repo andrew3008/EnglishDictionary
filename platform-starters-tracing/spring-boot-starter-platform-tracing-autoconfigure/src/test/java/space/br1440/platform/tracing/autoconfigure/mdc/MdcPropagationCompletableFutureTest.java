@@ -1,106 +1,92 @@
 package space.br1440.platform.tracing.autoconfigure.mdc;
 
-import io.micrometer.context.ContextSnapshot;
-import io.micrometer.context.ContextSnapshotFactory;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.slf4j.MDC;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.SpringBootConfiguration;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.UnaryOperator;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 
-/**
- * Интеграционный тест распространения MDC ({@code traceId}) через
- * {@link CompletableFuture#runAsync(Runnable, java.util.concurrent.Executor)} с явной обёрткой
- * задач в {@link ContextSnapshot} на caller-стороне.
- *
- * <h3>C8 — обязательная wrapping-стратегия</h3>
- * Без {@code ContextSnapshot.captureAll().wrap(...)} вокруг задачи MDC и OTel Context
- * не пробрасываются в worker-поток. Это not-a-bug бриджа, а ожидаемое поведение Spring Boot 3.x.
- */
-@ExtendWith(SpringExtension.class)
-@SpringBootTest(
-        classes = {
-                MdcPropagationCompletableFutureTest.CfTestApp.class,
-                MdcPropagationCompletableFutureTest.CompletableFuturePropagationConfig.class
-        },
-        properties = {
-                "spring.application.name=mdc-cf-propagation-test",
-                "spring.autoconfigure.exclude="
-                        + "space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration,"
-                        + "space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup."
-                        + "TracingStartupContractHealthAutoConfiguration,"
-                        + "space.br1440.platform.tracing.autoconfigure.metrics."
-                        + "TracingMetricsAutoConfiguration",
-                "platform.tracing.enabled=false",
-                "platform.tracing.control.channel=STATIC"
-        })
+import io.micrometer.context.ContextRegistry;
+import io.micrometer.context.ContextSnapshot;
+import io.micrometer.context.ContextSnapshotFactory;
+import io.micrometer.context.integration.Slf4jThreadLocalAccessor;
+
 class MdcPropagationCompletableFutureTest {
 
-    @Autowired
-    private ExecutorService wrappingExecutor;
+    private static final String TRACE_ID_KEY = "traceId";
+    private static final String TRACE_ID = "fedcba9876543210fedcba9876543210";
+    private static final long TIMEOUT_SECONDS = 5;
+
+    private final ContextSnapshotFactory snapshotFactory = ContextSnapshotFactory.builder()
+            .contextRegistry(new ContextRegistry().registerThreadLocalAccessor(new Slf4jThreadLocalAccessor()))
+            .build();
+
+    private final ExecutorService worker = Executors.newSingleThreadExecutor(
+            Thread.ofPlatform().name("mdc-cf-worker").daemon(true).factory()
+    );
+
+    @AfterEach
+    void tearDown() {
+        MDC.clear();
+        worker.shutdownNow();
+    }
 
     @Test
-    void traceIdPropagatedThroughContextSnapshotWrap() throws Exception {
-        String expectedTraceId = "fedcba9876543210fedcba9876543210";
-        MDC.put("traceId", expectedTraceId);
-        try {
-            io.micrometer.context.ContextRegistry contextRegistry = new io.micrometer.context.ContextRegistry();
-            contextRegistry.registerThreadLocalAccessor(
-                    new io.micrometer.context.integration.Slf4jThreadLocalAccessor());
-            ContextSnapshotFactory factory = ContextSnapshotFactory.builder()
-                    .contextRegistry(contextRegistry).build();
-            ContextSnapshot snapshot = factory.captureAll();
+    void unwrappedTaskDoesNotSeeCallerMdc() {
+        // given
+        MDC.put(TRACE_ID_KEY, TRACE_ID);
 
-            AtomicReference<String> captured = new AtomicReference<>();
-            CompletableFuture<Void> future = CompletableFuture.runAsync(
-                    snapshot.wrap(() -> captured.set(MDC.get("traceId"))),
-                    wrappingExecutor);
-            future.get(5, TimeUnit.SECONDS);
-            String actualTraceId = captured.get();
+        // when
+        String workerTraceId = traceIdOnWorker(UnaryOperator.identity());
 
-            assertThat(actualTraceId)
-                    .as("MDC traceId в runAsync должен совпадать с traceId caller'а — обязательна "
-                            + "обёртка ContextSnapshot.wrap(...) либо её эквивалент")
-                    .isEqualTo(expectedTraceId);
-        } finally {
-            MDC.remove("traceId");
-        }
+        // then
+        assertThat(workerTraceId)
+                .as("negative control: executor itself must not propagate MDC")
+                .isNull();
     }
 
-    @SpringBootConfiguration
-    @EnableAutoConfiguration
-    static class CfTestApp {
+    @Test
+    void wrappedTaskSeesCallerTraceId() {
+        // given
+        MDC.put(TRACE_ID_KEY, TRACE_ID);
+        ContextSnapshot snapshot = snapshotFactory.captureAll();
+
+        // when
+        String workerTraceId = traceIdOnWorker(snapshot::wrap);
+
+        // then
+        assertThat(workerTraceId)
+                .as("ContextSnapshot.wrap must restore caller MDC on the worker thread")
+                .isEqualTo(TRACE_ID);
     }
 
-    @TestConfiguration
-    static class CompletableFuturePropagationConfig {
+    @Test
+    void wrappedTaskRestoresWorkerMdcAfterCompletion() {
+        // given
+        MDC.put(TRACE_ID_KEY, TRACE_ID);
+        traceIdOnWorker(snapshotFactory.captureAll()::wrap);
 
-        @Bean
-        PlatformTracingJmxClient platformTracingJmxClient() {
-            return new PlatformTracingJmxClient();
-        }
+        // when
+        String nextTaskTraceId = traceIdOnWorker(UnaryOperator.identity());
 
-        @Bean(destroyMethod = "shutdown")
-        public ExecutorService wrappingExecutor() {
-            return Executors.newSingleThreadExecutor(r -> {
-                Thread t = new Thread(r, "cf-mdc-test");
-                t.setDaemon(true);
-                return t;
-            });
-        }
+        // then
+        assertThat(nextTaskTraceId)
+                .as("caller MDC must not leak into the next task on the same worker thread")
+                .isNull();
+    }
+
+    private String traceIdOnWorker(UnaryOperator<Runnable> decorator) {
+        AtomicReference<String> seen = new AtomicReference<>();
+        CompletableFuture.runAsync(decorator.apply(() -> seen.set(MDC.get(TRACE_ID_KEY))), worker)
+                .orTimeout(TIMEOUT_SECONDS, SECONDS)
+                .join();
+        return seen.get();
     }
 }

@@ -3,31 +3,32 @@ package space.br1440.platform.tracing.autoconfigure.control.management;
 import org.springframework.context.SmartLifecycle;
 
 import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
+import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedTracingSettingsReader;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsContractViolationException;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 final class ActuatorAgentReadinessProbe implements SmartLifecycle {
 
-    private final CompleteTracingSettingsReader reader;
+    private final AcceptedTracingSettingsReader reader;
 
     private volatile boolean running;
 
-    ActuatorAgentReadinessProbe(CompleteTracingSettingsReader reader) {
+    ActuatorAgentReadinessProbe(AcceptedTracingSettingsReader reader) {
         this.reader = reader;
     }
 
     @Override
     public void start() {
         try {
-            reader.currentComplete()
+            reader.current()
                     .orElseThrow(() -> new TracingConfigurationGuardException("""
-                            [readiness probe] ACTUATOR authority requires a complete accepted \
-                            snapshot at startup. currentComplete() returned empty — Agent \
+                            [readiness probe] ACTUATOR control channel requires a complete accepted \
+                            snapshot at startup. current() returned empty — Agent \
                             is unreachable or has not yet committed an accepted policy. \
-                            Application tracing-configuration readiness is NOT achieved."""));
+                            Application tracing-configuration readiness is NOT achieved.""")
+                    );
         } catch (TracingSettingsContractViolationException e) {
             throw new TracingSettingsContractViolationException("""
                     [readiness probe] FATAL: AcceptedPolicySnapshot is unavailable or \

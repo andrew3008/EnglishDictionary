@@ -43,8 +43,21 @@ class ControlledAgentRuntimeTest {
 
     private static final String EXPECTED_PROBE_CAPABILITIES = "7";
     private static final String PROBE_OK_PREFIX = "CONTROLLED_AGENT_PROBE_OK";
+    private static final String BOOTSTRAP_POLICY_PROBE_OK_PREFIX = "CONTROLLED_AGENT_BOOTSTRAP_POLICY_OK";
+    private static final String VERIFY_BOOTSTRAP_POLICY_ARGUMENT = "verify-bootstrap-policy";
     private static final String REMOTE_JMX_DENIED_OK_PREFIX = ControlledAgentRemoteJmxDenialProbe.OK_PREFIX;
     private static final String ANY_PTA_EVENT_CODE = "\"event_code\":\"PTA-";
+
+    private static final Map<String, String> BOOTSTRAP_POLICY_ENVIRONMENT = Map.of(
+            "PLATFORM_TRACING_SAMPLING_ENABLED", "true",
+            "PLATFORM_TRACING_SAMPLING_RATIO", "1.0",
+            "PLATFORM_TRACING_SAMPLING_ROUTE_RATIOS", "/health=0.0,/orders=0.25",
+            "PLATFORM_TRACING_JAVAAGENT_SAMPLING_DROP_PATHS", "/bootstrap-policy-probe",
+            "PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL", "ERROR",
+            "PLATFORM_TRACING_EXPORTER_ENABLED", "false",
+            "PLATFORM_TRACING_PROPAGATION_TRACE_CONTROL_HEADERS_ENABLED", "false",
+            "PLATFORM_TRACING_DIAGNOSTICS_LOG_LEVEL", "DEBUG"
+    );
 
     private static final String OTLP_PARTIAL_SUCCESS_PROBE_OK_PREFIX = "OTLP_PARTIAL_SUCCESS_PROBE_OK";
     private static final Pattern OTLP_PARTIAL_SUCCESS_LINE_PATTERN = Pattern.compile(
@@ -74,7 +87,7 @@ class ControlledAgentRuntimeTest {
         try (OtlpTraceCollector collector = OtlpTraceCollector.startAcceptingAllSpans()) {
 
             // when
-            ChildProcessResult result = runSpanAttributeValidationDiagnosticProbe(fixture, collector.tracesEndpoint());
+            ChildProcessResult result = runSpanAttributeValidationDiagnosticProbe(fixture, collector.otlpEndpoint());
 
             // then
             assertProcessCompletedSuccessfully(result);
@@ -92,7 +105,7 @@ class ControlledAgentRuntimeTest {
         try (OtlpTraceCollector collector = OtlpTraceCollector.startAcceptingAllSpans()) {
 
             // when
-            ChildProcessResult result = runRequestIdPropagationProbe(fixture, collector.tracesEndpoint());
+            ChildProcessResult result = runRequestIdPropagationProbe(fixture, collector.otlpEndpoint());
 
             // then
             assertProcessCompletedSuccessfully(result);
@@ -129,10 +142,10 @@ class ControlledAgentRuntimeTest {
 
             // when
             control = runInvalidExtensionConfigurationProbe(
-                    fixture, controlCollector.tracesEndpoint(), controlSpanName, false
+                    fixture, controlCollector.otlpEndpoint(), controlSpanName, false
             );
             invalid = runInvalidExtensionConfigurationProbe(
-                    fixture, invalidCollector.tracesEndpoint(), invalidSpanName, true
+                    fixture, invalidCollector.otlpEndpoint(), invalidSpanName, true
             );
         }
 
@@ -161,7 +174,7 @@ class ControlledAgentRuntimeTest {
 
         try (OtlpTraceCollector collector = OtlpTraceCollector.startAcceptingAllSpans()) {
             // when
-            ChildProcessResult result = runMaxSpanAgeEnvironmentProbe(fixture, collector.tracesEndpoint(), spanName);
+            ChildProcessResult result = runMaxSpanAgeEnvironmentProbe(fixture, collector.otlpEndpoint(), spanName);
 
             // then
             assertProcessCompletedSuccessfully(result);
@@ -185,6 +198,22 @@ class ControlledAgentRuntimeTest {
         assertProcessCompletedSuccessfully(result);
         assertProbeReportedExpectedIdentity(result, fixture.distributionVersion());
         assertNoBootstrapAttestationLeakedToStdout(result);
+        assertStderrIsFreeOfLoggingAndExtensionFailures(result);
+    }
+
+    @Test
+    void controlled_agent_reads_complete_bootstrap_policy_from_environment_before_spring()
+            throws IOException, InterruptedException, URISyntaxException {
+        // given
+        AgentTestFixture fixture = AgentTestFixture.load();
+
+        // when
+        ChildProcessResult result = runBootstrapPolicyProbe(fixture);
+
+        // then
+        assertProcessCompletedSuccessfully(result);
+        assertProbeReportedExpectedIdentity(result, fixture.distributionVersion());
+        assertBootstrapPolicyObserved(result);
         assertStderrIsFreeOfLoggingAndExtensionFailures(result);
     }
 
@@ -220,7 +249,7 @@ class ControlledAgentRuntimeTest {
         try (OtlpTraceCollector collector = OtlpTraceCollector.startRejectingOneSpanPerBatch()) {
 
             // when
-            ChildProcessResult result = runOtlpPartialSuccessProbe(fixture, collector.tracesEndpoint());
+            ChildProcessResult result = runOtlpPartialSuccessProbe(fixture, collector.otlpEndpoint());
 
             // then
             assertProcessCompletedSuccessfully(result);
@@ -230,9 +259,9 @@ class ControlledAgentRuntimeTest {
     }
 
     private ChildProcessResult runInvalidExtensionConfigurationProbe(AgentTestFixture fixture,
-                                                                      String tracesEndpoint,
-                                                                      String spanName,
-                                                                      boolean invalidScanInterval)
+                                                                     String otlpEndpoint,
+                                                                     String spanName,
+                                                                     boolean invalidScanInterval)
             throws IOException, InterruptedException, URISyntaxException {
         Path javaExecutable = javaExecutable();
         Path probeClassPath = probeClassPath(InvalidExtensionConfigurationProbe.class);
@@ -245,7 +274,7 @@ class ControlledAgentRuntimeTest {
                         javaExecutable,
                         probeClassPath,
                         fixture,
-                        tracesEndpoint,
+                        otlpEndpoint,
                         spanName,
                         invalidScanInterval
                 )
@@ -267,8 +296,8 @@ class ControlledAgentRuntimeTest {
     }
 
     private ChildProcessResult runMaxSpanAgeEnvironmentProbe(AgentTestFixture fixture,
-                                                              String tracesEndpoint,
-                                                              String spanName)
+                                                             String otlpEndpoint,
+                                                             String spanName)
             throws IOException, InterruptedException, URISyntaxException {
         Path javaExecutable = javaExecutable();
         Path probeClassPath = probeClassPath(InvalidExtensionConfigurationProbe.class);
@@ -280,7 +309,7 @@ class ControlledAgentRuntimeTest {
                         javaExecutable,
                         probeClassPath,
                         fixture,
-                        tracesEndpoint,
+                        otlpEndpoint,
                         spanName,
                         false
                 )
@@ -304,13 +333,37 @@ class ControlledAgentRuntimeTest {
 
     private ChildProcessResult runControlledAgentProbe(AgentTestFixture fixture)
             throws IOException, InterruptedException, URISyntaxException {
+        return runControlledAgentProbe(fixture, false);
+    }
+
+    private ChildProcessResult runBootstrapPolicyProbe(AgentTestFixture fixture)
+            throws IOException, InterruptedException, URISyntaxException {
+        return runControlledAgentProbe(fixture, true);
+    }
+
+    private ChildProcessResult runControlledAgentProbe(AgentTestFixture fixture,
+                                                       boolean verifyBootstrapPolicy)
+            throws IOException, InterruptedException, URISyntaxException {
         Path javaExecutable = javaExecutable();
         Path probeClassPath = probeClassPath(ControlledAgentRuntimeProbe.class);
-        Path stdoutFile = temporaryDirectory.resolve("child.stdout.log");
-        Path stderrFile = temporaryDirectory.resolve("child.stderr.log");
+        String filePrefix = verifyBootstrapPolicy ? "bootstrap-policy-child" : "child";
+        Path stdoutFile = temporaryDirectory.resolve(filePrefix + ".stdout.log");
+        Path stderrFile = temporaryDirectory.resolve(filePrefix + ".stderr.log");
 
-        ProcessBuilder processBuilder = new ProcessBuilder(childCommand(javaExecutable, probeClassPath, fixture));
+        List<String> command = childCommand(
+                javaExecutable,
+                probeClassPath,
+                fixture,
+                verifyBootstrapPolicy);
+        if (verifyBootstrapPolicy) {
+            command.add(VERIFY_BOOTSTRAP_POLICY_ARGUMENT);
+        }
+
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
         removeContaminatingEnvironment(processBuilder.environment());
+        if (verifyBootstrapPolicy) {
+            processBuilder.environment().putAll(BOOTSTRAP_POLICY_ENVIRONMENT);
+        }
         processBuilder.redirectOutput(stdoutFile.toFile());
         processBuilder.redirectError(stderrFile.toFile());
 
@@ -438,7 +491,7 @@ class ControlledAgentRuntimeTest {
         return new ChildProcessResult(finished, exitCode, stdout, stderr);
     }
 
-    private ChildProcessResult runSpanAttributeValidationDiagnosticProbe(AgentTestFixture fixture, String tracesEndpoint)
+    private ChildProcessResult runSpanAttributeValidationDiagnosticProbe(AgentTestFixture fixture, String otlpEndpoint)
             throws IOException, InterruptedException, URISyntaxException {
         Path javaExecutable = javaExecutable();
         Path probeClassPath = probeClassPath(SpanAttributeValidationDiagnosticProbe.class);
@@ -446,7 +499,7 @@ class ControlledAgentRuntimeTest {
         Path stderrFile = temporaryDirectory.resolve("validation-diagnostic-child.stderr.log");
 
         ProcessBuilder processBuilder = new ProcessBuilder(
-                spanAttributeValidationDiagnosticChildCommand(javaExecutable, probeClassPath, fixture, tracesEndpoint)
+                spanAttributeValidationDiagnosticChildCommand(javaExecutable, probeClassPath, fixture, otlpEndpoint)
         );
         removeContaminatingEnvironment(processBuilder.environment());
         processBuilder.redirectOutput(stdoutFile.toFile());
@@ -465,7 +518,7 @@ class ControlledAgentRuntimeTest {
         return new ChildProcessResult(finished, exitCode, stdout, stderr);
     }
 
-    private ChildProcessResult runRequestIdPropagationProbe(AgentTestFixture fixture, String tracesEndpoint)
+    private ChildProcessResult runRequestIdPropagationProbe(AgentTestFixture fixture, String otlpEndpoint)
             throws IOException, InterruptedException, URISyntaxException {
         Path javaExecutable = javaExecutable();
         Path probeClassPath = probeClassPath(RequestIdPropagationProbe.class);
@@ -473,7 +526,7 @@ class ControlledAgentRuntimeTest {
         Path stderrFile = temporaryDirectory.resolve("request-id-propagation-child.stderr.log");
 
         ProcessBuilder processBuilder = new ProcessBuilder(
-                requestIdPropagationChildCommand(javaExecutable, probeClassPath, fixture, tracesEndpoint)
+                requestIdPropagationChildCommand(javaExecutable, probeClassPath, fixture, otlpEndpoint)
         );
         removeContaminatingEnvironment(processBuilder.environment());
         processBuilder.redirectOutput(stdoutFile.toFile());
@@ -492,7 +545,7 @@ class ControlledAgentRuntimeTest {
         return new ChildProcessResult(finished, exitCode, stdout, stderr);
     }
 
-    private ChildProcessResult runOtlpPartialSuccessProbe(AgentTestFixture fixture, String tracesEndpoint)
+    private ChildProcessResult runOtlpPartialSuccessProbe(AgentTestFixture fixture, String otlpEndpoint)
             throws IOException, InterruptedException, URISyntaxException {
         Path javaExecutable = javaExecutable();
         Path probeClassPath = probeClassPath(OtlpPartialSuccessProbe.class);
@@ -500,7 +553,7 @@ class ControlledAgentRuntimeTest {
         Path stderrFile = temporaryDirectory.resolve("otlp-child.stderr.log");
 
         ProcessBuilder processBuilder = new ProcessBuilder(
-                otlpPartialSuccessChildCommand(javaExecutable, probeClassPath, fixture, tracesEndpoint));
+                otlpPartialSuccessChildCommand(javaExecutable, probeClassPath, fixture, otlpEndpoint));
         removeContaminatingEnvironment(processBuilder.environment());
         processBuilder.redirectOutput(stdoutFile.toFile());
         processBuilder.redirectError(stderrFile.toFile());
@@ -519,9 +572,9 @@ class ControlledAgentRuntimeTest {
     }
 
     private void assertExtensionConfigurationProbeReadiness(ChildProcessResult result,
-                                                             String lifecycle,
-                                                             String failureCode,
-                                                             String spanName) {
+                                                            String lifecycle,
+                                                            String failureCode,
+                                                            String spanName) {
         String expectedLine = InvalidExtensionConfigurationProbe.RESULT_PREFIX
                 + " lifecycle=" + lifecycle
                 + " failureCode=" + failureCode
@@ -552,6 +605,14 @@ class ControlledAgentRuntimeTest {
                 .lines()
                 .filter(line -> line.startsWith(PROBE_OK_PREFIX)))
                 .containsExactly(expectedLine);
+    }
+
+    private void assertBootstrapPolicyObserved(ChildProcessResult result) {
+        assertThat(result.stdout()
+                .lines()
+                .filter(line -> line.startsWith(BOOTSTRAP_POLICY_PROBE_OK_PREFIX)))
+                .as("Child stdout must contain exactly one bootstrap policy probe line: %s", result.stdout())
+                .containsExactly(BOOTSTRAP_POLICY_PROBE_OK_PREFIX + " sequence=0");
     }
 
     private void assertRemoteJmxDenialObserved(ChildProcessResult result) {
@@ -719,11 +780,11 @@ class ControlledAgentRuntimeTest {
     }
 
     private static List<String> invalidExtensionConfigurationChildCommand(Path javaExecutable,
-                                                                           Path probeClassPath,
-                                                                           AgentTestFixture fixture,
-                                                                           String tracesEndpoint,
-                                                                           String spanName,
-                                                                           boolean invalidScanInterval) {
+                                                                          Path probeClassPath,
+                                                                          AgentTestFixture fixture,
+                                                                          String otlpEndpoint,
+                                                                          String spanName,
+                                                                          boolean invalidScanInterval) {
         List<String> command = new ArrayList<>();
         command.add(javaExecutable.toString());
         command.add("-Dfile.encoding=UTF-8");
@@ -731,7 +792,7 @@ class ControlledAgentRuntimeTest {
         command.add("-Dsun.stderr.encoding=UTF-8");
         command.add("-Dotel.traces.exporter=otlp");
         command.add("-Dotel.exporter.otlp.traces.protocol=http/protobuf");
-        command.add("-Dotel.exporter.otlp.traces.endpoint=" + tracesEndpoint);
+        command.add("-Dotel.exporter.otlp.endpoint=" + otlpEndpoint);
         command.add("-Dotel.exporter.otlp.traces.compression=none");
         command.add("-Dotel.metrics.exporter=none");
         command.add("-Dotel.logs.exporter=none");
@@ -756,7 +817,8 @@ class ControlledAgentRuntimeTest {
 
     private static List<String> childCommand(Path javaExecutable,
                                              Path probeClassPath,
-                                             AgentTestFixture fixture) {
+                                             AgentTestFixture fixture,
+                                             boolean includeApiClasspath) {
         List<String> command = new ArrayList<>();
         command.add(javaExecutable.toString());
         command.add("-Dfile.encoding=UTF-8");
@@ -770,9 +832,16 @@ class ControlledAgentRuntimeTest {
         command.add("-Dplatform.tracing.service.environment=test");
         command.add("-Dplatform.tracing.resource.validation-mode=ERROR");
         command.add("-Dplatform.tracing.controlled-agent.expected-sha256=" + fixture.expectedControlledAgentSha());
+        String apiClasspath = null;
+        if (includeApiClasspath) {
+            apiClasspath = openTelemetryApiClasspathEntries();
+            command.add("-D" + ControlledAgentRuntimeProbe.EXPECTED_API_CLASSPATH_PROPERTY + "=" + apiClasspath);
+        }
         command.add("-javaagent:" + fixture.controlledAgent());
         command.add("-cp");
-        command.add(probeClassPath.toString());
+        command.add(includeApiClasspath
+                ? probeClassPath + File.pathSeparator + apiClasspath
+                : probeClassPath.toString());
         command.add(ControlledAgentRuntimeProbe.class.getName());
         command.add(fixture.distributionVersion());
         command.add(fixture.controlledAgent().toString());
@@ -830,9 +899,9 @@ class ControlledAgentRuntimeTest {
     }
 
     private static List<String> spanAttributeValidationDiagnosticChildCommand(Path javaExecutable,
-                                                                             Path probeClassPath,
-                                                                             AgentTestFixture fixture,
-                                                                             String tracesEndpoint) {
+                                                                              Path probeClassPath,
+                                                                              AgentTestFixture fixture,
+                                                                              String otlpEndpoint) {
         List<String> command = new ArrayList<>();
         command.add(javaExecutable.toString());
         command.add("-Dfile.encoding=UTF-8");
@@ -840,7 +909,7 @@ class ControlledAgentRuntimeTest {
         command.add("-Dsun.stderr.encoding=UTF-8");
         command.add("-Dotel.traces.exporter=otlp");
         command.add("-Dotel.exporter.otlp.traces.protocol=http/protobuf");
-        command.add("-Dotel.exporter.otlp.traces.endpoint=" + tracesEndpoint);
+        command.add("-Dotel.exporter.otlp.endpoint=" + otlpEndpoint);
         command.add("-Dotel.exporter.otlp.traces.compression=none");
         command.add("-Dotel.metrics.exporter=none");
         command.add("-Dotel.logs.exporter=none");
@@ -863,7 +932,7 @@ class ControlledAgentRuntimeTest {
     private static List<String> requestIdPropagationChildCommand(Path javaExecutable,
                                                                  Path probeClassPath,
                                                                  AgentTestFixture fixture,
-                                                                 String tracesEndpoint) {
+                                                                 String otlpEndpoint) {
         List<String> command = new ArrayList<>();
         command.add(javaExecutable.toString());
         command.add("-Dfile.encoding=UTF-8");
@@ -871,7 +940,7 @@ class ControlledAgentRuntimeTest {
         command.add("-Dsun.stderr.encoding=UTF-8");
         command.add("-Dotel.traces.exporter=otlp");
         command.add("-Dotel.exporter.otlp.traces.protocol=http/protobuf");
-        command.add("-Dotel.exporter.otlp.traces.endpoint=" + tracesEndpoint);
+        command.add("-Dotel.exporter.otlp.endpoint=" + otlpEndpoint);
         command.add("-Dotel.exporter.otlp.traces.compression=none");
         command.add("-Dotel.metrics.exporter=none");
         command.add("-Dotel.logs.exporter=none");
@@ -891,9 +960,9 @@ class ControlledAgentRuntimeTest {
     }
 
     private static List<String> otlpPartialSuccessChildCommand(Path javaExecutable,
-                                                                Path probeClassPath,
-                                                                AgentTestFixture fixture,
-                                                                String tracesEndpoint) {
+                                                               Path probeClassPath,
+                                                               AgentTestFixture fixture,
+                                                               String otlpEndpoint) {
         List<String> command = new ArrayList<>();
         command.add(javaExecutable.toString());
         command.add("-Dfile.encoding=UTF-8");
@@ -901,7 +970,7 @@ class ControlledAgentRuntimeTest {
         command.add("-Dsun.stderr.encoding=UTF-8");
         command.add("-Dotel.traces.exporter=otlp");
         command.add("-Dotel.exporter.otlp.traces.protocol=http/protobuf");
-        command.add("-Dotel.exporter.otlp.traces.endpoint=" + tracesEndpoint);
+        command.add("-Dotel.exporter.otlp.endpoint=" + otlpEndpoint);
         command.add("-Dotel.exporter.otlp.traces.compression=none");
         command.add("-Dotel.metrics.exporter=none");
         command.add("-Dotel.logs.exporter=none");

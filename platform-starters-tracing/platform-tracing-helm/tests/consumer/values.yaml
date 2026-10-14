@@ -1,0 +1,8 @@
+platformTracing:
+  enabled: false
+
+containerEnv:
+  - name: APPLICATION_MODE
+    value: disabled-render-test
+  - name: PLATFORM_TRACING_X
+    value: caller-owned

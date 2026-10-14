@@ -20,6 +20,7 @@ import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
@@ -50,10 +51,18 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         };
     }
 
+    private static boolean isBootstrapPolicyBoolean(String name) {
+        return ExtensionPropertyNames.SAMPLING_ENABLED.equals(name)
+                || ExtensionPropertyNames.EXPORTER_ENABLED.equals(name)
+                || ExtensionPropertyNames.TRACE_CONTROL_HEADERS_ENABLED.equals(name);
+    }
+
     private static ExtensionConfig scrubbingDisabledExtConfig() {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) { return null; }
-            @Override public Boolean getBoolean(String name) { return false; }
+            @Override public Boolean getBoolean(String name) {
+                return isBootstrapPolicyBoolean(name) ? null : false;
+            }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
@@ -67,6 +76,9 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) { return null; }
             @Override public Boolean getBoolean(String name) {
+                if (isBootstrapPolicyBoolean(name)) {
+                    return null;
+                }
                 return "platform.tracing.javaagent.scrubbing.enabled".equals(name) ? Boolean.TRUE : Boolean.FALSE;
             }
             @Override public Integer getInt(String name) { return null; }
@@ -84,6 +96,9 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
                 return "platform.tracing.javaagent.scrubbing.built-in-rules".equals(name) ? "" : null;
             }
             @Override public Boolean getBoolean(String name) {
+                if (isBootstrapPolicyBoolean(name)) {
+                    return null;
+                }
                 return "platform.tracing.javaagent.scrubbing.enabled".equals(name) ? Boolean.TRUE : Boolean.FALSE;
             }
             @Override public Integer getInt(String name) { return null; }
@@ -97,7 +112,6 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         });
     }
 
-    /** Владелец JMX-наблюдения scrubbing — сессионный {@link ScrubbingRuntime}, а не процессор. */
     @SuppressWarnings("unchecked")
     private static ScrubbingRuntime getScrubbing(PlatformTracingMBeanRegistrar reg) throws Exception {
         Field runtimePlaneField = PlatformTracingMBeanRegistrar.class.getDeclaredField("runtimePlane");

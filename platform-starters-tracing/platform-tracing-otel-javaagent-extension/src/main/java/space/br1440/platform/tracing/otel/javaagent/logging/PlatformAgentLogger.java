@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.logging;
 import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventType;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 public final class PlatformAgentLogger {
 
@@ -36,6 +37,19 @@ public final class PlatformAgentLogger {
         }
 
         emitAdmitted(requiredEventType, requiredFieldsWriter);
+    }
+
+    public void log(AgentLogEventType eventType,
+                    AgentLogLevel level,
+                    AgentLogFieldsWriter fieldsWriter) {
+        AgentLogEventType requiredEventType = Objects.requireNonNull(eventType, "eventType");
+        AgentLogLevel requiredLevel = Objects.requireNonNull(level, "level").requireEventLevel();
+        AgentLogFieldsWriter requiredFieldsWriter = Objects.requireNonNull(fieldsWriter, "fieldsWriter");
+        if (!runtime.permits(requiredLevel)) {
+            return;
+        }
+
+        runtime.emitAdmitted(ownerName, requiredEventType, requiredLevel, requiredFieldsWriter, 0L);
     }
 
     EmitResult emitAdmitted(AgentLogEventType eventType, AgentLogFieldsWriter fieldsWriter) {

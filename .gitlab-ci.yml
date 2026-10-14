@@ -8,9 +8,22 @@ include:
     file:
       - /templates/infra/vault/base.yaml
 
+platform-tracing-helm-check:
+  stage: test
+  image:
+    name: r.1440.space/pe/cicd/images/helm:v3.16.4-1
+    entrypoint: [""]
+  tags:
+    - k8s-amd64
+  rules:
+    - changes:
+        - platform-starters-tracing/platform-tracing-helm/**/*
+  script:
+    - sh "$CI_PROJECT_DIR/platform-starters-tracing/platform-tracing-helm/tests/render-test.sh"
+
 platform-tracing-helm:
   stage: publish
-  needs: []
+  needs: [platform-tracing-helm-check]
   interruptible: false
   extends: .base-vault-secrets
   image:
@@ -32,8 +45,8 @@ platform-tracing-helm:
     - |
       set -eu
       cd "$CI_PROJECT_DIR/$CHART_DIR"
-      chart_name=$(awk -F': *' '/^name:/ {print $2; exit}' Chart.yaml)
-      chart_version=$(awk -F': *' '/^version:/ {print $2; exit}' Chart.yaml)
+      chart_name=$(helm show chart . | awk -F': *' '$1=="name"{print $2; exit}')
+      chart_version=$(helm show chart . | awk -F': *' '$1=="version"{print $2; exit}')
       if [ "$chart_name" != "platform-tracing" ]; then
         echo "chart name must stay platform-tracing, got '$chart_name'" >&2
         exit 1
@@ -42,7 +55,6 @@ platform-tracing-helm:
         [0-9]*.[0-9]*.[0-9]*) ;;
         *) echo "Chart.yaml version must be unquoted semver, got '$chart_version'" >&2; exit 1 ;;
       esac
-      helm lint --strict .
       printf '%s' "$HARBOR_PASSWORD" | helm registry login "$HARBOR_REGISTRY" --username "$HARBOR_USERNAME" --password-stdin
       chart_ref="oci://${HARBOR_REGISTRY}/platform/charts/${chart_name}"
       if helm show chart "$chart_ref" --version "$chart_version" >/dev/null 2>/tmp/helm-show.err; then

@@ -1,0 +1,34 @@
+platformTracing:
+  enabled: true
+  policy:
+    sampling:
+      enabled: false
+      ratio: 0
+      routeRatios:
+        /orders: 0.25
+        /payments: 0
+      dropPaths:
+        - /actuator/health
+        - /actuator/prometheus
+      forceRecordValues:
+        - support
+        - incident
+    validation:
+      level: ERROR
+    exporter:
+      enabled: false
+    propagation:
+      traceControlHeaders:
+        enabled: false
+    diagnostics:
+      logLevel: DEBUG
+
+containerEnv:
+  - name: APPLICATION_MODE
+    value: render-test
+  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    value: http://collector.test:4317
+  - name: OTEL_SERVICE_NAME
+    value: tracing-render-harness
+  - name: OTEL_RESOURCE_ATTRIBUTES
+    value: service.version=2.0.0,deployment.environment.name=test

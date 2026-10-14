@@ -1,19 +1,19 @@
 package space.br1440.platform.tracing.autoconfigure.control.settings;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.parallel.ResourceLock;
-import org.junit.jupiter.api.parallel.Resources;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 
 class CompleteTracingSettingsTest {
 
-    // The builder rejects a partial snapshot — every test here supplies all seven leaves.
     private static CompleteTracingSettings.Builder fullBuilder() {
         return CompleteTracingSettings.builder()
                 .samplingEnabled(true)
@@ -171,6 +171,23 @@ class CompleteTracingSettingsTest {
     }
 
     @Test
+    void rejectsRoutePrefixExceedingUtf8ByteLimit() {
+        // given
+        String routePrefix = "я".repeat(128);
+
+        // when
+        Throwable failure = catchThrowable(() -> fullBuilder()
+                .samplingRouteRatios(Map.of(routePrefix, 0.5d))
+                .build());
+
+        // then
+        assertThat(failure)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("at most 255 UTF-8 bytes")
+                .hasMessageNotContaining(routePrefix);
+    }
+
+    @Test
     void canonicalizesLogLevelCaseInsensitivelyAndRejectsWhitespace() {
         assertThat(fullBuilder().diagnosticsLogLevel("info").build().diagnosticsLogLevel())
                 .isEqualTo("INFO");
@@ -193,6 +210,19 @@ class CompleteTracingSettingsTest {
         } finally {
             Locale.setDefault(previous);
         }
+    }
+
+    @Test
+    void toStringReportsRouteCountWithoutRouteKeys() {
+        String route = "/canary/secret/z9Qx7mK2vL4pR8nW";
+        String text = fullBuilder()
+                .samplingRouteRatios(Map.of(route, 0.25d))
+                .build()
+                .toString();
+
+        assertThat(text)
+                .contains("sampling.route-ratios.size=1")
+                .doesNotContain(route);
     }
 
     @Test

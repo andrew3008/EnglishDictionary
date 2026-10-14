@@ -1,7 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.control;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.time.Duration;
@@ -12,18 +11,21 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
+@ResourceLock(Resources.SYSTEM_PROPERTIES)
 class TracingSettingsSourceStartupTest {
 
     private static final AgentInstanceId AGENT_INSTANCE_ID =
@@ -31,11 +33,14 @@ class TracingSettingsSourceStartupTest {
 
     @Test
     void processErrorStartsError() {
-        // given/when
-        TracingSettingsSource source = TracingSettingsSource.fromStartup(config(Map.of(
+        // given
+        ExtensionConfig config = config(Map.of(
                 ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
                 "ERROR"
-        )), AGENT_INSTANCE_ID);
+        ));
+
+        // when
+        TracingSettingsSource source = TracingSettingsSource.fromStartup(config, AGENT_INSTANCE_ID);
 
         // then
         assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.ERROR);
@@ -44,11 +49,14 @@ class TracingSettingsSourceStartupTest {
 
     @Test
     void processDisabledStartsDisabled() {
-        // given/when
-        TracingSettingsSource source = TracingSettingsSource.fromStartup(config(Map.of(
+        // given
+        ExtensionConfig config = config(Map.of(
                 ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
                 "DISABLED"
-        )), AGENT_INSTANCE_ID);
+        ));
+
+        // when
+        TracingSettingsSource source = TracingSettingsSource.fromStartup(config, AGENT_INSTANCE_ID);
 
         // then
         assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.DISABLED);
@@ -56,24 +64,96 @@ class TracingSettingsSourceStartupTest {
 
     @Test
     void absentLevelStartsWarning() {
-        // given/when
-        TracingSettingsSource source = TracingSettingsSource.fromStartup(
-                config(Map.of()),
-                AGENT_INSTANCE_ID);
+        // given
+        ExtensionConfig config = config(Map.of());
+
+        // when
+        TracingSettingsSource source = TracingSettingsSource.fromStartup(config, AGENT_INSTANCE_ID);
 
         // then
         assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.WARNING);
     }
 
     @Test
+    void absentControlSettingsUseTypedDefaults() {
+        // given
+        ExtensionConfig config = config(Map.of());
+
+        // when
+        TracingSettingsSource source = TracingSettingsSource.fromStartup(config, AGENT_INSTANCE_ID);
+
+        // then
+        assertThat(source.current().exporterEnabled()).isTrue();
+        assertThat(source.current().traceControlHeadersEnabled()).isTrue();
+        assertThat(source.current().policy().diagnosticsLogLevel()).isEqualTo(AgentLogLevel.INFO);
+        assertThat(source.current().sourceAuthority()).isEqualTo(SettingsSourceAuthority.BOOTSTRAP);
+    }
+
+    @Test
+    void explicitControlSettingsReachStartupPolicy() {
+        // given
+        ExtensionConfig config = config(Map.of(
+                ExtensionPropertyNames.EXPORTER_ENABLED, "false",
+                ExtensionPropertyNames.TRACE_CONTROL_HEADERS_ENABLED, "false",
+                ExtensionPropertyNames.DIAGNOSTICS_LOG_LEVEL, "debug"
+        ));
+
+        // when
+        TracingSettingsSource source = TracingSettingsSource.fromStartup(config, AGENT_INSTANCE_ID);
+
+        // then
+        assertThat(source.current().exporterEnabled()).isFalse();
+        assertThat(source.current().traceControlHeadersEnabled()).isFalse();
+        assertThat(source.current().policy().diagnosticsLogLevel()).isEqualTo(AgentLogLevel.DEBUG);
+        assertThat(source.current().sourceAuthority()).isEqualTo(SettingsSourceAuthority.BOOTSTRAP);
+    }
+
+    @Test
+    void unknownDiagnosticsLogLevelFailsFast() {
+        // given
+        Map<String, String> values = Map.of(
+                ExtensionPropertyNames.DIAGNOSTICS_LOG_LEVEL,
+                "VERBOSE"
+        );
+
+        // when
+        Throwable failure = catchThrowable(() -> config(values));
+
+        // then
+        assertThat(failure)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Invalid property 'platform.tracing.diagnostics.log-level'='VERBOSE'. "
+                        + "Accepted values: [OFF, ERROR, WARN, INFO, DEBUG, TRACE]");
+    }
+
+    @Test
+    void configuredValueWithoutBootstrapPropertyIsAgentDefault() {
+        // given
+        ExtensionConfig config = new ExtensionConfig(new MapConfigProperties(Map.of(
+                ExtensionPropertyNames.EXPORTER_ENABLED,
+                "false"
+        )));
+
+        // when
+        TracingSettingsSource source = TracingSettingsSource.fromStartup(config, AGENT_INSTANCE_ID);
+
+        // then
+        assertThat(source.current().exporterEnabled()).isFalse();
+        assertThat(source.current().sourceAuthority()).isEqualTo(SettingsSourceAuthority.BOOTSTRAP);
+    }
+
+    @Test
     void leftoverPlatformEnvironmentDoesNotDowngradeError() {
-        // given/when
-        TracingSettingsSource source = TracingSettingsSource.fromStartup(config(Map.of(
+        // given
+        ExtensionConfig config = config(Map.of(
                 ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
                 "ERROR",
                 "platform.environment",
                 "production"
-        )), AGENT_INSTANCE_ID);
+        ));
+
+        // when
+        TracingSettingsSource source = TracingSettingsSource.fromStartup(config, AGENT_INSTANCE_ID);
 
         // then
         assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.ERROR);
@@ -98,11 +178,19 @@ class TracingSettingsSourceStartupTest {
 
     @Test
     void unknownLevelIsRejectedBeforeSettingsAreCreated() {
-        // given/when/then
-        assertThatThrownBy(() -> TracingSettingsSource.fromStartup(config(Map.of(
+        // given
+        Map<String, String> values = Map.of(
                 ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL,
                 "STRICT"
-        )), AGENT_INSTANCE_ID))
+        );
+
+        // when
+        Throwable failure = catchThrowable(() -> TracingSettingsSource.fromStartup(
+                config(values),
+                AGENT_INSTANCE_ID));
+
+        // then
+        assertThat(failure)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("platform.tracing.javaagent.span-attributes.validation.level");
     }
@@ -118,7 +206,12 @@ class TracingSettingsSourceStartupTest {
             ratios.put("/payments", "not-a-ratio");
 
             // given
-            ExtensionConfig config = new ExtensionConfig(new MapConfigProperties(Map.of(), ratios));
+            ExtensionConfig config = config(
+                    Map.of(
+                            ExtensionPropertyNames.SAMPLING_ROUTE_RATIOS,
+                            "/orders=0.5,/payments=not-a-ratio"
+                    ),
+                    ratios);
 
             // when
             TracingSettingsSource source = TracingSettingsSource.fromStartup(config, AGENT_INSTANCE_ID);
@@ -143,8 +236,11 @@ class TracingSettingsSourceStartupTest {
 
     @Test
     void isolatedDisabledStateStartsDisabled() {
-        // given/when
-        TracingSettingsSource source = TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.DISABLED);
+        // given
+        SpanAttributeValidationLevel level = SpanAttributeValidationLevel.DISABLED;
+
+        // when
+        TracingSettingsSource source = TracingSettingsSource.isolatedValidation(level);
 
         // then
         assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.DISABLED);
@@ -152,8 +248,11 @@ class TracingSettingsSourceStartupTest {
 
     @Test
     void isolatedErrorStateIsNotBlockedByRemovedEnvironmentGate() {
-        // given/when
-        TracingSettingsSource source = TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.ERROR);
+        // given
+        SpanAttributeValidationLevel level = SpanAttributeValidationLevel.ERROR;
+
+        // when
+        TracingSettingsSource source = TracingSettingsSource.isolatedValidation(level);
 
         // then
         assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.ERROR);
@@ -178,7 +277,13 @@ class TracingSettingsSourceStartupTest {
     }
 
     private static ExtensionConfig config(Map<String, String> values) {
-        return new ExtensionConfig(new MapConfigProperties(values));
+        return config(values, null);
+    }
+
+    private static ExtensionConfig config(
+            Map<String, String> values,
+            Map<String, String> routeRatios) {
+        return new ExtensionConfig(new MapConfigProperties(values, routeRatios));
     }
 
     private static final class MapConfigProperties implements ConfigProperties {

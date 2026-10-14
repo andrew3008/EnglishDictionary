@@ -35,7 +35,7 @@ class TracingAutoConfigurationTest {
                     TracingObservationAutoConfiguration.class,
                     TracingStartupContractHealthAutoConfiguration.class
             ))
-            .withPropertyValues("platform.tracing.control.channel=STATIC");
+            .withPropertyValues("platform.tracing.control.channel=NONE");
 
     private final ApplicationContextRunner controlledAgentRunner = contextRunner
             .withInitializer(ControlledAgentTestRuntime::initialize)

@@ -20,6 +20,8 @@ import org.springframework.util.ClassUtils;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
+import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedTracingSettingsReader;
+import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsWriter;
 import space.br1440.platform.tracing.autoconfigure.integrations.kafka.PlatformKafkaProducerFactoryCustomizer;
 
 class AutoConfigurationImportsGraphTest {
@@ -52,13 +54,15 @@ class AutoConfigurationImportsGraphTest {
     @Test
     void disabledConfigurationStartsWithoutPlatformOutboundPropagation() {
         // when
-        staticChannel()
+        runner
                 .withPropertyValues("platform.tracing.enabled=false")
                 .run(context -> {
                     // then
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasSingleBean(TraceOperations.class);
                     assertThat(context).doesNotHaveBean(PlatformOutboundPropagation.class);
+                    assertThat(context.getBeansOfType(AcceptedTracingSettingsReader.class)).isEmpty();
+                    assertThat(context.getBeansOfType(TracingSettingsWriter.class)).isEmpty();
                 });
     }
 
@@ -151,7 +155,7 @@ class AutoConfigurationImportsGraphTest {
     }
 
     private ApplicationContextRunner staticChannel() {
-        return runner.withPropertyValues("platform.tracing.control.channel=STATIC");
+        return runner.withPropertyValues("platform.tracing.control.channel=NONE");
     }
 
     private ApplicationContextRunner disabled() {

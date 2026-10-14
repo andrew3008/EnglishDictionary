@@ -3,15 +3,16 @@ package space.br1440.platform.tracing.autoconfigure.control.jmx.protocol;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
 
-import space.br1440.platform.tracing.autoconfigure.agent.AgentInstanceIdValidator;
+import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedSettings;
+import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedSettingsAuthority;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsRevision;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
-import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireUtf8Meter;
 
 import lombok.experimental.UtilityClass;
 
@@ -21,6 +22,7 @@ public final class AcceptedPolicySnapshotDecoder {
     private static final String CONTRACT_POINT = JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT;
     private static final String ACCEPTED_SEQUENCE = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_SEQUENCE;
     private static final String AGENT_INSTANCE_ID = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_AGENT_INSTANCE_ID;
+    private static final String SOURCE_AUTHORITY = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SOURCE_AUTHORITY;
     private static final String SAMPLING_ENABLED = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ENABLED;
     private static final String SAMPLING_RATIO = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO;
     private static final String SAMPLING_ROUTE_RATIOS = JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS;
@@ -31,222 +33,111 @@ public final class AcceptedPolicySnapshotDecoder {
     private static final String ROUTE_PREFIX = JmxWireContract.FIELD_ROUTE_RATIO_ROUTE_PREFIX;
     private static final String ROUTE_RATIO = JmxWireContract.FIELD_ROUTE_RATIO_RATIO;
 
-    private static final int FIXED_LOGICAL_PAYLOAD_BYTES = 64;
-    private static final int ROUTE_ENTRY_LOGICAL_OVERHEAD_BYTES = 16;
+    public static AcceptedSettings decode(Object raw) {
+        CompositeData snapshot = requireSnapshot(raw);
 
-    public static AcceptedSettingsWithSequence decode(Object raw) {
-        CompositeData response = requireCompositeData(raw);
-        requireExpectedType(response);
-        requirePayloadWithinLimit(response);
+        SettingsRevision revision = decodeRevision(snapshot);
+        AcceptedSettingsAuthority authority = authority(field(snapshot, SOURCE_AUTHORITY, String.class));
+        CompleteTracingSettings policy = decodePolicy(snapshot);
 
-        long acceptedSequence = requireAcceptedSequence(response);
-        String agentInstanceId = requireAgentInstanceId(response);
-        CompleteTracingSettings snapshot = decodePolicy(response);
-
-        return new AcceptedSettingsWithSequence(acceptedSequence, agentInstanceId, snapshot);
+        return new AcceptedSettings(revision, policy, authority);
     }
 
-    private static CompositeData requireCompositeData(Object raw) {
-        if (raw instanceof CompositeData response) {
-            return response;
-        }
-
-        String dataClassName = (raw == null) ? "null" : raw.getClass().getName();
-        throw invalid("expected CompositeData, got " + dataClassName);
+    private static SettingsRevision decodeRevision(CompositeData snapshot) {
+        String agentInstanceId = field(snapshot, AGENT_INSTANCE_ID, String.class);
+        long acceptedSequence = field(snapshot, ACCEPTED_SEQUENCE, Long.class);
+        return construct("revision", () -> new SettingsRevision(agentInstanceId, acceptedSequence));
     }
 
-    private static void requireExpectedType(CompositeData response) {
-        if (!JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT.equals(response.getCompositeType())) {
-            throw invalid("unexpected CompositeType %s; expected %s".formatted(
-                    response.getCompositeType().getTypeName(),
-                    JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT.getTypeName())
-            );
-        }
-    }
+    private static CompleteTracingSettings decodePolicy(CompositeData snapshot) {
+        boolean samplingEnabled = field(snapshot, SAMPLING_ENABLED, Boolean.class);
+        double samplingRatio = field(snapshot, SAMPLING_RATIO, Double.class);
+        Map<String, Double> routeRatios = routeRatios(field(snapshot, SAMPLING_ROUTE_RATIOS, TabularData.class));
+        String validationLevel = field(snapshot, VALIDATION_LEVEL, String.class);
+        boolean exporterEnabled = field(snapshot, EXPORTER_ENABLED, Boolean.class);
+        boolean traceControlHeadersEnabled = field(snapshot, TRACE_CONTROL_HEADERS_ENABLED, Boolean.class);
+        String diagnosticsLogLevel = field(snapshot, DIAGNOSTICS_LOG_LEVEL, String.class);
 
-    private static void requirePayloadWithinLimit(CompositeData response) {
-        if (logicalPayloadSize(response) > JmxWireContract.MAX_LOGICAL_BYTES) {
-            throw invalid("logical payload exceeds %s bytes".formatted(JmxWireContract.MAX_LOGICAL_BYTES));
-        }
-    }
-
-    private static long requireAcceptedSequence(CompositeData response) {
-        long acceptedSequence = requireField(response, ACCEPTED_SEQUENCE, Long.class);
-        if (acceptedSequence < 0L) {
-            throw invalid("%s must be >= 0, got %s".formatted(ACCEPTED_SEQUENCE, acceptedSequence));
-        }
-
-        return acceptedSequence;
-    }
-
-    private static String requireAgentInstanceId(CompositeData response) {
-        String agentInstanceId = requireField(response, AGENT_INSTANCE_ID, String.class);
-        try {
-            return AgentInstanceIdValidator.requireCanonical(agentInstanceId, AGENT_INSTANCE_ID);
-        } catch (IllegalArgumentException exception) {
-            throw invalid(exception.getMessage());
-        }
-    }
-
-    private static CompleteTracingSettings decodePolicy(CompositeData response) {
-        double samplingRatio = requireRatio(response, SAMPLING_RATIO);
-        String diagnosticsLogLevel = requireLogLevel(response);
-
-        TabularData routeRatiosRawData = requireField(response, SAMPLING_ROUTE_RATIOS, TabularData.class);
-        Map<String, Double> routeRatios = decodeRouteRatios(routeRatiosRawData);
-
-        return CompleteTracingSettings.builder()
-                .samplingEnabled(requireField(response, SAMPLING_ENABLED, Boolean.class))
+        return construct("policy", () -> CompleteTracingSettings.builder()
+                .samplingEnabled(samplingEnabled)
                 .samplingRatio(samplingRatio)
                 .samplingRouteRatios(routeRatios)
-                .validationLevel(requireValidationLevel(response))
-                .exporterEnabled(requireField(response, EXPORTER_ENABLED, Boolean.class))
-                .traceControlHeadersEnabled(requireField(response, TRACE_CONTROL_HEADERS_ENABLED, Boolean.class))
+                .validationLevel(validationLevel)
+                .exporterEnabled(exporterEnabled)
+                .traceControlHeadersEnabled(traceControlHeadersEnabled)
                 .diagnosticsLogLevel(diagnosticsLogLevel)
-                .build();
+                .build());
     }
 
-    @SuppressWarnings("SameParameterValue")
-    private static double requireRatio(CompositeData response, String field) {
-        double ratio = requireField(response, field, Double.class);
-        requireValidRatio(ratio, field);
-        return ratio;
+    private static CompositeData requireSnapshot(Object raw) {
+        if (!(raw instanceof CompositeData snapshot)) {
+            throw invalid("expected CompositeData, got " + typeName(raw));
+        }
+
+        if (!JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT.equals(snapshot.getCompositeType())) {
+            throw invalid("unexpected CompositeType %s; expected %s".formatted(
+                    snapshot.getCompositeType().getTypeName(),
+                    JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT.getTypeName()));
+        }
+
+        return snapshot;
     }
 
-    private static String requireLogLevel(CompositeData response) {
-        String logLevel = requireField(response, DIAGNOSTICS_LOG_LEVEL, String.class);
-        if (CompleteTracingSettings.isUnrecognizedLogLevel(logLevel)) {
-            throw invalid("%s is not a recognized level: %s".formatted(DIAGNOSTICS_LOG_LEVEL, logLevel));
+    private static AcceptedSettingsAuthority authority(String value) {
+        try {
+            return AcceptedSettingsAuthority.valueOf(value);
+        } catch (IllegalArgumentException unsupported) {
+            throw invalid("%s has unsupported value '%s'".formatted(SOURCE_AUTHORITY, value), unsupported);
         }
-
-        return logLevel;
     }
 
-    private static String requireValidationLevel(CompositeData response) {
-        String validationLevel = requireField(response, VALIDATION_LEVEL, String.class);
-        if (validationLevel.isBlank() || CompleteTracingSettings.isUnrecognizedValidationLevel(validationLevel)) {
-            throw invalid("%s is not a recognized level: %s".formatted(VALIDATION_LEVEL, validationLevel));
-        }
+    private static Map<String, Double> routeRatios(TabularData table) {
+        Map<String, Double> routeRatios = new LinkedHashMap<>();
 
-        return validationLevel;
-    }
+        for (Object rawRow : table.values()) {
+            if (!(rawRow instanceof CompositeData row)) {
+                throw invalid("%s row has unexpected type %s".formatted(SAMPLING_ROUTE_RATIOS, typeName(rawRow)));
+            }
 
-    private static long logicalPayloadSize(CompositeData response) {
-        long size = FIXED_LOGICAL_PAYLOAD_BYTES;
-
-        Object agentId = response.get(AGENT_INSTANCE_ID);
-        if (agentId instanceof String text) {
-            size += JmxWireUtf8Meter.utf8Length(text);
-        }
-
-        Object logLevel = response.get(DIAGNOSTICS_LOG_LEVEL);
-        if (logLevel instanceof String text) {
-            size += JmxWireUtf8Meter.utf8Length(text);
-        }
-
-        Object validationLevel = response.get(VALIDATION_LEVEL);
-        if (validationLevel instanceof String text) {
-            size += JmxWireUtf8Meter.utf8Length(text);
-        }
-
-        Object routes = response.get(SAMPLING_ROUTE_RATIOS);
-        if (routes instanceof TabularData tabular) {
-            for (Object rawRow : tabular.values()) {
-                if (rawRow instanceof CompositeData row) {
-                    Object prefix = row.get(ROUTE_PREFIX);
-                    if (prefix instanceof String text) {
-                        size += JmxWireUtf8Meter.utf8Length(text) + ROUTE_ENTRY_LOGICAL_OVERHEAD_BYTES;
-                    }
-                }
+            String prefix = field(row, ROUTE_PREFIX, String.class);
+            if (routeRatios.put(prefix, field(row, ROUTE_RATIO, Double.class)) != null) {
+                throw invalid("duplicate route prefix in " + SAMPLING_ROUTE_RATIOS);
             }
         }
 
-        return size;
+        return Collections.unmodifiableMap(routeRatios);
     }
 
-    private static <T> T requireField(CompositeData cd, String field, Class<T> javaType) {
-        Object value = cd.get(field);
+    private static <T> T field(CompositeData data, String name, Class<T> javaType) {
+        Object value = data.get(name);
         if (value == null) {
-            throw invalid("field '%s' is null".formatted(field));
+            throw invalid("field '%s' is null".formatted(name));
         }
 
         if (!javaType.isInstance(value)) {
-            throw invalid("field '%s' has unexpected type %s".formatted(field, value.getClass().getName()));
+            throw invalid("field '%s' has unexpected type %s".formatted(name, value.getClass().getName()));
         }
 
         return javaType.cast(value);
     }
 
-    private static void requireValidRatio(double ratio, String fieldName) {
-        if (!Double.isFinite(ratio)) {
-            throw invalid("%s must be finite, got %s".formatted(fieldName, ratio));
-        }
-
-        if (ratio < 0.0 || ratio > 1.0) {
-            throw invalid("%s must be within [0.0, 1.0], got %s".formatted(fieldName, ratio));
+    private static <T> T construct(String part, Supplier<T> constructor) {
+        try {
+            return constructor.get();
+        } catch (IllegalArgumentException violation) {
+            throw invalid(part + " violates domain invariant: " + violation.getMessage(), violation);
         }
     }
 
-    private static Map<String, Double> decodeRouteRatios(TabularData tabular) {
-        if (tabular.isEmpty()) {
-            return Collections.emptyMap();
-        }
-
-        if (tabular.size() > JmxWireContract.MAX_ROUTE_ENTRIES) {
-            throw invalid("%s has %s entries, exceeding the maximum of %s".formatted(
-                    SAMPLING_ROUTE_RATIOS,
-                    tabular.size(),
-                    JmxWireContract.MAX_ROUTE_ENTRIES)
-            );
-        }
-
-        Map<String, Double> result = new LinkedHashMap<>();
-        for (Object rawRow : tabular.values()) {
-            CompositeData row = requireRouteRow(rawRow);
-            String prefix = requireRoutePrefix(row);
-
-            double ratio = requireField(row, ROUTE_RATIO, Double.class);
-            requireValidRatio(ratio, SAMPLING_ROUTE_RATIOS + ".entry");
-
-            if (result.put(prefix, ratio) != null) {
-                throw invalid("duplicate route prefix in " + SAMPLING_ROUTE_RATIOS);
-            }
-        }
-
-        return Collections.unmodifiableMap(result);
-    }
-
-    private static CompositeData requireRouteRow(Object rawRow) {
-        if (rawRow instanceof CompositeData row) {
-            return row;
-        }
-
-        String type = (rawRow == null) ? "null" : rawRow.getClass().getName();
-        throw invalid("%s row has unexpected type %s".formatted(SAMPLING_ROUTE_RATIOS, type));
-    }
-
-    private static String requireRoutePrefix(CompositeData row) {
-        String prefix = requireField(row, ROUTE_PREFIX, String.class);
-        if (prefix.isBlank()) {
-            throw invalid("route prefix must not be blank");
-        }
-
-        long utf8Length = JmxWireUtf8Meter.utf8Length(prefix);
-        if (utf8Length > JmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES) {
-            throw invalid("route prefix UTF-8 length %s is invalid (must be 1..%s bytes)".formatted(
-                    utf8Length,
-                    JmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES)
-            );
-        }
-
-        if (prefix.chars().anyMatch(Character::isISOControl)) {
-            throw invalid("route prefix must not contain ISO control characters");
-        }
-
-        return prefix;
+    private static String typeName(Object value) {
+        return (value == null) ? "null" : value.getClass().getName();
     }
 
     private static IllegalArgumentException invalid(String reason) {
         return new IllegalArgumentException(CONTRACT_POINT + ": " + reason);
+    }
+
+    private static IllegalArgumentException invalid(String reason, Throwable cause) {
+        return new IllegalArgumentException(CONTRACT_POINT + ": " + reason, cause);
     }
 }

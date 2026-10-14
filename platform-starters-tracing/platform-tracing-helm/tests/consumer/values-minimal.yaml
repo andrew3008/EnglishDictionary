@@ -1,0 +1,6 @@
+platformTracing:
+  enabled: true
+
+containerEnv:
+  - name: APPLICATION_MODE
+    value: minimal-render-test

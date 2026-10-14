@@ -75,12 +75,21 @@ public final class AgentLoggingRuntime {
                             AgentLogEventType eventType,
                             AgentLogFieldsWriter fieldsWriter,
                             long suppressedCount) {
+        return emitAdmitted(logger, eventType, eventType.level(), fieldsWriter, suppressedCount);
+    }
+
+    EmitResult emitAdmitted(String logger,
+                            AgentLogEventType eventType,
+                            AgentLogLevel level,
+                            AgentLogFieldsWriter fieldsWriter,
+                            long suppressedCount) {
         Objects.requireNonNull(logger, "logger");
         Objects.requireNonNull(eventType, "eventType");
+        AgentLogLevel requiredLevel = Objects.requireNonNull(level, "level").requireEventLevel();
         Objects.requireNonNull(fieldsWriter, "fieldsWriter");
 
         return withinEmissionGuard(() ->
-                buildEncodeAndDeliver(logger, eventType, fieldsWriter, suppressedCount));
+                buildEncodeAndDeliver(logger, eventType, requiredLevel, fieldsWriter, suppressedCount));
     }
 
     EmitResult emitRateTransitionAdmitted(String logger,
@@ -96,8 +105,8 @@ public final class AgentLoggingRuntime {
         Objects.requireNonNull(problemWriter, "problemWriter");
 
         return withinEmissionGuard(() -> {
-            buildEncodeAndDeliver(logger, markerType, markerWriter, 0L);
-            return buildEncodeAndDeliver(logger, problemType, problemWriter, suppressedCount);
+            buildEncodeAndDeliver(logger, markerType, markerType.level(), markerWriter, 0L);
+            return buildEncodeAndDeliver(logger, problemType, problemType.level(), problemWriter, suppressedCount);
         });
     }
 
@@ -118,6 +127,7 @@ public final class AgentLoggingRuntime {
 
     private EmitResult buildEncodeAndDeliver(String logger,
                                              AgentLogEventType eventType,
+                                             AgentLogLevel level,
                                              AgentLogFieldsWriter fieldsWriter,
                                              long suppressedCount) {
         PlatformLogEventEncoder.EncodedLogEvent encoded;
@@ -128,7 +138,7 @@ public final class AgentLoggingRuntime {
             AgentLogFieldsBuilder.Snapshot snapshot = fields.snapshot();
             AgentLogRecord event = new AgentLogRecord(
                     Instant.now(),
-                    eventType.level(),
+                    level,
                     eventType.eventCode(),
                     eventType.name(),
                     logger,
@@ -143,7 +153,7 @@ public final class AgentLoggingRuntime {
         } catch (Throwable failure) {
             PlatformThrowables.propagateIfFatal(failure);
             return encodeAndDeliverFallback(
-                    eventType.level(),
+                    level,
                     eventType.eventCode(),
                     eventType.name(),
                     FallbackReason.INVARIANT_VIOLATION

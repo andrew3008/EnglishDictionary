@@ -16,6 +16,27 @@ planes:
   application:
     packageName: space.br1440.platform.tracing.autoconfigure.jmx.contract.generated
 
+writer:
+  values: [CONFIG_SERVER, ACTUATOR]
+
+sourceAuthority:
+  values: [BOOTSTRAP, CONFIG_SERVER, ACTUATOR]
+
+outcome:
+  values: [APPLIED, UNCHANGED, REJECTED, STALE, FAILED]
+
+messageCode:
+  values:
+    - NONE
+    - UNKNOWN_FIELD
+    - MISSING_REQUIRED_FIELD
+    - TYPE_MISMATCH
+    - INVALID_VALUE
+    - LIMIT_EXCEEDED
+    - AGENT_INSTANCE_MISMATCH
+    - ACCEPTED_SEQUENCE_MISMATCH
+    - INTERNAL_FAILURE
+
 objectNames:
   settingsMutation: "space.br1440.platform.tracing:type=Control,name=PlatformSettingsMutation,role=Mutation"
   settingsStatus: "space.br1440.platform.tracing:type=Control,name=PlatformSettingsStatus,role=Observation"
@@ -167,14 +188,12 @@ openTypes:
     kind: composite
     typeName: space.br1440.platform.tracing.control.ApplySnapshotRequest.v1
     fields:
-      - { name: applyTrigger, type: string, required: true, nullable: false }
       - { name: attemptId, type: string, required: true, nullable: false }
       - { name: candidateDigest, type: string, required: true, nullable: false }
       - { name: expectedAcceptedSequence, type: long, required: true, nullable: false }
       - { name: expectedAgentInstanceId, type: string, required: true, nullable: false }
       - { name: runtimePolicy, type: "composite:runtimePolicy", required: true, nullable: false }
-      - { name: sourceAuthority, type: string, required: true, nullable: false }
-      - { name: sourceRevision, type: string, required: true, nullable: false }
+      - { name: writer, type: string, required: true, nullable: false }
   applySnapshotResponse:
     kind: composite
     typeName: space.br1440.platform.tracing.control.ApplySnapshotResponse.v1
@@ -192,10 +211,7 @@ openTypes:
     fields:
       - { name: acceptedSequence, type: long, required: true, nullable: false }
       - { name: agentInstanceId, type: string, required: true, nullable: false }
-      - { name: acceptedPolicyDigest, type: string, required: true, nullable: false }
-      - { name: lastApplyOutcome, type: string, required: true, nullable: false }
-      - { name: lastAttemptId, type: string, required: true, nullable: false }
-      - { name: failureCode, type: string, required: true, nullable: false }
+      - { name: sourceAuthority, type: string, required: true, nullable: false }
       - { name: samplingEnabled, type: boolean, required: true, nullable: false }
       - { name: samplingRatio, type: double, required: true, nullable: false }
       - { name: samplingRouteRatios, type: "tabular:routeRatios", required: true, nullable: false }
@@ -448,7 +464,7 @@ readinessEvidence:
 wireGraph:
   maxDepth: 16
   maxElements: 4096
-  maxLogicalBytes: 32768
+  maxLogicalBytes: 33571
   maxStringUtf8Bytes: 4096
   maxRouteEntries: 100
   maxRoutePrefixUtf8Bytes: 255

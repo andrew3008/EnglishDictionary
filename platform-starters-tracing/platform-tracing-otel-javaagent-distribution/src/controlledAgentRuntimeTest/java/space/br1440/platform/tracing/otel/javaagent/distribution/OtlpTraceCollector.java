@@ -66,8 +66,8 @@ final class OtlpTraceCollector implements AutoCloseable {
         return collector;
     }
 
-    String tracesEndpoint() {
-        return "http://127.0.0.1:" + server.getAddress().getPort() + TRACES_PATH;
+    String otlpEndpoint() {
+        return "http://127.0.0.1:" + server.getAddress().getPort();
     }
 
     int receivedBatches() {

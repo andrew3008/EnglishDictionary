@@ -2,114 +2,46 @@ package space.br1440.platform.tracing.autoconfigure.reactive;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.reflect.Method;
-
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.LazyInitializationExcludeFilter;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.boot.LazyInitializationBeanFactoryPostProcessor;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.reactor.ReactorAutoConfiguration;
+import org.springframework.boot.test.context.assertj.AssertableReactiveWebApplicationContext;
 import org.springframework.boot.test.context.runner.ReactiveWebApplicationContextRunner;
-import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
-
-import reactor.core.publisher.Hooks;
 
 class TracingReactorEagerInitConfigurationTest {
 
-    private final ReactiveWebApplicationContextRunner reactiveContextRunner =
-            new ReactiveWebApplicationContextRunner()
-                    .withConfiguration(AutoConfigurations.of(TracingReactorEagerInitConfiguration.class));
-
-    private final WebApplicationContextRunner servletContextRunner =
-            new WebApplicationContextRunner()
-                    .withConfiguration(AutoConfigurations.of(TracingReactorEagerInitConfiguration.class));
-
-    @AfterEach
-    void tearDown() {
-        Hooks.disableAutomaticContextPropagation();
-    }
+    private final ReactiveWebApplicationContextRunner lazyInitContextRunner = new ReactiveWebApplicationContextRunner()
+            .withInitializer(context -> context.addBeanFactoryPostProcessor(
+                    new LazyInitializationBeanFactoryPostProcessor())
+            )
+            .withConfiguration(AutoConfigurations.of(ReactorAutoConfiguration.class));
 
     @Test
-    void filterIsRegisteredInReactiveApplication() {
-        reactiveContextRunner.run(context -> {
-            assertThat(context).hasNotFailed();
-            assertThat(context).hasBean("platformTracingEagerReactorAutoConfigurationFilter");
-            assertThat(context).hasSingleBean(LazyInitializationExcludeFilter.class);
-        });
-    }
-
-    @Test
-    void filterIsNotRegisteredInServletApplication() {
-        servletContextRunner.run(context -> {
-            assertThat(context).hasNotFailed();
-            assertThat(context).doesNotHaveBean("platformTracingEagerReactorAutoConfigurationFilter");
-        });
-    }
-
-    @Test
-    void filterExcludesReactorAutoConfigurationFromLazyInitialization() {
-        reactiveContextRunner.run(context -> {
-            LazyInitializationExcludeFilter filter =
-                    context.getBean(LazyInitializationExcludeFilter.class);
-
-            assertThat(filter.isExcluded("reactorAutoConfiguration", null, ReactorAutoConfiguration.class))
-                    .as("ReactorAutoConfiguration must be excluded from lazy initialization")
-                    .isTrue();
-            assertThat(filter.isExcluded("someOtherBean", null, String.class))
-                    .as("An unrelated bean must not be excluded")
-                    .isFalse();
-        });
-    }
-
-    @Test
-    void defaultPropertyMakesBootReactorAutoConfigurationEnableTheHookWhenAppDoesNotSetIt() {
-        Hooks.disableAutomaticContextPropagation();
-
-        reactiveContextRunner
-                .withConfiguration(AutoConfigurations.of(ReactorAutoConfiguration.class))
+    void reactorAutoConfigurationIsCreatedAtStartupUnderLazyInitialization() {
+        lazyInitContextRunner
+                .withConfiguration(AutoConfigurations.of(TracingReactorEagerInitConfiguration.class))
                 .run(context -> {
                     assertThat(context).hasNotFailed();
-                    assertThat(context.getEnvironment().getProperty("spring.reactor.context-propagation"))
-                            .isEqualTo("AUTO");
-                    assertThat(automaticContextPropagationEnabled())
-                            .as("ReactorAutoConfiguration must enable the automatic context-propagation hook")
+                    assertThat(isCreatedDuringRefresh(context, ReactorAutoConfiguration.class))
+                            .as("ReactorAutoConfiguration must be created eagerly despite lazy initialization")
                             .isTrue();
                 });
     }
 
     @Test
-    void explicitApplicationPropertyOverridesStarterDefault() {
-        Hooks.enableAutomaticContextPropagation();
-
-        reactiveContextRunner
-                .withConfiguration(AutoConfigurations.of(ReactorAutoConfiguration.class))
-                .withPropertyValues("spring.reactor.context-propagation=LIMITED")
-                .run(context -> {
-                    assertThat(context).hasNotFailed();
-                    assertThat(context.getEnvironment().getProperty("spring.reactor.context-propagation"))
-                            .isEqualTo("LIMITED");
-                });
+    void springBootAloneLeavesReactorAutoConfigurationLazy() {
+        lazyInitContextRunner.run(context -> assertThat(isCreatedDuringRefresh(context, ReactorAutoConfiguration.class))
+                .as("negative control: without the platform filter ReactorAutoConfiguration stays lazy "
+                        + "(spring-boot#45846); if this fails, Boot fixed it and the platform filter is redundant")
+                .isFalse());
     }
 
-    private static boolean automaticContextPropagationEnabled() {
-        try {
-            Method query = Hooks.class.getMethod("isAutomaticContextPropagationEnabled");
-            return Boolean.TRUE.equals(query.invoke(null));
-        } catch (NoSuchMethodException ignored) {
-            return contextPropagationSupportFlag();
-        } catch (ReflectiveOperationException failure) {
-            throw new AssertionError("Failed to query automatic context propagation", failure);
-        }
-    }
-
-    private static boolean contextPropagationSupportFlag() {
-        try {
-            Class<?> support = Class.forName("reactor.core.publisher.ContextPropagationSupport");
-            Method query = support.getDeclaredMethod("shouldPropagateContextToThreadLocals");
-            query.setAccessible(true);
-            return Boolean.TRUE.equals(query.invoke(null));
-        } catch (ReflectiveOperationException failure) {
-            throw new AssertionError("reactor ContextPropagationSupport is unavailable", failure);
-        }
+    @SuppressWarnings("SameParameterValue")
+    private static boolean isCreatedDuringRefresh(AssertableReactiveWebApplicationContext context, Class<?> type) {
+        ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
+        String[] beanNames = beanFactory.getBeanNamesForType(type, true, false);
+        return (beanNames.length == 1) && beanFactory.containsSingleton(beanNames[0]);
     }
 }

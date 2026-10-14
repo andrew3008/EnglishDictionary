@@ -24,42 +24,39 @@ import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherence
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceTestSupport;
 import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
-import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsRevision;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsContractViolationException;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliveryResult;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliverySource;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsDelivery;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsWriter;
+import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPlatformJmxPlane;
 import space.br1440.platform.tracing.autoconfigure.support.ReadinessJmxTestFixtures;
 import space.br1440.platform.tracing.autoconfigure.support.SettingsJmxTestFixtures;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
 
 final class PlatformJmxTracingSettingsClientWireGuardTest {
 
     @Test
-    void statusRejectsNonNeutralValueBeforeSnapshotDecoder() throws Exception {
+    void statusDecodeFailureDoesNotLatchAndNextMutationReachesTransport() throws Exception {
         // given
-        MBeanServer server = initializedServer();
-        when(server.getAttribute(
-                JmxWireContract.SETTINGS_STATUS_OBJECT_NAME,
-                JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT))
-                .thenReturn(new ForeignPayload("extension-owned"));
-        PlatformJmxTracingSettingsClient client = initializedClient(server);
+        String agentInstanceId = UUID.randomUUID().toString();
+        try (FakeAgentPlatformJmxPlane plane =
+                     FakeAgentPlatformJmxPlane.unknownAuthorityAcceptedPolicySnapshot(agentInstanceId)) {
+            PlatformJmxTracingSettingsClient client = plane.client();
 
-        // when
-        // then
-        assertThatThrownBy(client::currentComplete)
-                .isInstanceOf(TracingSettingsContractViolationException.class)
-                .hasMessageStartingWith("JMX_CLIENT_STATUS_JMX_WIRE_TYPE_VIOLATION:");
-        assertThatThrownBy(client::currentComplete)
-                .isInstanceOf(TracingConfigurationGuardException.class)
-                .hasMessageContaining("JMX_CLIENT_TERMINALLY_INVALIDATED")
-                .hasMessageContaining("JMX_CLIENT_STATUS_JMX_WIRE_TYPE_VIOLATION");
-        assertThatThrownBy(client::initialize)
-                .isInstanceOf(TracingConfigurationGuardException.class)
-                .hasMessageContaining("JMX_CLIENT_TERMINALLY_INVALIDATED")
-                .hasMessageContaining("JMX_CLIENT_STATUS_JMX_WIRE_TYPE_VIOLATION");
+            // when
+            assertThatThrownBy(client::current)
+                    .isInstanceOf(TracingSettingsContractViolationException.class)
+                    .hasMessageStartingWith("JMX_CLIENT_STATUS_RESPONSE_DECODE_FAILED:");
+            SettingsDelivery delivery = client.applySnapshot(
+                    new SettingsRevision(agentInstanceId, 0L),
+                    settings(),
+                    SettingsWriter.CONFIG_SERVER);
+
+            // then
+            assertThat(delivery.outcome()).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
+            assertThat(plane.applyInvocationCount()).isEqualTo(1);
+        }
     }
 
     @Test
@@ -77,15 +74,15 @@ final class PlatformJmxTracingSettingsClientWireGuardTest {
         // when
         // then
         assertThatThrownBy(() -> client.applySnapshot(
-                new ExpectedSettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
+                new SettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
                 settings(),
-                TracingSettingsDeliverySource.CONFIG_SERVER))
+                SettingsWriter.CONFIG_SERVER))
                 .isInstanceOf(TracingSettingsContractViolationException.class)
                 .hasMessageStartingWith("JMX_CLIENT_MUTATION_JMX_WIRE_TYPE_VIOLATION:");
         assertThatThrownBy(() -> client.applySnapshot(
-                new ExpectedSettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
+                new SettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
                 settings(),
-                TracingSettingsDeliverySource.CONFIG_SERVER))
+                SettingsWriter.CONFIG_SERVER))
                 .isInstanceOf(TracingConfigurationGuardException.class)
                 .hasMessageContaining("JMX_CLIENT_TERMINALLY_INVALIDATED")
                 .hasMessageContaining("JMX_CLIENT_MUTATION_JMX_WIRE_TYPE_VIOLATION");
@@ -98,16 +95,22 @@ final class PlatformJmxTracingSettingsClientWireGuardTest {
         try (FakeAgentPlatformJmxPlane plane =
                      FakeAgentPlatformJmxPlane.malformedApplySnapshotResponse(agentInstanceId)) {
             PlatformJmxTracingSettingsClient client = plane.client();
-            ExpectedSettingsRevision expectedBase = new ExpectedSettingsRevision(agentInstanceId, 0L);
+            SettingsRevision expectedBase = new SettingsRevision(agentInstanceId, 0L);
 
             // when
             // then
-            assertThatThrownBy(() -> client.applySnapshot(expectedBase, settings(), TracingSettingsDeliverySource.CONFIG_SERVER))
+            assertThatThrownBy(() -> client.applySnapshot(
+                    expectedBase,
+                    settings(),
+                    SettingsWriter.CONFIG_SERVER))
                     .as("a foreign CompositeType response MUST be a contract violation, not a plain FAILED result")
                     .isInstanceOf(TracingSettingsContractViolationException.class)
                     .hasMessageStartingWith("JMX_CLIENT_MUTATION_RESPONSE_DECODE_FAILED:");
 
-            assertThatThrownBy(() -> client.applySnapshot(expectedBase, settings(), TracingSettingsDeliverySource.CONFIG_SERVER))
+            assertThatThrownBy(() -> client.applySnapshot(
+                    expectedBase,
+                    settings(),
+                    SettingsWriter.CONFIG_SERVER))
                     .as("trust MUST be terminally invalidated after a contract violation, without retry")
                     .isInstanceOf(TracingConfigurationGuardException.class)
                     .hasMessageContaining("JMX_CLIENT_TERMINALLY_INVALIDATED")
@@ -130,16 +133,16 @@ final class PlatformJmxTracingSettingsClientWireGuardTest {
         // when
         // then
         assertThatThrownBy(() -> client.applySnapshot(
-                new ExpectedSettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
+                new SettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
                 settings(),
-                TracingSettingsDeliverySource.CONFIG_SERVER))
+                SettingsWriter.CONFIG_SERVER))
                 .isInstanceOf(TracingSettingsContractViolationException.class)
                 .hasMessageStartingWith("JMX_CLIENT_MUTATION_RESPONSE_TYPE_INVALID:");
-                
+
         assertThatThrownBy(() -> client.applySnapshot(
-                new ExpectedSettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
+                new SettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
                 settings(),
-                TracingSettingsDeliverySource.CONFIG_SERVER))
+                SettingsWriter.CONFIG_SERVER))
                 .isInstanceOf(TracingConfigurationGuardException.class)
                 .hasMessageContaining("JMX_CLIENT_TERMINALLY_INVALIDATED")
                 .hasMessageContaining("JMX_CLIENT_MUTATION_RESPONSE_CONTRACT_FAILED");
@@ -154,12 +157,11 @@ final class PlatformJmxTracingSettingsClientWireGuardTest {
         // when
         // then
         assertThatThrownBy(() -> client.applySnapshot(
-                new ExpectedSettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
+                new SettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
                 null,
-                TracingSettingsDeliverySource.CONFIG_SERVER))
-                .isInstanceOf(TracingSettingsContractViolationException.class)
-                .hasMessageStartingWith("JMX_CLIENT_MUTATION_ENCODING_FAILED:")
-                .hasCauseInstanceOf(NullPointerException.class);
+                SettingsWriter.CONFIG_SERVER))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("snapshot");
 
         verify(server, never()).invoke(
                 eq(JmxWireContract.SETTINGS_MUTATION_OBJECT_NAME),
@@ -176,21 +178,26 @@ final class PlatformJmxTracingSettingsClientWireGuardTest {
         try (FakeAgentPlatformJmxPlane plane = FakeAgentPlatformJmxPlane.compliant(agentInstanceId, 0L)) {
             plane.setNextApplyOutcome(outcome);
             PlatformJmxTracingSettingsClient client = plane.client();
-            ExpectedSettingsRevision expectedBase = new ExpectedSettingsRevision(agentInstanceId, 0L);
+            SettingsRevision expectedBase = new SettingsRevision(agentInstanceId, 0L);
 
             // when
-            TracingSettingsDeliveryResult result =
-                    client.applySnapshot(expectedBase, settings(), TracingSettingsDeliverySource.CONFIG_SERVER);
+            SettingsDelivery delivery =
+                    client.applySnapshot(
+                            expectedBase,
+                            settings(),
+                            SettingsWriter.CONFIG_SERVER);
 
             // then
-            assertThat(result).isEqualTo(TracingSettingsDeliveryResult.valueOf(outcome));
+            assertThat(delivery.outcome()).isEqualTo(TracingSettingsDeliveryResult.valueOf(outcome));
+            assertThat(delivery.attemptId()).isNotBlank();
+            assertThat(UUID.fromString(delivery.attemptId()).toString()).isEqualTo(delivery.attemptId());
+            assertThat(delivery.messageCode()).isEqualTo(expectedMessageCode(outcome));
         }
     }
 
     @ParameterizedTest
-    @EnumSource(TracingSettingsDeliverySource.class)
-    void mutationEncodesSourceAuthorityAndApplyTriggerAcceptedByRealAgentDecoder(
-            TracingSettingsDeliverySource source) throws Exception {
+    @EnumSource(SettingsWriter.class)
+    void mutationEncodesWriterAndRevisionAcceptedByRealAgentTypes(SettingsWriter writer) throws Exception {
         // given
         MBeanServer server = initializedServer();
         ArgumentCaptor<Object[]> requestCaptor = ArgumentCaptor.forClass(Object[].class);
@@ -201,31 +208,94 @@ final class PlatformJmxTracingSettingsClientWireGuardTest {
                 any(String[].class)))
                 .thenReturn(null);
         PlatformJmxTracingSettingsClient client = initializedClient(server);
+        SettingsRevision expectedBase =
+                new SettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L);
 
         // when
         // then
         assertThatThrownBy(() -> client.applySnapshot(
-                new ExpectedSettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L), settings(), source))
+                expectedBase,
+                settings(),
+                writer))
                 .isInstanceOf(TracingSettingsContractViolationException.class);
 
         CompositeData request = (CompositeData) requestCaptor.getValue()[0];
-        String sourceAuthority = (String) request.get(
-                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_SOURCE_AUTHORITY);
-        String applyTrigger = (String) request.get(
-                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_APPLY_TRIGGER);
+        String encodedWriter = (String) request.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_WRITER);
+        var agentWriter =
+                space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter.valueOf(
+                        encodedWriter
+                );
+        var agentRevision =
+                new space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsRevision(
+                        space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId.parse(
+                                (String) request.get(
+                                        JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_AGENT_INSTANCE_ID
+                                )
+                        ),
+                        (Long) request.get(
+                                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_ACCEPTED_SEQUENCE
+                        )
+                );
 
-        SettingsSourceAuthority expectedAuthority = switch (source) {
-            case CONFIG_SERVER -> SettingsSourceAuthority.CONFIG_SERVER;
-            case ACTUATOR -> SettingsSourceAuthority.DEV_ACTUATOR;
+        assertThat(agentWriter.name()).isEqualTo(writer.name());
+        assertThat(agentRevision.agentInstanceId().toString()).isEqualTo(expectedBase.agentInstanceId());
+        assertThat(agentRevision.acceptedSequence()).isEqualTo(expectedBase.acceptedSequence());
+    }
+
+    @Test
+    void applyBeforeMetadataGateReturnsCorrelatedClientFailure() throws Exception {
+        // given
+        MBeanServer server = initializedServer();
+        AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard(server);
+        AgentReadinessCoherenceTestSupport.pinCurrent(coherenceGuard);
+        PlatformJmxTracingSettingsClient client =
+                new PlatformJmxTracingSettingsClient(server, coherenceGuard);
+
+        // when
+        SettingsDelivery delivery = client.applySnapshot(
+                new SettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
+                settings(),
+                SettingsWriter.CONFIG_SERVER
+        );
+
+        // then
+        assertThat(delivery.outcome()).isEqualTo(TracingSettingsDeliveryResult.FAILED);
+        assertThat(delivery.messageCode()).isEqualTo("JMX_CLIENT_METADATA_GATE_FAILED");
+        assertThat(UUID.fromString(delivery.attemptId()).toString()).isEqualTo(delivery.attemptId());
+        verify(server, never()).invoke(
+                eq(JmxWireContract.SETTINGS_MUTATION_OBJECT_NAME),
+                eq(JmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT),
+                any(Object[].class),
+                any(String[].class)
+        );
+    }
+
+    @Test
+    void legacyMutationParameterTypeFailsMetadataGate() throws Exception {
+        // given
+        MBeanServer server = initializedServer();
+        when(server.getMBeanInfo(JmxWireContract.SETTINGS_MUTATION_OBJECT_NAME))
+                .thenReturn(SettingsJmxTestFixtures.legacyMutationInfo());
+        AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard(server);
+        AgentReadinessCoherenceTestSupport.pinCurrent(coherenceGuard);
+        PlatformJmxTracingSettingsClient client =
+                new PlatformJmxTracingSettingsClient(server, coherenceGuard);
+
+        // when
+        // then
+        assertThatThrownBy(client::initialize)
+                .isInstanceOf(TracingConfigurationGuardException.class)
+                .hasMessage("JMX_CLIENT_METADATA_GATE_FAILED: Platform tracing MBean metadata is incompatible");
+    }
+
+    private static String expectedMessageCode(String outcome) {
+        return switch (outcome) {
+            case "APPLIED", "UNCHANGED" -> "NONE";
+            case "REJECTED" -> "INVALID_VALUE";
+            case "STALE" -> "ACCEPTED_SEQUENCE_MISMATCH";
+            case "FAILED" -> "INTERNAL_FAILURE";
+            default -> throw new IllegalArgumentException("Unsupported outcome: " + outcome);
         };
-
-        SettingsUpdateTrigger expectedTrigger = switch (source) {
-            case CONFIG_SERVER -> SettingsUpdateTrigger.REFRESH;
-            case ACTUATOR -> SettingsUpdateTrigger.DEVELOPER_COMMAND;
-        };
-
-        assertThat(SettingsSourceAuthority.valueOf(sourceAuthority)).isEqualTo(expectedAuthority);
-        assertThat(SettingsUpdateTrigger.valueOf(applyTrigger)).isEqualTo(expectedTrigger);
     }
 
     private static MBeanServer initializedServer() throws Exception {
@@ -262,8 +332,5 @@ final class PlatformJmxTracingSettingsClientWireGuardTest {
                 .traceControlHeadersEnabled(true)
                 .diagnosticsLogLevel("INFO")
                 .build();
-    }
-
-    private record ForeignPayload(String value) {
     }
 }

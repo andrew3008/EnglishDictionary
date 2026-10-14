@@ -34,7 +34,7 @@ class ConfigurationEnabledRuntimeContractTest {
                     TracingRuntimeAutoConfiguration.class))
             .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withPropertyValues(
-                    "platform.tracing.control.channel=STATIC");
+                    "platform.tracing.control.channel=NONE");
 
     private final ApplicationContextRunner observableRuntimeRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
@@ -45,7 +45,7 @@ class ConfigurationEnabledRuntimeContractTest {
                     TracingStatusAutoConfiguration.class))
             .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withPropertyValues(
-                    "platform.tracing.control.channel=STATIC");
+                    "platform.tracing.control.channel=NONE");
 
     @Test
     void agentEnabledWithReadyAgentKeepsManualTracingOperational() {

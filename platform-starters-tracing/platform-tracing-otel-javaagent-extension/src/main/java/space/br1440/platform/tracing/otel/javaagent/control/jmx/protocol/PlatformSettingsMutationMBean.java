@@ -27,9 +27,9 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ControlPlaneLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
 public final class PlatformSettingsMutationMBean implements DynamicMBean {
 
@@ -135,8 +135,8 @@ public final class PlatformSettingsMutationMBean implements DynamicMBean {
                                         boolean failed) throws MBeanException {
         try {
             SettingsUpdateResult result = failed
-                    ? updater.failBeforeApply(wireAttemptId, reason)
-                    : updater.rejectBeforeApply(wireAttemptId, reason);
+                    ? updater.failBeforeApply(reason)
+                    : updater.rejectBeforeApply(reason);
             return codec.encode(result, wireAttemptId);
         } catch (RuntimeException exception) {
             logFailure(exception, "pre-apply-response", wireAttemptId);

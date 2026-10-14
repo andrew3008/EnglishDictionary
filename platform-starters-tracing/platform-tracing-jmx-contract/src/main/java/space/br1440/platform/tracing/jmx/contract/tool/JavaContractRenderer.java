@@ -50,6 +50,11 @@ final class JavaContractRenderer {
                 renderUtf8Meter(packageName)
         );
 
+        JmxWireContractGenerator.writeUtf8(
+                packageDirectory.resolve("JmxWireGraphMeter.java"),
+                renderWireGraphMeter(packageName)
+        );
+
         writeIdentity(contract, plane, planeRoot.resolve("resources"));
     }
 
@@ -91,10 +96,369 @@ final class JavaContractRenderer {
                 """.formatted(packageName);
     }
 
+    private static String renderWireGraphMeter(String packageName) {
+        return """
+                package $PACKAGE$;
+
+                import java.lang.reflect.Array;
+                import java.lang.reflect.Proxy;
+                import java.util.ArrayList;
+                import java.util.Collections;
+                import java.util.IdentityHashMap;
+                import java.util.List;
+                import java.util.Set;
+                import java.util.function.Supplier;
+
+                import javax.management.ObjectName;
+                import javax.management.openmbean.CompositeData;
+                import javax.management.openmbean.CompositeType;
+                import javax.management.openmbean.TabularData;
+                import javax.management.openmbean.TabularType;
+
+                public final class JmxWireGraphMeter {
+
+                    private static final TypePolicy TYPE_POLICY = new TypePolicy(
+                            Set.copyOf(JmxWireContract.ALLOWED_NEUTRAL_TYPES),
+                            Set.copyOf(JmxWireContract.ALLOWED_ARRAY_COMPONENTS)
+                    );
+
+                    private JmxWireGraphMeter() {
+                    }
+
+                    public static long measure(Object value) {
+                        GraphWalk walk = new GraphWalk(TYPE_POLICY);
+                        walk.visit(value, 0);
+                        return walk.logicalSizeBytes();
+                    }
+
+                    private static final class TypePolicy {
+
+                        private final Set<String> allowedNeutralTypes;
+                        private final Set<String> allowedArrayComponents;
+
+                        private TypePolicy(Set<String> allowedNeutralTypes,
+                                           Set<String> allowedArrayComponents) {
+                            this.allowedNeutralTypes = allowedNeutralTypes;
+                            this.allowedArrayComponents = allowedArrayComponents;
+                        }
+
+                        private void requireAllowedNeutralType(Class<?> type) {
+                            if (!allowedNeutralTypes.contains(type.getName())) {
+                                throw violation("type is not on the neutral allow-list: " + type.getName());
+                            }
+                        }
+
+                        private void requireAllowedArrayComponent(Class<?> component) {
+                            if (!allowedArrayComponents.contains(component.getName())) {
+                                throw violation("array component type is not allowed: " + component.getName());
+                            }
+                        }
+                    }
+
+                    private static final class GraphBudget {
+
+                        private long elements;
+                        private long logicalSizeBytes;
+
+                        private void requireDepth(int depth) {
+                            if (depth > JmxWireContract.MAX_DEPTH) {
+                                String message = "max nesting depth exceeded: depth=%d, limit=%d"
+                                        .formatted(depth, JmxWireContract.MAX_DEPTH);
+                                throw violation(message);
+                            }
+                        }
+
+                        private void chargeElement() {
+                            if (elements >= JmxWireContract.MAX_ELEMENTS) {
+                                throw violation(
+                                        "max element count exceeded: limit=" + JmxWireContract.MAX_ELEMENTS
+                                );
+                            }
+                            elements++;
+                        }
+
+                        private void requireChildCapacity(long childCount) {
+                            if (childCount < 0 || childCount > JmxWireContract.MAX_ELEMENTS - elements) {
+                                throw violation(
+                                        "declared child count exceeds remaining element budget: childCount=" + childCount
+                                );
+                            }
+                        }
+
+                        private void chargeLogicalSize(long increment) {
+                            if (increment < 0
+                                    || increment > JmxWireContract.MAX_LOGICAL_BYTES - logicalSizeBytes) {
+                                throw violation(
+                                        "max logical size exceeded: limit=" + JmxWireContract.MAX_LOGICAL_BYTES
+                                );
+                            }
+                            logicalSizeBytes += increment;
+                        }
+
+                        private void chargeStringLogicalSize(String value) {
+                            long utf8Bytes = JmxWireUtf8Meter.utf8Length(value);
+                            if (utf8Bytes > JmxWireContract.MAX_STRING_UTF8_BYTES) {
+                                throw violation(
+                                        "string exceeds max UTF-8 byte length: limit="
+                                                + JmxWireContract.MAX_STRING_UTF8_BYTES
+                                );
+                            }
+                            chargeLogicalSize(utf8Bytes);
+                        }
+
+                        private long logicalSizeBytes() {
+                            return logicalSizeBytes;
+                        }
+                    }
+
+                    private static final class VisitedContainers {
+
+                        private final Set<Object> containers =
+                                Collections.newSetFromMap(new IdentityHashMap<>());
+
+                        private void enter(Object container) {
+                            if (!containers.add(container)) {
+                                throw violation("cycle detected in object graph");
+                            }
+                        }
+
+                        private void leave(Object container) {
+                            containers.remove(container);
+                        }
+                    }
+
+                    private static final class GraphWalk {
+
+                        private final TypePolicy typePolicy;
+                        private final GraphBudget budget = new GraphBudget();
+                        private final VisitedContainers visitedContainers = new VisitedContainers();
+
+                        private GraphWalk(TypePolicy typePolicy) {
+                            this.typePolicy = typePolicy;
+                        }
+
+                        private long logicalSizeBytes() {
+                            return budget.logicalSizeBytes();
+                        }
+
+                        private void visit(Object value, int depth) {
+                            budget.requireDepth(depth);
+                            budget.chargeElement();
+
+                            if (value == null) {
+                                throw violation("null is not a valid neutral value");
+                            }
+
+                            Class<?> type = value.getClass();
+                            rejectExplicitlyProhibited(value, type);
+
+                            if (type.isArray()) {
+                                visitArray(value, type, depth);
+                                return;
+                            }
+
+                            switch (value) {
+                                case Boolean ignored -> chargeScalar(type, Byte.BYTES);
+                                case Byte ignored -> chargeScalar(type, Byte.BYTES);
+                                case Short ignored -> chargeScalar(type, Short.BYTES);
+                                case Character ignored -> chargeScalar(type, Short.BYTES);
+                                case Integer ignored -> chargeScalar(type, Integer.BYTES);
+                                case Float ignored -> chargeScalar(type, Integer.BYTES);
+                                case Long ignored -> chargeScalar(type, Long.BYTES);
+                                case Double ignored -> chargeScalar(type, Long.BYTES);
+                                case String text -> {
+                                    typePolicy.requireAllowedNeutralType(type);
+                                    budget.chargeStringLogicalSize(text);
+                                }
+                                case ObjectName objectName -> visitObjectName(objectName, type);
+                                case CompositeData compositeData -> {
+                                    typePolicy.requireAllowedNeutralType(CompositeData.class);
+                                    requireBootstrapImplementation(type);
+                                    visitComposite(compositeData, depth);
+                                }
+                                case TabularData tabularData -> {
+                                    typePolicy.requireAllowedNeutralType(TabularData.class);
+                                    requireBootstrapImplementation(type);
+                                    visitTabular(tabularData, depth);
+                                }
+                                default -> throw violation(
+                                        "unsupported type in JMX wire graph: " + type.getName()
+                                );
+                            }
+                        }
+
+                        private void chargeScalar(Class<?> type, long widthBytes) {
+                            typePolicy.requireAllowedNeutralType(type);
+                            budget.chargeLogicalSize(widthBytes);
+                        }
+
+                        private void visitObjectName(ObjectName objectName, Class<?> type) {
+                            typePolicy.requireAllowedNeutralType(ObjectName.class);
+                            if (type != ObjectName.class || type.getClassLoader() != null) {
+                                throw violation(
+                                        "ObjectName must be the exact bootstrap implementation, got: "
+                                                + type.getName()
+                                );
+                            }
+                            budget.chargeStringLogicalSize(objectName.getCanonicalName());
+                        }
+
+                        private void visitArray(Object array, Class<?> type, int depth) {
+                            typePolicy.requireAllowedArrayComponent(type.getComponentType());
+                            withContainerGuard(array, () -> {
+                                int length = Array.getLength(array);
+                                budget.requireChildCapacity(length);
+                                budget.chargeLogicalSize(Integer.BYTES);
+                                for (int index = 0; index < length; index++) {
+                                    visit(Array.get(array, index), depth + 1);
+                                }
+                            });
+                        }
+
+                        private void visitComposite(CompositeData data, int depth) {
+                            withContainerGuard(data, () -> {
+                                CompositeType compositeType = readForeign(data::getCompositeType);
+                                if (compositeType == null) {
+                                    throw violation("CompositeData.getCompositeType() returned null");
+                                }
+
+                                String declaredTypeName = readForeign(compositeType::getTypeName);
+                                if (declaredTypeName == null) {
+                                    throw violation("CompositeType.getTypeName() returned null");
+                                }
+                                budget.chargeStringLogicalSize(declaredTypeName);
+
+                                List<?> rawItemNames =
+                                        readForeign(() -> List.copyOf(compositeType.keySet()));
+                                budget.requireChildCapacity(rawItemNames.size());
+
+                                List<String> itemNames = new ArrayList<>(rawItemNames.size());
+                                for (Object rawItemName : rawItemNames) {
+                                    if (!(rawItemName instanceof String itemName)) {
+                                        throw violation(
+                                                "CompositeType key is not a String: " + rawItemName
+                                        );
+                                    }
+                                    budget.chargeStringLogicalSize(itemName);
+                                    itemNames.add(itemName);
+                                }
+                                itemNames.sort(String::compareTo);
+
+                                for (String itemName : itemNames) {
+                                    Object item = readForeign(() -> data.get(itemName));
+                                    visit(item, depth + 1);
+                                }
+                            });
+                        }
+
+                        private void visitTabular(TabularData data, int depth) {
+                            withContainerGuard(data, () -> {
+                                TabularType tabularType = readForeign(data::getTabularType);
+                                if (tabularType == null) {
+                                    throw violation("TabularData.getTabularType() returned null");
+                                }
+
+                                String declaredTypeName = readForeign(tabularType::getTypeName);
+                                if (declaredTypeName == null) {
+                                    throw violation("TabularType.getTypeName() returned null");
+                                }
+                                budget.chargeStringLogicalSize(declaredTypeName);
+
+                                List<?> indexNames =
+                                        readForeign(() -> List.copyOf(tabularType.getIndexNames()));
+                                budget.requireChildCapacity(indexNames.size());
+                                for (Object indexName : indexNames) {
+                                    if (!(indexName instanceof String text)) {
+                                        throw violation(
+                                                "TabularType index name is not a String: " + indexName
+                                        );
+                                    }
+                                    budget.chargeStringLogicalSize(text);
+                                }
+
+                                int declaredRows = readForeign(data::size);
+                                budget.requireChildCapacity(declaredRows);
+                                List<?> rows =
+                                        readForeign(() -> new ArrayList<>(data.values()));
+                                if (rows.size() != declaredRows) {
+                                    String message = "TabularData.size() disagrees with values() length: "
+                                            + "declared=%d, actual=%d"
+                                            .formatted(declaredRows, rows.size());
+                                    throw violation(message);
+                                }
+
+                                for (Object row : rows) {
+                                    if (!(row instanceof CompositeData)) {
+                                        throw violation(
+                                                "TabularData row is not CompositeData: " + row
+                                        );
+                                    }
+                                    visit(row, depth + 1);
+                                }
+                            });
+                        }
+
+                        private void withContainerGuard(Object container, Runnable body) {
+                            visitedContainers.enter(container);
+                            try {
+                                body.run();
+                            } finally {
+                                visitedContainers.leave(container);
+                            }
+                        }
+                    }
+
+                    private static <T> T readForeign(Supplier<T> foreignAccessor) {
+                        try {
+                            return foreignAccessor.get();
+                        } catch (RuntimeException malformedData) {
+                            throw violation(
+                                    "foreign implementation threw while reading graph data: "
+                                            + malformedData.getClass().getName(),
+                                    malformedData
+                            );
+                        }
+                    }
+
+                    private static void rejectExplicitlyProhibited(Object value, Class<?> type) {
+                        if (value instanceof Class<?>
+                                || value instanceof ClassLoader
+                                || value instanceof Throwable
+                                || Proxy.isProxyClass(type)
+                                || isLambdaClass(type)) {
+                            throw violation("explicitly prohibited type: " + type.getName());
+                        }
+                    }
+
+                    private static boolean isLambdaClass(Class<?> type) {
+                        return type.isSynthetic() && type.isHidden();
+                    }
+
+                    private static void requireBootstrapImplementation(Class<?> type) {
+                        if (type.getClassLoader() != null) {
+                            throw violation(
+                                    "expected bootstrap classloader implementation, got: " + type.getName()
+                            );
+                        }
+                    }
+
+                    private static IllegalArgumentException violation(String message) {
+                        return new IllegalArgumentException(message);
+                    }
+
+                    private static IllegalArgumentException violation(String message,
+                                                                      RuntimeException cause) {
+                        return new IllegalArgumentException(message, cause);
+                    }
+                }
+                """.replace("$PACKAGE$", packageName);
+    }
+
     private static String renderWireContract(ContractDocument contract, String packageName) {
         StringBuilder source = new StringBuilder();
         source.append("package ").append(packageName).append(";\n\n")
-                .append("import java.util.List;\n\n")
+                .append("import java.util.List;\n")
+                .append("import java.util.Set;\n\n")
                 .append("import javax.management.MalformedObjectNameException;\n")
                 .append("import javax.management.ObjectName;\n\n")
                 .append("public final class JmxWireContract {\n\n")
@@ -189,7 +553,12 @@ final class JavaContractRenderer {
                 .append("    public static final List<String> ALLOWED_ARRAY_COMPONENTS = List.of(")
                 .append(joinQuoted(ContractValues.strings(
                         wireGraph.get("allowedArrayComponents"), "wireGraph.allowedArrayComponents")))
-                .append(");\n")
+                .append(");\n");
+        appendTokenSet(source, contract, "VALID_WRITERS", "writer");
+        appendTokenSet(source, contract, "VALID_SOURCE_AUTHORITIES", "sourceAuthority");
+        appendTokenSet(source, contract, "VALID_OUTCOMES", "outcome");
+        appendTokenSet(source, contract, "VALID_MESSAGE_CODES", "messageCode");
+        source
                 .append("    public static final List<String> REQUIRED_CAPABILITIES = List.of(")
                 .append(joinQuoted(ContractValues.strings(
                         contract.section("capabilities").get("required"), "capabilities.required")))
@@ -207,6 +576,18 @@ final class JavaContractRenderer {
                 .append("    }\n")
                 .append("}\n");
         return source.toString();
+    }
+
+    private static void appendTokenSet(StringBuilder source,
+                                       ContractDocument contract,
+                                       String constantName,
+                                       String sectionName) {
+        source.append("    public static final Set<String> ").append(constantName).append(" = Set.of(")
+                .append(joinQuoted(ContractValues.strings(
+                        contract.section(sectionName).get("values"),
+                        sectionName + ".values"
+                )))
+                .append(");\n");
     }
 
     private static String renderOpenTypes(ContractDocument contract, String packageName) {

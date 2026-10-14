@@ -10,10 +10,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-
 import javax.management.MBeanException;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
@@ -26,19 +24,16 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsRejectionReason;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
@@ -53,8 +48,7 @@ final class PlatformSettingsMutationFailureContractTest {
         String maliciousAttemptId = "invalid\r\nforged-log-line-" + "x".repeat(1024);
         CompositeData request = wireRequest(maliciousAttemptId);
         TracingSettingsStore store = JmxSettingsMutationFixtures.store();
-        LastSettingsUpdate diagnostics = new LastSettingsUpdate();
-        TracingSettingsUpdater updater = spy(updater(store, diagnostics));
+        TracingSettingsUpdater updater = spy(updater(store));
         JmxControlOpenTypeCodec codec = mock(JmxControlOpenTypeCodec.class);
         RuntimeException decodeFailure = new IllegalStateException("decode failed");
         CompositeData encodedFailure = mock(CompositeData.class);
@@ -67,13 +61,8 @@ final class PlatformSettingsMutationFailureContractTest {
 
         // then
         assertThat(response).isSameAs(encodedFailure);
-        assertThat(diagnostics.snapshot().latestOutcome()).isEqualTo(SettingsUpdateStatus.FAILED);
-        assertThat(diagnostics.snapshot().latestMessageCode())
-                .isEqualTo(SettingsRejectionReason.INTERNAL_FAILURE);
-        assertThat(diagnostics.snapshot().latestAttempt()).isNull();
-        verify(updater).failBeforeApply(
-                "",
-                SettingsRejectionReason.INTERNAL_FAILURE);
+        assertThat(store.current().acceptedSequence()).isZero();
+        verify(updater).failBeforeApply(SettingsRejectionReason.INTERNAL_FAILURE);
         assertThat(warnEvents()).singleElement().satisfies(event -> {
             assertThat(event.eventCode()).isEqualTo(AgentEventCode.CTRL_WRITER);
             assertThat(event.fields()).containsEntry("attemptId", "<unavailable>");
@@ -122,8 +111,7 @@ final class PlatformSettingsMutationFailureContractTest {
     void responseEncodingFailurePreservesAppliedStateAndNeutralizesThrowable() throws Exception {
         // given
         TracingSettingsStore store = JmxSettingsMutationFixtures.store();
-        LastSettingsUpdate diagnostics = new LastSettingsUpdate();
-        TracingSettingsUpdater updater = spy(updater(store, diagnostics));
+        TracingSettingsUpdater updater = spy(updater(store));
         JmxControlOpenTypeCodec codec = mock(JmxControlOpenTypeCodec.class);
         CompositeData request = wireRequest(UUID.randomUUID().toString());
         SettingsUpdateAttempt attempt = attempt();
@@ -150,10 +138,7 @@ final class PlatformSettingsMutationFailureContractTest {
                 "JMX_CONTROL_RESPONSE_ENCODING_FAILED: Settings snapshot response encoding failed");
         assertThat(store.current().acceptedSequence()).isEqualTo(1L);
         assertThat(store.current().policy()).isEqualTo(candidate);
-        assertThat(diagnostics.snapshot().latestOutcome()).isEqualTo(SettingsUpdateStatus.APPLIED);
-        assertThat(diagnostics.snapshot().countOf(SettingsUpdateStatus.APPLIED)).isEqualTo(1L);
-        assertThat(diagnostics.snapshot().countOf(SettingsUpdateStatus.FAILED)).isZero();
-        verify(updater, never()).failBeforeApply(any(), any());
+        verify(updater, never()).failBeforeApply(any());
         assertThat(warnEvents()).singleElement().satisfies(event -> {
             assertThat(event.eventCode()).isEqualTo(AgentEventCode.CTRL_WRITER);
             assertThat(event.fields()).containsEntry("attemptId", attempt.attemptId());
@@ -167,8 +152,7 @@ final class PlatformSettingsMutationFailureContractTest {
         String wireAttemptId = "not-a-canonical-id";
         CompositeData request = wireRequest(wireAttemptId);
         TracingSettingsStore store = JmxSettingsMutationFixtures.store();
-        LastSettingsUpdate diagnostics = new LastSettingsUpdate();
-        TracingSettingsUpdater updater = updater(store, diagnostics);
+        TracingSettingsUpdater updater = updater(store);
         JmxControlOpenTypeCodec codec = mock(JmxControlOpenTypeCodec.class);
         RuntimeException decodeFailure = new IllegalStateException("decode failed");
         RuntimeException encodeFailure = new IllegalArgumentException("failure response encode failed");
@@ -187,7 +171,7 @@ final class PlatformSettingsMutationFailureContractTest {
                 thrown,
                 encodeFailure,
                 "JMX_CONTROL_PRE_APPLY_ENCODING_FAILED: Pre-apply settings response encoding failed");
-        assertThat(diagnostics.snapshot().latestOutcome()).isEqualTo(SettingsUpdateStatus.FAILED);
+        assertThat(store.current().acceptedSequence()).isZero();
         assertThat(warnEvents()).hasSize(2)
                 .allSatisfy(event -> assertThat(event.fields())
                         .containsEntry("attemptId", "<unavailable>"));
@@ -237,20 +221,14 @@ final class PlatformSettingsMutationFailureContractTest {
                 new Object[]{attemptId});
     }
 
-    private static TracingSettingsUpdater updater(
-            TracingSettingsStore store,
-            LastSettingsUpdate diagnostics
-    ) {
-        return new TracingSettingsUpdater(store, diagnostics);
+    private static TracingSettingsUpdater updater(TracingSettingsStore store) {
+        return new TracingSettingsUpdater(store, level -> { });
     }
 
     private static SettingsUpdateAttempt attempt() {
         return new SettingsUpdateAttempt(
                 UUID.randomUUID().toString(),
-                Instant.now(),
-                SettingsSourceAuthority.CONFIG_SERVER,
-                SettingsUpdateTrigger.REFRESH,
-                "revision-1");
+                SettingsWriter.CONFIG_SERVER);
     }
 
     private static final class ForeignProviderFailure extends RuntimeException {

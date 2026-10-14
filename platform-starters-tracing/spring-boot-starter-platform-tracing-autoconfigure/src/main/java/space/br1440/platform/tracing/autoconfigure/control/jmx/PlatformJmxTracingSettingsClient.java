@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.autoconfigure.control.jmx;
 import java.lang.management.ManagementFactory;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
@@ -10,26 +11,25 @@ import javax.management.MBeanServer;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
+import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
-import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsDelivery;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsRevision;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsWriter;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsContractViolationException;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliveryResult;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliverySource;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsReadModel;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedTracingSettingsReader;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
+import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsWriter;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxMBeanInfoShapeViolationException;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxWireGraphValidator;
 
-public final class PlatformJmxTracingSettingsClient implements TracingSettingsApplier, CompleteTracingSettingsReader, AcceptedTracingSettingsReader {
+public final class PlatformJmxTracingSettingsClient implements TracingSettingsWriter {
 
     private final AgentReadinessCoherenceGuard coherenceGuard;
     private final AtomicBoolean metadataGatePassed = new AtomicBoolean();
     private final JmxSettingsMetadataGate metadataGate;
     private final JmxSettingsMutationTransport mutationTransport;
-    private final JmxAcceptedPolicySnapshotReader acceptedPolicyReader;
+    private final JmxAcceptedSettingsReader acceptedSettingsReader;
+    private final FailureSink failureSink = new FailureSink();
 
     PlatformJmxTracingSettingsClient(AgentReadinessCoherenceGuard coherenceGuard) {
         this(ManagementFactory.getPlatformMBeanServer(), coherenceGuard);
@@ -46,14 +46,13 @@ public final class PlatformJmxTracingSettingsClient implements TracingSettingsAp
                 platformMBeanServer,
                 coherenceGuard,
                 wireValidator,
-                this
+                failureSink
         );
 
-        this.acceptedPolicyReader = new JmxAcceptedPolicySnapshotReader(
+        this.acceptedSettingsReader = new JmxAcceptedSettingsReader(
                 platformMBeanServer,
                 coherenceGuard,
-                wireValidator,
-                this
+                wireValidator
         );
     }
 
@@ -98,39 +97,42 @@ public final class PlatformJmxTracingSettingsClient implements TracingSettingsAp
     }
 
     @Override
-    public TracingSettingsDeliveryResult applySnapshot(ExpectedSettingsRevision expectedBase,
-                                                       CompleteTracingSettings snapshot,
-                                                       TracingSettingsDeliverySource source) {
+    public SettingsDelivery applySnapshot(SettingsRevision expectedBase,
+                                          CompleteTracingSettings snapshot,
+                                          SettingsWriter writer) {
+        String attemptId = UUID.randomUUID().toString();
         requireTrusted();
         if (!metadataGatePassed.get()) {
-            return TracingSettingsDeliveryResult.FAILED;
+            return failed(attemptId, JmxClientFailureCode.METADATA_GATE_FAILED);
         }
 
-        return mutationTransport.applySnapshot(expectedBase, snapshot, source);
+        return mutationTransport.applySnapshot(attemptId, expectedBase, snapshot, writer);
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    private static SettingsDelivery failed(String attemptId, JmxClientFailureCode failureCode) {
+        return new SettingsDelivery(
+                attemptId,
+                TracingSettingsDeliveryResult.FAILED,
+                failureCode.token()
+        );
     }
 
     @Override
-    public Optional<AcceptedSettingsWithSequence> currentComplete() {
-        requireTrusted();
-        if (!metadataGatePassed.get()) {
-            return Optional.empty();
-        }
-
-        return Optional.of(acceptedPolicyReader.readAcceptedPolicy());
+    public Optional<AcceptedSettings> current() {
+        return acceptedSettingsReader.current();
     }
 
-    @Override
-    public Optional<AcceptedSettingsReadModel> currentReadModel() {
-        return currentComplete().map(AcceptedSettingsReadModelMapper::toReadModel);
+    MutationFailureSink failureSink() {
+        return failureSink;
     }
 
     void requireTrusted() {
         String failureCode = coherenceGuard.terminalFailureCode();
         if (failureCode != null) {
-            String message = "Platform tracing client trust was terminally invalidated by " + failureCode;
-            throw new TracingConfigurationGuardException(
-                    JmxClientFailureCode.TERMINALLY_INVALIDATED.message(message)
-            );
+            String detail = "Platform tracing client trust was terminally invalidated by " + failureCode;
+            String message = JmxClientFailureCode.TERMINALLY_INVALIDATED.message(detail);
+            throw new TracingConfigurationGuardException(message);
         }
     }
 
@@ -177,5 +179,32 @@ public final class PlatformJmxTracingSettingsClient implements TracingSettingsAp
                              Throwable primaryFailure) {
         String failureToken = Objects.requireNonNull(failureCode, "failureCode").token();
         publishTerminalFailure(failureToken, primaryFailure);
+    }
+
+    private final class FailureSink implements MutationFailureSink {
+
+        @Override
+        public TracingConfigurationGuardException terminalGuardFailure(JmxClientFailureCode code,
+                                                                       String message,
+                                                                       Throwable cause) {
+            return PlatformJmxTracingSettingsClient.this.terminalGuardFailure(code, message, cause);
+        }
+
+        @Override
+        public TracingSettingsContractViolationException terminalContractViolation(JmxClientFailureCode code,
+                                                                                   String message,
+                                                                                   Throwable cause) {
+            return PlatformJmxTracingSettingsClient.this.terminalContractViolation(code, message, cause);
+        }
+
+        @Override
+        public void invalidateAndNotify(JmxClientFailureCode code, Throwable primaryFailure) {
+            PlatformJmxTracingSettingsClient.this.invalidateAndNotify(code, primaryFailure);
+        }
+
+        @Override
+        public void publishTerminalFailure(String failureCode, Throwable primaryFailure) {
+            PlatformJmxTracingSettingsClient.this.publishTerminalFailure(failureCode, primaryFailure);
+        }
     }
 }

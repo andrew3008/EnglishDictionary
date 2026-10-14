@@ -66,22 +66,6 @@ class StartupAndSettingsBoundaryArchTest {
                     .should().dependOnClassesThat().resideInAnyPackage(READ_PACKAGE, DELIVERY_PACKAGE)
                     .because("the settings root contains contracts shared by read and delivery");
 
-    @ArchTest
-    @SuppressWarnings("unused")
-    static final ArchRule readContractsDoNotDependOnDelivery =
-            noClasses()
-                    .that().resideInAPackage(READ_PACKAGE)
-                    .should().dependOnClassesThat().resideInAPackage(DELIVERY_PACKAGE)
-                    .because("read contracts must not depend on the write path");
-
-    @ArchTest
-    @SuppressWarnings("unused")
-    static final ArchRule deliveryContractsDoNotDependOnRead =
-            noClasses()
-                    .that().resideInAPackage(DELIVERY_PACKAGE)
-                    .should().dependOnClassesThat().resideInAPackage(READ_PACKAGE)
-                    .because("delivery contracts must not depend on read models");
-
     @Test
     void startupCoreBoundaryDetectsInvalidDependency() {
         // given

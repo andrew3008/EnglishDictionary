@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
@@ -18,69 +19,52 @@ import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel
 class TracingSettingsUpdaterPreApplyTest {
 
     private TracingSettingsStore store;
-    private LastSettingsUpdate diagnostics;
     private TracingSettingsUpdater updater;
 
     @BeforeEach
     void setUp() {
-        store = new TracingSettingsStore(
+        store = AcceptedPolicyTestFixtures.bootstrapAgentDefaultsStore(
                 AgentInstanceId.from(UUID.randomUUID()),
-                TracingSettings.of(true, 1.0, Map.of(), SpanAttributeValidationLevel.WARNING, true, true, AgentLogLevel.INFO));
-        diagnostics = new LastSettingsUpdate();
-        updater = new TracingSettingsUpdater(store, diagnostics);
+                TracingSettings.of(
+                        true,
+                        1.0d,
+                        Map.of(),
+                        SpanAttributeValidationLevel.WARNING,
+                        true,
+                        true,
+                        AgentLogLevel.INFO
+                )
+        );
+        updater = new TracingSettingsUpdater(store, level -> { });
     }
 
     @Test
-    void rejectBeforeApply_withCanonicalAttemptId_recordsAttemptAndDoesNotCommit() {
+    void rejectBeforeApplyDoesNotCommit() {
         // given
         TracingSettingsRevision before = store.current();
-        String attemptId = UUID.randomUUID().toString();
 
         // when
-        SettingsUpdateResult result = updater.rejectBeforeApply(
-                attemptId,
-                SettingsRejectionReason.TYPE_MISMATCH);
+        SettingsUpdateResult result = updater.rejectBeforeApply(SettingsRejectionReason.TYPE_MISMATCH);
 
         // then
         assertThat(result.outcome()).isEqualTo(SettingsUpdateStatus.REJECTED);
         assertThat(result.messageCode()).isEqualTo(SettingsRejectionReason.TYPE_MISMATCH);
+        assertThat(result.accepted()).isSameAs(before);
         assertThat(store.current()).isSameAs(before);
-        assertThat(diagnostics.snapshot().latestAttempt().attemptId()).isEqualTo(attemptId);
-        assertThat(diagnostics.snapshot().latestOutcome()).isEqualTo(SettingsUpdateStatus.REJECTED);
-        assertThat(diagnostics.snapshot().latestMessageCode())
-                .isEqualTo(SettingsRejectionReason.TYPE_MISMATCH);
     }
 
     @Test
-    void rejectBeforeApply_withEmptyAttemptId_leavesLatestAttemptNull() {
-        // when
-        SettingsUpdateResult result = updater.rejectBeforeApply(
-                "",
-                SettingsRejectionReason.MISSING_REQUIRED_FIELD);
-
-        // then
-        assertThat(result.outcome()).isEqualTo(SettingsUpdateStatus.REJECTED);
-        assertThat(diagnostics.snapshot().latestAttempt()).isNull();
-        assertThat(diagnostics.snapshot().latestOutcome()).isEqualTo(SettingsUpdateStatus.REJECTED);
-        assertThat(diagnostics.snapshot().latestMessageCode())
-                .isEqualTo(SettingsRejectionReason.MISSING_REQUIRED_FIELD);
-    }
-
-    @Test
-    void failBeforeApply_recordsFailedWithoutCommit() {
+    void failBeforeApplyDoesNotCommit() {
         // given
         TracingSettingsRevision before = store.current();
 
         // when
-        SettingsUpdateResult result = updater.failBeforeApply(
-                "not-a-uuid",
-                SettingsRejectionReason.INTERNAL_FAILURE);
+        SettingsUpdateResult result = updater.failBeforeApply(SettingsRejectionReason.INTERNAL_FAILURE);
 
         // then
         assertThat(result.outcome()).isEqualTo(SettingsUpdateStatus.FAILED);
         assertThat(result.messageCode()).isEqualTo(SettingsRejectionReason.INTERNAL_FAILURE);
+        assertThat(result.accepted()).isSameAs(before);
         assertThat(store.current()).isSameAs(before);
-        assertThat(diagnostics.snapshot().latestAttempt()).isNull();
-        assertThat(diagnostics.snapshot().latestOutcome()).isEqualTo(SettingsUpdateStatus.FAILED);
     }
 }

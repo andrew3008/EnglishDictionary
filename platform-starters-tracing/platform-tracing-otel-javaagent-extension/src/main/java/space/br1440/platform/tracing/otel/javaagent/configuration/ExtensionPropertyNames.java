@@ -19,6 +19,10 @@ public final class ExtensionPropertyNames {
     public static final String SAMPLING_FORCE_RECORD_VALUES = "platform.tracing.javaagent.sampling.force-record-values";
     public static final String SAMPLING_DROP_PATHS = "platform.tracing.javaagent.sampling.drop-paths";
 
+    public static final String EXPORTER_ENABLED = "platform.tracing.exporter.enabled";
+    public static final String TRACE_CONTROL_HEADERS_ENABLED = "platform.tracing.propagation.trace-control-headers.enabled";
+    public static final String DIAGNOSTICS_LOG_LEVEL = "platform.tracing.diagnostics.log-level";
+
     public static final String CLASSIFICATION_ENABLED = "platform.tracing.classification.enabled";
     public static final String CLASSIFICATION_NORMAL_THRESHOLD = "platform.tracing.classification.normal-threshold";
     public static final String CLASSIFICATION_SLOW_THRESHOLD = "platform.tracing.classification.slow-threshold";

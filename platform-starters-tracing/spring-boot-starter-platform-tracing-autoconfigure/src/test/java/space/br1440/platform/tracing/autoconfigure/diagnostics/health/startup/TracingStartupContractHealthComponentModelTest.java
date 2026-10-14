@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.actuate.autoconfigure.endpoint.EndpointAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.health.HealthContributorAutoConfiguration;
@@ -20,23 +22,24 @@ import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 class TracingStartupContractHealthComponentModelTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
-                    TracingControlChannelAutoConfiguration.class,
-                    TracingRuntimeAutoConfiguration.class,
-                    TracingStartupContractHealthAutoConfiguration.class,
-                    EndpointAutoConfiguration.class,
-                    HealthEndpointAutoConfiguration.class,
-                    HealthContributorAutoConfiguration.class))
+                            TracingControlChannelAutoConfiguration.class,
+                            TracingRuntimeAutoConfiguration.class,
+                            TracingStartupContractHealthAutoConfiguration.class,
+                            EndpointAutoConfiguration.class,
+                            HealthEndpointAutoConfiguration.class,
+                            HealthContributorAutoConfiguration.class
+                    )
+            )
             .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withPropertyValues(
-                    "platform.tracing.control.channel=STATIC",
+                    "platform.tracing.control.channel=NONE",
                     "management.endpoint.health.enabled=true",
-                    "management.endpoint.health.show-details=always");
+                    "management.endpoint.health.show-details=always"
+            );
 
     @Test
     void componentModelExposesTracingStartupContractKeyAndNotLegacyTracingKey() {

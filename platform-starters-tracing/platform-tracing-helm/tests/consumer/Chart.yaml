@@ -1,0 +1,9 @@
+apiVersion: v2
+name: platform-tracing-consumer
+description: Render harness for the platform-tracing library contract.
+type: application
+version: 1.0.0
+dependencies:
+  - name: platform-tracing
+    version: 1.0.0
+    repository: file://../../platform-tracing

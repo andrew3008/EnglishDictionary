@@ -1,21 +1,24 @@
 package space.br1440.platform.tracing.autoconfigure.control.management;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static space.br1440.platform.tracing.autoconfigure.support.RecordingSettingsWriter.recordingSettingsWriter;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.actuate.endpoint.web.WebEndpointResponse;
 
+import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
-import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliveryResult;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliverySource;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsDelivery;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsRevision;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsWriter;
+import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.support.AcceptedSettingsTestFixtures;
+import space.br1440.platform.tracing.autoconfigure.support.RecordingSettingsWriter;
 
 class TracingControlEndpointTest {
 
@@ -33,14 +36,16 @@ class TracingControlEndpointTest {
                 .traceControlHeadersEnabled(true)
                 .diagnosticsLogLevel("INFO")
                 .build();
-        CompleteTracingSettingsReader reader = () -> Optional.of(
-                new AcceptedSettingsWithSequence(
+        Supplier<Optional<AcceptedSettings>> reader = () -> Optional.of(
+                AcceptedSettingsTestFixtures.bootstrapAgentDefaults(
                         10L,
                         "d8d5f1af-fe12-4b2b-a05f-e3532b06329d",
                         initial
                 ));
         applier = new CapturingApplier();
-        endpoint = new TracingControlEndpoint(new TracingSettingsMutationService(reader, applier));
+        endpoint = new TracingControlEndpoint(
+                new TracingSettingsMutationService(recordingSettingsWriter(applier, reader))
+        );
     }
 
     @Test
@@ -67,16 +72,53 @@ class TracingControlEndpointTest {
     @Test
     void mapsDeliveryOutcomesToHttpStatuses() {
         applier.result = TracingSettingsDeliveryResult.REJECTED;
+        applier.messageCode = "INVALID_VALUE";
         assertThat(updateSampling()).extracting(WebEndpointResponse::getStatus).isEqualTo(422);
 
         applier.result = TracingSettingsDeliveryResult.STALE;
+        applier.messageCode = "ACCEPTED_SEQUENCE_MISMATCH";
         assertThat(updateSampling()).extracting(WebEndpointResponse::getStatus).isEqualTo(409);
 
         applier.result = TracingSettingsDeliveryResult.FAILED;
+        applier.messageCode = "INTERNAL_FAILURE";
         assertThat(updateSampling()).extracting(WebEndpointResponse::getStatus).isEqualTo(503);
 
         applier.result = TracingSettingsDeliveryResult.UNCHANGED;
+        applier.messageCode = "NONE";
         assertThat(updateSampling()).extracting(WebEndpointResponse::getStatus).isEqualTo(200);
+    }
+
+    @Test
+    void agentRejectionPreservesAttemptIdAndMessageCode() {
+        // given
+        applier.result = TracingSettingsDeliveryResult.REJECTED;
+        applier.messageCode = "LIMIT_EXCEEDED";
+
+        // when
+        WebEndpointResponse<Map<String, Object>> response = updateSampling();
+
+        // then
+        assertThat(response.getStatus()).isEqualTo(422);
+        assertThat(response.getBody())
+                .containsEntry("outcome", "REJECTED")
+                .containsEntry("attemptId", CapturingApplier.ATTEMPT_ID)
+                .containsEntry("messageCode", "LIMIT_EXCEEDED");
+    }
+
+    @Test
+    void invalidCandidateIsRejectedLocallyWithoutAttemptId() {
+        // given
+        // when
+        WebEndpointResponse<Map<String, Object>> response =
+                endpoint.update("sampling", "ratio", null, 1.1d, null, null);
+
+        // then
+        assertThat(response.getStatus()).isEqualTo(422);
+        assertThat(response.getBody())
+                .containsEntry("outcome", "REJECTED")
+                .containsEntry("messageCode", "INVALID_VALUE")
+                .doesNotContainKey("attemptId");
+        assertThat(applier.applyCount).isZero();
     }
 
     @Test
@@ -88,7 +130,9 @@ class TracingControlEndpointTest {
         assertThat(response.getBody())
                 .containsEntry("outcome", "REJECTED")
                 .containsEntry("leaf", "sampling.enabled")
+                .containsEntry("messageCode", "INVALID_VALUE")
                 .containsEntry("error", "Required request parameter is missing: enabled");
+        assertThat(response.getBody()).doesNotContainKey("attemptId");
         assertThat(applier.applyCount).isZero();
     }
 
@@ -100,7 +144,9 @@ class TracingControlEndpointTest {
         assertThat(response.getStatus()).isEqualTo(404);
         assertThat(response.getBody())
                 .containsEntry("outcome", "REJECTED")
-                .containsEntry("leaf", "sampling.unknown");
+                .containsEntry("leaf", "sampling.unknown")
+                .containsEntry("messageCode", "INVALID_VALUE");
+        assertThat(response.getBody()).doesNotContainKey("attemptId");
         assertThat(applier.applyCount).isZero();
     }
 
@@ -112,7 +158,9 @@ class TracingControlEndpointTest {
         assertThat(response.getStatus()).isEqualTo(400);
         assertThat(response.getBody())
                 .containsEntry("outcome", "REJECTED")
-                .containsEntry("leaf", "sampling.route-ratios");
+                .containsEntry("leaf", "sampling.route-ratios")
+                .containsEntry("messageCode", "INVALID_VALUE");
+        assertThat(response.getBody()).doesNotContainKey("attemptId");
         assertThat(applier.applyCount).isZero();
     }
 
@@ -126,21 +174,26 @@ class TracingControlEndpointTest {
         assertThat(response.getBody())
                 .containsEntry("outcome", "APPLIED")
                 .containsEntry("leaf", leaf)
-                .containsEntry("value", value);
+                .containsEntry("value", value)
+                .containsEntry("attemptId", CapturingApplier.ATTEMPT_ID)
+                .containsEntry("messageCode", "NONE");
     }
 
-    private static final class CapturingApplier implements TracingSettingsApplier {
+    private static final class CapturingApplier implements RecordingSettingsWriter.ApplyBehavior {
+
+        private static final String ATTEMPT_ID = "00000000-0000-0000-0000-000000000001";
 
         private TracingSettingsDeliveryResult result = TracingSettingsDeliveryResult.APPLIED;
+        private String messageCode = "NONE";
         private int applyCount;
 
         @Override
-        public TracingSettingsDeliveryResult applySnapshot(
-                ExpectedSettingsRevision expectedBase,
+        public SettingsDelivery applySnapshot(
+                SettingsRevision expectedBase,
                 CompleteTracingSettings snapshot,
-                TracingSettingsDeliverySource source) {
+                SettingsWriter writer) {
             applyCount++;
-            return result;
+            return new SettingsDelivery(ATTEMPT_ID, result, messageCode);
         }
     }
 }

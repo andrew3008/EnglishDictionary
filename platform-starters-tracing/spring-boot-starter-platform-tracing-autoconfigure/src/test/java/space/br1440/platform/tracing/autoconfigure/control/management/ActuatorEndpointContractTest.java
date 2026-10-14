@@ -31,7 +31,7 @@ class ActuatorEndpointContractTest {
             .withBean(TracingRuntime.class, () -> NoOpTracingRuntime.disabledByConfiguration("test"))
             .withBean(TracingBootstrapSettings.class, () -> new TracingBootstrapSettings(
                     false,
-                    TracingControlChannel.STATIC))
+                    TracingControlChannel.NONE))
             .withBean(PlatformTracingJmxClient.class, PlatformTracingJmxClient::new)
             .withBean(AgentReadinessCoherenceGuard.class, AgentReadinessCoherenceGuard::new)
             .withBean(TracingDeploymentDiagnostics.class, () -> TracingDeploymentDiagnostics.withoutAgentData(

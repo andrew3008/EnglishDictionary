@@ -26,8 +26,10 @@ class TracingStatusEndpointRegistrationTest {
             .withBean(TraceOperations.class, () -> NoopTraceOperations.INSTANCE)
             .withBean(TracingRuntime.class, () -> NoOpTracingRuntime.disabledByConfiguration("test"))
             .withBean(TracingBootstrapSettings.class, () -> new TracingBootstrapSettings(
-                    true,
-                    TracingControlChannel.STATIC))
+                            true,
+                            TracingControlChannel.NONE
+                    )
+            )
             .withBean(PlatformTracingJmxClient.class, PlatformTracingJmxClient::new)
             .withBean(AgentReadinessCoherenceGuard.class, AgentReadinessCoherenceGuard::new)
             .withBean(TracingDeploymentDiagnostics.class, () -> TracingDeploymentDiagnostics.withoutAgentData(
@@ -35,7 +37,7 @@ class TracingStatusEndpointRegistrationTest {
                     false,
                     AgentRuntimeState.AGENT_READY,
                     ""))
-            .withPropertyValues("platform.tracing.control.channel=STATIC");
+            .withPropertyValues("platform.tracing.control.channel=NONE");
 
     @Test
     void statusEndpointIsAbsentWhenActuatorEndpointClassIsHidden() {

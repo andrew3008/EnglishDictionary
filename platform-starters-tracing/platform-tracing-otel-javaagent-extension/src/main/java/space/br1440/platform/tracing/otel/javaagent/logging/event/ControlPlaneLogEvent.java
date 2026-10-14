@@ -2,16 +2,13 @@ package space.br1440.platform.tracing.otel.javaagent.logging.event;
 
 import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.noCause;
 import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.requiresCause;
-import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.WARN;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.ERROR;
+import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.INFO;
+import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.WARN;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
-/**
- * События control plane: JMX settings, observation snapshots, регистрация MBean.
- * Домен кодов: {@code CTRL_*}.
- */
 public enum ControlPlaneLogEvent implements AgentLogEventType {
 
     JMX_SETTINGS_STATUS_CAPTURE_FAILED(
@@ -34,6 +31,27 @@ public enum ControlPlaneLogEvent implements AgentLogEventType {
                     AgentEventCode.CTRL_UPDATE, WARN,
                     "Tracing settings update failed",
                     AgentLogField.ATTEMPT_ID
+            )
+    ),
+
+    DIAGNOSTICS_LOG_LEVEL_APPLY_FAILED(
+            requiresCause(
+                    AgentEventCode.CTRL_DIAGNOSTICS_LEVEL, ERROR,
+                    "Diagnostics log level apply failed",
+                    AgentLogField.ATTEMPT_ID
+            )
+    ),
+
+    TRACING_SETTINGS_UPDATE_RESOLVED(
+            noCause(
+                    AgentEventCode.CTRL_UPDATE, INFO,
+                    "Tracing settings update resolved",
+                    AgentLogField.ATTEMPT_ID,
+                    AgentLogField.WRITER,
+                    AgentLogField.OUTCOME,
+                    AgentLogField.MESSAGE_CODE,
+                    AgentLogField.ACCEPTED_SEQUENCE,
+                    AgentLogField.CHANGED_LEAVES
             )
     ),
 

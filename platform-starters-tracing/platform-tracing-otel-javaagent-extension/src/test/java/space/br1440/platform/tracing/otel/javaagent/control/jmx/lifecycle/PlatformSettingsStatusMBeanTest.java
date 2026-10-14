@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import javax.management.MBeanAttributeInfo;
@@ -18,12 +17,11 @@ import javax.management.openmbean.TabularData;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
+import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
@@ -72,7 +70,7 @@ class PlatformSettingsStatusMBeanTest {
         // given
         TracingSettingsUpdater updater = mock(TracingSettingsUpdater.class);
         RuntimeException captureFailure = new ForeignStatusFailure("foreign status failure");
-        when(updater.captureStatus()).thenThrow(captureFailure);
+        when(updater.current()).thenThrow(captureFailure);
         PlatformSettingsStatusMBean mBean = new PlatformSettingsStatusMBean(updater);
 
         // when
@@ -98,14 +96,12 @@ class PlatformSettingsStatusMBeanTest {
         AgentInstanceId agentInstanceId = AgentInstanceId.from(UUID.randomUUID());
         TracingSettings initial = settings(1.0d, Map.of());
         TracingSettings candidate = settings(0.25d, Map.of("/orders", 0.5d));
-        TracingSettingsStore store = new TracingSettingsStore(agentInstanceId, initial);
-        TracingSettingsUpdater updater = new TracingSettingsUpdater(store, new LastSettingsUpdate());
+        TracingSettingsStore store = AcceptedPolicyTestFixtures.bootstrapAgentDefaultsStore(agentInstanceId, initial);
+        TracingSettingsUpdater updater = new TracingSettingsUpdater(store, level -> { });
         SettingsUpdateAttempt attempt = new SettingsUpdateAttempt(
                 UUID.randomUUID().toString(),
-                Instant.parse("2026-08-24T04:00:00Z"),
-                SettingsSourceAuthority.CONFIG_SERVER,
-                SettingsUpdateTrigger.REFRESH,
-                "revision-1");
+                SettingsWriter.CONFIG_SERVER
+        );
         SettingsUpdateResult update = updater.apply(attempt, store.current().base(), candidate);
         PlatformSettingsStatusMBean mBean = new PlatformSettingsStatusMBean(updater);
 
@@ -124,17 +120,8 @@ class PlatformSettingsStatusMBeanTest {
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_AGENT_INSTANCE_ID))
                 .isEqualTo(agentInstanceId.toString());
         assertThat(snapshot.get(
-                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_POLICY_DIGEST))
-                .isEqualTo(TracingSettingsDigest.sha256(candidate));
-        assertThat(snapshot.get(
-                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_APPLY_OUTCOME))
-                .isEqualTo(SettingsUpdateStatus.APPLIED.name());
-        assertThat(snapshot.get(
-                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_ATTEMPT_ID))
-                .isEqualTo(attempt.attemptId());
-        assertThat(snapshot.get(
-                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_FAILURE_CODE))
-                .isEqualTo("");
+                JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SOURCE_AUTHORITY))
+                .isEqualTo(SettingsSourceAuthority.CONFIG_SERVER.name());
         assertThat(snapshot.get(
                 JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ENABLED))
                 .isEqualTo(true);
@@ -169,8 +156,8 @@ class PlatformSettingsStatusMBeanTest {
     private static TracingSettingsUpdater updater(AgentInstanceId agentInstanceId,
                                                   TracingSettings settings) {
         return new TracingSettingsUpdater(
-                new TracingSettingsStore(agentInstanceId, settings),
-                new LastSettingsUpdate()
+                AcceptedPolicyTestFixtures.bootstrapAgentDefaultsStore(agentInstanceId, settings),
+                level -> { }
         );
     }
 

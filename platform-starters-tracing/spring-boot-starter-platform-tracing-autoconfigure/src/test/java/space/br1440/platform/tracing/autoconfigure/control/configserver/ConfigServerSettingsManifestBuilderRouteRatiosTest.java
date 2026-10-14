@@ -30,8 +30,8 @@ class ConfigServerSettingsManifestBuilderRouteRatiosTest {
         // when / then
         assertThatThrownBy(builder::build)
                 .isInstanceOf(TracingSettingsManifestException.class)
-                .hasMessageContaining("Local override rejected for a sampling.route-ratios entry")
-                .hasMessageNotContaining("/work/orders");
+                .hasMessageContaining("Local override rejected for policy key '" + ORDERS + "'")
+                .hasMessageContaining("source='systemProperties'");
     }
 
     @Test
@@ -46,8 +46,8 @@ class ConfigServerSettingsManifestBuilderRouteRatiosTest {
         // when / then
         assertThatThrownBy(builder::build)
                 .isInstanceOf(TracingSettingsManifestException.class)
-                .hasMessageContaining("Unknown property source for a sampling.route-ratios entry")
-                .hasMessageNotContaining("/work/orders");
+                .hasMessageContaining("Unknown property source for policy key '" + ORDERS + "'")
+                .hasMessageContaining("source='randomCustomSource'");
     }
 
     @Test
@@ -63,8 +63,8 @@ class ConfigServerSettingsManifestBuilderRouteRatiosTest {
         assertThatThrownBy(builder::build)
                 .as("provenance is classified against the precedence winner, not against any authoritative copy")
                 .isInstanceOf(TracingSettingsManifestException.class)
-                .hasMessageContaining("Local override rejected for a sampling.route-ratios entry")
-                .hasMessageNotContaining("/work/orders");
+                .hasMessageContaining("Local override rejected for policy key '" + ORDERS + "'")
+                .hasMessageContaining("source='systemProperties'");
     }
 
     @Test
@@ -110,8 +110,7 @@ class ConfigServerSettingsManifestBuilderRouteRatiosTest {
         assertThatThrownBy(builder::build)
                 .as("Environment precedence cannot resolve two different names, so the manifest fails closed")
                 .isInstanceOf(TracingSettingsManifestException.class)
-                .hasMessageContaining("Conflicting values")
-                .hasMessageNotContaining("/work/orders");
+                .hasMessageContaining("Conflicting values for route '/work/orders'");
     }
 
     @Test
@@ -124,8 +123,22 @@ class ConfigServerSettingsManifestBuilderRouteRatiosTest {
         // when / then
         assertThatThrownBy(builder::build)
                 .isInstanceOf(TracingSettingsManifestException.class)
-                .hasMessageContaining("Malformed bracketed sampling.route-ratios key")
-                .hasMessageNotContaining("/work/orders");
+                .hasMessageContaining(
+                        "Malformed bracketed route ratio key 'platform.tracing.policy.sampling.route-ratios[/work/orders'");
+    }
+
+    @Test
+    void outOfRangeRouteRatioDoesNotEchoTheRoute() {
+        // given
+        String route = "/canary/secret/z9Qx7mK2vL4pR8nW";
+        MockEnvironment environment = authoritativeEnvironment(Map.of(
+                "platform.tracing.policy.sampling.route-ratios." + route, "1.5"));
+        ConfigServerSettingsManifestBuilder builder = builder(environment);
+
+        // when / then
+        assertThatThrownBy(builder::build)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageNotContaining(route);
     }
 
     @Test
@@ -163,7 +176,7 @@ class ConfigServerSettingsManifestBuilderRouteRatiosTest {
     }
 
     @Test
-    void higherPrecedenceAuthoritativeValueWins() {
+    void legacyBootstrapPropertiesSourceIsRejected() {
         // given
         MockEnvironment environment = authoritativeEnvironment(Map.of(ORDERS, "0.2"));
         environment.getPropertySources().addFirst(new MapPropertySource(
@@ -172,10 +185,11 @@ class ConfigServerSettingsManifestBuilderRouteRatiosTest {
         ConfigServerSettingsManifestBuilder builder = builder(environment);
 
         // when
-        CompleteTracingSettings settings = builder.build();
-
         // then
-        assertThat(settings.samplingRouteRatios()).containsEntry("/work/orders", 0.4d);
+        assertThatThrownBy(builder::build)
+                .isInstanceOf(TracingSettingsManifestException.class)
+                .hasMessageContaining("Unknown property source for policy key '" + ORDERS + "'")
+                .hasMessageContaining("source='bootstrapProperties'");
     }
 
     private static ConfigServerSettingsManifestBuilder builder(MockEnvironment environment) {

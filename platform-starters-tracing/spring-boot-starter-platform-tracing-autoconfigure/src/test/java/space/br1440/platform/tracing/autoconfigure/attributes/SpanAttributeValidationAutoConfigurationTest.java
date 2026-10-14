@@ -79,7 +79,7 @@ class SpanAttributeValidationAutoConfigurationTest {
                         )
                 )
                 .withPropertyValues(
-                        "platform.tracing.control.channel=STATIC",
+                        "platform.tracing.control.channel=NONE",
                         "platform.tracing.span-attributes.validation.level=ERROR"
                 )
                 .withInitializer(ControlledAgentTestRuntime::initializeWithExporter)

@@ -25,6 +25,9 @@ class TracingControlActuatorWebFluxIntegrationTest {
 
     private static final String EXTENSION_VERSION = "1.2.3";
     private static final String[] EXCLUDED_UNRELATED_AUTOCONFIGURATIONS = {
+            "org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration",
+            "org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration",
+            "org.springframework.boot.actuate.autoconfigure.security.reactive.ReactiveManagementWebSecurityAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.attributes.SpanAttributeValidationAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.exception.ExceptionRecordingAutoConfiguration",
@@ -89,6 +92,7 @@ class TracingControlActuatorWebFluxIntegrationTest {
                         "management.endpoints.web.base-path=/management",
                         "management.endpoints.web.exposure.include=tracingControl",
                         "server.port=0",
+                        "spring.cloud.config.enabled=false",
                         "spring.autoconfigure.exclude=" + String.join(",", EXCLUDED_UNRELATED_AUTOCONFIGURATIONS))
                 .run();
     }

@@ -2,22 +2,22 @@ package space.br1440.platform.tracing.autoconfigure.control.settings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static space.br1440.platform.tracing.autoconfigure.support.RecordingSettingsWriter.recordingSettingsWriter;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
+import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsMutationService;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliveryResult;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliverySource;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
+import space.br1440.platform.tracing.autoconfigure.support.AcceptedSettingsTestFixtures;
 import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPlatformJmxPlane;
+import space.br1440.platform.tracing.autoconfigure.support.RecordingSettingsWriter;
 
 class TracingSettingsMutationServiceTest {
 
@@ -33,22 +33,26 @@ class TracingSettingsMutationServiceTest {
     void setUp() {
         reader = new StubSnapshotReader();
         client = new StubSnapshotClient();
-        adapter = new TracingSettingsMutationService(reader, client);
+        adapter = new TracingSettingsMutationService(recordingSettingsWriter(client, reader));
     }
 
     @Test
     void setSamplingEnabledChangesExactlyOneLeaf() {
-        TracingSettingsDeliveryResult result = adapter.setSamplingEnabled(false);
-        assertThat(result).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
+        SettingsDelivery delivery = adapter.setSamplingEnabled(false);
+        assertThat(delivery.outcome()).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
         assertThat(client.lastSnapshot().samplingEnabled()).isFalse();
         assertThat(client.lastSnapshot().samplingRatio()).isEqualTo(reader.snapshot.samplingRatio());
+        assertThat(client.lastWriter()).isEqualTo(SettingsWriter.ACTUATOR);
     }
 
     @Test
     void setSamplingRatioRejectsOutOfRange() {
-        assertThat(adapter.setSamplingRatio(1.1)).isEqualTo(TracingSettingsDeliveryResult.REJECTED);
-        assertThat(adapter.setSamplingRatio(-0.1)).isEqualTo(TracingSettingsDeliveryResult.REJECTED);
-        assertThat(adapter.setSamplingRatio(Double.NaN)).isEqualTo(TracingSettingsDeliveryResult.REJECTED);
+        assertThatThrownBy(() -> adapter.setSamplingRatio(1.1))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> adapter.setSamplingRatio(-0.1))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> adapter.setSamplingRatio(Double.NaN))
+                .isInstanceOf(IllegalArgumentException.class);
         assertThat(client.applyCallCount())
                 .as("invalid candidate must never reach applier")
                 .isEqualTo(0);
@@ -56,13 +60,15 @@ class TracingSettingsMutationServiceTest {
 
     @Test
     void setSamplingRatioAcceptsValidRange() {
-        assertThat(adapter.setSamplingRatio(0.5)).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
+        assertThat(adapter.setSamplingRatio(0.5).outcome()).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
         assertThat(client.lastSnapshot().samplingRatio()).isEqualTo(0.5);
     }
 
     @Test
     void replaceSamplingRouteRatiosRejectsNull() {
-        assertThat(adapter.replaceSamplingRouteRatios(null)).isEqualTo(TracingSettingsDeliveryResult.REJECTED);
+        assertThatThrownBy(() -> adapter.replaceSamplingRouteRatios(null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(client.applyCallCount()).isZero();
     }
 
     @Test
@@ -72,7 +78,9 @@ class TracingSettingsMutationServiceTest {
             oversized.put("/route" + i, 0.5);
         }
 
-        assertThat(adapter.replaceSamplingRouteRatios(oversized)).isEqualTo(TracingSettingsDeliveryResult.REJECTED);
+        assertThatThrownBy(() -> adapter.replaceSamplingRouteRatios(oversized))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(client.applyCallCount()).isZero();
     }
 
     @Test
@@ -82,84 +90,93 @@ class TracingSettingsMutationServiceTest {
             maximum.put("/route" + i, 0.5);
         }
 
-        assertThat(adapter.replaceSamplingRouteRatios(maximum)).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
+        assertThat(adapter.replaceSamplingRouteRatios(maximum).outcome())
+                .isEqualTo(TracingSettingsDeliveryResult.APPLIED);
     }
 
     @Test
     void replaceSamplingRouteRatiosRejectsKeyOverMaximumLength() {
         String tooLong = "/" + "a".repeat(255);
-        assertThat(adapter.replaceSamplingRouteRatios(Map.of(tooLong, 0.5)))
-                .isEqualTo(TracingSettingsDeliveryResult.REJECTED);
+        assertThatThrownBy(() -> adapter.replaceSamplingRouteRatios(Map.of(tooLong, 0.5)))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(client.applyCallCount()).isZero();
     }
 
     @Test
     void replaceSamplingRouteRatiosAcceptsKeyAtExactMaximumLength() {
         String exact = "a".repeat(255);
-        assertThat(adapter.replaceSamplingRouteRatios(Map.of(exact, 0.5)))
+        assertThat(adapter.replaceSamplingRouteRatios(Map.of(exact, 0.5)).outcome())
                 .isEqualTo(TracingSettingsDeliveryResult.APPLIED);
     }
 
     @Test
     void replaceSamplingRouteRatiosRejectsInvalidRatio() {
-        assertThat(adapter.replaceSamplingRouteRatios(Map.of("/api", 1.5)))
-                .isEqualTo(TracingSettingsDeliveryResult.REJECTED);
+        assertThatThrownBy(() -> adapter.replaceSamplingRouteRatios(Map.of("/api", 1.5)))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(client.applyCallCount()).isZero();
     }
 
     @Test
     void setValidationLevelChangesExactlyThatLeaf() {
-        TracingSettingsDeliveryResult result = adapter.setValidationLevel("ERROR");
+        SettingsDelivery delivery = adapter.setValidationLevel("ERROR");
 
-        assertThat(result).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
+        assertThat(delivery.outcome()).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
         assertThat(client.lastSnapshot().validationLevel()).isEqualTo("ERROR");
         assertThat(client.lastSnapshot().exporterEnabled()).isTrue();
     }
 
     @Test
     void setExporterEnabledDoesNotChangeValidationLevel() {
-        TracingSettingsDeliveryResult result = adapter.setExporterEnabled(false);
+        SettingsDelivery delivery = adapter.setExporterEnabled(false);
 
-        assertThat(result).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
+        assertThat(delivery.outcome()).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
         assertThat(client.lastSnapshot().exporterEnabled()).isFalse();
         assertThat(client.lastSnapshot().validationLevel()).isEqualTo("WARNING");
     }
 
     @Test
     void setDiagnosticsLogLevelRejectsUnknownLevel() {
-        assertThat(adapter.setDiagnosticsLogLevel("VERBOSE")).isEqualTo(TracingSettingsDeliveryResult.REJECTED);
-        assertThat(adapter.setDiagnosticsLogLevel(null)).isEqualTo(TracingSettingsDeliveryResult.REJECTED);
+        assertThatThrownBy(() -> adapter.setDiagnosticsLogLevel("VERBOSE"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> adapter.setDiagnosticsLogLevel(null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(client.applyCallCount()).isZero();
     }
 
     @Test
     void setDiagnosticsLogLevelAcceptsValidLevels() {
         for (String level : new String[]{"OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"}) {
-            assertThat(adapter.setDiagnosticsLogLevel(level)).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
+            assertThat(adapter.setDiagnosticsLogLevel(level).outcome())
+                    .isEqualTo(TracingSettingsDeliveryResult.APPLIED);
         }
     }
 
     @Test
     void staleIsReturnedWithoutRetry() {
         client.forceOutcome(TracingSettingsDeliveryResult.STALE);
-        TracingSettingsDeliveryResult result = adapter.setSamplingEnabled(false);
-        assertThat(result).isEqualTo(TracingSettingsDeliveryResult.STALE);
-        assertThat(client.applyCallCount()).isEqualTo(1); // no retry
+        SettingsDelivery delivery = adapter.setSamplingEnabled(false);
+        assertThat(delivery.outcome()).isEqualTo(TracingSettingsDeliveryResult.STALE);
+        assertThat(client.applyCallCount()).isEqualTo(1);
     }
 
     @Test
     void failedIsReturnedOnClientFailure() {
         client.forceOutcome(TracingSettingsDeliveryResult.FAILED);
-        assertThat(adapter.setSamplingEnabled(true)).isEqualTo(TracingSettingsDeliveryResult.FAILED);
+        assertThat(adapter.setSamplingEnabled(true).outcome()).isEqualTo(TracingSettingsDeliveryResult.FAILED);
     }
 
     @Test
     void unchangedReturnedWhenAgentReportsUnchanged() {
         client.forceOutcome(TracingSettingsDeliveryResult.UNCHANGED);
-        assertThat(adapter.setExporterEnabled(true)).isEqualTo(TracingSettingsDeliveryResult.UNCHANGED);
+        assertThat(adapter.setExporterEnabled(true).outcome()).isEqualTo(TracingSettingsDeliveryResult.UNCHANGED);
     }
 
     @Test
     void failedIsReturnedWhenReaderHasNoSnapshot() {
         reader.empty = true;
-        assertThat(adapter.setSamplingEnabled(true)).isEqualTo(TracingSettingsDeliveryResult.FAILED);
+        assertThatThrownBy(() -> adapter.setSamplingEnabled(true))
+                .isInstanceOf(TracingConfigurationGuardException.class)
+                .hasMessage("Accepted tracing settings are unavailable");
         assertThat(client.applyCallCount()).isEqualTo(0);
     }
 
@@ -167,7 +184,7 @@ class TracingSettingsMutationServiceTest {
     void exactlySevenOperationsExist() {
         long writeMethodCount = java.util.Arrays.stream(TracingSettingsMutationService.class.getDeclaredMethods())
                 .filter(m -> java.lang.reflect.Modifier.isPublic(m.getModifiers()))
-                .filter(m -> m.getReturnType() == TracingSettingsDeliveryResult.class)
+                .filter(m -> m.getReturnType() == SettingsDelivery.class)
                 .count();
         assertThat(writeMethodCount).isEqualTo(7);
     }
@@ -181,8 +198,8 @@ class TracingSettingsMutationServiceTest {
         )) {
             var realClient = agent.client();
 
-            CompleteTracingSettingsReader interleavingReader = () -> {
-                Optional<AcceptedSettingsWithSequence> observed = realClient.currentComplete();
+            Supplier<Optional<AcceptedSettings>> interleavingReader = () -> {
+                Optional<AcceptedSettings> observed = realClient.current();
                 try {
                     agent.restartWithNewInstance(AFTER_RESTART_AGENT_INSTANCE_ID, 0L);
                 } catch (Exception e) {
@@ -192,7 +209,10 @@ class TracingSettingsMutationServiceTest {
             };
 
             TracingSettingsMutationService realAdapter =
-                    new TracingSettingsMutationService(interleavingReader, realClient);
+                    new TracingSettingsMutationService(recordingSettingsWriter(
+                            realClient::applySnapshot,
+                            interleavingReader
+                    ));
 
             // when
             // then
@@ -207,7 +227,7 @@ class TracingSettingsMutationServiceTest {
         }
     }
 
-    static class StubSnapshotReader implements CompleteTracingSettingsReader {
+    static class StubSnapshotReader implements Supplier<Optional<AcceptedSettings>> {
         private final CompleteTracingSettings snapshot = CompleteTracingSettings.builder()
                 .samplingEnabled(true)
                 .samplingRatio(1.0)
@@ -220,15 +240,16 @@ class TracingSettingsMutationServiceTest {
         private boolean empty;
 
         @Override
-        public Optional<AcceptedSettingsWithSequence> currentComplete() {
+        public Optional<AcceptedSettings> get() {
             if (empty) return Optional.empty();
-            return Optional.of(new AcceptedSettingsWithSequence(42L, AGENT_INSTANCE_ID, snapshot));
+            return Optional.of(AcceptedSettingsTestFixtures.bootstrapAgentDefaults(42L, AGENT_INSTANCE_ID, snapshot));
         }
     }
 
-    static class StubSnapshotClient implements TracingSettingsApplier {
+    static class StubSnapshotClient implements RecordingSettingsWriter.ApplyBehavior {
         private TracingSettingsDeliveryResult forcedOutcome = TracingSettingsDeliveryResult.APPLIED;
         private CompleteTracingSettings lastSnapshot;
+        private SettingsWriter lastWriter;
         private int applyCount;
 
         public void forceOutcome(TracingSettingsDeliveryResult outcome) {
@@ -243,13 +264,31 @@ class TracingSettingsMutationServiceTest {
             return applyCount;
         }
 
+        public SettingsWriter lastWriter() {
+            return lastWriter;
+        }
+
         @Override
-        public TracingSettingsDeliveryResult applySnapshot(ExpectedSettingsRevision expectedBase,
-                                                           CompleteTracingSettings snapshot,
-                                                           TracingSettingsDeliverySource source) {
+        public SettingsDelivery applySnapshot(SettingsRevision expectedBase,
+                                              CompleteTracingSettings snapshot,
+                                              SettingsWriter writer) {
             this.lastSnapshot = snapshot;
+            this.lastWriter = writer;
             this.applyCount++;
-            return forcedOutcome;
+            return new SettingsDelivery(
+                    "00000000-0000-0000-0000-000000000001",
+                    forcedOutcome,
+                    messageCode(forcedOutcome)
+            );
+        }
+
+        private static String messageCode(TracingSettingsDeliveryResult outcome) {
+            return switch (outcome) {
+                case APPLIED, UNCHANGED -> "NONE";
+                case REJECTED -> "INVALID_VALUE";
+                case STALE -> "ACCEPTED_SEQUENCE_MISMATCH";
+                case FAILED -> "INTERNAL_FAILURE";
+            };
         }
     }
 }

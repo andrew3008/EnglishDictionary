@@ -4,27 +4,23 @@ import java.util.Objects;
 
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
-import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsRevision;
 
 public final class ApplySnapshotRequestParameters {
 
-    private final ExpectedSettingsRevision expectedBase;
+    private final SettingsRevision expectedBase;
     private final String attemptId;
-    private final String sourceAuthority;
-    private final String applyTrigger;
-    private final String sourceRevision;
+    private final String writer;
     private final CompleteTracingSettings policy;
 
     private ApplySnapshotRequestParameters(Builder builder) {
         this.expectedBase = Objects.requireNonNull(builder.expectedBase, "expectedBase");
         this.policy = Objects.requireNonNull(builder.policy, "policy");
         this.attemptId = requireNonBlank(builder.attemptId, "attemptId");
-        this.sourceAuthority = requireNonBlank(builder.sourceAuthority, "sourceAuthority");
-        this.applyTrigger = requireNonBlank(builder.applyTrigger, "applyTrigger");
-        this.sourceRevision = Objects.requireNonNull(builder.sourceRevision, "sourceRevision");
+        this.writer = requireNonBlank(builder.writer, "writer");
     }
 
-    public ExpectedSettingsRevision expectedBase() {
+    public SettingsRevision expectedBase() {
         return expectedBase;
     }
 
@@ -32,16 +28,8 @@ public final class ApplySnapshotRequestParameters {
         return attemptId;
     }
 
-    public String sourceAuthority() {
-        return sourceAuthority;
-    }
-
-    public String applyTrigger() {
-        return applyTrigger;
-    }
-
-    public String sourceRevision() {
-        return sourceRevision;
+    public String writer() {
+        return writer;
     }
 
     public CompleteTracingSettings policy() {
@@ -62,17 +50,15 @@ public final class ApplySnapshotRequestParameters {
 
     public static final class Builder {
 
-        private ExpectedSettingsRevision expectedBase;
+        private SettingsRevision expectedBase;
         private String attemptId;
-        private String sourceAuthority;
-        private String applyTrigger;
-        private String sourceRevision = "";
+        private String writer;
         private CompleteTracingSettings policy;
 
         private Builder() {
         }
 
-        public Builder expectedBase(ExpectedSettingsRevision expectedBase) {
+        public Builder expectedBase(SettingsRevision expectedBase) {
             this.expectedBase = expectedBase;
             return this;
         }
@@ -82,18 +68,8 @@ public final class ApplySnapshotRequestParameters {
             return this;
         }
 
-        public Builder sourceAuthority(String sourceAuthority) {
-            this.sourceAuthority = sourceAuthority;
-            return this;
-        }
-
-        public Builder applyTrigger(String applyTrigger) {
-            this.applyTrigger = applyTrigger;
-            return this;
-        }
-
-        public Builder sourceRevision(String sourceRevision) {
-            this.sourceRevision = sourceRevision;
+        public Builder writer(String writer) {
+            this.writer = writer;
             return this;
         }
 

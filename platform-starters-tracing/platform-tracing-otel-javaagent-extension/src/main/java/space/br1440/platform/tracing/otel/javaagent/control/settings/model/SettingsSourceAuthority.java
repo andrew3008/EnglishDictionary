@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.control.settings.model;
 
 public enum SettingsSourceAuthority {
-    HELM,
+    BOOTSTRAP,
     CONFIG_SERVER,
-    DEV_ACTUATOR
+    ACTUATOR
 }

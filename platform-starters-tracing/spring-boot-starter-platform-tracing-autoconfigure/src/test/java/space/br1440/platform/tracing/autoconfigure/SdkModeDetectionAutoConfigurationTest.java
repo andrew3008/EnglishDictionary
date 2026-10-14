@@ -24,7 +24,7 @@ class TracingEnabledAutoConfigurationTest {
                     TracingRuntimeAutoConfiguration.class)
             )
             .withPropertyValues(
-                    "platform.tracing.control.channel=STATIC"
+                    "platform.tracing.control.channel=NONE"
             );
 
     @Test

@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.autoconfigure.control.configserver;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static space.br1440.platform.tracing.autoconfigure.support.RecordingSettingsWriter.recordingSettingsWriter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,16 +17,18 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsManifestException;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliveryResult;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsDelivery;
+import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.support.AcceptedSettingsTestFixtures;
 import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPlatformJmxPlane;
+import space.br1440.platform.tracing.autoconfigure.support.RecordingSettingsWriter;
 
 class RefreshStormTest {
 
@@ -43,14 +46,15 @@ class RefreshStormTest {
                 .build();
     }
 
-    private static CompleteTracingSettingsReader readerWith(long sequence) {
-        AcceptedSettingsWithSequence snap = new AcceptedSettingsWithSequence(sequence, AGENT_INSTANCE_ID, sampleSnapshot());
+    private static Supplier<Optional<AcceptedSettings>> readerWith(long sequence) {
+        AcceptedSettings snap =
+                AcceptedSettingsTestFixtures.configServerAccepted(sequence, AGENT_INSTANCE_ID, sampleSnapshot());
         return () -> Optional.of(snap);
     }
 
-    private static CompleteTracingSettingsReader advancingReader(AtomicLong seq) {
+    private static Supplier<Optional<AcceptedSettings>> advancingReader(AtomicLong seq) {
         return () -> Optional.of(
-                new AcceptedSettingsWithSequence(seq.get(), AGENT_INSTANCE_ID, sampleSnapshot())
+                AcceptedSettingsTestFixtures.configServerAccepted(seq.get(), AGENT_INSTANCE_ID, sampleSnapshot())
         );
     }
 
@@ -69,7 +73,7 @@ class RefreshStormTest {
 
         AtomicInteger applyCycles = new AtomicInteger(0);
 
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             int cycle = applyCycles.incrementAndGet();
             if (cycle == 1) {
                 workerStarted.countDown();
@@ -86,12 +90,13 @@ class RefreshStormTest {
                 allDone.countDown();
             }
 
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         ExecutorService pool = Executors.newSingleThreadExecutor();
         try {
-            TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(builder, client, readerWith(1L), pool);
+            TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
+                    builder, recordingSettingsWriter(client, readerWith(1L)), pool);
 
             coalescer.onRefreshEvent();
             assertThat(workerStarted.await(3, TimeUnit.SECONDS))
@@ -131,7 +136,7 @@ class RefreshStormTest {
         AtomicInteger concurrentPeak = new AtomicInteger(0);
         AtomicInteger active = new AtomicInteger(0);
 
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             int current = active.incrementAndGet();
             concurrentPeak.updateAndGet(v -> Math.max(v, current));
             anyApplyStarted.countDown();
@@ -143,13 +148,14 @@ class RefreshStormTest {
                 active.decrementAndGet();
                 done.countDown();
             }
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         ExecutorService pool = Executors.newFixedThreadPool(4);
         try {
             TracingSettingsRefreshCoalescer coalescer =
-                    new TracingSettingsRefreshCoalescer(builder, client, readerWith(1L), pool);
+                    new TracingSettingsRefreshCoalescer(
+                            builder, recordingSettingsWriter(client, readerWith(1L)), pool);
 
             coalescer.onRefreshEvent();
             coalescer.onRefreshEvent();
@@ -176,16 +182,17 @@ class RefreshStormTest {
         when(builder.build()).thenReturn(sampleSnapshot());
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             applyCount.incrementAndGet();
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         List<Runnable> deferred = new ArrayList<>();
         Executor deferringExecutor = deferred::add;    // collects, does not run
 
         TracingSettingsRefreshCoalescer coalescer =
-                new TracingSettingsRefreshCoalescer(builder, client, readerWith(1L), deferringExecutor);
+                new TracingSettingsRefreshCoalescer(
+                        builder, recordingSettingsWriter(client, readerWith(1L)), deferringExecutor);
 
         for (int i = 0; i < 10; i++) {
             coalescer.onRefreshEvent();
@@ -210,7 +217,7 @@ class RefreshStormTest {
 
         AtomicInteger applyCycles = new AtomicInteger(0);
 
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             int cycle = applyCycles.incrementAndGet();
             if (cycle == 1) {
                 firstApplyStarted.countDown();
@@ -225,12 +232,13 @@ class RefreshStormTest {
             }
 
             allAppliesDone.countDown();
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         ExecutorService pool = Executors.newSingleThreadExecutor();
         try {
-            TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(builder, client, readerWith(1L), pool);
+            TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
+                    builder, recordingSettingsWriter(client, readerWith(1L)), pool);
 
             coalescer.onRefreshEvent();
             assertThat(firstApplyStarted.await(3, TimeUnit.SECONDS)).isTrue();
@@ -271,26 +279,26 @@ class RefreshStormTest {
         List<Long> observedSequences = new ArrayList<>();
 
         // Warm → STALE → bounded retry APPLIED.
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             observedSequences.add(expectedBase.acceptedSequence());
             int n = applyCount.incrementAndGet();
             if (n == 1) {
-                // Warm lastKnownBase from Agent reader (coalescer starts with no cached base).
-                return TracingSettingsDeliveryResult.APPLIED;
+                // first delivery reads the current agent revision.
+                return delivery(TracingSettingsDeliveryResult.APPLIED);
             }
             if (n == 2) {
                 // Simulate Agent advancing sequence between STALE and retry.
                 agentSequence.set(7L);
-                return TracingSettingsDeliveryResult.STALE;
+                return delivery(TracingSettingsDeliveryResult.STALE);
             }
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, client, advancingReader(agentSequence), Runnable::run);
+                builder, recordingSettingsWriter(client, advancingReader(agentSequence)), Runnable::run);
 
-        coalescer.onRefreshEvent(); // warm → lastKnownSequence = 5
-        coalescer.onRefreshEvent(); // STALE(5) + retry(7)
+        coalescer.onRefreshEvent();
+        coalescer.onRefreshEvent();
 
         assertThat(applyCount.get())
                 .as("warm + STALE + one bounded retry = 3 apply calls")
@@ -316,13 +324,13 @@ class RefreshStormTest {
         when(builder.build()).thenReturn(sampleSnapshot());
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingSettingsApplier alwaysStale = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior alwaysStale = (expectedBase, s, writer) -> {
             applyCount.incrementAndGet();
-            return TracingSettingsDeliveryResult.STALE;
+            return delivery(TracingSettingsDeliveryResult.STALE);
         };
 
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, alwaysStale, readerWith(1L), Runnable::run);
+                builder, recordingSettingsWriter(alwaysStale, readerWith(1L)), Runnable::run);
         coalescer.onRefreshEvent();
 
         assertThat(applyCount.get())
@@ -335,9 +343,8 @@ class RefreshStormTest {
     // =========================================================================
 
     /**
-     * Proof item 6: after REJECTED outcome, {@code lastKnownSequence} is NOT updated;
-     * the next apply attempt uses the same Agent-authoritative sequence, not a
-     * locally-incremented or stale-cached one.
+     * Каждая попытка читает текущую ревизию агента. Фиксированный reader поэтому
+     * отдаёт одну и ту же базу и после REJECTED.
      */
     @Test
     void rejected_does_not_update_local_sequence_cache() {
@@ -348,24 +355,24 @@ class RefreshStormTest {
         AtomicInteger callCount = new AtomicInteger(0);
 
         // Warm APPLIED → REJECTED → next APPLIED (sequence must stay at Agent value 3).
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             observedSequences.add(expectedBase.acceptedSequence());
             int n = callCount.incrementAndGet();
             if (n == 1) {
-                return TracingSettingsDeliveryResult.APPLIED;
+                return delivery(TracingSettingsDeliveryResult.APPLIED);
             }
             if (n == 2) {
-                return TracingSettingsDeliveryResult.REJECTED;
+                return delivery(TracingSettingsDeliveryResult.REJECTED);
             }
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, client, readerWith(3L), Runnable::run);
+                builder, recordingSettingsWriter(client, readerWith(3L)), Runnable::run);
 
-        coalescer.onRefreshEvent(); // warm → lastKnownSequence = 3
-        coalescer.onRefreshEvent(); // REJECTED → no sequence update
-        coalescer.onRefreshEvent(); // next event → still seq=3
+        coalescer.onRefreshEvent();
+        coalescer.onRefreshEvent();
+        coalescer.onRefreshEvent();
 
         assertThat(observedSequences).hasSize(3);
         assertThat(observedSequences.get(1)).isEqualTo(3L);
@@ -373,8 +380,8 @@ class RefreshStormTest {
     }
 
     /**
-     * Proof item 6: after FAILED outcome, sequence is also not updated →
-     * subsequent apply uses same Agent-read value.
+     * Каждая попытка читает текущую ревизию агента. Фиксированный reader поэтому
+     * отдаёт одну и ту же базу и после FAILED.
      */
     @Test
     void failed_does_not_update_local_sequence_cache() {
@@ -384,24 +391,24 @@ class RefreshStormTest {
         List<Long> observedSequences = new ArrayList<>();
         AtomicInteger callCount = new AtomicInteger(0);
 
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             observedSequences.add(expectedBase.acceptedSequence());
             int n = callCount.incrementAndGet();
             if (n == 1) {
-                return TracingSettingsDeliveryResult.APPLIED;
+                return delivery(TracingSettingsDeliveryResult.APPLIED);
             }
             if (n == 2) {
-                return TracingSettingsDeliveryResult.FAILED;
+                return delivery(TracingSettingsDeliveryResult.FAILED);
             }
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, client, readerWith(9L), Runnable::run);
+                builder, recordingSettingsWriter(client, readerWith(9L)), Runnable::run);
 
-        coalescer.onRefreshEvent(); // warm → lastKnownSequence = 9
-        coalescer.onRefreshEvent(); // FAILED → no sequence update
-        coalescer.onRefreshEvent(); // next event → still seq=9
+        coalescer.onRefreshEvent();
+        coalescer.onRefreshEvent();
+        coalescer.onRefreshEvent();
 
         assertThat(observedSequences).hasSize(3);
         assertThat(observedSequences.get(1)).isEqualTo(9L);
@@ -418,13 +425,13 @@ class RefreshStormTest {
         when(builder.build()).thenThrow(new TracingSettingsManifestException("leaf missing"));
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             applyCount.incrementAndGet();
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, client, readerWith(2L), Runnable::run);
+                builder, recordingSettingsWriter(client, readerWith(2L)), Runnable::run);
 
         coalescer.onRefreshEvent();  // build fails → apply must NOT be called
 
@@ -434,15 +441,12 @@ class RefreshStormTest {
     }
 
     // =========================================================================
-    // 5. Retry sequence Agent-authoritative (proof item 7)
+    // 5. Повтор с авторитетной последовательностью Agent (пункт доказательства 7)
     // =========================================================================
 
     /**
      * Проверка 7: сквозной сценарий с реальным {@link FakeAgentPlatformJmxPlane}.
-     * After STALE the coalescer must re-read {@code currentComplete()} from the Agent
-     * (not use the stale local lastKnownSequence) before retrying applySnapshot.
-     * The Agent advances its sequence on APPLIED; the subsequent re-read must reflect
-     * that advanced value, not the pre-STALE local copy.
+     * После STALE повтор читает текущую ревизию агента и не использует локальную копию.
      */
     @Test
     void stale_retry_sequence_is_reread_from_real_agent_not_local_cache() throws Exception {
@@ -454,13 +458,13 @@ class RefreshStormTest {
             when(builder.build()).thenReturn(sampleSnapshot());
 
             TracingSettingsRefreshCoalescer coalescer =
-                    new TracingSettingsRefreshCoalescer(builder, client, client, Runnable::run);
+                    new TracingSettingsRefreshCoalescer(builder, client, Runnable::run);
 
-            // deliverInitial warms lastKnownSequence from Agent (seq=10 → 11 on APPLIED).
-            assertThat(coalescer.deliverInitial()).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
+            // initial delivery reads sequence 10 and applies it.
+            assertThat(coalescer.deliverInitial().outcome()).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
             assertThat(agent.currentAcceptedSequence()).isEqualTo(11L);
 
-            // One-shot STALE, then sticky default APPLIED on the bounded retry.
+            // Однократный STALE, затем APPLIED по умолчанию при ограниченном повторе.
             agent.setOneShotApplyOutcome("STALE");
             coalescer.onRefreshEvent();
 
@@ -471,8 +475,7 @@ class RefreshStormTest {
     }
 
     /**
-     * Proof item 7: the coalescer must NEVER send expectedSequence=-1 on a runtime
-     * refresh — even when its local {@code lastKnownSequence} was never set.
+     * Некорректное чтение current() не доходит до applySnapshot.
      * Реальный {@link FakeAgentPlatformJmxPlane} с некорректным чтением проверяет защиту
      * от нарушения контракта внутри настоящего
      * {@code PlatformJmxTracingSettingsClient}.
@@ -486,15 +489,13 @@ class RefreshStormTest {
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
             when(builder.build()).thenReturn(sampleSnapshot());
 
-            // Use the real client as both snapshotClient AND snapshotReader so that
-            // the currentComplete() call fails (malformed), which means the coalescer
-            // itself must refuse to send an unwarmed expected base.
+            // Реальный клиент является единственным владельцем порта настроек.
+            // Некорректный current() должен заставить coalescer отклонить непрогретую базовую ревизию.
             TracingSettingsRefreshCoalescer coalescer =
-                    new TracingSettingsRefreshCoalescer(builder, client, client, Runnable::run);
+                    new TracingSettingsRefreshCoalescer(builder, client, Runnable::run);
 
-            // We expect the coalescer to fail closed with an IllegalStateException,
-            // because ExpectedSettingsRevision has no valid "unknown" sentinel and the
-            // authoritative read from the Agent never succeeded.
+            // Coalescer должен завершиться fail-closed, потому что у SettingsRevision
+            // нет допустимого признака неизвестного значения, а чтение из Agent не завершилось успешно.
             org.junit.jupiter.api.Assertions.assertThrows(
                     RuntimeException.class,
                     coalescer::deliverInitial,
@@ -523,15 +524,16 @@ class RefreshStormTest {
         when(builder.build()).thenReturn(sampleSnapshot());
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             applyCount.incrementAndGet();
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         try (ExecutorService workerPool = Executors.newSingleThreadExecutor();
              ExecutorService producerPool = Executors.newFixedThreadPool(PRODUCERS)) {
             TracingSettingsRefreshCoalescer coalescer =
-                    new TracingSettingsRefreshCoalescer(builder, client, readerWith(1L), workerPool);
+                    new TracingSettingsRefreshCoalescer(
+                            builder, recordingSettingsWriter(client, readerWith(1L)), workerPool);
 
             CountDownLatch producersDone = new CountDownLatch(PRODUCERS);
             for (int p = 0; p < PRODUCERS; p++) {
@@ -560,5 +562,19 @@ class RefreshStormTest {
                     .as("coalescing must reduce " + TOTAL + " events to far fewer applies")
                     .isLessThan(TOTAL / 2);
         }
+    }
+
+    private static SettingsDelivery delivery(TracingSettingsDeliveryResult outcome) {
+        String messageCode = switch (outcome) {
+            case APPLIED, UNCHANGED -> "NONE";
+            case REJECTED -> "INVALID_VALUE";
+            case STALE -> "ACCEPTED_SEQUENCE_MISMATCH";
+            case FAILED -> "INTERNAL_FAILURE";
+        };
+        return new SettingsDelivery(
+                "00000000-0000-0000-0000-000000000001",
+                outcome,
+                messageCode
+        );
     }
 }

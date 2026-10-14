@@ -1,5 +1,8 @@
 package space.br1440.platform.tracing.jmx.contract.tool;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -8,9 +11,6 @@ import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ContractDocumentFactoryTest {
 
@@ -88,6 +88,25 @@ class ContractDocumentFactoryTest {
                 .satisfies(exception ->
                         assertThat(((ContractValidationException) exception).code())
                                 .isEqualTo("JMX_SCHEMA_READINESS_EVIDENCE_INVALID"));
+    }
+
+    @Test
+    void rejectsLogicalByteBudgetReserve(@TempDir Path tempDir) throws IOException, URISyntaxException {
+        // given
+        Path manifest = patchedManifest(
+                tempDir,
+                "  maxLogicalBytes: 33571",
+                "  maxLogicalBytes: 33572"
+        );
+
+        // when
+        // then
+        assertThatThrownBy(() -> ContractDocumentFactory.load(manifest))
+                .isInstanceOf(ContractValidationException.class)
+                .hasMessageContaining("must equal the minimum worst-case budget: 33571")
+                .satisfies(exception ->
+                        assertThat(((ContractValidationException) exception).code())
+                                .isEqualTo("JMX_SCHEMA_LOGICAL_BUDGET_INVALID"));
     }
 
     private static Path classpathManifest() throws URISyntaxException {

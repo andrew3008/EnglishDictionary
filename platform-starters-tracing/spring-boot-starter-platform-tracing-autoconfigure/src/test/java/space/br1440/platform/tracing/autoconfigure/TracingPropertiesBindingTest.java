@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -9,10 +11,8 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Configuration;
 
-import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 
 @ExtendWith(OutputCaptureExtension.class)
 class TracingPropertiesBindingTest {
@@ -22,7 +22,6 @@ class TracingPropertiesBindingTest {
 
     @Test
     void deletedCategoryASpringMirrorsAreNotBound() {
-        // sampling / validation / log-level removed from TracingProperties; values must not bind.
         contextRunner
                 .withPropertyValues(
                         "platform.tracing.sampling.enabled=false",
@@ -35,16 +34,12 @@ class TracingPropertiesBindingTest {
                 });
     }
 
-    /**
-     * {@code platform.tracing.log-level} has no Agent-bootstrap replacement (deleted
-     * {@code OtelAgentLogLevel}); the startup guard fails fast instead of silently ignoring it.
-     */
     @Test
     void obsoleteSpringOnlyLogLevelKeyFailsStartupFast() {
         contextRunner
                 .withConfiguration(AutoConfigurations.of(TracingControlChannelAutoConfiguration.class))
                 .withPropertyValues(
-                        "platform.tracing.control.channel=STATIC",
+                        "platform.tracing.control.channel=NONE",
                         "platform.tracing.log-level=warn")
                 .run(ctx -> {
                     assertThat(ctx).hasFailed();
@@ -56,27 +51,23 @@ class TracingPropertiesBindingTest {
                 });
     }
 
-    /**
-     * Agent-bootstrap KEEP keys (sampling/validation) may legally appear in the shared Spring
-     * Environment — the Agent extension reads them directly — so startup must still succeed, but
-     * the guard must make their presence explicit instead of a silent no-op success claim.
-     */
     @Test
-    void agentBootstrapKeepKeysInSpringEnvironmentSucceedButAreNotSilent(CapturedOutput output) {
+    void agentBootstrapKeepKeysFromTestPropertySourceDoNotWarn(CapturedOutput output) {
+        // given
         contextRunner
                 .withConfiguration(AutoConfigurations.of(TracingControlChannelAutoConfiguration.class))
                 .withPropertyValues(
-                        "platform.tracing.control.channel=STATIC",
+                        "platform.tracing.control.channel=NONE",
                         "platform.tracing.sampling.enabled=false",
                         "platform.tracing.sampling.ratio=0.42",
                         "platform.tracing.javaagent.span-attributes.validation.level=ERROR")
+                // when
                 .run(ctx -> {
+                    // then
                     assertThat(ctx).hasNotFailed();
                     assertThat(ctx.getBean(TracingBootstrapSettings.class).tracingEnabled()).isTrue();
                 });
-        assertThat(output).contains("platform.tracing.sampling.enabled");
-        assertThat(output).contains("platform.tracing.sampling.ratio");
-        assertThat(output).contains("platform.tracing.javaagent.span-attributes.validation.level");
+        assertThat(output).doesNotContain("Java-agent bootstrap-only properties");
     }
 
     @Test

@@ -7,11 +7,13 @@ import space.br1440.platform.common.util.StringUtils;
 public enum AgentLogField {
 
     ACQUIRED_PERMIT_COUNT("acquiredPermitCount", Kind.LONG),
+    ACCEPTED_SEQUENCE("acceptedSequence", Kind.LONG),
     ATTEMPT_ID("attemptId", Kind.STRING),
     ATTRIBUTE("attribute", Kind.STRING),
     BUILT_IN_RULES("builtInRules", Kind.LONG),
     BUNDLED_SPI_RULES("bundledSpiRules", Kind.LONG),
     CAPACITY("capacity", Kind.LONG),
+    CHANGED_LEAVES("changedLeaves", Kind.STRING, true),
     CLAMPED_PRIORITIES("clampedPriorities", Kind.LONG),
     COUNT("count", Kind.LONG),
     CUSTOM_RULES("customRules", Kind.LONG),
@@ -31,11 +33,13 @@ public enum AgentLogField {
     LIMIT("limit", Kind.LONG),
     MAX_TRACKED_SPANS("maxTrackedSpans", Kind.LONG),
     MAX_TRACKED_SPANS_PER_TRACE("maxTrackedSpansPerTrace", Kind.LONG),
+    MESSAGE_CODE("messageCode", Kind.ENUM),
     MISSING_KEYS("missingKeys", Kind.STRING),
     NAME("name", Kind.STRING),
     OFFENDING_ARGUMENTS("offendingArguments", Kind.STRING, true),
     OPEN_BREAKERS("openBreakers", Kind.LONG),
     OPERATION("operation", Kind.STRING),
+    OUTCOME("outcome", Kind.ENUM),
     PATH("path", Kind.STRING),
     PHASE("phase", Kind.STRING),
     PROPERTY_NAME("propertyName", Kind.STRING),
@@ -60,7 +64,8 @@ public enum AgentLogField {
     TRACE_ID("traceId", Kind.STRING),
     TRACE_TIMEOUT_ATTEMPTS("traceTimeoutAttempts", Kind.LONG),
     TYPE("type", Kind.STRING),
-    VERSION("version", Kind.STRING);
+    VERSION("version", Kind.STRING),
+    WRITER("writer", Kind.ENUM);
 
     private final String wireName;
     private final Kind kind;

@@ -22,6 +22,7 @@ dependencies {
 }
 
 def contractManifest = layout.projectDirectory.file('src/main/resources/jmx-wire-contract.yaml')
+def helmPolicyTemplate = layout.projectDirectory.file('../platform-tracing-helm/platform-tracing/templates/_policy.tpl')
 def generatedRoot = layout.buildDirectory.dir('generated/jmx-wire-contract')
 def generatedApplicationContractSources = generatedRoot.map { it.dir('application/java') }
 def jmxApplicationContractSourcesUsage = 'platform-jmx-application-contract-sources'
@@ -152,6 +153,11 @@ tasks.register('compileGeneratedJmxWireContract', JavaCompile) {
     classpath = files()
     destinationDirectory.set(layout.buildDirectory.get().dir('classes/generated-jmx-wire-contract'))
     options.release = 21
+}
+
+tasks.named('test') {
+    inputs.file(helmPolicyTemplate).withPathSensitivity(PathSensitivity.RELATIVE)
+    systemProperty 'platformTracing.helmPolicyTemplate', helmPolicyTemplate.asFile.absolutePath
 }
 
 tasks.named('check') {

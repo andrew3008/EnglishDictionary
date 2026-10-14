@@ -9,13 +9,13 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
-import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsRevision;
 
 final class ApplySnapshotRequestParametersTest {
 
-    private static final ExpectedSettingsRevision EXPECTED_BASE =
-            new ExpectedSettingsRevision(UUID.randomUUID().toString(), 1L);
+    private static final SettingsRevision EXPECTED_BASE = new SettingsRevision(UUID.randomUUID().toString(), 1L);
     private static final CompleteTracingSettings POLICY = CompleteTracingSettings.helmBootstrapDefaults();
+    private static final String WRITER = "CONFIG_SERVER";
 
     @Test
     void fullyPopulatedBuilderExposesAllFieldsThroughAccessors() {
@@ -26,52 +26,15 @@ final class ApplySnapshotRequestParametersTest {
         ApplySnapshotRequestParameters parameters = ApplySnapshotRequestParameters.builder()
                 .expectedBase(EXPECTED_BASE)
                 .attemptId(attemptId)
-                .sourceAuthority("CONFIG_SERVER")
-                .applyTrigger("REFRESH")
-                .sourceRevision("rev-1")
+                .writer(WRITER)
                 .policy(POLICY)
                 .build();
 
         // then
         assertThat(parameters.expectedBase()).isSameAs(EXPECTED_BASE);
         assertThat(parameters.attemptId()).isEqualTo(attemptId);
-        assertThat(parameters.sourceAuthority()).isEqualTo("CONFIG_SERVER");
-        assertThat(parameters.applyTrigger()).isEqualTo("REFRESH");
-        assertThat(parameters.sourceRevision()).isEqualTo("rev-1");
+        assertThat(parameters.writer()).isEqualTo(WRITER);
         assertThat(parameters.policy()).isSameAs(POLICY);
-    }
-
-    @Test
-    void blankSourceRevisionIsAllowed() {
-        // given
-        // when
-        ApplySnapshotRequestParameters parameters = ApplySnapshotRequestParameters.builder()
-                .expectedBase(EXPECTED_BASE)
-                .attemptId(UUID.randomUUID().toString())
-                .sourceAuthority("CONFIG_SERVER")
-                .applyTrigger("REFRESH")
-                .sourceRevision("")
-                .policy(POLICY)
-                .build();
-
-        // then
-        assertThat(parameters.sourceRevision()).isEmpty();
-    }
-
-    @Test
-    void defaultSourceRevisionIsEmptyWhenNotSet() {
-        // given
-        // when
-        ApplySnapshotRequestParameters parameters = ApplySnapshotRequestParameters.builder()
-                .expectedBase(EXPECTED_BASE)
-                .attemptId(UUID.randomUUID().toString())
-                .sourceAuthority("CONFIG_SERVER")
-                .applyTrigger("REFRESH")
-                .policy(POLICY)
-                .build();
-
-        // then
-        assertThat(parameters.sourceRevision()).isEmpty();
     }
 
     @Test
@@ -83,15 +46,14 @@ final class ApplySnapshotRequestParametersTest {
                 .isThrownBy(() -> ApplySnapshotRequestParameters.builder()
                         .expectedBase(EXPECTED_BASE)
                         .attemptId(" ")
-                        .sourceAuthority("CONFIG_SERVER")
-                        .applyTrigger("REFRESH")
+                        .writer(WRITER)
                         .policy(POLICY)
                         .build())
                 .withMessageContaining("attemptId");
     }
 
     @Test
-    void blankSourceAuthorityIsRejected() {
+    void blankWriterIsRejected() {
         // given
         // when
         // then
@@ -99,27 +61,10 @@ final class ApplySnapshotRequestParametersTest {
                 .isThrownBy(() -> ApplySnapshotRequestParameters.builder()
                         .expectedBase(EXPECTED_BASE)
                         .attemptId(UUID.randomUUID().toString())
-                        .sourceAuthority("")
-                        .applyTrigger("REFRESH")
+                        .writer("")
                         .policy(POLICY)
                         .build())
-                .withMessageContaining("sourceAuthority");
-    }
-
-    @Test
-    void blankApplyTriggerIsRejected() {
-        // given
-        // when
-        // then
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> ApplySnapshotRequestParameters.builder()
-                        .expectedBase(EXPECTED_BASE)
-                        .attemptId(UUID.randomUUID().toString())
-                        .sourceAuthority("CONFIG_SERVER")
-                        .applyTrigger(null)
-                        .policy(POLICY)
-                        .build())
-                .withMessageContaining("applyTrigger");
+                .withMessageContaining("writer");
     }
 
     @Test
@@ -130,8 +75,7 @@ final class ApplySnapshotRequestParametersTest {
         assertThatNullPointerException()
                 .isThrownBy(() -> ApplySnapshotRequestParameters.builder()
                         .attemptId(UUID.randomUUID().toString())
-                        .sourceAuthority("CONFIG_SERVER")
-                        .applyTrigger("REFRESH")
+                        .writer(WRITER)
                         .policy(POLICY)
                         .build())
                 .withMessageContaining("expectedBase");
@@ -146,26 +90,8 @@ final class ApplySnapshotRequestParametersTest {
                 .isThrownBy(() -> ApplySnapshotRequestParameters.builder()
                         .expectedBase(EXPECTED_BASE)
                         .attemptId(UUID.randomUUID().toString())
-                        .sourceAuthority("CONFIG_SERVER")
-                        .applyTrigger("REFRESH")
+                        .writer(WRITER)
                         .build())
                 .withMessageContaining("policy");
-    }
-
-    @Test
-    void nullSourceRevisionIsRejected() {
-        // given
-        // when
-        // then
-        assertThatNullPointerException()
-                .isThrownBy(() -> ApplySnapshotRequestParameters.builder()
-                        .expectedBase(EXPECTED_BASE)
-                        .attemptId(UUID.randomUUID().toString())
-                        .sourceAuthority("CONFIG_SERVER")
-                        .applyTrigger("REFRESH")
-                        .sourceRevision(null)
-                        .policy(POLICY)
-                        .build())
-                .withMessageContaining("sourceRevision");
     }
 }

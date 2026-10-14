@@ -1,44 +1,17 @@
 package space.br1440.platform.tracing.otel.javaagent.control.settings.update;
 
-import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
 import space.br1440.platform.common.util.StringUtils;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
 
 public record SettingsUpdateAttempt(String attemptId,
-                                    Instant observedAt,
-                                    SettingsSourceAuthority sourceAuthority,
-                                    SettingsUpdateTrigger applyTrigger,
-                                    String sourceRevision) {
-
-    static final int MAX_SOURCE_REVISION_LENGTH = 256;
+                                    SettingsWriter writer) {
 
     public SettingsUpdateAttempt {
         attemptId = requireCanonicalAttemptId(attemptId);
-        Objects.requireNonNull(observedAt, "observedAt");
-        Objects.requireNonNull(sourceAuthority, "sourceAuthority");
-        Objects.requireNonNull(applyTrigger, "applyTrigger");
-        Objects.requireNonNull(sourceRevision, "sourceRevision");
-
-        if (sourceRevision.length() > MAX_SOURCE_REVISION_LENGTH) {
-            throw new IllegalArgumentException(
-                    "SourceRevision must contain at most %d UTF-16 code units"
-                            .formatted(MAX_SOURCE_REVISION_LENGTH)
-            );
-        }
-    }
-
-    static SettingsUpdateAttempt forPreApplyDiagnostics(String canonicalAttemptId) {
-        return new SettingsUpdateAttempt(
-                canonicalAttemptId,
-                Instant.now(),
-                SettingsSourceAuthority.DEV_ACTUATOR,
-                SettingsUpdateTrigger.DEVELOPER_COMMAND,
-                ""
-        );
+        Objects.requireNonNull(writer, "writer");
     }
 
     public static boolean isCanonicalAttemptId(String value) {

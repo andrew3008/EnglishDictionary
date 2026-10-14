@@ -95,7 +95,7 @@ class PlatformKafkaIdentityBoundaryAutoConfigurationTest {
                         TracingRuntimeAutoConfiguration.class,
                         SpanEnrichmentAutoConfiguration.class,
                         RequestContextSupplierAutoConfiguration.class))
-                .withPropertyValues("platform.tracing.control.channel=STATIC")
+                .withPropertyValues("platform.tracing.control.channel=NONE")
                 .withInitializer(ControlledAgentTestRuntime::initialize)
                 .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier);
 

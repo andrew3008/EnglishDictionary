@@ -12,13 +12,15 @@ import org.springframework.boot.json.JsonParser;
 import org.springframework.boot.json.JsonParserFactory;
 import org.springframework.lang.Nullable;
 
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsDelivery;
+import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsDeliveryResult;
 
 @WebEndpoint(id = "tracingControl")
 public final class TracingControlEndpoint {
 
     private static final int STATUS_CONFLICT = 409;
     private static final int STATUS_UNPROCESSABLE_ENTITY = 422;
+    private static final String INVALID_VALUE = "INVALID_VALUE";
 
     private final TracingSettingsMutationService mutationService;
 
@@ -79,10 +81,9 @@ public final class TracingControlEndpoint {
         try {
             routeRatios = parseRouteRatios(encodedRouteRatios);
         } catch (IllegalArgumentException invalidInput) {
-            return new WebEndpointResponse<>(Map.of(
-                    "outcome", TracingSettingsDeliveryResult.REJECTED.name(),
-                    "leaf", "sampling.route-ratios",
-                    "error", "routeRatios must contain a JSON object with numeric values"),
+            return rejected(
+                    "sampling.route-ratios",
+                    "routeRatios must contain a JSON object with numeric values",
                     WebEndpointResponse.STATUS_BAD_REQUEST
             );
         }
@@ -115,42 +116,59 @@ public final class TracingControlEndpoint {
     private static <T> WebEndpointResponse<Map<String, Object>> apply(String leaf,
                                                                       String parameter,
                                                                       @Nullable T value,
-                                                                      Function<T, TracingSettingsDeliveryResult> mutation,
+                                                                      Function<T, SettingsDelivery> mutation,
                                                                       Function<T, Object> responseValue) {
         if (value == null) {
             return missing(leaf, parameter);
         }
 
-        TracingSettingsDeliveryResult result = mutation.apply(value);
-        int status = switch (result) {
+        SettingsDelivery delivery;
+        try {
+            delivery = mutation.apply(value);
+        } catch (IllegalArgumentException invalidCandidate) {
+            return rejected(leaf, invalidCandidate.getMessage(), STATUS_UNPROCESSABLE_ENTITY);
+        }
+
+        int status = switch (delivery.outcome()) {
             case APPLIED, UNCHANGED -> WebEndpointResponse.STATUS_OK;
             case REJECTED -> STATUS_UNPROCESSABLE_ENTITY;
             case STALE -> STATUS_CONFLICT;
             case FAILED -> WebEndpointResponse.STATUS_SERVICE_UNAVAILABLE;
         };
 
-        return new WebEndpointResponse<>(Map.of(
-                "outcome", result.name(),
-                "leaf", leaf,
-                "value", responseValue.apply(value)), status
-        );
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("outcome", delivery.outcome().name());
+        body.put("leaf", leaf);
+        body.put("value", responseValue.apply(value));
+        body.put("attemptId", delivery.attemptId());
+        body.put("messageCode", delivery.messageCode());
+        return new WebEndpointResponse<>(body, status);
     }
 
     private static WebEndpointResponse<Map<String, Object>> missing(String leaf, String parameter) {
-        return new WebEndpointResponse<>(Map.of(
-                "outcome", TracingSettingsDeliveryResult.REJECTED.name(),
-                "leaf", leaf,
-                "error", "Required request parameter is missing: " + parameter),
+        return rejected(
+                leaf,
+                "Required request parameter is missing: " + parameter,
                 WebEndpointResponse.STATUS_BAD_REQUEST
         );
     }
 
     private static WebEndpointResponse<Map<String, Object>> unsupported(String group, String setting) {
+        return rejected(
+                group + "." + setting,
+                "Unsupported tracing control operation",
+                WebEndpointResponse.STATUS_NOT_FOUND
+        );
+    }
+
+    private static WebEndpointResponse<Map<String, Object>> rejected(String leaf,
+                                                                     String error,
+                                                                     int status) {
         return new WebEndpointResponse<>(Map.of(
                 "outcome", TracingSettingsDeliveryResult.REJECTED.name(),
-                "leaf", group + "." + setting,
-                "error", "Unsupported tracing control operation"),
-                WebEndpointResponse.STATUS_NOT_FOUND
+                "leaf", leaf,
+                "messageCode", INVALID_VALUE,
+                "error", error), status
         );
     }
 }

@@ -53,10 +53,7 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
     private static final String[] COMPLETE_KEYS = {
             JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_SEQUENCE,
             JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_AGENT_INSTANCE_ID,
-            JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_POLICY_DIGEST,
-            JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_APPLY_OUTCOME,
-            JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_ATTEMPT_ID,
-            JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_FAILURE_CODE,
+            JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SOURCE_AUTHORITY,
             JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ENABLED,
             JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO,
             JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS,
@@ -190,6 +187,18 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
         return plane;
     }
 
+    public static FakeAgentPlatformJmxPlane unknownAuthorityAcceptedPolicySnapshot(String agentInstanceId) throws Exception {
+        FakeAgentPlatformJmxPlane[] holder = new FakeAgentPlatformJmxPlane[1];
+        FakeAgentPlatformJmxPlane plane = new FakeAgentPlatformJmxPlane(
+                agentInstanceId,
+                0,
+                snapshotEndpoint(() -> holder[0].encodeComplete("HELM")),
+                mutationEndpoint(request -> holder[0].encodeApplyOutcome(request))
+        );
+        holder[0] = plane;
+        return plane;
+    }
+
     public static FakeAgentPlatformJmxPlane malformedApplySnapshotResponse(String agentInstanceId) throws Exception {
         CompositeType wrongType = new CompositeType(
                 "totally.wrong.ResponseType.v1", "wrong", new String[]{"x"},
@@ -255,11 +264,17 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
     }
 
     private CompositeData encodeComplete() {
+        return encodeComplete("CONFIG_SERVER");
+    }
+
+    private CompositeData encodeComplete(String sourceAuthority) {
         try {
             return new CompositeDataSupport(COMPLETE, COMPLETE_KEYS, new Object[]{
-                    acceptedSequence.get(), agentInstanceId, "fake-policy-digest", "APPLIED",
-                    "fake-attempt", "", true, 0.1,
-                    new TabularDataSupport(ROUTES), "WARNING", true, true, "INFO"
+                    acceptedSequence.get(), agentInstanceId, sourceAuthority,
+                    true, 0.1,
+                    new TabularDataSupport(ROUTES),
+                    "WARNING", true, true,
+                    "INFO"
             });
         } catch (OpenDataException e) {
             throw new IllegalStateException(e);

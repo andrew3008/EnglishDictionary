@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
@@ -26,8 +27,8 @@ import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherence
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceTestSupport;
 import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
-import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliverySource;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsRevision;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsWriter;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxMBeanInfoShapeViolationException;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxWireGraphValidator;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
@@ -75,7 +76,7 @@ final class PlatformJmxTracingSettingsClientCoherenceTest {
 
         // when
         // then
-        assertThatThrownBy(client::currentComplete)
+        assertThatThrownBy(client::current)
                 .isInstanceOf(AgentReadinessCoherenceException.class)
                 .satisfies(failure -> assertThat(
                         ((AgentReadinessCoherenceException) failure).failureCode())
@@ -85,7 +86,16 @@ final class PlatformJmxTracingSettingsClientCoherenceTest {
                 JmxWireContract.SETTINGS_STATUS_OBJECT_NAME,
                 JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT);
 
-        assertThatThrownBy(client::currentComplete)
+        assertThatThrownBy(client::current)
+                .isInstanceOf(AgentReadinessCoherenceException.class)
+                .satisfies(failure -> assertThat(
+                        ((AgentReadinessCoherenceException) failure).failureCode())
+                        .isEqualTo(AgentReadinessCoherenceGuard.MIXED_GENERATION));
+
+        assertThatThrownBy(() -> client.applySnapshot(
+                new SettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
+                settings(),
+                SettingsWriter.CONFIG_SERVER))
                 .isInstanceOf(TracingConfigurationGuardException.class)
                 .hasMessageContaining("JMX_CLIENT_TERMINALLY_INVALIDATED")
                 .hasMessageContaining(AgentReadinessCoherenceGuard.MIXED_GENERATION);
@@ -138,9 +148,9 @@ final class PlatformJmxTracingSettingsClientCoherenceTest {
         // when
         // then
         assertThatThrownBy(() -> client.applySnapshot(
-                new ExpectedSettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
+                new SettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
                 settings(),
-                TracingSettingsDeliverySource.CONFIG_SERVER))
+                SettingsWriter.CONFIG_SERVER))
                 .isInstanceOf(AgentReadinessCoherenceException.class)
                 .satisfies(failure -> assertThat(
                         ((AgentReadinessCoherenceException) failure).failureCode())
@@ -153,9 +163,9 @@ final class PlatformJmxTracingSettingsClientCoherenceTest {
                 any(String[].class));
 
         assertThatThrownBy(() -> client.applySnapshot(
-                new ExpectedSettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
+                new SettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
                 settings(),
-                TracingSettingsDeliverySource.CONFIG_SERVER))
+                SettingsWriter.CONFIG_SERVER))
                 .isInstanceOf(TracingConfigurationGuardException.class)
                 .hasMessageContaining("JMX_CLIENT_TERMINALLY_INVALIDATED")
                 .hasMessageContaining(AgentReadinessCoherenceGuard.MIXED_GENERATION);
@@ -173,23 +183,20 @@ final class PlatformJmxTracingSettingsClientCoherenceTest {
 
         AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard(server);
         AgentReadinessCoherenceTestSupport.pinCurrent(coherenceGuard);
-        PlatformJmxTracingSettingsClient client =
-                new PlatformJmxTracingSettingsClient(server, coherenceGuard);
         JmxWireGraphValidator wireValidator = mock(JmxWireGraphValidator.class);
         doAnswer(invocation -> {
             drifted.set(true);
             return null;
         }).when(wireValidator).validate(any());
-        JmxAcceptedPolicySnapshotReader reader = new JmxAcceptedPolicySnapshotReader(
+        JmxAcceptedSettingsReader reader = new JmxAcceptedSettingsReader(
                 server,
                 coherenceGuard,
-                wireValidator,
-                client
+                wireValidator
         );
 
         // when
         // then
-        assertThatThrownBy(reader::readAcceptedPolicy)
+        assertThatThrownBy(reader::current)
                 .isInstanceOf(AgentReadinessCoherenceException.class)
                 .satisfies(failure -> assertThat(
                         ((AgentReadinessCoherenceException) failure).failureCode())
@@ -218,8 +225,7 @@ final class PlatformJmxTracingSettingsClientCoherenceTest {
 
         AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard(server);
         AgentReadinessCoherenceTestSupport.pinCurrent(coherenceGuard);
-        PlatformJmxTracingSettingsClient client =
-                new PlatformJmxTracingSettingsClient(server, coherenceGuard);
+        PlatformJmxTracingSettingsClient client = new PlatformJmxTracingSettingsClient(server, coherenceGuard);
         JmxWireGraphValidator wireValidator = mock(JmxWireGraphValidator.class);
         doAnswer(invocation -> {
             drifted.set(true);
@@ -229,30 +235,33 @@ final class PlatformJmxTracingSettingsClientCoherenceTest {
                 server,
                 coherenceGuard,
                 wireValidator,
-                client
+                client.failureSink()
         );
 
         // when
         // then
         assertThatThrownBy(() -> transport.applySnapshot(
-                new ExpectedSettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
+                UUID.randomUUID().toString(),
+                new SettingsRevision(ReadinessJmxTestFixtures.AGENT_INSTANCE_ID, 0L),
                 settings(),
-                TracingSettingsDeliverySource.CONFIG_SERVER))
+                SettingsWriter.CONFIG_SERVER))
                 .isInstanceOf(AgentReadinessCoherenceException.class)
                 .satisfies(failure -> assertThat(
                         ((AgentReadinessCoherenceException) failure).failureCode())
-                        .isEqualTo(AgentReadinessCoherenceGuard.MIXED_GENERATION));
+                        .isEqualTo(AgentReadinessCoherenceGuard.MIXED_GENERATION)
+                );
         assertThat(coherenceGuard.terminalFailureCode())
                 .isEqualTo(AgentReadinessCoherenceGuard.MIXED_GENERATION);
         verify(server, times(1)).invoke(
                 eq(JmxWireContract.SETTINGS_MUTATION_OBJECT_NAME),
                 eq(JmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT),
                 any(Object[].class),
-                any(String[].class));
+                any(String[].class)
+        );
     }
 
     @Test
-    void statusEndpointDisappearanceAfterReadyTerminallyInvalidatesTrust() throws Exception {
+    void statusEndpointDisappearanceDoesNotInvalidateTrust() throws Exception {
         // given
         MBeanServer server = mock(MBeanServer.class);
         when(server.getMBeanInfo(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME))
@@ -278,15 +287,16 @@ final class PlatformJmxTracingSettingsClientCoherenceTest {
 
         // when
         // then
-        assertThatThrownBy(client::currentComplete)
+        assertThatThrownBy(client::current)
                 .isInstanceOf(TracingConfigurationGuardException.class)
                 .hasMessageStartingWith("JMX_CLIENT_STATUS_ENDPOINT_DISAPPEARED:")
                 .hasCause(disappeared);
-        assertThatThrownBy(client::currentComplete)
+        assertThatThrownBy(client::current)
                 .isInstanceOf(TracingConfigurationGuardException.class)
-                .hasMessageContaining("JMX_CLIENT_TERMINALLY_INVALIDATED")
-                .hasMessageContaining("JMX_CLIENT_STATUS_ENDPOINT_DISAPPEARED");
-        verify(server, times(1)).getAttribute(
+                .hasMessageStartingWith("JMX_CLIENT_STATUS_ENDPOINT_DISAPPEARED:")
+                .hasCause(disappeared);
+        assertThat(coherenceGuard.terminalFailureCode()).isNull();
+        verify(server, times(2)).getAttribute(
                 JmxWireContract.SETTINGS_STATUS_OBJECT_NAME,
                 JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT);
     }
@@ -364,10 +374,7 @@ final class PlatformJmxTracingSettingsClientCoherenceTest {
         fields.put(JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_SEQUENCE, 0L);
         fields.put(JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_AGENT_INSTANCE_ID,
                 ReadinessJmxTestFixtures.AGENT_INSTANCE_ID);
-        fields.put(JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_POLICY_DIGEST, "a".repeat(64));
-        fields.put(JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_APPLY_OUTCOME, "UNCHANGED");
-        fields.put(JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_ATTEMPT_ID, "attempt-id");
-        fields.put(JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_FAILURE_CODE, "");
+        fields.put(JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SOURCE_AUTHORITY, "BOOTSTRAP");
         fields.put(JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ENABLED, true);
         fields.put(JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO, 0.5d);
         fields.put(JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS,
@@ -397,7 +404,7 @@ final class PlatformJmxTracingSettingsClientCoherenceTest {
     private static void stubStableReadiness(MBeanServer server) throws Exception {
         when(server.getMBeanInfo(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME))
                 .thenReturn(ReadinessJmxTestFixtures.metadata());
-                
+
         when(server.getAttribute(
                 JmxWireContract.EXTENSION_READINESS_OBJECT_NAME,
                 JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT))

@@ -1,9 +1,9 @@
 package space.br1440.platform.tracing.autoconfigure.control.configserver;
 
-import java.util.Set;
-
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.PropertySource;
+
+import space.br1440.platform.tracing.autoconfigure.internal.WinningPropertySourceTraversal;
 
 public final class ConfigServerSettingsProvenanceClassifier {
 
@@ -12,23 +12,6 @@ public final class ConfigServerSettingsProvenanceClassifier {
         LOCAL_OVERRIDE,
         UNKNOWN
     }
-
-    private static final Set<String> LOCAL_OVERRIDE_SOURCE_NAME_FRAGMENTS = Set.of(
-            "commandLineArgs",
-            "systemProperties",
-            "systemEnvironment",
-            "applicationConfig: [file:"
-    );
-
-    private static final Set<String> AUTHORITATIVE_SOURCE_NAME_FRAGMENTS = Set.of(
-            "configserver:",
-            "config-server",
-            "bootstrapProperties",
-            "configClient"
-    );
-
-
-    private static final String CONFIGURATION_PROPERTIES_FACADE = "configurationProperties";
 
     private final ConfigurableEnvironment environment;
 
@@ -42,44 +25,26 @@ public final class ConfigServerSettingsProvenanceClassifier {
             return ProvenanceClass.UNKNOWN;
         }
 
-        for (String fragment : LOCAL_OVERRIDE_SOURCE_NAME_FRAGMENTS) {
-            if (sourceName.contains(fragment)) {
-                return ProvenanceClass.LOCAL_OVERRIDE;
-            }
-        }
-
-        if (isNativeConfigServerFileSource(sourceName)) {
+        if (sourceName.startsWith("configserver:")) {
             return ProvenanceClass.AUTHORITATIVE;
         }
 
-        for (String fragment : AUTHORITATIVE_SOURCE_NAME_FRAGMENTS) {
-            if (sourceName.contains(fragment)) {
-                return ProvenanceClass.AUTHORITATIVE;
-            }
+        if (isLocalOverride(sourceName)) {
+            return ProvenanceClass.LOCAL_OVERRIDE;
         }
 
         return ProvenanceClass.UNKNOWN;
     }
 
     public String originSourceName(String key) {
-        for (PropertySource<?> ps : environment.getPropertySources()) {
-            if (isBindingFacade(ps)) {
-                continue;
-            }
-
-            if (ps.containsProperty(key)) {
-                return ps.getName();
-            }
-        }
-
-        return null;
+        PropertySource<?> winner = WinningPropertySourceTraversal.findWinningLeaf(environment, key);
+        return (winner == null) ? null : winner.getName();
     }
 
-    private static boolean isBindingFacade(PropertySource<?> propertySource) {
-        return CONFIGURATION_PROPERTIES_FACADE.equals(propertySource.getName());
-    }
-
-    private static boolean isNativeConfigServerFileSource(String sourceName) {
-        return sourceName.startsWith("file:");
+    private static boolean isLocalOverride(String sourceName) {
+        return "commandLineArgs".equals(sourceName)
+                || "systemProperties".equals(sourceName)
+                || "systemEnvironment".equals(sourceName)
+                || sourceName.startsWith("Config resource '");
     }
 }

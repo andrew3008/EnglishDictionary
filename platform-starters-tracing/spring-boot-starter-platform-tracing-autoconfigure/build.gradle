@@ -104,6 +104,8 @@ dependencies {
     testImplementation 'io.micrometer:micrometer-tracing-bridge-otel'
     testImplementation 'io.micrometer:context-propagation'
     testImplementation 'org.springframework.cloud:spring-cloud-context'
+    testImplementation 'org.springframework.cloud:spring-cloud-config-client'
+    testImplementation 'org.springframework.boot:spring-boot-starter-security'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

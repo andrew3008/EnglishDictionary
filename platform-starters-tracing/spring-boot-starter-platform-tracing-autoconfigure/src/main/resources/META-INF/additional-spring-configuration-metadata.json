@@ -9,7 +9,7 @@
     {
       "name": "platform.tracing.control.channel",
       "type": "space.br1440.platform.tracing.autoconfigure.bootstrap.TracingControlChannel",
-      "description": "Единственный разрешённый Spring write-intake для runtime-политики трассировки. Обязателен, значения STATIC, CONFIG_SERVER, ACTUATOR. Библиотечного default нет. STATIC не создаёт write-клиент."
+      "description": "Единственный разрешённый канал управления runtime-политикой трассировки. При включённой трассировке обязателен; допустимые значения NONE, CONFIG_SERVER, ACTUATOR. При выключенной трассировке отсутствие ключа эквивалентно NONE. Библиотечного default для включённой трассировки нет. NONE подключает только чтение принятой политики для статуса."
     },
     {
       "name": "platform.tracing.kafka.batch-links-enabled",

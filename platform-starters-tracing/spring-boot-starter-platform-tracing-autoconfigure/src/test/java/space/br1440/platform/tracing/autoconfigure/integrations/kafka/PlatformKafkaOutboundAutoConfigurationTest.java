@@ -23,11 +23,13 @@ class PlatformKafkaOutboundAutoConfigurationTest {
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
                     PlatformKafkaOutboundAutoConfiguration.class,
-                    PlatformOutboundPropagationAutoConfiguration.class))
+                    PlatformOutboundPropagationAutoConfiguration.class)
+            )
             .withBean(TracingProperties.class, TracingProperties::new)
             .withBean(TraceOperations.class, PlatformKafkaOutboundAutoConfigurationTest::noopTraceOperations)
             .withBean(RequestIdentityBoundarySupport.class,
-                    () -> new RequestIdentityBoundarySupport(NoOpTracingRuntime.noop()))
+                    () -> new RequestIdentityBoundarySupport(NoOpTracingRuntime.noop())
+            )
             .withPropertyValues("platform.tracing.kafka.propagate-platform-headers=true");
 
     private static TraceOperations noopTraceOperations() {
@@ -78,7 +80,7 @@ class PlatformKafkaOutboundAutoConfigurationTest {
                         PlatformOutboundPropagationAutoConfiguration.class))
                 .withPropertyValues(
                         "platform.tracing.enabled=false",
-                        "platform.tracing.control.channel=STATIC",
+                        "platform.tracing.control.channel=NONE",
                         "platform.tracing.kafka.propagate-platform-headers=true")
                 .withBean(PlatformOutboundPropagation.class, () -> user)
                 .run(context -> {

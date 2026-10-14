@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tracing-render-harness
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tracing-render-harness
+  template:
+    metadata:
+      labels:
+        app: tracing-render-harness
+    spec:
+      containers:
+        - name: application
+          image: example.invalid/tracing-render-harness:latest
+          env:
+{{ include "platform-tracing-consumer.env" . | nindent 12 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tracing-render-harness-job
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: application
+          image: example.invalid/tracing-render-harness:latest
+          env:
+{{ include "platform-tracing-consumer.env" . | nindent 12 }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tracing-render-harness-cronjob
+spec:
+  schedule: "0 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: application
+              image: example.invalid/tracing-render-harness:latest
+              env:
+{{ include "platform-tracing-consumer.env" . | nindent 16 }}

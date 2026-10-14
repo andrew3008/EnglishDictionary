@@ -35,7 +35,7 @@ class ControlChannelFailFastTest {
         // when
         // then
         runner.withPropertyValues("platform.tracing.control.channel=")
-                .run(context -> assertStartupFailure(context, "Missing required property 'platform.tracing.control.channel'"));
+                .run(context -> assertStartupFailure(context, "Property 'platform.tracing.control.channel' must not be blank"));
     }
 
     @Test
@@ -48,12 +48,23 @@ class ControlChannelFailFastTest {
     }
 
     @Test
-    void helmIsRejectedWithoutMappingToStatic() {
+    void helmIsRejectedWithoutMappingToNone() {
         // given
         // when
         // then
         runner.withPropertyValues("platform.tracing.control.channel=HELM")
                 .run(context -> assertStartupFailure(context, "Invalid property 'platform.tracing.control.channel'='HELM'"));
+    }
+
+    @Test
+    void staticIsRejectedWithoutAlias() {
+        // given
+        // when
+        // then
+        runner.withPropertyValues("platform.tracing.control.channel=STATIC")
+                .run(context -> assertStartupFailure(
+                        context,
+                        "Invalid property 'platform.tracing.control.channel'='STATIC'"));
     }
 
     @Test
@@ -71,7 +82,7 @@ class ControlChannelFailFastTest {
         // when
         // then
         runner.withPropertyValues(
-                        "platform.tracing.control.channel=STATIC",
+                        "platform.tracing.control.channel=NONE",
                         "platform.tracing.configuration.authority=HELM")
                 .run(context -> assertStartupFailure(
                         context,
@@ -91,7 +102,7 @@ class ControlChannelFailFastTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"STATIC", "CONFIG_SERVER", "ACTUATOR"})
+    @ValueSource(strings = {"NONE", "CONFIG_SERVER", "ACTUATOR"})
     void legalChannelsStart(String channel) {
         // given
         // when
@@ -117,16 +128,30 @@ class ControlChannelFailFastTest {
     }
 
     @Test
-    void disabledStaticStarts() {
+    void disabledNoneStarts() {
         // given
         // when
         // then
         runner.withPropertyValues(
-                        "platform.tracing.control.channel=STATIC",
+                        "platform.tracing.control.channel=NONE",
                         "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context.getBean(TracingBootstrapSettings.class).tracingEnabled()).isFalse();
+                });
+    }
+
+    @Test
+    void disabledWithoutChannelStarts() {
+        // given
+        // when
+        // then
+        runner.withPropertyValues("platform.tracing.enabled=false")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    TracingBootstrapSettings settings = context.getBean(TracingBootstrapSettings.class);
+                    assertThat(settings.tracingEnabled()).isFalse();
+                    assertThat(settings.controlChannel()).isEqualTo(TracingControlChannel.NONE);
                 });
     }
 

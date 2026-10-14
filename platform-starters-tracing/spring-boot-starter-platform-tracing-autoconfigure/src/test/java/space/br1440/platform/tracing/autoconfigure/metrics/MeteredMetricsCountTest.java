@@ -32,7 +32,7 @@ class MeteredMetricsCountTest {
                     TracingRuntimeAutoConfiguration.class,
                     TracingMetricsAutoConfiguration.class)
             )
-            .withPropertyValues("platform.tracing.control.channel=STATIC")
+            .withPropertyValues("platform.tracing.control.channel=NONE")
             .withInitializer(ControlledAgentTestRuntime::initializeWithExporter)
             .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withUserConfiguration(MeterRegistryConfiguration.class);

@@ -16,16 +16,20 @@ import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSet
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsRegistrar;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsResolver;
 import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
+import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerClasspathGuardAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerTracingSettingsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxControlAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxReadAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsControlAutoConfiguration;
 
 @AutoConfiguration
 @AutoConfigureBefore({
         TracingRuntimeAutoConfiguration.class,
+        PlatformJmxReadAutoConfiguration.class,
         PlatformJmxControlAutoConfiguration.class,
         TracingSettingsControlAutoConfiguration.class,
-        ConfigServerTracingSettingsAutoConfiguration.class
+        ConfigServerTracingSettingsAutoConfiguration.class,
+        ConfigServerClasspathGuardAutoConfiguration.class
 })
 public class TracingControlChannelAutoConfiguration {
 

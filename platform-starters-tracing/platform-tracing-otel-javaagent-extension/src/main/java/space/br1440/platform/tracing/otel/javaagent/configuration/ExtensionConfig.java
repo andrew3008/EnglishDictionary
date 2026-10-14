@@ -11,6 +11,7 @@ import lombok.experimental.Accessors;
 public final class ExtensionConfig {
 
     private final SamplingExtensionConfig sampling;
+    private final ControlSettingsExtensionConfig controlSettings;
     private final ScrubbingExtensionConfig scrubbing;
     private final MetricsExtensionConfig metrics;
     private final ValidationExtensionConfig validation;
@@ -24,6 +25,7 @@ public final class ExtensionConfig {
 
         ExtensionConfigReader reader = new ExtensionConfigReader(config);
         this.sampling = new SamplingExtensionConfig(reader);
+        this.controlSettings = new ControlSettingsExtensionConfig(reader);
         this.scrubbing = new ScrubbingExtensionConfig(reader);
         this.metrics = new MetricsExtensionConfig(reader);
         this.validation = new ValidationExtensionConfig(reader);

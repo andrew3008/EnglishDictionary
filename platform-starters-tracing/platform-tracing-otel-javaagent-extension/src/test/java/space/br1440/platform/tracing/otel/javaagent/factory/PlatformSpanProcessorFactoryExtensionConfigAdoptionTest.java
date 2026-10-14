@@ -56,7 +56,9 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
                 return null;
             }
-            @Override public Boolean getBoolean(String name) { return false; }
+            @Override public Boolean getBoolean(String name) {
+                return isBootstrapPolicyBoolean(name) ? null : false;
+            }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
@@ -76,7 +78,9 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) { return null; }
             @Override public Boolean getBoolean(String name) {
-                return "platform.tracing.metrics.enabled".equals(name);
+                return isBootstrapPolicyBoolean(name)
+                        ? null
+                        : "platform.tracing.metrics.enabled".equals(name);
             }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }
@@ -91,7 +95,9 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) { return null; }
             @Override public Boolean getBoolean(String name) {
-                return "platform.tracing.span-timeout.enabled".equals(name);
+                return isBootstrapPolicyBoolean(name)
+                        ? null
+                        : "platform.tracing.span-timeout.enabled".equals(name);
             }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }
@@ -102,13 +108,15 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         });
     }
 
+    private static boolean isBootstrapPolicyBoolean(String name) {
+        return ExtensionPropertyNames.SAMPLING_ENABLED.equals(name)
+                || ExtensionPropertyNames.EXPORTER_ENABLED.equals(name)
+                || ExtensionPropertyNames.TRACE_CONTROL_HEADERS_ENABLED.equals(name);
+    }
+
     private static ExtensionConfig configWithValidationWarning() {
         return new ExtensionConfig(new ConfigProperties() {
-            @Override public String getString(String name) {
-                return "platform.tracing.javaagent.span-attributes.validation.level".equals(name)
-                        ? "WARNING"
-                        : null;
-            }
+            @Override public String getString(String name) { return null; }
             @Override public Boolean getBoolean(String name) {
                 return null;
             }
@@ -124,7 +132,9 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
     private static ConfigProperties allEnabledConfig() {
         return new ConfigProperties() {
             @Override public String getString(String name) { return null; }
-            @Override public Boolean getBoolean(String name) { return true; }
+            @Override public Boolean getBoolean(String name) {
+                return isBootstrapPolicyBoolean(name) ? null : true;
+            }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }

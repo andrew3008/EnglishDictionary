@@ -21,6 +21,8 @@ import javax.management.MBeanServerFactory;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -51,11 +53,12 @@ import io.opentelemetry.sdk.trace.samplers.Sampler;
  * общий coordinator между тестовыми методами.
  * <p>
  * Используется {@link Proxy}-обёртка вокруг {@link AutoConfigurationCustomizer}: это позволяет
- * перехватить только нужные нам методы ({@code addSamplerCustomizer},
- * {@code addTracerProviderCustomizer}) без необходимости имплементировать все остальные методы
- * интерфейса. SDK-минорные обновления, добавляющие новые методы в интерфейс, не сломают тест.
+ * перехватить только нужные методы ({@code addSamplerCustomizer}, {@code addTracerProviderCustomizer})
+ * без необходимости имплементировать все остальные методы интерфейса.
+ * SDK-минорные обновления, добавляющие новые методы в интерфейс, не сломают тест.
  */
 @ExtendWith(AutoConfiguredSdkIsolationExtension.class)
+@ResourceLock(Resources.SYSTEM_PROPERTIES)
 class PlatformAutoConfigurationCustomizerTest {
 
     private static BootstrapAutoConfigurationCustomizerProvider newProvider() {

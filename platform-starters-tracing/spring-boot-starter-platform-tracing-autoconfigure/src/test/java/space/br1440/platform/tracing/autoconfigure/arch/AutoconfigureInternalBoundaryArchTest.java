@@ -53,15 +53,6 @@ class AutoconfigureInternalBoundaryArchTest {
 
     @ArchTest
     @SuppressWarnings("unused")
-    static final ArchRule statusDoesNotAcquireMutationCapabilities =
-            noClasses()
-                    .that().resideInAPackage("..autoconfigure.status..")
-                    .should().dependOnClassesThat().haveSimpleName("TracingSettingsApplier")
-                    .orShould().dependOnClassesThat().haveSimpleName("CompleteTracingSettingsReader")
-                    .because("status is read only and must not acquire complete write capabilities");
-
-    @ArchTest
-    @SuppressWarnings("unused")
     static final ArchRule jmxViewsAreNotHeldOutsideRoot =
             noFields()
                     .that().areDeclaredInClassesThat().resideOutsideOfPackage("..diagnostics.jmx")
@@ -78,6 +69,25 @@ class AutoconfigureInternalBoundaryArchTest {
                             parameters -> parameters.stream()
                                     .anyMatch(type -> type.getSimpleName().endsWith("JmxView"))))
                     .because("JMX views must not leak into application method contracts");
+
+    @ArchTest
+    @SuppressWarnings("unused")
+    static final ArchRule configServerDoesNotDependOnJmx =
+            noClasses()
+                    .that().resideInAPackage("space.br1440.platform.tracing.autoconfigure.control.configserver")
+                    .should().dependOnClassesThat()
+                    .resideInAPackage("space.br1440.platform.tracing.autoconfigure.control.jmx..")
+                    .because("control channels are peers; the writer contract lives in control.settings");
+
+    @ArchTest
+    @SuppressWarnings("unused")
+    static final ArchRule configServerGuardLoadsWithoutSpringCloud =
+            noClasses()
+                    .that().haveSimpleName("ConfigServerClasspathGuardAutoConfiguration")
+                    .or().haveSimpleName("ConfigServerInitialDelivery")
+                    .or().haveSimpleName("ConfigServerTracingSettingsAutoConfiguration")
+                    .should().dependOnClassesThat().resideInAPackage("org.springframework.cloud..")
+                    .because("the guard and delivery configuration must load when spring-cloud-context is absent");
 
     @ArchTest
     @SuppressWarnings("unused")
@@ -98,4 +108,5 @@ class AutoconfigureInternalBoundaryArchTest {
         assertThatThrownBy(() -> jmxViewsAreNotHeldOutsideRoot.check(invalidFixture))
                 .hasMessageContaining("JmxView");
     }
+
 }

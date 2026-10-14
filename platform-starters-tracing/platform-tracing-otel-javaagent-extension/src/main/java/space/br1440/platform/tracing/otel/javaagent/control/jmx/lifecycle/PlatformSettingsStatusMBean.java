@@ -23,11 +23,6 @@ import javax.management.openmbean.TabularData;
 import javax.management.openmbean.TabularDataSupport;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdateSnapshot;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsStatusSnapshot;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
@@ -112,12 +107,10 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
     }
 
     private CompositeData snapshot() {
-        SettingsStatusSnapshot status = updater.captureStatus();
-        return encode(status.accepted(), status.update());
+        return encode(updater.current());
     }
 
-    private static CompositeData encode(TracingSettingsRevision accepted,
-                                        LastSettingsUpdateSnapshot update) {
+    private static CompositeData encode(TracingSettingsRevision accepted) {
         try {
             Map<String, Object> fields = new LinkedHashMap<>();
 
@@ -132,23 +125,8 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
             );
 
             fields.put(
-                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_POLICY_DIGEST,
-                    TracingSettingsDigest.sha256(accepted.policy())
-            );
-
-            fields.put(
-                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_APPLY_OUTCOME,
-                    token(update.latestOutcome())
-            );
-
-            fields.put(
-                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_LAST_ATTEMPT_ID,
-                    lastAttemptId(update)
-            );
-
-            fields.put(
-                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_FAILURE_CODE,
-                    failureCode(update)
+                    JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SOURCE_AUTHORITY,
+                    accepted.sourceAuthority().name()
             );
 
             fields.put(
@@ -205,26 +183,10 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
         return table;
     }
 
-    private static String lastAttemptId(LastSettingsUpdateSnapshot snapshot) {
-        SettingsUpdateAttempt attempt = snapshot.latestAttempt();
-        return attempt == null ? "" : attempt.attemptId();
-    }
-
-    private static String failureCode(LastSettingsUpdateSnapshot snapshot) {
-        SettingsUpdateStatus outcome = snapshot.latestOutcome();
-        return outcome != null && !outcome.isSuccessful()
-                ? token(snapshot.latestMessageCode())
-                : "";
-    }
-
-    private static String token(Enum<?> value) {
-        return (value == null) ? "" : value.name();
-    }
-
     private static MBeanInfo buildMBeanInfo() {
         OpenMBeanAttributeInfo snapshot = new OpenMBeanAttributeInfoSupport(
                 SNAPSHOT_ATTRIBUTE,
-                "Immutable accepted-policy and last-apply snapshot",
+                "Immutable accepted-policy snapshot",
                 JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT,
                 true,
                 false,

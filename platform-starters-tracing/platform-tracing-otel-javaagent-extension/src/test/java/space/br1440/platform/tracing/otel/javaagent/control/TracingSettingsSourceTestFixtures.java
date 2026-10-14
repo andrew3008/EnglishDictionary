@@ -38,10 +38,57 @@ public final class TracingSettingsSourceTestFixtures {
 
         Map<String, String> encodedRouteRatios = new LinkedHashMap<>(routeRatios.size());
         routeRatios.forEach((route, ratio) -> encodedRouteRatios.put(route, Double.toString(ratio)));
-        ExtensionConfig config = new ExtensionConfig(
-                new SamplingConfigProperties(enabled, defaultRatio, Map.copyOf(encodedRouteRatios))
+
+        ExtensionConfig config = configWithSystemPropertyEvidence(
+                enabled,
+                defaultRatio,
+                Map.copyOf(encodedRouteRatios)
         );
         return TracingSettingsSource.fromStartup(config, agentInstanceId);
+    }
+
+    private static ExtensionConfig configWithSystemPropertyEvidence(Boolean enabled,
+                                                                    Double defaultRatio,
+                                                                    Map<String, String> routeRatios) {
+        Map<String, String> properties = new LinkedHashMap<>();
+
+        if (enabled != null) {
+            properties.put(ExtensionPropertyNames.SAMPLING_ENABLED, enabled.toString());
+        }
+
+        if (defaultRatio != null) {
+            properties.put(ExtensionPropertyNames.SAMPLING_RATIO, defaultRatio.toString());
+        }
+
+        if (!routeRatios.isEmpty()) {
+            properties.put(
+                    ExtensionPropertyNames.SAMPLING_ROUTE_RATIOS,
+                    routeRatios.entrySet().stream()
+                            .map(entry -> entry.getKey() + "=" + entry.getValue())
+                            .reduce((left, right) -> left + "," + right)
+                            .orElseThrow());
+        }
+
+        synchronized (TracingSettingsSourceTestFixtures.class) {
+            Map<String, String> previousValues = new LinkedHashMap<>();
+            try {
+                properties.forEach((name, value) -> {
+                    previousValues.put(name, System.getProperty(name));
+                    System.setProperty(name, value);
+                });
+
+                SamplingConfigProperties configProperties = new SamplingConfigProperties(enabled, defaultRatio, routeRatios);
+                return new ExtensionConfig(configProperties);
+            } finally {
+                previousValues.forEach((name, value) -> {
+                    if (value == null) {
+                        System.clearProperty(name);
+                    } else {
+                        System.setProperty(name, value);
+                    }
+                });
+            }
+        }
     }
 
     private record SamplingConfigProperties(Boolean enabled,

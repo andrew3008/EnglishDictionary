@@ -10,6 +10,7 @@ import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
 import javax.management.openmbean.TabularDataSupport;
 
+import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
@@ -25,9 +26,10 @@ final class JmxSettingsMutationFixtures {
     }
 
     static TracingSettingsStore store() {
-        return new TracingSettingsStore(
+        return AcceptedPolicyTestFixtures.bootstrapAgentDefaultsStore(
                 AgentInstanceId.parse("00000000-0000-0000-0000-000000000001"),
-                settings(1.0d));
+                settings(1.0d)
+        );
     }
 
     static TracingSettings settings(double ratio) {
@@ -37,11 +39,19 @@ final class JmxSettingsMutationFixtures {
                 Map.of("/orders", 0.5d), SpanAttributeValidationLevel.WARNING, true, true, AgentLogLevel.INFO);
     }
 
+    static CompositeData request(String agentInstanceId,
+                                 long sequence,
+                                 TracingSettings policy,
+                                 String attemptId) throws OpenDataException {
+        return request(agentInstanceId, sequence, policy, attemptId, "CONFIG_SERVER");
+    }
+
     static CompositeData request(
             String agentInstanceId,
             long sequence,
             TracingSettings policy,
-            String attemptId
+            String attemptId,
+            String writer
     ) throws OpenDataException {
         TabularDataSupport routes = new TabularDataSupport(JmxOpenTypes.ROUTE_RATIOS);
         for (Map.Entry<String, Double> route : policy.samplingRouteRatios().entrySet()) {
@@ -79,9 +89,6 @@ final class JmxSettingsMutationFixtures {
 
         Map<String, Object> requestFields = new LinkedHashMap<>();
         requestFields.put(
-                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_APPLY_TRIGGER,
-                "REFRESH");
-        requestFields.put(
                 JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID,
                 attemptId);
         requestFields.put(
@@ -97,11 +104,8 @@ final class JmxSettingsMutationFixtures {
                 JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_RUNTIME_POLICY,
                 policyData);
         requestFields.put(
-                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_SOURCE_AUTHORITY,
-                "CONFIG_SERVER");
-        requestFields.put(
-                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_SOURCE_REVISION,
-                "revision-1");
+                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_WRITER,
+                writer);
         return new CompositeDataSupport(JmxOpenTypes.APPLY_SNAPSHOT_REQUEST, requestFields);
     }
 
@@ -125,10 +129,13 @@ final class JmxSettingsMutationFixtures {
                 "Malformed applySnapshot request",
                 new String[]{JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID},
                 new String[]{JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID},
-                new OpenType<?>[]{SimpleType.STRING});
+                new OpenType<?>[]{SimpleType.STRING}
+        );
+
         return new CompositeDataSupport(
                 type,
                 new String[]{JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID},
-                new Object[]{"malformed"});
+                new Object[]{"malformed"}
+        );
     }
 }

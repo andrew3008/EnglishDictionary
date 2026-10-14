@@ -4,25 +4,37 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static space.br1440.platform.tracing.autoconfigure.support.RecordingSettingsWriter.recordingSettingsWriter;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.cloud.context.environment.EnvironmentChangeEvent;
+import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.env.SystemEnvironmentPropertySource;
+import org.springframework.mock.env.MockEnvironment;
 
+import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsDelivery;
+import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsManifestException;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliveryResult;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
+import space.br1440.platform.tracing.autoconfigure.support.AcceptedSettingsTestFixtures;
 import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPlatformJmxPlane;
+import space.br1440.platform.tracing.autoconfigure.support.RecordingSettingsWriter;
+
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 class ConfigServerOutageTest {
 
@@ -40,15 +52,23 @@ class ConfigServerOutageTest {
                 .build();
     }
 
-    private static CompleteTracingSettingsReader readerWith(long sequence) {
-        AcceptedSettingsWithSequence snap =
-                new AcceptedSettingsWithSequence(sequence, AGENT_INSTANCE_ID, sampleSnapshot());
+    private static Supplier<Optional<AcceptedSettings>> readerWith(long sequence) {
+        AcceptedSettings snap =
+                AcceptedSettingsTestFixtures.configServerAccepted(
+                        sequence,
+                        AGENT_INSTANCE_ID,
+                        sampleSnapshot()
+                );
         return () -> Optional.of(snap);
     }
 
-    private static CompleteTracingSettingsReader advancingReader(AtomicLong seq) {
+    private static Supplier<Optional<AcceptedSettings>> advancingReader(AtomicLong seq) {
         return () -> Optional.of(
-                new AcceptedSettingsWithSequence(seq.get(), AGENT_INSTANCE_ID, sampleSnapshot()));
+                AcceptedSettingsTestFixtures.configServerAccepted(
+                        seq.get(),
+                        AGENT_INSTANCE_ID,
+                        sampleSnapshot()
+                ));
     }
 
     @Test
@@ -59,13 +79,13 @@ class ConfigServerOutageTest {
                         + "'platform.tracing.policy.sampling.enabled'"));
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             applyCount.incrementAndGet();
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, client, readerWith(1L), Runnable::run);
+                builder, recordingSettingsWriter(client, readerWith(1L)), Runnable::run);
 
         assertThatThrownBy(coalescer::deliverInitial)
                 .as("missing leaf MUST propagate TracingSettingsManifestException, blocking readiness")
@@ -86,13 +106,13 @@ class ConfigServerOutageTest {
                                 + "'platform.tracing.policy.sampling.ratio'"));
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             applyCount.incrementAndGet();
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, client, readerWith(1L), Runnable::run);
+                builder, recordingSettingsWriter(client, readerWith(1L)), Runnable::run);
 
         assertThatThrownBy(coalescer::deliverInitial)
                 .as("local override MUST propagate TracingSettingsManifestException")
@@ -111,13 +131,13 @@ class ConfigServerOutageTest {
                                 + "'platform.tracing.policy.exporter.enabled'"));
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             applyCount.incrementAndGet();
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, client, readerWith(1L), Runnable::run);
+                builder, recordingSettingsWriter(client, readerWith(1L)), Runnable::run);
 
         assertThatThrownBy(coalescer::deliverInitial)
                 .as("unknown provenance MUST propagate TracingSettingsManifestException")
@@ -133,17 +153,17 @@ class ConfigServerOutageTest {
         when(builder.build()).thenReturn(sampleSnapshot());
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingSettingsApplier rejectingClient = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior rejectingClient = (expectedBase, s, writer) -> {
             applyCount.incrementAndGet();
-            return TracingSettingsDeliveryResult.REJECTED;
+            return delivery(TracingSettingsDeliveryResult.REJECTED);
         };
 
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, rejectingClient, readerWith(1L), Runnable::run);
+                builder, recordingSettingsWriter(rejectingClient, readerWith(1L)), Runnable::run);
 
-        TracingSettingsDeliveryResult result = coalescer.deliverInitial();
+        SettingsDelivery result = coalescer.deliverInitial();
 
-        assertThat(result)
+        assertThat(result.outcome())
                 .as("REJECTED outcome MUST be returned to caller so readiness can be blocked")
                 .isEqualTo(TracingSettingsDeliveryResult.REJECTED);
 
@@ -157,15 +177,15 @@ class ConfigServerOutageTest {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
         when(builder.build()).thenReturn(sampleSnapshot());
 
-        TracingSettingsApplier failingClient = (expectedBase, s, source) ->
-                TracingSettingsDeliveryResult.FAILED;
+        RecordingSettingsWriter.ApplyBehavior failingClient = (expectedBase, s, writer) ->
+                delivery(TracingSettingsDeliveryResult.FAILED);
 
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, failingClient, readerWith(1L), Runnable::run);
+                builder, recordingSettingsWriter(failingClient, readerWith(1L)), Runnable::run);
 
-        TracingSettingsDeliveryResult result = coalescer.deliverInitial();
+        SettingsDelivery result = coalescer.deliverInitial();
 
-        assertThat(result)
+        assertThat(result.outcome())
                 .as("FAILED outcome MUST be returned to caller so readiness can be blocked")
                 .isEqualTo(TracingSettingsDeliveryResult.FAILED);
     }
@@ -175,12 +195,12 @@ class ConfigServerOutageTest {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
         when(builder.build()).thenReturn(sampleSnapshot());
 
-        TracingSettingsApplier throwingClient = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior throwingClient = (expectedBase, s, writer) -> {
             throw new RuntimeException("JMX transport unavailable");
         };
 
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, throwingClient, readerWith(1L), Runnable::run);
+                builder, recordingSettingsWriter(throwingClient, readerWith(1L)), Runnable::run);
 
         assertThatThrownBy(coalescer::deliverInitial)
                 .as("writer exception MUST propagate; deliverInitial() must NOT swallow it")
@@ -200,23 +220,21 @@ class ConfigServerOutageTest {
 
         AtomicLong capturedSeq = new AtomicLong(-99L);
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             capturedSeq.set(expectedBase.acceptedSequence());
             applyCount.incrementAndGet();
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         AtomicLong agentSeq = new AtomicLong(3L);
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, client, advancingReader(agentSeq), Runnable::run);
+                builder, recordingSettingsWriter(client, advancingReader(agentSeq)), Runnable::run);
 
-        // Successful initial delivery warms lastKnownSequence to 3.
-        assertThat(coalescer.deliverInitial()).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
+        assertThat(coalescer.deliverInitial().outcome()).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
         assertThat(applyCount.get()).isEqualTo(1);
         long seqAfterInitial = capturedSeq.get();
         assertThat(seqAfterInitial).isEqualTo(3L);
 
-        // Simulate runtime outage: builder throws on second call.
         coalescer.onRefreshEvent();
 
         assertThat(applyCount.get())
@@ -234,13 +252,13 @@ class ConfigServerOutageTest {
                                 + "'platform.tracing.policy.validation.level'"));
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             applyCount.incrementAndGet();
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, client, readerWith(2L), Runnable::run);
+                builder, recordingSettingsWriter(client, readerWith(2L)), Runnable::run);
 
         coalescer.deliverInitial();
         assertThat(applyCount.get()).isEqualTo(1);
@@ -262,13 +280,13 @@ class ConfigServerOutageTest {
                                 + "'platform.tracing.policy.diagnostics.log-level'"));
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             applyCount.incrementAndGet();
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, client, readerWith(4L), Runnable::run);
+                builder, recordingSettingsWriter(client, readerWith(4L)), Runnable::run);
 
         coalescer.deliverInitial();
         coalescer.onRefreshEvent();
@@ -283,87 +301,72 @@ class ConfigServerOutageTest {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
         when(builder.build()).thenReturn(sampleSnapshot());
 
-        AtomicInteger callN     = new AtomicInteger(0);
-        List<Long>   seenSeqs  = new ArrayList<>();
+        AtomicInteger callN = new AtomicInteger(0);
+        List<Long> seenSeqs = new ArrayList<>();
 
-        // Call 1 (initial): APPLIED at seq=5. Call 2+: REJECTED.
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             seenSeqs.add(expectedBase.acceptedSequence());
-            if (callN.incrementAndGet() == 1) return TracingSettingsDeliveryResult.APPLIED;
-            return TracingSettingsDeliveryResult.REJECTED;
+            if (callN.incrementAndGet() == 1) return delivery(TracingSettingsDeliveryResult.APPLIED);
+            return delivery(TracingSettingsDeliveryResult.REJECTED);
         };
 
         AtomicLong agentSeq = new AtomicLong(5L);
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, client, advancingReader(agentSeq), Runnable::run);
+                builder, recordingSettingsWriter(client, advancingReader(agentSeq)), Runnable::run);
 
-        coalescer.deliverInitial();        // APPLIED, warms lastKnownSequence to 5
-        // Agent may advance independently; REJECTED must NOT pull that into lastKnownSequence.
+        coalescer.deliverInitial();
         agentSeq.set(6L);
 
-        coalescer.onRefreshEvent();        // REJECTED — LKG retained
-        coalescer.onRefreshEvent();        // REJECTED again — still LKG retained
+        coalescer.onRefreshEvent();
+        coalescer.onRefreshEvent();
 
         assertThat(callN.get())
                 .as("exactly 3 apply calls: 1 initial + 2 runtime")
                 .isEqualTo(3);
 
-        // Runtime refresh uses lastKnownSequence (warmed at 5). REJECTED does not update it,
-        // so both calls keep presenting 5 even though the Agent reader now reports 6.
+        assertThat(seenSeqs.get(0)).isEqualTo(5L);
         assertThat(seenSeqs.get(1))
-                .as("first REJECTED runtime call must keep warmed LKG sequence")
-                .isEqualTo(5L);
-        assertThat(seenSeqs.get(2))
-                .as("second REJECTED call must still use unchanged LKG sequence")
-                .isEqualTo(5L);
+                .as("each attempt uses the agent revision read at that attempt")
+                .isEqualTo(6L);
+        assertThat(seenSeqs.get(2)).isEqualTo(6L);
     }
 
-    /**
-     * P5.3 proof item 7: Agent returns FAILED during a runtime refresh.
-     * FAILED → accepted policy UNCHANGED; LKG retained; sequence NOT updated.
-     */
     @Test
     void runtime_failed_retains_lkg_and_does_not_update_sequence() {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
         when(builder.build()).thenReturn(sampleSnapshot());
 
-        AtomicInteger callN    = new AtomicInteger(0);
-        List<Long>   seenSeqs = new ArrayList<>();
+        AtomicInteger callN = new AtomicInteger(0);
+        List<Long> seenSeqs = new ArrayList<>();
 
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             seenSeqs.add(expectedBase.acceptedSequence());
-            if (callN.incrementAndGet() == 1) return TracingSettingsDeliveryResult.APPLIED;
-            return TracingSettingsDeliveryResult.FAILED;
+            if (callN.incrementAndGet() == 1) return delivery(TracingSettingsDeliveryResult.APPLIED);
+            return delivery(TracingSettingsDeliveryResult.FAILED);
         };
 
         AtomicLong agentSeq = new AtomicLong(10L);
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, client, advancingReader(agentSeq), Runnable::run);
+                builder, recordingSettingsWriter(client, advancingReader(agentSeq)), Runnable::run);
 
-        coalescer.deliverInitial(); // warms lastKnownSequence to 10
+        coalescer.deliverInitial();
         agentSeq.set(11L);
 
-        coalescer.onRefreshEvent();  // FAILED — LKG retained
-        coalescer.onRefreshEvent();  // FAILED again
+        coalescer.onRefreshEvent();
+        coalescer.onRefreshEvent();
 
         assertThat(callN.get()).isEqualTo(3);
 
+        assertThat(seenSeqs.get(0)).isEqualTo(10L);
         assertThat(seenSeqs.get(1))
-                .as("first FAILED runtime call must keep warmed LKG sequence")
-                .isEqualTo(10L);
-        assertThat(seenSeqs.get(2))
-                .as("second FAILED call: seq MUST NOT change after FAILED")
-                .isEqualTo(10L);
+                .as("each attempt uses the agent revision read at that attempt")
+                .isEqualTo(11L);
+        assertThat(seenSeqs.get(2)).isEqualTo(11L);
     }
 
-    /**
-     * P5.3 proof item 12: multiple sequential runtime outages (builder throws).
-     * Each outage fails independently; sequence remains stable across all of them.
-     */
     @Test
     void multiple_sequential_runtime_outages_sequence_stable_throughout() {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
-        // First call: good; all subsequent: outage.
         when(builder.build())
                 .thenReturn(sampleSnapshot())
                 .thenThrow(new TracingSettingsManifestException("outage 1"))
@@ -371,15 +374,15 @@ class ConfigServerOutageTest {
                 .thenThrow(new TracingSettingsManifestException("outage 3"));
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        List<Long>    seenSeqs   = new ArrayList<>();
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        List<Long> seenSeqs = new ArrayList<>();
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             seenSeqs.add(expectedBase.acceptedSequence());
             applyCount.incrementAndGet();
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, client, readerWith(7L), Runnable::run);
+                builder, recordingSettingsWriter(client, readerWith(7L)), Runnable::run);
 
         coalescer.deliverInitial();
         coalescer.onRefreshEvent();
@@ -394,50 +397,43 @@ class ConfigServerOutageTest {
                 .containsExactly(7L);
     }
 
-    /**
-     * P5.3 proof item 7 (partial-outage): a successful refresh after an outage
-     * advances the sequence normally; the outage leaves no negative side-effect.
-     */
     @Test
     void successful_refresh_after_outage_advances_sequence_normally() {
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
-        // Call pattern: GOOD, OUTAGE, GOOD.
         when(builder.build())
-                .thenReturn(sampleSnapshot())                                         // initial
-                .thenThrow(new TracingSettingsManifestException("transient outage"))    // runtime 1
-                .thenReturn(sampleSnapshot());                                         // runtime 2
+                .thenReturn(sampleSnapshot())
+                .thenThrow(new TracingSettingsManifestException("transient outage"))
+                .thenReturn(sampleSnapshot());
 
-        List<Long>   seenSeqs  = new ArrayList<>();
+        List<Long> seenSeqs = new ArrayList<>();
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingSettingsApplier client = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior client = (expectedBase, s, writer) -> {
             seenSeqs.add(expectedBase.acceptedSequence());
             applyCount.incrementAndGet();
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         AtomicLong agentSeq = new AtomicLong(2L);
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, client, advancingReader(agentSeq), Runnable::run);
+                builder, recordingSettingsWriter(client, advancingReader(agentSeq)), Runnable::run
+        );
 
-        coalescer.deliverInitial();   // APPLIED; lastKnownSequence=2
-        agentSeq.set(3L);             // Agent advances independently during outage window
+        coalescer.deliverInitial();
+        agentSeq.set(3L);
 
-        coalescer.onRefreshEvent();   // OUTAGE — apply skipped; lastKnownSequence stays 2
-        coalescer.onRefreshEvent();   // GOOD   — apply still presents warmed seq=2; then refreshes LKG to 3
+        coalescer.onRefreshEvent();
+        coalescer.onRefreshEvent();
 
         assertThat(applyCount.get())
                 .as("exactly 2 apply calls: initial + post-outage recovery")
                 .isEqualTo(2);
         assertThat(seenSeqs)
-                .as("outage must not corrupt lastKnownSequence; recovery apply uses warmed LKG")
-                .containsExactly(2L, 2L);
+                .as("recovery reads the agent revision current at that attempt")
+                .containsExactly(2L, 3L);
 
-        // After recovery APPLIED, a further refresh must observe the Agent-advanced sequence.
         coalescer.onRefreshEvent();
         assertThat(applyCount.get()).isEqualTo(3);
-        assertThat(seenSeqs.get(2))
-                .as("post-recovery refresh must use Agent sequence refreshed after APPLIED")
-                .isEqualTo(3L);
+        assertThat(seenSeqs.get(2)).isEqualTo(3L);
     }
 
     @Test
@@ -447,23 +443,21 @@ class ConfigServerOutageTest {
 
             var client = agent.client();
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
-            // First call: good; second: outage.
             when(builder.build())
                     .thenReturn(sampleSnapshot())
                     .thenThrow(new TracingSettingsManifestException("e2e outage"));
 
             TracingSettingsRefreshCoalescer coalescer =
-                    new TracingSettingsRefreshCoalescer(builder, client, client, Runnable::run);
+                    new TracingSettingsRefreshCoalescer(builder, client, Runnable::run);
 
-            TracingSettingsDeliveryResult initial = coalescer.deliverInitial();
-            assertThat(initial).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
+            SettingsDelivery initial = coalescer.deliverInitial();
+            assertThat(initial.outcome()).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
 
             long seqAfterInitial = agent.currentAcceptedSequence();
             assertThat(seqAfterInitial)
                     .as("sequence must have advanced after initial APPLIED")
                     .isGreaterThan(0L);
 
-            // Runtime outage: build throws — apply is skipped.
             coalescer.onRefreshEvent();
 
             assertThat(agent.currentAcceptedSequence())
@@ -483,11 +477,11 @@ class ConfigServerOutageTest {
             when(builder.build()).thenReturn(sampleSnapshot());
 
             TracingSettingsRefreshCoalescer coalescer =
-                    new TracingSettingsRefreshCoalescer(builder, client, client, Runnable::run);
+                    new TracingSettingsRefreshCoalescer(builder, client, Runnable::run);
 
-            TracingSettingsDeliveryResult result = coalescer.deliverInitial();
+            SettingsDelivery result = coalescer.deliverInitial();
 
-            assertThat(result)
+            assertThat(result.outcome())
                     .as("REJECTED must be returned to caller")
                     .isEqualTo(TracingSettingsDeliveryResult.REJECTED);
 
@@ -511,7 +505,7 @@ class ConfigServerOutageTest {
                     .thenThrow(new TracingSettingsManifestException("outage C"));
 
             TracingSettingsRefreshCoalescer coalescer =
-                    new TracingSettingsRefreshCoalescer(builder, client, client, Runnable::run);
+                    new TracingSettingsRefreshCoalescer(builder, client, Runnable::run);
 
             coalescer.deliverInitial();
             long seqAfterInitial = agent.currentAcceptedSequence();
@@ -540,7 +534,7 @@ class ConfigServerOutageTest {
                     .thenReturn(sampleSnapshot());                                          // refresh 3 (recovery)
 
             TracingSettingsRefreshCoalescer coalescer =
-                    new TracingSettingsRefreshCoalescer(builder, client, client, Runnable::run);
+                    new TracingSettingsRefreshCoalescer(builder, client, Runnable::run);
 
             coalescer.deliverInitial();
             long seqAfterInitial = agent.currentAcceptedSequence();
@@ -561,18 +555,18 @@ class ConfigServerOutageTest {
         when(builder.build()).thenReturn(sampleSnapshot());
 
         AtomicInteger refreshCount = new AtomicInteger(0);
-        TracingSettingsApplier countingClient = (expectedBase, s, source) -> {
+        RecordingSettingsWriter.ApplyBehavior countingClient = (expectedBase, s, writer) -> {
             refreshCount.incrementAndGet();
-            return TracingSettingsDeliveryResult.APPLIED;
+            return delivery(TracingSettingsDeliveryResult.APPLIED);
         };
 
         // Wrap coalescer in a counting proxy to detect onRefreshEvent() calls.
         AtomicInteger onRefreshCalls = new AtomicInteger(0);
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                builder, countingClient, readerWith(1L), task -> {
-                    onRefreshCalls.incrementAndGet();
-                    task.run();
-                });
+                builder, recordingSettingsWriter(countingClient, readerWith(1L)), task -> {
+            onRefreshCalls.incrementAndGet();
+            task.run();
+        });
 
         ConfigServerTracingSettingsAdapter adapter = new ConfigServerTracingSettingsAdapter(coalescer);
 
@@ -597,8 +591,8 @@ class ConfigServerOutageTest {
         AtomicInteger onRefreshCalls = new AtomicInteger(0);
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
                 builder,
-                (expectedBase, s, source) -> TracingSettingsDeliveryResult.APPLIED,
-                readerWith(1L),
+                recordingSettingsWriter((expectedBase, s, writer) ->
+                        delivery(TracingSettingsDeliveryResult.APPLIED), readerWith(1L)),
                 task -> {
                     onRefreshCalls.incrementAndGet();
                     task.run();
@@ -641,8 +635,8 @@ class ConfigServerOutageTest {
         AtomicInteger onRefreshCalls = new AtomicInteger(0);
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
                 builder,
-                (expectedBase, s, source) -> TracingSettingsDeliveryResult.APPLIED,
-                readerWith(1L),
+                recordingSettingsWriter((expectedBase, s, writer) ->
+                        delivery(TracingSettingsDeliveryResult.APPLIED), readerWith(1L)),
                 task -> {
                     onRefreshCalls.incrementAndGet();
                     task.run();
@@ -654,5 +648,165 @@ class ConfigServerOutageTest {
         assertThat(onRefreshCalls.get())
                 .as("empty EnvironmentChangeEvent MUST NOT trigger coalescer")
                 .isEqualTo(0);
+    }
+
+    @Test
+    void unconvertibleSamplingRatioFailsStartupAndRefreshKeepsLastKnownGood() {
+        // given
+        Map<String, Object> values = authoritativePolicy();
+        MockEnvironment environment = configServerEnvironment(values);
+
+        // when / then
+        assertStartupRejectsAndRefreshKeepsLastKnownGood(
+                environment,
+                () -> values.put("platform.tracing.policy.sampling.ratio", "abc"),
+                "'platform.tracing.policy.sampling.ratio'");
+    }
+
+    @Test
+    void emptySamplingRatioFailsStartupAndRefreshKeepsLastKnownGood() {
+        // given
+        Map<String, Object> values = authoritativePolicy();
+        MockEnvironment environment = configServerEnvironment(values);
+
+        // when / then
+        assertStartupRejectsAndRefreshKeepsLastKnownGood(
+                environment,
+                () -> values.put("platform.tracing.policy.sampling.ratio", ""),
+                "'platform.tracing.policy.sampling.ratio'");
+    }
+
+    @Test
+    void unconvertibleRouteRatioFailsStartupAndRefreshKeepsLastKnownGood() {
+        // given
+        Map<String, Object> values = authoritativePolicy();
+        MockEnvironment environment = configServerEnvironment(values);
+        String routeKey = "platform.tracing.policy.sampling.route-ratios[/orders]";
+
+        // when / then
+        assertStartupRejectsAndRefreshKeepsLastKnownGood(
+                environment,
+                () -> values.put(routeKey, "abc"),
+                "'" + routeKey + "'");
+    }
+
+    @Test
+    void environmentRouteRatioRejectsTheManifest() {
+        // given
+        Map<String, Object> values = authoritativePolicy();
+        MockEnvironment environment = configServerEnvironment(values);
+        String variable = "PLATFORM_TRACING_POLICY_SAMPLING_ROUTE_RATIOS__ORDERS";
+
+        // when / then
+        assertStartupRejectsAndRefreshKeepsLastKnownGood(
+                environment,
+                () -> environment.getPropertySources().addFirst(new SystemEnvironmentPropertySource(
+                        "systemEnvironment",
+                        Map.of(variable, "0.5"))),
+                "'" + variable + "'");
+    }
+
+    @Test
+    void agentSamplingRouteRatioEnvironmentVariableDoesNotRejectTheManifest() {
+        // given
+        MockEnvironment environment = configServerEnvironment(authoritativePolicy());
+        environment.getPropertySources().addFirst(new SystemEnvironmentPropertySource(
+                "systemEnvironment",
+                Map.of("PLATFORM_TRACING_SAMPLING_ROUTE_RATIOS", "/orders=0.5")));
+        ConfigServerSettingsManifestBuilder builder = new ConfigServerSettingsManifestBuilder(
+                environment,
+                new ConfigServerSettingsProvenanceClassifier(environment));
+
+        // when
+        CompleteTracingSettings settings = builder.build();
+
+        // then
+        assertThat(settings.samplingRatio()).isEqualTo(1.0d);
+        assertThat(settings.samplingRouteRatios()).isEmpty();
+    }
+
+    private static void assertStartupRejectsAndRefreshKeepsLastKnownGood(MockEnvironment environment,
+                                                                          Runnable corrupt,
+                                                                          String messageFragment) {
+        ConfigServerSettingsManifestBuilder builder = new ConfigServerSettingsManifestBuilder(
+                environment,
+                new ConfigServerSettingsProvenanceClassifier(environment));
+        AtomicInteger applyCount = new AtomicInteger();
+        TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
+                builder,
+                recordingSettingsWriter((expectedBase, snapshot, writer) -> {
+                    applyCount.incrementAndGet();
+                    return delivery(TracingSettingsDeliveryResult.APPLIED);
+                }, readerWith(1L)),
+                Runnable::run);
+        Logger logger = (Logger) LoggerFactory.getLogger(TracingSettingsRefreshCoalescer.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            corrupt.run();
+            assertThatThrownBy(coalescer::deliverInitial)
+                    .isInstanceOf(TracingSettingsManifestException.class)
+                    .hasMessageContaining(messageFragment);
+            assertThat(applyCount.get()).isZero();
+
+            restoreAuthoritativePolicy(environment);
+            assertThat(coalescer.deliverInitial().outcome()).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
+            assertThat(applyCount.get()).isEqualTo(1);
+
+            corrupt.run();
+            coalescer.onRefreshEvent();
+            assertThat(applyCount.get()).isEqualTo(1);
+            String logs = appender.list.stream()
+                    .map(ILoggingEvent::getFormattedMessage)
+                    .reduce("", (left, right) -> left + "\n" + right);
+            assertThat(logs)
+                    .contains("Config Server manifest rejected locally")
+                    .contains(messageFragment);
+        } finally {
+            logger.detachAppender(appender);
+        }
+    }
+
+    private static Map<String, Object> authoritativePolicy() {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("platform.tracing.policy.sampling.enabled", "true");
+        values.put("platform.tracing.policy.sampling.ratio", "1.0");
+        values.put("platform.tracing.policy.validation.level", "WARNING");
+        values.put("platform.tracing.policy.exporter.enabled", "true");
+        values.put("platform.tracing.policy.propagation.trace-control-headers.enabled", "true");
+        values.put("platform.tracing.policy.diagnostics.log-level", "INFO");
+        return values;
+    }
+
+    private static MockEnvironment configServerEnvironment(Map<String, Object> values) {
+        MockEnvironment environment = new MockEnvironment();
+        environment.getPropertySources().addFirst(new MapPropertySource("configserver:outage", values));
+        return environment;
+    }
+
+    private static void restoreAuthoritativePolicy(MockEnvironment environment) {
+        while (!"configserver:outage".equals(environment.getPropertySources().iterator().next().getName())) {
+            environment.getPropertySources().remove(environment.getPropertySources().iterator().next().getName());
+        }
+        MapPropertySource source = (MapPropertySource) environment.getPropertySources().get("configserver:outage");
+        Map<String, Object> values = source.getSource();
+        values.clear();
+        values.putAll(authoritativePolicy());
+    }
+
+    private static SettingsDelivery delivery(TracingSettingsDeliveryResult outcome) {
+        String messageCode = switch (outcome) {
+            case APPLIED, UNCHANGED -> "NONE";
+            case REJECTED -> "INVALID_VALUE";
+            case STALE -> "ACCEPTED_SEQUENCE_MISMATCH";
+            case FAILED -> "INTERNAL_FAILURE";
+        };
+
+        return new SettingsDelivery(
+                "00000000-0000-0000-0000-000000000001",
+                outcome,
+                messageCode
+        );
     }
 }

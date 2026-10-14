@@ -144,7 +144,12 @@ public final class AcceptedPolicyMutationAccess {
     private static SettingsUpdateStatus commit(TracingSettingsSource access,
                                                TracingSettingsRevision witnessed,
                                                TracingSettings candidate) {
-        SettingsCommitResult result = access.store().commit(witnessed.base(), candidate);
+        SettingsCommitResult result = access.store().commit(
+                witnessed.base(),
+                candidate,
+                witnessed.sourceAuthority()
+        );
+
         if (result.outcome() == SettingsCommitOutcome.APPLIED) {
             return SettingsUpdateStatus.APPLIED;
         }

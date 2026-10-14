@@ -4,6 +4,7 @@ import static space.br1440.platform.tracing.otel.javaagent.configuration.Extensi
 import static space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults.DEFAULT_ENABLED;
 import static space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults.DEFAULT_FORCE_VALUES;
 import static space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults.DEFAULT_SAMPLING_RATIO;
+import static space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults.DEFAULT_SAMPLING_ROUTE_RATIOS;
 import static space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames.SAMPLING_DROP_PATHS;
 import static space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames.SAMPLING_ENABLED;
 import static space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames.SAMPLING_FORCE_RECORD_VALUES;
@@ -36,6 +37,6 @@ public final class SamplingExtensionConfig {
         this.ratio = reader.doubleValue(SAMPLING_RATIO, DEFAULT_SAMPLING_RATIO);
         this.forceRecordValues = reader.listValue(SAMPLING_FORCE_RECORD_VALUES, DEFAULT_FORCE_VALUES);
         this.dropPaths = reader.listValue(SAMPLING_DROP_PATHS, DEFAULT_DROP_PATHS);
-        this.routeRatios = reader.mapValue(SAMPLING_ROUTE_RATIOS, Map.of());
+        this.routeRatios = reader.mapValue(SAMPLING_ROUTE_RATIOS, DEFAULT_SAMPLING_ROUTE_RATIOS);
     }
 }

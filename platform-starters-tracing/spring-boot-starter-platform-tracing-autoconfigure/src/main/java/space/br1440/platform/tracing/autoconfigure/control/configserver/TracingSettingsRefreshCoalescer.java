@@ -1,18 +1,22 @@
 package space.br1440.platform.tracing.autoconfigure.control.configserver;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.slf4j.event.Level;
+
 import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
+import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedSettings;
+import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedSettingsAuthority;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
-import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsDelivery;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsRevision;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsWriter;
+import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsManifestException;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliveryResult;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliverySource;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
+import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsWriter;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -22,131 +26,113 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class TracingSettingsRefreshCoalescer {
 
+    private static final int MAX_ATTEMPTS = 2;
+
     private final ConfigServerSettingsManifestBuilder manifestBuilder;
-    private final TracingSettingsApplier snapshotClient;
-    private final CompleteTracingSettingsReader snapshotReader;
+    private final TracingSettingsWriter settingsWriter;
     private final Executor worker;
 
-    private final AtomicLong generation = new AtomicLong(0);
-    private final AtomicBoolean workerScheduled = new AtomicBoolean(false);
-    private volatile ExpectedSettingsRevision lastKnownBase;
+    private final AtomicLong requestedGeneration = new AtomicLong();
+    private final AtomicBoolean workerScheduled = new AtomicBoolean();
 
-    public void onRefreshEvent() {
-        generation.incrementAndGet();
-        scheduleWorkerIfAbsent();
+    public SettingsDelivery deliverInitial() {
+        return deliver(DeliveryPhase.INITIAL);
     }
 
-    private void scheduleWorkerIfAbsent() {
-        if (workerScheduled.compareAndSet(false, true)) {
+    public void onRefreshEvent() {
+        requestedGeneration.incrementAndGet();
+        scheduleWorkerIfIdle();
+    }
+
+    private void scheduleWorkerIfIdle() {
+        if (!workerScheduled.compareAndSet(false, true)) {
+            return;
+        }
+        try {
             worker.execute(this::runWorker);
+        } catch (RejectedExecutionException workerShutDown) {
+            workerScheduled.set(false);
+            log.debug("Config Server settings refresh skipped: worker is shut down");
         }
     }
 
     private void runWorker() {
-        long capturedGeneration = generation.get();
-
+        long servedGeneration = requestedGeneration.get();
         try {
-            doApply(false);
+            refresh();
+        } catch (RuntimeException failure) {
+            log.error("Config Server settings refresh failed; LKG retained. errorType={}",
+                    failure.getClass().getName(), failure);
         } finally {
             workerScheduled.set(false);
-            if (generation.get() > capturedGeneration) {
-                scheduleWorkerIfAbsent();
+            if (requestedGeneration.get() > servedGeneration) {
+                scheduleWorkerIfIdle();
             }
         }
     }
 
-    private void doApply(boolean isStaleRetry) {
-        CompleteTracingSettings snapshot;
+    private void refresh() {
         try {
-            snapshot = manifestBuilder.build();
-        } catch (TracingSettingsManifestException e) {
-            String state = isStaleRetry ? " (STALE retry)" : "";
-            log.error("Config Server manifest build failed{}; LKG retained: {}", state, e.getMessage());
-            return;
-        } catch (IllegalArgumentException e) {
-            String state = isStaleRetry ? " (STALE retry)" : "";
-            log.error("Config Server policy value invalid{}; LKG retained: {}", state, e.getMessage());
-            return;
-        }
-
-        ExpectedSettingsRevision base = currentOrWarmedBase();
-        if (base == null) {
-            log.error("Config Server refresh: no authoritative expected base available from Agent; LKG retained.");
-            return;
-        }
-
-        TracingSettingsDeliveryResult result = snapshotClient.applySnapshot(base, snapshot, TracingSettingsDeliverySource.CONFIG_SERVER);
-        log.info("Config Server policy refresh: outcome={}, base={}, staleRetry={}", result, base, isStaleRetry);
-
-        switch (result) {
-            case APPLIED -> refreshLastKnownBase();
-
-            case UNCHANGED -> {}
-
-            case STALE -> {
-                if (!isStaleRetry) {
-                    refreshLastKnownBase();
-                    log.info("STALE; refreshed expected base from Agent; one bounded retry.");
-                    doApply(true);
-                } else {
-                    log.warn("STALE on bounded retry; LKG retained.");
-                }
-            }
-
-            case REJECTED -> log.warn("Settings snapshot REJECTED by Agent; LKG retained.");
-
-            case FAILED -> log.error("Settings apply FAILED; LKG retained.");
+            deliver(DeliveryPhase.REFRESH);
+        } catch (TracingSettingsManifestException | IllegalArgumentException invalidManifest) {
+            log.error("Config Server manifest rejected locally; LKG retained: {}", invalidManifest.getMessage());
         }
     }
 
-    public TracingSettingsDeliveryResult deliverInitial() {
-        TracingSettingsDeliveryResult result = attemptInitialDelivery(false);
-        if (result != TracingSettingsDeliveryResult.STALE) {
-            return result;
-        }
+    private SettingsDelivery deliver(DeliveryPhase phase) {
+        SettingsDelivery delivery;
 
-        return attemptInitialDelivery(true);
+        int attempt = 0;
+        do {
+            attempt++;
+            CompleteTracingSettings manifest = manifestBuilder.build();
+            SettingsRevision base = expectedBase(phase);
+            delivery = settingsWriter.applySnapshot(base, manifest, SettingsWriter.CONFIG_SERVER);
+            logDelivery(phase, attempt, base, delivery);
+        } while (delivery.outcome() == TracingSettingsDeliveryResult.STALE && attempt < MAX_ATTEMPTS);
+
+        return delivery;
     }
 
-    private TracingSettingsDeliveryResult attemptInitialDelivery(boolean isStaleRetry) {
-        try {
-            CompleteTracingSettings snapshot = manifestBuilder.build();
-            refreshLastKnownBase();
+    private SettingsRevision expectedBase(DeliveryPhase phase) {
+        AcceptedSettings accepted = settingsWriter.current()
+                .orElseThrow(() -> {
+                    String message = "[CONFIG_SERVER %s] accepted settings are unreadable; expected base is unknown"
+                            .formatted(phase);
 
-            ExpectedSettingsRevision base = lastKnownBase;
-            if (base == null) {
-                throw new TracingConfigurationGuardException(
-                        "Initial Config Server delivery: no authoritative expected base "
-                                + "available from Agent (AcceptedPolicySnapshot is absent)");
-            }
+                    return new TracingConfigurationGuardException(message);
+                });
 
-            TracingSettingsDeliveryResult result = snapshotClient.applySnapshot(base, snapshot, TracingSettingsDeliverySource.CONFIG_SERVER);
-            if (result == TracingSettingsDeliveryResult.APPLIED || result == TracingSettingsDeliveryResult.UNCHANGED) {
-                refreshLastKnownBase();
-            }
-            return result;
-        } catch (TracingSettingsManifestException e) {
-            log.error("Initial Config Server manifest missing required leaf (staleRetry={}): {}", isStaleRetry, e.getMessage());
-            throw e;
-        } catch (IllegalArgumentException e) {
-            log.error("Initial Config Server policy value invalid (staleRetry={}): {}", isStaleRetry, e.getMessage());
-            throw e;
+        if (accepted.authority() == AcceptedSettingsAuthority.ACTUATOR) {
+            log.warn("Accepted settings were written by ACTUATOR in CONFIG_SERVER channel; overwriting. base={}",
+                    accepted.revision());
         }
+        return accepted.revision();
     }
 
-    private void refreshLastKnownBase() {
-        snapshotReader.currentComplete()
-                .map(AcceptedSettingsWithSequence::expectedBase)
-                .ifPresent(base -> lastKnownBase = base);
+    private static void logDelivery(DeliveryPhase phase,
+                                    int attempt,
+                                    SettingsRevision base,
+                                    SettingsDelivery delivery) {
+        Level level = levelOf(delivery.outcome(), attempt);
+        log.atLevel(level)
+                .log(
+                        "Config Server settings delivery: phase={}, attempt={}/{}, attemptId={}, outcome={}, messageCode={}, base={}",
+                        phase, attempt, MAX_ATTEMPTS, delivery.attemptId(), delivery.outcome(), delivery.messageCode(), base
+                );
     }
 
-    private ExpectedSettingsRevision currentOrWarmedBase() {
-        ExpectedSettingsRevision base = lastKnownBase;
-        if (base != null) {
-            return base;
-        }
+    private static Level levelOf(TracingSettingsDeliveryResult outcome, int attempt) {
+        return switch (outcome) {
+            case APPLIED, UNCHANGED -> Level.INFO;
+            case STALE -> attempt < MAX_ATTEMPTS ? Level.INFO : Level.WARN;
+            case REJECTED -> Level.WARN;
+            case FAILED -> Level.ERROR;
+        };
+    }
 
-        refreshLastKnownBase();
-        return lastKnownBase;
+    private enum DeliveryPhase {
+        INITIAL,
+        REFRESH
     }
 }

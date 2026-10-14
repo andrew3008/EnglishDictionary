@@ -7,24 +7,27 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static space.br1440.platform.tracing.autoconfigure.support.RecordingSettingsWriter.recordingSettingsWriter;
 
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
-import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsDelivery;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsRevision;
+import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsWriter;
+import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsManifestException;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliveryResult;
-import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliverySource;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
+import space.br1440.platform.tracing.autoconfigure.support.AcceptedSettingsTestFixtures;
+import space.br1440.platform.tracing.autoconfigure.support.RecordingSettingsWriter;
 
 @DisplayName("Category A leaf missing/deleted: readiness BLOCKED & runtime REJECTED")
 class CategoryALeafMissingTest {
@@ -43,8 +46,8 @@ class CategoryALeafMissingTest {
     private static final long LKG_SEQUENCE = 42L;
     private static final String LKG_AGENT_INSTANCE_ID = "d7468019-f52a-44a9-b3cd-3654c13ebc4d";
 
-    private static AcceptedSettingsWithSequence lkgAcceptedState() {
-        return new AcceptedSettingsWithSequence(LKG_SEQUENCE, LKG_AGENT_INSTANCE_ID, LKG_SNAPSHOT);
+    private static AcceptedSettings lkgAcceptedState() {
+        return AcceptedSettingsTestFixtures.configServerAccepted(LKG_SEQUENCE, LKG_AGENT_INSTANCE_ID, LKG_SNAPSHOT);
     }
 
     @Nested
@@ -61,11 +64,12 @@ class CategoryALeafMissingTest {
                             "Required Category A policy key missing: "
                                     + "'platform.tracing.policy.sampling.enabled'"));
 
-            TracingSettingsApplier client = mock(TracingSettingsApplier.class);
-            CompleteTracingSettingsReader reader = mock(CompleteTracingSettingsReader.class);
+            RecordingSettingsWriter.ApplyBehavior client = mock(RecordingSettingsWriter.ApplyBehavior.class);
+            @SuppressWarnings("unchecked")
+            Supplier<Optional<AcceptedSettings>> reader = mock(Supplier.class);
 
             TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                    failingBuilder, client, reader, Runnable::run);
+                    failingBuilder, recordingSettingsWriter(client, reader), Runnable::run);
 
             assertThatThrownBy(coalescer::deliverInitial)
                     .isInstanceOf(TracingSettingsManifestException.class)
@@ -75,20 +79,22 @@ class CategoryALeafMissingTest {
         @Test
         @DisplayName("deliverInitial never reaches applySnapshot when leaf is missing")
         void deliverInitial_neverCallsApplySnapshot_whenLeafMissing() {
-            ConfigServerSettingsManifestBuilder failingBuilder =
-                    mock(ConfigServerSettingsManifestBuilder.class);
+            ConfigServerSettingsManifestBuilder failingBuilder = mock(ConfigServerSettingsManifestBuilder.class);
             when(failingBuilder.build())
                     .thenThrow(new TracingSettingsManifestException("diagnosticsLogLevel not set"));
 
-            TracingSettingsApplier client = mock(TracingSettingsApplier.class);
-            CompleteTracingSettingsReader reader = mock(CompleteTracingSettingsReader.class);
+            RecordingSettingsWriter.ApplyBehavior client = mock(RecordingSettingsWriter.ApplyBehavior.class);
+            @SuppressWarnings("unchecked")
+            Supplier<Optional<AcceptedSettings>> reader = mock(Supplier.class);
 
             TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                    failingBuilder, client, reader, Runnable::run);
+                    failingBuilder, recordingSettingsWriter(client, reader), Runnable::run);
 
             try {
                 coalescer.deliverInitial();
-            } catch (TracingSettingsManifestException ignored) { /* expected */ }
+            } catch (TracingSettingsManifestException ignored) {
+                // ожидаемое исключение
+            }
 
             verify(client, never()).applySnapshot(any(), any(), any());
         }
@@ -106,18 +112,17 @@ class CategoryALeafMissingTest {
             };
 
             for (String leaf : mandatoryLeaves) {
-                ConfigServerSettingsManifestBuilder builder =
-                        mock(ConfigServerSettingsManifestBuilder.class);
+                ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
                 when(builder.build())
                         .thenThrow(new TracingSettingsManifestException(
                                 "Required Category A policy key missing: '" + leaf + "'"));
 
-                TracingSettingsApplier client = mock(TracingSettingsApplier.class);
-                CompleteTracingSettingsReader reader =
-                        mock(CompleteTracingSettingsReader.class);
+                RecordingSettingsWriter.ApplyBehavior client = mock(RecordingSettingsWriter.ApplyBehavior.class);
+                @SuppressWarnings("unchecked")
+                Supplier<Optional<AcceptedSettings>> reader = mock(Supplier.class);
 
                 TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                        builder, client, reader, Runnable::run);
+                        builder, recordingSettingsWriter(client, reader), Runnable::run);
 
                 assertThatThrownBy(coalescer::deliverInitial)
                         .as("missing leaf: %s", leaf)
@@ -153,7 +158,7 @@ class CategoryALeafMissingTest {
                                     + "'platform.tracing.policy.exporter.enabled'"));
 
             TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                    failingBuilder, trackingClient, trackingReader, Runnable::run);
+                    failingBuilder, recordingSettingsWriter(trackingClient, trackingReader), Runnable::run);
 
             coalescer.onRefreshEvent();
 
@@ -161,9 +166,9 @@ class CategoryALeafMissingTest {
         }
 
         @Test
-        @DisplayName("runtime missing leaf leaves lastKnownSequence unchanged (LKG immutable)")
-        void onRefreshEvent_lastKnownSequence_isUnchangedWhenLeafMissing() {
-            // First: deliver successfully to seed lastKnownSequence
+        @DisplayName("runtime missing leaf does not apply and leaves the last applied sequence unchanged")
+        void onRefreshEvent_lastAppliedSequence_isUnchangedWhenLeafMissing() {
+            // given a successful delivery
             ConfigServerSettingsManifestBuilder goodBuilder =
                     mock(ConfigServerSettingsManifestBuilder.class);
             when(goodBuilder.build()).thenReturn(LKG_SNAPSHOT);
@@ -172,7 +177,7 @@ class CategoryALeafMissingTest {
             trackingReader = new TrackingSnapshotReader(lkgAcceptedState());
 
             TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                    goodBuilder, trackingClient, trackingReader, Runnable::run);
+                    goodBuilder, recordingSettingsWriter(trackingClient, trackingReader), Runnable::run);
             coalescer.onRefreshEvent();
 
             long sequenceAfterGoodApply = trackingClient.lastAppliedSequence();
@@ -186,7 +191,7 @@ class CategoryALeafMissingTest {
                                     + "'platform.tracing.policy.sampling.ratio'"));
 
             TracingSettingsRefreshCoalescer failingCoalescer = new TracingSettingsRefreshCoalescer(
-                    failingBuilder, trackingClient, trackingReader, Runnable::run);
+                    failingBuilder, recordingSettingsWriter(trackingClient, trackingReader), Runnable::run);
             int applyCountBefore = trackingClient.applyCallCount();
 
             failingCoalescer.onRefreshEvent();
@@ -211,17 +216,17 @@ class CategoryALeafMissingTest {
                                     + "'platform.tracing.policy.validation.level'"));
 
             TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                    failingBuilder, trackingClient, trackingReader, Runnable::run);
+                    failingBuilder, recordingSettingsWriter(trackingClient, trackingReader), Runnable::run);
 
             coalescer.onRefreshEvent();
 
-            assertThat(trackingReader.currentCompleteCallCount())
-                    .as("reader.currentComplete() must not be called when build() fails")
+            assertThat(trackingReader.currentCallCount())
+                    .as("reader.current() must not be called when build() fails")
                     .isZero();
 
-            assertThat(trackingReader.currentComplete())
+            assertThat(trackingReader.get())
                     .isPresent()
-                    .map(AcceptedSettingsWithSequence::agentInstanceId)
+                    .map(accepted -> accepted.revision().agentInstanceId())
                     .contains(LKG_AGENT_INSTANCE_ID);
         }
 
@@ -236,13 +241,13 @@ class CategoryALeafMissingTest {
                                     + "'platform.tracing.policy.diagnostics.log-level'"));
 
             TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                    failingBuilder, trackingClient, trackingReader, Runnable::run);
+                    failingBuilder, recordingSettingsWriter(trackingClient, trackingReader), Runnable::run);
 
             coalescer.onRefreshEvent();
 
-            assertThat(trackingReader.currentComplete())
+            assertThat(trackingReader.get())
                     .isPresent()
-                    .map(AcceptedSettingsWithSequence::snapshot)
+                    .map(AcceptedSettings::policy)
                     .contains(LKG_SNAPSHOT);
         }
 
@@ -255,7 +260,7 @@ class CategoryALeafMissingTest {
                     .thenThrow(new TracingSettingsManifestException("leaf missing"));
 
             TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                    failingBuilder, trackingClient, trackingReader, Runnable::run);
+                    failingBuilder, recordingSettingsWriter(trackingClient, trackingReader), Runnable::run);
 
             coalescer.onRefreshEvent();
             coalescer.onRefreshEvent();
@@ -284,7 +289,7 @@ class CategoryALeafMissingTest {
             TrackingSnapshotReader reader = new TrackingSnapshotReader(lkgAcceptedState());
 
             TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                    oscillatingBuilder, client, reader, Runnable::run);
+                    oscillatingBuilder, recordingSettingsWriter(client, reader), Runnable::run);
 
             coalescer.onRefreshEvent();
 
@@ -306,7 +311,7 @@ class CategoryALeafMissingTest {
             TrackingSnapshotReader reader = new TrackingSnapshotReader(lkgAcceptedState());
 
             TracingSettingsRefreshCoalescer failingCoalescer = new TracingSettingsRefreshCoalescer(
-                    failingBuilder, client, reader, Runnable::run);
+                    failingBuilder, recordingSettingsWriter(client, reader), Runnable::run);
             failingCoalescer.onRefreshEvent();
             assertThat(client.applyCallCount()).isZero();
 
@@ -326,7 +331,7 @@ class CategoryALeafMissingTest {
             when(restoredBuilder.build()).thenReturn(restoredSnapshot);
 
             TracingSettingsRefreshCoalescer restoredCoalescer = new TracingSettingsRefreshCoalescer(
-                    restoredBuilder, client, reader, Runnable::run);
+                    restoredBuilder, recordingSettingsWriter(client, reader), Runnable::run);
             restoredCoalescer.onRefreshEvent();
 
             assertThat(client.applyCallCount())
@@ -337,7 +342,7 @@ class CategoryALeafMissingTest {
                     .isEqualTo(restoredSnapshot);
             assertThat(client.lastAppliedSource())
                     .as("source must be CONFIG_SERVER")
-                    .isEqualTo(TracingSettingsDeliverySource.CONFIG_SERVER);
+                    .isEqualTo(SettingsWriter.CONFIG_SERVER);
         }
 
         @Test
@@ -355,7 +360,7 @@ class CategoryALeafMissingTest {
             TrackingSnapshotReader reader = new TrackingSnapshotReader(lkgAcceptedState());
 
             TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
-                    failingBuilder, client, reader, Runnable::run);
+                    failingBuilder, recordingSettingsWriter(client, reader), Runnable::run);
             coalescer.onRefreshEvent();
 
             assertThat(client.applyCallCount()).isZero();
@@ -365,28 +370,28 @@ class CategoryALeafMissingTest {
         }
     }
 
-    static final class TrackingSnapshotClient implements TracingSettingsApplier {
+    static final class TrackingSnapshotClient implements RecordingSettingsWriter.ApplyBehavior {
 
         private final TracingSettingsDeliveryResult outcome;
         private final AtomicInteger applyCount = new AtomicInteger(0);
-        private final AtomicReference<ExpectedSettingsRevision> lastExpectedBase = new AtomicReference<>();
+        private final AtomicReference<SettingsRevision> lastExpectedBase = new AtomicReference<>();
         private volatile CompleteTracingSettings lastSnapshot;
-        private volatile TracingSettingsDeliverySource lastSource;
+        private volatile SettingsWriter lastSource;
 
         TrackingSnapshotClient(TracingSettingsDeliveryResult outcome) {
             this.outcome = outcome;
         }
 
         @Override
-        public TracingSettingsDeliveryResult applySnapshot(
-                ExpectedSettingsRevision expectedBase,
+        public SettingsDelivery applySnapshot(
+                SettingsRevision expectedBase,
                 CompleteTracingSettings snapshot,
-                TracingSettingsDeliverySource source) {
+                SettingsWriter writer) {
             applyCount.incrementAndGet();
             lastExpectedBase.set(expectedBase);
             this.lastSnapshot = snapshot;
-            this.lastSource = source;
-            return outcome;
+            this.lastSource = writer;
+            return delivery(outcome);
         }
 
         int applyCallCount() {
@@ -401,27 +406,42 @@ class CategoryALeafMissingTest {
             return lastSnapshot;
         }
 
-        TracingSettingsDeliverySource lastAppliedSource() {
+        private static SettingsDelivery delivery(TracingSettingsDeliveryResult outcome) {
+            String messageCode = switch (outcome) {
+                case APPLIED, UNCHANGED -> "NONE";
+                case REJECTED -> "INVALID_VALUE";
+                case STALE -> "ACCEPTED_SEQUENCE_MISMATCH";
+                case FAILED -> "INTERNAL_FAILURE";
+            };
+
+            return new SettingsDelivery(
+                    "00000000-0000-0000-0000-000000000001",
+                    outcome,
+                    messageCode
+            );
+        }
+
+        SettingsWriter lastAppliedSource() {
             return lastSource;
         }
     }
 
-    static final class TrackingSnapshotReader implements CompleteTracingSettingsReader {
+    static final class TrackingSnapshotReader implements Supplier<Optional<AcceptedSettings>> {
 
-        private final AtomicReference<AcceptedSettingsWithSequence> state;
+        private final AtomicReference<AcceptedSettings> state;
         private final AtomicInteger readCount = new AtomicInteger(0);
 
-        TrackingSnapshotReader(AcceptedSettingsWithSequence initial) {
+        TrackingSnapshotReader(AcceptedSettings initial) {
             this.state = new AtomicReference<>(initial);
         }
 
         @Override
-        public Optional<AcceptedSettingsWithSequence> currentComplete() {
+        public Optional<AcceptedSettings> get() {
             readCount.incrementAndGet();
             return Optional.ofNullable(state.get());
         }
 
-        int currentCompleteCallCount() {
+        int currentCallCount() {
             return readCount.get();
         }
     }

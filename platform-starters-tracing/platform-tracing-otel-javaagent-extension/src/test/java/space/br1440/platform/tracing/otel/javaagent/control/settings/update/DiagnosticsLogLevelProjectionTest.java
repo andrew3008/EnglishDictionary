@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures.boundDefaults;
 
-import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
@@ -13,8 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
@@ -101,7 +99,8 @@ class DiagnosticsLogLevelProjectionTest {
                 source.updater().apply(
                         attempt(),
                         witnessed.base(),
-                        withLevel(witnessed.policy(), level));
+                        withLevel(witnessed.policy(), level)
+                );
             } catch (Throwable thrown) {
                 failure.set(thrown);
             }
@@ -124,9 +123,6 @@ class DiagnosticsLogLevelProjectionTest {
     private static SettingsUpdateAttempt attempt() {
         return new SettingsUpdateAttempt(
                 UUID.randomUUID().toString(),
-                Instant.parse("2026-09-23T12:00:00Z"),
-                SettingsSourceAuthority.CONFIG_SERVER,
-                SettingsUpdateTrigger.REFRESH,
-                "revision-log-level");
+                SettingsWriter.CONFIG_SERVER);
     }
 }

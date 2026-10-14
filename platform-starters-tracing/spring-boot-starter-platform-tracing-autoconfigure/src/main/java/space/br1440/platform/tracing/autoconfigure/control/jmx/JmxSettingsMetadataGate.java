@@ -30,6 +30,13 @@ final class JmxSettingsMetadataGate {
         });
     }
 
+    void verifyStatusMetadata() throws Exception {
+        coherenceGuard.readCoherently(() -> {
+            validateStatusShape();
+            return null;
+        });
+    }
+
     private void validateStatusShape() throws InstanceNotFoundException, IntrospectionException, ReflectionException {
         JmxMBeanInfoShape.requireReadOnlySnapshot(
                 platformMBeanServer.getMBeanInfo(JmxWireContract.SETTINGS_STATUS_OBJECT_NAME),

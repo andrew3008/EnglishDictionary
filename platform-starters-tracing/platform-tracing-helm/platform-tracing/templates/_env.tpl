@@ -4,7 +4,7 @@
   {{- if not (kindIs "map" .) -}}
     {{- fail (printf "%s argument must be a map; got %s" $prefix (kindOf .)) -}}
   {{- end -}}
-  {{- $allowedKeys := list "values" "identity" "env" -}}
+  {{- $allowedKeys := list "values" "env" -}}
   {{- range $key, $_ := . -}}
     {{- if not (has $key $allowedKeys) -}}
       {{- fail (printf "%s argument.%s is not a supported key; supported keys: %s" $prefix $key (join ", " $allowedKeys)) -}}
@@ -26,35 +26,15 @@
     {{- fail (printf "%s env must be a list of Kubernetes EnvVar; got %s" $prefix (kindOf $env)) -}}
   {{- end -}}
 
+  {{- include "platform-tracing.v1._validateValues" $values -}}
   {{- if not $enabled -}}
     {{- toYaml $env -}}
   {{- else -}}
-    {{- include "platform-tracing.v1._validateValues" $values -}}
-    {{- include "platform-tracing.v1._validateIdentity" .identity -}}
     {{- include "platform-tracing.v1._validateEnv" $env -}}
-
-    {{- $attributePairs := list -}}
-    {{- with .identity.serviceVersion -}}
-      {{- $attributePairs = append $attributePairs (printf "service.version=%s" .) -}}
-    {{- end -}}
-    {{- with .identity.deploymentEnvironmentName -}}
-      {{- $attributePairs = append $attributePairs (printf "deployment.environment.name=%s" .) -}}
-    {{- end -}}
-
-    {{- $managed := list
-          (dict "name" "OTEL_SERVICE_NAME" "value" .identity.serviceName)
-          (dict "name" "OTEL_TRACES_EXPORTER" "value" "otlp")
-          (dict "name" "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL" "value" "grpc")
-          (dict "name" "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT" "value" (include "platform-tracing.v1._endpoint" $values)) -}}
-    {{- if $attributePairs -}}
-      {{- $managed = append $managed (dict "name" "OTEL_RESOURCE_ATTRIBUTES" "value" (join "," $attributePairs)) -}}
-    {{- end -}}
-    {{- $managed = append $managed (dict "name" "PLATFORM_TRACING_CONTROL_CHANNEL" "value" $values.controlChannel) -}}
-    {{- if hasKey $values "spanAttributeValidationLevel" -}}
-      {{- $managed = append $managed (dict "name" "PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL" "value" $values.spanAttributeValidationLevel) -}}
-    {{- end -}}
+    {{- $managed := include "platform-tracing.v1._policyEnv" (default (dict) $values.policy) | fromYamlArray -}}
 
     {{- $managed = concat $managed (list
+          (dict "name" "OTEL_EXPORTER_OTLP_PROTOCOL" "value" "grpc")
           (dict "name" "OTEL_PROPAGATORS" "value" "tracecontext,baggage,b3")
           (dict "name" "OTEL_METRICS_EXPORTER" "value" "none")
           (dict "name" "OTEL_LOGS_EXPORTER" "value" "none")) -}}

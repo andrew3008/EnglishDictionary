@@ -23,6 +23,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
@@ -38,6 +40,7 @@ import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
 
 @ExtendWith(AutoConfiguredSdkIsolationExtension.class)
+@ResourceLock(Resources.SYSTEM_PROPERTIES)
 class PlatformAutoConfigurationCustomizerProcessorsTest {
 
     private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();

@@ -3,7 +3,6 @@ package space.br1440.platform.tracing.otel.javaagent.arch;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
-import java.time.Instant;
 import java.util.Set;
 
 import com.tngtech.archunit.base.DescribedPredicate;
@@ -14,12 +13,10 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsRejectionReason;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 
 @AnalyzeClasses(
@@ -86,8 +83,9 @@ class ControlPlaneBoundaryArchTest {
                     .should().callMethod(
                             TracingSettingsStore.class,
                             "commit",
-                            ExpectedSettingsRevision.class,
-                            TracingSettings.class)
+                            SettingsRevision.class,
+                            TracingSettings.class,
+                            SettingsSourceAuthority.class)
                     .because("TracingSettingsUpdater is the single settings mutation authority");
 
     @ArchTest
@@ -98,12 +96,10 @@ class ControlPlaneBoundaryArchTest {
                     .should().callMethod(
                             TracingSettingsUpdater.class,
                             "rejectBeforeApply",
-                            String.class,
                             SettingsRejectionReason.class)
                     .andShould().callMethod(
                             TracingSettingsUpdater.class,
                             "failBeforeApply",
-                            String.class,
                             SettingsRejectionReason.class)
                     .because("the writer must route terminal failures through the update authority");
 
@@ -123,23 +119,6 @@ class ControlPlaneBoundaryArchTest {
                     .and().doNotHaveFullyQualifiedName(WRITER)
                     .should().callMethodWhere(targetsTracingSettingsUpdater())
                     .because("PlatformSettingsMutationMBean is the only JMX mutation adapter");
-
-    @ArchTest
-    @SuppressWarnings("unused")
-    static final ArchRule jmxDoesNotWriteDiagnosticsDirectly =
-            noClasses()
-                    .that().resideInAPackage(CONTROL_JMX + "..")
-                    .should().callMethod(
-                            LastSettingsUpdate.class,
-                            "record",
-                            SettingsUpdateAttempt.class,
-                            SettingsUpdateResult.class)
-                    .orShould().callMethod(
-                            LastSettingsUpdate.class,
-                            "recordPreApplyWithoutAttempt",
-                            SettingsUpdateResult.class,
-                            Instant.class)
-                    .because("JMX adapters must not bypass update diagnostics ownership");
 
     @ArchTest
     @SuppressWarnings("unused")

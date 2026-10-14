@@ -49,7 +49,7 @@ class BeanTopologyTest {
                     TracingMetricsAutoConfiguration.class)
             )
             .withPropertyValues(
-                    "platform.tracing.control.channel=STATIC"
+                    "platform.tracing.control.channel=NONE"
             );
 
     private final ApplicationContextRunner controlledAgentRunner = contextRunner

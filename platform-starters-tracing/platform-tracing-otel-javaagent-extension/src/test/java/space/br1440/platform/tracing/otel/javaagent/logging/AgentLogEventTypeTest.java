@@ -57,8 +57,8 @@ class AgentLogEventTypeTest {
         AgentLogField[] fields = AgentLogField.values();
 
         // then
-        assertThat(eventTypes).hasSize(112);
-        assertThat(fields).hasSize(55);
+        assertThat(eventTypes).hasSize(114);
+        assertThat(fields).hasSize(60);
         assertThat(CausePolicy.values()).containsExactly(
                 CausePolicy.FORBIDDEN,
                 CausePolicy.OPTIONAL,
@@ -164,7 +164,7 @@ class AgentLogEventTypeTest {
     }
 
     @Test
-    void blank_values_are_allowed_only_for_offending_arguments() {
+    void blank_values_are_allowed_only_for_fields_with_valid_empty_state() {
         // given
         // when
         List<AgentLogField> blankAllowed = new ArrayList<>();
@@ -175,7 +175,11 @@ class AgentLogEventTypeTest {
         }
 
         // then
-        assertThat(blankAllowed).containsExactly(AgentLogField.OFFENDING_ARGUMENTS);
+        assertThat(blankAllowed).containsExactly(
+                AgentLogField.CHANGED_LEAVES,
+                AgentLogField.OFFENDING_ARGUMENTS
+        );
+        assertThat(AgentLogField.CHANGED_LEAVES.kind()).isEqualTo(AgentLogField.Kind.STRING);
         assertThat(AgentLogField.OFFENDING_ARGUMENTS.kind()).isEqualTo(AgentLogField.Kind.STRING);
     }
 

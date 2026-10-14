@@ -22,7 +22,7 @@ class TracingSettingsContractTest {
 
         // then
         assertThat(values).containsExactly(
-                TracingControlChannel.STATIC,
+                TracingControlChannel.NONE,
                 TracingControlChannel.CONFIG_SERVER,
                 TracingControlChannel.ACTUATOR);
     }
@@ -63,11 +63,11 @@ class TracingSettingsContractTest {
         // then
         assertThatThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Missing required property 'platform.tracing.control.channel'");
+                .hasMessageContaining("Property 'platform.tracing.control.channel' must not be blank");
     }
 
     @Test
-    void unknownControlChannelIsRejected() {
+    void legacyDevActuatorControlChannelIsRejected() {
         // given
         var environment = new MockEnvironment()
                 .withProperty("platform.tracing.control.channel", "DEV_ACTUATOR");
@@ -90,7 +90,7 @@ class TracingSettingsContractTest {
         // then
         assertThatThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
                 .isInstanceOf(TracingConfigurationGuardException.class)
-                .hasMessage("Tracing disabled is incompatible with CONFIG_SERVER authority.");
+                .hasMessage("Tracing disabled is incompatible with CONFIG_SERVER control channel.");
     }
 
     @Test

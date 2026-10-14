@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.otel.javaagent.diagnostics;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
@@ -12,8 +11,8 @@ public final class PlatformLogControl {
 
     private static final PlatformLogControl SHARED = new PlatformLogControl();
 
-    private final AtomicReference<TracingSettingsSource> acceptedPolicy = new AtomicReference<>(TracingSettingsSource.isolatedDefaults());
     private final AtomicLong bindCount = new AtomicLong();
+    private TracingSettingsSource active = TracingSettingsSource.isolatedDefaults();
     private final AtomicLong generation = new AtomicLong();
     private final Object bindLock = new Object();
     private long activeGeneration;
@@ -28,7 +27,7 @@ public final class PlatformLogControl {
 
     private void releaseActive() {
         synchronized (bindLock) {
-            acceptedPolicy.set(TracingSettingsSource.isolatedDefaults());
+            active = TracingSettingsSource.isolatedDefaults();
             activeGeneration = 0L;
         }
     }
@@ -46,18 +45,14 @@ public final class PlatformLogControl {
                         "PlatformLogControl already has an active accepted-policy registration");
             }
 
-            TracingSettingsSource previous = acceptedPolicy.get();
+            TracingSettingsSource previous = active;
             long token = generation.incrementAndGet();
-            acceptedPolicy.set(policy);
+            active = policy;
             activeGeneration = token;
             bindCount.incrementAndGet();
-            policy.updater().runLocked(this::projectConfiguredPolicy);
+            policy.projectDiagnosticsLevel();
             return new AcceptedPolicyRegistration(token, previous);
         }
-    }
-
-    private void projectConfiguredPolicy() {
-        runtime().applyLevel(acceptedPolicy.get().current().policy().diagnosticsLogLevel());
     }
 
     private static AgentLoggingRuntime runtime() {
@@ -87,9 +82,9 @@ public final class PlatformLogControl {
                     return;
                 }
 
-                acceptedPolicy.set(previous);
+                active = previous;
                 activeGeneration = 0L;
-                previous.updater().runLocked(PlatformLogControl.this::projectConfiguredPolicy);
+                previous.projectDiagnosticsLevel();
             }
         }
     }

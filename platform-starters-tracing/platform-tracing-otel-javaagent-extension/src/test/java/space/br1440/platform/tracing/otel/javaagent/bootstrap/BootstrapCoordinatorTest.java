@@ -877,6 +877,49 @@ class BootstrapCoordinatorTest {
     }
 
     @Test
+    void oversizedStartupRouteMapPreservesLimitMessageInBootstrapException() {
+        // given
+        BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
+        this.ownedCoordinator = coordinator;
+        Map<String, String> routeRatios = new HashMap<>();
+        for (int index = 0; index < 101; index++) {
+            routeRatios.put("/route-" + index, "0.5");
+        }
+
+        // when
+        BootstrapException failure = catchThrowableOfType(
+                BootstrapException.class,
+                () -> coordinator.prepare(config(Map.of(), routeRatios))
+        );
+
+        // then
+        assertThat(failure.failure().code()).isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
+        assertThat(failure.failure().cause())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("routeRatios must contain at most 100 entries, but had 101");
+    }
+
+    @Test
+    void oversizedStartupRoutePrefixPreservesLimitMessageInBootstrapException() {
+        // given
+        BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
+        this.ownedCoordinator = coordinator;
+        Map<String, String> routeRatios = Map.of("a".repeat(256), "0.5");
+
+        // when
+        BootstrapException failure = catchThrowableOfType(
+                BootstrapException.class,
+                () -> coordinator.prepare(config(Map.of(), routeRatios))
+        );
+
+        // then
+        assertThat(failure.failure().code()).isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
+        assertThat(failure.failure().cause())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("routePrefix must contain at most 255 UTF-8 bytes, but had 256");
+    }
+
+    @Test
     void unknown_span_attribute_validation_level_classified_as_CONFIGURATION_INITIALIZATION_FAILED() {
         // given
         BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
@@ -1074,13 +1117,21 @@ class BootstrapCoordinatorTest {
     }
 
     private static ConfigProperties config(Map<String, String> data) {
-        return new MapConfigProperties(new HashMap<>(data));
+        return config(data, Map.of());
     }
 
-    private record MapConfigProperties(Map<String, String> data) implements ConfigProperties {
+    private static ConfigProperties config(Map<String, String> data,
+                                           Map<String, String> routeRatios) {
+        return new MapConfigProperties(new HashMap<>(data), new HashMap<>(routeRatios));
+    }
 
-        private MapConfigProperties(Map<String, String> data) {
+    private record MapConfigProperties(Map<String, String> data,
+                                       Map<String, String> routeRatios) implements ConfigProperties {
+
+        private MapConfigProperties(Map<String, String> data,
+                                    Map<String, String> routeRatios) {
             this.data = new HashMap<>(data);
+            this.routeRatios = new HashMap<>(routeRatios);
         }
 
         @Override
@@ -1134,6 +1185,9 @@ class BootstrapCoordinatorTest {
 
         @Override
         public Map<String, String> getMap(String name) {
+            if (ExtensionPropertyNames.SAMPLING_ROUTE_RATIOS.equals(name)) {
+                return routeRatios;
+            }
             return Map.of();
         }
     }

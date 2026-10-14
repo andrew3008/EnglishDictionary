@@ -1,6 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.control.jmx.protocol;
 
-import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
@@ -10,9 +9,8 @@ import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.TabularData;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsRejectionReason;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
@@ -21,6 +19,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireGraphMeter;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireUtf8Meter;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
@@ -47,20 +46,9 @@ final class JmxControlOpenTypeCodec {
                 String.class
         );
 
-        String authority = token(
+        String writer = token(
                 request,
-                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_SOURCE_AUTHORITY
-        );
-
-        String trigger = token(
-                request,
-                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_APPLY_TRIGGER
-        );
-
-        String sourceRevision = value(
-                request,
-                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_SOURCE_REVISION,
-                String.class
+                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_WRITER
         );
 
         String candidateDigest = value(
@@ -80,23 +68,14 @@ final class JmxControlOpenTypeCodec {
         requirePolicyType(policyData);
 
         TracingSettings settings = decodePolicySafely(policyData);
-        requireWithinLogicalRequestBudget(
-                agentInstanceId,
-                attemptId,
-                authority,
-                trigger,
-                sourceRevision,
-                candidateDigest,
-                settings);
+        requireWithinLogicalRequestBudget(request);
         requireDigestMatches(candidateDigest, settings);
 
         return buildDecodedRequest(
                 agentInstanceId,
                 sequence,
                 attemptId,
-                authority,
-                trigger,
-                sourceRevision,
+                writer,
                 settings);
     }
 
@@ -285,28 +264,10 @@ final class JmxControlOpenTypeCodec {
         );
     }
 
-    private static void requireWithinLogicalRequestBudget(String agentInstanceId,
-                                                          String attemptId,
-                                                          String authority,
-                                                          String trigger,
-                                                          String sourceRevision,
-                                                          String candidateDigest,
-                                                          TracingSettings settings) {
-        long logicalBytes = Integer.BYTES + Long.BYTES + Double.BYTES + 5L;
-        logicalBytes += JmxWireUtf8Meter.utf8Length(agentInstanceId);
-        logicalBytes += JmxWireUtf8Meter.utf8Length(attemptId);
-        logicalBytes += JmxWireUtf8Meter.utf8Length(authority);
-        logicalBytes += JmxWireUtf8Meter.utf8Length(trigger);
-        logicalBytes += JmxWireUtf8Meter.utf8Length(sourceRevision);
-        logicalBytes += JmxWireUtf8Meter.utf8Length(candidateDigest);
-        logicalBytes += JmxWireUtf8Meter.utf8Length(settings.validationLevel().name());
-        logicalBytes += JmxWireUtf8Meter.utf8Length(settings.diagnosticsLogLevel().name());
-
-        for (String routePrefix : settings.samplingRouteRatios().keySet()) {
-            logicalBytes += JmxWireUtf8Meter.utf8Length(routePrefix) + Double.BYTES;
-        }
-
-        if (logicalBytes > JmxWireContract.MAX_LOGICAL_BYTES) {
+    private static void requireWithinLogicalRequestBudget(CompositeData request) {
+        try {
+            JmxWireGraphMeter.measure(request);
+        } catch (IllegalArgumentException violation) {
             throw rejected(
                     SettingsRejectionReason.LIMIT_EXCEEDED,
                     "Logical request exceeds %d bytes".formatted(JmxWireContract.MAX_LOGICAL_BYTES)
@@ -326,19 +287,15 @@ final class JmxControlOpenTypeCodec {
     private static DecodedSettingsUpdate buildDecodedRequest(String agentInstanceId,
                                                              long sequence,
                                                              String attemptId,
-                                                             String authority,
-                                                             String trigger,
-                                                             String sourceRevision,
+                                                             String writer,
                                                              TracingSettings settings) {
         try {
             return new DecodedSettingsUpdate(
                     new SettingsUpdateAttempt(
                             attemptId,
-                            Instant.now(),
-                            SettingsSourceAuthority.valueOf(authority),
-                            SettingsUpdateTrigger.valueOf(trigger),
-                            sourceRevision),
-                    new ExpectedSettingsRevision(AgentInstanceId.parse(agentInstanceId), sequence),
+                            SettingsWriter.valueOf(writer)
+                    ),
+                    new SettingsRevision(AgentInstanceId.parse(agentInstanceId), sequence),
                     settings);
         } catch (IllegalArgumentException | NullPointerException exception) {
             throw rejected(SettingsRejectionReason.INVALID_VALUE, "Settings update request is invalid");
