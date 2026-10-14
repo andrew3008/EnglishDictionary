@@ -212,7 +212,7 @@ class TracingBootstrapSettingsResolverTest {
 
     @ParameterizedTest
     @MethodSource("enabledParsingCases")
-    void parseEnabledReturnsValueWithoutThrowing(String rawValue, Optional<Boolean> expected) {
+    void parseEnabledReturnsValueWithoutThrowing(String rawValue, Boolean expected) {
         // given
         MockEnvironment environment = new MockEnvironment();
         if (rawValue != null) {
@@ -223,14 +223,14 @@ class TracingBootstrapSettingsResolverTest {
         Optional<Boolean> parsed = TracingBootstrapSettingsResolver.parseEnabled(environment);
 
         // then
-        assertThat(parsed).isEqualTo(expected);
+        assertThat(parsed).isEqualTo(Optional.ofNullable(expected));
     }
 
     @ParameterizedTest
     @MethodSource("controlChannelParsingCases")
     void parseControlChannelReturnsValueWithoutThrowing(String rawChannel,
                                                         String rawEnabled,
-                                                        Optional<TracingControlChannel> expected) {
+                                                        TracingControlChannel expected) {
         // given
         MockEnvironment environment = new MockEnvironment();
         if (rawChannel != null) {
@@ -245,7 +245,7 @@ class TracingBootstrapSettingsResolverTest {
                 TracingBootstrapSettingsResolver.parseControlChannel(environment);
 
         // then
-        assertThat(parsed).isEqualTo(expected);
+        assertThat(parsed).isEqualTo(Optional.ofNullable(expected));
     }
 
     @Test
@@ -385,24 +385,24 @@ class TracingBootstrapSettingsResolverTest {
 
     static Stream<Arguments> enabledParsingCases() {
         return Stream.of(
-                Arguments.of(null, Optional.of(true)),
-                Arguments.of(" true ", Optional.of(true)),
-                Arguments.of("FALSE", Optional.of(false)),
-                Arguments.of("", Optional.empty()),
-                Arguments.of("yes", Optional.empty())
+                Arguments.of(null, true),
+                Arguments.of(" true ", true),
+                Arguments.of("FALSE", false),
+                Arguments.of("", null),
+                Arguments.of("yes", null)
         );
     }
 
     static Stream<Arguments> controlChannelParsingCases() {
         return Stream.of(
-                Arguments.of(null, null, Optional.empty()),
-                Arguments.of(null, "false", Optional.of(TracingControlChannel.NONE)),
-                Arguments.of(" NONE ", null, Optional.of(TracingControlChannel.NONE)),
-                Arguments.of("config_server", null, Optional.of(TracingControlChannel.CONFIG_SERVER)),
-                Arguments.of("Actuator", null, Optional.of(TracingControlChannel.ACTUATOR)),
-                Arguments.of("", null, Optional.empty()),
-                Arguments.of("REMOTE", null, Optional.empty()),
-                Arguments.of(null, "", Optional.empty())
+                Arguments.of(null, null, null),
+                Arguments.of(null, "false", TracingControlChannel.NONE),
+                Arguments.of(" NONE ", null, TracingControlChannel.NONE),
+                Arguments.of("config_server", null, TracingControlChannel.CONFIG_SERVER),
+                Arguments.of("Actuator", null, TracingControlChannel.ACTUATOR),
+                Arguments.of("", null, null),
+                Arguments.of("REMOTE", null, null),
+                Arguments.of(null, "", null)
         );
     }
 }

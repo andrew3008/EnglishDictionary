@@ -454,7 +454,7 @@ class TracingSettingsRefreshCoalescerTest {
                     .distinct()
                     .toList();
             assertThat(attemptIds).hasSize(1);
-            assertThat(attemptIds.get(0)).isNotBlank();
+            assertThat(attemptIds.getFirst()).isNotBlank();
         } finally {
             coalescerLogger.detachAppender(appender);
             transportLogger.detachAppender(appender);

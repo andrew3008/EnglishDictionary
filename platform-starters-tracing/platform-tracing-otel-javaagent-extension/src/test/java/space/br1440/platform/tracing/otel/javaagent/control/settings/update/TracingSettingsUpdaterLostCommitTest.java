@@ -21,6 +21,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Traci
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
@@ -83,7 +84,7 @@ class TracingSettingsUpdaterLostCommitTest {
         assertThat(result.outcome()).isEqualTo(SettingsUpdateStatus.APPLIED);
         assertThat(store.current().acceptedSequence()).isEqualTo(before.acceptedSequence() + 1L);
         assertThat(capture.events())
-                .extracting(event -> event.eventName())
+                .extracting(CapturedLogEvent::eventName)
                 .containsExactly("DIAGNOSTICS_LOG_LEVEL_APPLY_FAILED", "TRACING_SETTINGS_UPDATE_RESOLVED");
     }
 
@@ -118,6 +119,7 @@ class TracingSettingsUpdaterLostCommitTest {
         );
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static TracingSettings withRatio(TracingSettings current, double ratio) {
         return TracingSettings.of(
                 current.samplingEnabled(),

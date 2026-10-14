@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.autoconfigure.reactive;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
+import jakarta.annotation.Nonnull;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -159,7 +160,7 @@ class MdcPropagationWebFluxIntegrationTest {
             implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
         @Override
-        public void initialize(ConfigurableApplicationContext applicationContext) {
+        public void initialize(@Nonnull ConfigurableApplicationContext applicationContext) {
             Hooks.disableAutomaticContextPropagation();
         }
     }

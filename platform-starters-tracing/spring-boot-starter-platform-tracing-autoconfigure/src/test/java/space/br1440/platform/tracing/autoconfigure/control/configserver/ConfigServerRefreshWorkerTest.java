@@ -157,15 +157,19 @@ class ConfigServerRefreshWorkerTest {
                 .withPropertyValues("platform.tracing.control.channel=CONFIG_SERVER");
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static void awaitState(Thread thread, Thread.State expected) {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(BOUND_SECONDS);
+
         while (thread.getState() != expected) {
             assertThat(thread.isAlive())
                     .as("thread %s ended before reaching %s", thread.getName(), expected)
                     .isTrue();
+
             assertThat(System.nanoTime())
                     .as("thread %s did not reach %s", thread.getName(), expected)
                     .isLessThan(deadline);
+
             Thread.onSpinWait();
         }
     }
@@ -177,6 +181,7 @@ class ConfigServerRefreshWorkerTest {
 
     private static ListAppender<ILoggingEvent> attachAppender() {
         Logger logger = (Logger) LoggerFactory.getLogger(ConfigServerRefreshWorker.class);
+
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
         appender.start();
         logger.addAppender(appender);

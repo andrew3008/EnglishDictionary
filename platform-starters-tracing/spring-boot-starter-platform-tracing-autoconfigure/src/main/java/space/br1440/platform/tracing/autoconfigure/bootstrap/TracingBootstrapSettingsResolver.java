@@ -12,7 +12,6 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.PropertySource;
 
-import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.internal.WinningPropertySourceTraversal;
 
@@ -99,51 +98,11 @@ public final class TracingBootstrapSettingsResolver {
         }
 
         if (controlChannel == TracingControlChannel.CONFIG_SERVER) {
-            throw new TracingConfigurationGuardException(
-                    "Tracing disabled is incompatible with CONFIG_SERVER control channel."
-            );
+            throw new TracingConfigurationGuardException("Tracing disabled is incompatible with CONFIG_SERVER control channel.");
         }
 
         if (controlChannel == TracingControlChannel.ACTUATOR) {
-            throw new TracingConfigurationGuardException(
-                    "Tracing disabled is incompatible with ACTUATOR control channel."
-            );
-        }
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private static <E extends Enum<E>> E parseRequiredEnum(Environment environment,
-                                                           String propertyName,
-                                                           Class<E> enumType) {
-        String raw = environment.getProperty(propertyName);
-        if (StringUtils.isNullOrBlank(raw)) {
-            throw new IllegalStateException("Missing required property '%s'".formatted(propertyName));
-        }
-
-        if (!raw.equals(raw.trim())) {
-            throw new IllegalStateException("""
-                    Invalid property '%s'='%s'. Surrounding whitespace is not accepted. \
-                    Accepted values: %s""".formatted(propertyName, raw, List.of(enumType.getEnumConstants())));
-        }
-
-        return parseEnumValue(propertyName, raw, enumType);
-    }
-
-    private static <E extends Enum<E>> E parseEnumValue(String propertyName,
-                                                        String raw,
-                                                        Class<E> enumType) {
-        String normalized = raw.trim().toUpperCase(Locale.ROOT);
-        if (normalized.isEmpty()) {
-            throw new IllegalStateException("Property '%s' must not be blank".formatted(propertyName));
-        }
-
-        try {
-            return Enum.valueOf(enumType, normalized);
-        } catch (IllegalArgumentException exception) {
-            throw new IllegalStateException("""
-                    Invalid property '%s'='%s'. \
-                    Accepted values: %s""".formatted(propertyName, raw, List.of(enumType.getEnumConstants())),
-                    exception);
+            throw new TracingConfigurationGuardException("Tracing disabled is incompatible with ACTUATOR control channel.");
         }
     }
 
@@ -151,7 +110,8 @@ public final class TracingBootstrapSettingsResolver {
         String propertyName = TracingBootstrapPropertyNames.ENABLED;
         String raw = environment.getProperty(propertyName);
         return new IllegalStateException(
-                "Invalid property '%s'='%s'. Accepted values: true, false".formatted(propertyName, raw)
+                "Invalid property '%s'='%s'. Accepted values: true, false"
+                        .formatted(propertyName, raw)
         );
     }
 
@@ -161,13 +121,14 @@ public final class TracingBootstrapSettingsResolver {
         if (raw == null) {
             return new IllegalStateException("Missing required property '%s'".formatted(propertyName));
         }
+
         if (raw.isBlank()) {
             return new IllegalStateException("Property '%s' must not be blank".formatted(propertyName));
         }
 
         return new IllegalStateException(
                 "Invalid property '%s'='%s'. Accepted values: %s"
-                        .formatted(propertyName, raw, List.of(TracingControlChannel.values()))
+                .formatted(propertyName, raw, List.of(TracingControlChannel.values()))
         );
     }
 
@@ -181,12 +142,14 @@ public final class TracingBootstrapSettingsResolver {
             if (hint.isBlank()) {
                 throw new IllegalStateException("""
                         Obsolete Spring-only property '%s' is no longer bound or applied. \
-                        Remove it from configuration.""".formatted(obsolete.getKey()));
+                        Remove it from configuration.""".formatted(obsolete.getKey())
+                );
             }
 
             throw new IllegalStateException("""
                     Obsolete Spring-only property '%s' is no longer bound or applied. \
-                    Use '%s'.""".formatted(obsolete.getKey(), hint));
+                    Use '%s'.""".formatted(obsolete.getKey(), hint)
+            );
         }
     }
 
@@ -209,7 +172,8 @@ public final class TracingBootstrapSettingsResolver {
 
         log.warn("""
                 Spring Environment contains Java-agent bootstrap-only properties {}. \
-                Spring does not bind or apply these properties.""", present);
+                Spring does not bind or apply these properties.""", present
+        );
     }
 
     private static boolean isSpringConfigData(String sourceName) {

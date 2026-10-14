@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.context.environment.EnvironmentChangeEvent;
 import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.env.PropertySource;
 import org.springframework.core.env.SystemEnvironmentPropertySource;
 import org.springframework.mock.env.MockEnvironment;
 
@@ -730,7 +731,9 @@ class ConfigServerOutageTest {
                                                                           String messageFragment) {
         ConfigServerSettingsManifestBuilder builder = new ConfigServerSettingsManifestBuilder(
                 environment,
-                new ConfigServerSettingsProvenanceClassifier(environment));
+                new ConfigServerSettingsProvenanceClassifier(environment)
+        );
+
         AtomicInteger applyCount = new AtomicInteger();
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
                 builder,
@@ -739,10 +742,12 @@ class ConfigServerOutageTest {
                     return delivery(TracingSettingsDeliveryResult.APPLIED);
                 }, readerWith(1L)),
                 Runnable::run);
+
         Logger logger = (Logger) LoggerFactory.getLogger(TracingSettingsRefreshCoalescer.class);
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
         appender.start();
         logger.addAppender(appender);
+
         try {
             corrupt.run();
             assertThatThrownBy(coalescer::deliverInitial)
@@ -757,6 +762,7 @@ class ConfigServerOutageTest {
             corrupt.run();
             coalescer.onRefreshEvent();
             assertThat(applyCount.get()).isEqualTo(1);
+
             String logs = appender.list.stream()
                     .map(ILoggingEvent::getFormattedMessage)
                     .reduce("", (left, right) -> left + "\n" + right);
@@ -789,7 +795,12 @@ class ConfigServerOutageTest {
         while (!"configserver:outage".equals(environment.getPropertySources().iterator().next().getName())) {
             environment.getPropertySources().remove(environment.getPropertySources().iterator().next().getName());
         }
-        MapPropertySource source = (MapPropertySource) environment.getPropertySources().get("configserver:outage");
+
+        PropertySource<?> propertySource = environment.getPropertySources().get("configserver:outage");
+        if (!(propertySource instanceof MapPropertySource source)) {
+            throw new IllegalStateException("Expected MapPropertySource 'configserver:outage'");
+        }
+
         Map<String, Object> values = source.getSource();
         values.clear();
         values.putAll(authoritativePolicy());

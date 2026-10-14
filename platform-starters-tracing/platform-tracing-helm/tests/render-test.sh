@@ -70,8 +70,8 @@ write_route_values() {
   } >"$1"
 }
 
-tests_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-helm_root=$(CDPATH= cd -- "$tests_dir/.." && pwd)
+tests_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+helm_root=$(CDPATH='' cd -- "$tests_dir/.." && pwd)
 source_chart=${1:-"$helm_root/platform-tracing"}
 [ -f "$source_chart/Chart.yaml" ] || die "Library chart is missing Chart.yaml: $source_chart"
 
@@ -85,8 +85,6 @@ library_chart="$temp_root/platform-tracing-helm/platform-tracing"
 consumer_chart="$temp_root/platform-tracing-helm/tests/consumer"
 invalid_render="$temp_root/invalid-render.log"
 
-POLICY_ENV="PLATFORM_TRACING_SAMPLING_ENABLED PLATFORM_TRACING_SAMPLING_RATIO PLATFORM_TRACING_SAMPLING_ROUTE_RATIOS PLATFORM_TRACING_JAVAAGENT_SAMPLING_DROP_PATHS PLATFORM_TRACING_JAVAAGENT_SAMPLING_FORCE_RECORD_VALUES PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL PLATFORM_TRACING_EXPORTER_ENABLED PLATFORM_TRACING_PROPAGATION_TRACE_CONTROL_HEADERS_ENABLED PLATFORM_TRACING_DIAGNOSTICS_LOG_LEVEL"
-REMOVED_ENV="PLATFORM_TRACING_CONTROL_CHANNEL PLATFORM_TRACING_METRICS_ENABLED OTEL_TRACES_EXPORTER OTEL_EXPORTER_OTLP_TRACES_ENDPOINT OTEL_EXPORTER_OTLP_TRACES_PROTOCOL"
 WORKLOAD_KINDS="Deployment Job CronJob"
 
 helm lint --strict "$library_chart"
@@ -105,7 +103,16 @@ assert_count 3 "$disabled.tsv" "${TAB}PLATFORM_TRACING_X${TAB}" "Disabled tracin
 
 minimal="$temp_root/minimal.yaml"
 render --values "$consumer_chart/values-minimal.yaml" >"$minimal"
-assert_absent "$minimal" $POLICY_ENV
+assert_absent "$minimal" \
+  PLATFORM_TRACING_SAMPLING_ENABLED \
+  PLATFORM_TRACING_SAMPLING_RATIO \
+  PLATFORM_TRACING_SAMPLING_ROUTE_RATIOS \
+  PLATFORM_TRACING_JAVAAGENT_SAMPLING_DROP_PATHS \
+  PLATFORM_TRACING_JAVAAGENT_SAMPLING_FORCE_RECORD_VALUES \
+  PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL \
+  PLATFORM_TRACING_EXPORTER_ENABLED \
+  PLATFORM_TRACING_PROPAGATION_TRACE_CONTROL_HEADERS_ENABLED \
+  PLATFORM_TRACING_DIAGNOSTICS_LOG_LEVEL
 
 positive="$temp_root/positive.yaml"
 render --values "$consumer_chart/values-positive.yaml" >"$positive"
@@ -134,7 +141,12 @@ OTEL_SERVICE_NAME=tracing-render-harness
 OTEL_RESOURCE_ATTRIBUTES=service.version=2.0.0,deployment.environment.name=test
 APPLICATION_MODE=render-test
 EOF
-assert_absent "$positive" $REMOVED_ENV
+assert_absent "$positive" \
+  PLATFORM_TRACING_CONTROL_CHANNEL \
+  PLATFORM_TRACING_METRICS_ENABLED \
+  OTEL_TRACES_EXPORTER \
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT \
+  OTEL_EXPORTER_OTLP_TRACES_PROTOCOL
 
 assert_render_fails "platformTracing.controlChannel is not a supported key" "controlChannel with tracing enabled" \
   --values "$consumer_chart/values-positive.yaml" --set-string platformTracing.controlChannel=CONFIG_SERVER

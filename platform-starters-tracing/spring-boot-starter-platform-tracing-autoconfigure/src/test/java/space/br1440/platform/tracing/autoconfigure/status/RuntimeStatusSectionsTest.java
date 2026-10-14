@@ -47,10 +47,10 @@ class RuntimeStatusSectionsTest {
                 seen,
                 false);
 
-        Map<String, Object> presentExport = exportSection(Optional.of(observation), List.of());
-        Map<String, Object> absentExport = exportSection(Optional.empty(), List.of(diagnostic));
+        Map<String, Object> presentExport = exportSection(observation, List.of());
+        Map<String, Object> absentExport = exportSection(null, List.of(diagnostic));
         List<Map<String, Object>> diagnostics = RuntimeStatusSections.jmxContractDiagnostics(
-                client(Optional.empty(), List.of(diagnostic)));
+                client(null, List.of(diagnostic)));
 
         assertThat(presentExport).containsOnlyKeys(
                 "queueCapacity",
@@ -85,7 +85,7 @@ class RuntimeStatusSectionsTest {
         Map<String, Object> spanTimeout = (Map<String, Object>) RuntimeStatusSections.runtime(
                 NoopTraceOperations.INSTANCE,
                 NoOpTracingRuntime.noop(),
-                client(Optional.empty(), List.of())).get("spanTimeout");
+                client(null, List.of())).get("spanTimeout");
 
         assertThat(spanTimeout).containsOnlyKeys(
                 "capture",
@@ -110,7 +110,7 @@ class RuntimeStatusSectionsTest {
         assertThat(spanTimeout).containsEntry("present", false).containsEntry("scannerState", null);
     }
 
-    private static Map<String, Object> exportSection(Optional<ExportObservation> observation,
+    private static Map<String, Object> exportSection(ExportObservation observation,
                                                      List<JmxDiagnosticSnapshot> diagnostics) {
         @SuppressWarnings("unchecked")
         Map<String, Object> export = (Map<String, Object>) RuntimeStatusSections.runtime(
@@ -120,7 +120,7 @@ class RuntimeStatusSectionsTest {
         return export;
     }
 
-    private static PlatformTracingJmxClient client(Optional<ExportObservation> observation,
+    private static PlatformTracingJmxClient client(ExportObservation observation,
                                                    List<JmxDiagnosticSnapshot> diagnostics) {
         PlatformTracingJmxClient jmx = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
         when(jmx.sampling().observation()).thenReturn(Optional.empty());
@@ -129,7 +129,7 @@ class RuntimeStatusSectionsTest {
         when(jmx.processorMetrics().observation()).thenReturn(Optional.empty());
         when(jmx.diagnostics().observation()).thenReturn(Optional.empty());
         when(jmx.registrationSnapshot().allRegistered()).thenReturn(false);
-        when(jmx.export().observation()).thenReturn(observation);
+        when(jmx.export().observation()).thenReturn(Optional.ofNullable(observation));
         when(jmx.jmxContractDiagnostics()).thenReturn(diagnostics);
         return jmx;
     }
