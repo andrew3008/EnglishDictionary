@@ -23,31 +23,12 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
-/**
- * Проверяет межмодульный паритет транспортного кодека от Spring к агенту.
- * <p>
- * Класс намеренно объявлен во внутреннем пакете агента {@code control.jmx.protocol}, как и
- * {@link AgentToSpringWireCodecParityTest} с
- * {@link TracingSettingsDigestAgentParityTest}. Это позволяет напрямую вызвать
- * пакетный декодер {@code JmxControlOpenTypeCodec.decode(CompositeData)} без расширения
- * производственного API агента и ручного дублирования транспортной схемы.
- * <p>
- * Проверяемый поток данных для каждого позитивного сценария:
- * <pre>
- *   Spring PlatformJmxRequestEncoder.encodeApplyRequest()   [реальный кодировщик Spring]
- *   -&gt; javax.management.openmbean.CompositeData             [транспорт]
- *   -&gt; Agent JmxControlOpenTypeCodec.decode()               [реальный декодер агента]
- *   -&gt; семантическое равенство каждого поля
- * </pre>
- * Это направление обратно {@link AgentToSpringWireCodecParityTest}: тот тест сопоставляет
- * кодировщик агента с декодером Spring, а этот — кодировщик Spring с декодером агента.
- */
 class SpringToAgentWireCodecParityTest {
 
     private static final JmxControlOpenTypeCodec AGENT_CODEC = new JmxControlOpenTypeCodec();
 
     @Test
-    void expectedBaseAttemptMetadataDigestAndPolicyRoundTripThroughRealAgentDecoder() {
+    void expectedBaseAttemptMetadataAndPolicyRoundTripThroughRealAgentDecoder() {
         String agentInstanceId = UUID.randomUUID().toString();
         String attemptId = UUID.randomUUID().toString();
         DecodedSettingsUpdate decoded = roundTrip(

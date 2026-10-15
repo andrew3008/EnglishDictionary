@@ -1,6 +1,10 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.lang.management.ManagementFactory;
 import java.util.Collections;
@@ -10,6 +14,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.support.DomainSnapshotEndpoints;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
@@ -21,12 +27,6 @@ import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
-/**
- * Проверяет tri-state семантику {@link PlatformTracingJmxDomainHealthMetricsBinder} на реальном
- * {@code PlatformMBeanServer}: {@code registered}/{@code readable}/{@code owner.present} должны
- * различать честный {@code 0} (домен опрошен и недоступен) от {@code NaN} (домен ещё не читался
- * успешно), а не схлопывать оба случая в один and тот же числовой ноль.
- */
 class PlatformTracingJmxDomainHealthMetricsBinderTest {
 
     private static final String REGISTERED_METRIC = "platform.tracing.jmx.domain.registered";
@@ -35,11 +35,16 @@ class PlatformTracingJmxDomainHealthMetricsBinderTest {
     private static final String OWNER_PRESENT_METRIC = "platform.tracing.jmx.owner.present";
 
     private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+    private AgentReadinessCoherenceGuard coherenceGuard;
     private SimpleMeterRegistry registry;
 
     @BeforeEach
     void setUp() {
-        PlatformTracingJmxClient client = new PlatformTracingJmxClient(server);
+        coherenceGuard = mock(AgentReadinessCoherenceGuard.class);
+        PlatformTracingJmxClient client = new PlatformTracingJmxClient(
+                server,
+                coherenceGuard
+        );
         registry = new SimpleMeterRegistry();
         new PlatformTracingJmxDomainHealthMetricsBinder(client).bindTo(registry);
     }
@@ -77,6 +82,29 @@ class PlatformTracingJmxDomainHealthMetricsBinderTest {
         registerSamplingMBean();
 
         assertThat(ownerGauge()).isEqualTo(0.0);
+    }
+
+    @Test
+    void terminalCoherenceFailureProducesEmptyObservationWithoutEscapingScrape() throws Exception {
+        // given
+        AgentReadinessCoherenceException coherenceFailure =
+                mock(AgentReadinessCoherenceException.class);
+        doThrow(coherenceFailure)
+                .when(coherenceGuard)
+                .requirePinnedAgentInstanceId(anyString());
+        when(coherenceGuard.terminalFailureCode())
+                .thenReturn(AgentReadinessCoherenceGuard.PINNED_ANCHOR_CHANGED);
+        registerSamplingMBean();
+
+        // when
+        double readable = gauge(READABLE_METRIC);
+        double ownerPresent = ownerGauge();
+
+        // then
+        assertThat(readable).isZero();
+        assertThat(ownerPresent).isNaN();
+        assertThat(coherenceGuard.terminalFailureCode())
+                .isEqualTo(AgentReadinessCoherenceGuard.PINNED_ANCHOR_CHANGED);
     }
 
     private double gauge(String name) {

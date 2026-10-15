@@ -72,7 +72,7 @@ class TracingControlEndpointTest {
     @Test
     void mapsDeliveryOutcomesToHttpStatuses() {
         applier.result = TracingSettingsDeliveryResult.REJECTED;
-        applier.messageCode = "INVALID_VALUE";
+        applier.messageCode = "AGENT_INSTANCE_MISMATCH";
         assertThat(updateSampling()).extracting(WebEndpointResponse::getStatus).isEqualTo(422);
 
         applier.result = TracingSettingsDeliveryResult.STALE;

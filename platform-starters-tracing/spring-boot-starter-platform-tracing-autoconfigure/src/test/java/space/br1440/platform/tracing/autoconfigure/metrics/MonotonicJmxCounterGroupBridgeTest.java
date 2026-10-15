@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -15,14 +16,9 @@ import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
 
-/**
- * Проверяет владелец-уровневую модель конкурентности {@link MonotonicJmxCounterGroupBridge}:
- * инициализацию, накопление дельт, честный reset при смене generation, {@code AGENT_INSTANCE_CHANGED}
- * как защитную ветку, обратные аномалии по отдельному ключу и coalescing-окно на injected
- * {@link MonotonicJmxCounterGroupBridge.Ticker}.
- */
 class MonotonicJmxCounterGroupBridgeTest {
 
     private enum Key { A, B }
@@ -133,6 +129,26 @@ class MonotonicJmxCounterGroupBridgeTest {
     }
 
     @Test
+    void coherenceFailureKeepsLastAccumulatedSnapshot() {
+        // given
+        AtomicLong nanoTime = new AtomicLong(0);
+        FakeSource source = new FakeSource();
+        source.publish(Map.of(Key.A, 7L, Key.B, 1L), 1);
+        MonotonicJmxCounterGroupBridge<Key> bridge = newBridge(source, nanoTime);
+        bridge.count(Key.A);
+        nanoTime.addAndGet(WINDOW_NANOS + 1);
+        source.failWith(mock(AgentReadinessCoherenceException.class));
+
+        // when
+        double first = bridge.count(Key.A);
+        double second = bridge.count(Key.B);
+
+        // then
+        assertThat(first).isEqualTo(7.0);
+        assertThat(second).isEqualTo(1.0);
+    }
+
+    @Test
     void coalescingWindowSuppressesRefreshUntilElapsed() {
         AtomicLong nanoTime = new AtomicLong(0);
         FakeSource source = new FakeSource();
@@ -198,6 +214,7 @@ class MonotonicJmxCounterGroupBridgeTest {
 
         private final AtomicLong reads = new AtomicLong();
         private volatile JmxOwnerState<Map<Key, Long>> current;
+        private volatile AgentReadinessCoherenceException failure;
 
         void publish(Map<Key, Long> values, long generation) {
             EnumMap<Key, Long> copy = new EnumMap<>(values);
@@ -208,9 +225,16 @@ class MonotonicJmxCounterGroupBridgeTest {
             current = null;
         }
 
+        void failWith(AgentReadinessCoherenceException coherenceFailure) {
+            failure = coherenceFailure;
+        }
+
         @Override
         public Optional<JmxOwnerState<Map<Key, Long>>> get() {
             reads.incrementAndGet();
+            if (failure != null) {
+                throw failure;
+            }
             return Optional.ofNullable(current);
         }
     }

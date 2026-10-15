@@ -117,8 +117,6 @@ public final class JmxWireContractGenerator {
         properties.setProperty("schema.id", contract.schemaId());
         properties.setProperty("schema.sha256", contract.schemaDigest());
         properties.setProperty("descriptors.sha256", contract.descriptorDigest());
-        properties.setProperty("policyDigest.algorithm", contract.policyDigestAlgorithm());
-        properties.setProperty("policyDigest.version", Integer.toString(contract.policyDigestVersion()));
         properties.setProperty("deterministic", "true");
         properties.setProperty("planeParity", "true");
 

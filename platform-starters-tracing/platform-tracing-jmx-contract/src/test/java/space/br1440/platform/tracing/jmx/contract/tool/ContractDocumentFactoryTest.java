@@ -21,8 +21,6 @@ class ContractDocumentFactoryTest {
         assertThat(contract.schemaId()).isEqualTo("platform-tracing-jmx-wire-contract");
         assertThat(contract.schemaDigest()).hasSize(64);
         assertThat(contract.descriptorDigest()).hasSize(64);
-        assertThat(contract.policyDigestAlgorithm()).isEqualTo("SHA-256");
-        assertThat(contract.policyDigestVersion()).isEqualTo(1);
     }
 
     @Test
@@ -95,15 +93,15 @@ class ContractDocumentFactoryTest {
         // given
         Path manifest = patchedManifest(
                 tempDir,
-                "  maxLogicalBytes: 33571",
-                "  maxLogicalBytes: 33572"
+                "  maxLogicalBytes: 33492",
+                "  maxLogicalBytes: 33493"
         );
 
         // when
         // then
         assertThatThrownBy(() -> ContractDocumentFactory.load(manifest))
                 .isInstanceOf(ContractValidationException.class)
-                .hasMessageContaining("must equal the minimum worst-case budget: 33571")
+                .hasMessageContaining("must equal the minimum worst-case budget: 33492")
                 .satisfies(exception ->
                         assertThat(((ContractValidationException) exception).code())
                                 .isEqualTo("JMX_SCHEMA_LOGICAL_BUDGET_INVALID"));

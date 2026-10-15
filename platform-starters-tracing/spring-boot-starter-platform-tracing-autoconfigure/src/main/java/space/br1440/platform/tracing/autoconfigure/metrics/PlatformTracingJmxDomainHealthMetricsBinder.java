@@ -1,9 +1,9 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
 import java.time.Duration;
-
 import jakarta.annotation.Nonnull;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.ExportObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorMetricsObservation;
@@ -125,7 +125,7 @@ final class PlatformTracingJmxDomainHealthMetricsBinder implements MeterBinder {
                 .description("MBean registration tri-state: 1 registered, 0 not registered, NaN unknown")
                 .register(registry);
 
-        Gauge.builder(READABLE_METRIC, client, readable::read)
+        Gauge.builder(READABLE_METRIC, client, c -> readOrDefault(c, readable, 0.0))
                 .tags("domain", domain)
                 .description("1 if the last JMX read for this domain decoded successfully, otherwise 0")
                 .register(registry);
@@ -140,7 +140,7 @@ final class PlatformTracingJmxDomainHealthMetricsBinder implements MeterBinder {
                            String domain,
                            String owner,
                            DomainMetricValue ownerPresent) {
-        Gauge.builder(OWNER_PRESENT_METRIC, client, ownerPresent::read)
+        Gauge.builder(OWNER_PRESENT_METRIC, client, c -> readOrDefault(c, ownerPresent, Double.NaN))
                 .tags("domain", domain, "owner", owner)
                 .description("Owner presence tri-state: 1 present, 0 absent, NaN when the domain itself is unreadable")
                 .register(registry);
@@ -160,6 +160,16 @@ final class PlatformTracingJmxDomainHealthMetricsBinder implements MeterBinder {
 
     private static double ownerPresentValue(JmxOwnerState<?> ownerState) {
         return (ownerState instanceof JmxOwnerState.Present<?>) ? 1.0 : 0.0;
+    }
+
+    private static double readOrDefault(PlatformTracingJmxClient client,
+                                        DomainMetricValue metric,
+                                        double defaultValue) {
+        try {
+            return metric.read(client);
+        } catch (AgentReadinessCoherenceException ignored) {
+            return defaultValue;
+        }
     }
 
     @FunctionalInterface

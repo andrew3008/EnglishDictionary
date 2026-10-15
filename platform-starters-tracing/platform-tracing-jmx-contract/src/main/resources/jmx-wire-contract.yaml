@@ -208,7 +208,6 @@ openTypes:
     typeName: space.br1440.platform.tracing.control.ApplySnapshotRequest.v1
     fields:
       - { name: attemptId, type: string, required: true, nullable: false }
-      - { name: candidateDigest, type: string, required: true, nullable: false }
       - { name: expectedAcceptedSequence, type: long, required: true, nullable: false }
       - { name: expectedAgentInstanceId, type: string, required: true, nullable: false }
       - { name: runtimePolicy, type: "composite:runtimePolicy", required: true, nullable: false }
@@ -221,7 +220,6 @@ openTypes:
       - { name: attemptId, type: string, required: true, nullable: false }
       - { name: messageCode, type: string, required: true, nullable: false }
       - { name: outcome, type: string, required: true, nullable: false }
-      - { name: payloadDigest, type: string, required: true, nullable: false }
       - { name: agentInstanceId, type: string, required: true, nullable: false }
       - { name: violationCodes, type: stringArray, required: true, nullable: false }
   acceptedPolicySnapshot:
@@ -483,7 +481,7 @@ readinessEvidence:
 wireGraph:
   maxDepth: 16
   maxElements: 4096
-  maxLogicalBytes: 33571
+  maxLogicalBytes: 33492
   maxStringUtf8Bytes: 4096
   maxRouteEntries: 100
   maxRoutePrefixUtf8Bytes: 255
@@ -511,18 +509,3 @@ wireGraph:
     - java.lang.String
     - long
     - short
-
-policyDigest:
-  algorithmId: SHA-256
-  algorithmVersion: 1
-  encodingVersion: 1
-  domainSeparator: platform-tracing-policy-v1
-  routeOrdering: unsigned-utf8-lexicographic
-  fields:
-    - { id: 1, name: samplingEnabled, type: boolean }
-    - { id: 2, name: samplingRatio, type: double }
-    - { id: 3, name: samplingRouteRatios, type: sortedUtf8DoubleMap }
-    - { id: 4, name: validationLevel, type: asciiToken }
-    - { id: 5, name: exporterEnabled, type: boolean }
-    - { id: 6, name: traceControlHeadersEnabled, type: boolean }
-    - { id: 7, name: diagnosticsLogLevel, type: asciiToken }

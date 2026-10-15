@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import jakarta.annotation.Nonnull;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.scrubbing.ScrubbingObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.scrubbing.ScrubbingValues;
@@ -123,11 +124,15 @@ final class PlatformTracingScrubbingMetricsBinder implements MeterBinder {
     }
 
     private Optional<ScrubbingValues> currentValues() {
-        return client.scrubbing().observation()
-                .map(ScrubbingObservation::owner)
-                .flatMap(state -> (state instanceof JmxOwnerState.Present<ScrubbingValues> present)
-                        ? Optional.of(present.values())
-                        : Optional.empty());
+        try {
+            return client.scrubbing().observation()
+                    .map(ScrubbingObservation::owner)
+                    .flatMap(state -> (state instanceof JmxOwnerState.Present<ScrubbingValues> present)
+                            ? Optional.of(present.values())
+                            : Optional.empty());
+        } catch (AgentReadinessCoherenceException ignored) {
+            return Optional.empty();
+        }
     }
 
     private String scrubbingAgentInstanceId() {

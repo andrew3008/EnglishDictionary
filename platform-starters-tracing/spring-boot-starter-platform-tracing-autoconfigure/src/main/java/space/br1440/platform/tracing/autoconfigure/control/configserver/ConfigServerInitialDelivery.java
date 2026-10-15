@@ -12,16 +12,16 @@ public final class ConfigServerInitialDelivery implements SmartLifecycle {
 
     static final int PHASE = SmartLifecycle.DEFAULT_PHASE - 4096;
 
-    private final TracingSettingsRefreshCoalescer coalescer;
+    private final ConfigServerTracingSettingsSynchronizer synchronizer;
     private volatile boolean running;
 
-    ConfigServerInitialDelivery(TracingSettingsRefreshCoalescer coalescer) {
-        this.coalescer = requireNonNull(coalescer, "coalescer");
+    ConfigServerInitialDelivery(ConfigServerTracingSettingsSynchronizer synchronizer) {
+        this.synchronizer = requireNonNull(synchronizer, "synchronizer");
     }
 
     @Override
     public void start() {
-        SettingsDelivery delivery = coalescer.deliverInitial();
+        SettingsDelivery delivery = synchronizer.deliverInitial();
         if (!isSuccessful(delivery.outcome())) {
             throw new TracingConfigurationGuardException(
                     "[CONFIG_SERVER startup] initial settings delivery failed: outcome=%s, attemptId=%s, messageCode=%s"

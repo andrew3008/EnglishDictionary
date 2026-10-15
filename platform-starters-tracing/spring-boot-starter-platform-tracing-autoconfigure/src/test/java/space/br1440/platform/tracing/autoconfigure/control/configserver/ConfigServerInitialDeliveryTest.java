@@ -4,9 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static space.br1440.platform.tracing.autoconfigure.support.RecordingSettingsWriter.recordingSettingsWriter;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,31 +90,14 @@ class ConfigServerInitialDeliveryTest {
         // when / then
         assertThatThrownBy(delivery::start)
                 .isInstanceOf(TracingConfigurationGuardException.class)
-                .hasMessageContaining("outcome=FAILED, attemptId=%s, messageCode=INTERNAL_FAILURE".formatted(ATTEMPT_ID));
+                .hasMessageContaining(
+                        "outcome=FAILED, attemptId=%s, messageCode=INTERNAL_FAILURE".formatted(ATTEMPT_ID));
         assertThat(delivery.isRunning()).isFalse();
         assertThat(applier.applyCalls()).isEqualTo(1);
     }
 
     @Test
-    void initialDeliveryStaleRetriesOnceAndMarksRunning() {
-        // given
-        RecordingApplier applier = RecordingApplier.queued(
-                TracingSettingsDeliveryResult.STALE,
-                TracingSettingsDeliveryResult.APPLIED);
-        ConfigServerInitialDelivery delivery = newDelivery(applier);
-
-        // when
-        delivery.start();
-
-        // then
-        assertThat(delivery.isRunning())
-                .as("STALE is a concurrent-writer race; the bounded retry must be able to start the delivery")
-                .isTrue();
-        assertThat(applier.applyCalls()).isEqualTo(2);
-    }
-
-    @Test
-    void initialDeliveryStaleTwiceBlocksStartupAndStaysBounded() {
+    void initialDeliveryStaleBlocksStartupWithoutRetry() {
         // given
         RecordingApplier applier = RecordingApplier.always(TracingSettingsDeliveryResult.STALE);
         ConfigServerInitialDelivery delivery = newDelivery(applier);
@@ -124,17 +105,19 @@ class ConfigServerInitialDeliveryTest {
         // when / then
         assertThatThrownBy(delivery::start)
                 .isInstanceOf(TracingConfigurationGuardException.class)
-                .hasMessageContaining("outcome=STALE, attemptId=%s, messageCode=ACCEPTED_SEQUENCE_MISMATCH".formatted(ATTEMPT_ID));
+                .hasMessageContaining("outcome=STALE, attemptId=%s, messageCode=ACCEPTED_SEQUENCE_MISMATCH"
+                        .formatted(ATTEMPT_ID));
         assertThat(delivery.isRunning()).isFalse();
-        assertThat(applier.applyCalls())
-                .as("retry is bounded at one: initial attempt plus one retry")
-                .isEqualTo(2);
+        assertThat(applier.applyCalls()).isEqualTo(1);
     }
 
     @Test
     void emptyAcceptedSettingsFailInsideDeliverInitial() {
         // given
-        ConfigServerInitialDelivery delivery = newDelivery(RecordingApplier.always(TracingSettingsDeliveryResult.APPLIED), Optional::empty);
+        ConfigServerInitialDelivery delivery = newDelivery(
+                RecordingApplier.always(TracingSettingsDeliveryResult.APPLIED),
+                Optional::empty
+        );
 
         // when / then
         assertThatThrownBy(delivery::start)
@@ -156,7 +139,7 @@ class ConfigServerInitialDeliveryTest {
                     return Optional.empty();
                 });
         ConfigServerInitialDelivery delivery = new ConfigServerInitialDelivery(
-                new TracingSettingsRefreshCoalescer(manifestBuilder, writer, Runnable::run));
+                new ConfigServerTracingSettingsSynchronizer(manifestBuilder, writer));
 
         // when / then
         assertThatThrownBy(delivery::start)
@@ -169,7 +152,9 @@ class ConfigServerInitialDeliveryTest {
     @Test
     void initialDeliveryPhasePrecedesWebServer() {
         // given
-        ConfigServerInitialDelivery delivery = newDelivery(RecordingApplier.always(TracingSettingsDeliveryResult.APPLIED));
+        ConfigServerInitialDelivery delivery = newDelivery(
+                RecordingApplier.always(TracingSettingsDeliveryResult.APPLIED)
+        );
 
         // when
         int phase = delivery.getPhase();
@@ -190,12 +175,17 @@ class ConfigServerInitialDeliveryTest {
         RecordingSettingsWriter writer = recordingSettingsWriter(applyBehavior, reader);
         MockEnvironment environment = authoritativeEnvironment();
         ConfigServerSettingsManifestBuilder manifestBuilder = new ConfigServerSettingsManifestBuilder(environment);
-        TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(manifestBuilder, writer, Runnable::run);
-        return new ConfigServerInitialDelivery(coalescer);
+        ConfigServerTracingSettingsSynchronizer synchronizer =
+                new ConfigServerTracingSettingsSynchronizer(manifestBuilder, writer);
+        return new ConfigServerInitialDelivery(synchronizer);
     }
 
     private static Supplier<Optional<AcceptedSettings>> readerReturning(CompleteTracingSettings snapshot) {
-        AcceptedSettings accepted = AcceptedSettingsTestFixtures.bootstrapAgentDefaults(7L, AGENT_INSTANCE_ID, snapshot);
+        AcceptedSettings accepted = AcceptedSettingsTestFixtures.bootstrapAgentDefaults(
+                7L,
+                AGENT_INSTANCE_ID,
+                snapshot
+        );
         return () -> Optional.of(accepted);
     }
 
@@ -226,24 +216,15 @@ class ConfigServerInitialDeliveryTest {
 
     private static final class RecordingApplier implements RecordingSettingsWriter.ApplyBehavior {
 
-        private final Deque<TracingSettingsDeliveryResult> queued = new ArrayDeque<>();
         private final List<CompleteTracingSettings> delivered = new ArrayList<>();
-        private final TracingSettingsDeliveryResult sticky;
+        private final TracingSettingsDeliveryResult outcome;
 
-        private RecordingApplier(TracingSettingsDeliveryResult sticky,
-                                 List<TracingSettingsDeliveryResult> queued) {
-            this.sticky = sticky;
-            this.queued.addAll(queued);
+        private RecordingApplier(TracingSettingsDeliveryResult outcome) {
+            this.outcome = outcome;
         }
 
         static RecordingApplier always(TracingSettingsDeliveryResult outcome) {
-            return new RecordingApplier(outcome, List.of());
-        }
-
-        @SuppressWarnings("SameParameterValue")
-        static RecordingApplier queued(TracingSettingsDeliveryResult first,
-                                       TracingSettingsDeliveryResult second) {
-            return new RecordingApplier(second, List.of(first, second));
+            return new RecordingApplier(outcome);
         }
 
         @Override
@@ -251,8 +232,6 @@ class ConfigServerInitialDeliveryTest {
                                               CompleteTracingSettings snapshot,
                                               SettingsWriter writer) {
             delivered.add(snapshot);
-            TracingSettingsDeliveryResult next = queued.poll();
-            TracingSettingsDeliveryResult outcome = (next == null) ? sticky : next;
             String messageCode = switch (outcome) {
                 case APPLIED, UNCHANGED -> "NONE";
                 case REJECTED -> "INVALID_VALUE";

@@ -10,7 +10,6 @@ import javax.management.openmbean.TabularDataSupport;
 
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
-import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxTracingSettingsDigest;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 import lombok.experimental.UtilityClass;
@@ -19,14 +18,11 @@ import lombok.experimental.UtilityClass;
 public final class PlatformJmxRequestEncoder {
 
     public static CompositeData encodeApplyRequest(ApplySnapshotRequestParameters parameters) {
-        String candidateDigest = digestOf(parameters.policy());
-
         try {
             CompositeData runtimePolicy = encodeRuntimePolicy(parameters.policy());
 
             Map<String, Object> requestFields = new LinkedHashMap<>();
             requestFields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID, parameters.attemptId());
-            requestFields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_CANDIDATE_DIGEST, candidateDigest);
             requestFields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_ACCEPTED_SEQUENCE, parameters.expectedBase().acceptedSequence());
             requestFields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_AGENT_INSTANCE_ID, parameters.expectedBase().agentInstanceId());
             requestFields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_RUNTIME_POLICY, runtimePolicy);
@@ -63,17 +59,5 @@ public final class PlatformJmxRequestEncoder {
         }
 
         return table;
-    }
-
-    private static String digestOf(CompleteTracingSettings policy) {
-        return JmxTracingSettingsDigest.sha256(
-                policy.samplingEnabled(),
-                policy.samplingRatio(),
-                policy.samplingRouteRatios(),
-                policy.validationLevel(),
-                policy.exporterEnabled(),
-                policy.traceControlHeadersEnabled(),
-                policy.diagnosticsLogLevel()
-        );
     }
 }

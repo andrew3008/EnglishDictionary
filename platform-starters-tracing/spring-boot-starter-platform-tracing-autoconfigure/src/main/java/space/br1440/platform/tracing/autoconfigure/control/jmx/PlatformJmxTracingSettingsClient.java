@@ -21,6 +21,7 @@ import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSetti
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsWriter;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxMBeanInfoShapeViolationException;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxWireGraphValidator;
+import space.br1440.platform.tracing.autoconfigure.status.AcceptedSettingsStatusReader;
 
 public final class PlatformJmxTracingSettingsClient implements TracingSettingsWriter {
 
@@ -121,6 +122,10 @@ public final class PlatformJmxTracingSettingsClient implements TracingSettingsWr
     @Override
     public Optional<AcceptedSettings> current() {
         return acceptedSettingsReader.current();
+    }
+
+    AcceptedSettingsStatusReader statusReader() {
+        return acceptedSettingsReader::currentForStatusSnapshot;
     }
 
     MutationFailureSink failureSink() {

@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.management.ManagementFactory;
+import java.lang.reflect.Modifier;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -85,6 +86,25 @@ class PlatformTracingJmxClientTest {
     }
 
     @Test
+    void constructorsWithoutVerifierArePackagePrivate() throws Exception {
+        // given
+        int defaultConstructor = PlatformTracingJmxClient.class
+                .getDeclaredConstructor()
+                .getModifiers();
+        int serverConstructor = PlatformTracingJmxClient.class
+                .getDeclaredConstructor(MBeanServer.class)
+                .getModifiers();
+
+        // when
+        boolean defaultConstructorHasPackageAccess = hasPackageAccess(defaultConstructor);
+        boolean serverConstructorHasPackageAccess = hasPackageAccess(serverConstructor);
+
+        // then
+        assertThat(defaultConstructorHasPackageAccess).isTrue();
+        assertThat(serverConstructorHasPackageAccess).isTrue();
+    }
+
+    @Test
     void sampling_observation_returns_value_after_registration() throws Exception {
         registerSamplingMBean();
 
@@ -123,5 +143,11 @@ class PlatformTracingJmxClientTest {
         server.registerMBean(
                 DomainSnapshotEndpoints.sampling(impl::getSamplingObservation),
                 DomainObjectNames.SAMPLING);
+    }
+
+    private static boolean hasPackageAccess(int modifiers) {
+        return !Modifier.isPublic(modifiers)
+                && !Modifier.isProtected(modifiers)
+                && !Modifier.isPrivate(modifiers);
     }
 }

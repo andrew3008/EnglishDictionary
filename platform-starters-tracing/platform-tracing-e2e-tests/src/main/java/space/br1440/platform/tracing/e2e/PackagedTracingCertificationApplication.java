@@ -47,14 +47,15 @@ public class PackagedTracingCertificationApplication {
         System.out.println(APPLICATION_READY_TOKEN);
     }
 
-    @SuppressWarnings("EmptyTryBlock")
     public static void main(String[] arguments) {
+        PackagedConfigServerScenario configServerScenario = PackagedConfigServerScenario.fromSystemProperties();
         SpringApplication application = new SpringApplication(PackagedTracingCertificationApplication.class);
         application.setWebApplicationType(WebApplicationType.NONE);
         application.setRegisterShutdownHook(false);
+        application.addInitializers(configServerScenario::initialize);
 
-        try (ConfigurableApplicationContext ignored = application.run(arguments)) {
-            // контекст нужен только для жизненного цикла запуска и закрытия
+        try (ConfigurableApplicationContext context = application.run(arguments)) {
+            configServerScenario.verify(context);
         }
 
         System.out.println(PROCESS_OK_TOKEN);

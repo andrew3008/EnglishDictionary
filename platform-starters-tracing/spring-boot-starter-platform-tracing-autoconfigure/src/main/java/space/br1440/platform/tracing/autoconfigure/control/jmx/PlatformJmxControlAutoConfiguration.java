@@ -11,6 +11,7 @@ import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingControlChannelCondition;
 import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
+import space.br1440.platform.tracing.autoconfigure.status.AcceptedSettingsStatusReader;
 
 @AutoConfiguration
 @AutoConfigureAfter(TracingRuntimeAutoConfiguration.class)
@@ -31,5 +32,10 @@ public class PlatformJmxControlAutoConfiguration {
         PlatformJmxTracingSettingsClient client = new PlatformJmxTracingSettingsClient(coherenceGuard);
         client.initialize();
         return client;
+    }
+
+    @Bean
+    AcceptedSettingsStatusReader acceptedSettingsStatusReader(PlatformJmxTracingSettingsClient client) {
+        return client.statusReader();
     }
 }

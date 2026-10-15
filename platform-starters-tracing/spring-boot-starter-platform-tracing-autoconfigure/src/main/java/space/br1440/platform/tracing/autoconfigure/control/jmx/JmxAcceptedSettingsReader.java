@@ -37,22 +37,21 @@ final class JmxAcceptedSettingsReader implements AcceptedTracingSettingsReader {
 
     @Override
     public Optional<AcceptedSettings> current() {
-        TracingSettingsContractViolationException unavailableMetadata = metadataFailure;
-        if (unavailableMetadata != null) {
-            throw unavailableMetadata;
-        }
+        requireMetadataAvailable();
 
         try {
-            AcceptedSettings accepted = coherenceGuard.readCoherently(() -> {
-                AcceptedSettings decoded = decodeSnapshot(readSnapshotAttribute());
-                coherenceGuard.requirePinnedAgentInstanceId(decoded.revision().agentInstanceId());
-                return decoded;
-            });
-            return Optional.of(accepted);
+            return coherenceGuard.readCoherently(this::currentForStatusSnapshot);
         } catch (AgentReadinessCoherenceException coherenceFailure) {
             coherenceGuard.recordTrustFailure(coherenceFailure.failureCode());
             throw coherenceFailure;
         }
+    }
+
+    Optional<AcceptedSettings> currentForStatusSnapshot() {
+        requireMetadataAvailable();
+        AcceptedSettings accepted = decodeSnapshot(readSnapshotAttribute());
+        coherenceGuard.requirePinnedAgentInstanceId(accepted.revision().agentInstanceId());
+        return Optional.of(accepted);
     }
 
     void markMetadataUnavailable(Throwable cause) {
@@ -61,6 +60,13 @@ final class JmxAcceptedSettingsReader implements AcceptedTracingSettingsReader {
                 "Accepted settings metadata validation failed",
                 Objects.requireNonNull(cause, "cause")
         );
+    }
+
+    private void requireMetadataAvailable() {
+        TracingSettingsContractViolationException unavailableMetadata = metadataFailure;
+        if (unavailableMetadata != null) {
+            throw unavailableMetadata;
+        }
     }
 
     private Object readSnapshotAttribute() {

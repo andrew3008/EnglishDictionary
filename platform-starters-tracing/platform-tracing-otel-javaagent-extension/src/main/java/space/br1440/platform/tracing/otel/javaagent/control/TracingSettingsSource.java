@@ -5,7 +5,6 @@ import java.util.Map;
 import java.util.Objects;
 
 import space.br1440.platform.common.util.MapUtils;
-import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ControlSettingsExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
@@ -17,14 +16,11 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
-import space.br1440.platform.tracing.otel.javaagent.logging.event.SamplingLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ValidationLogEvent;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
 public final class TracingSettingsSource {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(TracingSettingsSource.class);
-    private static final String ROUTE_RATIO_NOT_A_NUMBER = "not-a-number";
 
     private final TracingSettingsStore store;
     private final TracingSettingsUpdater updater;
@@ -151,22 +147,36 @@ public final class TracingSettingsSource {
 
         Map<String, Double> parsed = new HashMap<>(source.size());
         for (Map.Entry<String, String> entry : source.entrySet()) {
-            if (entry.getKey() == null || entry.getValue() == null) {
-                continue;
+            String routePrefix = entry.getKey();
+            if (routePrefix == null) {
+                throw invalidRouteRatio("<null>", "key must not be null");
             }
 
-            try {
-                parsed.put(entry.getKey(), Double.parseDouble(entry.getValue().trim()));
-            } catch (NumberFormatException ignored) {
-                if (StringUtils.hasText(entry.getKey())) {
-                    log.log(SamplingLogEvent.INVALID_ROUTE_RATIO, fields -> {
-                        fields.putString(AgentLogField.NAME, entry.getKey());
-                        fields.putString(AgentLogField.REASON, ROUTE_RATIO_NOT_A_NUMBER);
-                    });
-                }
+            if (parsed.containsKey(routePrefix)) {
+                throw invalidRouteRatio(routePrefix, "key is duplicated");
             }
+
+            String encodedRatio = entry.getValue();
+            if (encodedRatio == null || encodedRatio.isBlank()) {
+                throw invalidRouteRatio(routePrefix, "value must not be blank");
+            }
+
+            double ratio;
+            try {
+                ratio = Double.parseDouble(encodedRatio.trim());
+            } catch (NumberFormatException ignored) {
+                throw invalidRouteRatio(routePrefix, "value must be a number");
+            }
+
+            parsed.put(routePrefix, ratio);
         }
 
         return parsed;
+    }
+
+    private static IllegalArgumentException invalidRouteRatio(String routePrefix, String reason) {
+        return new IllegalArgumentException(
+                "Invalid sampling route ratio for key '%s': %s".formatted(routePrefix, reason)
+        );
     }
 }

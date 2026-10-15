@@ -122,7 +122,7 @@ class AcceptedPolicyCoordinatorTest {
                 AcceptedPolicyTestFixtures.policy(0.2d));
 
         // then
-        assertThat(result.outcome()).isEqualTo(SettingsUpdateStatus.STALE);
+        assertThat(result.outcome()).isEqualTo(SettingsUpdateStatus.REJECTED);
         assertThat(result.messageCode()).isEqualTo(SettingsRejectionReason.AGENT_INSTANCE_MISMATCH);
         assertThat(store.current().acceptedSequence()).isZero();
     }

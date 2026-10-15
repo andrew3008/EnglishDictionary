@@ -69,7 +69,6 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
             JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_ATTEMPT_ID,
             JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_MESSAGE_CODE,
             JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_OUTCOME,
-            JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_PAYLOAD_DIGEST,
             JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_AGENT_INSTANCE_ID,
             JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_VIOLATION_CODES
     };
@@ -80,7 +79,6 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
     private final AtomicLong acceptedSequence;
     private final AtomicLong readinessGeneration = new AtomicLong(1L);
     private final AtomicReference<String> nextApplyOutcome = new AtomicReference<>("APPLIED");
-    private final AtomicReference<String> oneShotApplyOutcome = new AtomicReference<>(null);
 
     private final AtomicInteger applyInvocationCount = new AtomicInteger(0);
     private final AtomicReference<String> lastRequestAgentInstanceId = new AtomicReference<>();
@@ -90,7 +88,6 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
     private static final String INVALID_VALUE = "INVALID_VALUE";
     private static final String INTERNAL_FAILURE = "INTERNAL_FAILURE";
     private static final String NONE = "NONE";
-    private static final String EMPTY_POLICY_DIGEST = "0".repeat(64);
 
     private FakeAgentPlatformJmxPlane(String agentInstanceId,
                                       long initialSequence,
@@ -169,24 +166,6 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
         );
     }
 
-    public static FakeAgentPlatformJmxPlane malformedAcceptedPolicySnapshot(String agentInstanceId) throws Exception {
-        CompositeType wrongType = new CompositeType(
-                "totally.wrong.Type.v1", "wrong", new String[]{"x"},
-                new String[]{"x"}, new OpenType<?>[]{SimpleType.STRING}
-        );
-        CompositeData malformed = new CompositeDataSupport(wrongType, Map.of("x", "irrelevant"));
-
-        FakeAgentPlatformJmxPlane[] holder = new FakeAgentPlatformJmxPlane[1];
-        FakeAgentPlatformJmxPlane plane = new FakeAgentPlatformJmxPlane(
-                agentInstanceId,
-                0,
-                snapshotEndpoint(() -> malformed),
-                mutationEndpoint(request -> holder[0].encodeApplyOutcome(request))
-        );
-        holder[0] = plane;
-        return plane;
-    }
-
     public static FakeAgentPlatformJmxPlane unknownAuthorityAcceptedPolicySnapshot(String agentInstanceId) throws Exception {
         FakeAgentPlatformJmxPlane[] holder = new FakeAgentPlatformJmxPlane[1];
         FakeAgentPlatformJmxPlane plane = new FakeAgentPlatformJmxPlane(
@@ -241,10 +220,6 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
         nextApplyOutcome.set(outcome);
     }
 
-    public void setOneShotApplyOutcome(String outcome) {
-        oneShotApplyOutcome.set(outcome);
-    }
-
     public void restartWithNewInstance(String newAgentInstanceId, long newSequence) {
         this.agentInstanceId = AgentInstanceIdValidator.requireCanonical(
                 newAgentInstanceId,
@@ -285,14 +260,12 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
         applyInvocationCount.incrementAndGet();
         String requestAgentInstanceId = (String) request.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_AGENT_INSTANCE_ID);
         String requestAttemptId = (String) request.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID);
-        String candidateDigest = (String) request.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_CANDIDATE_DIGEST);
         lastRequestAgentInstanceId.set(requestAgentInstanceId);
 
         if (!agentInstanceId.equals(requestAgentInstanceId)) {
             try {
                 return new CompositeDataSupport(RESPONSE, RESPONSE_KEYS, new Object[]{
-                        acceptedSequence.get(), requestAttemptId, AGENT_INSTANCE_MISMATCH, "STALE",
-                        EMPTY_POLICY_DIGEST,
+                        acceptedSequence.get(), requestAttemptId, AGENT_INSTANCE_MISMATCH, "REJECTED",
                         agentInstanceId, new String[]{AGENT_INSTANCE_MISMATCH}
                 });
             } catch (OpenDataException e) {
@@ -300,8 +273,7 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
             }
         }
 
-        String oneShot = oneShotApplyOutcome.getAndSet(null);
-        String outcome = oneShot != null ? oneShot : nextApplyOutcome.get();
+        String outcome = nextApplyOutcome.get();
         long reportedSequence = "APPLIED".equals(outcome)
                 ? acceptedSequence.incrementAndGet()
                 : acceptedSequence.get();
@@ -313,15 +285,13 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
             default -> throw new IllegalArgumentException("Unsupported fake apply outcome: " + outcome);
         };
 
-        String payloadDigest = NONE.equals(messageCode) ? candidateDigest : EMPTY_POLICY_DIGEST;
         String[] violationCodes = NONE.equals(messageCode)
                 ? new String[0]
                 : new String[]{messageCode};
 
         try {
             return new CompositeDataSupport(RESPONSE, RESPONSE_KEYS, new Object[]{
-                    reportedSequence, requestAttemptId, messageCode, outcome, payloadDigest,
-                    agentInstanceId, violationCodes
+                    reportedSequence, requestAttemptId, messageCode, outcome, agentInstanceId, violationCodes
             });
         } catch (OpenDataException e) {
             throw new IllegalStateException(e);

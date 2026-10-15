@@ -22,8 +22,7 @@ class MalformedResponseAndManifestPayloadTest {
 
     private static final CompositeType WRONG_TYPE = wrongCompositeType();
     private static final String[] RESPONSE_KEYS = {
-            "acceptedSequence", "attemptId", "messageCode", "outcome", "payloadDigest",
-            "agentInstanceId", "violationCodes"
+            "acceptedSequence", "attemptId", "messageCode", "outcome", "agentInstanceId", "violationCodes"
     };
     private static final CompositeType RESPONSE_TYPE = responseType();
 
@@ -126,7 +125,7 @@ class MalformedResponseAndManifestPayloadTest {
                     keys, keys,
                     new OpenType<?>[]{
                             SimpleType.LONG, SimpleType.STRING, SimpleType.STRING, SimpleType.STRING,
-                            SimpleType.STRING, SimpleType.STRING, arrayOfStrings()
+                            SimpleType.STRING, arrayOfStrings()
                     });
         } catch (OpenDataException e) {
             throw new ExceptionInInitializerError(e);
@@ -162,7 +161,6 @@ class MalformedResponseAndManifestPayloadTest {
             case "attemptId" -> "attempt-1";
             case "messageCode" -> "NONE";
             case "outcome" -> "APPLIED";
-            case "payloadDigest" -> "a".repeat(64);
             case "agentInstanceId" -> "310ad563-bbe5-49cb-a72e-f3bb82bc32f2";
             case "violationCodes" -> new String[0];
             default -> throw new IllegalArgumentException("Unknown key: " + key);

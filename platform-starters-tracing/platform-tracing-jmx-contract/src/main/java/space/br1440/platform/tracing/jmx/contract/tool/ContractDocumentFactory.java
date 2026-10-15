@@ -15,7 +15,7 @@ final class ContractDocumentFactory {
 
     private static final Set<String> TOP_LEVEL_KEYS = Set.of(
             "schema", "planes", "objectNames", "endpoints",
-            "openTypes", "capabilities", "readinessEvidence", "wireGraph", "policyDigest",
+            "openTypes", "capabilities", "readinessEvidence", "wireGraph",
             "writer", "sourceAuthority", "outcome", "messageCode", "logLevel",
             "validationLevel", "scannerState", "processorLifecycle", "readinessLifecycle"
     );
@@ -39,14 +39,11 @@ final class ContractDocumentFactory {
         descriptorSurface.put("endpoints", root.get("endpoints"));
         descriptorSurface.put("openTypes", root.get("openTypes"));
 
-        Map<String, Object> digest = ContractValues.map(root.get("policyDigest"), "policyDigest");
         return new ContractDocument(
                 root,
                 ContractValues.string(schema.get("id"), "schema.id"),
                 ContractCanonicalizer.sha256(ContractCanonicalizer.canonical(root)),
-                ContractCanonicalizer.sha256(ContractCanonicalizer.canonical(descriptorSurface)),
-                ContractValues.string(digest.get("algorithmId"), "policyDigest.algorithmId"),
-                ContractValues.integer(digest.get("algorithmVersion"), "policyDigest.algorithmVersion")
+                ContractCanonicalizer.sha256(ContractCanonicalizer.canonical(descriptorSurface))
         );
     }
 }

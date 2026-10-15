@@ -61,6 +61,7 @@ dependencies {
 
     implementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure')
     implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.cloud:spring-cloud-context'
 
     dualSdkImplementation 'io.opentelemetry:opentelemetry-sdk'
     testImplementation 'org.junit.jupiter:junit-jupiter'

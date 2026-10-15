@@ -16,6 +16,7 @@ import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagno
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingControlChannelCondition;
 import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxWireGraphValidator;
+import space.br1440.platform.tracing.autoconfigure.status.AcceptedSettingsStatusReader;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -61,5 +62,10 @@ public class PlatformJmxReadAutoConfiguration {
         }
 
         return reader;
+    }
+
+    @Bean
+    AcceptedSettingsStatusReader acceptedSettingsStatusReader(JmxAcceptedSettingsReader reader) {
+        return reader::currentForStatusSnapshot;
     }
 }

@@ -50,7 +50,7 @@ final class JmxSettingsMutationTransport {
                                    CompleteTracingSettings snapshot,
                                    SettingsWriter writer) {
         Attempt attempt = new Attempt(attemptId, expectedBase, writer);
-        EncodedRequest request = encode(attempt, Objects.requireNonNull(snapshot, "snapshot"));
+        CompositeData request = encode(attempt, Objects.requireNonNull(snapshot, "snapshot"));
         try {
             SettingsDelivery delivery = coherenceGuard.readCoherently(() -> exchange(attempt, request));
             log.info("Tracing settings mutation completed: {}, outcome={}, messageCode={}",
@@ -62,9 +62,9 @@ final class JmxSettingsMutationTransport {
         }
     }
 
-    private SettingsDelivery exchange(Attempt attempt, EncodedRequest request) {
-        Object raw = invoke(attempt, request.composite());
-        return readOutcome(attempt, request, raw);
+    private SettingsDelivery exchange(Attempt attempt, CompositeData request) {
+        Object raw = invoke(attempt, request);
+        return readOutcome(attempt, raw);
     }
 
     private Object invoke(Attempt attempt, CompositeData composite) {
@@ -114,10 +114,10 @@ final class JmxSettingsMutationTransport {
         }
     }
 
-    private SettingsDelivery readOutcome(Attempt attempt, EncodedRequest request, Object raw) {
+    private SettingsDelivery readOutcome(Attempt attempt, Object raw) {
         try {
             wireValidator.validate(raw);
-            return decodeOutcome(attempt, request, raw);
+            return decodeOutcome(attempt, raw);
         } catch (JmxWireTypeViolationException wireViolation) {
             throw failures.terminalContractViolation(
                     JmxClientFailureCode.MUTATION_JMX_WIRE_TYPE_VIOLATION,
@@ -138,7 +138,7 @@ final class JmxSettingsMutationTransport {
         }
     }
 
-    private SettingsDelivery decodeOutcome(Attempt attempt, EncodedRequest request, Object raw) {
+    private SettingsDelivery decodeOutcome(Attempt attempt, Object raw) {
         if (!(raw instanceof CompositeData composite)) {
             String type = (raw == null) ? "null" : raw.getClass().getName();
             throw contractViolation(
@@ -148,7 +148,7 @@ final class JmxSettingsMutationTransport {
             );
         }
 
-        PlatformJmxResponse response = decodeCorrelated(attempt, request, composite);
+        PlatformJmxResponse response = decodeCorrelated(attempt, composite);
         return new SettingsDelivery(
                 attempt.attemptId(),
                 toDeliveryResult(attempt, response),
@@ -156,15 +156,14 @@ final class JmxSettingsMutationTransport {
         );
     }
 
-    private PlatformJmxResponse decodeCorrelated(Attempt attempt, EncodedRequest request, CompositeData composite) {
+    private PlatformJmxResponse decodeCorrelated(Attempt attempt, CompositeData composite) {
         try {
             PlatformJmxResponse response = PlatformJmxResponse.decode(composite);
             coherenceGuard.requirePinnedAgentInstanceId(response.agentInstanceId());
             response.validateCorrelation(
                     attempt.expectedBase().agentInstanceId(),
                     attempt.expectedBase().acceptedSequence(),
-                    attempt.attemptId(),
-                    request.candidateDigest()
+                    attempt.attemptId()
             );
             return response;
         } catch (IllegalArgumentException decodeFailure) {
@@ -188,10 +187,9 @@ final class JmxSettingsMutationTransport {
         }
     }
 
-    private static EncodedRequest encode(Attempt attempt, CompleteTracingSettings snapshot) {
-        CompositeData composite;
+    private static CompositeData encode(Attempt attempt, CompleteTracingSettings snapshot) {
         try {
-            composite = PlatformJmxRequestEncoder.encodeApplyRequest(
+            return PlatformJmxRequestEncoder.encodeApplyRequest(
                     ApplySnapshotRequestParameters.builder()
                             .expectedBase(attempt.expectedBase())
                             .attemptId(attempt.attemptId())
@@ -206,17 +204,6 @@ final class JmxSettingsMutationTransport {
                     encodingFailure
             );
         }
-
-        Object digest = composite.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_CANDIDATE_DIGEST);
-        if (!(digest instanceof String candidateDigest) || candidateDigest.isBlank()) {
-            throw contractViolation(
-                    JmxClientFailureCode.MUTATION_ENCODING_FAILED,
-                    attempt.describe("encoder produced no candidateDigest"),
-                    null
-            );
-        }
-
-        return new EncodedRequest(composite, candidateDigest);
     }
 
     private static TracingSettingsContractViolationException contractViolation(JmxClientFailureCode code,
@@ -251,8 +238,5 @@ final class JmxSettingsMutationTransport {
         public String toString() {
             return "attemptId=" + attemptId + ", writer=" + writer + ", base=" + expectedBase;
         }
-    }
-
-    private record EncodedRequest(CompositeData composite, String candidateDigest) {
     }
 }

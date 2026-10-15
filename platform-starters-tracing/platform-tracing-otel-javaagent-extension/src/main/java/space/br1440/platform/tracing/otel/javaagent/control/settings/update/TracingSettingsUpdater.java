@@ -10,7 +10,6 @@ import java.util.stream.Collectors;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitOutcome;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitResult;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.PolicyLeaf;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsRevision;
@@ -100,9 +99,22 @@ public final class TracingSettingsUpdater {
                             TracingSettings candidate) {
         TracingSettingsRevision witnessed = current.get();
 
-        SettingsRejectionReason stale = staleReason(witnessed, expectedBase);
-        if (stale != SettingsRejectionReason.NONE) {
-            return new Decision(SettingsUpdateStatus.STALE, witnessed, stale, Set.of());
+        if (!witnessed.agentInstanceId().equals(expectedBase.agentInstanceId())) {
+            return new Decision(
+                    SettingsUpdateStatus.REJECTED,
+                    witnessed,
+                    SettingsRejectionReason.AGENT_INSTANCE_MISMATCH,
+                    Set.of()
+            );
+        }
+
+        if (witnessed.acceptedSequence() != expectedBase.acceptedSequence()) {
+            return new Decision(
+                    SettingsUpdateStatus.STALE,
+                    witnessed,
+                    SettingsRejectionReason.ACCEPTED_SEQUENCE_MISMATCH,
+                    Set.of()
+            );
         }
 
         SettingsWriter writer = attempt.writer();
@@ -163,19 +175,6 @@ public final class TracingSettingsUpdater {
         return reason;
     }
 
-    private static SettingsRejectionReason staleReason(TracingSettingsRevision witnessed,
-                                                       SettingsRevision expectedBase) {
-        if (!witnessed.agentInstanceId().equals(expectedBase.agentInstanceId())) {
-            return SettingsRejectionReason.AGENT_INSTANCE_MISMATCH;
-        }
-
-        if (witnessed.acceptedSequence() != expectedBase.acceptedSequence()) {
-            return SettingsRejectionReason.ACCEPTED_SEQUENCE_MISMATCH;
-        }
-
-        return SettingsRejectionReason.NONE;
-    }
-
     private static void logResolved(SettingsUpdateAttempt attempt, Decision decision) {
         log.log(ControlPlaneLogEvent.TRACING_SETTINGS_UPDATE_RESOLVED, levelOf(decision.outcome()), fields -> {
             fields.putString(AgentLogField.ATTEMPT_ID, attempt.attemptId())
@@ -205,7 +204,7 @@ public final class TracingSettingsUpdater {
     private static SettingsUpdateResult result(SettingsUpdateStatus status,
                                                TracingSettingsRevision accepted,
                                                SettingsRejectionReason reason) {
-        return new SettingsUpdateResult(status, accepted, TracingSettingsDigest.sha256(accepted.policy()), reason);
+        return new SettingsUpdateResult(status, accepted, reason);
     }
 
     @FunctionalInterface

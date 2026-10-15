@@ -11,7 +11,6 @@ import javax.management.openmbean.SimpleType;
 import javax.management.openmbean.TabularDataSupport;
 
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyTestFixtures;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
@@ -92,9 +91,6 @@ final class JmxSettingsMutationFixtures {
                 JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID,
                 attemptId);
         requestFields.put(
-                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_CANDIDATE_DIGEST,
-                TracingSettingsDigest.sha256(policy));
-        requestFields.put(
                 JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_ACCEPTED_SEQUENCE,
                 sequence);
         requestFields.put(
@@ -107,20 +103,6 @@ final class JmxSettingsMutationFixtures {
                 JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_WRITER,
                 writer);
         return new CompositeDataSupport(JmxOpenTypes.APPLY_SNAPSHOT_REQUEST, requestFields);
-    }
-
-    static CompositeData withCandidateDigest(
-            CompositeData request,
-            String candidateDigest
-    ) throws OpenDataException {
-        Map<String, Object> fields = new LinkedHashMap<>();
-        for (String field : request.getCompositeType().keySet()) {
-            fields.put(field, request.get(field));
-        }
-        fields.put(
-                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_CANDIDATE_DIGEST,
-                candidateDigest);
-        return new CompositeDataSupport(request.getCompositeType(), fields);
     }
 
     static CompositeData malformedRequest() throws OpenDataException {

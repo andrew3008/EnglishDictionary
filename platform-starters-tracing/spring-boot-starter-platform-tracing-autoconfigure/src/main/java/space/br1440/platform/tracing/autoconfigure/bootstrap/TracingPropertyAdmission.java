@@ -30,10 +30,13 @@ public final class TracingPropertyAdmission {
 
     private static final ConfigurationPropertyName PLATFORM_TRACING = ConfigurationPropertyName.of(PLATFORM_TRACING_PREFIX);
     private static final ConfigurationPropertyName POLICY = ConfigurationPropertyName.of("platform.tracing.policy");
+    private static final ConfigurationPropertyName CONTROL_CHANNEL = ConfigurationPropertyName.of(
+            TracingBootstrapPropertyNames.CONTROL_CHANNEL
+    );
 
     private static final List<ConfigurationPropertyName> EXPLICIT_SPRING_NAMES = List.of(
             ConfigurationPropertyName.of(TracingBootstrapPropertyNames.ENABLED),
-            ConfigurationPropertyName.of(TracingBootstrapPropertyNames.CONTROL_CHANNEL),
+            CONTROL_CHANNEL,
             ConfigurationPropertyName.of(TracingBootstrapPropertyNames.KAFKA_BATCH_LINKS_ENABLED),
             ConfigurationPropertyName.of(TracingBootstrapPropertyNames.KAFKA_PROPAGATE_PLATFORM_HEADERS),
             ConfigurationPropertyName.of(TracingBootstrapPropertyNames.SUPPRESS_MICROMETER_HTTP_OBSERVATIONS)
@@ -66,7 +69,7 @@ public final class TracingPropertyAdmission {
                 }
 
                 Owner owner = ownerOf(name, boundSpringNames);
-                if (!admitted(owner, sourceKind, controlChannel)) {
+                if (!admitted(name, owner, sourceKind, controlChannel)) {
                     violations.add(new Violation(reportedName(propertySource, name), owner, propertySource.getName()));
                 }
             }
@@ -133,7 +136,14 @@ public final class TracingPropertyAdmission {
         return false;
     }
 
-    private static boolean admitted(Owner owner, SourceKind sourceKind, TracingControlChannel controlChannel) {
+    private static boolean admitted(ConfigurationPropertyName name,
+                                    Owner owner,
+                                    SourceKind sourceKind,
+                                    TracingControlChannel controlChannel) {
+        if (CONTROL_CHANNEL.equals(name) && sourceKind == SourceKind.CONFIG_SERVER) {
+            return false;
+        }
+
         return switch (owner) {
             case SPRING -> true;
             case POLICY -> (sourceKind == SourceKind.CONFIG_SERVER) && (controlChannel == TracingControlChannel.CONFIG_SERVER);
@@ -191,9 +201,10 @@ public final class TracingPropertyAdmission {
                 when the control channel is CONFIG_SERVER."""
                     .formatted(violation.propertyName(), violation.sourceName(), controlChannel);
 
-            case SPRING -> throw new IllegalStateException(
-                    "Spring-owned property was reported as a violation: " + violation.propertyName()
-            );
+            case SPRING -> """
+                Property '%s' is owned by SPRING and is not admitted from source='%s'. \
+                The control channel must be configured outside Config Server."""
+                    .formatted(violation.propertyName(), violation.sourceName());
         };
     }
 

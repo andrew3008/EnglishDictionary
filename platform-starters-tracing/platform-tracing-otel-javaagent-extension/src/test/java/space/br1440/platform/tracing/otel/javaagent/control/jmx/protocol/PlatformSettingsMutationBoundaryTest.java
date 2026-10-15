@@ -16,12 +16,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
-import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
@@ -107,7 +105,7 @@ final class PlatformSettingsMutationBoundaryTest {
     }
 
     @Test
-    void rejectsStaleAgentInstanceWithoutChangingAcceptedState() throws Exception {
+    void rejectsMismatchedAgentInstanceWithoutChangingAcceptedState() throws Exception {
         // given
         TracingSettingsRevision acceptedBefore = store.current();
         CompositeData request = JmxSettingsMutationFixtures.request(
@@ -117,53 +115,15 @@ final class PlatformSettingsMutationBoundaryTest {
                 UUID.randomUUID().toString());
 
         // when
-        CompositeData stale = invoke(request);
+        CompositeData rejected = invoke(request);
 
         // then
-        assertThat(stale.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_OUTCOME))
-                .isEqualTo("STALE");
-        assertThat(stale.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_MESSAGE_CODE))
-                .isEqualTo("AGENT_INSTANCE_MISMATCH");
-        assertThat(stale.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_AGENT_INSTANCE_ID))
-                .isEqualTo(acceptedBefore.agentInstanceId().toString());
-        assertThat(store.current()).isSameAs(acceptedBefore);
-    }
-
-    @Test
-    void rejectsCandidateDigestMismatchWithoutChangingAcceptedState() throws Exception {
-        // given
-        TracingSettingsRevision acceptedBefore = store.current();
-        String attemptId = UUID.randomUUID().toString();
-        CompositeData validRequest = JmxSettingsMutationFixtures.request(
-                acceptedBefore.agentInstanceId().toString(),
-                acceptedBefore.acceptedSequence(),
-                JmxSettingsMutationFixtures.settings(0.25d),
-                attemptId);
-        String validDigest = (String) validRequest.get(
-                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_CANDIDATE_DIGEST);
-        String mismatchedDigest = (validDigest.charAt(0) == '0' ? "1" : "0")
-                + validDigest.substring(1);
-
-        // when
-        CompositeData rejected = invoke(JmxSettingsMutationFixtures.withCandidateDigest(
-                validRequest,
-                mismatchedDigest));
-
-        // then
-        assertThat(rejected.getCompositeType())
-                .isEqualTo(JmxOpenTypes.APPLY_SNAPSHOT_RESPONSE);
         assertThat(rejected.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_OUTCOME))
                 .isEqualTo("REJECTED");
         assertThat(rejected.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_MESSAGE_CODE))
-                .isEqualTo("INVALID_VALUE");
-        assertThat(rejected.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_ATTEMPT_ID))
-                .isEqualTo(attemptId);
-        assertThat(rejected.get(
-                JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_ACCEPTED_SEQUENCE))
-                .isEqualTo(acceptedBefore.acceptedSequence());
-        assertThat(rejected.get(
-                JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_PAYLOAD_DIGEST))
-                .isEqualTo(TracingSettingsDigest.sha256(acceptedBefore.policy()));
+                .isEqualTo("AGENT_INSTANCE_MISMATCH");
+        assertThat(rejected.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_AGENT_INSTANCE_ID))
+                .isEqualTo(acceptedBefore.agentInstanceId().toString());
         assertThat(store.current()).isSameAs(acceptedBefore);
     }
 

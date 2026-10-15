@@ -5,9 +5,7 @@ import java.util.Map;
 record ContractDocument(Map<String, Object> root,
                         String schemaId,
                         String schemaDigest,
-                        String descriptorDigest,
-                        String policyDigestAlgorithm,
-                        int policyDigestVersion) {
+                        String descriptorDigest) {
 
     @SuppressWarnings("unchecked")
     Map<String, Object> section(String name) {

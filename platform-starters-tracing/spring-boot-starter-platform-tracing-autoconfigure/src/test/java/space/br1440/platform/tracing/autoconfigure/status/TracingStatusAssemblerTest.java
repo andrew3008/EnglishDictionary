@@ -29,7 +29,6 @@ import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingControlChann
 import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedSettingsAuthority;
-import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedTracingSettingsReader;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsRevision;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsContractViolationException;
@@ -351,7 +350,7 @@ class TracingStatusAssemblerTest {
     @Test
     void settingsContractFailureDoesNotEscapeAndReportsSettingsUnreadable() {
         // given
-        AcceptedTracingSettingsReader reader = () -> {
+        AcceptedSettingsStatusReader reader = () -> {
             throw new TracingSettingsContractViolationException("STATUS_METADATA_NOT_PASSED");
         };
         TracingStatusAssembler assembler = assembler(reader);
@@ -367,7 +366,7 @@ class TracingStatusAssemblerTest {
     @Test
     void settingsGuardFailureDoesNotEscapeAndReportsAgentUnavailable() {
         // given
-        AcceptedTracingSettingsReader reader = () -> {
+        AcceptedSettingsStatusReader reader = () -> {
             throw new TracingConfigurationGuardException("STATUS_TRANSPORT_FAILED");
         };
         TracingStatusAssembler assembler = assembler(reader);
@@ -384,7 +383,7 @@ class TracingStatusAssemblerTest {
     @Test
     void settingsCoherenceFailureIsNotReportedAsSettingsUnreadable() {
         AgentReadinessCoherenceGuard coherenceGuard = stableCoherenceGuard();
-        AcceptedTracingSettingsReader reader = () -> {
+        AcceptedSettingsStatusReader reader = () -> {
             coherenceGuard.requirePinnedAgentInstanceId(NEXT_AGENT_INSTANCE_ID);
             return Optional.of(acceptedPolicy());
         };
@@ -417,7 +416,7 @@ class TracingStatusAssemblerTest {
         appender.start();
         logger.addAppender(appender);
 
-        AcceptedTracingSettingsReader reader = () -> {
+        AcceptedSettingsStatusReader reader = () -> {
             throw new IllegalStateException("Synthetic settings read failure");
         };
         TracingStatusAssembler assembler = assembler(reader);
@@ -451,7 +450,7 @@ class TracingStatusAssemblerTest {
         logger.addAppender(appender);
 
         AtomicInteger reads = new AtomicInteger();
-        AcceptedTracingSettingsReader reader = () -> {
+        AcceptedSettingsStatusReader reader = () -> {
             int read = reads.getAndIncrement();
             if (read == 1) {
                 return Optional.of(acceptedPolicy());
@@ -492,7 +491,7 @@ class TracingStatusAssemblerTest {
         logger.addAppender(appender);
 
         AtomicInteger reads = new AtomicInteger();
-        AcceptedTracingSettingsReader reader = () -> {
+        AcceptedSettingsStatusReader reader = () -> {
             int read = reads.getAndIncrement();
             if (read == 0) {
                 throw new IllegalStateException("Synthetic settings read failure");
@@ -557,7 +556,7 @@ class TracingStatusAssemblerTest {
         );
     }
 
-    private static TracingStatusAssembler assembler(AcceptedTracingSettingsReader reader) {
+    private static TracingStatusAssembler assembler(AcceptedSettingsStatusReader reader) {
         return new TracingStatusAssembler(
                 NoopTraceOperations.INSTANCE,
                 NoOpTracingRuntime.noop(),

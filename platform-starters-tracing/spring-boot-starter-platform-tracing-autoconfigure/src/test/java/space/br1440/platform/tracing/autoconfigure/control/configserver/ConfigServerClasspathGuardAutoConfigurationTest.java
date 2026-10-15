@@ -114,7 +114,7 @@ class ConfigServerClasspathGuardAutoConfigurationTest {
         // when / then
         missingCloud.run(context -> {
             assertThat(context).hasNotFailed();
-            assertThat(context).doesNotHaveBean(ConfigServerRefreshWorker.class);
+            assertThat(context).doesNotHaveBean(ConfigServerTracingSettingsSynchronizer.class);
             assertThat(context).doesNotHaveBean(ConfigServerInitialDelivery.class);
         });
     }

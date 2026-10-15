@@ -9,7 +9,6 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 import javax.management.MBeanServer;
 
 import org.junit.jupiter.api.Test;
@@ -29,11 +28,11 @@ import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagno
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingControlChannel;
 import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
+import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerClasspathGuardAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerInitialDelivery;
-import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerRefreshWorker;
 import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerTracingSettingsAdapter;
 import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerTracingSettingsAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.control.configserver.TracingSettingsRefreshCoalescer;
+import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerTracingSettingsSynchronizer;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxReadAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxTracingSettingsClient;
@@ -103,8 +102,7 @@ class ControlChannelPostureMatrixTest {
                         assertThat(context).doesNotHaveBean(TracingSettingsMutationService.class);
                         assertThat(context).doesNotHaveBean(TracingControlEndpoint.class);
                         assertThat(context).doesNotHaveBean(ConfigServerTracingSettingsAdapter.class);
-                        assertThat(context).doesNotHaveBean(TracingSettingsRefreshCoalescer.class);
-                        assertThat(context).doesNotHaveBean(ConfigServerRefreshWorker.class);
+                        assertThat(context).doesNotHaveBean(ConfigServerTracingSettingsSynchronizer.class);
                         assertThat(context).doesNotHaveBean(ConfigServerInitialDelivery.class);
                         assertThat(context).doesNotHaveBean("actuatorAgentReadinessProbe");
                     });
@@ -154,15 +152,15 @@ class ControlChannelPostureMatrixTest {
                         assertThat(context.getBeansOfType(AcceptedTracingSettingsReader.class)).hasSize(1);
                         assertThat(context.getBeansOfType(TracingSettingsWriter.class)).hasSize(1);
                         assertThat(context).doesNotHaveBean(TracingSettingsMutationService.class);
-                        assertThat(context).hasSingleBean(ConfigServerRefreshWorker.class);
+                        assertThat(context).hasSingleBean(ConfigServerTracingSettingsSynchronizer.class);
+                        assertThat(context).hasSingleBean(ConfigServerTracingSettingsAdapter.class);
                         assertThat(context).hasSingleBean(ConfigServerInitialDelivery.class);
-                        assertThat(context.getBeansOfType(ExecutorService.class)).isEmpty();
                     });
         }
     }
 
     @Test
-    void configServerRefreshWorkerDoesNotDisplaceApplicationTaskExecutor() throws Exception {
+    void configServerSynchronizerDoesNotDisplaceApplicationTaskExecutor() throws Exception {
         // given
         try (FakeAgentPlatformJmxPlane ignored =
                      FakeAgentPlatformJmxPlane.compliant(UUID.randomUUID().toString(), 0L)) {
@@ -198,9 +196,8 @@ class ControlChannelPostureMatrixTest {
                     .withPropertyValues("platform.tracing.control.channel=CONFIG_SERVER")
                     .run(context -> {
                         assertThat(context).hasNotFailed();
-                        assertThat(context.getBeansOfType(ExecutorService.class)).isEmpty();
                         assertThat(context).hasBean(TaskExecutionAutoConfiguration.APPLICATION_TASK_EXECUTOR_BEAN_NAME);
-                        assertThat(context).hasSingleBean(ConfigServerRefreshWorker.class);
+                        assertThat(context).hasSingleBean(ConfigServerTracingSettingsSynchronizer.class);
                     });
         }
     }
@@ -270,6 +267,30 @@ class ControlChannelPostureMatrixTest {
                 .withPropertyValues(
                         "platform.tracing.enabled=false",
                         "platform.tracing.control.channel=NONE");
+
+        // when
+        // then
+        assertDisabledTopology(runner);
+    }
+
+    @Test
+    void disabledFromConfigServerCreatesNoControlPlaneAndReportsTracingDisabled() {
+        // given
+        MapPropertySource source = new MapPropertySource(
+                "configserver:platform-tracing-policy",
+                Map.of(
+                        "platform.tracing.enabled", "false",
+                        "platform.tracing.policy.sampling.ratio", "0.5"
+                )
+        );
+        ApplicationContextRunner runner = disabledTopologyRunner()
+                .withConfiguration(AutoConfigurations.of(
+                        ConfigServerTracingSettingsAutoConfiguration.class,
+                        ConfigServerClasspathGuardAutoConfiguration.class,
+                        TracingSettingsControlAutoConfiguration.class
+                ))
+                .withPropertyValues("platform.tracing.control.channel=CONFIG_SERVER")
+                .withInitializer(context -> context.getEnvironment().getPropertySources().addFirst(source));
 
         // when
         // then
@@ -369,6 +390,10 @@ class ControlChannelPostureMatrixTest {
             assertThat(context).hasNotFailed();
             assertThat(context.getBeansOfType(AcceptedTracingSettingsReader.class)).isEmpty();
             assertThat(context.getBeansOfType(TracingSettingsWriter.class)).isEmpty();
+            assertThat(context).doesNotHaveBean(ConfigServerTracingSettingsSynchronizer.class);
+            assertThat(context).doesNotHaveBean(ConfigServerTracingSettingsAdapter.class);
+            assertThat(context).doesNotHaveBean(ConfigServerInitialDelivery.class);
+            assertThat(context).doesNotHaveBean(TracingSettingsMutationService.class);
             assertThat(context).hasSingleBean(TracingStatusAssembler.class);
             assertThat(context.getBean(TracingStatusAssembler.class).assemble().settings().reason())
                     .isEqualTo(SettingsAbsenceReason.TRACING_DISABLED);

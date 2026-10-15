@@ -2,12 +2,15 @@ package space.br1440.platform.tracing.autoconfigure.control.channel;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.core.env.MapPropertySource;
 
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingControlChannel;
@@ -60,11 +63,10 @@ class ControlChannelFailFastTest {
                 });
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"CONFIG_SERVER", "ACTUATOR"})
-    void disabledWriteChannelFailsClosed(String channel) {
+    @Test
+    void disabledActuatorChannelFailsClosed() {
         runner.withPropertyValues(
-                        "platform.tracing.control.channel=" + channel,
+                        "platform.tracing.control.channel=ACTUATOR",
                         "platform.tracing.enabled=false")
                 .run(context -> assertStartupFailure(context, "Tracing disabled is incompatible"));
     }
@@ -88,6 +90,29 @@ class ControlChannelFailFastTest {
                     TracingBootstrapSettings settings = context.getBean(TracingBootstrapSettings.class);
                     assertThat(settings.tracingEnabled()).isFalse();
                     assertThat(settings.controlChannel()).isEqualTo(TracingControlChannel.NONE);
+                });
+    }
+
+    @Test
+    void disabledFromConfigServerStarts() {
+        // given
+        MapPropertySource source = new MapPropertySource(
+                "configserver:app",
+                Map.of(
+                        "platform.tracing.enabled", "false",
+                        "platform.tracing.policy.sampling.ratio", "0.5"
+                )
+        );
+
+        // when
+        runner.withPropertyValues("platform.tracing.control.channel=CONFIG_SERVER")
+                .withInitializer(context -> context.getEnvironment().getPropertySources().addFirst(source))
+                .run(context -> {
+                    // then
+                    assertThat(context).hasNotFailed();
+                    TracingBootstrapSettings settings = context.getBean(TracingBootstrapSettings.class);
+                    assertThat(settings.tracingEnabled()).isFalse();
+                    assertThat(settings.controlChannel()).isEqualTo(TracingControlChannel.CONFIG_SERVER);
                 });
     }
 

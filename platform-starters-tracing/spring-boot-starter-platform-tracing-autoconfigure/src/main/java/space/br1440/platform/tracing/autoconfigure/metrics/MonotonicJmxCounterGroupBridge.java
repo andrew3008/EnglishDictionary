@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
 
 /**
@@ -127,7 +128,13 @@ final class MonotonicJmxCounterGroupBridge<K extends Enum<K>> {
     private BridgeSnapshot<K> doRefresh(BridgeSnapshot<K> previous) {
         long now = ticker.nanoTime();
 
-        Optional<JmxOwnerState<Map<K, Long>>> observed = source.get();
+        Optional<JmxOwnerState<Map<K, Long>>> observed;
+        try {
+            observed = source.get();
+        } catch (AgentReadinessCoherenceException ignored) {
+            return previous.withRefreshedAt(now);
+        }
+
         if (observed.isEmpty() ||
                 !(observed.get() instanceof JmxOwnerState.Present<Map<K, Long>>(
                         Map<K, Long> values, long generation
@@ -135,7 +142,13 @@ final class MonotonicJmxCounterGroupBridge<K extends Enum<K>> {
             return previous.withRefreshedAt(now);
         }
 
-        String currentAgentInstanceId = agentInstanceId.get();
+        String currentAgentInstanceId;
+        try {
+            currentAgentInstanceId = agentInstanceId.get();
+        } catch (AgentReadinessCoherenceException ignored) {
+            return previous.withRefreshedAt(now);
+        }
+
         boolean neverObserved = previous.lastGeneration() == NEVER_OBSERVED_GENERATION;
         boolean agentInstanceChanged = !neverObserved && !currentAgentInstanceId.equals(previous.lastAgentInstanceId());
         boolean ownerReplaced = !neverObserved && !agentInstanceChanged && previous.lastGeneration() != generation;

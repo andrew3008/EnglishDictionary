@@ -3,8 +3,6 @@ package space.br1440.platform.tracing.autoconfigure.control.channel;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -28,9 +26,6 @@ class DisabledNoDiscoveryTest {
 
     @Test
     void disabledWithNone_noDiscoveryBeansCreated() {
-        // given
-        // when
-        // then
         actuatorStackRunner
                 .withPropertyValues(
                         "platform.tracing.control.channel=NONE",
@@ -42,24 +37,32 @@ class DisabledNoDiscoveryTest {
                 });
     }
 
-    @ParameterizedTest(name = "disabled write channel fails fast: channel={0}")
-    @ValueSource(strings = {"CONFIG_SERVER", "ACTUATOR"})
-    void disabledWithWriteChannel_failsClosedBeforeDiscovery(String channel) {
-        // given
-        // when
-        // then
+    @Test
+    void disabledWithConfigServerCreatesNoDiscoveryBeans() {
         actuatorStackRunner
                 .withPropertyValues(
-                        "platform.tracing.control.channel=" + channel,
+                        "platform.tracing.control.channel=CONFIG_SERVER",
+                        "platform.tracing.enabled=false")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBean(TracingBootstrapSettings.class).controlChannel())
+                            .isEqualTo(TracingControlChannel.CONFIG_SERVER);
+                    assertThat(context).doesNotHaveBean(PlatformJmxTracingSettingsClient.class);
+                    assertThat(context).doesNotHaveBean(TracingSettingsMutationService.class);
+                });
+    }
+
+    @Test
+    void disabledWithActuatorFailsClosedBeforeDiscovery() {
+        actuatorStackRunner
+                .withPropertyValues(
+                        "platform.tracing.control.channel=ACTUATOR",
                         "platform.tracing.enabled=false")
                 .run(context -> assertGuardFailure(context, "Tracing disabled is incompatible"));
     }
 
     @Test
     void disabledWithoutChannel_bootstrapFlagsAreFalse() {
-        // given
-        // when
-        // then
         bootstrapRunner
                 .withPropertyValues("platform.tracing.enabled=false")
                 .run(context -> {

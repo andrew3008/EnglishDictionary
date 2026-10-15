@@ -1,11 +1,14 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
 
 /**
  * {@link CoalescingJmxObservationSource}: N вызовов {@code get()} внутри coalescing-окна должны
@@ -14,6 +17,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CoalescingJmxObservationSourceTest {
 
     private static final long WINDOW_NANOS = 150_000_000L;
+
+    @Test
+    void coherenceFailureIsObservedAsEmptySnapshot() {
+        // given
+        AgentReadinessCoherenceException coherenceFailure =
+                mock(AgentReadinessCoherenceException.class);
+        CoalescingJmxObservationSource<String> source = new CoalescingJmxObservationSource<>(
+                () -> {
+                    throw coherenceFailure;
+                },
+                () -> 0L,
+                WINDOW_NANOS
+        );
+
+        // when
+        Optional<String> observed = source.get();
+
+        // then
+        assertThat(observed).isEmpty();
+    }
 
     @Test
     void multipleGetsWithinWindowTriggerSingleUnderlyingCapture() {

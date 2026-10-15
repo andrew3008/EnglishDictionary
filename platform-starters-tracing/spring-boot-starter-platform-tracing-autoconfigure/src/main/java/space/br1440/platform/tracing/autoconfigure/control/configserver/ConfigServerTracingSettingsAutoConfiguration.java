@@ -23,24 +23,18 @@ public class ConfigServerTracingSettingsAutoConfiguration {
     }
 
     @Bean
-    ConfigServerRefreshWorker configServerRefreshWorker() {
-        return new ConfigServerRefreshWorker(ConfigServerRefreshWorker.CLOSE_TIMEOUT);
+    ConfigServerTracingSettingsSynchronizer configServerTracingSettingsSynchronizer(ConfigServerSettingsManifestBuilder manifestBuilder,
+                                                                                    TracingSettingsWriter settingsWriter) {
+        return new ConfigServerTracingSettingsSynchronizer(manifestBuilder, settingsWriter);
     }
 
     @Bean
-    TracingSettingsRefreshCoalescer tracingSettingsRefreshCoalescer(ConfigServerSettingsManifestBuilder manifestBuilder,
-                                                                    TracingSettingsWriter settingsWriter,
-                                                                    ConfigServerRefreshWorker refreshWorker) {
-        return new TracingSettingsRefreshCoalescer(manifestBuilder, settingsWriter, refreshWorker.executor());
+    ConfigServerTracingSettingsAdapter configServerTracingSettingsAdapter(ConfigServerTracingSettingsSynchronizer synchronizer) {
+        return new ConfigServerTracingSettingsAdapter(synchronizer);
     }
 
     @Bean
-    ConfigServerTracingSettingsAdapter configServerTracingSettingsAdapter(TracingSettingsRefreshCoalescer coalescer) {
-        return new ConfigServerTracingSettingsAdapter(coalescer);
-    }
-
-    @Bean
-    ConfigServerInitialDelivery configServerInitialDelivery(TracingSettingsRefreshCoalescer coalescer) {
-        return new ConfigServerInitialDelivery(coalescer);
+    ConfigServerInitialDelivery configServerInitialDelivery(ConfigServerTracingSettingsSynchronizer synchronizer) {
+        return new ConfigServerInitialDelivery(synchronizer);
     }
 }

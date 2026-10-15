@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -12,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.management.InstanceNotFoundException;
@@ -26,6 +28,7 @@ import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherence
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceTestSupport;
 import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
+import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsRevision;
 import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsWriter;
@@ -37,6 +40,37 @@ import space.br1440.platform.tracing.autoconfigure.support.ReadinessJmxTestFixtu
 import space.br1440.platform.tracing.autoconfigure.support.SettingsJmxTestFixtures;
 
 final class PlatformJmxTracingSettingsClientCoherenceTest {
+
+    @Test
+    void statusSnapshotUsesOnlySurroundingReadinessBracket() throws Exception {
+        // given
+        MBeanServer server = mock(MBeanServer.class);
+        stubStableReadiness(server);
+        when(server.getAttribute(
+                JmxWireContract.SETTINGS_STATUS_OBJECT_NAME,
+                JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT))
+                .thenReturn(acceptedPolicySnapshot());
+        AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard(server);
+        AgentReadinessCoherenceTestSupport.pinCurrent(coherenceGuard);
+        JmxAcceptedSettingsReader reader = new JmxAcceptedSettingsReader(
+                server,
+                coherenceGuard,
+                new JmxWireGraphValidator()
+        );
+        clearInvocations(server);
+
+        // when
+        Optional<AcceptedSettings> accepted = coherenceGuard.readCoherently(reader::currentForStatusSnapshot);
+
+        // then
+        assertThat(accepted).isPresent();
+        verify(server, times(2)).getAttribute(
+                JmxWireContract.EXTENSION_READINESS_OBJECT_NAME,
+                JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT);
+        verify(server, times(1)).getAttribute(
+                JmxWireContract.SETTINGS_STATUS_OBJECT_NAME,
+                JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT);
+    }
 
     private static final String NEXT_AGENT_INSTANCE_ID = "075f4743-6500-4025-947d-af2ca49bdb76";
 
@@ -393,8 +427,6 @@ final class PlatformJmxTracingSettingsClientCoherenceTest {
                 request.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID));
         fields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_MESSAGE_CODE, "NONE");
         fields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_OUTCOME, "APPLIED");
-        fields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_PAYLOAD_DIGEST,
-                request.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_CANDIDATE_DIGEST));
         fields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_AGENT_INSTANCE_ID,
                 ReadinessJmxTestFixtures.AGENT_INSTANCE_ID);
         fields.put(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_VIOLATION_CODES, new String[0]);

@@ -9,7 +9,6 @@ import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherence
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedSettings;
-import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedTracingSettingsReader;
 import space.br1440.platform.tracing.autoconfigure.status.TracingStatusSnapshot.SettingsStatus;
 
 import lombok.extern.slf4j.Slf4j;
@@ -19,11 +18,11 @@ final class SettingsStatusResolver {
 
     static final String NO_ACCEPTED_SETTINGS = "NO_ACCEPTED_SETTINGS";
 
-    private final AcceptedTracingSettingsReader reader;
+    private final AcceptedSettingsStatusReader reader;
     private final AgentReadinessCoherenceGuard coherenceGuard;
     private final AtomicReference<String> lastFailureKind = new AtomicReference<>();
 
-    SettingsStatusResolver(AcceptedTracingSettingsReader reader, AgentReadinessCoherenceGuard coherenceGuard) {
+    SettingsStatusResolver(AcceptedSettingsStatusReader reader, AgentReadinessCoherenceGuard coherenceGuard) {
         this.reader = requireNonNull(reader, "reader");
         this.coherenceGuard = requireNonNull(coherenceGuard, "coherenceGuard");
     }

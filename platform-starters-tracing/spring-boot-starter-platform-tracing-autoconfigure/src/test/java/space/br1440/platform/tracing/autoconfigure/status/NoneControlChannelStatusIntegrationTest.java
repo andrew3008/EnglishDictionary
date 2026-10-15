@@ -23,7 +23,6 @@ import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagno
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxReadAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedTracingSettingsReader;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup.TracingStartupContractHealthAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPlatformJmxPlane;
@@ -142,7 +141,8 @@ class NoneControlChannelStatusIntegrationTest {
                 .withConfiguration(AutoConfigurations.of(
                         TracingControlChannelAutoConfiguration.class,
                         PlatformJmxReadAutoConfiguration.class,
-                        TracingStartupContractHealthAutoConfiguration.class))
+                        TracingStartupContractHealthAutoConfiguration.class)
+                )
                 .withBean(AgentReadinessCoherenceGuard.class, () -> coherenceGuard)
                 .withBean(TracingDeploymentDiagnostics.class, () -> diagnostics)
                 .withBean(TracingRuntime.class, () -> healthRuntime)
@@ -158,7 +158,7 @@ class NoneControlChannelStatusIntegrationTest {
                 NoOpTracingRuntime.noop(),
                 context.getBean(TracingBootstrapSettings.class),
                 jmx,
-                context.getBean(AcceptedTracingSettingsReader.class),
+                context.getBean(AcceptedSettingsStatusReader.class),
                 context.getBean(TracingDeploymentDiagnostics.class),
                 context.getBean(AgentReadinessCoherenceGuard.class));
     }

@@ -4,14 +4,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.time.Duration;
+import java.util.AbstractMap;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
@@ -19,8 +23,6 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Setti
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
-import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
@@ -196,42 +198,104 @@ class TracingSettingsSourceStartupTest {
     }
 
     @Test
-    @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
-    void invalidRouteRatioIsSkippedWithoutLoggingTheValue() {
-        AgentLogCapture logs = new AgentLogCapture();
-        logs.install();
-        try {
-            Map<String, String> ratios = new LinkedHashMap<>();
-            ratios.put("/orders", "0.5");
-            ratios.put("/payments", "not-a-ratio");
+    void invalidRouteRatioFailsStartupWithoutExposingValue() {
+        // given
+        String routePrefix = "/payments";
+        String sensitiveValue = "confidential-not-a-ratio";
+        ExtensionConfig config = config(Map.of(), Map.of(routePrefix, sensitiveValue));
 
-            // given
-            ExtensionConfig config = config(
-                    Map.of(
-                            ExtensionPropertyNames.SAMPLING_ROUTE_RATIOS,
-                            "/orders=0.5,/payments=not-a-ratio"
-                    ),
-                    ratios);
+        // when
+        Throwable failure = catchThrowable(() -> TracingSettingsSource.fromStartup(config, AGENT_INSTANCE_ID));
 
-            // when
-            TracingSettingsSource source = TracingSettingsSource.fromStartup(config, AGENT_INSTANCE_ID);
+        // then
+        assertThat(failure)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining(routePrefix)
+                .hasMessageContaining("value must be a number")
+                .hasMessageNotContaining(sensitiveValue);
+        assertThat(failure.getCause()).isNull();
+    }
 
-            // then
-            assertThat(source.current().samplingRouteRatios())
-                    .containsEntry("/orders", 0.5d)
-                    .doesNotContainKey("/payments");
-            CapturedLogEvent event = logs.events().stream()
-                    .filter(candidate -> "INVALID_ROUTE_RATIO".equals(candidate.eventName()))
-                    .findFirst()
-                    .orElseThrow();
-            assertThat(event.level()).isEqualTo(AgentLogLevel.WARN);
-            assertThat(event.fields())
-                    .containsEntry("name", "/payments")
-                    .containsEntry("reason", "not-a-number");
-            assertThat(logs.rendered()).doesNotContain("not-a-ratio");
-        } finally {
-            logs.restore();
-        }
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = "   ")
+    void blankRouteRatioFailsStartupWithKey(String invalidValue) {
+        // given
+        String routePrefix = "/payments";
+        Map<String, String> ratios = new HashMap<>();
+        ratios.put(routePrefix, invalidValue);
+        ExtensionConfig config = config(Map.of(), ratios);
+
+        // when
+        Throwable failure = catchThrowable(() -> TracingSettingsSource.fromStartup(config, AGENT_INSTANCE_ID));
+
+        // then
+        assertThat(failure)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining(routePrefix)
+                .hasMessageContaining("value must not be blank");
+    }
+
+    @Test
+    void nullRouteRatioKeyFailsStartupWithoutExposingValue() {
+        // given
+        String sensitiveValue = "0.314159";
+        Map<String, String> ratios = new HashMap<>();
+        ratios.put(null, sensitiveValue);
+        ExtensionConfig config = config(Map.of(), ratios);
+
+        // when
+        Throwable failure = catchThrowable(() -> TracingSettingsSource.fromStartup(config, AGENT_INSTANCE_ID));
+
+        // then
+        assertThat(failure)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("key '<null>'")
+                .hasMessageContaining("key must not be null")
+                .hasMessageNotContaining(sensitiveValue);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   "})
+    void blankRouteRatioKeyFailsStartupThroughDomainValidation(String routePrefix) {
+        // given
+        String sensitiveValue = "0.314159";
+        ExtensionConfig config = config(Map.of(), Map.of(routePrefix, sensitiveValue));
+
+        // when
+        Throwable failure = catchThrowable(() -> TracingSettingsSource.fromStartup(config, AGENT_INSTANCE_ID));
+
+        // then
+        assertThat(failure)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("routePrefix")
+                .hasMessageContaining("must not be blank")
+                .hasMessageNotContaining(sensitiveValue);
+    }
+
+    @Test
+    void duplicateRouteRatioKeyFailsStartup() {
+        // given
+        String routePrefix = "/payments";
+        Map<String, String> ratios = new AbstractMap<>() {
+            @Override
+            public Set<Entry<String, String>> entrySet() {
+                return Set.of(
+                        Map.entry(routePrefix, "0.2"),
+                        Map.entry(routePrefix, "0.3")
+                );
+            }
+        };
+        ExtensionConfig config = config(Map.of(), ratios);
+
+        // when
+        Throwable failure = catchThrowable(() -> TracingSettingsSource.fromStartup(config, AGENT_INSTANCE_ID));
+
+        // then
+        assertThat(failure)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining(routePrefix)
+                .hasMessageContaining("key is duplicated");
     }
 
     @Test

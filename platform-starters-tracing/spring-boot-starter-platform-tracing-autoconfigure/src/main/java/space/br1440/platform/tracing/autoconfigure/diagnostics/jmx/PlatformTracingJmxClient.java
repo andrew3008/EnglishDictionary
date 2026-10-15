@@ -21,15 +21,11 @@ public final class PlatformTracingJmxClient {
     private final ProcessorMetricsJmxView processorMetrics;
     private final DiagnosticsJmxView diagnostics;
 
-    public PlatformTracingJmxClient() {
-        this(ManagementFactory.getPlatformMBeanServer());
-    }
-
     public PlatformTracingJmxClient(AgentReadinessCoherenceGuard coherenceGuard) {
         this(ManagementFactory.getPlatformMBeanServer(), coherenceGuard);
     }
 
-    public PlatformTracingJmxClient(MBeanServer server) {
+    PlatformTracingJmxClient(MBeanServer server) {
         this(server, ignored -> {
         });
     }
@@ -45,24 +41,36 @@ public final class PlatformTracingJmxClient {
     private PlatformTracingJmxClient(MBeanServer server,
                                      Consumer<String> agentInstanceIdVerifier) {
         this.executor = new JmxReadExecutor(server, agentInstanceIdVerifier);
+
         this.sampling = new SamplingJmxView(
                 executor,
-                JmxWireContract.SAMPLING_OBSERVATION_OBJECT_NAME);
+                JmxWireContract.SAMPLING_OBSERVATION_OBJECT_NAME
+        );
+
         this.scrubbing = new ScrubbingJmxView(
                 executor,
-                JmxWireContract.SCRUBBING_OBSERVATION_OBJECT_NAME);
+                JmxWireContract.SCRUBBING_OBSERVATION_OBJECT_NAME
+        );
+
         this.validation = new ValidationJmxView(
                 executor,
-                JmxWireContract.VALIDATION_OBSERVATION_OBJECT_NAME);
+                JmxWireContract.VALIDATION_OBSERVATION_OBJECT_NAME
+        );
+
         this.export = new ExportJmxView(
                 executor,
-                JmxWireContract.EXPORT_OBSERVATION_OBJECT_NAME);
+                JmxWireContract.EXPORT_OBSERVATION_OBJECT_NAME
+        );
+
         this.processorMetrics = new ProcessorMetricsJmxView(
                 executor,
-                JmxWireContract.PROCESSOR_METRICS_OBSERVATION_OBJECT_NAME);
+                JmxWireContract.PROCESSOR_METRICS_OBSERVATION_OBJECT_NAME
+        );
+
         this.diagnostics = new DiagnosticsJmxView(
                 executor,
-                JmxWireContract.DIAGNOSTICS_OBSERVATION_OBJECT_NAME);
+                JmxWireContract.DIAGNOSTICS_OBSERVATION_OBJECT_NAME
+        );
     }
 
     public SamplingJmxView sampling() {
@@ -96,7 +104,8 @@ public final class PlatformTracingJmxClient {
                 validation.registration(),
                 export.registration(),
                 processorMetrics.registration(),
-                diagnostics.registration());
+                diagnostics.registration()
+        );
     }
 
     public List<JmxDiagnosticSnapshot> jmxContractDiagnostics() {

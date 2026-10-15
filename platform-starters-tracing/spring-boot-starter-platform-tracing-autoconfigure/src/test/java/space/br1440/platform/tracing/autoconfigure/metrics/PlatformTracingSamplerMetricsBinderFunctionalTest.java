@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.lang.management.ManagementFactory;
 import java.util.LinkedHashMap;
@@ -34,6 +35,7 @@ import javax.management.openmbean.TabularType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.DiagnosticsObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
@@ -109,13 +111,24 @@ class PlatformTracingSamplerMetricsBinderFunctionalTest {
     }
 
     private SimpleMeterRegistry bindBinder() {
-        PlatformTracingJmxClient client = new PlatformTracingJmxClient(server);
+        PlatformTracingJmxClient client = new PlatformTracingJmxClient(
+                server,
+                mock(AgentReadinessCoherenceGuard.class)
+        );
+
         AtomicLong nanoTime = new AtomicLong(0);
-        CoalescingJmxObservationSource<DiagnosticsObservation> diagnosticsSource =
-                new CoalescingJmxObservationSource<>(Optional::empty, nanoTime::get, 0L);
+        CoalescingJmxObservationSource<DiagnosticsObservation> diagnosticsSource = new CoalescingJmxObservationSource<>(
+                Optional::empty,
+                nanoTime::get,
+                0L
+        );
+
+        PlatformTracingSamplerMetricsBinder binder = new PlatformTracingSamplerMetricsBinder(
+                client,
+                diagnosticsSource,
+                nanoTime::get
+        );
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
-        PlatformTracingSamplerMetricsBinder binder =
-                new PlatformTracingSamplerMetricsBinder(client, diagnosticsSource, nanoTime::get);
         binder.bindTo(registry);
         return registry;
     }

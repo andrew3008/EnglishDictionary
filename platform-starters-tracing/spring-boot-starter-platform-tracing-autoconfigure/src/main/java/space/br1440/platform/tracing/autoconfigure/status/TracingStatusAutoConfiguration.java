@@ -20,7 +20,6 @@ import space.br1440.platform.tracing.autoconfigure.control.channel.TracingContro
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxReadAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsControlAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedTracingSettingsReader;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 
@@ -43,7 +42,7 @@ public class TracingStatusAutoConfiguration {
                                                          TracingRuntime tracingRuntime,
                                                          TracingBootstrapSettings bootstrapSettings,
                                                          PlatformTracingJmxClient jmxClient,
-                                                         ObjectProvider<AcceptedTracingSettingsReader> acceptedSettingsReader,
+                                                         ObjectProvider<AcceptedSettingsStatusReader> acceptedSettingsReader,
                                                          TracingDeploymentDiagnostics diagnostics,
                                                          AgentReadinessCoherenceGuard coherenceGuard) {
         return new TracingStatusAssembler(

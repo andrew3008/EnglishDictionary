@@ -187,17 +187,32 @@ class TracingBootstrapSettingsResolverTest {
     }
 
     @Test
-    void disabledWriteChannelFailsBeforeSettingsAreReturned() {
+    void disabledConfigServerChannelIsPreserved() {
         // given
         MockEnvironment environment = new MockEnvironment()
                 .withProperty("platform.tracing.control.channel", "CONFIG_SERVER")
                 .withProperty("platform.tracing.enabled", "false");
 
         // when
+        TracingBootstrapSettings settings = TracingBootstrapSettingsResolver.resolve(environment);
+
+        // then
+        assertThat(settings.tracingEnabled()).isFalse();
+        assertThat(settings.controlChannel()).isEqualTo(TracingControlChannel.CONFIG_SERVER);
+    }
+
+    @Test
+    void disabledActuatorChannelFailsBeforeSettingsAreReturned() {
+        // given
+        MockEnvironment environment = new MockEnvironment()
+                .withProperty("platform.tracing.control.channel", "ACTUATOR")
+                .withProperty("platform.tracing.enabled", "false");
+
+        // when
         // then
         assertThatThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
                 .isInstanceOf(TracingConfigurationGuardException.class)
-                .hasMessage("Tracing disabled is incompatible with CONFIG_SERVER control channel.");
+                .hasMessage("Tracing disabled is incompatible with ACTUATOR control channel.");
     }
 
     @Test

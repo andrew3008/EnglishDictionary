@@ -4,14 +4,14 @@ import java.util.EnumMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-
 import jakarta.annotation.Nonnull;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.ExportObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.ExportProcessorValues;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.SafeExporterValues;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
 
 import io.micrometer.core.instrument.FunctionCounter;
 import io.micrometer.core.instrument.Gauge;
@@ -103,13 +103,17 @@ final class PlatformTracingExportMetricsBinder implements MeterBinder {
     }
 
     private double lifecycleOneHot(ExportProcessorValues.LifecycleState state) {
-        return client.export().observation()
-                .map(ExportObservation::processor)
-                .flatMap(PlatformTracingExportMetricsBinder::presentProcessorValues)
-                .map(ExportProcessorValues::lifecycleState)
-                .filter(state::equals)
-                .map(ignored -> 1.0)
-                .orElse(0.0);
+        try {
+            return client.export().observation()
+                    .map(ExportObservation::processor)
+                    .flatMap(PlatformTracingExportMetricsBinder::presentProcessorValues)
+                    .map(ExportProcessorValues::lifecycleState)
+                    .filter(state::equals)
+                    .map(ignored -> 1.0)
+                    .orElse(0.0);
+        } catch (AgentReadinessCoherenceException ignored) {
+            return 0.0;
+        }
     }
 
     private static Optional<ExportProcessorValues> presentProcessorValues(JmxOwnerState<ExportProcessorValues> state) {

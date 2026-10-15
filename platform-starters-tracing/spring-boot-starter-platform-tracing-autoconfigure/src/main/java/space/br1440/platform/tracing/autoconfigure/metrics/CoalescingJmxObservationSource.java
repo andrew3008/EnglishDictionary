@@ -4,6 +4,8 @@ import java.util.Optional;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
+
 final class CoalescingJmxObservationSource<T> {
 
     private final Supplier<Optional<T>> source;
@@ -36,7 +38,7 @@ final class CoalescingJmxObservationSource<T> {
 
         if (refreshLock.tryLock()) {
             try {
-                current = new Snapshot<>(source.get(), now);
+                current = new Snapshot<>(readSource(), now);
                 snapshot = current;
             } finally {
                 refreshLock.unlock();
@@ -44,6 +46,14 @@ final class CoalescingJmxObservationSource<T> {
         }
 
         return current.value();
+    }
+
+    private Optional<T> readSource() {
+        try {
+            return source.get();
+        } catch (AgentReadinessCoherenceException ignored) {
+            return Optional.empty();
+        }
     }
 
     private boolean isFresh(Snapshot<T> current, long now) {

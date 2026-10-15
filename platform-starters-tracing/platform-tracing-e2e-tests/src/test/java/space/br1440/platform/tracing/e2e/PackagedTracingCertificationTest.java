@@ -84,6 +84,42 @@ class PackagedTracingCertificationTest {
     }
 
     @Test
+    void config_server_refresh_flow_is_certified_in_packaged_child_jvm() throws Exception {
+        // given
+        PackagedProcessLauncher.LaunchRequest request = controlledRequest(
+                "config-server-refresh",
+                applicationBootJar,
+                controlledAgent,
+                ControlledAgentArtifactMutator.sha256(controlledAgent),
+                Map.of(
+                        "logging.level.space.br1440.platform.tracing.autoconfigure.control.configserver", "INFO",
+                        "platform.tracing.control.channel", "CONFIG_SERVER",
+                        "platformTracing.packagedScenario", "CONFIG_SERVER"
+                )
+        );
+
+        // when
+        PackagedProcessLauncher.ProcessResult result = launcher.launch(request);
+
+        // then
+        assertSuccessful(result, "config-server-refresh");
+        assertThat(result.stdout()).containsSubsequence(
+                PackagedTracingCertificationApplication.APPLICATION_READY_TOKEN,
+                PackagedConfigServerScenario.INITIAL_APPLIED_TOKEN,
+                PackagedConfigServerScenario.REFRESH_APPLIED_TOKEN,
+                PackagedConfigServerScenario.REPEAT_UNCHANGED_TOKEN,
+                PackagedConfigServerScenario.INVALID_REJECTED_TOKEN,
+                PackagedTracingCertificationApplication.PROCESS_OK_TOKEN
+        );
+        assertThat(result.combinedOutput())
+                .contains("Config Server settings delivery: phase=INITIAL")
+                .contains("Config Server settings delivery: phase=REFRESH")
+                .contains("outcome=APPLIED")
+                .contains("outcome=UNCHANGED")
+                .contains("Config Server manifest rejected locally; LKG retained");
+    }
+
+    @Test
     void invalid_scan_interval_fails_before_lifecycle_start() throws Exception {
         // given
         String controlledSha = ControlledAgentArtifactMutator.sha256(controlledAgent);

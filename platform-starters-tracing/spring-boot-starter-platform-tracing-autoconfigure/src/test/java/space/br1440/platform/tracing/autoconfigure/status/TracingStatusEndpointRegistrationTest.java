@@ -30,7 +30,8 @@ class TracingStatusEndpointRegistrationTest {
                             TracingControlChannel.NONE
                     )
             )
-            .withBean(PlatformTracingJmxClient.class, PlatformTracingJmxClient::new)
+            .withBean(PlatformTracingJmxClient.class,
+                    () -> new PlatformTracingJmxClient(new AgentReadinessCoherenceGuard()))
             .withBean(AgentReadinessCoherenceGuard.class, AgentReadinessCoherenceGuard::new)
             .withBean(TracingDeploymentDiagnostics.class, () -> TracingDeploymentDiagnostics.withoutAgentData(
                     true,

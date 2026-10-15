@@ -20,7 +20,7 @@ public final class TracingBootstrapSettingsResolver {
         TracingControlChannel controlChannel = parseControlChannel(environment)
                 .orElseThrow(() -> invalidControlChannel(environment));
 
-        rejectDisabledWriteChannel(tracingEnabled, controlChannel);
+        rejectDisabledActuatorChannel(tracingEnabled, controlChannel);
         return new TracingBootstrapSettings(tracingEnabled, controlChannel);
     }
 
@@ -57,16 +57,8 @@ public final class TracingBootstrapSettingsResolver {
         }
     }
 
-    private static void rejectDisabledWriteChannel(boolean tracingEnabled, TracingControlChannel controlChannel) {
-        if (tracingEnabled) {
-            return;
-        }
-
-        if (controlChannel == TracingControlChannel.CONFIG_SERVER) {
-            throw new TracingConfigurationGuardException("Tracing disabled is incompatible with CONFIG_SERVER control channel.");
-        }
-
-        if (controlChannel == TracingControlChannel.ACTUATOR) {
+    private static void rejectDisabledActuatorChannel(boolean tracingEnabled, TracingControlChannel controlChannel) {
+        if (!tracingEnabled && controlChannel == TracingControlChannel.ACTUATOR) {
             throw new TracingConfigurationGuardException("Tracing disabled is incompatible with ACTUATOR control channel.");
         }
     }

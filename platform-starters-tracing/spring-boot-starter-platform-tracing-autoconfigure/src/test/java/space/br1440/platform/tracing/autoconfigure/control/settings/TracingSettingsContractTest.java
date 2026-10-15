@@ -10,7 +10,6 @@ import org.springframework.mock.env.MockEnvironment;
 
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsResolver;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingControlChannel;
-import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 
 class TracingSettingsContractTest {
 
@@ -80,17 +79,18 @@ class TracingSettingsContractTest {
     }
 
     @Test
-    void disabledTracingWithConfigServerIsRejected() {
+    void disabledTracingWithConfigServerIsAccepted() {
         // given
         var environment = new MockEnvironment()
                 .withProperty("platform.tracing.control.channel", "CONFIG_SERVER")
                 .withProperty("platform.tracing.enabled", "false");
 
         // when
+        var settings = TracingBootstrapSettingsResolver.resolve(environment);
+
         // then
-        assertThatThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
-                .isInstanceOf(TracingConfigurationGuardException.class)
-                .hasMessage("Tracing disabled is incompatible with CONFIG_SERVER control channel.");
+        assertThat(settings.tracingEnabled()).isFalse();
+        assertThat(settings.controlChannel()).isEqualTo(TracingControlChannel.CONFIG_SERVER);
     }
 
     @Test

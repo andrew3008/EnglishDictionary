@@ -3,7 +3,6 @@ package space.br1440.platform.tracing.autoconfigure.control.jmx.protocol;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
 import javax.management.openmbean.CompositeData;
 
 import space.br1440.platform.tracing.autoconfigure.agent.AgentInstanceIdValidator;
@@ -14,18 +13,15 @@ public record PlatformJmxResponse(long acceptedSequence,
                                   String attemptId,
                                   MessageCode messageCode,
                                   Outcome outcome,
-                                  String payloadDigest,
                                   String agentInstanceId,
                                   List<MessageCode> violationCodes) {
 
     private static final String OPERATION = JmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT;
-    private static final Pattern SHA256_HEX = Pattern.compile("[0-9a-f]{64}");
 
     private static final String FIELD_ACCEPTED_SEQUENCE = JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_ACCEPTED_SEQUENCE;
     private static final String FIELD_ATTEMPT_ID = JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_ATTEMPT_ID;
     private static final String FIELD_MESSAGE_CODE = JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_MESSAGE_CODE;
     private static final String FIELD_OUTCOME = JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_OUTCOME;
-    private static final String FIELD_PAYLOAD_DIGEST = JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_PAYLOAD_DIGEST;
     private static final String FIELD_AGENT_INSTANCE_ID = JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_AGENT_INSTANCE_ID;
     private static final String FIELD_VIOLATION_CODES = JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_VIOLATION_CODES;
 
@@ -62,7 +58,6 @@ public record PlatformJmxResponse(long acceptedSequence,
         agentInstanceId = AgentInstanceIdValidator.requireCanonical(agentInstanceId, FIELD_AGENT_INSTANCE_ID);
 
         requireNonNegative(acceptedSequence);
-        requireValidDigest(payloadDigest);
         requireNoDuplicates(violationCodes);
         requireConsistentEvidence(outcome, messageCode, violationCodes);
     }
@@ -75,7 +70,6 @@ public record PlatformJmxResponse(long acceptedSequence,
                 token(response, FIELD_ATTEMPT_ID),
                 parseEnum(MessageCode.class, FIELD_MESSAGE_CODE, token(response, FIELD_MESSAGE_CODE)),
                 parseEnum(Outcome.class, FIELD_OUTCOME, token(response, FIELD_OUTCOME)),
-                token(response, FIELD_PAYLOAD_DIGEST),
                 token(response, FIELD_AGENT_INSTANCE_ID),
                 parseViolationCodes(value(response, FIELD_VIOLATION_CODES, String[].class))
         );
@@ -83,13 +77,11 @@ public record PlatformJmxResponse(long acceptedSequence,
 
     public void validateCorrelation(String expectedAgentInstanceId,
                                     long expectedAcceptedSequence,
-                                    String expectedAttemptId,
-                                    String candidateDigest) {
+                                    String expectedAttemptId) {
         requireMatchingAttempt(expectedAttemptId);
 
         if (outcome.isSuccessful()) {
             requireMatchingAgentInstance(expectedAgentInstanceId);
-            requireMatchingDigest(candidateDigest);
             requireExpectedSequenceProgression(expectedAcceptedSequence);
         }
     }
@@ -97,12 +89,6 @@ public record PlatformJmxResponse(long acceptedSequence,
     private static void requireNonNegative(long acceptedSequence) {
         if (acceptedSequence < 0L) {
             throw invalid("acceptedSequence must not be negative");
-        }
-    }
-
-    private static void requireValidDigest(String payloadDigest) {
-        if (!SHA256_HEX.matcher(payloadDigest).matches()) {
-            throw invalid("payloadDigest must be lowercase SHA-256 hexadecimal");
         }
     }
 
@@ -186,12 +172,6 @@ public record PlatformJmxResponse(long acceptedSequence,
     private void requireMatchingAgentInstance(String expectedAgentInstanceId) {
         if (!agentInstanceId.equals(expectedAgentInstanceId)) {
             throw invalid("successful response agentInstanceId does not match the request");
-        }
-    }
-
-    private void requireMatchingDigest(String candidateDigest) {
-        if (!payloadDigest.equals(candidateDigest)) {
-            throw invalid("successful response payloadDigest does not match the candidate");
         }
     }
 

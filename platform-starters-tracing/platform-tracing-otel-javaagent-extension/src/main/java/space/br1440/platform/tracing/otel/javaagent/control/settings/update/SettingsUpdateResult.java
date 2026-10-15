@@ -1,23 +1,17 @@
 package space.br1440.platform.tracing.otel.javaagent.control.settings.update;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
-
 import java.util.Objects;
+
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 
 public record SettingsUpdateResult(SettingsUpdateStatus outcome,
                                    TracingSettingsRevision accepted,
-                                   String payloadDigest,
                                    SettingsRejectionReason messageCode) {
 
     public SettingsUpdateResult {
         Objects.requireNonNull(outcome, "outcome");
         Objects.requireNonNull(accepted, "accepted");
-        Objects.requireNonNull(payloadDigest, "payloadDigest");
         Objects.requireNonNull(messageCode, "messageCode");
-
-        if (!payloadDigest.matches("[0-9a-f]{64}")) {
-            throw new IllegalArgumentException("payloadDigest must be lowercase SHA-256 hexadecimal");
-        }
 
         if (isInconsistent(outcome, messageCode)) {
             throw new IllegalArgumentException(

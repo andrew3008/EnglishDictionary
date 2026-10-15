@@ -8,7 +8,6 @@ import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.TabularData;
 
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
@@ -51,12 +50,6 @@ final class JmxControlOpenTypeCodec {
                 JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_WRITER
         );
 
-        String candidateDigest = value(
-                request,
-                JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_CANDIDATE_DIGEST,
-                String.class
-        );
-
         CompositeData policyData = value(
                 request,
                 JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_RUNTIME_POLICY,
@@ -64,12 +57,10 @@ final class JmxControlOpenTypeCodec {
         );
 
         requireNonNegativeSequence(sequence);
-        requireValidDigestFormat(candidateDigest);
         requirePolicyType(policyData);
 
         TracingSettings settings = decodePolicy(policyData);
         requireWithinLogicalRequestBudget(request);
-        requireDigestMatches(candidateDigest, settings);
 
         return buildDecodedRequest(
                 agentInstanceId,
@@ -102,11 +93,6 @@ final class JmxControlOpenTypeCodec {
             fields.put(
                     JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_OUTCOME,
                     result.outcome().name()
-            );
-
-            fields.put(
-                    JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_PAYLOAD_DIGEST,
-                    result.payloadDigest()
             );
 
             fields.put(
@@ -146,12 +132,6 @@ final class JmxControlOpenTypeCodec {
             throw rejected(
                     SettingsRejectionReason.INVALID_VALUE,
                     "expectedAcceptedSequence is negative");
-        }
-    }
-
-    private static void requireValidDigestFormat(String candidateDigest) {
-        if (!candidateDigest.matches("[0-9a-f]{64}")) {
-            throw rejected(SettingsRejectionReason.INVALID_VALUE, "candidateDigest is invalid");
         }
     }
 
@@ -304,15 +284,6 @@ final class JmxControlOpenTypeCodec {
             throw rejected(
                     SettingsRejectionReason.LIMIT_EXCEEDED,
                     "Logical request exceeds %d bytes".formatted(JmxWireContract.MAX_LOGICAL_BYTES)
-            );
-        }
-    }
-
-    private static void requireDigestMatches(String candidateDigest, TracingSettings settings) {
-        if (!candidateDigest.equals(TracingSettingsDigest.sha256(settings))) {
-            throw rejected(
-                    SettingsRejectionReason.INVALID_VALUE,
-                    "candidateDigest does not match policy"
             );
         }
     }

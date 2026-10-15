@@ -6,20 +6,21 @@ import java.util.Set;
 
 import org.springframework.cloud.context.environment.EnvironmentChangeEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.util.CollectionUtils;
+
+import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsManifestException;
 
 import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.util.CollectionUtils;
 
 @Slf4j
 public final class ConfigServerTracingSettingsAdapter {
 
     private static final String POLICY_KEY_PREFIX = "platform.tracing.policy.";
 
-    private final TracingSettingsRefreshCoalescer coalescer;
+    private final ConfigServerTracingSettingsSynchronizer synchronizer;
 
-    public ConfigServerTracingSettingsAdapter(TracingSettingsRefreshCoalescer coalescer) {
-        this.coalescer = Objects.requireNonNull(coalescer, "coalescer");
+    public ConfigServerTracingSettingsAdapter(ConfigServerTracingSettingsSynchronizer synchronizer) {
+        this.synchronizer = Objects.requireNonNull(synchronizer, "synchronizer");
     }
 
     @EventListener(EnvironmentChangeEvent.class)
@@ -32,12 +33,19 @@ public final class ConfigServerTracingSettingsAdapter {
         }
 
         log.debug(
-                "EnvironmentChangeEvent changed {} platform.tracing.policy.* key(s) {}; triggering coalesced refresh",
+                "EnvironmentChangeEvent changed {} platform.tracing.policy.* key(s) {}; triggering synchronous refresh",
                 relevantKeys.size(),
                 relevantKeys
         );
 
-        coalescer.onRefreshEvent();
+        try {
+            synchronizer.refresh();
+        } catch (TracingSettingsManifestException | IllegalArgumentException invalidManifest) {
+            log.error("Config Server manifest rejected locally; LKG retained: {}", invalidManifest.getMessage());
+        } catch (RuntimeException failure) {
+            log.error("Config Server settings refresh failed; LKG retained. errorType={}",
+                    failure.getClass().getName(), failure);
+        }
     }
 
     private static List<String> relevantPolicyKeys(Set<String> changedKeys) {

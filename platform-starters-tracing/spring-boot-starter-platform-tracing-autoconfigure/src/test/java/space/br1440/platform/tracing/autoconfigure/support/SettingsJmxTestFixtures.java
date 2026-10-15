@@ -58,7 +58,6 @@ public final class SettingsJmxTestFixtures {
                 "legacy request",
                 new String[]{
                         "attemptId",
-                        "candidateDigest",
                         "expectedAcceptedSequence",
                         "expectedAgentInstanceId",
                         "runtimePolicy",
@@ -69,7 +68,6 @@ public final class SettingsJmxTestFixtures {
                 },
                 new String[]{
                         "attemptId",
-                        "candidateDigest",
                         "expectedAcceptedSequence",
                         "expectedAgentInstanceId",
                         "runtimePolicy",
@@ -79,7 +77,6 @@ public final class SettingsJmxTestFixtures {
                         "updateTarget"
                 },
                 new OpenType<?>[]{
-                        SimpleType.STRING,
                         SimpleType.STRING,
                         SimpleType.LONG,
                         SimpleType.STRING,

@@ -42,6 +42,25 @@ class TracingPropertyAdmissionTest {
     }
 
     @Test
+    void controlChannelFromConfigServerFailsStartup() {
+        // given
+        MapPropertySource source = new MapPropertySource(
+                "configserver:app",
+                Map.of(TracingBootstrapPropertyNames.CONTROL_CHANNEL, "CONFIG_SERVER")
+        );
+
+        // when
+        runner.withInitializer(context -> context.getEnvironment().getPropertySources().addFirst(source))
+                .run(context -> {
+                    // then
+                    assertThat(context).hasFailed();
+                    String message = failureText(context.getStartupFailure());
+                    assertThat(message).contains("platform.tracing.control.channel");
+                    assertThat(message).contains("configserver:app");
+                });
+    }
+
+    @Test
     void policyKeyFromProcessIsRejectedWhenChannelIsConfigServer() {
         // given
         MockEnvironment environment = environment(TracingControlChannel.CONFIG_SERVER);

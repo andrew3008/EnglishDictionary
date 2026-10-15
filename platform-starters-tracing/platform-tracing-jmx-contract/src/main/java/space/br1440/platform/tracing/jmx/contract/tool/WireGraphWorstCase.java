@@ -10,7 +10,6 @@ import lombok.experimental.UtilityClass;
 final class WireGraphWorstCase {
 
     private static final int CANONICAL_UUID_BYTES = 36;
-    private static final int SHA256_HEX_BYTES = 64;
 
     static void requireMinimalBudget(Map<String, Object> root) {
         long required = maximumLogicalBytes(root);
@@ -124,7 +123,6 @@ final class WireGraphWorstCase {
     private static long maximumStringBytes(Map<String, Object> root, String fieldName) {
         return switch (fieldName) {
             case "attemptId", "agentInstanceId", "expectedAgentInstanceId" -> CANONICAL_UUID_BYTES;
-            case "candidateDigest", "payloadDigest" -> SHA256_HEX_BYTES;
             case "routePrefix" -> wireGraphInt(root, "maxRoutePrefixUtf8Bytes");
             case "writer" -> maximumTokenBytes(root, "writer");
             case "sourceAuthority" -> maximumTokenBytes(root, "sourceAuthority");
