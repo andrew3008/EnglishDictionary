@@ -57,7 +57,7 @@ class AgentLogEventTypeTest {
         AgentLogField[] fields = AgentLogField.values();
 
         // then
-        assertThat(eventTypes).hasSize(114);
+        assertThat(eventTypes).hasSize(115);
         assertThat(fields).hasSize(60);
         assertThat(CausePolicy.values()).containsExactly(
                 CausePolicy.FORBIDDEN,

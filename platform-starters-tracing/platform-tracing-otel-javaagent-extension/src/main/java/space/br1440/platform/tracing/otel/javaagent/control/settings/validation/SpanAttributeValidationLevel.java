@@ -13,7 +13,7 @@ import space.br1440.platform.common.util.StringUtils;
  * {@code PLATFORM_TRACING_JAVAAGENT_SPAN_ATTRIBUTES_VALIDATION_LEVEL}, до загрузки Spring.
  * Значения — взаимоисключающие режимы окружения, а не порядковая шкала строгости.
  * <p>
- * Допустимые значения (без учёта регистра):
+ * Допустимые значения:
  * <ul>
  *   <li>{@code WARNING} — валидировать и писать throttled WARN-диагностику; span не прерывается</li>
  *   <li>{@code ERROR} — валидировать и писать throttled ERROR-диагностику без прерывания
@@ -23,8 +23,9 @@ import space.br1440.platform.common.util.StringUtils;
  *       enrichment и остальной composite pipeline продолжают работать. Повторное включение
  *       требует явного {@code WARNING} или {@code ERROR}</li>
  * </ul>
- * Startup: отсутствующее или пустое значение сводится к {@link #WARNING}. Runtime apply и
- * полный snapshot: отсутствующее, пустое или неизвестное значение отклоняет обновление.
+ * Startup-разбор нормализует пробелы и регистр, а отсутствующее или пустое значение сводится
+ * к {@link #WARNING}. Runtime apply и полный snapshot принимают только точное имя константы;
+ * отсутствующее, пустое или неизвестное значение отклоняет обновление.
  * Заданное неизвестное значение, включая снятые {@code WARN}, {@code LENIENT} и {@code STRICT},
  * приводит к отказу.
  */
@@ -43,39 +44,40 @@ public enum SpanAttributeValidationLevel {
     }
 
     /**
-     * Startup-разбор: пустое значение даёт {@link #WARNING}.
+     * Startup-разбор: пустое значение даёт {@link #WARNING}, остальные значения разбираются
+     * после удаления краевых пробелов и приведения регистра через {@link Locale#ROOT}.
      */
     public static SpanAttributeValidationLevel parse(String value) {
         if (StringUtils.isNullOrBlank(value)) {
             return WARNING;
         }
 
-        return parseKnownToken(value, true);
+        return parseKnownToken(value);
     }
 
     /**
-     * Runtime-разбор: пустое или неизвестное значение отклоняет обновление.
+     * Runtime-разбор: принимается только точное имя константы без нормализации.
      */
     public static SpanAttributeValidationLevel require(String value) {
         if (StringUtils.isNullOrBlank(value)) {
             throw invalidRuntimeToken(value);
         }
 
-        return parseKnownToken(value, false);
+        return switch (value) {
+            case "WARNING" -> WARNING;
+            case "ERROR" -> ERROR;
+            case "DISABLED" -> DISABLED;
+            default -> throw invalidRuntimeToken(value);
+        };
     }
 
-    private static SpanAttributeValidationLevel parseKnownToken(String value, boolean startup) {
+    private static SpanAttributeValidationLevel parseKnownToken(String value) {
         String normalized = value.trim().toUpperCase(Locale.ROOT);
         return switch (normalized) {
             case "WARNING" -> WARNING;
             case "ERROR" -> ERROR;
             case "DISABLED" -> DISABLED;
-            default -> {
-                if (startup) {
-                    throw new IllegalStateException(invalidTokenMessage(value));
-                }
-                throw invalidRuntimeToken(value);
-            }
+            default -> throw new IllegalStateException(invalidTokenMessage(value));
         };
     }
 

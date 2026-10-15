@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.jmx.contract.tool;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
@@ -7,8 +9,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class TracingSettingsDigestStabilityTest {
 
@@ -95,8 +95,7 @@ class TracingSettingsDigestStabilityTest {
     private static ContractDocument contractWithFixturePolicyDigest() {
         Map<String, Object> policyDigest = Map.of(
                 "domainSeparator", "platform-tracing/policy-digest/v1",
-                "encodingVersion", 1,
-                "validLogLevels", List.of("OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE")
+                "encodingVersion", 1
         );
 
         Map<String, Object> wireGraph = Map.of(
@@ -106,6 +105,7 @@ class TracingSettingsDigestStabilityTest {
 
         Map<String, Object> root = Map.of(
                 "policyDigest", policyDigest,
+                "logLevel", Map.of("values", List.of("OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE")),
                 "wireGraph", wireGraph
         );
 

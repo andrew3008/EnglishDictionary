@@ -28,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 final class JmxSettingsMutationTransport {
 
-    private static final String OPERATION = "applySnapshot";
+    private static final String OPERATION = JmxWireContract.OPERATION_SETTINGS_MUTATION_APPLY_SNAPSHOT;
 
     private final MBeanServer mbeanServer;
     private final AgentReadinessCoherenceGuard coherenceGuard;

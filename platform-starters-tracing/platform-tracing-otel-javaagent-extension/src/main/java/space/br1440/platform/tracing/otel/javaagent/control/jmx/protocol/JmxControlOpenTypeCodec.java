@@ -67,7 +67,7 @@ final class JmxControlOpenTypeCodec {
         requireValidDigestFormat(candidateDigest);
         requirePolicyType(policyData);
 
-        TracingSettings settings = decodePolicySafely(policyData);
+        TracingSettings settings = decodePolicy(policyData);
         requireWithinLogicalRequestBudget(request);
         requireDigestMatches(candidateDigest, settings);
 
@@ -167,15 +167,21 @@ final class JmxControlOpenTypeCodec {
         }
     }
 
-    private static TracingSettings decodePolicySafely(CompositeData policyData) {
-        try {
-            return decodePolicy(policyData);
-        } catch (IllegalArgumentException | NullPointerException exception) {
-            throw rejected(SettingsRejectionReason.INVALID_VALUE, "Runtime policy is invalid");
-        }
-    }
-
     private static TracingSettings decodePolicy(CompositeData data) {
+        double samplingRatio = value(
+                data,
+                JmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_RATIO,
+                Double.class
+        );
+
+        if (isInvalidRatio(samplingRatio)) {
+            throw rejected(
+                    SettingsRejectionReason.INVALID_SAMPLING_RATIO,
+                    JmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_RATIO,
+                    "Sampling ratio is invalid"
+            );
+        }
+
         TabularData routes = value(
                 data,
                 JmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_ROUTE_RATIOS,
@@ -219,10 +225,47 @@ final class JmxControlOpenTypeCodec {
             );
 
             requireValidRoutePrefix(prefix);
+            if (isInvalidRatio(ratio)) {
+                throw rejected(
+                        SettingsRejectionReason.INVALID_ROUTE_RATIO,
+                        JmxWireContract.FIELD_ROUTE_RATIO_RATIO,
+                        "Route ratio is invalid"
+                );
+            }
 
             if (decodedRoutes.put(prefix, ratio) != null) {
                 throw rejected(SettingsRejectionReason.INVALID_VALUE, "Duplicate route prefix");
             }
+        }
+
+        String rawValidationLevel = token(
+                data,
+                JmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_LEVEL
+        );
+        SpanAttributeValidationLevel validationLevel;
+        try {
+            validationLevel = SpanAttributeValidationLevel.require(rawValidationLevel);
+        } catch (IllegalArgumentException exception) {
+            throw rejected(
+                    SettingsRejectionReason.INVALID_VALIDATION_LEVEL,
+                    JmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_LEVEL,
+                    "Validation level is invalid"
+            );
+        }
+
+        String rawDiagnosticsLogLevel = token(
+                data,
+                JmxWireContract.FIELD_RUNTIME_POLICY_DIAGNOSTICS_LOG_LEVEL
+        );
+        AgentLogLevel diagnosticsLogLevel;
+        try {
+            diagnosticsLogLevel = AgentLogLevel.valueOf(rawDiagnosticsLogLevel);
+        } catch (IllegalArgumentException exception) {
+            throw rejected(
+                    SettingsRejectionReason.INVALID_DIAGNOSTICS_LOG_LEVEL,
+                    JmxWireContract.FIELD_RUNTIME_POLICY_DIAGNOSTICS_LOG_LEVEL,
+                    "Diagnostics log level is invalid"
+            );
         }
 
         return TracingSettings.of(
@@ -232,18 +275,11 @@ final class JmxControlOpenTypeCodec {
                         Boolean.class
                 ),
 
-                value(
-                        data,
-                        JmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_RATIO,
-                        Double.class
-                ),
+                samplingRatio,
 
                 decodedRoutes,
 
-                SpanAttributeValidationLevel.require(token(
-                        data,
-                        JmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_LEVEL)
-                ),
+                validationLevel,
 
                 value(
                         data,
@@ -257,10 +293,7 @@ final class JmxControlOpenTypeCodec {
                         Boolean.class
                 ),
 
-                AgentLogLevel.valueOf(token(
-                        data,
-                        JmxWireContract.FIELD_RUNTIME_POLICY_DIAGNOSTICS_LOG_LEVEL)
-                )
+                diagnosticsLogLevel
         );
     }
 
@@ -352,8 +385,18 @@ final class JmxControlOpenTypeCodec {
         return value.chars().anyMatch(character -> character == 0 || Character.isISOControl(character));
     }
 
+    private static boolean isInvalidRatio(double ratio) {
+        return !Double.isFinite(ratio) || ratio < 0.0d || ratio > 1.0d;
+    }
+
     private static JmxControlDecodeException rejected(SettingsRejectionReason code,
                                                       String message) {
         return new JmxControlDecodeException(code, message);
+    }
+
+    private static JmxControlDecodeException rejected(SettingsRejectionReason code,
+                                                      String propertyName,
+                                                      String message) {
+        return new JmxControlDecodeException(code, propertyName, message);
     }
 }

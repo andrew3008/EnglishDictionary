@@ -7,6 +7,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -20,11 +21,21 @@ class HelmRouteLimitsParityTest {
 
     private static final String ROUTE_LIMITS_BEGIN = "{{- define \"platform-tracing.v1._routeLimits\" -}}";
     private static final String ROUTE_LIMITS_END = "{{- end -}}";
+    private static final String LEVELS_LIST_BEGIN = "{{- $levels := list ";
+    private static final String LEVELS_LIST_END = "-}}";
+    private static final String VALIDATION_LEVEL_USAGE = "(has $validation.level $levels)";
+    private static final String LOG_LEVEL_USAGE = "(has $diagnostics.logLevel $levels)";
+    private static final Pattern LEVEL_TOKEN = Pattern.compile("[A-Z][A-Z0-9_]*");
 
     private static final String PARITY_DESCRIPTION = "route limits in %s must match %s";
+    private static final String LEVELS_PARITY_DESCRIPTION = "%s levels in %s must match %s.values";
     private static final String BEGIN_MISSING_MESSAGE = "Helm template has no %s";
     private static final String END_MISSING_MESSAGE = "Helm template has no %s after %s";
     private static final String INTEGER_MISSING_MESSAGE = "Helm _routeLimits has no integer %s";
+    private static final String LEVEL_USAGE_MISSING_MESSAGE = "Helm template has no level check %s";
+    private static final String LEVEL_LIST_MISSING_MESSAGE = "Helm template has no $levels list before %s";
+    private static final String LEVEL_LIST_END_MISSING_MESSAGE = "Helm $levels list is not closed before %s";
+    private static final String LEVEL_LIST_EMPTY_MESSAGE = "Helm $levels list before %s has no uppercase tokens";
     private static final String PROPERTY_MISSING_MESSAGE = "System property %s is not set; configure it in the Gradle test task";
     private static final String RESOURCE_MISSING_MESSAGE = "Classpath resource %s is missing";
 
@@ -45,6 +56,30 @@ class HelmRouteLimitsParityTest {
         assertThat(helmLimits)
                 .as(PARITY_DESCRIPTION.formatted(policyTemplate, WIRE_CONTRACT_RESOURCE))
                 .isEqualTo(contractLimits);
+    }
+
+    @Test
+    void helmPolicyLevelsMatchWireContract() throws IOException, URISyntaxException {
+        // given
+        ContractDocument contract = ContractDocumentFactory.load(wireContract());
+        List<String> contractValidationLevels = tokenValues(contract, "validationLevel");
+        List<String> contractLogLevels = tokenValues(contract, "logLevel");
+        Path policyTemplate = policyTemplate();
+        String template = Files.readString(policyTemplate);
+
+        // when
+        List<String> helmValidationLevels = helmLevelValues(template, VALIDATION_LEVEL_USAGE);
+        List<String> helmLogLevels = helmLevelValues(template, LOG_LEVEL_USAGE);
+
+        // then
+        assertThat(helmValidationLevels)
+                .as(LEVELS_PARITY_DESCRIPTION.formatted(
+                        "validation", policyTemplate, "validationLevel"))
+                .containsExactlyElementsOf(contractValidationLevels);
+        assertThat(helmLogLevels)
+                .as(LEVELS_PARITY_DESCRIPTION.formatted(
+                        "diagnostics log", policyTemplate, "logLevel"))
+                .containsExactlyElementsOf(contractLogLevels);
     }
 
     private static RouteLimits helmRouteLimits(String template) {
@@ -77,6 +112,39 @@ class HelmRouteLimitsParityTest {
         }
 
         return Integer.parseInt(matcher.group(1));
+    }
+
+    private static List<String> tokenValues(ContractDocument contract, String sectionName) {
+        Map<String, Object> section = contract.section(sectionName);
+        return ContractValues.strings(section.get("values"), sectionName + ".values");
+    }
+
+    private static List<String> helmLevelValues(String template, String usage) {
+        int usageIndex = template.indexOf(usage);
+        if (usageIndex < 0) {
+            throw new IllegalStateException(LEVEL_USAGE_MISSING_MESSAGE.formatted(usage));
+        }
+
+        int listBegin = template.lastIndexOf(LEVELS_LIST_BEGIN, usageIndex);
+        if (listBegin < 0) {
+            throw new IllegalStateException(LEVEL_LIST_MISSING_MESSAGE.formatted(usage));
+        }
+
+        int valuesBegin = listBegin + LEVELS_LIST_BEGIN.length();
+        int listEnd = template.indexOf(LEVELS_LIST_END, valuesBegin);
+        if (listEnd < 0 || listEnd > usageIndex) {
+            throw new IllegalStateException(LEVEL_LIST_END_MISSING_MESSAGE.formatted(usage));
+        }
+
+        List<String> values = LEVEL_TOKEN.matcher(template.substring(valuesBegin, listEnd))
+                .results()
+                .map(result -> result.group())
+                .toList();
+        if (values.isEmpty()) {
+            throw new IllegalStateException(LEVEL_LIST_EMPTY_MESSAGE.formatted(usage));
+        }
+
+        return values;
     }
 
     private static Path policyTemplate() {

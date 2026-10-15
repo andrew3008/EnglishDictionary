@@ -38,7 +38,6 @@ class PolicyDigestSectionValidatorTest {
                 "encodingVersion", 1,
                 "domainSeparator", "platform-tracing-policy-v1",
                 "routeOrdering", "unsigned-utf8-lexicographic",
-                "validLogLevels", List.of("OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"),
                 "fields", List.of(
                         Map.of("id", 1, "name", "samplingEnabled", "type", "boolean"),
                         Map.of("id", 2, "name", "samplingRatio", "type", "double"),

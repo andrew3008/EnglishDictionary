@@ -1,6 +1,5 @@
 package space.br1440.platform.tracing.jmx.contract.tool.validator;
 
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -14,8 +13,6 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 final class PolicyDigestSectionValidator {
 
-    private static final List<String> VALID_LOG_LEVELS = List.of("OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE");
-
     static void validate(ContractValidationContext context) {
         Map<String, Object> digest = context.section("policyDigest");
         Set<String> keys = Set.of(
@@ -24,7 +21,6 @@ final class PolicyDigestSectionValidator {
                 "encodingVersion",
                 "domainSeparator",
                 "routeOrdering",
-                "validLogLevels",
                 "fields"
         );
 
@@ -41,18 +37,7 @@ final class PolicyDigestSectionValidator {
         ContractValues.string(digest.get("domainSeparator"), "policyDigest.domainSeparator");
         ContractValues.requireValue(digest, "routeOrdering", "unsigned-utf8-lexicographic", "policyDigest");
 
-        validateLogLevels(digest);
         validateFields(digest);
-    }
-
-    private static void validateLogLevels(Map<String, Object> digest) {
-        List<String> logLevels = ContractValues.strings(digest.get("validLogLevels"), "policyDigest.validLogLevels");
-        if (!new LinkedHashSet<>(logLevels).equals(new LinkedHashSet<>(VALID_LOG_LEVELS))) {
-            throw new ContractValidationException(
-                    "JMX_SCHEMA_DIGEST_LOG_LEVELS_INVALID",
-                    "Policy digest log levels are invalid"
-            );
-        }
     }
 
     private static void validateFields(Map<String, Object> digest) {

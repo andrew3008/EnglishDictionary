@@ -57,13 +57,12 @@ class TraceResponseHeaderServletFilterTest {
     private FilterChain chain;
     private TraceResponseHeaderServletFilter filter;
     private TracingRuntime runtime;
-    private TraceOperations traceOperations;
 
     @BeforeEach
     void setUp() {
         MDC.clear();
 
-        traceOperations = mock(TraceOperations.class);
+        TraceOperations traceOperations = mock(TraceOperations.class);
         traceContextView = mock(ActiveTraceContextView.class);
         when(traceOperations.traceContext()).thenReturn(traceContextView);
         properties = new TracingProperties();

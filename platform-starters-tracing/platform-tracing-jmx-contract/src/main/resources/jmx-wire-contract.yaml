@@ -32,10 +32,29 @@ messageCode:
     - MISSING_REQUIRED_FIELD
     - TYPE_MISMATCH
     - INVALID_VALUE
+    - INVALID_SAMPLING_RATIO
+    - INVALID_ROUTE_RATIO
+    - INVALID_VALIDATION_LEVEL
+    - INVALID_DIAGNOSTICS_LOG_LEVEL
     - LIMIT_EXCEEDED
     - AGENT_INSTANCE_MISMATCH
     - ACCEPTED_SEQUENCE_MISMATCH
     - INTERNAL_FAILURE
+
+logLevel:
+  values: ["OFF", ERROR, WARN, INFO, DEBUG, TRACE]
+
+validationLevel:
+  values: [WARNING, ERROR, DISABLED]
+
+scannerState:
+  values: [DISABLED, RUNNING, STOPPED, TERMINATED_ABNORMALLY]
+
+processorLifecycle:
+  values: [ACTIVE, SHUTTING_DOWN, TERMINATED, FAILED]
+
+readinessLifecycle:
+  values: [INITIALIZING, READY, FAILED]
 
 objectNames:
   settingsMutation: "space.br1440.platform.tracing:type=Control,name=PlatformSettingsMutation,role=Mutation"
@@ -499,7 +518,6 @@ policyDigest:
   encodingVersion: 1
   domainSeparator: platform-tracing-policy-v1
   routeOrdering: unsigned-utf8-lexicographic
-  validLogLevels: ['OFF', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE']
   fields:
     - { id: 1, name: samplingEnabled, type: boolean }
     - { id: 2, name: samplingRatio, type: double }

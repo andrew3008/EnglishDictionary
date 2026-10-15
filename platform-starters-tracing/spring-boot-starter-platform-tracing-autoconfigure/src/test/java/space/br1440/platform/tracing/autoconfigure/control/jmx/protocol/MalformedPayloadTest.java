@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.autoconfigure.control.jmx.protocol;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static space.br1440.platform.tracing.autoconfigure.support.RecordingSettingsWriter.recordingSettingsWriter;
@@ -223,6 +224,40 @@ class MalformedPayloadTest {
         assertThatThrownBy(() -> AcceptedPolicySnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("diagnosticsLogLevel");
+    }
+
+    @Test
+    void rejectsLowercaseDiagnosticsLogLevel() throws OpenDataException {
+        // given
+        CompositeData snapshot = buildValidWith(
+                1L, AGENT_INSTANCE_ID,
+                true, 0.5d, emptyRouteTable(),
+                "WARNING", true, true, "info");
+
+        // when
+        Throwable failure = catchThrowable(() -> AcceptedPolicySnapshotDecoder.decode(snapshot));
+
+        // then
+        assertThat(failure)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("diagnosticsLogLevel");
+    }
+
+    @Test
+    void rejectsLowercaseValidationLevel() throws OpenDataException {
+        // given
+        CompositeData snapshot = buildValidWith(
+                1L, AGENT_INSTANCE_ID,
+                true, 0.5d, emptyRouteTable(),
+                "warning", true, true, "INFO");
+
+        // when
+        Throwable failure = catchThrowable(() -> AcceptedPolicySnapshotDecoder.decode(snapshot));
+
+        // then
+        assertThat(failure)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("validationLevel");
     }
 
     @Test

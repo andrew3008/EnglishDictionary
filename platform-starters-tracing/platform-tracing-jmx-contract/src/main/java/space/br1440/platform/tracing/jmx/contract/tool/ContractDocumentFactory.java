@@ -16,7 +16,8 @@ final class ContractDocumentFactory {
     private static final Set<String> TOP_LEVEL_KEYS = Set.of(
             "schema", "planes", "objectNames", "endpoints",
             "openTypes", "capabilities", "readinessEvidence", "wireGraph", "policyDigest",
-            "writer", "sourceAuthority", "outcome", "messageCode"
+            "writer", "sourceAuthority", "outcome", "messageCode", "logLevel",
+            "validationLevel", "scannerState", "processorLifecycle", "readinessLifecycle"
     );
 
     static ContractDocument load(Path path) throws IOException {

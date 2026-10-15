@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.distribution;
+package space.br1440.platform.tracing.otel.javaagent.distribution.probe;
 
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
@@ -6,6 +6,7 @@ import java.util.Locale;
 import javax.management.MBeanServer;
 import javax.management.openmbean.CompositeData;
 
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
@@ -22,7 +23,7 @@ public final class SpanAttributeValidationDiagnosticProbe {
     private static final String LIFECYCLE_READY = "READY";
     private static final String LIFECYCLE_FAILED = "FAILED";
 
-    static final String INVALID_SPAN_NAME = "span-attribute-validation-invalid";
+    public static final String INVALID_SPAN_NAME = "span-attribute-validation-invalid";
 
     private SpanAttributeValidationDiagnosticProbe() {
     }
@@ -74,10 +75,10 @@ public final class SpanAttributeValidationDiagnosticProbe {
     }
 
     private static long waitForViolationGrowth(MBeanServer server, long violationsBefore) throws Exception {
-        long deadlineNanos = System.nanoTime() + OBSERVATION_TIMEOUT.toNanos();
+        MonotonicDeadline deadline = MonotonicDeadline.after(OBSERVATION_TIMEOUT);
         long lastViolations = violationsBefore;
 
-        while (System.nanoTime() < deadlineNanos) {
+        while (deadline.hasRemaining()) {
             lastViolations = (Long) validationObservation(server).get(
                     JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_VIOLATIONS_TOTAL
             );
@@ -97,14 +98,20 @@ public final class SpanAttributeValidationDiagnosticProbe {
     }
 
     private static void waitForReady(MBeanServer server) throws Exception {
-        long deadlineNanos = System.nanoTime() + READY_TIMEOUT.toNanos();
+        MonotonicDeadline deadline = MonotonicDeadline.after(READY_TIMEOUT);
 
-        while (System.nanoTime() < deadlineNanos) {
+        while (deadline.hasRemaining()) {
             if (server.isRegistered(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME)) {
                 CompositeData snapshot = (CompositeData) server.getAttribute(
                         JmxWireContract.EXTENSION_READINESS_OBJECT_NAME,
                         JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT
                 );
+
+                if (!JmxOpenTypes.READINESS_SNAPSHOT.equals(snapshot.getCompositeType())) {
+                    throw new IllegalStateException(
+                            "ReadinessSnapshot OpenType differs from the generated application contract");
+                }
+
                 String lifecycle = (String) snapshot.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE);
 
                 if (LIFECYCLE_READY.equals(lifecycle)) {
@@ -131,10 +138,16 @@ public final class SpanAttributeValidationDiagnosticProbe {
     }
 
     private static CompositeData validationObservation(MBeanServer server) throws Exception {
-        return (CompositeData) server.getAttribute(
+        CompositeData observation = (CompositeData) server.getAttribute(
                 JmxWireContract.VALIDATION_OBSERVATION_OBJECT_NAME,
                 JmxWireContract.ATTRIBUTE_VALIDATION_OBSERVATION_VALIDATION_OBSERVATION
         );
+
+        if (!JmxOpenTypes.VALIDATION_OBSERVATION.equals(observation.getCompositeType())) {
+            throw new IllegalStateException("ValidationObservation OpenType differs from the generated application contract");
+        }
+
+        return observation;
     }
 
     private record SpanIdentity(String traceId, String spanId) {

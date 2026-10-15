@@ -11,7 +11,6 @@ final class WireGraphWorstCase {
 
     private static final int CANONICAL_UUID_BYTES = 36;
     private static final int SHA256_HEX_BYTES = 64;
-    private static final List<String> VALIDATION_LEVELS = List.of("WARNING", "ERROR", "DISABLED");
 
     static void requireMinimalBudget(Map<String, Object> root) {
         long required = maximumLogicalBytes(root);
@@ -131,11 +130,8 @@ final class WireGraphWorstCase {
             case "sourceAuthority" -> maximumTokenBytes(root, "sourceAuthority");
             case "outcome" -> maximumTokenBytes(root, "outcome");
             case "messageCode" -> maximumTokenBytes(root, "messageCode");
-            case "diagnosticsLogLevel" -> maximumBytes(ContractValues.strings(
-                    ContractValues.map(root.get("policyDigest"), "policyDigest").get("validLogLevels"),
-                    "policyDigest.validLogLevels"
-            ));
-            case "validationLevel" -> maximumBytes(VALIDATION_LEVELS);
+            case "diagnosticsLogLevel" -> maximumTokenBytes(root, "logLevel");
+            case "validationLevel" -> maximumTokenBytes(root, "validationLevel");
             default -> wireGraphInt(root, "maxStringUtf8Bytes");
         };
     }

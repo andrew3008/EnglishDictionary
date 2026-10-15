@@ -14,7 +14,17 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 final class TokenSectionValidator {
 
-    private static final List<String> SECTION_NAMES = List.of("writer", "sourceAuthority", "outcome", "messageCode");
+    private static final List<String> SECTION_NAMES = List.of(
+            "writer",
+            "sourceAuthority",
+            "outcome",
+            "messageCode",
+            "logLevel",
+            "validationLevel",
+            "scannerState",
+            "processorLifecycle",
+            "readinessLifecycle"
+    );
     private static final Pattern TOKEN = Pattern.compile("[A-Z][A-Z0-9_]*");
 
     static void validate(ContractValidationContext context) {

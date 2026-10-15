@@ -1,7 +1,6 @@
 package space.br1440.platform.tracing.autoconfigure.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.LinkedHashMap;
 import java.util.List;

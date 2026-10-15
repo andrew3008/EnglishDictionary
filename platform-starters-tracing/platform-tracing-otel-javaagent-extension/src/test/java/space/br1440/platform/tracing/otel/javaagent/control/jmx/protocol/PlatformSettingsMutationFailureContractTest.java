@@ -73,6 +73,36 @@ final class PlatformSettingsMutationFailureContractTest {
     }
 
     @Test
+    void policyRejectionDoesNotEmitGenericMutationFailureEvent() throws Exception {
+        // given
+        String attemptId = UUID.randomUUID().toString();
+        CompositeData request = wireRequest(attemptId);
+        TracingSettingsStore store = JmxSettingsMutationFixtures.store();
+        TracingSettingsUpdater updater = updater(store);
+        JmxControlOpenTypeCodec codec = mock(JmxControlOpenTypeCodec.class);
+        CompositeData encodedRejection = mock(CompositeData.class);
+        JmxControlDecodeException rejection = new JmxControlDecodeException(
+                SettingsRejectionReason.INVALID_VALIDATION_LEVEL,
+                JmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_LEVEL,
+                "Validation level is invalid"
+        );
+        when(codec.decode(request)).thenThrow(rejection);
+        when(codec.encode(any(SettingsUpdateResult.class), eq(attemptId))).thenReturn(encodedRejection);
+        PlatformSettingsMutationMBean writer = new PlatformSettingsMutationMBean(updater, codec);
+
+        // when
+        Object response = invoke(writer, request);
+
+        // then
+        assertThat(response).isSameAs(encodedRejection);
+        assertThat(store.current().acceptedSequence()).isZero();
+        assertThat(capture.events())
+                .extracting(CapturedLogEvent::eventName)
+                .contains("JMX_SETTINGS_POLICY_REJECTED")
+                .doesNotContain("JMX_SETTINGS_MUTATION_FAILED");
+    }
+
+    @Test
     void applyFailureDoesNotExposeForeignThrowable() throws Exception {
         // given
         TracingSettingsStore store = JmxSettingsMutationFixtures.store();

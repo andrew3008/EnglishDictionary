@@ -97,6 +97,7 @@ public final class PlatformSettingsMutationMBean implements DynamicMBean {
             wireAttemptId = extractAttemptId(request);
             decoded = codec.decode(request);
         } catch (JmxControlDecodeException exception) {
+            logPolicyRejection(exception, wireAttemptId);
             return encodePreApplyResult(
                     responseAttemptId(wireAttemptId),
                     exception.messageCode(),
@@ -207,6 +208,28 @@ public final class PlatformSettingsMutationMBean implements DynamicMBean {
                 .putString(AgentLogField.PHASE, phase)
                 .putString(AgentLogField.ATTEMPT_ID, sanitizeAttemptIdForLog(attemptId))
                 .cause(failure));
+    }
+
+    private static void logPolicyRejection(JmxControlDecodeException rejection, String attemptId) {
+        if (!isPolicyRejection(rejection.messageCode())) {
+            return;
+        }
+
+        log.log(ControlPlaneLogEvent.JMX_SETTINGS_POLICY_REJECTED, fields -> fields
+                .putString(AgentLogField.PHASE, "decode")
+                .putString(AgentLogField.ATTEMPT_ID, sanitizeAttemptIdForLog(attemptId))
+                .putEnum(AgentLogField.MESSAGE_CODE, rejection.messageCode())
+                .putString(AgentLogField.PROPERTY_NAME, rejection.propertyName()));
+    }
+
+    private static boolean isPolicyRejection(SettingsRejectionReason reason) {
+        return switch (reason) {
+            case INVALID_SAMPLING_RATIO,
+                 INVALID_ROUTE_RATIO,
+                 INVALID_VALIDATION_LEVEL,
+                 INVALID_DIAGNOSTICS_LOG_LEVEL -> true;
+            default -> false;
+        };
     }
 
     private static String sanitizeAttemptIdForLog(String attemptId) {

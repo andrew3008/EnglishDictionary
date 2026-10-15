@@ -26,6 +26,17 @@ public enum ControlPlaneLogEvent implements AgentLogEventType {
             )
     ),
 
+    JMX_SETTINGS_POLICY_REJECTED(
+            noCause(
+                    AgentEventCode.CTRL_WRITER, WARN,
+                    "JMX settings policy rejected",
+                    AgentLogField.PHASE,
+                    AgentLogField.ATTEMPT_ID,
+                    AgentLogField.MESSAGE_CODE,
+                    AgentLogField.PROPERTY_NAME
+            )
+    ),
+
     TRACING_SETTINGS_UPDATE_FAILED(
             requiresCause(
                     AgentEventCode.CTRL_UPDATE, WARN,

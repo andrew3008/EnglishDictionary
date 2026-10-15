@@ -53,7 +53,7 @@ class PlatformKafkaProducerInterceptorIdentityTest {
         ProducerRecord<String, String> record = new ProducerRecord<>("orders", "value");
 
         try (CorrelationScope ignored = runtime.openRequestIdentityScope("request-42");
-             CorrelationScope correlation = runtime.openCorrelationScope("workflow-99")) {
+             CorrelationScope ignored1 = runtime.openCorrelationScope("workflow-99")) {
             interceptor.onSend(record);
         }
 

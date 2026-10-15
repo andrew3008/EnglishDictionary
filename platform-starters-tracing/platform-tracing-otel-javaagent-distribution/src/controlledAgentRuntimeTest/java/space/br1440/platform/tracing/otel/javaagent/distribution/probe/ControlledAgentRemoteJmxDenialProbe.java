@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.distribution;
+package space.br1440.platform.tracing.otel.javaagent.distribution.probe;
 
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
@@ -11,8 +11,8 @@ import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWir
 
 public final class ControlledAgentRemoteJmxDenialProbe {
 
-    static final String OK_PREFIX = "CONTROLLED_AGENT_REMOTE_JMX_DENIED_OK";
-    static final String EXPECTED_FAILURE_CODE = "REMOTE_JMX_MANAGEMENT_AGENT_CONFIGURED";
+    public static final String OK_PREFIX = "CONTROLLED_AGENT_REMOTE_JMX_DENIED_OK";
+    public static final String EXPECTED_FAILURE_CODE = "REMOTE_JMX_MANAGEMENT_AGENT_CONFIGURED";
 
     private static final Duration READINESS_TIMEOUT = Duration.ofSeconds(20);
     private static final Duration READINESS_POLL_INTERVAL = Duration.ofMillis(50);
@@ -46,8 +46,8 @@ public final class ControlledAgentRemoteJmxDenialProbe {
     }
 
     private static CompositeData waitForFailedSnapshot(MBeanServer server) throws Exception {
-        long deadlineNanos = System.nanoTime() + READINESS_TIMEOUT.toNanos();
-        while (System.nanoTime() < deadlineNanos) {
+        MonotonicDeadline deadline = MonotonicDeadline.after(READINESS_TIMEOUT);
+        while (deadline.hasRemaining()) {
             if (!server.isRegistered(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME)) {
                 sleepPollInterval();
                 continue;

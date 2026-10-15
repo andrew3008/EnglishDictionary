@@ -558,6 +558,11 @@ final class JavaContractRenderer {
         appendTokenSet(source, contract, "VALID_SOURCE_AUTHORITIES", "sourceAuthority");
         appendTokenSet(source, contract, "VALID_OUTCOMES", "outcome");
         appendTokenSet(source, contract, "VALID_MESSAGE_CODES", "messageCode");
+        appendTokenSet(source, contract, "VALID_LOG_LEVELS", "logLevel");
+        appendTokenSet(source, contract, "VALID_VALIDATION_LEVELS", "validationLevel");
+        appendTokenSet(source, contract, "VALID_SCANNER_STATES", "scannerState");
+        appendTokenSet(source, contract, "VALID_PROCESSOR_LIFECYCLES", "processorLifecycle");
+        appendTokenSet(source, contract, "VALID_READINESS_LIFECYCLES", "readinessLifecycle");
         source
                 .append("    public static final List<String> REQUIRED_CAPABILITIES = List.of(")
                 .append(joinQuoted(ContractValues.strings(
@@ -667,7 +672,7 @@ final class JavaContractRenderer {
                 .append(wireGraph.get("maxRoutePrefixUtf8Bytes")).append(";\n")
                 .append("    private static final Set<String> VALID_LOG_LEVELS = Set.of(")
                 .append(joinQuoted(ContractValues.strings(
-                        policyDigest.get("validLogLevels"), "policyDigest.validLogLevels")))
+                        contract.section("logLevel").get("values"), "logLevel.values")))
                 .append(");\n")
                 .append("    private static final Comparator<EncodedRouteRatio> ROUTE_PREFIX_ORDER =\n")
                 .append("            Comparator.comparing(\n")

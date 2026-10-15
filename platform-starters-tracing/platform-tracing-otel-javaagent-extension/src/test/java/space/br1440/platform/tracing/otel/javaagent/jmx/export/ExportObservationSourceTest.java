@@ -37,6 +37,8 @@ class ExportObservationSourceTest {
         assertThat((Integer) processor.get(
                 JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_QUEUE_CAPACITY))
                 .isEqualTo(0);
+        assertThat((String) processor.get(
+                JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_LIFECYCLE_STATE)).isEmpty();
         assertThat((Boolean) exporter.get(
                 JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_PRESENT)).isFalse();
         assertThat((Long) exporter.get(

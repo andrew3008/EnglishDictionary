@@ -48,7 +48,7 @@ class AgentReadinessClassifierTest {
 
         // then
         assertDecision(decision, AgentRuntimeState.EXTENSION_FAILED, "DISTRIBUTION_MISMATCH");
-        assertThat(AgentReadinessClassifier.sticky(decision)).isTrue();
+        assertThat(AgentReadinessClassifier.sticky(decision.state())).isTrue();
     }
 
     @Test
@@ -235,6 +235,33 @@ class AgentReadinessClassifierTest {
                 decision,
                 AgentRuntimeState.EXTENSION_INCOMPATIBLE,
                 "EXTENSION_LIFECYCLE_UNEXPECTED");
+    }
+
+    @Test
+    void generatedLifecycleValuesAreRecognized() {
+        // given
+        Set<String> lifecycles = JmxWireContract.VALID_READINESS_LIFECYCLES;
+
+        // when
+        Set<String> unexpectedLifecycles = new LinkedHashSet<>();
+        for (String lifecycle : lifecycles) {
+            AgentReadinessSnapshot snapshot = builder()
+                    .lifecycleState(new AgentReadinessSnapshot.LifecycleState(
+                            lifecycle, "", ReadinessTestFixtures.COMPLETE_CAPABILITIES, Set.of()))
+                    .build();
+
+            AgentReadinessClassifier.Decision decision = AgentReadinessClassifier.decide(
+                    snapshot,
+                    ReadinessTestFixtures.APPLICATION_VERSION
+            );
+
+            if ("EXTENSION_LIFECYCLE_UNEXPECTED".equals(decision.reasonCode())) {
+                unexpectedLifecycles.add(lifecycle);
+            }
+        }
+
+        // then
+        assertThat(unexpectedLifecycles).isEmpty();
     }
 
     private static ReadinessTestFixtures.Builder builder() {

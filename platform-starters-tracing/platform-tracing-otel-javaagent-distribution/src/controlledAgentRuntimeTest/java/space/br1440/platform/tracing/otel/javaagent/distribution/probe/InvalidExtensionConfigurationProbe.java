@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.distribution;
+package space.br1440.platform.tracing.otel.javaagent.distribution.probe;
 
 import java.lang.management.ManagementFactory;
 import java.util.Locale;
@@ -13,8 +13,8 @@ import io.opentelemetry.api.trace.Tracer;
 
 public final class InvalidExtensionConfigurationProbe {
 
-    static final String MAIN_REACHED_MARKER = "APPLICATION_MAIN_REACHED";
-    static final String RESULT_PREFIX = "INVALID_EXTENSION_CONFIGURATION_PROBE";
+    public static final String MAIN_REACHED_MARKER = "APPLICATION_MAIN_REACHED";
+    public static final String RESULT_PREFIX = "INVALID_EXTENSION_CONFIGURATION_PROBE";
 
     private InvalidExtensionConfigurationProbe() {
     }

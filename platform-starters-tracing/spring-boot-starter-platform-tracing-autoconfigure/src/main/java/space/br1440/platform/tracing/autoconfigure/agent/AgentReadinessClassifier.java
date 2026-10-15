@@ -55,8 +55,8 @@ final class AgentReadinessClassifier {
         };
     }
 
-    static boolean sticky(Decision decision) {
-        return switch (decision.state()) {
+    static boolean sticky(AgentRuntimeState state) {
+        return switch (state) {
             case EXTENSION_INCOMPATIBLE, EXTENSION_FAILED, CAPABILITY_MISSING, DUAL_SDK_DETECTED -> true;
             default -> false;
         };

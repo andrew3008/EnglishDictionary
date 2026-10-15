@@ -19,8 +19,6 @@ import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.Platfor
 
 public final class ExportObservationSource {
 
-    private static final String ABSENT_LIFECYCLE_STATE_PLACEHOLDER = "ABSENT";
-
     private final OwnerRegistrationSlot<PlatformDropOldestExportSpanProcessor> processorSlot;
     private final OwnerRegistrationSlot<SafeSpanExporter> exporterSlot;
     private final ObservationCaptureEnvelope envelope;
@@ -78,7 +76,7 @@ public final class ExportObservationSource {
         }
 
         return processorValues(false, state.generation(), offsetNanos, 0, 0, 0L, 0L, 0L, 0L,
-                ABSENT_LIFECYCLE_STATE_PLACEHOLDER, 0L, 0L, 0L);
+                "", 0L, 0L, 0L);
     }
 
     private static CompositeData buildExporterValues(OwnerRegistrationState<SafeSpanExporter> state, long offsetNanos) {
@@ -114,19 +112,14 @@ public final class ExportObservationSource {
         values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_OWNER_CAPTURED_OFFSET_NANOS, offsetNanos);
         values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_QUEUE_CAPACITY, queueCapacity);
         values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_QUEUE_SIZE, queueSize);
-        values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_DROPPED_OVERFLOW_TOTAL,
-                droppedOverflowTotal);
-        values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_DROPPED_AFTER_SHUTDOWN_TOTAL,
-                droppedAfterShutdownTotal);
+        values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_DROPPED_OVERFLOW_TOTAL, droppedOverflowTotal);
+        values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_DROPPED_AFTER_SHUTDOWN_TOTAL, droppedAfterShutdownTotal);
         values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_FAILURES_TOTAL, failuresTotal);
         values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_TIMEOUTS_TOTAL, timeoutsTotal);
         values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_LIFECYCLE_STATE, lifecycleState);
-        values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_SHUTDOWN_FAILURES_TOTAL,
-                shutdownFailuresTotal);
-        values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_DROPPED_AFTER_FAILURE_TOTAL,
-                droppedAfterFailureTotal);
-        values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_DISCARDED_QUEUED_TOTAL,
-                discardedQueuedTotal);
+        values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_SHUTDOWN_FAILURES_TOTAL, shutdownFailuresTotal);
+        values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_DROPPED_AFTER_FAILURE_TOTAL, droppedAfterFailureTotal);
+        values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_DISCARDED_QUEUED_TOTAL, discardedQueuedTotal);
         return JmxOpenTypeSupport.compositeData(JmxOpenTypes.EXPORT_PROCESSOR_VALUES, values);
     }
 

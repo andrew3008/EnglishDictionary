@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.distribution;
+package space.br1440.platform.tracing.otel.javaagent.distribution.probe;
 
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
@@ -6,6 +6,7 @@ import java.util.Locale;
 import javax.management.MBeanServer;
 import javax.management.openmbean.CompositeData;
 
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
@@ -16,11 +17,11 @@ import io.opentelemetry.context.Scope;
 
 public final class RequestIdPropagationProbe {
 
-    static final String OK_PREFIX = "REQUEST_ID_PROPAGATION_OK";
-    static final String PARENT_SPAN_NAME = "request-id-parent";
-    static final String CHILD_SPAN_NAME = "request-id-child";
-    static final String REQUEST_ID = "req-propagated";
-    static final String REQUEST_ID_KEY = "platform.request_id";
+    public static final String OK_PREFIX = "REQUEST_ID_PROPAGATION_OK";
+    public static final String PARENT_SPAN_NAME = "request-id-parent";
+    public static final String CHILD_SPAN_NAME = "request-id-child";
+    public static final String REQUEST_ID = "req-propagated";
+    public static final String REQUEST_ID_KEY = "platform.request_id";
 
     private static final Duration READY_TIMEOUT = Duration.ofSeconds(20);
     private static final Duration POLL_INTERVAL = Duration.ofMillis(100);
@@ -50,14 +51,19 @@ public final class RequestIdPropagationProbe {
     }
 
     private static void waitForReady(MBeanServer server) throws Exception {
-        long deadlineNanos = System.nanoTime() + READY_TIMEOUT.toNanos();
+        MonotonicDeadline deadline = MonotonicDeadline.after(READY_TIMEOUT);
 
-        while (System.nanoTime() < deadlineNanos) {
+        while (deadline.hasRemaining()) {
             if (server.isRegistered(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME)) {
                 CompositeData snapshot = (CompositeData) server.getAttribute(
                         JmxWireContract.EXTENSION_READINESS_OBJECT_NAME,
                         JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT
                 );
+
+                if (!JmxOpenTypes.READINESS_SNAPSHOT.equals(snapshot.getCompositeType())) {
+                    throw new IllegalStateException(
+                            "ReadinessSnapshot OpenType differs from the generated application contract");
+                }
 
                 String lifecycle = (String) snapshot.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE);
                 if (LIFECYCLE_READY.equals(lifecycle)) {

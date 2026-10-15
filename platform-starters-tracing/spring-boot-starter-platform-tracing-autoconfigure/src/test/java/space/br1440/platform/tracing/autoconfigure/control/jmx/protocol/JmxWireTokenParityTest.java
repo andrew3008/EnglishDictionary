@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedSettingsAuthority;
 import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsWriter;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.ExportProcessorValues;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 class JmxWireTokenParityTest {
@@ -46,6 +47,18 @@ class JmxWireTokenParityTest {
 
         // then
         assertThat(messageCodes).noneMatch(code -> code.startsWith("JMX_CLIENT_"));
+    }
+
+    @Test
+    void generatedProcessorLifecyclesMatchApplicationModel() {
+        // given
+        Set<String> expected = enumNames(ExportProcessorValues.LifecycleState.values());
+
+        // when
+        Set<String> actual = JmxWireContract.VALID_PROCESSOR_LIFECYCLES;
+
+        // then
+        assertThat(actual).isEqualTo(expected);
     }
 
     private static Set<String> enumNames(Enum<?>[] values) {

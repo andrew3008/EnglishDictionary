@@ -5,6 +5,7 @@ import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -17,6 +18,7 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.Pro
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorSpanTimeoutValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.ObservationCapture;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
@@ -79,9 +81,17 @@ class PlatformTracingProcessorMetricsBinderTest {
                 new JmxOwnerState.Absent<>(0L)
         )));
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
-        new PlatformTracingProcessorMetricsBinder(client).bindTo(registry);
+        PlatformTracingProcessorMetricsBinder binder = new PlatformTracingProcessorMetricsBinder(client);
 
-        // when / then
+        // when
+        binder.bindTo(registry);
+
+        // then
+        assertThat(registry.find("platform.tracing.processor.span_timeout.scanner").gauges())
+                .extracting(gauge -> gauge.getId().getTag("state"))
+                .containsExactlyInAnyOrderElementsOf(JmxWireContract.VALID_SCANNER_STATES.stream()
+                        .map(state -> state.toLowerCase(Locale.ROOT))
+                        .toList());
         assertThat(registry.find("platform.tracing.processor.span_timeout.active")
                 .tag("scope", "spans").gauge().value()).isEqualTo(3.0);
         assertThat(registry.find("platform.tracing.processor.span_timeout.active")

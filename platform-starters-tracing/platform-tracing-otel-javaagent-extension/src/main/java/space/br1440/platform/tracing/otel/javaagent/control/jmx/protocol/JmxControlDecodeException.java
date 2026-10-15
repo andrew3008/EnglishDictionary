@@ -11,13 +11,25 @@ final class JmxControlDecodeException extends RuntimeException {
     private static final long serialVersionUID = 1L;
 
     private final SettingsRejectionReason messageCode;
+    private final String propertyName;
 
     JmxControlDecodeException(SettingsRejectionReason messageCode, String message) {
+        this(messageCode, null, message);
+    }
+
+    JmxControlDecodeException(SettingsRejectionReason messageCode,
+                              String propertyName,
+                              String message) {
         super(message);
         this.messageCode = Objects.requireNonNull(messageCode, "messageCode");
+        this.propertyName = propertyName;
     }
 
     SettingsRejectionReason messageCode() {
         return messageCode;
+    }
+
+    String propertyName() {
+        return propertyName;
     }
 }

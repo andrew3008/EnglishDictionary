@@ -50,6 +50,8 @@ class ProcessorMetricsObservationSourceTest {
                 JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_GENERATION)).isEqualTo(0L);
         assertThat((Long) metrics.get(
                 JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_GENERATION)).isEqualTo(0L);
+        assertThat((String) spanTimeout.get(
+                JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_SCANNER_STATE)).isEmpty();
     }
 
     @Test

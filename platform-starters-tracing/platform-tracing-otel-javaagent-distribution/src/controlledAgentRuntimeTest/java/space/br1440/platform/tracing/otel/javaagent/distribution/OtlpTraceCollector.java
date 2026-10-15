@@ -13,7 +13,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPInputStream;
 
 import com.sun.net.httpserver.HttpExchange;
@@ -26,10 +25,6 @@ import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.trace.v1.Span;
 
-/**
- * Принимающая сторона OTLP/HTTP для процессных гейтов: сохраняет идентификаторы и строковые
- * атрибуты принятых span, чтобы тест мог доказать экспорт конкретного span.
- */
 final class OtlpTraceCollector implements AutoCloseable {
 
     private static final String TRACES_PATH = "/v1/traces";
@@ -38,7 +33,7 @@ final class OtlpTraceCollector implements AutoCloseable {
     private final HttpServer server;
     private final ExecutorService executor;
     private final long rejectedSpansPerBatch;
-    private final AtomicInteger receivedBatches = new AtomicInteger();
+    private final List<List<ReceivedSpan>> receivedSpanBatches = new CopyOnWriteArrayList<>();
     private final List<ReceivedSpan> receivedSpans = new CopyOnWriteArrayList<>();
 
     private OtlpTraceCollector(HttpServer server, ExecutorService executor, long rejectedSpansPerBatch) {
@@ -70,8 +65,8 @@ final class OtlpTraceCollector implements AutoCloseable {
         return "http://127.0.0.1:" + server.getAddress().getPort();
     }
 
-    int receivedBatches() {
-        return receivedBatches.get();
+    List<List<ReceivedSpan>> receivedSpanBatches() {
+        return List.copyOf(receivedSpanBatches);
     }
 
     List<ReceivedSpan> receivedSpans() {
@@ -82,11 +77,10 @@ final class OtlpTraceCollector implements AutoCloseable {
         try (exchange) {
             byte[] requestBody = readBody(exchange);
             List<ReceivedSpan> spans = parseSpans(requestBody);
+            receivedSpanBatches.add(spans);
             receivedSpans.addAll(spans);
-            receivedBatches.incrementAndGet();
 
             byte[] responseBody = response(spans.size());
-
             exchange.getResponseHeaders().add("Content-Type", "application/x-protobuf");
             exchange.sendResponseHeaders(200, responseBody.length);
             try (OutputStream output = exchange.getResponseBody()) {
@@ -138,9 +132,7 @@ final class OtlpTraceCollector implements AutoCloseable {
         }
 
         HexFormat hex = HexFormat.of();
-        String parentSpanId = span.getParentSpanId().isEmpty()
-                ? ""
-                : hex.formatHex(span.getParentSpanId().toByteArray());
+        String parentSpanId = span.getParentSpanId().isEmpty() ? "" : hex.formatHex(span.getParentSpanId().toByteArray());
         return new ReceivedSpan(
                 hex.formatHex(span.getTraceId().toByteArray()),
                 hex.formatHex(span.getSpanId().toByteArray()),
@@ -163,14 +155,13 @@ final class OtlpTraceCollector implements AutoCloseable {
             int droppedExchanges = executor.shutdownNow().size();
             boolean terminatedAfterInterrupt = executor.awaitTermination(DRAIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             String forcedShutdownOutcome = terminatedAfterInterrupt ? "succeeded" : "FAILED, executor thread is still alive";
-            throw new IllegalStateException(
-                    "OTLP trace collector did not drain within %d s; forced shutdown %s; %d queued exchange(s) dropped"
-                            .formatted(
-                                    DRAIN_TIMEOUT_SECONDS,
-                                    forcedShutdownOutcome,
-                                    droppedExchanges
-                            )
-            );
+            String message = "OTLP trace collector did not drain within %d s; forced shutdown %s; %d queued exchange(s) dropped"
+                    .formatted(
+                            DRAIN_TIMEOUT_SECONDS,
+                            forcedShutdownOutcome,
+                            droppedExchanges
+                    );
+            throw new IllegalStateException(message);
         } catch (InterruptedException interrupted) {
             executor.shutdownNow();
 

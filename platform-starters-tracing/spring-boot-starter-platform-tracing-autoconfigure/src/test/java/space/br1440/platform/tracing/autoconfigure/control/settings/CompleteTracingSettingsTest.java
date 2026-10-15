@@ -199,6 +199,32 @@ class CompleteTracingSettingsTest {
     }
 
     @Test
+    void canonicalizesValidationLevelCaseInsensitively() {
+        // given
+        CompleteTracingSettings.Builder builder = fullBuilder().validationLevel("warning");
+
+        // when
+        CompleteTracingSettings settings = builder.build();
+
+        // then
+        assertThat(settings.validationLevel()).isEqualTo("WARNING");
+    }
+
+    @Test
+    void rejectsUnknownValidationLevel() {
+        // given
+        CompleteTracingSettings.Builder builder = fullBuilder().validationLevel("STRICT");
+
+        // when
+        Throwable failure = catchThrowable(builder::build);
+
+        // then
+        assertThat(failure)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageNotContaining("STRICT");
+    }
+
+    @Test
     @ResourceLock(Resources.LOCALE)
     void logLevelCanonicalizationUsesRootLocale() {
         Locale previous = Locale.getDefault();

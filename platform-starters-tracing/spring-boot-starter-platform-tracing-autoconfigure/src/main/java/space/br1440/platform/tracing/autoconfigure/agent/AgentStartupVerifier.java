@@ -138,7 +138,7 @@ public final class AgentStartupVerifier {
                 globalOpenTelemetrySet
         );
 
-        if (isStickyFailure(diagnostics.runtimeState())) {
+        if (AgentReadinessClassifier.sticky(diagnostics.runtimeState())) {
             stickyFailure.compareAndSet(null, diagnostics);
             diagnostics = stickyFailure.get();
         }
@@ -155,8 +155,7 @@ public final class AgentStartupVerifier {
 
         while (true) {
             boolean endpointPresent = coherenceGuard.endpointRegistered();
-            if (userOpenTelemetryBeanPresent
-                    || (globalOpenTelemetrySet && !agentMarkerVisible && !endpointPresent)) {
+            if (userOpenTelemetryBeanPresent || (globalOpenTelemetrySet && !agentMarkerVisible && !endpointPresent)) {
                 return terminalWithoutSnapshot(
                         tracingEnabled,
                         AgentRuntimeState.DUAL_SDK_DETECTED,
@@ -167,8 +166,7 @@ public final class AgentStartupVerifier {
             }
 
             if (!endpointPresent) {
-                if (!tracingEnabled
-                        && isAbsentSignals(agentMarkerVisible, userOpenTelemetryBeanPresent, globalOpenTelemetrySet)) {
+                if (!tracingEnabled && isAbsentSignals(agentMarkerVisible, globalOpenTelemetrySet)) {
                     return disabled();
                 }
 
@@ -244,7 +242,7 @@ public final class AgentStartupVerifier {
 
             if (reason == AgentReadinessProbe.ProbeReason.ENDPOINT_DISAPPEARED && !everSucceeded) {
                 if (!tracingEnabled
-                        && isAbsentSignals(agentMarkerVisible, userOpenTelemetryBeanPresent, globalOpenTelemetrySet)) {
+                        && isAbsentSignals(agentMarkerVisible, globalOpenTelemetrySet)) {
                     return disabled();
                 }
 
@@ -286,17 +284,8 @@ public final class AgentStartupVerifier {
         return Math.min(remaining, READINESS_POLL_INTERVAL.toNanos());
     }
 
-    private static boolean isStickyFailure(AgentRuntimeState state) {
-        return switch (state) {
-            case EXTENSION_INCOMPATIBLE, EXTENSION_FAILED, CAPABILITY_MISSING, DUAL_SDK_DETECTED -> true;
-            default -> false;
-        };
-    }
-
-    private static boolean isAbsentSignals(boolean agentMarkerVisible,
-                                           boolean userOpenTelemetryBeanPresent,
-                                           boolean globalOpenTelemetrySet) {
-        return !agentMarkerVisible && !userOpenTelemetryBeanPresent && !globalOpenTelemetrySet;
+    private static boolean isAbsentSignals(boolean agentMarkerVisible, boolean globalOpenTelemetrySet) {
+        return !agentMarkerVisible && !globalOpenTelemetrySet;
     }
 
     private static TracingDeploymentDiagnostics disabled() {

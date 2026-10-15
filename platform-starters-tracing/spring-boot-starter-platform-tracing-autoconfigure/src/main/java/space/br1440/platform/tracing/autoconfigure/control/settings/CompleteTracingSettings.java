@@ -7,15 +7,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireUtf8Meter;
 
 public final class CompleteTracingSettings {
-
-    private static final Set<String> VALID_LOG_LEVELS = Set.of("OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE");
-    private static final Set<String> VALID_VALIDATION_LEVELS = Set.of("WARNING", "ERROR", "DISABLED");
 
     private final boolean samplingEnabled;
     private final double samplingRatio;
@@ -192,21 +188,13 @@ public final class CompleteTracingSettings {
         return routePrefix;
     }
 
-    public static boolean isUnrecognizedLogLevel(String diagnosticsLogLevel) {
-        return !VALID_LOG_LEVELS.contains(diagnosticsLogLevel);
-    }
-
-    public static boolean isUnrecognizedValidationLevel(String validationLevel) {
-        return validationLevel == null || !VALID_VALIDATION_LEVELS.contains(validationLevel);
-    }
-
     private static String canonicalizeLogLevel(String diagnosticsLogLevel) {
         if (diagnosticsLogLevel == null) {
             throw new IllegalArgumentException("diagnosticsLogLevel must not be null");
         }
 
         String canonical = diagnosticsLogLevel.toUpperCase(Locale.ROOT);
-        if (isUnrecognizedLogLevel(canonical)) {
+        if (!JmxWireContract.VALID_LOG_LEVELS.contains(canonical)) {
             throw new IllegalArgumentException("diagnosticsLogLevel is not a recognized level");
         }
 
@@ -219,7 +207,7 @@ public final class CompleteTracingSettings {
         }
 
         String canonical = validationLevel.toUpperCase(Locale.ROOT);
-        if (isUnrecognizedValidationLevel(canonical)) {
+        if (!JmxWireContract.VALID_VALIDATION_LEVELS.contains(canonical)) {
             throw new IllegalArgumentException("validationLevel is not a recognized level");
         }
 

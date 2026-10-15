@@ -11,9 +11,11 @@ import java.net.URI;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.mock.http.client.MockClientHttpRequest;
+import org.springframework.mock.http.client.MockClientHttpResponse;
 
 import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
@@ -46,14 +48,15 @@ class PlatformOutboundHttpInterceptorRequestIdTest {
                 HttpMethod.GET,
                 URI.create("http://identity-mvc.local/next"));
         ClientHttpRequestExecution execution = mock(ClientHttpRequestExecution.class);
+        ClientHttpResponse response = new MockClientHttpResponse(new byte[0], HttpStatus.OK);
         when(execution.execute(any(HttpRequest.class), any()))
-                .thenReturn(null);
+                .thenReturn(response);
 
         // when
         try (CorrelationScope ignored = runtime.openRequestIdentityScope("app-request", true, true);
              ClientHttpResponse ignoredResponse = interceptor.intercept(request, new byte[0], execution)) {
             // then
-            assertThat(ignoredResponse).isNull();
+            assertThat(ignoredResponse).isSameAs(response);
             assertThat(request.getHeaders().get(PlatformHeaders.X_REQUEST_ID)).containsExactly("app-request");
             assertThat(request.getHeaders().get(PlatformHeaders.X_TRACE_ON)).containsExactly("on");
             assertThat(request.getHeaders().get(PlatformHeaders.X_QA_TRACE)).containsExactly("1");
@@ -77,14 +80,15 @@ class PlatformOutboundHttpInterceptorRequestIdTest {
                 HttpMethod.GET,
                 URI.create("http://identity-mvc.local/next"));
         ClientHttpRequestExecution execution = mock(ClientHttpRequestExecution.class);
+        ClientHttpResponse response = new MockClientHttpResponse(new byte[0], HttpStatus.OK);
         when(execution.execute(any(HttpRequest.class), any()))
-                .thenReturn(null);
+                .thenReturn(response);
 
         // when
         try (CorrelationScope ignored = runtime.openRequestIdentityScope("app-request");
              ClientHttpResponse ignoredResponse = interceptor.intercept(request, new byte[0], execution)) {
             // then
-            assertThat(ignoredResponse).isNull();
+            assertThat(ignoredResponse).isSameAs(response);
             assertThat(request.getHeaders().get(PlatformHeaders.X_TRACE_ON)).isNull();
             assertThat(request.getHeaders().get(PlatformHeaders.X_QA_TRACE)).isNull();
         }

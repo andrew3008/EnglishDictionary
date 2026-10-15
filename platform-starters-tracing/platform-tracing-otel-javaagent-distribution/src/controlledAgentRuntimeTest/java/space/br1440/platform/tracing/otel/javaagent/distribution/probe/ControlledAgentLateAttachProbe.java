@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.distribution;
+package space.br1440.platform.tracing.otel.javaagent.distribution.probe;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -13,7 +13,7 @@ import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWir
 
 public final class ControlledAgentLateAttachProbe {
 
-    static final String READY_LINE_PREFIX = "CONTROLLED_AGENT_LATE_ATTACH_PROBE_READY pid=";
+    public static final String READY_LINE_PREFIX = "CONTROLLED_AGENT_LATE_ATTACH_PROBE_READY pid=";
 
     private static final Duration READINESS_TIMEOUT = Duration.ofSeconds(20);
     private static final Duration READINESS_POLL_INTERVAL = Duration.ofMillis(50);
@@ -39,8 +39,8 @@ public final class ControlledAgentLateAttachProbe {
     }
 
     private static void awaitExtensionReady(MBeanServer server) throws Exception {
-        long deadlineNanos = System.nanoTime() + READINESS_TIMEOUT.toNanos();
-        while (System.nanoTime() < deadlineNanos) {
+        MonotonicDeadline deadline = MonotonicDeadline.after(READINESS_TIMEOUT);
+        while (deadline.hasRemaining()) {
             if (!server.isRegistered(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME)) {
                 sleepPollInterval();
                 continue;

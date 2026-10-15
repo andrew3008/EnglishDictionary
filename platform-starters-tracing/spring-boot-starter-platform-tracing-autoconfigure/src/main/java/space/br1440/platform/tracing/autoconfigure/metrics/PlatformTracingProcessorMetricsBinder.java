@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
 import java.util.EnumMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -211,7 +212,7 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
 
     private double scannerState(SpanTimeoutScannerStateTag state) {
         return presentSpanTimeoutValues()
-                .map(values -> state.wireName().equals(values.scanner().scannerState()) ? 1.0 : 0.0)
+                .map(values -> state.name().equals(values.scanner().scannerState()) ? 1.0 : 0.0)
                 .orElse(Double.NaN);
     }
 
@@ -257,30 +258,14 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
         TRACES
     }
 
-    /**
-     * Домен значений {@code scannerState} wire-контракта. Дублирует имена enum сканера из плоскости агента
-     * намеренно: autoconfigure не зависит от типов extension, сравнение выполняется по строке контракта.
-     */
     private enum SpanTimeoutScannerStateTag {
-        DISABLED("DISABLED", "disabled"),
-        RUNNING("RUNNING", "running"),
-        STOPPED("STOPPED", "stopped"),
-        TERMINATED_ABNORMALLY("TERMINATED_ABNORMALLY", "terminated_abnormally");
-
-        private final String wireName;
-        private final String tag;
-
-        SpanTimeoutScannerStateTag(String wireName, String tag) {
-            this.wireName = wireName;
-            this.tag = tag;
-        }
-
-        String wireName() {
-            return wireName;
-        }
+        DISABLED,
+        RUNNING,
+        STOPPED,
+        TERMINATED_ABNORMALLY;
 
         String tag() {
-            return tag;
+            return name().toLowerCase(Locale.ROOT);
         }
     }
 

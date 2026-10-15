@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.distribution;
+package space.br1440.platform.tracing.otel.javaagent.distribution.probe;
 
 import java.io.File;
 import java.io.IOException;
@@ -8,7 +8,6 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -20,12 +19,11 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+import javax.management.JMException;
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanInfo;
 import javax.management.MBeanServer;
-import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.TabularData;
 
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
@@ -41,7 +39,7 @@ public final class ControlledAgentRuntimeProbe {
     private static final String UPSTREAM_COORDINATE_KEY = "upstream.coordinate";
     private static final String UPSTREAM_COORDINATE_PREFIX = "io.opentelemetry.javaagent:opentelemetry-javaagent:";
     private static final String EXPECTED_AGENT_SHA256_PROPERTY = "platform.tracing.controlled-agent.expected-sha256";
-    static final String EXPECTED_API_CLASSPATH_PROPERTY = "platform.tracing.controlled-agent.expected-api-classpath";
+    public static final String EXPECTED_API_CLASSPATH_PROPERTY = "platform.tracing.controlled-agent.expected-api-classpath";
 
     private static final String DEVELOPMENT_VERSION_MARKER = "development";
     private static final String LIFECYCLE_READY = "READY";
@@ -50,16 +48,6 @@ public final class ControlledAgentRuntimeProbe {
     private static final String VERIFY_BOOTSTRAP_POLICY_ARGUMENT = "verify-bootstrap-policy";
     private static final String SPRING_APPLICATION_RESOURCE = "org/springframework/boot/SpringApplication.class";
     private static final String BOOTSTRAP_POLICY_DROP_PATH = "/bootstrap-policy-probe";
-
-    private static final Set<String> EXPECTED_CAPABILITIES = Set.of(
-            "CONFIGURATION_LOADED",
-            "PLATFORM_SAMPLER_INSTALLED",
-            "REQUIRED_SPAN_PROCESSORS_INSTALLED",
-            "SANITIZER_INSTALLED",
-            "PROPAGATION_HOOKS_INSTALLED",
-            "SAFE_EXPORTER_INSTALLED",
-            "EXPORT_PATH_PROTECTED"
-    );
 
     private static final List<String> CONTAMINATING_ENV_VARS = List.of(
             "JAVA_TOOL_OPTIONS",
@@ -77,7 +65,7 @@ public final class ControlledAgentRuntimeProbe {
     private ControlledAgentRuntimeProbe() {
     }
 
-    public static void main(String[] arguments) throws Exception {
+    public static void main(String[] arguments) throws IOException, JMException, InterruptedException {
         ProbeArguments probeArguments = ProbeArguments.parse(arguments);
         ProbeMode mode = probeArguments.mode();
 
@@ -88,17 +76,18 @@ public final class ControlledAgentRuntimeProbe {
         }
 
         String upstreamVersion = verifyDistributionIdentity(probeArguments);
-        Jmx jmx = Jmx.platform();
-        String agentInstanceId = verifyReadiness(jmx, probeArguments.version(), upstreamVersion);
-        verifyAcceptedSettingsIdentity(jmx, agentInstanceId, mode);
+        MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+        String agentInstanceId = verifyReadiness(server, probeArguments.version(), upstreamVersion);
+        verifyAcceptedSettingsIdentity(server, agentInstanceId, mode);
         if (mode.verifiesBootstrapPolicy()) {
             BootstrapDropPath.verify();
         }
 
-        verifyProcessValidationState(jmx, agentInstanceId);
+        verifyProcessValidationState(server, agentInstanceId);
 
         System.out.printf("CONTROLLED_AGENT_PROBE_OK version=%s schema=%s capabilities=%d%n",
-                probeArguments.version(), JmxWireContract.SCHEMA_ID, EXPECTED_CAPABILITIES.size());
+                probeArguments.version(), JmxWireContract.SCHEMA_ID,
+                JmxWireContract.REQUIRED_CAPABILITIES.size());
     }
 
     private static void verifyHermeticLaunch(Path controlledAgent, ProbeMode mode) throws IOException {
@@ -111,6 +100,7 @@ public final class ControlledAgentRuntimeProbe {
                                                          boolean expectApiClasspath) throws IOException {
         String classPath = System.getProperty("java.class.path");
         List<Path> actualEntries = resolveClasspath(classPath);
+
         List<Path> expectedEntries = new ArrayList<>();
         expectedEntries.add(probeLocation());
         if (expectApiClasspath) {
@@ -120,9 +110,9 @@ public final class ControlledAgentRuntimeProbe {
         if (actualEntries.contains(controlledAgent.toRealPath())) {
             throw new IllegalStateException("Probe classpath contains the controlled agent");
         }
+
         if (!actualEntries.equals(expectedEntries)) {
-            throw new IllegalStateException(
-                    "Probe classpath differs from the expected isolated entries: " + actualEntries);
+            throw new IllegalStateException("Probe classpath differs from the expected isolated entries: " + actualEntries);
         }
     }
 
@@ -259,47 +249,36 @@ public final class ControlledAgentRuntimeProbe {
         return identity;
     }
 
-    private static String verifyReadiness(Jmx jmx,
+    private static String verifyReadiness(MBeanServer server,
                                           String expectedExtensionVersion,
-                                          String expectedUpstreamVersion) throws Exception {
-        long deadlineNanos = System.nanoTime() + READINESS_TIMEOUT.toNanos();
+                                          String expectedUpstreamVersion) throws JMException, InterruptedException {
+        MonotonicDeadline deadline = MonotonicDeadline.after(READINESS_TIMEOUT);
         String lastObservation = "endpoint not registered";
 
-        while (System.nanoTime() < deadlineNanos) {
-            if (!jmx.isRegistered(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME)) {
-                lastObservation = "endpoint not registered";
-                sleepPollInterval();
-                continue;
-            }
-
-            CompositeData snapshot = jmx.read(
-                    JmxWireContract.EXTENSION_READINESS_OBJECT_NAME,
-                    JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT,
-                    JmxOpenTypes.READINESS_SNAPSHOT,
-                    "ReadinessSnapshot"
-            );
-            String lifecycle = value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE, String.class);
-            lastObservation = "lifecycle=%s, failureCode=%s".formatted(lifecycle, observedFailureCode(snapshot));
-            if (LIFECYCLE_FAILED.equals(lifecycle)) {
-                throw new IllegalStateException("Platform extension readiness failed: code=%s".formatted(
-                        value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE, String.class)));
-            }
-
-            if (LIFECYCLE_READY.equals(lifecycle)) {
-                verifyReadinessMetadata(jmx);
-                verifyReadySnapshot(snapshot, expectedExtensionVersion, expectedUpstreamVersion);
-
-                CompositeData repeated = jmx.read(
-                        JmxWireContract.EXTENSION_READINESS_OBJECT_NAME,
-                        JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT,
-                        JmxOpenTypes.READINESS_SNAPSHOT,
-                        "ReadinessSnapshot"
+        while (deadline.hasRemaining()) {
+            if (server.isRegistered(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME)) {
+                CompositeData snapshot = readReadinessSnapshot(server);
+                String lifecycle = JmxValues.token(
+                        snapshot,
+                        JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE,
+                        JmxWireContract.VALID_READINESS_LIFECYCLES
                 );
-                require(snapshot.equals(repeated), "Readiness snapshot changed between consecutive reads");
-                return value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_INSTANCE_ID, String.class);
-            }
+                String failureCode = JmxValues.string(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE);
+                lastObservation = "lifecycle=%s, failureCode=%s".formatted(lifecycle, failureCode);
 
-            sleepPollInterval();
+                if (LIFECYCLE_FAILED.equals(lifecycle)) {
+                    throw new IllegalStateException("Platform extension readiness failed: code=" + failureCode);
+                }
+
+                if (LIFECYCLE_READY.equals(lifecycle)) {
+                    verifyReadinessMetadata(server);
+                    verifyReadySnapshot(snapshot, expectedExtensionVersion, expectedUpstreamVersion);
+                    require(snapshot.equals(readReadinessSnapshot(server)),
+                            "Readiness snapshot changed between consecutive reads");
+                    return JmxValues.string(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_INSTANCE_ID);
+                }
+            }
+            Thread.sleep(READINESS_POLL_INTERVAL);
         }
 
         throw new IllegalStateException(
@@ -308,23 +287,26 @@ public final class ControlledAgentRuntimeProbe {
         );
     }
 
-    private static String observedFailureCode(CompositeData snapshot) {
-        Object raw = snapshot.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE);
-        return raw instanceof String code ? code : typeName(raw);
+    private static CompositeData readReadinessSnapshot(MBeanServer server) {
+        return JmxValues.attribute(
+                server,
+                JmxWireContract.EXTENSION_READINESS_OBJECT_NAME,
+                JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT,
+                JmxOpenTypes.READINESS_SNAPSHOT
+        );
     }
 
-    private static void verifyAcceptedSettingsIdentity(Jmx jmx,
+    private static void verifyAcceptedSettingsIdentity(MBeanServer server,
                                                        String expectedAgentInstanceId,
-                                                       ProbeMode mode) throws Exception {
-        require(jmx.isRegistered(JmxWireContract.SETTINGS_STATUS_OBJECT_NAME),
+                                                       ProbeMode mode) {
+        require(server.isRegistered(JmxWireContract.SETTINGS_STATUS_OBJECT_NAME),
                 "Settings status MBean is not registered");
 
-        CompositeData snapshot = jmx.read(
+        CompositeData snapshot = JmxValues.attribute(
+                server,
                 JmxWireContract.SETTINGS_STATUS_OBJECT_NAME,
                 JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT,
-                JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT,
-                "AcceptedPolicySnapshot"
-        );
+                JmxOpenTypes.ACCEPTED_POLICY_SNAPSHOT);
 
         AcceptedPolicy policy = AcceptedPolicy.decode(snapshot);
         requireEqual(
@@ -338,35 +320,30 @@ public final class ControlledAgentRuntimeProbe {
         }
     }
 
-    private static void verifyProcessValidationState(Jmx jmx, String expectedAgentInstanceId) throws Exception {
-        require(jmx.isRegistered(JmxWireContract.VALIDATION_OBSERVATION_OBJECT_NAME),
+    private static void verifyProcessValidationState(MBeanServer server, String expectedAgentInstanceId) {
+        require(server.isRegistered(JmxWireContract.VALIDATION_OBSERVATION_OBJECT_NAME),
                 "Validation observation MBean is not registered");
 
-        CompositeData observation = jmx.read(
+        CompositeData observation = JmxValues.attribute(
+                server,
                 JmxWireContract.VALIDATION_OBSERVATION_OBJECT_NAME,
                 JmxWireContract.ATTRIBUTE_VALIDATION_OBSERVATION_VALIDATION_OBSERVATION,
-                JmxOpenTypes.VALIDATION_OBSERVATION,
-                "ValidationObservation"
-        );
+                JmxOpenTypes.VALIDATION_OBSERVATION);
         requireEqual(
                 "Validation observation agentInstanceId",
                 expectedAgentInstanceId,
-                value(observation, JmxWireContract.FIELD_VALIDATION_OBSERVATION_AGENT_INSTANCE_ID, String.class)
+                JmxValues.string(observation, JmxWireContract.FIELD_VALIDATION_OBSERVATION_AGENT_INSTANCE_ID)
         );
 
-        boolean ownerPresent = value(observation, JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT, Boolean.class);
-        String validationLevel = value(observation, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_LEVEL, String.class);
+        boolean ownerPresent = JmxValues.bool(observation, JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT);
+        String validationLevel = JmxValues.string(observation, JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_LEVEL);
         require(ownerPresent, "Validation owner is absent after agent readiness");
 
         System.out.printf("CONTROLLED_AGENT_VALIDATION level=%s%n", validationLevel);
     }
 
-    private static void sleepPollInterval() throws InterruptedException {
-        Thread.sleep(READINESS_POLL_INTERVAL.toMillis());
-    }
-
-    private static void verifyReadinessMetadata(Jmx jmx) throws Exception {
-        MBeanInfo info = jmx.info(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME);
+    private static void verifyReadinessMetadata(MBeanServer server) throws JMException {
+        MBeanInfo info = server.getMBeanInfo(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME);
         MBeanAttributeInfo[] attributes = info.getAttributes();
         require(attributes.length == 1, "Readiness MBean must expose exactly one attribute");
 
@@ -395,36 +372,37 @@ public final class ControlledAgentRuntimeProbe {
         requireEqual(
                 "Readiness contractId",
                 JmxWireContract.SCHEMA_ID,
-                value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_CONTRACT_ID, String.class)
+                JmxValues.string(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_CONTRACT_ID)
         );
 
         requireEqual(
                 "Readiness schema digest",
                 JmxWireContract.SCHEMA_DIGEST_SHA256,
-                value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_DIGEST, String.class)
+                JmxValues.string(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_DIGEST)
         );
     }
 
     private static void verifyNoFailureData(CompositeData snapshot) {
-        require(value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE, String.class).isEmpty(),
+        require(JmxValues.string(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE).isEmpty(),
                 "READY snapshot contains a failure code");
 
-        require(value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_MISSING_REQUIRED, String[].class).length == 0,
+        require(JmxValues.strings(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_MISSING_REQUIRED).length == 0,
                 "READY snapshot reports missing required capabilities");
     }
 
     private static void verifyCapabilities(CompositeData snapshot) {
-        String[] capabilities = value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES, String[].class);
-        Set<String> actualCapabilities = new HashSet<>(Arrays.asList(capabilities));
-        require(capabilities.length == EXPECTED_CAPABILITIES.size()
-                        && actualCapabilities.equals(EXPECTED_CAPABILITIES),
-                "Unexpected readiness capabilities: " + actualCapabilities);
+        String[] capabilities = JmxValues.strings(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES);
+        String[] requiredCapabilities = JmxWireContract.REQUIRED_CAPABILITIES.stream()
+                .sorted()
+                .toArray(String[]::new);
+        require(Arrays.equals(capabilities, requiredCapabilities),
+                "Unexpected readiness capabilities: " + Arrays.toString(capabilities));
     }
 
     private static void verifyVersions(CompositeData snapshot,
                                        String expectedExtensionVersion,
                                        String expectedUpstreamVersion) {
-        String extensionVersion = value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_VERSION, String.class);
+        String extensionVersion = JmxValues.string(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_VERSION);
         if (!expectedExtensionVersion.equals(extensionVersion)
                 || DEVELOPMENT_VERSION_MARKER.equalsIgnoreCase(extensionVersion)) {
             throw new IllegalStateException(
@@ -436,20 +414,20 @@ public final class ControlledAgentRuntimeProbe {
         requireEqual(
                 "upstream agent version",
                 expectedUpstreamVersion,
-                value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_UPSTREAM_AGENT_VERSION, String.class)
+                JmxValues.string(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_UPSTREAM_AGENT_VERSION)
         );
 
         requireEqual(
                 "Readiness distribution SHA-256",
                 requiredProperty(EXPECTED_AGENT_SHA256_PROPERTY),
-                value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_DISTRIBUTION_SHA256, String.class)
+                JmxValues.string(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_DISTRIBUTION_SHA256)
         );
     }
 
     private static void verifyLoaderIsolation(CompositeData snapshot) {
         String applicationLoader = loaderDescription(ControlledAgentRuntimeProbe.class.getClassLoader());
-        String extensionLoader = value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_DEFINING_LOADER, String.class);
-        String sdkLoader = value(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_SDK_DEFINING_LOADER, String.class);
+        String extensionLoader = JmxValues.string(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_DEFINING_LOADER);
+        String sdkLoader = JmxValues.string(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_SDK_DEFINING_LOADER);
 
         require(!extensionLoader.isBlank() && !extensionLoader.equals(applicationLoader),
                 "Extension defining loader is not isolated from the application loader");
@@ -464,12 +442,12 @@ public final class ControlledAgentRuntimeProbe {
     }
 
     private static void requireNotBlank(CompositeData snapshot, String field, String label) {
-        require(!value(snapshot, field, String.class).isBlank(), label + " is blank");
+        require(!JmxValues.string(snapshot, field).isBlank(), label + " is blank");
     }
 
     @SuppressWarnings("SameParameterValue")
     private static void requirePositive(CompositeData snapshot, String field, String label) {
-        require(number(snapshot, field).longValue() > 0L, label + " must be positive");
+        require(JmxValues.longValue(snapshot, field) > 0L, label + " must be positive");
     }
 
     private static String loaderDescription(ClassLoader loader) {
@@ -480,24 +458,6 @@ public final class ControlledAgentRuntimeProbe {
         String name = loader.getName();
         String stableName = (name == null || name.isBlank()) ? loader.getClass().getName() : name;
         return stableName + "@" + Integer.toHexString(System.identityHashCode(loader));
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private static Number number(CompositeData snapshot, String field) {
-        return value(snapshot, field, Number.class);
-    }
-
-    private static <T> T value(CompositeData snapshot, String field, Class<T> expectedType) {
-        Object raw = snapshot.get(field);
-        require(expectedType.isInstance(raw),
-                "JMX field has an unexpected type: field=%s, expected=%s, actual=%s"
-                        .formatted(field, expectedType.getName(), typeName(raw))
-        );
-        return expectedType.cast(raw);
-    }
-
-    private static String typeName(Object value) {
-        return value == null ? "null" : value.getClass().getName();
     }
 
     private static String requiredProperty(String name) {
@@ -573,16 +533,16 @@ public final class ControlledAgentRuntimeProbe {
 
         static AcceptedPolicy decode(CompositeData snapshot) {
             return new AcceptedPolicy(
-                    value(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_SEQUENCE, Long.class),
-                    value(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_AGENT_INSTANCE_ID, String.class),
-                    value(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ENABLED, Boolean.class),
-                    value(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO, Double.class),
+                    JmxValues.longValue(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_ACCEPTED_SEQUENCE),
+                    JmxValues.string(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_AGENT_INSTANCE_ID),
+                    JmxValues.bool(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ENABLED),
+                    JmxValues.doubleValue(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_RATIO),
                     samplingRouteRatios(snapshot),
-                    value(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_LEVEL, String.class),
-                    value(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_EXPORTER_ENABLED, Boolean.class),
-                    value(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_TRACE_CONTROL_HEADERS_ENABLED, Boolean.class),
-                    value(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_DIAGNOSTICS_LOG_LEVEL, String.class),
-                    value(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SOURCE_AUTHORITY, String.class)
+                    JmxValues.string(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_VALIDATION_LEVEL),
+                    JmxValues.bool(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_EXPORTER_ENABLED),
+                    JmxValues.bool(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_TRACE_CONTROL_HEADERS_ENABLED),
+                    JmxValues.string(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_DIAGNOSTICS_LOG_LEVEL),
+                    JmxValues.string(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SOURCE_AUTHORITY)
             );
         }
 
@@ -615,19 +575,12 @@ public final class ControlledAgentRuntimeProbe {
         }
 
         private static Map<String, Double> samplingRouteRatios(CompositeData snapshot) {
-            Object raw = snapshot.get(JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS);
-            require(raw instanceof TabularData,
-                    "Accepted sampling.route-ratios must be TabularData, got " + typeName(raw));
-
-            TabularData table = (TabularData) raw;
+            TabularData table = JmxValues.tabular(snapshot, JmxWireContract.FIELD_ACCEPTED_POLICY_SNAPSHOT_SAMPLING_ROUTE_RATIOS);
             Map<String, Double> routeRatios = new LinkedHashMap<>();
             for (Object rawRow : table.values()) {
-                require(rawRow instanceof CompositeData,
-                        "Accepted sampling.route-ratios row must be CompositeData, got " + typeName(rawRow));
-
-                CompositeData row = (CompositeData) rawRow;
-                String routePrefix = value(row, JmxWireContract.FIELD_ROUTE_RATIO_ROUTE_PREFIX, String.class);
-                double ratio = value(row, JmxWireContract.FIELD_ROUTE_RATIO_RATIO, Double.class);
+                CompositeData row = JmxValues.asComposite(rawRow, "Accepted sampling.route-ratios row");
+                String routePrefix = JmxValues.string(row, JmxWireContract.FIELD_ROUTE_RATIO_ROUTE_PREFIX);
+                double ratio = JmxValues.doubleValue(row, JmxWireContract.FIELD_ROUTE_RATIO_RATIO);
                 Double previous = routeRatios.put(routePrefix, ratio);
                 require(previous == null, "Accepted sampling.route-ratios contains duplicate route " + routePrefix);
             }
@@ -653,35 +606,6 @@ public final class ControlledAgentRuntimeProbe {
             } finally {
                 span.end();
             }
-        }
-    }
-
-    private record Jmx(MBeanServer server) {
-
-        static Jmx platform() {
-            return new Jmx(ManagementFactory.getPlatformMBeanServer());
-        }
-
-        boolean isRegistered(ObjectName name) {
-            return server.isRegistered(name);
-        }
-
-        @SuppressWarnings("SameParameterValue")
-        MBeanInfo info(ObjectName name) throws Exception {
-            return server.getMBeanInfo(name);
-        }
-
-        CompositeData read(ObjectName name,
-                           String attribute,
-                           CompositeType expectedType,
-                           String label) throws Exception {
-            Object raw = server.getAttribute(name, attribute);
-            require(raw instanceof CompositeData, label + " must be CompositeData, got " + typeName(raw));
-
-            CompositeData data = (CompositeData) raw;
-            require(expectedType.equals(data.getCompositeType()),
-                    label + " OpenType differs from the generated application contract");
-            return data;
         }
     }
 }

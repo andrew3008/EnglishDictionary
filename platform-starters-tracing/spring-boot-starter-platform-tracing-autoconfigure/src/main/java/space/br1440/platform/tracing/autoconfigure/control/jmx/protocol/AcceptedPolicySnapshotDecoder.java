@@ -58,6 +58,14 @@ public final class AcceptedPolicySnapshotDecoder {
         boolean traceControlHeadersEnabled = field(snapshot, TRACE_CONTROL_HEADERS_ENABLED, Boolean.class);
         String diagnosticsLogLevel = field(snapshot, DIAGNOSTICS_LOG_LEVEL, String.class);
 
+        if (!JmxWireContract.VALID_VALIDATION_LEVELS.contains(validationLevel)) {
+            throw invalid(VALIDATION_LEVEL + " has unsupported value");
+        }
+
+        if (!JmxWireContract.VALID_LOG_LEVELS.contains(diagnosticsLogLevel)) {
+            throw invalid(DIAGNOSTICS_LOG_LEVEL + " has unsupported value");
+        }
+
         return construct("policy", () -> CompleteTracingSettings.builder()
                 .samplingEnabled(samplingEnabled)
                 .samplingRatio(samplingRatio)
