@@ -29,11 +29,7 @@ public class TracingProperties {
     /**
      * Политика записи request-id заголовка в HTTP-ответ (Servlet/WebFlux фильтры).
      * Property-namespace: {@code platform.tracing.request-id-header.*}.
-     * <p>
-     * Имя заголовка здесь не конфигурируется — единственный источник имени и для inbound-чтения,
-     * и для outbound-записи (включая этот response-фильтр) —
-     * {@code platform.tracing.propagation.platform-headers.request-id-header}
-     * (поле {@code Propagation.PlatformHeaderNames.requestIdHeader}).
+     * Имя заголовка фиксировано: {@link PlatformHeaders#X_REQUEST_ID}.
      */
     @Getter @Setter @Accessors(chain = true)
     public static class RequestIdResponseHeader {
@@ -104,19 +100,6 @@ public class TracingProperties {
     @Getter @Setter @Accessors(chain = true)
     public static class Propagation {
 
-        /**
-         * Имена платформенных управляющих заголовков: читаются на входе (Servlet/WebFlux inbound),
-         * записываются на выходе (см. {@link Outbound}) и, для request-id, также в HTTP-ответ
-         * (см. {@link RequestIdResponseHeader}). Единая точка настройки имён: изменение здесь
-         * одновременно меняет, какие заголовки распознаются как входящие и какие проставляются
-         * как исходящие.
-         */
-        private final PlatformHeaderNames platformHeaders = new PlatformHeaderNames();
-
-        /**
-         * Политика исходящей передачи платформенных заголовков на HTTP-клиентах приложения.
-         * Не затрагивает Kafka — там отдельная политика на {@code platform.tracing.kafka.propagate-platform-headers}.
-         */
         private final Outbound outbound = new Outbound();
 
         /**
@@ -124,19 +107,6 @@ public class TracingProperties {
          * Property-namespace: {@code platform.tracing.propagation.correlation.*}.
          */
         private final Correlation correlation = new Correlation();
-
-        @Getter @Setter @Accessors(chain = true)
-        public static class PlatformHeaderNames {
-            private String forceTraceHeader = PlatformHeaders.X_TRACE_ON;
-            private String qaTraceHeader = PlatformHeaders.X_QA_TRACE;
-
-            /**
-             * Имя request-id заголовка: используется для inbound-чтения (Servlet/WebFlux),
-             * outbound-инжекции (HTTP/Kafka) и записи в HTTP-ответ ({@link RequestIdResponseHeader}).
-             * Единая точка настройки имени для всех направлений.
-             */
-            private String requestIdHeader = PlatformHeaders.X_REQUEST_ID;
-        }
 
         @Getter @Setter @Accessors(chain = true)
         public static class Outbound {
@@ -192,9 +162,8 @@ public class TracingProperties {
             /**
              * Принимать caller-supplied {@code X-Correlation-Id} на inbound-границе (Servlet/WebFlux).
              * По умолчанию {@code false} (fail-closed): canonical-режим не генерирует значение сам,
-             * а без явного включения даже валидный inbound-заголовок игнорируется. См.
-             * {@code adr-correlation-ownership.md} — {@code accept-inbound=true} допустим только за
-             * доверенным ingress, снимающим клиентский заголовок.
+             * а без явного включения даже валидный inbound-заголовок игнорируется.
+             * {@code accept-inbound=true} допустим только за доверенным ingress, снимающим клиентский заголовок.
              */
             private boolean acceptInbound = false;
         }

@@ -33,12 +33,11 @@ class PlatformKafkaProducerInterceptorIdentityTest {
         identityBoundary = new RequestIdentityBoundarySupport(runtime);
         interceptor = new PlatformKafkaProducerInterceptor<>();
         PlatformOutboundPropagation propagation = new DefaultTraceControlHeaderInjector(
-                PlatformHeaders.X_TRACE_ON,
-                PlatformHeaders.X_QA_TRACE,
-                PlatformHeaders.X_REQUEST_ID,
                 OutboundApplicationIdentitySource.of(
                         () -> identityBoundary.requestId().orElse(null),
-                        () -> null));
+                        () -> null
+                )
+        );
 
         Map<String, Object> configuration = new HashMap<>();
         configuration.put(PlatformKafkaProducerInterceptor.CONFIG_POLICY,
@@ -74,7 +73,7 @@ class PlatformKafkaProducerInterceptorIdentityTest {
     }
 
     private static String header(ProducerRecord<?, ?> record) {
-        return new String(record.headers().lastHeader(PlatformHeaders.X_REQUEST_ID).value(),
-                StandardCharsets.UTF_8);
+        byte[] requestId = record.headers().lastHeader(PlatformHeaders.X_REQUEST_ID).value();
+        return new String(requestId, StandardCharsets.UTF_8);
     }
 }

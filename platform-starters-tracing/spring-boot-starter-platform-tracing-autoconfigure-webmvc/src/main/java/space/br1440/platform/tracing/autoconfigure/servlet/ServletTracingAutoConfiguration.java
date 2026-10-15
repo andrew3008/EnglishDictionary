@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.servlet;
 
 import jakarta.servlet.Servlet;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -14,12 +15,13 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.Ordered;
 import org.springframework.web.client.RestClient;
+
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
-import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPropertyNames;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration;
@@ -38,7 +40,12 @@ public class ServletTracingAutoConfiguration {
             TracingProperties properties,
             RequestIdentityBoundarySupport identityBoundary,
             InboundTraceControlExtractor traceControlExtractor) {
-        TraceResponseHeaderServletFilter filter = new TraceResponseHeaderServletFilter(traceOperations, properties, identityBoundary, traceControlExtractor);
+        TraceResponseHeaderServletFilter filter = new TraceResponseHeaderServletFilter(
+                traceOperations,
+                properties,
+                identityBoundary,
+                traceControlExtractor
+        );
         FilterRegistrationBean<TraceResponseHeaderServletFilter> registration = new FilterRegistrationBean<>(filter);
         registration.setName("platformTraceResponseHeaderServletFilter");
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 50);

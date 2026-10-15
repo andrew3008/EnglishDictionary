@@ -14,18 +14,9 @@ import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPro
 
 public final class DefaultTraceControlHeaderInjector implements PlatformOutboundPropagation {
 
-    private final String forceTraceHeader;
-    private final String qaTraceHeader;
-    private final String requestIdHeader;
     private final OutboundApplicationIdentitySource identitySource;
 
-    public DefaultTraceControlHeaderInjector(String forceTraceHeader,
-                                             String qaTraceHeader,
-                                             String requestIdHeader,
-                                             OutboundApplicationIdentitySource identitySource) {
-        this.forceTraceHeader = forceTraceHeader;
-        this.qaTraceHeader = qaTraceHeader;
-        this.requestIdHeader = requestIdHeader;
+    public DefaultTraceControlHeaderInjector(OutboundApplicationIdentitySource identitySource) {
         this.identitySource = Objects.requireNonNull(identitySource, "identitySource");
     }
 
@@ -39,18 +30,18 @@ public final class DefaultTraceControlHeaderInjector implements PlatformOutbound
         try {
             Optional<OutboundPropagationHeaders.Header> forceTrace =
                     decision.propagateForceTrace() && control != null && control.forceTrace()
-                            ? header(forceTraceHeader, "on")
+                            ? header(PlatformHeaders.X_TRACE_ON, "on")
                             : Optional.empty();
 
             Optional<OutboundPropagationHeaders.Header> qaTrace =
                     decision.propagateQaTrace() && control != null && control.qaTrace()
-                            ? header(qaTraceHeader, "1")
+                            ? header(PlatformHeaders.X_QA_TRACE, "1")
                             : Optional.empty();
 
             String requestId = identitySource.currentRequestId();
             Optional<OutboundPropagationHeaders.Header> requestIdHeaderValue =
                     decision.propagateRequestId() && requestId != null
-                            ? header(requestIdHeader, requestId)
+                            ? header(PlatformHeaders.X_REQUEST_ID, requestId)
                             : Optional.empty();
 
             String correlationId = identitySource.currentCorrelationId();

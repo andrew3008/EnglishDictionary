@@ -1,23 +1,24 @@
 package space.br1440.platform.tracing.otel.javaagent.propagation;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
+import space.br1440.platform.tracing.otel.javaagent.configuration.PlatformTracingDefaultsProvider;
+import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
+
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * PR-2 (Фаза 15): named {@code ConfigurablePropagatorProvider} ({@code platform-trace-control}).
- */
 @DisplayName("TraceControlPropagatorProvider (named platform-trace-control)")
 class TraceControlPropagatorProviderTest {
 
@@ -69,15 +70,33 @@ class TraceControlPropagatorProviderTest {
     }
 
     @Test
-    @DisplayName("getPropagator учитывает кастомные имена заголовков из ConfigProperties")
-    void getPropagator_honors_custom_header_names() {
+    @DisplayName("getPropagator игнорирует свойства имён заголовков")
+    void getPropagatorIgnoresHeaderNameProperties() {
         // given
         TextMapPropagator propagator = new TraceControlPropagatorProvider()
                 .getPropagator(config(Map.of(
                         "platform.tracing.propagation.platform-headers.force-trace-header", "X-Force")));
 
-        // when/then
-        assertThat(propagator.fields()).contains("X-Force");
+        // when
+        // then
+        assertThat(propagator.fields()).containsExactlyInAnyOrder(
+                PlatformHeaders.X_TRACE_ON,
+                PlatformHeaders.X_QA_TRACE,
+                PlatformHeaders.X_REQUEST_ID);
+    }
+
+    @Test
+    @DisplayName("defaults supplier не задаёт имена платформенных заголовков")
+    void defaultsProviderDoesNotSupplyPlatformHeaderNames() {
+        // given
+        Map<String, String> supplied = new PlatformTracingDefaultsProvider(name -> null).supply();
+
+        // when
+        // then
+        assertThat(supplied).doesNotContainKeys(
+                "platform.tracing.propagation.platform-headers.force-trace-header",
+                "platform.tracing.propagation.platform-headers.qa-trace-header",
+                "platform.tracing.propagation.platform-headers.request-id-header");
     }
 
     @Test
@@ -91,7 +110,7 @@ class TraceControlPropagatorProviderTest {
     }
 
     @Test
-    @DisplayName("fields() содержит РОВНО настроенные control headers (default header names)")
+    @DisplayName("fields() содержит только настроенные control headers (default header names)")
     void fields_containsExactlyConfiguredControlHeaders() {
         // given
         TextMapPropagator propagator = new TraceControlPropagatorProvider().getPropagator(config(Map.of()));

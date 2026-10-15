@@ -12,6 +12,7 @@ import space.br1440.platform.tracing.api.propagation.control.OutboundPropagation
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPropertyNames;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration;
 import space.br1440.platform.tracing.runtime.propagation.control.DefaultOutboundPropagationPolicy;
@@ -23,7 +24,7 @@ import space.br1440.platform.tracing.runtime.propagation.control.TrustedDestinat
         "org.springframework.kafka.core.DefaultKafkaProducerFactory",
         "org.apache.kafka.clients.producer.ProducerInterceptor"
 })
-@ConditionalOnProperty(prefix = "platform.tracing.kafka", name = "propagate-platform-headers", havingValue = "true")
+@ConditionalOnProperty(name = TracingBootstrapPropertyNames.KAFKA_PROPAGATE_PLATFORM_HEADERS, havingValue = "true")
 public class PlatformKafkaOutboundAutoConfiguration {
 
     @Bean

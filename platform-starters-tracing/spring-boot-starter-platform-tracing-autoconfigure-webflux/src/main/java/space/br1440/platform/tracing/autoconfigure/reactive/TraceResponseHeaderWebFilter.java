@@ -39,24 +39,17 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
     @Override
     @NonNull
     public Mono<Void> filter(@NonNull ServerWebExchange exchange, @NonNull WebFilterChain chain) {
-        final String incomingRequestId = exchange.getRequest().getHeaders()
-                .getFirst(properties.getPropagation().getPlatformHeaders().getRequestIdHeader());
-
+        final String incomingRequestId = exchange.getRequest().getHeaders().getFirst(PlatformHeaders.X_REQUEST_ID);
         final String requestId = RequestIdBoundarySupport.resolve(incomingRequestId);
-
-        final String rawForceTrace = exchange.getRequest().getHeaders()
-                .getFirst(properties.getPropagation().getPlatformHeaders().getForceTraceHeader());
-
-        final String rawQaTrace = exchange.getRequest().getHeaders()
-                .getFirst(properties.getPropagation().getPlatformHeaders().getQaTraceHeader());
+        final String rawForceTrace = exchange.getRequest().getHeaders().getFirst(PlatformHeaders.X_TRACE_ON);
+        final String rawQaTrace = exchange.getRequest().getHeaders().getFirst(PlatformHeaders.X_QA_TRACE);
 
         final InboundTraceControl traceControl = traceControlExtractor.fromHeaders(rawForceTrace, rawQaTrace, null);
         final String correlationId = resolveInboundCorrelationId(exchange);
 
         PlatformOwnedServerHttpResponse wrapped = new PlatformOwnedServerHttpResponse(exchange.getResponse());
         if (properties.getRequestIdHeader().isEnabled()) {
-            String requestIdHeader = properties.getPropagation().getPlatformHeaders().getRequestIdHeader();
-            wrapped.protectRequestId(requestIdHeader, requestId);
+            wrapped.protectRequestId(PlatformHeaders.X_REQUEST_ID, requestId);
         }
 
         try {
@@ -122,7 +115,7 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
             }
 
             HttpStatusCode statusCode = response.getStatusCode();
-            boolean errorStatus = statusCode != null && statusCode.value() >= 400;
+            boolean errorStatus = (statusCode != null) && (statusCode.value() >= 400);
             SpanResult result = (failed || errorStatus) ? SpanResult.FAILURE : SpanResult.SUCCESS;
             span.setAttribute(PlatformAttributes.PLATFORM_RESULT, result.value());
         } catch (RuntimeException ignored) {

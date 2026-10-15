@@ -148,9 +148,7 @@ class ConfigServerInitialDeliveryTest {
         // given
         AtomicBoolean read = new AtomicBoolean();
         MockEnvironment environment = new MockEnvironment();
-        ConfigServerSettingsManifestBuilder manifestBuilder = new ConfigServerSettingsManifestBuilder(
-                environment,
-                new ConfigServerSettingsProvenanceClassifier(environment));
+        ConfigServerSettingsManifestBuilder manifestBuilder = new ConfigServerSettingsManifestBuilder(environment);
         RecordingSettingsWriter writer = recordingSettingsWriter(
                 RecordingApplier.always(TracingSettingsDeliveryResult.APPLIED),
                 () -> {
@@ -191,10 +189,7 @@ class ConfigServerInitialDeliveryTest {
                                                            Supplier<Optional<AcceptedSettings>> reader) {
         RecordingSettingsWriter writer = recordingSettingsWriter(applyBehavior, reader);
         MockEnvironment environment = authoritativeEnvironment();
-        ConfigServerSettingsManifestBuilder manifestBuilder = new ConfigServerSettingsManifestBuilder(
-                environment,
-                new ConfigServerSettingsProvenanceClassifier(environment)
-        );
+        ConfigServerSettingsManifestBuilder manifestBuilder = new ConfigServerSettingsManifestBuilder(environment);
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(manifestBuilder, writer, Runnable::run);
         return new ConfigServerInitialDelivery(coalescer);
     }

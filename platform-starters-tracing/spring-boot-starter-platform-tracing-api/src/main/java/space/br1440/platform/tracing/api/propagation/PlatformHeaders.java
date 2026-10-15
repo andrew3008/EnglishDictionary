@@ -4,6 +4,7 @@ import lombok.experimental.UtilityClass;
 
 /**
  * HTTP-заголовки платформенного контракта, используемые при передаче и управлении trace-контекстом.
+ * Имена {@code X-Trace-On}, {@code X-QA-Trace}, {@code X-Request-Id} и {@code X-Correlation-Id} фиксированы.
  * <p>
  * Стандартный заголовок W3C {@code traceparent} (и сопутствующие) обрабатывается
  * стандартными propagator'ами OpenTelemetry и не требует отдельных констант.

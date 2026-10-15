@@ -1,38 +1,5 @@
 package space.br1440.platform.tracing.autoconfigure.servlet;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.slf4j.MDC;
-import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
-import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
-import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
-import space.br1440.platform.tracing.api.span.SpanResult;
-import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
-import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
-import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
-import space.br1440.platform.tracing.runtime.propagation.control.DefaultInboundTraceControlExtractor;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
-
-import io.opentelemetry.api.common.AttributeKey;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.context.Scope;
-import io.opentelemetry.sdk.trace.SdkTracerProvider;
-import io.opentelemetry.sdk.trace.data.SpanData;
-import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -45,10 +12,43 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
+
+import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
+import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
+import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
+import space.br1440.platform.tracing.api.span.SpanResult;
+import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
+import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
+import space.br1440.platform.tracing.runtime.propagation.control.DefaultInboundTraceControlExtractor;
+
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.context.Scope;
+import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
+
 class TraceResponseHeaderServletFilterTest {
 
-    private static final AttributeKey<String> RESULT_KEY =
-            AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT);
+    private static final AttributeKey<String> RESULT_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT);
 
     private ActiveTraceContextView traceContextView;
     private TracingProperties properties;
@@ -57,12 +57,13 @@ class TraceResponseHeaderServletFilterTest {
     private FilterChain chain;
     private TraceResponseHeaderServletFilter filter;
     private TracingRuntime runtime;
+    private TraceOperations traceOperations;
 
     @BeforeEach
     void setUp() {
         MDC.clear();
 
-        TraceOperations traceOperations = mock(TraceOperations.class);
+        traceOperations = mock(TraceOperations.class);
         traceContextView = mock(ActiveTraceContextView.class);
         when(traceOperations.traceContext()).thenReturn(traceContextView);
         properties = new TracingProperties();
@@ -131,21 +132,6 @@ class TraceResponseHeaderServletFilterTest {
         // then
         verify(response, never()).setHeader(eq(PlatformHeaders.X_REQUEST_ID), anyString());
         verify(response).setHeader(PlatformHeaders.X_TRACE_ID, "trace-keep");
-    }
-
-    @Test
-    void respondsWithCustomRequestIdHeaderNameConfiguredViaPlatformHeaders() throws ServletException, java.io.IOException {
-        // given
-        properties.getPropagation().getPlatformHeaders().setRequestIdHeader("X-Custom-Request-Id");
-        when(request.getHeader(eq("X-Custom-Request-Id"))).thenReturn("req-custom");
-        when(traceContextView.traceId()).thenReturn(Optional.empty());
-        when(response.isCommitted()).thenReturn(false);
-
-        // when
-        filter.doFilter(request, response, chain);
-
-        // then
-        verify(response).setHeader(eq("X-Custom-Request-Id"), eq("req-custom"));
     }
 
     @Test

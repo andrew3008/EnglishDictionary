@@ -30,8 +30,9 @@ class ConfigServerSettingsManifestBuilderRouteRatiosTest {
         // when / then
         assertThatThrownBy(builder::build)
                 .isInstanceOf(TracingSettingsManifestException.class)
-                .hasMessageContaining("Local override rejected for policy key '" + ORDERS + "'")
-                .hasMessageContaining("source='systemProperties'");
+                .hasMessageContaining("owned by POLICY")
+                .hasMessageContaining("source='systemProperties'")
+                .hasMessageNotContaining("1.0");
     }
 
     @Test
@@ -46,8 +47,9 @@ class ConfigServerSettingsManifestBuilderRouteRatiosTest {
         // when / then
         assertThatThrownBy(builder::build)
                 .isInstanceOf(TracingSettingsManifestException.class)
-                .hasMessageContaining("Unknown property source for policy key '" + ORDERS + "'")
-                .hasMessageContaining("source='randomCustomSource'");
+                .hasMessageContaining("owned by POLICY")
+                .hasMessageContaining("source='randomCustomSource'")
+                .hasMessageNotContaining("0.5");
     }
 
     @Test
@@ -61,10 +63,10 @@ class ConfigServerSettingsManifestBuilderRouteRatiosTest {
 
         // when / then
         assertThatThrownBy(builder::build)
-                .as("provenance is classified against the precedence winner, not against any authoritative copy")
                 .isInstanceOf(TracingSettingsManifestException.class)
-                .hasMessageContaining("Local override rejected for policy key '" + ORDERS + "'")
-                .hasMessageContaining("source='systemProperties'");
+                .hasMessageContaining("owned by POLICY")
+                .hasMessageContaining("source='systemProperties'")
+                .hasMessageNotContaining("1.0");
     }
 
     @Test
@@ -176,6 +178,22 @@ class ConfigServerSettingsManifestBuilderRouteRatiosTest {
     }
 
     @Test
+    void unknownPolicyKeyIsRejected() {
+        // given
+        MockEnvironment environment = authoritativeEnvironment(Map.of(
+                "platform.tracing.policy.sampling.ration", "0.2"));
+        ConfigServerSettingsManifestBuilder builder = builder(environment);
+
+        // when
+        // then
+        assertThatThrownBy(builder::build)
+                .isInstanceOf(TracingSettingsManifestException.class)
+                .hasMessageContaining("Unknown policy key")
+                .hasMessageContaining("platform.tracing.policy.sampling.ration")
+                .hasMessageNotContaining("0.2");
+    }
+
+    @Test
     void legacyBootstrapPropertiesSourceIsRejected() {
         // given
         MockEnvironment environment = authoritativeEnvironment(Map.of(ORDERS, "0.2"));
@@ -188,18 +206,26 @@ class ConfigServerSettingsManifestBuilderRouteRatiosTest {
         // then
         assertThatThrownBy(builder::build)
                 .isInstanceOf(TracingSettingsManifestException.class)
-                .hasMessageContaining("Unknown property source for policy key '" + ORDERS + "'")
+                .hasMessageContaining("owned by POLICY")
                 .hasMessageContaining("source='bootstrapProperties'");
     }
 
     private static ConfigServerSettingsManifestBuilder builder(MockEnvironment environment) {
-        return new ConfigServerSettingsManifestBuilder(
-                environment,
-                new ConfigServerSettingsProvenanceClassifier(environment)
-        );
+        return new ConfigServerSettingsManifestBuilder(environment);
     }
 
     private static MockEnvironment authoritativeEnvironment(Map<String, String> extra) {
+        MockEnvironment environment = new MockEnvironment();
+        environment.getPropertySources().addFirst(
+                new MapPropertySource(
+                        "configserver:http://config-server:8888",
+                        policyValues(extra)
+                )
+        );
+        return environment;
+    }
+
+    private static Map<String, Object> policyValues(Map<String, String> extra) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("platform.tracing.policy.sampling.enabled", "true");
         values.put("platform.tracing.policy.sampling.ratio", "1.0");
@@ -208,14 +234,6 @@ class ConfigServerSettingsManifestBuilderRouteRatiosTest {
         values.put("platform.tracing.policy.propagation.trace-control-headers.enabled", "true");
         values.put("platform.tracing.policy.diagnostics.log-level", "INFO");
         values.putAll(extra);
-
-        MockEnvironment environment = new MockEnvironment();
-        environment.getPropertySources().addFirst(
-                new MapPropertySource(
-                        "configserver:http://config-server:8888",
-                        values
-                )
-        );
-        return environment;
+        return values;
     }
 }

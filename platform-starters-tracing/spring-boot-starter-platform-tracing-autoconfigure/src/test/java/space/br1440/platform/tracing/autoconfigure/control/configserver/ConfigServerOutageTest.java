@@ -704,7 +704,21 @@ class ConfigServerOutageTest {
                 () -> environment.getPropertySources().addFirst(new SystemEnvironmentPropertySource(
                         "systemEnvironment",
                         Map.of(variable, "0.5"))),
-                "'" + variable + "'");
+                "owned by POLICY");
+    }
+
+    @Test
+    void unknownPolicyKeyFailsStartupAndRefreshKeepsLastKnownGood() {
+        // given
+        Map<String, Object> values = authoritativePolicy();
+        MockEnvironment environment = configServerEnvironment(values);
+
+        // when
+        // then
+        assertStartupRejectsAndRefreshKeepsLastKnownGood(
+                environment,
+                () -> values.put("platform.tracing.policy.sampling.ration", "0.2"),
+                "Unknown policy key");
     }
 
     @Test
@@ -714,9 +728,7 @@ class ConfigServerOutageTest {
         environment.getPropertySources().addFirst(new SystemEnvironmentPropertySource(
                 "systemEnvironment",
                 Map.of("PLATFORM_TRACING_SAMPLING_ROUTE_RATIOS", "/orders=0.5")));
-        ConfigServerSettingsManifestBuilder builder = new ConfigServerSettingsManifestBuilder(
-                environment,
-                new ConfigServerSettingsProvenanceClassifier(environment));
+        ConfigServerSettingsManifestBuilder builder = new ConfigServerSettingsManifestBuilder(environment);
 
         // when
         CompleteTracingSettings settings = builder.build();
@@ -729,10 +741,7 @@ class ConfigServerOutageTest {
     private static void assertStartupRejectsAndRefreshKeepsLastKnownGood(MockEnvironment environment,
                                                                           Runnable corrupt,
                                                                           String messageFragment) {
-        ConfigServerSettingsManifestBuilder builder = new ConfigServerSettingsManifestBuilder(
-                environment,
-                new ConfigServerSettingsProvenanceClassifier(environment)
-        );
+        ConfigServerSettingsManifestBuilder builder = new ConfigServerSettingsManifestBuilder(environment);
 
         AtomicInteger applyCount = new AtomicInteger();
         TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(

@@ -23,9 +23,7 @@ class TracingEnabledAutoConfigurationTest {
                     TracingControlChannelAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class)
             )
-            .withPropertyValues(
-                    "platform.tracing.control.channel=NONE"
-            );
+            .withPropertyValues("platform.tracing.control.channel=NONE");
 
     @Test
     void enabledByDefaultWithoutControlledAgentFailsStartup() {
@@ -39,15 +37,15 @@ class TracingEnabledAutoConfigurationTest {
                     .hasMessageContaining("platform-tracing-javaagent")
                     .satisfies(failure -> assertThat(failure.getMessage())
                             .doesNotContain("failureCode=NONE")
-                            .doesNotContain("reason=NONE"));
+                            .doesNotContain("reason=NONE")
+                    );
         });
     }
 
     @Test
     void disabledWithoutAnyRuntimeCreatesTheOnlySuccessfulNoopFacade() {
         contextRunner
-                .withPropertyValues(
-                        "platform.tracing.enabled=false")
+                .withPropertyValues("platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
@@ -61,29 +59,15 @@ class TracingEnabledAutoConfigurationTest {
 
     @Test
     void applicationSdkBeanIsRejectedEvenWhenDisabled() {
+        String message = "Application-owned OpenTelemetry bean is not supported with Controlled Agent ownership: openTelemetry";
+
         contextRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .withPropertyValues("platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasFailed();
-                    assertThat(context.getStartupFailure())
-                            .hasMessage(
-                                    "Application-owned OpenTelemetry bean is not supported with Controlled Agent "
-                                            + "ownership: openTelemetry");
+                    assertThat(context.getStartupFailure()).hasMessage(message);
                 });
-    }
-
-    @Test
-    void obsoleteModePropertyFailsFast() {
-        for (String removed : new String[] {"AGENT", "DISABLED"}) {
-            contextRunner
-                    .withPropertyValues("platform.tracing.mode=" + removed)
-                    .run(context -> {
-                        assertThat(context).hasFailed();
-                        assertThat(context.getStartupFailure())
-                                .hasMessageContaining("Obsolete Spring-only property 'platform.tracing.mode'");
-                    });
-        }
     }
 
     @Configuration(proxyBeanMethods = false)

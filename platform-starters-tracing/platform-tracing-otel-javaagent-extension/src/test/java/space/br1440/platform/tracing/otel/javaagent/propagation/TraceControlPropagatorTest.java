@@ -25,8 +25,7 @@ import io.opentelemetry.context.propagation.TextMapSetter;
 @DisplayName("TraceControlPropagator: extract в Context; outbound inject — intentional no-op")
 class TraceControlPropagatorTest {
 
-    private final TraceControlPropagator propagator =
-            new TraceControlPropagator("X-Trace-On", "X-QA-Trace", "X-Request-Id");
+    private final TraceControlPropagator propagator = new TraceControlPropagator();
 
     private static final TextMapGetter<Map<String, String>> MAP_GETTER = new TextMapGetter<>() {
         @Override
@@ -106,7 +105,7 @@ class TraceControlPropagatorTest {
     }
 
     @Test
-    @DisplayName("Gate выключен (Фаза 14): extract не извлекает — propagation no-op")
+    @DisplayName("Gate выключен: extract не извлекает — propagation no-op")
     void disabledGateMakesExtractNoOp() throws Exception {
         // given
         PlatformPropagationGate gate = new PlatformPropagationGate();
@@ -116,8 +115,7 @@ class TraceControlPropagatorTest {
             assertThat(outcome).isIn(SettingsUpdateStatus.APPLIED, SettingsUpdateStatus.UNCHANGED);
             assertThat(gate.isEnabled()).isFalse();
 
-            TraceControlPropagator gated =
-                    new TraceControlPropagator("X-Trace-On", "X-QA-Trace", "X-Request-Id", gate);
+            TraceControlPropagator gated = new TraceControlPropagator(gate);
 
             Map<String, String> inbound = new HashMap<>();
             inbound.put("X-Trace-On", "on");
@@ -152,12 +150,7 @@ class TraceControlPropagatorTest {
         TracingSettingsSource policy = TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random());
         try (AutoCloseable ignored = gate.bindAcceptedPolicy(policy)) {
             AcceptedPolicyMutationAccess.applyTraceControlHeaders(policy, false);
-            TraceControlPropagator gated = new TraceControlPropagator(
-                    "X-Trace-On",
-                    "X-QA-Trace",
-                    "X-Request-Id",
-                    gate
-            );
+            TraceControlPropagator gated = new TraceControlPropagator(gate);
 
             // when/then
             assertThat(gated.fields()).containsExactlyInAnyOrder("X-Trace-On", "X-QA-Trace", "X-Request-Id");

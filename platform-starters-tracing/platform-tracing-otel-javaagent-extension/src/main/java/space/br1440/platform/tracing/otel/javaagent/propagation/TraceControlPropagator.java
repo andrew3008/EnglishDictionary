@@ -5,6 +5,7 @@ import java.util.List;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
 import space.br1440.platform.tracing.runtime.propagation.control.DefaultInboundTraceControlExtractor;
@@ -17,21 +18,16 @@ import io.opentelemetry.context.propagation.TextMapSetter;
 
 final class TraceControlPropagator implements TextMapPropagator {
 
-    private final String forceTraceHeader;
-    private final String qaTraceHeader;
-
     private final Collection<String> fields;
     private final InboundTraceControlExtractor inboundExtractor;
     private final PlatformPropagationGate gate;
 
-    TraceControlPropagator(String forceTraceHeader, String qaTraceHeader, String requestIdHeader) {
-        this(forceTraceHeader, qaTraceHeader, requestIdHeader, PlatformPropagationGate.shared());
+    TraceControlPropagator() {
+        this(PlatformPropagationGate.shared());
     }
 
-    TraceControlPropagator(String forceTraceHeader, String qaTraceHeader, String requestIdHeader, PlatformPropagationGate gate) {
-        this.forceTraceHeader = forceTraceHeader;
-        this.qaTraceHeader = qaTraceHeader;
-        this.fields = List.of(forceTraceHeader, qaTraceHeader, requestIdHeader);
+    TraceControlPropagator(PlatformPropagationGate gate) {
+        this.fields = List.of(PlatformHeaders.X_TRACE_ON, PlatformHeaders.X_QA_TRACE, PlatformHeaders.X_REQUEST_ID);
         this.inboundExtractor = new DefaultInboundTraceControlExtractor();
         this.gate = gate;
     }
@@ -47,8 +43,8 @@ final class TraceControlPropagator implements TextMapPropagator {
             return context;
         }
 
-        String forceTraceVal = getter.get(carrier, forceTraceHeader);
-        String qaTraceVal = getter.get(carrier, qaTraceHeader);
+        String forceTraceVal = getter.get(carrier, PlatformHeaders.X_TRACE_ON);
+        String qaTraceVal = getter.get(carrier, PlatformHeaders.X_QA_TRACE);
         if (StringUtils.isNullOrBlank(forceTraceVal) && StringUtils.isNullOrBlank(qaTraceVal)) {
             return context;
         }

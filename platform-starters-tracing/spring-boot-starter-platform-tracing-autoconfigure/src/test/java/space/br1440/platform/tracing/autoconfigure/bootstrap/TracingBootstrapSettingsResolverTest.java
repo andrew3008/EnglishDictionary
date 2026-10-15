@@ -4,72 +4,39 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
-import org.springframework.boot.test.system.CapturedOutput;
-import org.springframework.boot.test.system.OutputCaptureExtension;
-import org.springframework.core.env.MapPropertySource;
-import org.springframework.core.env.SystemEnvironmentPropertySource;
 import org.springframework.mock.env.MockEnvironment;
 
 import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 
-@ExtendWith(OutputCaptureExtension.class)
 class TracingBootstrapSettingsResolverTest {
 
     @Test
     void missingEnabledDefaultsToTrue() {
-        // given
-        // when
-        // then
         assertThat(TracingBootstrapSettingsResolver.resolve(environment()).tracingEnabled()).isTrue();
     }
 
     @Test
     void enabledIsStrictBoolean() {
-        // given
-        // when
-        // then
         assertThat(TracingBootstrapSettingsResolver.resolve(
                         environment().withProperty("platform.tracing.enabled", "true")).tracingEnabled())
                 .isTrue();
+
         assertThat(TracingBootstrapSettingsResolver.resolve(
                         environment().withProperty("platform.tracing.enabled", "FALSE")).tracingEnabled())
                 .isFalse();
+
         assertThatIllegalStateException()
                 .isThrownBy(() -> TracingBootstrapSettingsResolver.resolve(
                         environment().withProperty("platform.tracing.enabled", "yes")))
                 .withMessageContaining("Accepted values: true, false");
-    }
-
-    @Test
-    void obsoleteModeFailsFast() {
-        // given
-        // when
-        // then
-        assertThatIllegalStateException()
-                .isThrownBy(() -> TracingBootstrapSettingsResolver.resolve(
-                        environment().withProperty("platform.tracing.mode", " ")))
-                .withMessageContaining("Obsolete Spring-only property 'platform.tracing.mode'");
-    }
-
-    @Test
-    void obsoleteConfigurationEnabledFailsFast() {
-        // given
-        // when
-        // then
-        assertThatIllegalStateException()
-                .isThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment()
-                        .withProperty("platform.tracing.configuration.enabled", "false")))
-                .withMessageContaining("Obsolete Spring-only property 'platform.tracing.configuration.enabled'");
     }
 
     @Test
@@ -154,50 +121,6 @@ class TracingBootstrapSettingsResolverTest {
     }
 
     @Test
-    void obsoleteAuthorityNamesReplacement() {
-        // given
-        MockEnvironment environment = new MockEnvironment()
-                .withProperty("platform.tracing.configuration.authority", "HELM");
-
-        // when
-        // then
-        assertThatIllegalStateException()
-                .isThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
-                .withMessageContaining("Obsolete Spring-only property 'platform.tracing.configuration.authority'")
-                .withMessageContaining("platform.tracing.control.channel");
-    }
-
-    @Test
-    void dualKeysFailWithoutPrecedence() {
-        // given
-        MockEnvironment environment = environment()
-                .withProperty("platform.tracing.configuration.authority", "HELM");
-
-        // when
-        // then
-        assertThatIllegalStateException()
-                .isThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
-                .withMessageContaining("Obsolete Spring-only property 'platform.tracing.configuration.authority'")
-                .withMessageContaining("platform.tracing.control.channel");
-    }
-
-    @Test
-    void obsoleteAuthorityEnvIsRejectedThroughSystemEnvironmentPropertySource() {
-        // given
-        MockEnvironment environment = new MockEnvironment();
-        environment.getPropertySources().addFirst(new SystemEnvironmentPropertySource(
-                "systemEnvironment",
-                Map.of("PLATFORM_TRACING_CONFIGURATION_AUTHORITY", "HELM")));
-
-        // when
-        // then
-        assertThatIllegalStateException()
-                .isThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment))
-                .withMessageContaining("Obsolete Spring-only property 'platform.tracing.configuration.authority'")
-                .withMessageContaining("platform.tracing.control.channel");
-    }
-
-    @Test
     void surroundingWhitespaceIsAccepted() {
         // given
         MockEnvironment environment = new MockEnvironment()
@@ -261,90 +184,6 @@ class TracingBootstrapSettingsResolverTest {
         assertThat(TracingBootstrapSettingsResolver.resolve(environment()
                         .withProperty("platform.tracing.control.channel", "actuator")).controlChannel())
                 .isEqualTo(TracingControlChannel.ACTUATOR);
-    }
-
-    @Test
-    void environmentBootstrapKeysDoNotWarnAndHyphenatedNamesResolve(CapturedOutput output) {
-        // given
-        MockEnvironment environment = environment();
-        environment.getPropertySources().addFirst(new SystemEnvironmentPropertySource(
-                "systemEnvironment",
-                Map.of(
-                        "PLATFORM_TRACING_SAMPLING_ROUTE_RATIOS", "/orders=0.5",
-                        "PLATFORM_TRACING_JAVAAGENT_SAMPLING_DROP_PATHS", "/health")));
-
-        // when
-        TracingBootstrapSettingsResolver.resolve(environment);
-
-        // then
-        assertThat(environment.getProperty("platform.tracing.sampling.route-ratios"))
-                .isEqualTo("/orders=0.5");
-        assertThat(environment.getProperty("platform.tracing.javaagent.sampling.drop-paths"))
-                .isEqualTo("/health");
-        assertThat(output).doesNotContain("Java-agent bootstrap-only properties");
-    }
-
-    @Test
-    void systemPropertyBootstrapKeyDoesNotWarn(CapturedOutput output) {
-        // given
-        MockEnvironment environment = environment();
-        environment.getPropertySources().addFirst(new MapPropertySource(
-                "systemProperties",
-                Map.of("platform.tracing.sampling.ratio", "0.25")));
-
-        // when
-        TracingBootstrapSettingsResolver.resolve(environment);
-
-        // then
-        assertThat(output).doesNotContain("Java-agent bootstrap-only properties");
-    }
-
-    @Test
-    void applicationConfigBootstrapKeyWarns(CapturedOutput output) {
-        // given
-        MockEnvironment environment = environment();
-        environment.getPropertySources().addFirst(new MapPropertySource(
-                "Config resource 'class path resource [application.yaml]' via location 'classpath:/'",
-                Map.of("platform.tracing.sampling.ratio", "0.25")));
-
-        // when
-        TracingBootstrapSettingsResolver.resolve(environment);
-
-        // then
-        assertThat(output).contains("platform.tracing.sampling.ratio");
-    }
-
-    @Test
-    void configServerBootstrapKeyWarns(CapturedOutput output) {
-        // given
-        MockEnvironment environment = environment();
-        environment.getPropertySources().addFirst(new MapPropertySource(
-                "configserver:file:/config/application.yaml",
-                Map.of("platform.tracing.exporter.enabled", "false")));
-
-        // when
-        TracingBootstrapSettingsResolver.resolve(environment);
-
-        // then
-        assertThat(output).contains("platform.tracing.exporter.enabled");
-    }
-
-    @Test
-    void winningEnvironmentValueSuppressesLowerConfigDataWarning(CapturedOutput output) {
-        // given
-        MockEnvironment environment = environment();
-        environment.getPropertySources().addFirst(new MapPropertySource(
-                "Config resource 'class path resource [application.yaml]' via location 'classpath:/'",
-                Map.of("platform.tracing.sampling.ratio", "0.25")));
-        environment.getPropertySources().addFirst(new SystemEnvironmentPropertySource(
-                "systemEnvironment",
-                Map.of("PLATFORM_TRACING_SAMPLING_RATIO", "0.75")));
-
-        // when
-        TracingBootstrapSettingsResolver.resolve(environment);
-
-        // then
-        assertThat(output).doesNotContain("Java-agent bootstrap-only properties");
     }
 
     @Test

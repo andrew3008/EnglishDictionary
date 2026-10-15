@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
+import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.mock.http.client.MockClientHttpRequest;
 
 import space.br1440.platform.tracing.api.context.CorrelationScope;
@@ -35,12 +36,11 @@ class PlatformOutboundHttpInterceptorRequestIdTest {
         PlatformOutboundHttpInterceptor interceptor = new PlatformOutboundHttpInterceptor(
                 policy,
                 new DefaultTraceControlHeaderInjector(
-                        PlatformHeaders.X_TRACE_ON,
-                        PlatformHeaders.X_QA_TRACE,
-                        PlatformHeaders.X_REQUEST_ID,
                         OutboundApplicationIdentitySource.of(
                                 () -> identityBoundary.requestId().orElse(null),
-                                () -> null)),
+                                () -> null
+                        )
+                ),
                 identityBoundary);
         MockClientHttpRequest request = new MockClientHttpRequest(
                 HttpMethod.GET,
@@ -50,14 +50,14 @@ class PlatformOutboundHttpInterceptorRequestIdTest {
                 .thenReturn(null);
 
         // when
-        try (CorrelationScope ignored = runtime.openRequestIdentityScope("app-request", true, true)) {
-            interceptor.intercept(request, new byte[0], execution);
+        try (CorrelationScope ignored = runtime.openRequestIdentityScope("app-request", true, true);
+             ClientHttpResponse ignoredResponse = interceptor.intercept(request, new byte[0], execution)) {
+            // then
+            assertThat(ignoredResponse).isNull();
+            assertThat(request.getHeaders().get(PlatformHeaders.X_REQUEST_ID)).containsExactly("app-request");
+            assertThat(request.getHeaders().get(PlatformHeaders.X_TRACE_ON)).containsExactly("on");
+            assertThat(request.getHeaders().get(PlatformHeaders.X_QA_TRACE)).containsExactly("1");
         }
-
-        // then
-        assertThat(request.getHeaders().get(PlatformHeaders.X_REQUEST_ID)).containsExactly("app-request");
-        assertThat(request.getHeaders().get(PlatformHeaders.X_TRACE_ON)).containsExactly("on");
-        assertThat(request.getHeaders().get(PlatformHeaders.X_QA_TRACE)).containsExactly("1");
     }
 
     @Test
@@ -69,9 +69,6 @@ class PlatformOutboundHttpInterceptorRequestIdTest {
         PlatformOutboundHttpInterceptor interceptor = new PlatformOutboundHttpInterceptor(
                 policy,
                 new DefaultTraceControlHeaderInjector(
-                        PlatformHeaders.X_TRACE_ON,
-                        PlatformHeaders.X_QA_TRACE,
-                        PlatformHeaders.X_REQUEST_ID,
                         OutboundApplicationIdentitySource.of(
                                 () -> identityBoundary.requestId().orElse(null),
                                 () -> null)),
@@ -84,12 +81,12 @@ class PlatformOutboundHttpInterceptorRequestIdTest {
                 .thenReturn(null);
 
         // when
-        try (CorrelationScope ignored = runtime.openRequestIdentityScope("app-request")) {
-            interceptor.intercept(request, new byte[0], execution);
+        try (CorrelationScope ignored = runtime.openRequestIdentityScope("app-request");
+             ClientHttpResponse ignoredResponse = interceptor.intercept(request, new byte[0], execution)) {
+            // then
+            assertThat(ignoredResponse).isNull();
+            assertThat(request.getHeaders().get(PlatformHeaders.X_TRACE_ON)).isNull();
+            assertThat(request.getHeaders().get(PlatformHeaders.X_QA_TRACE)).isNull();
         }
-
-        // then
-        assertThat(request.getHeaders().get(PlatformHeaders.X_TRACE_ON)).isNull();
-        assertThat(request.getHeaders().get(PlatformHeaders.X_QA_TRACE)).isNull();
     }
 }

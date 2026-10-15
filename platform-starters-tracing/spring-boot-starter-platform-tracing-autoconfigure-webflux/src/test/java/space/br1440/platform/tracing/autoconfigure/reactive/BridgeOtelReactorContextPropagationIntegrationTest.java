@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
@@ -23,6 +24,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 @Tag("bridge-otel-path")
+@AutoConfigureObservability
 @SpringBootTest(
         classes = BridgeOtelReactorContextPropagationIntegrationTest.TestApplication.class,
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT

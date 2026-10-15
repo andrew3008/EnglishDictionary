@@ -23,15 +23,13 @@ class CorrelationTrustBoundaryRegressionTest {
         // given
         TrustedDestinationMatcher matcher = TrustedDestinationMatchers.forHttpHosts(List.of("*.trusted.com"), false);
         OutboundPropagationPolicy policy = new DefaultOutboundPropagationPolicy(
-                true, matcher, false, false, false, true);
+                true, matcher, false, false, false, true
+        );
         OutboundApplicationIdentitySource identitySource = OutboundApplicationIdentitySource.of(
                 () -> null,
-                () -> CORRELATION_ID);
-        DefaultTraceControlHeaderInjector injector = new DefaultTraceControlHeaderInjector(
-                PlatformHeaders.X_TRACE_ON,
-                PlatformHeaders.X_QA_TRACE,
-                PlatformHeaders.X_REQUEST_ID,
-                identitySource);
+                () -> CORRELATION_ID
+        );
+        DefaultTraceControlHeaderInjector injector = new DefaultTraceControlHeaderInjector(identitySource);
 
         OutboundPropagationDecision trustedDecision = policy.decide("api.trusted.com");
         OutboundPropagationDecision untrustedDecision = policy.decide("evil.com");

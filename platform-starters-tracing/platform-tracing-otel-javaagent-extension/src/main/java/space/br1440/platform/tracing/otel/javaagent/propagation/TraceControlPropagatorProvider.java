@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.propagation;
 
+import java.util.Objects;
 import jakarta.annotation.Nonnull;
 
 import io.opentelemetry.context.propagation.TextMapPropagator;
@@ -12,13 +13,8 @@ public final class TraceControlPropagatorProvider implements ConfigurablePropaga
 
     @Override
     public TextMapPropagator getPropagator(@Nonnull ConfigProperties config) {
-        TraceControlPropagator control = new TraceControlPropagator(
-                PropagationDefaults.getForceTraceHeader(config),
-                PropagationDefaults.getQaTraceHeader(config),
-                PropagationDefaults.getRequestIdHeader(config)
-        );
-
-        return new SafeTextMapPropagator(control);
+        Objects.requireNonNull(config, "config");
+        return new SafeTextMapPropagator(new TraceControlPropagator());
     }
 
     @Override

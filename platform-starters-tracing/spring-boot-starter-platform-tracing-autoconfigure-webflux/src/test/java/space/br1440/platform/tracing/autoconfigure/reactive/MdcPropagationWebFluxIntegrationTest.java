@@ -34,20 +34,6 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 
-/**
- * Контракт реактивного приложения: автоматическое распространение контекста Reactor
- * включается и при выключенном трейсинге. MDC нужен логированию, а не только трейсингу,
- * поэтому {@code platform.tracing.enabled=false}.
- *
- * <p>Дефолт Boot для {@code spring.reactor.context-propagation} — {@code LIMITED}. Хук
- * включает {@link ReactorAutoConfiguration} только в режиме {@code AUTO}, который задаёт
- * {@link TracingReactorEagerInitConfiguration}. Перед стартом контекста хук выключается:
- * иначе более ранний тест в той же JVM делает проверку распространения зелёной без этой
- * конфигурации.
- *
- * <p>{@code WebEnvironment.MOCK}: Netty не стартует. {@code NONE} переводит приложение в
- * не-web, и {@code @ConditionalOnWebApplication(REACTIVE)} не регистрирует конфигурацию.
- */
 @SpringBootTest(
         classes = MdcPropagationWebFluxIntegrationTest.ReactiveTestApp.class,
         webEnvironment = SpringBootTest.WebEnvironment.MOCK,
@@ -59,8 +45,7 @@ import reactor.util.context.Context;
 @ContextConfiguration(initializers = MdcPropagationWebFluxIntegrationTest.DisableAutomaticContextPropagation.class)
 class MdcPropagationWebFluxIntegrationTest {
 
-    private static final String PLATFORM_REACTOR_FILTER =
-            "platformTracingEagerReactorAutoConfigurationFilter";
+    private static final String BOOT_REACTOR_FILTER = "reactorAutoConfigurationLazyInitializationExcludeFilter";
     private static final String PROBE_KEY = "mdc-propagation-probe";
     private static final ThreadLocal<String> PROBE = new ThreadLocal<>();
 
@@ -89,6 +74,7 @@ class MdcPropagationWebFluxIntegrationTest {
         assertThat(context.getEnvironment().getProperty("spring.main.lazy-initialization", Boolean.class, false))
                 .as("outer context keeps Boot's default lazy-initialization")
                 .isFalse();
+
         assertThat(context.getBeanFactory().getBeanNamesForType(TracingReactorEagerInitConfiguration.class, false, false))
                 .as("TracingReactorEagerInitConfiguration must be registered in a reactive application")
                 .hasSize(1);
@@ -109,8 +95,8 @@ class MdcPropagationWebFluxIntegrationTest {
         private ConfigurableApplicationContext context;
 
         @Test
-        @DisplayName("фильтр стартера исключает ReactorAutoConfiguration из lazy-init")
-        void platformFilterExcludesReactorAutoConfiguration() {
+        @DisplayName("Boot исключает ReactorAutoConfiguration из lazy-init")
+        void bootFilterExcludesReactorAutoConfiguration() {
             assertThat(this.context.getEnvironment().getProperty("spring.main.lazy-initialization", Boolean.class))
                     .as("nested context must actually run with lazy-initialization=true")
                     .isTrue();
@@ -121,13 +107,16 @@ class MdcPropagationWebFluxIntegrationTest {
                     .as("ReactorAutoConfiguration must already be instantiated; the check must not create it")
                     .isTrue();
 
-            assertThat(beanFactory.containsBeanDefinition(PLATFORM_REACTOR_FILTER)).isTrue();
+            assertThat(beanFactory.containsBeanDefinition(BOOT_REACTOR_FILTER)).isTrue();
             LazyInitializationExcludeFilter filter = this.context.getBean(
-                    PLATFORM_REACTOR_FILTER, LazyInitializationExcludeFilter.class);
+                    BOOT_REACTOR_FILTER,
+                    LazyInitializationExcludeFilter.class
+            );
             BeanDefinition definition = beanFactory.getBeanDefinition(reactorBeanName);
             assertThat(filter.isExcluded(reactorBeanName, definition, ReactorAutoConfiguration.class))
-                    .as("platformTracingEagerReactorAutoConfigurationFilter must exclude ReactorAutoConfiguration")
                     .isTrue();
+            assertThat(beanFactory.containsBeanDefinition("platformTracingEagerReactorAutoConfigurationFilter"))
+                    .isFalse();
         }
 
         @Test
@@ -156,8 +145,7 @@ class MdcPropagationWebFluxIntegrationTest {
         return names[0];
     }
 
-    static final class DisableAutomaticContextPropagation
-            implements ApplicationContextInitializer<ConfigurableApplicationContext> {
+    static final class DisableAutomaticContextPropagation implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
         @Override
         public void initialize(@Nonnull ConfigurableApplicationContext applicationContext) {

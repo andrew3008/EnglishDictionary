@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -54,14 +56,12 @@ class ControlChannelPostureMatrixTest {
     private final ApplicationContextRunner actuatorStackRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
                     TracingControlChannelAutoConfiguration.class,
-                    TracingSettingsControlAutoConfiguration.class));
+                    TracingSettingsControlAutoConfiguration.class)
+            );
 
     @ParameterizedTest(name = "legal: channel={0}")
     @ValueSource(strings = {"NONE", "CONFIG_SERVER", "ACTUATOR"})
     void legalChannelStartsAndExposesBootstrapSettings(String channel) {
-        // given
-        // when
-        // then
         bootstrapRunner
                 .withPropertyValues("platform.tracing.control.channel=" + channel)
                 .run(context -> {
@@ -357,9 +357,11 @@ class ControlChannelPostureMatrixTest {
                                 TracingStatusAutoConfiguration.class
                         )
                 )
-                .withBean(
-                        PlatformTracingJmxClient.class,
-                        () -> mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS));
+                .withBean(PlatformTracingJmxClient.class, () -> {
+                    PlatformTracingJmxClient client = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
+                    when(client.jmxContractDiagnostics()).thenReturn(List.of());
+                    return client;
+                });
     }
 
     private static void assertDisabledTopology(ApplicationContextRunner runner) {

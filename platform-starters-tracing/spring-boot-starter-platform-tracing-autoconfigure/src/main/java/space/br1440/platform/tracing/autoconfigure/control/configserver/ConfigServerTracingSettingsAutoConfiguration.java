@@ -18,14 +18,8 @@ public class ConfigServerTracingSettingsAutoConfiguration {
             "space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxControlAutoConfiguration";
 
     @Bean
-    ConfigServerSettingsProvenanceClassifier configServerSettingsProvenanceClassifier(ConfigurableEnvironment environment) {
-        return new ConfigServerSettingsProvenanceClassifier(environment);
-    }
-
-    @Bean
-    ConfigServerSettingsManifestBuilder configServerSettingsManifestBuilder(ConfigurableEnvironment environment,
-                                                                            ConfigServerSettingsProvenanceClassifier provenanceClassifier) {
-        return new ConfigServerSettingsManifestBuilder(environment, provenanceClassifier);
+    ConfigServerSettingsManifestBuilder configServerSettingsManifestBuilder(ConfigurableEnvironment environment) {
+        return new ConfigServerSettingsManifestBuilder(environment);
     }
 
     @Bean

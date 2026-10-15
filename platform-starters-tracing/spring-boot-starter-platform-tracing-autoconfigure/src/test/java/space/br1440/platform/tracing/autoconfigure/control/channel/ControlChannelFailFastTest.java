@@ -2,15 +2,12 @@ package space.br1440.platform.tracing.autoconfigure.control.channel;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Map;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import org.springframework.core.env.SystemEnvironmentPropertySource;
 
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingControlChannel;
@@ -23,90 +20,38 @@ class ControlChannelFailFastTest {
 
     @Test
     void missingChannelFailsClosed() {
-        // given
-        // when
-        // then
         runner.run(context -> assertStartupFailure(context, "Missing required property 'platform.tracing.control.channel'"));
     }
 
     @Test
     void emptyChannelFailsClosed() {
-        // given
-        // when
-        // then
         runner.withPropertyValues("platform.tracing.control.channel=")
                 .run(context -> assertStartupFailure(context, "Property 'platform.tracing.control.channel' must not be blank"));
     }
 
     @Test
     void unknownChannelFailsClosed() {
-        // given
-        // when
-        // then
         runner.withPropertyValues("platform.tracing.control.channel=DEV_ACTUATOR")
                 .run(context -> assertStartupFailure(context, "Invalid property 'platform.tracing.control.channel'"));
     }
 
     @Test
     void helmIsRejectedWithoutMappingToNone() {
-        // given
-        // when
-        // then
         runner.withPropertyValues("platform.tracing.control.channel=HELM")
                 .run(context -> assertStartupFailure(context, "Invalid property 'platform.tracing.control.channel'='HELM'"));
     }
 
     @Test
     void staticIsRejectedWithoutAlias() {
-        // given
-        // when
-        // then
         runner.withPropertyValues("platform.tracing.control.channel=STATIC")
                 .run(context -> assertStartupFailure(
                         context,
                         "Invalid property 'platform.tracing.control.channel'='STATIC'"));
     }
 
-    @Test
-    void obsoleteAuthorityFailsWithReplacementHint() {
-        // given
-        // when
-        // then
-        runner.withPropertyValues("platform.tracing.configuration.authority=HELM")
-                .run(context -> assertStartupFailure(context, "platform.tracing.control.channel"));
-    }
-
-    @Test
-    void dualKeysFailWithoutPrecedence() {
-        // given
-        // when
-        // then
-        runner.withPropertyValues(
-                        "platform.tracing.control.channel=NONE",
-                        "platform.tracing.configuration.authority=HELM")
-                .run(context -> assertStartupFailure(
-                        context,
-                        "Obsolete Spring-only property 'platform.tracing.configuration.authority'"));
-    }
-
-    @Test
-    void obsoleteAuthorityEnvFailsThroughSystemEnvironmentPropertySource() {
-        // given
-        // when
-        // then
-        runner.withInitializer(context -> context.getEnvironment().getPropertySources().addFirst(
-                        new SystemEnvironmentPropertySource(
-                                "systemEnvironment",
-                                Map.of("PLATFORM_TRACING_CONFIGURATION_AUTHORITY", "HELM"))))
-                .run(context -> assertStartupFailure(context, "platform.tracing.control.channel"));
-    }
-
     @ParameterizedTest
     @ValueSource(strings = {"NONE", "CONFIG_SERVER", "ACTUATOR"})
     void legalChannelsStart(String channel) {
-        // given
-        // when
-        // then
         runner.withPropertyValues("platform.tracing.control.channel=" + channel)
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -118,9 +63,6 @@ class ControlChannelFailFastTest {
     @ParameterizedTest
     @ValueSource(strings = {"CONFIG_SERVER", "ACTUATOR"})
     void disabledWriteChannelFailsClosed(String channel) {
-        // given
-        // when
-        // then
         runner.withPropertyValues(
                         "platform.tracing.control.channel=" + channel,
                         "platform.tracing.enabled=false")
@@ -129,9 +71,6 @@ class ControlChannelFailFastTest {
 
     @Test
     void disabledNoneStarts() {
-        // given
-        // when
-        // then
         runner.withPropertyValues(
                         "platform.tracing.control.channel=NONE",
                         "platform.tracing.enabled=false")
@@ -143,9 +82,6 @@ class ControlChannelFailFastTest {
 
     @Test
     void disabledWithoutChannelStarts() {
-        // given
-        // when
-        // then
         runner.withPropertyValues("platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();

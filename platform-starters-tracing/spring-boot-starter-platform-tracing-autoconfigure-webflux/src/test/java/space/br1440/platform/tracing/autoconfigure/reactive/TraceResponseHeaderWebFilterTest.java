@@ -65,24 +65,6 @@ class TraceResponseHeaderWebFilterTest {
     }
 
     @Test
-    void respondsWithCustomRequestIdHeaderNameConfiguredViaPlatformHeaders() {
-        // given
-        TracingProperties properties = new TracingProperties();
-        properties.getPropagation().getPlatformHeaders().setRequestIdHeader("X-Custom-Request-Id");
-
-        TraceResponseHeaderWebFilter filter = filterWith(traceOperationsWithoutTraceId(), properties);
-        MockServerWebExchange exchange = exchangeFor("/custom-request-id", "X-Custom-Request-Id", "req-custom");
-        WebFilterChain chain = ignored -> Mono.empty();
-
-        // when
-        filter.filter(exchange, chain).block();
-        exchange.getResponse().setComplete().block();
-
-        // then
-        assertThat(exchange.getResponse().getHeaders().getFirst("X-Custom-Request-Id")).isEqualTo("req-custom");
-    }
-
-    @Test
     void bindsRequestIdForReactiveSubscription() {
         withReactiveIdentityPropagation(runtime -> {
             // given
@@ -277,7 +259,11 @@ class TraceResponseHeaderWebFilterTest {
 
     private static TraceResponseHeaderWebFilter filterWith(TraceOperations traceOperations,
                                                            TracingProperties properties) {
-        return new TraceResponseHeaderWebFilter(traceOperations, properties, new DefaultInboundTraceControlExtractor());
+        return new TraceResponseHeaderWebFilter(
+                traceOperations,
+                properties,
+                new DefaultInboundTraceControlExtractor()
+        );
     }
 
     private static MockServerWebExchange exchangeFor(String path) {

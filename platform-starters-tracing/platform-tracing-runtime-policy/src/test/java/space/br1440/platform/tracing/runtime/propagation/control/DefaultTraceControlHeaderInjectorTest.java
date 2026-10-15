@@ -14,17 +14,15 @@ import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPro
 
 class DefaultTraceControlHeaderInjectorTest {
 
-    private final PlatformOutboundPropagation propagation =
-            new DefaultTraceControlHeaderInjector(
-                    "X-Trace-On", "X-QA-Trace", "X-Request-Id",
-                    OutboundApplicationIdentitySource.of(() -> null, () -> null));
-    private final PlatformOutboundPropagation applicationPropagation =
-            new DefaultTraceControlHeaderInjector(
-                    "X-Trace-On",
-                    "X-QA-Trace",
-                    "X-Request-Id",
-                    new FixedApplicationIdentitySource("req-123", "corr-123"));
+    private final PlatformOutboundPropagation propagation = new DefaultTraceControlHeaderInjector(
+                    OutboundApplicationIdentitySource.of(() -> null, () -> null)
+            );
 
+    private final PlatformOutboundPropagation applicationPropagation = new DefaultTraceControlHeaderInjector(
+            new FixedApplicationIdentitySource("req-123", "corr-123")
+    );
+
+    @SuppressWarnings("SameParameterValue")
     private static InboundTraceControl controlOf(boolean forceTrace, boolean qaTrace) {
         return new InboundTraceControl(forceTrace, qaTrace, "req-from-control", "some-reason", "raw-value");
     }

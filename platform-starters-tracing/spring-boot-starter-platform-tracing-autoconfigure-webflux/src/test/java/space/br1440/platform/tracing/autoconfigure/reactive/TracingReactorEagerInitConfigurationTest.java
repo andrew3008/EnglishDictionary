@@ -31,11 +31,11 @@ class TracingReactorEagerInitConfigurationTest {
     }
 
     @Test
-    void springBootAloneLeavesReactorAutoConfigurationLazy() {
-        lazyInitContextRunner.run(context -> assertThat(isCreatedDuringRefresh(context, ReactorAutoConfiguration.class))
-                .as("negative control: without the platform filter ReactorAutoConfiguration stays lazy "
-                        + "(spring-boot#45846); if this fails, Boot fixed it and the platform filter is redundant")
-                .isFalse());
+    void bootCreatesReactorAutoConfigurationDuringRefreshUnderLazyInitialization() {
+        lazyInitContextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(isCreatedDuringRefresh(context, ReactorAutoConfiguration.class)).isTrue();
+        });
     }
 
     @SuppressWarnings("SameParameterValue")

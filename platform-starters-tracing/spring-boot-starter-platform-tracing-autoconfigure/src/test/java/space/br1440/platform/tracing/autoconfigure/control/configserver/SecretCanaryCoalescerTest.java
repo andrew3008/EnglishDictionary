@@ -36,11 +36,12 @@ class SecretCanaryCoalescerTest {
             PlatformJmxTracingSettingsClient client = agent.client();
             MockEnvironment env = authoritativeEnv();
             env.getPropertySources().addFirst(new MapPropertySource(
-                    "configserver:canary-route",
-                    Map.of("platform.tracing.policy.sampling.route-ratios." + CANARY_ROUTE,
-                            CANARY_TOKEN)));
-            ConfigServerSettingsManifestBuilder builder = new ConfigServerSettingsManifestBuilder(
-                    env, new ConfigServerSettingsProvenanceClassifier(env));
+                            "configserver:canary-route",
+                            Map.of("platform.tracing.policy.sampling.route-ratios." + CANARY_ROUTE, CANARY_TOKEN)
+                    )
+            );
+
+            ConfigServerSettingsManifestBuilder builder = new ConfigServerSettingsManifestBuilder(env);
             TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
                     builder, client, Runnable::run
             );

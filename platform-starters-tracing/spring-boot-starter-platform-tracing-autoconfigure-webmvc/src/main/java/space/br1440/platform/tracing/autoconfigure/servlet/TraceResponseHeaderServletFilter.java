@@ -50,25 +50,16 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
         final Optional<String> capturedTraceId = safeCurrentTraceId();
 
-        final String incomingRequestId = request.getHeader(
-                properties.getPropagation().getPlatformHeaders().getRequestIdHeader()
-        );
+        final String incomingRequestId = request.getHeader(PlatformHeaders.X_REQUEST_ID);
         final String requestId = RequestIdBoundarySupport.resolve(incomingRequestId);
-
-        final String rawForceTrace = request.getHeader(
-                properties.getPropagation().getPlatformHeaders().getForceTraceHeader()
-        );
-
-        final String rawQaTrace = request.getHeader(
-                properties.getPropagation().getPlatformHeaders().getQaTraceHeader()
-        );
+        final String rawForceTrace = request.getHeader(PlatformHeaders.X_TRACE_ON);
+        final String rawQaTrace = request.getHeader(PlatformHeaders.X_QA_TRACE);
 
         final InboundTraceControl traceControl = traceControlExtractor.fromHeaders(rawForceTrace, rawQaTrace, null);
 
         PlatformOwnedHttpServletResponse wrapped = new PlatformOwnedHttpServletResponse(response);
         if (properties.getRequestIdHeader().isEnabled()) {
-            String requestIdHeader = properties.getPropagation().getPlatformHeaders().getRequestIdHeader();
-            wrapped.protectRequestId(requestIdHeader, requestId);
+            wrapped.protectRequestId(PlatformHeaders.X_REQUEST_ID, requestId);
         }
         capturedTraceId.ifPresent(wrapped::protectTraceId);
 

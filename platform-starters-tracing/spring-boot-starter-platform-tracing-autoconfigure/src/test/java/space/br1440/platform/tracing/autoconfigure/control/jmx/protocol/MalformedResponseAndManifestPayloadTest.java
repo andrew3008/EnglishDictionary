@@ -16,13 +16,11 @@ import org.springframework.core.env.MapPropertySource;
 import org.springframework.mock.env.MockEnvironment;
 
 import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerSettingsManifestBuilder;
-import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerSettingsProvenanceClassifier;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsManifestException;
 
 class MalformedResponseAndManifestPayloadTest {
 
     private static final CompositeType WRONG_TYPE = wrongCompositeType();
-
     private static final String[] RESPONSE_KEYS = {
             "acceptedSequence", "attemptId", "messageCode", "outcome", "payloadDigest",
             "agentInstanceId", "violationCodes"
@@ -73,8 +71,7 @@ class MalformedResponseAndManifestPayloadTest {
         MockEnvironment env = fullPolicyEnvironment();
         putAuthoritativeRouteRatio(env, "/api", "not-a-number");
 
-        ConfigServerSettingsManifestBuilder builder =
-                new ConfigServerSettingsManifestBuilder(env, configServerClassifier(env));
+        ConfigServerSettingsManifestBuilder builder = new ConfigServerSettingsManifestBuilder(env);
 
         assertThatThrownBy(builder::build)
                 .as("non-numeric route-ratio value MUST throw TracingSettingsManifestException")
@@ -87,8 +84,7 @@ class MalformedResponseAndManifestPayloadTest {
         MockEnvironment env = fullPolicyEnvironment();
         putAuthoritativeRouteRatio(env, "/api", "1.5");
 
-        ConfigServerSettingsManifestBuilder builder =
-                new ConfigServerSettingsManifestBuilder(env, configServerClassifier(env));
+        ConfigServerSettingsManifestBuilder builder = new ConfigServerSettingsManifestBuilder(env);
 
         assertThatThrownBy(builder::build)
                 .as("route-ratio > 1.0 MUST throw IllegalArgumentException (value invariant)")
@@ -101,8 +97,7 @@ class MalformedResponseAndManifestPayloadTest {
         MockEnvironment env = fullPolicyEnvironment();
         putAuthoritativeRouteRatio(env, "/api", "-0.1");
 
-        ConfigServerSettingsManifestBuilder builder =
-                new ConfigServerSettingsManifestBuilder(env, configServerClassifier(env));
+        ConfigServerSettingsManifestBuilder builder = new ConfigServerSettingsManifestBuilder(env);
 
         assertThatThrownBy(builder::build)
                 .as("route-ratio < 0.0 MUST throw IllegalArgumentException (value invariant)")
@@ -115,7 +110,8 @@ class MalformedResponseAndManifestPayloadTest {
             return new CompositeType(
                     "WrongType/v999", "WrongType/v999",
                     new String[]{"dummy"}, new String[]{"dummy"},
-                    new OpenType<?>[]{SimpleType.STRING});
+                    new OpenType<?>[]{SimpleType.STRING}
+            );
         } catch (OpenDataException e) {
             throw new ExceptionInInitializerError(e);
         }
@@ -194,9 +190,5 @@ class MalformedResponseAndManifestPayloadTest {
                 "configserver:test-route-ratios",
                 Map.of("platform.tracing.policy.sampling.route-ratios." + route, value))
         );
-    }
-
-    private static ConfigServerSettingsProvenanceClassifier configServerClassifier(MockEnvironment env) {
-        return new ConfigServerSettingsProvenanceClassifier(env);
     }
 }

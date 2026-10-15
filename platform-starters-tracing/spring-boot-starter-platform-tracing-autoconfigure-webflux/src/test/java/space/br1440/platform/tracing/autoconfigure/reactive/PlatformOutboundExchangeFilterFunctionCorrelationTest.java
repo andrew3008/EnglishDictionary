@@ -60,9 +60,7 @@ class PlatformOutboundExchangeFilterFunctionCorrelationTest {
                 () -> traceOperations.traceContext().requestId().orElse(null),
                 () -> traceOperations.traceContext().correlationId().orElse(null)
         );
-        PlatformOutboundPropagation propagationPort = new DefaultTraceControlHeaderInjector(
-                "X-Trace-On", "X-QA-Trace", "X-Request-Id", identitySource
-        );
+        PlatformOutboundPropagation propagationPort = new DefaultTraceControlHeaderInjector(identitySource);
 
         OutboundPropagationPolicy allowAll = destination -> OutboundPropagationDecision.ALLOW_ALL;
         OutboundPropagationPolicy denyAll = destination -> OutboundPropagationDecision.DENY_ALL;

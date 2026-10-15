@@ -19,6 +19,9 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.PropertySource;
 import org.springframework.mock.env.MockEnvironment;
 
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingControlChannel;
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingPropertyAdmission;
+
 class ConfigServerConfigDataLoaderPropertySourceContractTest {
 
     private static final String POLICY_KEY = "platform.tracing.policy.sampling.enabled";
@@ -52,9 +55,7 @@ class ConfigServerConfigDataLoaderPropertySourceContractTest {
         ConfigurableEnvironment environment = new MockEnvironment();
         environment.getPropertySources().addFirst(remoteLeaf);
 
-        ConfigServerSettingsProvenanceClassifier classifier = new ConfigServerSettingsProvenanceClassifier(environment);
-        assertThat(classifier.classify(POLICY_KEY))
-                .isEqualTo(ConfigServerSettingsProvenanceClassifier.ProvenanceClass.AUTHORITATIVE);
+        assertThat(TracingPropertyAdmission.check(environment, TracingControlChannel.CONFIG_SERVER)).isEmpty();
     }
 
     private static final class StubConfigServerConfigDataLoader extends ConfigServerConfigDataLoader {

@@ -32,15 +32,8 @@ public class PlatformOutboundPropagationAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public PlatformOutboundPropagation platformOutboundPropagation(TracingProperties properties,
-                                                                   TraceOperations traceOperations) {
-        TracingProperties.Propagation.PlatformHeaderNames headers = properties.getPropagation().getPlatformHeaders();
-        return new DefaultTraceControlHeaderInjector(
-                headers.getForceTraceHeader(),
-                headers.getQaTraceHeader(),
-                headers.getRequestIdHeader(),
-                new TraceOperationsIdentitySource(traceOperations)
-        );
+    public PlatformOutboundPropagation platformOutboundPropagation(TraceOperations traceOperations) {
+        return new DefaultTraceControlHeaderInjector(new TraceOperationsIdentitySource(traceOperations));
     }
 
     @Bean(name = "platformHttpOutboundPolicy")
