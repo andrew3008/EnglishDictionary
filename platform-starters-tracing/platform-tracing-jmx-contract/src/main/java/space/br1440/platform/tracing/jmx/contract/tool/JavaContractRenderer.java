@@ -62,12 +62,6 @@ final class JavaContractRenderer {
         return """
                 package %s;
 
-                /**
-                 * Измеряет длину строки в байтах UTF-8 без выделения массива.
-                 *
-                 * <p>Незакрытая или некорректная пара суррогатов считается тремя байтами, как это делает
-                 * кодировщик JDK при подстановке replacement character.</p>
-                 */
                 public final class JmxWireUtf8Meter {
 
                     private JmxWireUtf8Meter() {
