@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -138,7 +139,7 @@ class HelmRouteLimitsParityTest {
 
         List<String> values = LEVEL_TOKEN.matcher(template.substring(valuesBegin, listEnd))
                 .results()
-                .map(result -> result.group())
+                .map(MatchResult::group)
                 .toList();
         if (values.isEmpty()) {
             throw new IllegalStateException(LEVEL_LIST_EMPTY_MESSAGE.formatted(usage));

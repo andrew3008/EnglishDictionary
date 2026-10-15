@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.otel.javaagent.distribution;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.List;
