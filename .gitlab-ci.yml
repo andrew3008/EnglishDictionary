@@ -21,6 +21,7 @@ platform-tracing-helm-check:
   script:
     - sh "$CI_PROJECT_DIR/platform-starters-tracing/platform-tracing-helm/tests/render-test.sh"
 
+# publish объявлен во внешнем helm pe/cicd/catalog/java/gitlab-ci
 platform-tracing-helm:
   stage: publish
   needs: [platform-tracing-helm-check]

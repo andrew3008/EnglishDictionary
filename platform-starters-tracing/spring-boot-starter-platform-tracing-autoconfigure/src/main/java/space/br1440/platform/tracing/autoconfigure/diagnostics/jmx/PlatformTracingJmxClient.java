@@ -21,6 +21,11 @@ public final class PlatformTracingJmxClient {
     private final ProcessorMetricsJmxView processorMetrics;
     private final DiagnosticsJmxView diagnostics;
 
+    @SuppressWarnings("unused")
+    PlatformTracingJmxClient() {
+        this(ManagementFactory.getPlatformMBeanServer());
+    }
+
     public PlatformTracingJmxClient(AgentReadinessCoherenceGuard coherenceGuard) {
         this(ManagementFactory.getPlatformMBeanServer(), coherenceGuard);
     }

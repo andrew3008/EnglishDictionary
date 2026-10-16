@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import jakarta.annotation.Nonnull;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
@@ -278,7 +280,9 @@ class TracingSettingsSourceStartupTest {
         // given
         String routePrefix = "/payments";
         Map<String, String> ratios = new AbstractMap<>() {
+
             @Override
+            @Nonnull
             public Set<Entry<String, String>> entrySet() {
                 return Set.of(
                         Map.entry(routePrefix, "0.2"),
