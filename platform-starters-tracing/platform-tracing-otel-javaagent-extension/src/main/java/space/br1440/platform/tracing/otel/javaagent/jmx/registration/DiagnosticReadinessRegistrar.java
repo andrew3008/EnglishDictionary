@@ -24,15 +24,10 @@ final class DiagnosticReadinessRegistrar {
                 throw new IllegalStateException("PlatformTracingMBeanRegistrar already has an active readiness registration");
             }
 
-            try {
-                batch = scope.registerOne(MBeanBatchRegistrar.Registration.dynamic(
-                        DomainObjectNames.EXTENSION_READINESS,
-                        new ExtensionReadinessDynamicMBean(projection)
-                ));
-            } catch (JmxRegistrationException failure) {
-                scope.failRegistration("READINESS_MBEAN_REGISTRATION_FAILED");
-                throw failure;
-            }
+            batch = scope.registerOne(MBeanBatchRegistrar.Registration.dynamic(
+                    DomainObjectNames.EXTENSION_READINESS,
+                    new ExtensionReadinessDynamicMBean(projection)
+            ));
 
             return new Handle();
         });
