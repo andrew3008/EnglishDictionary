@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -24,8 +23,7 @@ class ExtensionRuleLoaderLoggingTest {
     void warning_uses_the_typed_failure_context_field(@TempDir Path directory) {
         // given
         ExtensionRuleLoader loader = new ExtensionRuleLoader(
-                ExtensionRuleLoader.ValidationMode.WARNING,
-                Set.of()
+                ExtensionRuleLoader.ValidationMode.WARNING
         );
         Path missingJar = directory.resolve("rules.jar");
 
@@ -53,8 +51,7 @@ class ExtensionRuleLoaderLoggingTest {
         Path jar = directory.resolve("corrupt.jar");
         Files.writeString(jar, "not a jar");
         ExtensionRuleLoader loader = new ExtensionRuleLoader(
-                ExtensionRuleLoader.ValidationMode.WARNING,
-                Set.of()
+                ExtensionRuleLoader.ValidationMode.WARNING
         );
 
         // when

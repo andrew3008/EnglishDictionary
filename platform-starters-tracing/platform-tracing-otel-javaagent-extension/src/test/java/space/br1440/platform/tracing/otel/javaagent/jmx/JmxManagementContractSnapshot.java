@@ -1,31 +1,27 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx;
 
-import javax.management.Descriptor;
-import javax.management.MBeanAttributeInfo;
-import javax.management.MBeanFeatureInfo;
-import javax.management.MBeanInfo;
-import javax.management.MBeanNotificationInfo;
-import javax.management.MBeanOperationInfo;
-import javax.management.MBeanParameterInfo;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import javax.management.Descriptor;
+import javax.management.MBeanAttributeInfo;
+import javax.management.MBeanFeatureInfo;
+import javax.management.MBeanInfo;
+import javax.management.MBeanNotificationInfo;
+import javax.management.MBeanOperationInfo;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
 
-/**
- * Формирует детерминированный снимок фактически зарегистрированного JMX-контракта.
- */
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class JmxManagementContractSnapshot {
 
     /** P6.5/P6.6: platform domain MBeans are read-only; mutations use private control plane. */
     private static final Set<String> MUTATING_OPERATIONS = Set.of();
-
-    private JmxManagementContractSnapshot() {
-    }
 
     static Snapshot capture(MBeanServer server, List<ObjectName> objectNames) throws Exception {
         List<ObjectName> sortedNames = objectNames.stream()
@@ -163,39 +159,19 @@ final class JmxManagementContractSnapshot {
     }
 
     private static String descriptorValue(Object value) {
-        if (value == null) {
-            return "null";
-        }
-        if (value.getClass().isArray()) {
-            if (value instanceof Object[] objects) {
-                return Arrays.deepToString(objects);
-            }
-            if (value instanceof int[] values) {
-                return Arrays.toString(values);
-            }
-            if (value instanceof long[] values) {
-                return Arrays.toString(values);
-            }
-            if (value instanceof boolean[] values) {
-                return Arrays.toString(values);
-            }
-            if (value instanceof byte[] values) {
-                return Arrays.toString(values);
-            }
-            if (value instanceof short[] values) {
-                return Arrays.toString(values);
-            }
-            if (value instanceof char[] values) {
-                return Arrays.toString(values);
-            }
-            if (value instanceof float[] values) {
-                return Arrays.toString(values);
-            }
-            if (value instanceof double[] values) {
-                return Arrays.toString(values);
-            }
-        }
-        return String.valueOf(value);
+        return switch (value) {
+            case null -> "null";
+            case Object[] array -> Arrays.deepToString(array);
+            case int[] array -> Arrays.toString(array);
+            case long[] array -> Arrays.toString(array);
+            case boolean[] array -> Arrays.toString(array);
+            case byte[] array -> Arrays.toString(array);
+            case short[] array -> Arrays.toString(array);
+            case char[] array -> Arrays.toString(array);
+            case float[] array -> Arrays.toString(array);
+            case double[] array -> Arrays.toString(array);
+            default -> value.toString();
+        };
     }
 
     private static String operation(ObjectName objectName, String name, String... parameterTypes) {

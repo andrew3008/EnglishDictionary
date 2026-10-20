@@ -104,11 +104,12 @@ class ResourceCustomizerAutoconfigureIntegrationTest {
         AtomicReference<Resource> observed = new AtomicReference<>();
         AutoConfiguredOpenTelemetrySdkBuilder builder = AutoConfiguredOpenTelemetrySdk.builder()
                 .setServiceClassLoader(
-                        AutoConfigurationCustomizerTestClassLoader.withoutDiscoveredCustomizers())
+                        AutoConfigurationCustomizerTestClassLoader.withoutDiscoveredCustomizers()
+                )
                 .disableShutdownHook()
                 .addPropertiesSupplier(() -> Map.copyOf(effective));
         beforePlatform.accept(builder);
-        new BootstrapAutoConfigurationCustomizerProvider(BootstrapCoordinator.createDefault()).customize(builder);
+        new BootstrapAutoConfigurationCustomizerProvider(RuntimeEvidenceTestFixtures.coordinator()).customize(builder);
         builder.addResourceCustomizer((resource, config) -> {
             observed.set(resource);
             return resource;

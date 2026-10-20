@@ -7,10 +7,10 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 
-final class ScrubbingSpanProcessorTestFixtures {
+import lombok.experimental.UtilityClass;
 
-    private ScrubbingSpanProcessorTestFixtures() {
-    }
+@UtilityClass
+final class ScrubbingSpanProcessorTestFixtures {
 
     static ScrubbingSpanProcessor fromBuiltInRules(List<SpanAttributeScrubbingRule> rules) {
         return new ScrubbingSpanProcessor(ScrubbingRuntimeTestFixtures.fromBuiltInRules(rules));

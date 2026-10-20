@@ -2,8 +2,6 @@ package space.br1440.platform.tracing.autoconfigure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
@@ -23,18 +21,18 @@ import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRu
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 
+import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
+
 class ConfigurationEnabledRuntimeContractTest {
 
-    private static final String CONFIGURATION_DISABLED_REASON =
-            "platform.tracing.enabled=false";
+    private static final String CONFIGURATION_DISABLED_REASON = "platform.tracing.enabled=false";
 
     private final ApplicationContextRunner runtimeRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
                     TracingControlChannelAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class))
             .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
-            .withPropertyValues(
-                    "platform.tracing.control.channel=NONE");
+            .withPropertyValues("platform.tracing.control.channel=NONE");
 
     private final ApplicationContextRunner observableRuntimeRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
@@ -44,8 +42,7 @@ class ConfigurationEnabledRuntimeContractTest {
                     TracingStartupContractHealthAutoConfiguration.class,
                     TracingStatusAutoConfiguration.class))
             .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
-            .withPropertyValues(
-                    "platform.tracing.control.channel=NONE");
+            .withPropertyValues("platform.tracing.control.channel=NONE");
 
     @Test
     void agentEnabledWithReadyAgentKeepsManualTracingOperational() {
@@ -87,6 +84,27 @@ class ConfigurationEnabledRuntimeContractTest {
                         assertThat(context).hasFailed();
                         assertThat(context.getStartupFailure())
                                 .hasMessageContaining("EXTENSION_INCOMPATIBLE");
+                    });
+        }
+    }
+
+    @Test
+    void contextFailsOnExtensionFailedSnapshot() {
+        // given
+        String failureCode = "PLATFORM_SAMPLER_REPLACED";
+
+        try (ControlledAgentTestRuntime ignored = ControlledAgentTestRuntime.startFailed(failureCode)) {
+            // when
+            runtimeRunner
+                    .withPropertyValues("platform.tracing.enabled=true")
+                    .run(context -> {
+                        // then
+                        assertThat(context).hasFailed();
+                        assertThat(context.getStartupFailure())
+                                .hasRootCauseInstanceOf(IllegalStateException.class)
+                                .rootCause()
+                                .hasMessageContaining("runtimeState=EXTENSION_FAILED")
+                                .hasMessageContaining("reason=" + failureCode);
                     });
         }
     }

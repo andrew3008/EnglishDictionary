@@ -23,10 +23,10 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-final class SamplingCharacterizationSupport {
+import lombok.experimental.UtilityClass;
 
-    private SamplingCharacterizationSupport() {
-    }
+@UtilityClass
+final class SamplingCharacterizationSupport {
 
     static void assertCharacterizedCase(SamplingDecisionCase c) {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(

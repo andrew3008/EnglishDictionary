@@ -233,12 +233,9 @@ class PlatformResourceCustomizerTest {
     @Test
     void detectorNameIsExportedAndLoggedWhenPlatformNameIsAbsent() {
         // given
-        AgentLogCapture logs = new AgentLogCapture();
-        logs.install();
-
         Resource existing = Resource.create(Attributes.of(key(PlatformAttributes.SERVICE_NAME), "from-detector"));
         Map<String, String> values = Map.of(PlatformResourceCustomizer.PROP_ENVIRONMENT, "production");
-        try {
+        try (AgentLogCapture logs = AgentLogCapture.installed()) {
             // when
             Resource resource = customizer(NO_ENV, NO_BUILD, noHost())
                     .customize(existing, new TestConfigProperties(values));
@@ -249,8 +246,6 @@ class PlatformResourceCustomizerTest {
                     .filteredOn(event -> "Resource identity resolved".equals(event.message()))
                     .singleElement()
                     .satisfies(event -> assertThat(event.fields()).containsEntry("service", "from-detector"));
-        } finally {
-            logs.restore();
         }
     }
 
@@ -305,9 +300,7 @@ class PlatformResourceCustomizerTest {
     @Test
     void warningLogsIncompleteIdentityWithoutFailing() {
         // given
-        AgentLogCapture logs = new AgentLogCapture();
-        logs.install();
-        try {
+        try (AgentLogCapture logs = AgentLogCapture.installed()) {
             // when
             Resource resource = customizer(NO_ENV, NO_BUILD, noHost())
                     .customize(Resource.empty(), new TestConfigProperties(Map.of()));
@@ -318,20 +311,16 @@ class PlatformResourceCustomizerTest {
                     .filteredOn(event -> event.level() == AgentLogLevel.WARN)
                     .extracting(CapturedLogEvent::message)
                     .contains("Resource identity incomplete");
-        } finally {
-            logs.restore();
         }
     }
 
     @Test
     void completeIdentityIsLoggedAtInfo() {
         // given
-        AgentLogCapture logs = new AgentLogCapture();
-        logs.install();
         Map<String, String> values = Map.of(
                 PlatformResourceCustomizer.PROP_SERVICE_NAME, "demo-service",
                 PlatformResourceCustomizer.PROP_ENVIRONMENT, "production");
-        try {
+        try (AgentLogCapture logs = AgentLogCapture.installed()) {
             // when
             customizer(NO_ENV, NO_BUILD, noHost())
                     .customize(Resource.empty(), new TestConfigProperties(values));
@@ -341,8 +330,6 @@ class PlatformResourceCustomizerTest {
                     .filteredOn(event -> "Resource identity resolved".equals(event.message()))
                     .extracting(CapturedLogEvent::level)
                     .containsExactly(AgentLogLevel.INFO);
-        } finally {
-            logs.restore();
         }
     }
 
@@ -371,9 +358,7 @@ class PlatformResourceCustomizerTest {
             throw new IllegalStateException("injected hostname failure");
         });
         Resource existing = Resource.create(Attributes.of(key(PlatformAttributes.SERVICE_NAME), "kept"));
-        AgentLogCapture logs = new AgentLogCapture();
-        logs.install();
-        try {
+        try (AgentLogCapture logs = AgentLogCapture.installed()) {
             // when
             Resource resource = customizer(NO_ENV, NO_BUILD, failingHost, diagnostics)
                     .customize(existing, new TestConfigProperties(Map.of()));
@@ -385,8 +370,6 @@ class PlatformResourceCustomizerTest {
                     .filteredOn(event -> "Resource customization failed".equals(event.message()))
                     .extracting(CapturedLogEvent::level)
                     .containsExactly(AgentLogLevel.WARN);
-        } finally {
-            logs.restore();
         }
     }
 

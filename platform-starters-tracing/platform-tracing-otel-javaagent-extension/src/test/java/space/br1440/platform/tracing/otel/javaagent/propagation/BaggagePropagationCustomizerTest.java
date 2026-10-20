@@ -40,16 +40,41 @@ class BaggagePropagationCustomizerTest {
     }
 
     @Test
-    @DisplayName("W3C baggage + baggage disabled → сохраняет обязательную F0-границу")
-    void w3cBaggage_disabled_keepsFailClosedBoundary() {
+    @DisplayName("W3C baggage + baggage disabled → исходящий заголовок baggage отсутствует")
+    void w3cBaggage_disabled_doesNotInjectBaggageHeader() {
         // given
-        TextMapPropagator propagator = W3CBaggagePropagator.getInstance();
+        TextMapPropagator result = customizer.apply(
+                W3CBaggagePropagator.getInstance(),
+                configWithBaggageEnabled(false)
+        );
+        io.opentelemetry.context.Context ctx = io.opentelemetry.context.Context.root().with(
+                io.opentelemetry.api.baggage.Baggage.builder()
+                        .put("traffic_source", "qa")
+                        .put("password", "secret123")
+                        .put("platform.correlation.id", "workflow-42")
+                        .build());
+        Map<String, String> carrier = new java.util.HashMap<>();
+
+        // when
+        result.inject(ctx, carrier, (c, k, v) -> c.put(k, v));
+
+        // then
+        assertThat(result).isSameAs(TextMapPropagator.noop());
+        assertThat(result.fields()).isEmpty();
+        assertThat(carrier).doesNotContainKey("baggage");
+    }
+
+    @Test
+    @DisplayName("non-baggage propagator + baggage disabled → возвращает тот же экземпляр")
+    void nonBaggage_disabled_returnsSameInstance() {
+        // given
+        TextMapPropagator propagator = W3CTraceContextPropagator.getInstance();
 
         // when
         TextMapPropagator result = customizer.apply(propagator, configWithBaggageEnabled(false));
 
         // then
-        assertThat(result).isInstanceOf(FailClosedCorrelationBaggagePropagator.class);
+        assertThat(result).isSameAs(propagator);
     }
 
     @Test
@@ -132,10 +157,43 @@ class BaggagePropagationCustomizerTest {
                 .contains("traffic_source");
     }
 
+    @Test
+    @DisplayName("W3C baggage + baggage enabled → deny-pattern исключает ключ из allowlist")
+    void w3cBaggage_enabled_omitsKeyMatchingDenyPattern() {
+        // given
+        TextMapPropagator chain = customizer.apply(
+                W3CBaggagePropagator.getInstance(),
+                configWithOutboundAllowlist("traffic_source,access_token")
+        );
+        io.opentelemetry.context.Context ctx = io.opentelemetry.context.Context.root().with(
+                io.opentelemetry.api.baggage.Baggage.builder()
+                        .put("traffic_source", "qa")
+                        .put("access_token", "value")
+                        .build());
+        Map<String, String> carrier = new java.util.HashMap<>();
+
+        // when
+        chain.inject(ctx, carrier, (c, k, v) -> c.put(k, v));
+
+        // then
+        String header = carrier.get("baggage");
+        assertThat(header)
+                .contains("traffic_source")
+                .doesNotContain("access_token");
+    }
+
     private static BaggageExtensionConfig configWithBaggageEnabled(boolean enabled) {
         ConfigProperties props = DefaultConfigProperties.createFromMap(
                 Map.of(ExtensionPropertyNames.BAGGAGE_PROPAGATION_ENABLED, String.valueOf(enabled))
         );
+        return new ExtensionConfig(props).baggage();
+    }
+
+    private static BaggageExtensionConfig configWithOutboundAllowlist(String allowedKeys) {
+        ConfigProperties props = DefaultConfigProperties.createFromMap(Map.of(
+                ExtensionPropertyNames.BAGGAGE_PROPAGATION_ENABLED, "true",
+                ExtensionPropertyNames.BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS, allowedKeys
+        ));
         return new ExtensionConfig(props).baggage();
     }
 }

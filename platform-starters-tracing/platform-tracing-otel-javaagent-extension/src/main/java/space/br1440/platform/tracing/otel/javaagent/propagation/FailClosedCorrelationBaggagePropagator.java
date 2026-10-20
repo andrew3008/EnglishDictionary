@@ -36,14 +36,16 @@ final class FailClosedCorrelationBaggagePropagator implements TextMapPropagator 
     }
 
     private static Context withoutUnverifiedCorrelation(Context context) {
-        Baggage baggage = Baggage.fromContext(context);
+        Context required = Objects.requireNonNull(context, "context");
+
+        Baggage baggage = Baggage.fromContext(required);
         if (baggage.getEntryValue(CORRELATION_BAGGAGE_KEY) == null) {
-            return context;
+            return required;
         }
 
         return baggage.toBuilder()
                 .remove(CORRELATION_BAGGAGE_KEY)
                 .build()
-                .storeInContext(context);
+                .storeInContext(required);
     }
 }

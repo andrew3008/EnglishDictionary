@@ -5,41 +5,33 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.logging.BoundedThrowableRenderer;
 import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
-/**
- * DEBUG не является более доверенным приёмником, чем WARN/ERROR.
- */
 @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class ScrubbingFailureLoggingPrivacyTest {
 
     private static final String SECRET = "card=4111111111111111";
 
-    private final AgentLogCapture capture = new AgentLogCapture();
+    @RegisterExtension
+    final AgentLogCapture capture = new AgentLogCapture();
 
     @BeforeEach
     void enableDebug() {
-        capture.install();
         capture.applyLevel(AgentLogLevel.DEBUG);
         AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.DEBUG);
-    }
-
-    @AfterEach
-    void restore() {
-        capture.restore();
     }
 
     @Test

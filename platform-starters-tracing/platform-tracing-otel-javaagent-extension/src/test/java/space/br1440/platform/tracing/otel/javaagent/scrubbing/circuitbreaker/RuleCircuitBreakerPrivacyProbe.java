@@ -1,9 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker;
 
-public final class RuleCircuitBreakerPrivacyProbe {
+import lombok.experimental.UtilityClass;
 
-    private RuleCircuitBreakerPrivacyProbe() {
-    }
+@UtilityClass
+public final class RuleCircuitBreakerPrivacyProbe {
 
     public static void main(String[] args) {
         String secret = requiredSecret(args);
@@ -20,6 +20,7 @@ public final class RuleCircuitBreakerPrivacyProbe {
         if (args.length != 1 || args[0].isBlank()) {
             throw new IllegalArgumentException("Exactly one non-blank secret marker is required");
         }
+
         return args[0];
     }
 

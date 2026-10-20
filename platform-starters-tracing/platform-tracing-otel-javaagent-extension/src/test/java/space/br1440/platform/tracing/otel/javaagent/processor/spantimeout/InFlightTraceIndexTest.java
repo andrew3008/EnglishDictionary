@@ -773,9 +773,7 @@ class InFlightTraceIndexTest {
         // given
         AtomicLong clock = new AtomicLong();
         InFlightTraceIndex index = index(1, 10, 100, clock);
-        AgentLogCapture logs = new AgentLogCapture();
-        logs.install();
-        try {
+        try (AgentLogCapture logs = AgentLogCapture.installed()) {
             admitEnded(index, "t1", SpanTimeoutTestSpans.span(1, 1), 0);
 
             // when
@@ -792,8 +790,6 @@ class InFlightTraceIndexTest {
                     .containsExactly(
                             "Span timeout rejected span tracking: tracked-trace capacity reached",
                             "Span timeout evicted empty trace states under pressure");
-        } finally {
-            logs.restore();
         }
     }
 }

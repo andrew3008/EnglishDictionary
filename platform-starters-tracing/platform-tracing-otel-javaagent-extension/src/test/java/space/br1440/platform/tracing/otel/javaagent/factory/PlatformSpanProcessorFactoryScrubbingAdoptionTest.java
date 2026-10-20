@@ -38,19 +38,6 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
 class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
-    private static ConfigProperties otelOnlyConfig() {
-        return new ConfigProperties() {
-            @Override public String getString(String name) { return null; }
-            @Override public Boolean getBoolean(String name) { return null; }
-            @Override public Integer getInt(String name) { return null; }
-            @Override public Long getLong(String name) { return null; }
-            @Override public Double getDouble(String name) { return null; }
-            @Override public Duration getDuration(String name) { return null; }
-            @Override public List<String> getList(String name) { return null; }
-            @Override public Map<String, String> getMap(String name) { return null; }
-        };
-    }
-
     private static boolean isBootstrapPolicyBoolean(String name) {
         return ExtensionPropertyNames.SAMPLING_ENABLED.equals(name)
                 || ExtensionPropertyNames.EXPORTER_ENABLED.equals(name)
@@ -165,9 +152,9 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
             // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
             ExtensionConfig extensionConfig = scrubbingEnabledDefaultsExtConfig();
-            ConfigProperties config = otelOnlyConfig();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
-                    registrar, new PlatformScrubberFactory().buildRuntime(extensionConfig, config));
+                    registrar, new PlatformScrubberFactory().buildRuntime(extensionConfig)
+            );
 
             // when
             factory.registerSpanProcessors(
@@ -192,7 +179,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
             PlatformScrubberFactory factory = ScrubberFactoryTestFixtures.factory(List::of);
 
             // when/then
-            assertThatThrownBy(() -> factory.buildRuntime(extensionConfig, otelOnlyConfig()))
+            assertThatThrownBy(() -> factory.buildRuntime(extensionConfig))
                     .isInstanceOf(SanitizerBootstrapException.class)
                     .hasMessage("Scrubbing is enabled, but no effective sanitizing rules were loaded")
                     .extracting(failure -> ((SanitizerBootstrapException) failure).code())
@@ -204,32 +191,13 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         void bundled_rule_metadata_failure_preserves_cause_without_exposing_it_in_the_message() {
             // given
             IllegalStateException metadataFailure = new IllegalStateException("secret-canary");
-            SpanAttributeScrubbingRule unsafeRule = new SpanAttributeScrubbingRule() {
-                @Nonnull
-                @Override
-                public String name() {
-                    return "unsafe";
-                }
-
-                @Override public boolean critical() {
-                    throw metadataFailure;
-                }
-
-                @Nonnull
-                @Override public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
-                    return ScrubbingDecision.keep();
-                }
-            };
-            PlatformScrubberFactory factory = ScrubberFactoryTestFixtures.factory(
-                    () -> List.of(unsafeRule)
-            );
+            PlatformScrubberFactory factory = factoryWithFailingBundledRuleMetadata(metadataFailure);
             ExtensionConfig extensionConfig = scrubbingEnabledDefaultsExtConfig();
 
             // when/then
-            assertThatThrownBy(() -> factory.buildRuntime(extensionConfig, otelOnlyConfig()))
+            assertThatThrownBy(() -> factory.buildRuntime(extensionConfig))
                     .isInstanceOf(SanitizerBootstrapException.class)
-                    .hasMessage("Bundled scrubbing rule metadata validation failed "
-                            + "(java.lang.IllegalStateException)")
+                    .hasMessage("Bundled scrubbing rule metadata validation failed (java.lang.IllegalStateException)")
                     .hasCause(metadataFailure)
                     .satisfies(failure -> {
                         assertThat(((SanitizerBootstrapException) failure).code())
@@ -238,6 +206,28 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
                         assertThat(failure.getMessage()).doesNotContain("secret-canary");
                     });
         }
+    }
+
+    private static PlatformScrubberFactory factoryWithFailingBundledRuleMetadata(RuntimeException metadataFailure) {
+        SpanAttributeScrubbingRule unsafeRule = new SpanAttributeScrubbingRule() {
+            @Nonnull
+            @Override
+            public String name() {
+                return "unsafe";
+            }
+
+            @Override
+            public boolean critical() {
+                throw metadataFailure;
+            }
+
+            @Nonnull
+            @Override
+            public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
+                return ScrubbingDecision.keep();
+            }
+        };
+        return ScrubberFactoryTestFixtures.factory(() -> List.of(unsafeRule));
     }
 
     private static ExtensionConfig configWithStringProperty(String propertyKey, String value) {

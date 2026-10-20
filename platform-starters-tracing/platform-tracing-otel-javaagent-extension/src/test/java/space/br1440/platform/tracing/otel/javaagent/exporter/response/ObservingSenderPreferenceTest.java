@@ -7,7 +7,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 
+@ResourceLock(Resources.SYSTEM_PROPERTIES)
 class ObservingSenderPreferenceTest {
 
     private String originalHttpPreference;
@@ -73,5 +76,20 @@ class ObservingSenderPreferenceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining(ObservingSenderPreference.HTTP_PREFERENCE_KEY)
                 .hasMessageContaining("com.example.OtherSenderProvider");
+        assertThat(System.getProperty(ObservingSenderPreference.GRPC_PREFERENCE_KEY)).isNull();
+    }
+
+    @Test
+    @DisplayName("Чужой GRPC provider не оставляет частично установленный HTTP provider")
+    void foreignGrpcPreferenceDoesNotPartiallyInstallHttpPreference() {
+        // given
+        System.setProperty(ObservingSenderPreference.GRPC_PREFERENCE_KEY, "com.example.OtherGrpcSenderProvider");
+
+        // when/then
+        assertThatThrownBy(ObservingSenderPreference::install)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(ObservingSenderPreference.GRPC_PREFERENCE_KEY)
+                .hasMessageContaining("com.example.OtherGrpcSenderProvider");
+        assertThat(System.getProperty(ObservingSenderPreference.HTTP_PREFERENCE_KEY)).isNull();
     }
 }

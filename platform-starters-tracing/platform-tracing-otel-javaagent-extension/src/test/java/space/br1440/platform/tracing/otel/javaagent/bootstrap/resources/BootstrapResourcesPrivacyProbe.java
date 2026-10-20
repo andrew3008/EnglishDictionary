@@ -5,10 +5,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
 
-public final class BootstrapResourcesPrivacyProbe {
+import lombok.experimental.UtilityClass;
 
-    private BootstrapResourcesPrivacyProbe() {
-    }
+@UtilityClass
+public final class BootstrapResourcesPrivacyProbe {
 
     public static void main(String[] args) {
         String secret = requiredSecret(args);

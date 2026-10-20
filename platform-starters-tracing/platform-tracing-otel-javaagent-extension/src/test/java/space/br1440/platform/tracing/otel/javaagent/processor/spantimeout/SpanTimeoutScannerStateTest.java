@@ -102,10 +102,7 @@ class SpanTimeoutScannerStateTest {
     @Test
     void fatalErrorTerminatesTheBackgroundScannerAbnormallyAndShutdownReportsIt() {
         // given
-        AgentLogCapture logs = new AgentLogCapture();
-        logs.install();
-
-        try {
+        try (AgentLogCapture logs = AgentLogCapture.installed()) {
             LongSupplier nanoTime = () -> {
                 throw new LinkageError("injected fatal clock failure");
             };
@@ -149,8 +146,6 @@ class SpanTimeoutScannerStateTest {
                         .extracting(CapturedLogEvent::eventCode)
                         .containsOnly(AgentEventCode.EXPORT_SPAN_TIMEOUT);
             }
-        } finally {
-            logs.restore();
         }
     }
 

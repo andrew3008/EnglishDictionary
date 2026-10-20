@@ -12,11 +12,10 @@ import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
-public final class TracingSettingsSourceTestFixtures {
+import lombok.experimental.UtilityClass;
 
-    private TracingSettingsSourceTestFixtures() {
-        throw new AssertionError("No instances");
-    }
+@UtilityClass
+public final class TracingSettingsSourceTestFixtures {
 
     public static TracingSettingsSource boundDefaults(AgentInstanceId agentInstanceId) {
         return create(agentInstanceId, null, null, Map.of());

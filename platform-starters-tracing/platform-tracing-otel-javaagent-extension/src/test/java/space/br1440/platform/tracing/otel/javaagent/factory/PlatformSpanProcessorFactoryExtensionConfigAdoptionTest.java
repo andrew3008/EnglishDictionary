@@ -281,7 +281,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         ConfigProperties properties = allEnabledConfig();
         ExtensionConfig extensionConfig = new ExtensionConfig(properties);
         PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
-                registrar, new PlatformScrubberFactory().buildRuntime(extensionConfig, properties));
+                registrar, new PlatformScrubberFactory().buildRuntime(extensionConfig));
 
         // when
         factory.registerSpanProcessors(
@@ -292,8 +292,6 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         PlatformCompositeSpanProcessor composite = getComposite(registrar);
         // then
         try {
-            // Инвариант ADR относится к фазе onEnding, а не к общему списку делегатов: только в
-            // onEnding span ещё изменяем, и scrubbing обязан идти после всех, кто его пишет.
             List<String> onEndingOrder = composite.getOnEndingDelegateOrder();
             assertThat(onEndingOrder).contains("validation", "enrichment", "scrubbing");
             assertThat(onEndingOrder.getLast())
@@ -326,7 +324,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         ConfigProperties properties = allEnabledConfig();
         ExtensionConfig extensionConfig = new ExtensionConfig(properties);
         PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
-                registrar, new PlatformScrubberFactory().buildRuntime(extensionConfig, properties));
+                registrar, new PlatformScrubberFactory().buildRuntime(extensionConfig));
 
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
         SdkTracerProviderBuilder builder = SdkTracerProvider.builder()
@@ -387,7 +385,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         ConfigProperties properties = allEnabledConfig();
         ExtensionConfig extensionConfig = new ExtensionConfig(properties);
         PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
-                registrar, new PlatformScrubberFactory().buildRuntime(extensionConfig, properties)
+                registrar, new PlatformScrubberFactory().buildRuntime(extensionConfig)
         );
 
         SdkTracerProviderBuilder builder = SdkTracerProvider.builder();
@@ -419,7 +417,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         ConfigProperties properties = allEnabledConfig();
         ExtensionConfig extensionConfig = new ExtensionConfig(properties);
         PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
-                registrar, new PlatformScrubberFactory().buildRuntime(extensionConfig, properties)
+                registrar, new PlatformScrubberFactory().buildRuntime(extensionConfig)
         );
 
         InMemorySpanExporter exporter = InMemorySpanExporter.create();

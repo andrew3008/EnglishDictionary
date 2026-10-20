@@ -33,7 +33,8 @@ class UpstreamCustomizerProviderAllowlistTest {
             document = new String(input.readAllBytes(), StandardCharsets.UTF_8);
         }
         UpstreamCustomizerProviderAllowlist.Pin pin = UpstreamCustomizerProviderAllowlist.parse(
-                document.getBytes(StandardCharsets.UTF_8));
+                document.getBytes(StandardCharsets.UTF_8)
+        );
 
         // when
         Set<String> names = pin.providerClassNames();
@@ -46,12 +47,16 @@ class UpstreamCustomizerProviderAllowlistTest {
                 "provider.1",
                 "provider.2",
                 "provider.3",
-                "provider.4"
+                "provider.4",
+                "provider.5",
+                "provider.6"
         );
         assertThat(pin.otelJavaAgentSha256()).matches("[0-9a-f]{64}");
         assertThat(names).containsExactly(
                 "io.opentelemetry.contrib.baggage.processor.BaggageProcessorCustomizer",
+                "io.opentelemetry.javaagent.shaded.instrumentation.exporter.internal.ZipkinExporterRemovalCustomizerProvider",
                 "io.opentelemetry.javaagent.shaded.instrumentation.resources.internal.ResourceProviderPropertiesCustomizer",
+                "io.opentelemetry.javaagent.shaded.instrumentation.sampler.internal.LinksBasedSamplerDeprecationCustomizerProvider",
                 "io.opentelemetry.javaagent.tooling.AgentTracerProviderConfigurer",
                 "io.opentelemetry.javaagent.tooling.config.ConfigurationPropertiesSupplier",
                 "io.opentelemetry.javaagent.tooling.config.OtlpProtocolPropertiesSupplier"

@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.distribution.probe;
 
 import java.lang.management.ManagementFactory;
+import java.util.Arrays;
 import java.util.Locale;
 import javax.management.MBeanServer;
 import javax.management.openmbean.CompositeData;
@@ -15,6 +16,9 @@ public final class InvalidExtensionConfigurationProbe {
 
     public static final String MAIN_REACHED_MARKER = "APPLICATION_MAIN_REACHED";
     public static final String RESULT_PREFIX = "INVALID_EXTENSION_CONFIGURATION_PROBE";
+    public static final String SAMPLER_CAPABILITY_PREFIX = "INVALID_EXTENSION_CONFIGURATION_SAMPLER_CAPABILITY";
+
+    private static final String PLATFORM_SAMPLER_CAPABILITY = "PLATFORM_SAMPLER_INSTALLED";
 
     private InvalidExtensionConfigurationProbe() {
     }
@@ -29,6 +33,11 @@ public final class InvalidExtensionConfigurationProbe {
         CompositeData snapshot = readinessSnapshot(ManagementFactory.getPlatformMBeanServer());
         String lifecycle = stringField(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE);
         String failureCode = stringField(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE);
+        String[] capabilities = stringArrayField(
+                snapshot,
+                JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES
+        );
+        boolean platformSamplerInstalled = Arrays.asList(capabilities).contains(PLATFORM_SAMPLER_CAPABILITY);
 
         System.out.printf(
                 Locale.ROOT,
@@ -37,6 +46,14 @@ public final class InvalidExtensionConfigurationProbe {
                 lifecycle,
                 failureCode,
                 spanName
+        );
+
+        System.out.printf(
+                Locale.ROOT,
+                "%s capability=%s installed=%s%n",
+                SAMPLER_CAPABILITY_PREFIX,
+                PLATFORM_SAMPLER_CAPABILITY,
+                platformSamplerInstalled
         );
     }
 
@@ -65,6 +82,13 @@ public final class InvalidExtensionConfigurationProbe {
         Object raw = snapshot.get(field);
         require(raw instanceof String, "Readiness field has an unexpected type: " + field);
         return (String) raw;
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    private static String[] stringArrayField(CompositeData snapshot, String field) {
+        Object raw = snapshot.get(field);
+        require(raw instanceof String[], "Readiness field has an unexpected type: " + field);
+        return (String[]) raw;
     }
 
     private static void require(boolean condition, String message) {

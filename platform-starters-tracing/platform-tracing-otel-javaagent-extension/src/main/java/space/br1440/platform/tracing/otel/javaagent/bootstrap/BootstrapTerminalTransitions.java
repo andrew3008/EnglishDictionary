@@ -147,7 +147,9 @@ final class BootstrapTerminalTransitions {
             journal.publishFailed(
                     failedSession.readiness(),
                     failedSession.agentInstanceId(),
-                    failureCode
+                    failureCode,
+                    "",
+                    failedSession.evidence()
             );
         }
     }

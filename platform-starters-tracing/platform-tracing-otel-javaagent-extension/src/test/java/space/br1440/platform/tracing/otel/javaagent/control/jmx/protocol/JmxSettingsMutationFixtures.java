@@ -19,10 +19,10 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOp
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
-final class JmxSettingsMutationFixtures {
+import lombok.experimental.UtilityClass;
 
-    private JmxSettingsMutationFixtures() {
-    }
+@UtilityClass
+final class JmxSettingsMutationFixtures {
 
     static TracingSettingsStore store() {
         return AcceptedPolicyTestFixtures.bootstrapAgentDefaultsStore(

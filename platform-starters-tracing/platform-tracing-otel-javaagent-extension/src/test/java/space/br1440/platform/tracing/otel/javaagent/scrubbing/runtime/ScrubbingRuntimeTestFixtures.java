@@ -11,10 +11,10 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.PriorityHar
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuntimeRule;
 
-public final class ScrubbingRuntimeTestFixtures {
+import lombok.experimental.UtilityClass;
 
-    private ScrubbingRuntimeTestFixtures() {
-    }
+@UtilityClass
+public final class ScrubbingRuntimeTestFixtures {
 
     public static ScrubbingRuntime fromBuiltInRules(List<SpanAttributeScrubbingRule> rules) {
         return fromBuiltInRules(rules, null, false);

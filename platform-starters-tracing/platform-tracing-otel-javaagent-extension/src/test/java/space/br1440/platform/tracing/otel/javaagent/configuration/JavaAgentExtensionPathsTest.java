@@ -73,7 +73,7 @@ class JavaAgentExtensionPathsTest {
     }
 
     @Test
-    void resolveRawValue_treatsBlankConfigAsAbsent() {
+    void resolveRawValue_preservesWhitespaceConfigValue() {
         // given
         System.setProperty(PROP_KEY, "/opt/ext/fallback.jar");
         ConfigProperties config = stringConfig(PROP_KEY, "   ");
@@ -82,7 +82,7 @@ class JavaAgentExtensionPathsTest {
         String result = JavaAgentExtensionPaths.resolveRawValue(config);
 
         // then
-        assertThat(result).isEqualTo("/opt/ext/fallback.jar");
+        assertThat(result).isEqualTo("   ");
     }
 
     private static ConfigProperties emptyConfig() {
@@ -98,6 +98,7 @@ class JavaAgentExtensionPathsTest {
         };
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static ConfigProperties stringConfig(String key, String value) {
         return new ConfigProperties() {
             @Override public String getString(String name)           { return key.equals(name) ? value : null; }

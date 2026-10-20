@@ -10,9 +10,13 @@ import lombok.experimental.Accessors;
 @Accessors(fluent = true)
 public final class QueueExtensionConfig {
 
-    private final String overflowPolicy;
+    private final QueueOverflowPolicy overflowPolicy;
 
     QueueExtensionConfig(ExtensionConfigReader reader) {
-        this.overflowPolicy = reader.stringValue(QUEUE_OVERFLOW_POLICY, DEFAULT_QUEUE_OVERFLOW_POLICY);
+        this.overflowPolicy = reader.enumValue(
+                QUEUE_OVERFLOW_POLICY,
+                QueueOverflowPolicy.class,
+                DEFAULT_QUEUE_OVERFLOW_POLICY
+        );
     }
 }

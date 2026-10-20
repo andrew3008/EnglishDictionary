@@ -14,16 +14,9 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
 
-/**
- * Список разрешённых реализаций {@code AutoConfigurationCustomizerProvider},
- * которые поставляются в upstream OpenTelemetry Java agent.
- * <p>
- * {@code AutoConfigurationCustomizerProvider} — SPI OpenTelemetry SDK autoconfigure,
- * через который код может изменить конфигурацию SDK при старте агента: экспортеры,
- * sampler, resource, propagators. Аттестация дистрибутива допускает только
- * перечисленные здесь реализации, чтобы посторонний customizer не мог незаметно
- * изменить поведение трассировки.
- */
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class UpstreamCustomizerProviderAllowlist {
 
     static final String RESOURCE_PATH = "/META-INF/platform-tracing/otel-javaagent-acp-pin.properties";
@@ -40,9 +33,6 @@ final class UpstreamCustomizerProviderAllowlist {
     private static final Pattern JAVA_BINARY_NAME = Pattern.compile("[A-Za-z_$][A-Za-z0-9_$]*(?:\\.[A-Za-z_$][A-Za-z0-9_$]*)*");
 
     record Pin(String otelJavaAgentSha256, Set<String> providerClassNames) {
-    }
-
-    private UpstreamCustomizerProviderAllowlist() {
     }
 
     static Pin load() {

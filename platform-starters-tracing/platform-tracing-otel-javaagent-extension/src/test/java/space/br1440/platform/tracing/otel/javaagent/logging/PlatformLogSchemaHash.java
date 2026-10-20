@@ -7,16 +7,13 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
-/**
- * SHA-256 одного нормализованного файла схемы: LF, без BOM.
- */
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class PlatformLogSchemaHash {
 
     static final String ALGORITHM_ID = "PLATFORM_LOG_SCHEMA_SHA256_V1";
     private static final String SCHEMA_RESOURCE = "/platform-log-event.schema.json";
-
-    private PlatformLogSchemaHash() {
-    }
 
     static byte[] normalize(byte[] raw) {
         int offset = 0;

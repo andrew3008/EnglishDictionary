@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures.boundSampling;
 
-import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -14,6 +13,7 @@ import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
 import javax.management.MBeanServer;
+import javax.management.MBeanServerFactory;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
@@ -45,7 +45,7 @@ class PlatformTracingMBeanRegistrarIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        server = ManagementFactory.getPlatformMBeanServer();
+        server = MBeanServerFactory.newMBeanServer();
         cleanUp();
 
         AgentInstanceId agentInstanceId = AgentInstanceId.random();

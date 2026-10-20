@@ -311,41 +311,40 @@ class PlatformTracingMBeanRegistrarTest {
     void rollback_addSuppressed_present_when_rollback_fails() {
         // given
         final int[] registerCallCount = {0};
-        AgentLogCapture logs = new AgentLogCapture();
-        logs.install();
         AtomicBoolean failureLoggedBeforeRollback = new AtomicBoolean();
-        MBeanServer faultySpy = new DelegatingMBeanServer(server) {
-            @Override
-            public ObjectInstance registerMBean(Object object, ObjectName name)
-                    throws InstanceAlreadyExistsException,
-                    MBeanRegistrationException,
-                    NotCompliantMBeanException {
-                registerCallCount[0]++;
-                if (registerCallCount[0] == 5) {
-                    throw new NotCompliantMBeanException("simulated failure at domain 4");
+
+        try (AgentLogCapture logs = AgentLogCapture.installed()) {
+            MBeanServer faultySpy = new DelegatingMBeanServer(server) {
+                @Override
+                public ObjectInstance registerMBean(Object object, ObjectName name)
+                        throws InstanceAlreadyExistsException,
+                        MBeanRegistrationException,
+                        NotCompliantMBeanException {
+                    registerCallCount[0]++;
+                    if (registerCallCount[0] == 5) {
+                        throw new NotCompliantMBeanException("simulated failure at domain 4");
+                    }
+                    return super.registerMBean(object, name);
                 }
-                return super.registerMBean(object, name);
-            }
 
-            @Override
-            public void unregisterMBean(ObjectName name)
-                    throws InstanceNotFoundException,
-                    MBeanRegistrationException {
-                if (DomainObjectNames.SCRUBBING.equals(name)) {
-                    failureLoggedBeforeRollback.set(logs.events().stream()
-                            .anyMatch(event -> "MBEAN_BATCH_REGISTRATION_FAILED".equals(event.eventName())));
-                    throw new InstanceNotFoundException("simulated rollback failure");
+                @Override
+                public void unregisterMBean(ObjectName name)
+                        throws InstanceNotFoundException,
+                        MBeanRegistrationException {
+                    if (DomainObjectNames.SCRUBBING.equals(name)) {
+                        failureLoggedBeforeRollback.set(logs.events().stream()
+                                .anyMatch(event -> "MBEAN_BATCH_REGISTRATION_FAILED".equals(event.eventName())));
+                        throw new InstanceNotFoundException("simulated rollback failure");
+                    }
+                    super.unregisterMBean(name);
                 }
-                super.unregisterMBean(name);
-            }
-        };
+            };
 
-        TracingSettingsSource holder = boundSampling(agentInstanceId, true, Map.of(), 0.5);
-        PlatformTracingMBeanRegistrar registrar =
-                new PlatformTracingMBeanRegistrar(faultySpy, holder.current().agentInstanceId());
-        wireComponentsExceptAcceptedPolicy(registrar, holder);
+            TracingSettingsSource holder = boundSampling(agentInstanceId, true, Map.of(), 0.5);
+            PlatformTracingMBeanRegistrar registrar =
+                    new PlatformTracingMBeanRegistrar(faultySpy, holder.current().agentInstanceId());
+            wireComponentsExceptAcceptedPolicy(registrar, holder);
 
-        try {
             // when
             JmxRegistrationException ex = catchThrowableOfType(
                     JmxRegistrationException.class,
@@ -361,8 +360,6 @@ class PlatformTracingMBeanRegistrarTest {
                     .filteredOn(event -> "MBEAN_BATCH_REGISTRATION_FAILED".equals(event.eventName()))
                     .hasSize(1);
             assertThat(logs.rendered()).doesNotContain("simulated rollback failure");
-        } finally {
-            logs.restore();
         }
     }
 

@@ -9,6 +9,15 @@ import org.junit.jupiter.api.Test;
 class PlatformTracingDefaultsProviderTest {
 
     @Test
+    void supply_does_not_select_an_sdk_sampler() {
+        // when
+        Map<String, String> defaults = new PlatformTracingDefaultsProvider().supply();
+
+        // then
+        assertThat(defaults).doesNotContainKey("otel.traces.sampler");
+    }
+
+    @Test
     void supply_returns_all_BSP_defaults() {
         // when
         Map<String, String> defaults = new PlatformTracingDefaultsProvider().supply();
@@ -74,7 +83,7 @@ class PlatformTracingDefaultsProviderTest {
 
         // then
         assertThat(defaults).doesNotContainKey(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY);
-        assertThat(ExtensionDefaults.DEFAULT_QUEUE_OVERFLOW_POLICY).isEqualTo("DROP_OLDEST");
+        assertThat(ExtensionDefaults.DEFAULT_QUEUE_OVERFLOW_POLICY).isEqualTo(QueueOverflowPolicy.DROP_OLDEST);
     }
 
     @Test

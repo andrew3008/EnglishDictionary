@@ -59,8 +59,11 @@ final class AgentContractFailureMessages {
     static final String READINESS_MIXED_GENERATION_EXPLANATION =
             "The readiness anchor changed during double-collect; mixed runtime evidence was rejected.";
 
-    static final String EXTENSION_READINESS_TIMEOUT_EXPLANATION =
-            "The extension stayed in INITIALIZING until the startup readiness timeout elapsed.";
+    static final String EXTENSION_READINESS_TIMEOUT_EXPLANATION = """
+            The extension stayed in INITIALIZING until the startup readiness timeout elapsed. \
+            OpenTelemetry SDK autoconfiguration may have been aborted after platform preparation \
+            (for example, an invalid exporter endpoint); check the agent startup log \
+            for a ConfigurationException.""";
 
     static final String DEVELOPMENT_VERSION_FORBIDDEN_EXPLANATION =
             "A development extension version is forbidden by the production readiness contract.";

@@ -24,7 +24,8 @@ platform-tracing-helm-check:
 # publish объявлен во внешнем helm pe/cicd/catalog/java/gitlab-ci
 platform-tracing-helm:
   stage: publish
-  needs: [platform-tracing-helm-check]
+  needs:
+    - job: platform-tracing-helm-check
   interruptible: false
   extends: .base-vault-secrets
   image:

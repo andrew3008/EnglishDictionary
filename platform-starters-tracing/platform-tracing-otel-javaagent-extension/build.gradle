@@ -82,6 +82,8 @@ dependencies {
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
 
     testImplementation project(':platform-starters-tracing:platform-tracing-testkit')
     testImplementation 'org.junit.jupiter:junit-jupiter'

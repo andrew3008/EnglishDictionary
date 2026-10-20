@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.management.ManagementFactory;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
 import java.util.List;
@@ -86,22 +87,25 @@ class PlatformTracingJmxClientTest {
     }
 
     @Test
-    void constructorsWithoutVerifierArePackagePrivate() throws Exception {
+    void constructorWithoutVerifierIsPackagePrivate() throws Exception {
         // given
-        int defaultConstructor = PlatformTracingJmxClient.class
-                .getDeclaredConstructor()
-                .getModifiers();
         int serverConstructor = PlatformTracingJmxClient.class
                 .getDeclaredConstructor(MBeanServer.class)
                 .getModifiers();
 
         // when
-        boolean defaultConstructorHasPackageAccess = hasPackageAccess(defaultConstructor);
         boolean serverConstructorHasPackageAccess = hasPackageAccess(serverConstructor);
+        boolean noArgumentConstructorExists = false;
+        for (Constructor<?> constructor : PlatformTracingJmxClient.class.getDeclaredConstructors()) {
+            if (constructor.getParameterCount() == 0) {
+                noArgumentConstructorExists = true;
+                break;
+            }
+        }
 
         // then
-        assertThat(defaultConstructorHasPackageAccess).isTrue();
         assertThat(serverConstructorHasPackageAccess).isTrue();
+        assertThat(noArgumentConstructorExists).isFalse();
     }
 
     @Test

@@ -6,9 +6,7 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +24,7 @@ import org.junit.jupiter.api.parallel.Resources;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSessionFactory;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
@@ -33,216 +32,301 @@ import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
+import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
 import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
+import space.br1440.platform.tracing.test.harness.SamplerHarness;
 
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;
 import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
+import io.opentelemetry.sdk.resources.Resource;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
-import io.opentelemetry.sdk.trace.samplers.Sampler;
 
-/**
- * Регрессионные тесты точки входа платформенного расширения ({@link BootstrapAutoConfigurationCustomizerProvider}).
- * <p>
- * Каждый тест использует свежий {@link BootstrapCoordinator}:
- * классoloader-static {@link ExtensionRuntime#bootstrap()} допускает
- * ровно один {@code prepare()} за JVM/classloader, поэтому прямые unit-тесты не должны делить
- * общий coordinator между тестовыми методами.
- * <p>
- * Используется {@link Proxy}-обёртка вокруг {@link AutoConfigurationCustomizer}: это позволяет
- * перехватить только нужные методы ({@code addSamplerCustomizer}, {@code addTracerProviderCustomizer})
- * без необходимости имплементировать все остальные методы интерфейса.
- * SDK-минорные обновления, добавляющие новые методы в интерфейс, не сломают тест.
- */
 @ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 @ResourceLock(Resources.SYSTEM_PROPERTIES)
 class PlatformAutoConfigurationCustomizerTest {
 
-    private static BootstrapAutoConfigurationCustomizerProvider newProvider() {
-        return new BootstrapAutoConfigurationCustomizerProvider(BootstrapCoordinator.createDefault());
+    private static final String HTTP_SENDER_PREFERENCE = "io.opentelemetry.sdk.common.export.HttpSenderProvider";
+    private static final String GRPC_SENDER_PREFERENCE = "io.opentelemetry.sdk.common.export.GrpcSenderProvider";
+
+    private static BootstrapAutoConfigurationCustomizerProvider provider(BootstrapCoordinator coordinator) {
+        return new BootstrapAutoConfigurationCustomizerProvider(coordinator);
     }
 
     @Test
-    void customize_registers_sampler_and_tracer_provider_customizer() {
+    void customize_registers_resource_and_tracer_provider_customizers_without_sampler_customizer() {
         // given
+        BootstrapCoordinator coordinator = coordinator();
         Recorder recorder = new Recorder();
 
-        // when
-        newProvider().customize(recorder.proxy());
+        try (coordinator) {
+            // when
+            provider(coordinator).customize(recorder.proxy());
 
-        // then
-        assertThat(recorder.samplerCustomizer).isNotNull();
-        assertThat(recorder.tracerProviderCustomizer).isNotNull();
+            // then
+            assertThat(recorder.samplerCustomizerRegistrations).isZero();
+            assertThat(recorder.resourceCustomizer).isNotNull();
+            assertThat(recorder.tracerProviderCustomizer).isNotNull();
+        }
     }
 
     @Test
     void customize_registers_propertiesSupplier_with_platform_OTel_SDK_defaults() {
         // given
+        BootstrapCoordinator coordinator = coordinator();
         Recorder recorder = new Recorder();
-        newProvider().customize(recorder.proxy());
 
-        // when
-        assertThat(recorder.propertiesSupplier)
-                .as("addPropertiesSupplier должен быть вызван в customize()")
-                .isNotNull();
+        try (coordinator) {
+            provider(coordinator).customize(recorder.proxy());
 
-        Map<String, String> defaults = recorder.propertiesSupplier.get();
+            // when
+            assertThat(recorder.propertiesSupplier)
+                    .as("addPropertiesSupplier должен быть вызван в customize()")
+                    .isNotNull();
 
-        // then
-        assertThat(defaults)
-                .containsEntry("otel.bsp.max.queue.size", "2048")
-                .containsEntry("otel.bsp.max.export.batch.size", "512")
-                .containsEntry("otel.bsp.schedule.delay", "5000")
-                .containsEntry("otel.bsp.export.timeout", "5000")
-                .doesNotContainKey("otel.instrumentation.http.server.capture-request-headers");
+            Map<String, String> defaults = recorder.propertiesSupplier.get();
 
-        assertThat(defaults)
-                .containsEntry("otel.span.attribute.count.limit", "50")
-                .containsEntry("otel.span.attribute.value.length.limit", "1000")
-                .containsEntry("otel.span.event.count.limit", "10");
+            // then
+            assertThat(defaults)
+                    .doesNotContainKey("otel.traces.sampler")
+                    .containsEntry("otel.bsp.max.queue.size", "2048")
+                    .containsEntry("otel.bsp.max.export.batch.size", "512")
+                    .containsEntry("otel.bsp.schedule.delay", "5000")
+                    .containsEntry("otel.bsp.export.timeout", "5000")
+                    .doesNotContainKey("otel.instrumentation.http.server.capture-request-headers");
+
+            assertThat(defaults)
+                    .containsEntry("otel.span.attribute.count.limit", "50")
+                    .containsEntry("otel.span.attribute.value.length.limit", "1000")
+                    .containsEntry("otel.span.event.count.limit", "10");
+        }
     }
 
     @Test
     void propertiesSupplier_returns_only_string_values_for_all_keys() {
         // given
+        BootstrapCoordinator coordinator = coordinator();
         Recorder recorder = new Recorder();
-        newProvider().customize(recorder.proxy());
 
-        // when
-        Map<String, String> defaults = recorder.propertiesSupplier.get();
+        try (coordinator) {
+            provider(coordinator).customize(recorder.proxy());
 
-        // then
-        assertThat(defaults).isNotEmpty();
-        defaults.forEach((key, value) -> {
-            assertThat(key).isNotBlank();
-            assertThat(value).as("значение свойства %s", key).isNotNull();
-            // Косвенная проверка integer-ms формата для durations: значения должны парситься в long.
-            if (key.endsWith(".timeout") || key.endsWith(".delay")) {
-                assertThat(Long.parseLong(value))
-                        .as("длительность для %s обязана быть integer-ms по OTel SPEC", key)
-                        .isPositive();
+            // when
+            Map<String, String> defaults = recorder.propertiesSupplier.get();
+
+            // then
+            assertThat(defaults).isNotEmpty();
+            defaults.forEach((key, value) -> {
+                assertThat(key).isNotBlank();
+                assertThat(value).as("значение свойства %s", key).isNotNull();
+                if (key.endsWith(".timeout") || key.endsWith(".delay")) {
+                    assertThat(Long.parseLong(value))
+                            .as("длительность для %s обязана быть integer-ms по OTel SPEC", key)
+                            .isPositive();
+                }
+            });
+        }
+    }
+
+    @Test
+    void normalized_sampler_is_visible_to_later_properties_and_resource_customizers() {
+        // given
+        BootstrapCoordinator coordinator = coordinator();
+        Recorder recorder = new Recorder();
+
+        try (coordinator) {
+            provider(coordinator).customize(recorder.proxy());
+
+            // when
+            ConfigProperties finalConfig = recorder.primeWithConfig(Map.of());
+
+            // then
+            assertThat(recorder.propertiesCustomizerInputs).hasSize(2);
+            assertThat(recorder.propertiesCustomizerInputs.get(0).getString("otel.traces.sampler")).isNull();
+            assertThat(recorder.propertiesCustomizerInputs.get(1).getString("otel.traces.sampler"))
+                    .isEqualTo("always_off");
+            assertThat(recorder.resourceCustomizerInputs).containsExactly(finalConfig);
+            assertThat(finalConfig.getString("otel.traces.sampler")).isEqualTo("always_off");
+        }
+    }
+
+    @Test
+    void session_sampler_is_installed_on_tracer_provider_builder() {
+        // given
+        BootstrapCoordinator coordinator = coordinator();
+        Recorder recorder = new Recorder();
+
+        try (coordinator) {
+            provider(coordinator).customize(recorder.proxy());
+            ConfigProperties finalConfig = recorder.primeWithConfig(Map.of());
+            SdkTracerProviderBuilder builder = SdkTracerProvider.builder();
+
+            // when
+            SdkTracerProviderBuilder customized = recorder.tracerProviderCustomizer.apply(builder, finalConfig);
+
+            try (SdkTracerProvider tracerProvider = customized.build()) {
+                // then
+                assertThat(customized).isSameAs(builder);
+                assertThat(tracerProvider.getSampler()).isSameAs(coordinator.session().sampler());
+                assertThat(coordinator.session().sampler()).isInstanceOf(SafeSampler.class);
             }
-        });
+        }
     }
 
     @Test
-    void sampler_by_default_is_wrapped_in_PlatformCompositeSampler() {
+    void session_sampler_uses_custom_ratio_from_property() {
         // given
+        BootstrapCoordinator coordinator = coordinator();
         Recorder recorder = new Recorder();
-        newProvider().customize(recorder.proxy());
 
-        recorder.primeWithConfig(new MapConfigProperties(Map.of()));
+        try (coordinator) {
+            provider(coordinator).customize(recorder.proxy());
 
-        // when
-        Sampler produced = recorder.samplerCustomizer
-                .apply(Sampler.alwaysOn(), new MapConfigProperties(Map.of()));
+            // when
+            recorder.primeWithConfig(Map.of("platform.tracing.sampling.ratio", "0.42"));
+            double actualRatio = coordinator.session().policy().current().samplingRatio();
 
-        // then
-        assertThat(produced).isInstanceOf(SafeSampler.class);
-        assertThat(produced.getDescription()).contains("PlatformRuleBasedSampler");
+            // then
+            assertThat(actualRatio).isEqualTo(0.42d);
+        }
     }
 
     @Test
-    void sampler_uses_custom_ratio_from_property() {
+    void sampler_with_zero_ratio_and_force_header_records_span() {
         // given
+        BootstrapCoordinator coordinator = coordinator();
         Recorder recorder = new Recorder();
-        newProvider().customize(recorder.proxy());
 
-        // ratio поступает из addPropertiesCustomizer (extensionConfig), не из samplerCustomizer config.
-        recorder.primeWithConfig(new MapConfigProperties(Map.of("platform.tracing.sampling.ratio", "0.42")));
+        try (coordinator) {
+            provider(coordinator).customize(recorder.proxy());
+            recorder.primeWithConfig(Map.of("platform.tracing.sampling.ratio", "0"));
+            SafeSampler sampler = coordinator.session().sampler();
 
-        // when
-        Sampler produced = recorder.samplerCustomizer
-                .apply(Sampler.alwaysOn(), new MapConfigProperties(Map.of()));
+            // when
+            InboundTraceControl control = new InboundTraceControl(true, false, null, "x_trace_on", "on");
+            Context parentContext = Context.root().with(PlatformTraceContextKeys.TRACE_CONTROL, control);
 
-        // then
-        assertThat(produced.getDescription()).contains("defaultRatio=0.42");
+            // then
+            SamplerDecisionAssert.assertThat(
+                            SamplerHarness.of(sampler)
+                                    .spanKind(SpanKind.SERVER)
+                                    .parentContext(parentContext)
+                                    .sample())
+                    .isRecordAndSample();
+        }
     }
 
     @Test
-    void sampler_without_explicit_ratio_delegates_to_existing() {
+    void session_sampler_with_explicit_zero_ratio_drops_without_override() {
         // given
+        BootstrapCoordinator coordinator = coordinator();
         Recorder recorder = new Recorder();
-        newProvider().customize(recorder.proxy());
 
-        recorder.primeWithConfig(new MapConfigProperties(Map.of()));
-        Sampler existing = Sampler.alwaysOff();
+        try (coordinator) {
+            provider(coordinator).customize(recorder.proxy());
 
-        // when
-        Sampler produced = recorder.samplerCustomizer
-                .apply(existing, new MapConfigProperties(Map.of()));
+            // when
+            recorder.primeWithConfig(Map.of("platform.tracing.sampling.ratio", "0"));
+            SafeSampler sampler = coordinator.session().sampler();
 
-        // then
-        assertThat(produced).isInstanceOf(SafeSampler.class);
-        assertThat(produced.getDescription()).contains("PlatformRuleBasedSampler");
+            // then
+            assertThat(coordinator.session().policy().current().samplingRatio()).isZero();
+            SamplerDecisionAssert.assertThat(
+                            SamplerHarness.of(sampler).sample())
+                    .isDrop();
+        }
     }
 
     @Test
-    void sampler_existing_alwaysOff_with_force_header_records_span() {
+    void disabling_scrubbing_is_rejected_by_final_configuration() {
         // given
         Recorder recorder = new Recorder();
-        newProvider().customize(recorder.proxy());
+        BootstrapCoordinator coordinator = coordinator();
+        provider(coordinator).customize(recorder.proxy());
 
-        recorder.primeWithConfig(new MapConfigProperties(Map.of()));
-        Sampler produced = recorder.samplerCustomizer
-                .apply(Sampler.alwaysOff(), new MapConfigProperties(Map.of()));
-
-        // when
-        space.br1440.platform.tracing.api.propagation.control.InboundTraceControl control =
-                new space.br1440.platform.tracing.api.propagation.control.InboundTraceControl(true, false, null, "x_trace_on", "on");
-        io.opentelemetry.context.Context parentContext = io.opentelemetry.context.Context.root()
-                .with(space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys.TRACE_CONTROL, control);
-
-        // then
-        SamplerDecisionAssert.assertThat(
-                        space.br1440.platform.tracing.test.harness.SamplerHarness.of(produced)
-                                .spanKind(io.opentelemetry.api.trace.SpanKind.SERVER)
-                                .parentContext(parentContext)
-                                .sample())
-                .isRecordAndSample();
-    }
-
-    @Test
-    void sampler_explicit_ratio_0_creates_PlatformRuleBasedSampler() {
-        // given
-        Recorder recorder = new Recorder();
-        newProvider().customize(recorder.proxy());
-
-        // ratio поступает из addPropertiesCustomizer (extensionConfig), не из samplerCustomizer config.
-        recorder.primeWithConfig(new MapConfigProperties(Map.of("platform.tracing.sampling.ratio", "0")));
-
-        // when
-        Sampler produced = recorder.samplerCustomizer
-                .apply(Sampler.alwaysOn(), new MapConfigProperties(Map.of()));
-
-        // then
-        assertThat(produced.getDescription()).contains("defaultRatio=0.00");
-    }
-
-    @Test
-    void disabling_all_processors_does_not_touch_tracer_provider_builder() {
-        // given
-        Recorder recorder = new Recorder();
-        BootstrapCoordinator coordinator = BootstrapCoordinator.createDefault();
-        new BootstrapAutoConfigurationCustomizerProvider(coordinator).customize(recorder.proxy());
-
-        ConfigProperties props = new MapConfigProperties(Map.of(
+        Map<String, String> properties = Map.of(
                 "platform.tracing.javaagent.scrubbing.enabled", "false",
                 "platform.tracing.javaagent.span-attributes.validation.level", "DISABLED",
                 "platform.tracing.span-timeout.enabled", "false",
                 "platform.tracing.classification.enabled", "false",
                 "platform.tracing.metrics.enabled", "false"
-        ));
+        );
 
         try (coordinator) {
             // when
-            assertThatThrownBy(() -> recorder.primeWithConfig(props))
+            assertThatThrownBy(() -> recorder.primeWithConfig(properties))
                     .isInstanceOf(BootstrapException.class)
                     .satisfies(failure -> assertThat(failure.getCause())
                             .hasMessageContaining("scrubbing.enabled=false is forbidden"));
+        }
+    }
+
+    @Test
+    void invalid_final_configuration_does_not_install_sender_preferences() {
+        // given
+        String previousHttp = System.getProperty(HTTP_SENDER_PREFERENCE);
+        String previousGrpc = System.getProperty(GRPC_SENDER_PREFERENCE);
+        System.clearProperty(HTTP_SENDER_PREFERENCE);
+        System.clearProperty(GRPC_SENDER_PREFERENCE);
+
+        try {
+            BootstrapCoordinator coordinator = coordinator();
+            Recorder recorder = new Recorder();
+            provider(coordinator).customize(recorder.proxy());
+
+            try (coordinator) {
+                // when
+                assertThatThrownBy(() -> recorder.primeWithConfig(Map.of(
+                        "otel.traces.sampler", "always_on"
+                ))).isInstanceOf(BootstrapException.class);
+
+                // then
+                assertThat(System.getProperty(HTTP_SENDER_PREFERENCE)).isNull();
+                assertThat(System.getProperty(GRPC_SENDER_PREFERENCE)).isNull();
+            }
+        } finally {
+            restoreSystemProperty(HTTP_SENDER_PREFERENCE, previousHttp);
+            restoreSystemProperty(GRPC_SENDER_PREFERENCE, previousGrpc);
+        }
+    }
+
+    @Test
+    void resource_customization_failure_does_not_install_sender_preferences() {
+        // given
+        String previousHttp = System.getProperty(HTTP_SENDER_PREFERENCE);
+        String previousGrpc = System.getProperty(GRPC_SENDER_PREFERENCE);
+        System.clearProperty(HTTP_SENDER_PREFERENCE);
+        System.clearProperty(GRPC_SENDER_PREFERENCE);
+
+        try {
+            BootstrapCoordinator coordinator = coordinator();
+            Recorder recorder = new Recorder();
+            provider(coordinator).customize(recorder.proxy());
+
+            try (coordinator) {
+                // when
+                BootstrapException failure = catchThrowableOfType(
+                        BootstrapException.class,
+                        () -> recorder.primeWithConfig(Map.of(
+                                ExtensionPropertyNames.RESOURCE_VALIDATION_MODE,
+                                "INVALID"
+                        ))
+                );
+
+                // then
+                assertThat(failure.failure().code()).isEqualTo("RESOURCE_INITIALIZATION_FAILED");
+                assertThat(System.getProperty(HTTP_SENDER_PREFERENCE)).isNull();
+                assertThat(System.getProperty(GRPC_SENDER_PREFERENCE)).isNull();
+            }
+        } finally {
+            restoreSystemProperty(HTTP_SENDER_PREFERENCE, previousHttp);
+            restoreSystemProperty(GRPC_SENDER_PREFERENCE, previousGrpc);
         }
     }
 
@@ -260,11 +344,11 @@ class PlatformAutoConfigurationCustomizerTest {
             // when
             BootstrapException first = catchThrowableOfType(
                     BootstrapException.class,
-                    () -> recorder.primeWithConfig(config)
+                    () -> recorder.primeWithConfig(invalid.properties())
             );
             BootstrapException repeated = catchThrowableOfType(
                     BootstrapException.class,
-                    () -> recorder.primeWithConfig(config)
+                    () -> recorder.primeWithConfig(invalid.properties())
             );
             BootstrapException exporterFailure = catchThrowableOfType(
                     BootstrapException.class,
@@ -407,6 +491,10 @@ class PlatformAutoConfigurationCustomizerTest {
         return new InvalidConfiguration(description, Map.of(property, value), property, value, true);
     }
 
+    private static BootstrapCoordinator coordinator() {
+        return coordinator(MBeanServerFactory.newMBeanServer());
+    }
+
     private static BootstrapCoordinator coordinator(MBeanServer server) {
         return new BootstrapCoordinator(
                 (threadName, action) -> () -> {
@@ -414,7 +502,8 @@ class PlatformAutoConfigurationCustomizerTest {
                 new PlatformScrubberFactory(),
                 RuntimeEvidenceTestFixtures.trustedVerifier(),
                 AutoconfigureSessionFactory::currentProcessRemoteJmxAssessor,
-                new PlatformTracingMBeanRegistrar(server, AgentInstanceId.random())
+                new PlatformTracingMBeanRegistrar(server, AgentInstanceId.random()),
+                new DiagnosticReadinessHandle()
         );
     }
 
@@ -435,19 +524,43 @@ class PlatformAutoConfigurationCustomizerTest {
                 .equals(trace[0].getClassName());
     }
 
+    private static void restoreSystemProperty(String name, String value) {
+        if (value == null) {
+            System.clearProperty(name);
+            return;
+        }
+        System.setProperty(name, value);
+    }
+
     private static final class Recorder {
-        BiFunction<Sampler, ConfigProperties, Sampler> samplerCustomizer;
+        int samplerCustomizerRegistrations;
+        BiFunction<Resource, ConfigProperties, Resource> resourceCustomizer;
         BiFunction<SdkTracerProviderBuilder, ConfigProperties, SdkTracerProviderBuilder> tracerProviderCustomizer;
         BiFunction<SpanExporter, ConfigProperties, SpanExporter> spanExporterCustomizer;
         BiFunction<SpanProcessor, ConfigProperties, SpanProcessor> spanProcessorCustomizer;
         Supplier<Map<String, String>> propertiesSupplier;
 
         private final List<Function<ConfigProperties, Map<String, String>>> propertiesCustomizers = new ArrayList<>();
+        private final List<ConfigProperties> propertiesCustomizerInputs = new ArrayList<>();
+        private final List<ConfigProperties> resourceCustomizerInputs = new ArrayList<>();
 
-        void primeWithConfig(ConfigProperties config) {
-            for (Function<ConfigProperties, Map<String, String>> pc : propertiesCustomizers) {
-                pc.apply(config);
+        ConfigProperties primeWithConfig(Map<String, String> initialProperties) {
+            Map<String, String> effectiveProperties = new HashMap<>(initialProperties);
+            ConfigProperties effectiveConfig = configProperties(effectiveProperties);
+
+            for (Function<ConfigProperties, Map<String, String>> customizer : propertiesCustomizers) {
+                propertiesCustomizerInputs.add(effectiveConfig);
+                effectiveProperties.putAll(customizer.apply(effectiveConfig));
+                effectiveConfig = configProperties(effectiveProperties);
             }
+
+            resourceCustomizerInputs.add(effectiveConfig);
+            resourceCustomizer.apply(Resource.empty(), effectiveConfig);
+            return effectiveConfig;
+        }
+
+        private static ConfigProperties configProperties(Map<String, String> properties) {
+            return DefaultConfigProperties.createFromMap(Map.copyOf(properties));
         }
 
         @SuppressWarnings("unchecked")
@@ -457,12 +570,20 @@ class PlatformAutoConfigurationCustomizerTest {
                     new Class<?>[]{AutoConfigurationCustomizer.class},
                     (Object proxyObj, Method method, Object[] args) -> switch (method.getName()) {
                         case "addSamplerCustomizer" -> {
-                            this.samplerCustomizer = (BiFunction<Sampler, ConfigProperties, Sampler>) args[0];
+                            samplerCustomizerRegistrations++;
+                            yield proxyObj;
+                        }
+
+                        case "addResourceCustomizer" -> {
+                            this.resourceCustomizer =
+                                    (BiFunction<Resource, ConfigProperties, Resource>) args[0];
                             yield proxyObj;
                         }
 
                         case "addTracerProviderCustomizer" -> {
-                            this.tracerProviderCustomizer = (BiFunction<SdkTracerProviderBuilder, ConfigProperties, SdkTracerProviderBuilder>) args[0];
+                            this.tracerProviderCustomizer =
+                                    (BiFunction<SdkTracerProviderBuilder, ConfigProperties, SdkTracerProviderBuilder>)
+                                            args[0];
                             yield proxyObj;
                         }
 
@@ -502,57 +623,6 @@ class PlatformAutoConfigurationCustomizerTest {
         @Override
         public String toString() {
             return description;
-        }
-    }
-
-    private record MapConfigProperties(Map<String, String> data) implements ConfigProperties {
-
-        private MapConfigProperties(Map<String, String> data) {
-            this.data = new HashMap<>(data);
-        }
-
-        @Override
-        public String getString(String name) {
-            return data.get(name);
-        }
-
-        @Override
-        public Boolean getBoolean(String name) {
-            String value = data.get(name);
-            return value == null ? null : Boolean.parseBoolean(value);
-        }
-
-        @Override
-        public Integer getInt(String name) {
-            String value = data.get(name);
-            return value == null ? null : Integer.valueOf(value);
-        }
-
-        @Override
-        public Long getLong(String name) {
-            String value = data.get(name);
-            return value == null ? null : Long.valueOf(value);
-        }
-
-        @Override
-        public Double getDouble(String name) {
-            String value = data.get(name);
-            return value == null ? null : Double.valueOf(value);
-        }
-
-        @Override
-        public Duration getDuration(String name) {
-            return null;
-        }
-
-        @Override
-        public List<String> getList(String name) {
-            return Collections.emptyList();
-        }
-
-        @Override
-        public Map<String, String> getMap(String name) {
-            return Collections.emptyMap();
         }
     }
 }

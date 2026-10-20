@@ -8,6 +8,7 @@ import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.TabularData;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
@@ -311,7 +312,7 @@ final class JmxControlOpenTypeCodec {
                 ? JmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES + 1L
                 : JmxWireUtf8Meter.utf8Length(prefix);
 
-        if (prefix.isBlank()
+        if (StringUtils.isNullOrBlank(prefix)
                 || utf8Bytes > JmxWireContract.MAX_ROUTE_PREFIX_UTF8_BYTES
                 || containsControl(prefix)) {
             throw rejected(SettingsRejectionReason.INVALID_VALUE, "Invalid route prefix");

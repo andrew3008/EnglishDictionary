@@ -221,10 +221,8 @@ class ObservationSnapshotPublisherTest {
                 }),
                 Duration.ofHours(1L)
         );
-        AgentLogCapture logs = new AgentLogCapture();
-        logs.install();
 
-        try (publisher) {
+        try (AgentLogCapture logs = AgentLogCapture.installed(); publisher) {
             // when
             for (int attempt = 0; attempt < 20; attempt++) {
                 publisher.publishSnapshot();
@@ -235,8 +233,6 @@ class ObservationSnapshotPublisherTest {
             assertThat(logs.events())
                     .filteredOn(event -> "JMX_OBSERVATION_SNAPSHOT_PUBLICATION_FAILED".equals(event.eventName()))
                     .hasSizeLessThan(20);
-        } finally {
-            logs.restore();
         }
     }
 }

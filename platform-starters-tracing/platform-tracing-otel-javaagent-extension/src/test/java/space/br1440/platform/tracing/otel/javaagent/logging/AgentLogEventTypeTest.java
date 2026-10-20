@@ -57,7 +57,7 @@ class AgentLogEventTypeTest {
         AgentLogField[] fields = AgentLogField.values();
 
         // then
-        assertThat(eventTypes).hasSize(114);
+        assertThat(eventTypes).hasSize(111);
         assertThat(fields).hasSize(60);
         assertThat(CausePolicy.values()).containsExactly(
                 CausePolicy.FORBIDDEN,
@@ -144,7 +144,7 @@ class AgentLogEventTypeTest {
     }
 
     @Test
-    void optional_cause_policy_is_limited_to_four_events() {
+    void optional_cause_policy_lists_known_events() {
         // given
         // when
         List<AgentLogEventType> optional = new ArrayList<>();

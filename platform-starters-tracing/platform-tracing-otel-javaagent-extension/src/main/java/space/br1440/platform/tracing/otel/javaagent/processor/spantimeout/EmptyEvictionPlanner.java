@@ -5,15 +5,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class EmptyEvictionPlanner {
 
     private static final Comparator<EvictionCandidate> OLDEST_FIRST = Comparator
             .comparingLong((EvictionCandidate candidate) -> candidate.expectedState().startNanos())
             .thenComparing(EvictionCandidate::traceId);
     private static final Comparator<EvictionCandidate> NEWEST_FIRST = OLDEST_FIRST.reversed();
-
-    private EmptyEvictionPlanner() {
-    }
 
     static List<EvictionCandidate> selectOldestEmpty(Iterable<Map.Entry<String, InFlightTraceState>> entries,
                                                      int batch) {

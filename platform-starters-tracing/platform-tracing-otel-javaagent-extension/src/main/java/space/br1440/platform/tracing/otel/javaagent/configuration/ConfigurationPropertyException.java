@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.bootstrap.session;
+package space.br1440.platform.tracing.otel.javaagent.configuration;
 
 import java.util.Objects;
 
@@ -8,7 +8,7 @@ public final class ConfigurationPropertyException extends RuntimeException {
 
     private final String propertyName;
 
-    ConfigurationPropertyException(String propertyName, ConfigurationException failure) {
+    public ConfigurationPropertyException(String propertyName, ConfigurationException failure) {
         super(Objects.requireNonNull(failure, "failure"));
         this.propertyName = Objects.requireNonNull(propertyName, "propertyName");
     }

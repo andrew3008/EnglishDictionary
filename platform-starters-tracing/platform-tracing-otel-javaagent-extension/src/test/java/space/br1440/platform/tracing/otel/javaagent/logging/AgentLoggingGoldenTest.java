@@ -6,9 +6,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -30,19 +30,14 @@ class AgentLoggingGoldenTest {
     private static final String LOGGER = AgentLoggingGoldenTest.class.getName();
     private static final String FALLBACK_LOGGER = "space.br1440.platform.tracing.otel.javaagent.logging";
 
-    private final AgentLogCapture capture = new AgentLogCapture();
+    @RegisterExtension
+    final AgentLogCapture capture = new AgentLogCapture();
 
     private PlatformAgentLogger logger;
 
     @BeforeEach
-    void installCapture() {
-        capture.install();
+    void createLogger() {
         logger = PlatformAgentLogger.get(AgentLoggingGoldenTest.class);
-    }
-
-    @AfterEach
-    void restoreRuntime() {
-        capture.restore();
     }
 
     @Test

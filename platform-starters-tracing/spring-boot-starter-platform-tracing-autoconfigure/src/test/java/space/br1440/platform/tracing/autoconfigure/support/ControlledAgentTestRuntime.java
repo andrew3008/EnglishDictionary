@@ -17,9 +17,6 @@ import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 
-/**
- * Изолированный тестовый стенд контракта Controlled Agent со стороны приложения.
- */
 public final class ControlledAgentTestRuntime implements AutoCloseable {
 
     private static final ReentrantLock GLOBAL_RUNTIME_LOCK = new ReentrantLock();
@@ -28,10 +25,9 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
     private final SdkTracerProvider tracerProvider;
     private final InMemorySpanExporter spanExporter;
 
-    private ControlledAgentTestRuntime(
-            MBeanServer server,
-            SdkTracerProvider tracerProvider,
-            InMemorySpanExporter spanExporter) {
+    private ControlledAgentTestRuntime(MBeanServer server,
+                                       SdkTracerProvider tracerProvider,
+                                       InMemorySpanExporter spanExporter) {
         this.server = server;
         this.tracerProvider = tracerProvider;
         this.spanExporter = spanExporter;
@@ -41,9 +37,8 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
         return start(null, ReadinessJmxTestFixtures.endpoint(ReadinessJmxTestFixtures::readySnapshot));
     }
 
-    private static ControlledAgentTestRuntime start(
-            InMemorySpanExporter spanExporter,
-            DynamicMBean readinessEndpoint) {
+    private static ControlledAgentTestRuntime start(InMemorySpanExporter spanExporter,
+                                                    DynamicMBean readinessEndpoint) {
         GLOBAL_RUNTIME_LOCK.lock();
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         var tracerProviderBuilder = SdkTracerProvider.builder();
@@ -87,16 +82,21 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
         return start(null, ReadinessJmxTestFixtures.endpoint(() -> "not-composite"));
     }
 
-    /**
-     * Возвращает проверяющий компонент с версией приложения из тестового readiness-снимка.
-     */
+    public static ControlledAgentTestRuntime startFailed(String failureCode) {
+        return start(
+                null,
+                ReadinessJmxTestFixtures.endpoint(
+                        () -> ReadinessJmxTestFixtures.failedSnapshot(failureCode)
+                )
+        );
+    }
+
     public static AgentStartupVerifier verifier() {
         return new AgentStartupVerifier(ManagementFactory.getPlatformMBeanServer(), "1.2.3");
     }
 
-    private static void closeWithContext(
-            ConfigurableApplicationContext context,
-            ControlledAgentTestRuntime runtime) {
+    private static void closeWithContext(ConfigurableApplicationContext context,
+                                         ControlledAgentTestRuntime runtime) {
         context.addApplicationListener(event -> {
             if (event instanceof ContextClosedEvent) {
                 runtime.close();
@@ -110,6 +110,7 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
             if (server.isRegistered(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME)) {
                 server.unregisterMBean(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME);
             }
+
             tracerProvider.close();
             if (spanExporter != null) {
                 spanExporter.close();

@@ -1,7 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
 
+import java.lang.reflect.Method;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -49,5 +51,63 @@ class BootstrapLifecycleStateTest {
                 .containsEntry("subphase", "activate");
         assertThat(events.getLast().throwableDigest())
                 .contains(UnsupportedOperationException.class.getName());
+    }
+
+    @Test
+    void rollbackEscalationIsIdempotent() {
+        // given
+        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
+        IllegalStateException cleanupFailure = new IllegalStateException("Initial cleanup failure");
+        UnsupportedOperationException repeatedCleanupFailure = new UnsupportedOperationException("Repeated cleanup failure");
+
+        // when
+        invokeRollbackEscalation(lifecycle, "close", cleanupFailure);
+        BootstrapException escalated = lifecycle.stickyFailure("test");
+        invokeRollbackEscalation(lifecycle, "shutdown", repeatedCleanupFailure);
+        BootstrapException repeated = lifecycle.stickyFailure("test");
+
+        // then
+        assertThat(escalated.failure().code()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
+        assertThat(repeated.failure().code()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
+        assertThat(repeated.getCause()).isSameAs(escalated.getCause()).isSameAs(cleanupFailure);
+        assertThat(repeated.getCause().getSuppressed()).isEmpty();
+        assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
+    }
+
+    @Test
+    void ordinaryFailureAfterRollbackEscalationKeepsEffectiveCode() {
+        // given
+        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
+        IllegalStateException primaryCause = new IllegalStateException("Activation failure");
+        UnsupportedOperationException cleanupFailure = new UnsupportedOperationException("Cleanup failure");
+        IllegalArgumentException subsequentCause = new IllegalArgumentException("Subsequent failure");
+        BootstrapException initial = lifecycle.fail("ACTIVATION_FAILED", "activate", primaryCause);
+
+        // when
+        invokeRollbackEscalation(lifecycle, "rollback", cleanupFailure);
+        BootstrapException repeated = lifecycle.fail("SUBSEQUENT_FAILURE", "close", subsequentCause);
+
+        // then
+        assertThat(repeated.failure().code()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
+        assertThat(repeated.getCause()).isSameAs(initial.getCause()).isSameAs(primaryCause);
+        assertThat(repeated.getCause().getSuppressed()).containsExactly(cleanupFailure);
+        assertThat(subsequentCause.getSuppressed()).isEmpty();
+        assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
+    }
+
+    private static void invokeRollbackEscalation(BootstrapLifecycleState lifecycle,
+                                                 String phase,
+                                                 Throwable cleanupFailure) {
+        try {
+            Method method = BootstrapLifecycleState.class.getDeclaredMethod(
+                    "escalateRollbackIncomplete",
+                    String.class,
+                    Throwable.class
+            );
+            method.setAccessible(true);
+            method.invoke(lifecycle, phase, cleanupFailure);
+        } catch (ReflectiveOperationException failure) {
+            throw new AssertionError("Cannot invoke rollback-incomplete escalation for test", failure);
+        }
     }
 }

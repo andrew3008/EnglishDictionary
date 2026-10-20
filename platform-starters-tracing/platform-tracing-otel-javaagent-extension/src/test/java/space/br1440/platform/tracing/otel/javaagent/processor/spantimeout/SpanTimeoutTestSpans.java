@@ -8,10 +8,10 @@ import io.opentelemetry.api.trace.TraceFlags;
 import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 
-final class SpanTimeoutTestSpans {
+import lombok.experimental.UtilityClass;
 
-    private SpanTimeoutTestSpans() {
-    }
+@UtilityClass
+final class SpanTimeoutTestSpans {
 
     static ReadWriteSpan span(int traceOrdinal, int spanOrdinal) {
         return span(hex(traceOrdinal, 32), hex(spanOrdinal, 16));

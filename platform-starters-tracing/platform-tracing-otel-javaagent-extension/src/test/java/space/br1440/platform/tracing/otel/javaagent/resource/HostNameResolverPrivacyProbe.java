@@ -3,10 +3,10 @@ package space.br1440.platform.tracing.otel.javaagent.resource;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
 
-public final class HostNameResolverPrivacyProbe {
+import lombok.experimental.UtilityClass;
 
-    private HostNameResolverPrivacyProbe() {
-    }
+@UtilityClass
+public final class HostNameResolverPrivacyProbe {
 
     public static void main(String[] args) {
         String secret = requiredSecret(args);

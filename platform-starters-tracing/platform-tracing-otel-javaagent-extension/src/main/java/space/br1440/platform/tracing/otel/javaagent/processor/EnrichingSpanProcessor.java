@@ -18,6 +18,8 @@ import io.opentelemetry.sdk.trace.ReadWriteSpan;
 import io.opentelemetry.sdk.trace.ReadableSpan;
 import io.opentelemetry.sdk.trace.data.StatusData;
 
+import lombok.experimental.UtilityClass;
+
 /**
  * Обогащает span platform-специфичными атрибутами: тип (HTTP/DB/Kafka/internal), результат
  * (success/failure) и, для ошибочных CLIENT-спанов, имя upstream remote-сервиса.
@@ -43,13 +45,11 @@ public final class EnrichingSpanProcessor implements PlatformEndingSpanProcessor
      *       Удалять только после platform-wide миграции на стабильную DB semconv.</li>
      * </ul>
      */
+    @UtilityClass
     private static final class DbSemanticAttributeKeys {
         static final AttributeKey<String> SYSTEM_NAME = AttributeKey.stringKey("db.system.name");
 
         static final AttributeKey<String> LEGACY_SYSTEM = AttributeKey.stringKey("db.system");
-
-        private DbSemanticAttributeKeys() {
-        }
     }
 
     private static final List<AttributeKey<String>> REMOTE_SERVICE_PRIORITY = List.of(

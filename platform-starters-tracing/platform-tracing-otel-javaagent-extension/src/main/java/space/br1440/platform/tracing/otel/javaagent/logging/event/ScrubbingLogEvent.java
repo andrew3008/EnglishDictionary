@@ -4,17 +4,13 @@ import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLo
 import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.optionalCause;
 import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.requiresCause;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.DEBUG;
+import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.ERROR;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.INFO;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.WARN;
-import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.ERROR;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
-/**
- * События scrubbing: загрузка правил, circuit breaker, boundary/processor failures, маскирование.
- * Домен кодов: {@code SCRUB_*}.
- */
 public enum ScrubbingLogEvent implements AgentLogEventType {
 
     CRITICAL_SCRUBBING_RULE_FAILED_AT_EXPORT_BOUNDARY(
@@ -42,14 +38,6 @@ public enum ScrubbingLogEvent implements AgentLogEventType {
             requiresCause(
                     AgentEventCode.SCRUB_FAILURE, DEBUG,
                     "Bundled scrubbing rule metadata validation failed"
-            )
-    ),
-
-    EXTENSION_PATH_CANONICALIZATION_FAILED(
-            requiresCause(
-                    AgentEventCode.SCRUB_FAILURE, DEBUG,
-                    "Unable to canonicalize configured OpenTelemetry extension path",
-                    AgentLogField.NAME
             )
     ),
 

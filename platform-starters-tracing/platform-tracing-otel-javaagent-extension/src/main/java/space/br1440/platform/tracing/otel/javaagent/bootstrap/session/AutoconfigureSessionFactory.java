@@ -1,17 +1,27 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap.session;
 
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
+import space.br1440.platform.tracing.otel.javaagent.configuration.ConfigurationPropertyException;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
+import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxMutationRegistrationAssessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
+import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
+import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
+import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicySnapshot;
+import space.br1440.platform.tracing.runtime.sampling.properties.SamplingPolicyProperties;
+import space.br1440.platform.tracing.runtime.sampling.properties.SamplingPolicySnapshotFactory;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;
@@ -36,7 +46,10 @@ public final class AutoconfigureSessionFactory {
 
     public AutoconfigureSession create(ConfigProperties config,
                                        PlatformTracingMBeanRegistrar jmxRegistrar,
-                                       AgentInstanceId agentInstanceId) {
+                                       AgentInstanceId agentInstanceId,
+                                       ExtensionRuntimeEvidence evidence) {
+        SamplerConfigurationContract.requireFinal(config);
+
         ExtensionConfig extensionConfig = new ExtensionConfig(config);
         if (!extensionConfig.scrubbing().enabled()) {
             String message = "%s=false is forbidden by the secure Agent profile"
@@ -49,7 +62,9 @@ public final class AutoconfigureSessionFactory {
         }
 
         TracingSettingsSource policy = TracingSettingsSource.fromStartup(extensionConfig, agentInstanceId);
-        ScrubbingRuntime scrubbingRuntime = scrubberFactory.buildRuntime(extensionConfig, config);
+        CompositeSampler core = new CompositeSampler(policy, categoryBOverrides(extensionConfig.sampling()));
+        SafeSampler sampler = SafeSampler.protect(core);
+        ScrubbingRuntime scrubbingRuntime = scrubberFactory.buildRuntime(extensionConfig);
         RemoteJmxMutationRegistrationAssessor remoteJmxMutationRegistrationAssessor = Objects.requireNonNull(
                 remoteJmxAssessorFactory.apply(config),
                 "Remote JMX assessor factory must not return null"
@@ -59,11 +74,25 @@ public final class AutoconfigureSessionFactory {
                 agentInstanceId,
                 extensionConfig,
                 policy,
+                sampler,
+                evidence,
                 jmxRegistrar,
                 scrubbingRuntime,
                 remoteJmxMutationRegistrationAssessor
         );
+
+        jmxRegistrar.setCompositeSampler(core);
         prepared.readiness().markInstalled(PlatformExtensionCapability.CONFIGURATION_LOADED);
         return prepared;
+    }
+
+    private static SamplingPolicySnapshot categoryBOverrides(SamplingExtensionConfig sampling) {
+        return SamplingPolicySnapshotFactory.create(new SamplingPolicyProperties(
+                true,
+                1.0d,
+                sampling.dropPaths(),
+                new HashSet<>(sampling.forceRecordValues()),
+                Map.of()
+        ));
     }
 }

@@ -1,17 +1,22 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.ExtensionRuntimeVerifier;
+import javax.management.MBeanServer;
+import javax.management.MBeanServerFactory;
+
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.JvmShutdownHookRegistry;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.ExtensionRuntimeVerifier;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxAssessorTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class RuntimeEvidenceTestFixtures {
 
     private static final String TEST_AGENT_SHA256 = "a".repeat(64);
-
-    private RuntimeEvidenceTestFixtures() {
-    }
 
     static ExtensionRuntimeVerifier trustedVerifier() {
         return RuntimeEvidenceTestFixtures::evidence;
@@ -28,14 +33,27 @@ final class RuntimeEvidenceTestFixtures {
     }
 
     static BootstrapCoordinator coordinator() {
-        return coordinator(new PlatformScrubberFactory());
+        return coordinator(new PlatformScrubberFactory(), MBeanServerFactory.newMBeanServer());
     }
 
     static BootstrapCoordinator coordinator(PlatformScrubberFactory scrubberFactory) {
+        return coordinator(scrubberFactory, MBeanServerFactory.newMBeanServer());
+    }
+
+    static BootstrapCoordinator coordinator(MBeanServer mbeanServer) {
+        return coordinator(new PlatformScrubberFactory(), mbeanServer);
+    }
+
+    private static BootstrapCoordinator coordinator(PlatformScrubberFactory scrubberFactory,
+                                                    MBeanServer mbeanServer) {
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
         return new BootstrapCoordinator(
                 JvmShutdownHookRegistry.INSTANCE,
                 scrubberFactory,
                 trustedVerifier(),
-                ignored -> RemoteJmxAssessorTestFixtures.allowingAssessor());
+                ignored -> RemoteJmxAssessorTestFixtures.allowingAssessor(),
+                new PlatformTracingMBeanRegistrar(mbeanServer, agentInstanceId),
+                new DiagnosticReadinessHandle()
+        );
     }
 }

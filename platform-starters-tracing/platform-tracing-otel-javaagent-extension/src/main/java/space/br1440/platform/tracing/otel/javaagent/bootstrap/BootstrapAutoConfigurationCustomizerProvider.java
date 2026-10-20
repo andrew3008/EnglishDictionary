@@ -1,9 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
-import java.util.Map;
 import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.SamplerConfigurationContract;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.TracePipelineSpiVerifier;
 import space.br1440.platform.tracing.otel.javaagent.configuration.PlatformTracingDefaultsProvider;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ObservingSenderPreference;
@@ -11,12 +11,11 @@ import space.br1440.platform.tracing.otel.javaagent.propagation.BaggagePropagati
 import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagatorsDefaultsCustomizer;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.resource.PlatformResourceCustomizer;
-import space.br1440.platform.tracing.otel.javaagent.sampler.PlatformManagedSamplers;
 
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
-import io.opentelemetry.sdk.trace.samplers.Sampler;
+import io.opentelemetry.sdk.resources.Resource;
 
 public final class BootstrapAutoConfigurationCustomizerProvider implements AutoConfigurationCustomizerProvider {
 
@@ -53,20 +52,25 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
                 return null;
             });
 
+            return SamplerConfigurationContract.normalize(config);
+        });
+
+        customizer.addPropertiesCustomizer(propagatorsDefaults);
+
+        customizer.addResourceCustomizer((existing, config) -> {
+            bootstrap.prepare(config);
+            Resource customized = bootstrap.execute(
+                    "RESOURCE_INITIALIZATION_FAILED",
+                    () -> resourceCustomizer.customize(existing, config)
+            );
+
             bootstrap.execute("SENDER_SPI_INSTALLATION_FAILED", () -> {
                 ObservingSenderPreference.install();
                 return null;
             });
 
-            bootstrap.prepare(config);
-            return Map.of();
+            return customized;
         });
-
-        customizer.addPropertiesCustomizer(propagatorsDefaults);
-
-        customizer.addResourceCustomizer((existing, config) ->
-                bootstrap.execute("RESOURCE_INITIALIZATION_FAILED",
-                        () -> resourceCustomizer.customize(existing, config)));
 
         customizer.addPropagatorCustomizer((propagator, config) ->
                 bootstrap.execute("PROPAGATION_INITIALIZATION_FAILED", () -> {
@@ -82,23 +86,10 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
                     return customized;
                 }));
 
-        customizer.addSamplerCustomizer((existing, config) ->
-                bootstrap.execute("SAMPLER_INITIALIZATION_FAILED", () -> {
-                    AutoconfigureSession session = bootstrap.session();
-                    Sampler sampler = session.samplerFactory().buildSampler(
-                            existing, session.extensionConfig().sampling(), session.policy()
-                    );
-
-                    if (PlatformManagedSamplers.isPlatformManaged(sampler)) {
-                        session.readiness().markInstalled(PlatformExtensionCapability.PLATFORM_SAMPLER_INSTALLED);
-                    }
-
-                    return sampler;
-                }));
-
         customizer.addTracerProviderCustomizer((builder, config) ->
                 bootstrap.execute("SPAN_PROCESSOR_INITIALIZATION_FAILED", () -> {
                     AutoconfigureSession session = bootstrap.session();
+                    builder.setSampler(session.sampler());
                     return session.spanProcessorFactory().registerSpanProcessors(
                             builder, session.extensionConfig(), session.policy()
                     );

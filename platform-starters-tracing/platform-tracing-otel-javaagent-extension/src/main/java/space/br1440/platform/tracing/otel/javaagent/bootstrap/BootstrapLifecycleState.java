@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
+
 import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
@@ -38,13 +40,12 @@ final class BootstrapLifecycleState {
             }
 
             if (state != BootstrapState.NEW) {
-                throw fail(
+                throw rejectWithoutStateChange(
                         "SECOND_SDK_BUILD",
                         "prepare",
-                        new IllegalStateException(
-                                "Bootstrap coordinator already prepared/activated for this JVM; a second "
-                                        + "AutoConfiguredOpenTelemetrySdk build is not supported"
-                        )
+                        new IllegalStateException("""
+                            Bootstrap coordinator already prepared/activated for this JVM; \
+                            a second AutoConfiguredOpenTelemetrySdk build is not supported""")
                 );
             }
 
@@ -65,7 +66,7 @@ final class BootstrapLifecycleState {
         synchronized (monitor) {
             if (state == BootstrapState.NEW) {
                 throw fail(
-                        "PLATFORM_ACP_NOT_EXECUTED",
+                        PLATFORM_ACP_NOT_EXECUTED,
                         "activate",
                         new IllegalStateException("""
                             AgentListener.afterAgent invoked without a prior ACP prepare() call \
@@ -213,7 +214,6 @@ final class BootstrapLifecycleState {
         }
     }
 
-    @SuppressWarnings("SameParameterValue")
     BootstrapException rejectWithoutStateChange(String code, String phase, Throwable cause) {
         synchronized (monitor) {
             BootstrapFailure rejection = new BootstrapFailure(code, phase, cause);

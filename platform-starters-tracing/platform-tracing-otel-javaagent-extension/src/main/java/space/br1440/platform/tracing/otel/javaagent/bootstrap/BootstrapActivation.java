@@ -1,8 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.ACTIVATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.DIAGNOSTIC_MBEAN_REGISTRATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.RUNTIME_EVIDENCE_ATTESTATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_SAMPLER_REPLACED;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -10,8 +9,6 @@ import java.util.UUID;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.ShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.ExtensionRuntimeVerifier;
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.VerificationException;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.VerificationFailureCode;
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
@@ -27,6 +24,8 @@ import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionC
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadinessSnapshot;
 
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+
 final class BootstrapActivation {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(BootstrapActivation.class);
@@ -39,42 +38,34 @@ final class BootstrapActivation {
     private final BootstrapLifecycleState lifecycle;
     private final BootstrapReadinessJournal journal;
     private final BootstrapTerminalTransitions terminalTransitions;
-    private final DiagnosticReadinessHandle diagnosticHandle;
-    private final ExtensionRuntimeVerifier runtimeVerifier;
     private final ShutdownHookRegistry hookRegistry;
 
     BootstrapActivation(BootstrapLifecycleState lifecycle,
                         BootstrapReadinessJournal journal,
                         BootstrapTerminalTransitions terminalTransitions,
-                        DiagnosticReadinessHandle diagnosticHandle,
-                        ExtensionRuntimeVerifier runtimeVerifier,
                         ShutdownHookRegistry hookRegistry) {
         this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
         this.journal = Objects.requireNonNull(journal, "journal");
         this.terminalTransitions = Objects.requireNonNull(terminalTransitions, "terminalTransitions");
-        this.diagnosticHandle = Objects.requireNonNull(diagnosticHandle, "diagnosticHandle");
-        this.runtimeVerifier = Objects.requireNonNull(runtimeVerifier, "runtimeVerifier");
         this.hookRegistry = Objects.requireNonNull(hookRegistry, "hookRegistry");
     }
 
-    void activate() {
+    void activate(SdkTracerProvider tracerProvider) {
         synchronized (lifecycle.monitor()) {
-            activateExclusively();
+            activateExclusively(Objects.requireNonNull(tracerProvider, "tracerProvider"));
         }
     }
 
-    private void activateExclusively() {
+    private void activateExclusively(SdkTracerProvider tracerProvider) {
         AutoconfigureSession session = lifecycle.beginActivation();
-        journal.publishInitializing(session.readiness(), session.agentInstanceId());
 
         BootstrapResources resources = new BootstrapResources(hookRegistry);
         lifecycle.attachResources(resources);
 
-        ActivationAttempt attempt = new ActivationAttempt(session, resources);
+        ActivationAttempt attempt = new ActivationAttempt(session, resources, tracerProvider);
         try {
-            registerDiagnosticReadiness(attempt);
+            requireSessionSampler(attempt);
             assessRemoteJmx(attempt);
-            verifyRuntimeEvidence(attempt);
             bindRuntime(attempt);
             publishReady(attempt);
         } catch (RuntimeException | Error failure) {
@@ -82,12 +73,14 @@ final class BootstrapActivation {
         }
     }
 
-    private void registerDiagnosticReadiness(ActivationAttempt attempt) {
-        attempt.enter(ActivationPhase.DIAGNOSTIC_REGISTRATION);
+    private static void requireSessionSampler(ActivationAttempt attempt) {
+        attempt.enter(ActivationPhase.SAMPLER_POSTCONDITION);
 
-        diagnosticHandle.registerIfAbsent(
-                () -> attempt.session().jmxRegistrar().registerDiagnosticReadiness(journal::current)
-        );
+        AutoconfigureSession session = attempt.session();
+        if (attempt.tracerProvider().getSampler() != session.sampler()) {
+            throw new IllegalStateException("Installed SDK sampler is not the platform session sampler");
+        }
+        session.readiness().markInstalled(PlatformExtensionCapability.PLATFORM_SAMPLER_INSTALLED);
     }
 
     private void assessRemoteJmx(ActivationAttempt attempt) {
@@ -103,14 +96,6 @@ final class BootstrapActivation {
                 .putString(AgentLogField.REMEDIATION, assessment.remediation())
                 .putString(AgentLogField.OFFENDING_ARGUMENTS, String.join(",", assessment.offendingArguments())));
         throw new RemoteJmxRegistrationDeniedException(assessment);
-    }
-
-    private void verifyRuntimeEvidence(ActivationAttempt attempt) {
-        attempt.enter(ActivationPhase.RUNTIME_EVIDENCE_VERIFICATION);
-
-        String extensionVersion = attempt.session().readiness().snapshot().extensionVersion();
-        ExtensionRuntimeEvidence evidence = runtimeVerifier.verify(extensionVersion);
-        attempt.recordVerifiedEvidence(evidence);
     }
 
     private void bindRuntime(ActivationAttempt attempt) {
@@ -142,6 +127,9 @@ final class BootstrapActivation {
         attempt.enter(ActivationPhase.READINESS_PUBLICATION);
 
         AutoconfigureSession session = attempt.session();
+        if (!attempt.evidence().complete()) {
+            throw new IllegalStateException("Runtime attestation evidence is incomplete");
+        }
         session.scrubbingRuntime().requireInstallationComplete();
         session.readiness().markInstalled(PlatformExtensionCapability.SANITIZER_INSTALLED);
         PlatformExtensionReadinessSnapshot readiness = session.readiness().completeInitialization();
@@ -173,7 +161,6 @@ final class BootstrapActivation {
     private static String failureCodeOf(ActivationAttempt attempt, Throwable failure) {
         return switch (failure) {
             case LinkageError ignored -> VerificationFailureCode.EXTENSION_LINKAGE_ERROR.name();
-            case VerificationException verification -> verification.code().name();
             case RemoteJmxRegistrationDeniedException denied -> denied.failureCode().name();
             default -> attempt.phase().failureCode();
         };
@@ -188,14 +175,10 @@ final class BootstrapActivation {
     }
 
     private enum ActivationPhase {
-        DIAGNOSTIC_REGISTRATION(DIAGNOSTIC_MBEAN_REGISTRATION_FAILED, "diagnostic-registration"),
+        SAMPLER_POSTCONDITION(PLATFORM_SAMPLER_REPLACED, "sampler-postcondition"),
         REMOTE_JMX_ASSESSMENT(
                 RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name(),
                 "remote-jmx-assessment"
-        ),
-        RUNTIME_EVIDENCE_VERIFICATION(
-                RUNTIME_EVIDENCE_ATTESTATION_FAILED,
-                "runtime-evidence-verification"
         ),
         RUNTIME_BINDING(ACTIVATION_FAILED, "runtime-binding"),
         READINESS_PUBLICATION(ACTIVATION_FAILED, "readiness-publication");
@@ -221,25 +204,23 @@ final class BootstrapActivation {
 
         private final AutoconfigureSession session;
         private final BootstrapResources resources;
+        private final SdkTracerProvider tracerProvider;
 
-        private ActivationPhase phase = ActivationPhase.DIAGNOSTIC_REGISTRATION;
+        private ActivationPhase phase = ActivationPhase.SAMPLER_POSTCONDITION;
         private String batchId = "";
-        private ExtensionRuntimeEvidence evidence;
+        private final ExtensionRuntimeEvidence evidence;
 
-        ActivationAttempt(AutoconfigureSession session, BootstrapResources resources) {
+        ActivationAttempt(AutoconfigureSession session,
+                          BootstrapResources resources,
+                          SdkTracerProvider tracerProvider) {
             this.session = Objects.requireNonNull(session, "session");
             this.resources = Objects.requireNonNull(resources, "resources");
-            this.evidence = ExtensionRuntimeEvidence.unavailable(
-                    session.readiness().snapshot().extensionVersion()
-            );
+            this.tracerProvider = Objects.requireNonNull(tracerProvider, "tracerProvider");
+            this.evidence = session.evidence();
         }
 
         void enter(ActivationPhase next) {
             this.phase = Objects.requireNonNull(next, "next");
-        }
-
-        void recordVerifiedEvidence(ExtensionRuntimeEvidence verified) {
-            this.evidence = Objects.requireNonNull(verified, "verified");
         }
 
         void recordRuntimeRegistration(UUID registeredBatchId) {
@@ -252,6 +233,10 @@ final class BootstrapActivation {
 
         BootstrapResources resources() {
             return resources;
+        }
+
+        SdkTracerProvider tracerProvider() {
+            return tracerProvider;
         }
 
         ActivationPhase phase() {

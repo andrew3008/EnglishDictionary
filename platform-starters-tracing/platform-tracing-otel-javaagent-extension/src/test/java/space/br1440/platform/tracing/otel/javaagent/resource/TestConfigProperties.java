@@ -7,15 +7,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import space.br1440.platform.common.util.StringUtils;
+
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
-/**
- * Минимальная in-memory реализация {@link ConfigProperties} для unit-тестов resource-пакета.
- * <p>
- * {@code getString} читает из карты. {@code getMap} разбирает значение как
- * {@code key=value} через запятую, как {@code otel.resource.attributes}.
- * Для эмуляции {@code OTEL_SERVICE_NAME} задавайте ключ {@code otel.service.name}.
- */
 final class TestConfigProperties implements ConfigProperties {
 
     private final Map<String, String> data;
@@ -32,25 +27,25 @@ final class TestConfigProperties implements ConfigProperties {
     @Override
     public Boolean getBoolean(String name) {
         String value = data.get(name);
-        return value == null ? null : Boolean.parseBoolean(value);
+        return (value == null) ? null : Boolean.parseBoolean(value);
     }
 
     @Override
     public Integer getInt(String name) {
         String value = data.get(name);
-        return value == null ? null : Integer.valueOf(value);
+        return (value == null) ? null : Integer.valueOf(value);
     }
 
     @Override
     public Long getLong(String name) {
         String value = data.get(name);
-        return value == null ? null : Long.valueOf(value);
+        return (value == null) ? null : Long.valueOf(value);
     }
 
     @Override
     public Double getDouble(String name) {
         String value = data.get(name);
-        return value == null ? null : Double.valueOf(value);
+        return (value == null) ? null : Double.valueOf(value);
     }
 
     @Override
@@ -61,7 +56,7 @@ final class TestConfigProperties implements ConfigProperties {
     @Override
     public List<String> getList(String name) {
         String value = data.get(name);
-        if (value == null || value.isBlank()) {
+        if (StringUtils.isNullOrBlank(value)) {
             return Collections.emptyList();
         }
         return Arrays.stream(value.split(","))
@@ -73,7 +68,7 @@ final class TestConfigProperties implements ConfigProperties {
     @Override
     public Map<String, String> getMap(String name) {
         String value = data.get(name);
-        if (value == null || value.isBlank()) {
+        if (StringUtils.isNullOrBlank(value)) {
             return Collections.emptyMap();
         }
 

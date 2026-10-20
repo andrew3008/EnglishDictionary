@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent;
+package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -9,45 +9,27 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import space.br1440.platform.tracing.otel.javaagent.testsupport.BootstrapIsolatedClassLoader;
+import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdkBuilder;
 
-@DisplayName("SPI: named sampler/propagator через реальный autoconfigure")
+@DisplayName("Пропагация: platform propagator через реальный autoconfigure")
 @ExtendWith(AutoConfiguredSdkIsolationExtension.class)
-class PlatformSpiAutoconfigureIntegrationTest {
+class PlatformPropagationAutoconfigureIntegrationTest {
 
     private static AutoConfiguredOpenTelemetrySdkBuilder baseBuilder() {
-        return AutoConfiguredOpenTelemetrySdk.builder()
-                .setServiceClassLoader(BootstrapIsolatedClassLoader.freshBootstrapClassLoader())
+        AutoConfiguredOpenTelemetrySdkBuilder builder = AutoConfiguredOpenTelemetrySdk.builder()
+                .setServiceClassLoader(AutoConfigurationCustomizerTestClassLoader.withoutDiscoveredCustomizers())
                 .disableShutdownHook()
                 .addPropertiesSupplier(() -> Map.of(
                         "otel.metrics.exporter", "none",
                         "otel.logs.exporter", "none",
                         "otel.traces.exporter", "none")
                 );
-    }
-
-    @Test
-    @DisplayName("otel.traces.sampler=platform резолвится в платформенный CompositeSampler (без ConfigurationException)")
-    void otel_traces_sampler_platform_resolves() {
-        // given
-        AutoConfiguredOpenTelemetrySdk sdk = baseBuilder()
-                .addPropertiesSupplier(() -> Map.of("otel.traces.sampler", "platform"))
-                .build();
-        try {
-            // when
-            String description = sdk.getOpenTelemetrySdk().getSdkTracerProvider().toString();
-
-            // then
-            assertThat(description)
-                    .as("named platform sampler должен примениться без двойной обёртки")
-                    .contains("PlatformRuleBasedSampler");
-        } finally {
-            sdk.getOpenTelemetrySdk().close();
-        }
+        new BootstrapAutoConfigurationCustomizerProvider(RuntimeEvidenceTestFixtures.coordinator()).customize(builder);
+        return builder;
     }
 
     @Test
@@ -183,6 +165,45 @@ class PlatformSpiAutoconfigureIntegrationTest {
                             });
             assertThat(io.opentelemetry.api.baggage.Baggage.fromContext(extracted).getEntryValue("tenant_class"))
                     .isEqualTo("DF 28");
+        } finally {
+            sdk.getOpenTelemetrySdk().close();
+        }
+    }
+
+    @Test
+    @DisplayName("baggage propagation disabled → исходящий baggage отсутствует, traceparent сохраняется")
+    void baggagePropagationDisabled_omitsBaggageHeader_keepsTraceParent() {
+        // given
+        AutoConfiguredOpenTelemetrySdk sdk = baseBuilder()
+                .addPropertiesSupplier(() -> Map.of(
+                        "otel.propagators", "tracecontext,baggage,platform-trace-control",
+                        "platform.tracing.baggage.propagation.enabled", "false"))
+                .build();
+        try {
+            TextMapPropagator root = sdk.getOpenTelemetrySdk().getPropagators().getTextMapPropagator();
+            io.opentelemetry.api.trace.SpanContext spanContext = io.opentelemetry.api.trace.SpanContext.create(
+                    "0123456789abcdef0123456789abcdef",
+                    "0123456789abcdef",
+                    io.opentelemetry.api.trace.TraceFlags.getSampled(),
+                    io.opentelemetry.api.trace.TraceState.getDefault());
+            io.opentelemetry.context.Context ctx = io.opentelemetry.context.Context.root()
+                    .with(io.opentelemetry.api.trace.Span.wrap(spanContext))
+                    .with(io.opentelemetry.api.baggage.Baggage.builder()
+                            .put("traffic_source", "qa")
+                            .put("password", "secret123")
+                            .build());
+            Map<String, String> carrier = new java.util.HashMap<>();
+
+            // when
+            root.inject(ctx, carrier, (c, k, v) -> Objects.requireNonNull(c, "carrier").put(k, v));
+
+            // then
+            assertThat(root.fields())
+                    .contains("traceparent", "X-Trace-On")
+                    .doesNotContain("baggage");
+            assertThat(carrier).doesNotContainKey("baggage");
+            assertThat(carrier.get("traceparent"))
+                    .isEqualTo("00-0123456789abcdef0123456789abcdef-0123456789abcdef-01");
         } finally {
             sdk.getOpenTelemetrySdk().close();
         }

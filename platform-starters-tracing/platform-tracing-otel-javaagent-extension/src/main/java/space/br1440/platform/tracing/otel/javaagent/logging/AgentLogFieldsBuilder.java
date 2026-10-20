@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventType;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.CausePolicy;
@@ -26,7 +27,7 @@ final class AgentLogFieldsBuilder implements AgentLogFields {
     public AgentLogFields putString(AgentLogField field, String value) {
         AgentLogField requiredField = requireField(field, AgentLogField.Kind.STRING);
         String requiredValue = Objects.requireNonNull(value, "value");
-        if (!requiredField.allowsBlank() && requiredValue.isBlank()) {
+        if (!requiredField.allowsBlank() && StringUtils.isNullOrBlank(requiredValue)) {
             throw new IllegalArgumentException("String field value must not be blank");
         }
 

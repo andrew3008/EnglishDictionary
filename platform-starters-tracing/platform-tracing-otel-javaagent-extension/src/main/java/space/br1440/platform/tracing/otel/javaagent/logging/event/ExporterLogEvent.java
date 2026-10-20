@@ -7,10 +7,6 @@ import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentL
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
-/**
- * События защитных обёрток экспортёра: SafeSpanExporter и timed exporter.
- * Домен кодов: {@code EXPORT_SAFE_EXPORTER, EXPORT_TIMED}.
- */
 public enum ExporterLogEvent implements AgentLogEventType {
 
     EXPORT_COMPLETION_CALLBACK_FAILED(

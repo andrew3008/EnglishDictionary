@@ -5,6 +5,7 @@ import java.util.Objects;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
+import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
 import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ExportPipelineLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
@@ -19,11 +20,6 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import lombok.NonNull;
 
-/**
- * DROP_OLDEST {@link SpanProcessor}: неблокирующий bounded queue + отдельный
- * export worker, вытесняющий самые старые спаны при переполнении очереди вместо
- * блокировки вызывающего потока (в отличие от {@code BatchSpanProcessor} в нативном OTEL агенте).
- */
 public final class PlatformDropOldestExportSpanProcessor implements SpanProcessor {
 
     private static final RateLimitedLogger log = new RateLimitedLogger(PlatformDropOldestExportSpanProcessor.class);
@@ -33,20 +29,27 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
     private final ExportBuffer buffer;
     private final ExportWorker worker;
 
-    private PlatformDropOldestExportSpanProcessor(Builder builder) {
-        this.queueCapacity = builder.maxQueueSize;
+    private PlatformDropOldestExportSpanProcessor(PreparedBuild preparedBuild) {
+        this.queueCapacity = preparedBuild.maxQueueSize;
         this.metrics = new DropOldestExportMetrics();
-        this.buffer = new ExportBuffer(builder.maxQueueSize, builder.maxExportBatchSize, metrics);
+        this.buffer = new ExportBuffer(
+                preparedBuild.maxQueueSize,
+                preparedBuild.maxExportBatchSize,
+                metrics
+        );
 
         TimedSpanExporter timedSpanExporter = new TimedSpanExporter(
-                builder.exporter,
-                builder.exportTimeout.toNanos(),
-                builder.shutdownTimeout.toNanos(),
+                preparedBuild.exporter,
+                preparedBuild.exportTimeout.toNanos(),
+                preparedBuild.shutdownTimeout.toNanos(),
                 metrics
         );
 
         this.worker = new ExportWorker(
-                buffer, timedSpanExporter, builder.scheduleDelay.toNanos(), builder.shutdownTimeout.toNanos()
+                buffer,
+                timedSpanExporter,
+                preparedBuild.scheduleDelay.toNanos(),
+                preparedBuild.shutdownTimeout.toNanos()
         );
         worker.start();
     }
@@ -132,16 +135,11 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
 
     public static final class Builder {
 
-        private static final int DEFAULT_MAX_QUEUE_SIZE = 2048;
-        private static final int DEFAULT_MAX_EXPORT_BATCH_SIZE = 512;
-        private static final Duration DEFAULT_SCHEDULE_DELAY = Duration.ofMillis(5_000);
-        private static final Duration DEFAULT_EXPORT_TIMEOUT = Duration.ofMillis(30_000);
-
         private final SpanExporter exporter;
-        private int maxQueueSize = DEFAULT_MAX_QUEUE_SIZE;
-        private int maxExportBatchSize = DEFAULT_MAX_EXPORT_BATCH_SIZE;
-        private Duration scheduleDelay = DEFAULT_SCHEDULE_DELAY;
-        private Duration exportTimeout = DEFAULT_EXPORT_TIMEOUT;
+        private int maxQueueSize = OtelSdkDefaults.DEFAULT_BSP_MAX_QUEUE_SIZE;
+        private int maxExportBatchSize = OtelSdkDefaults.DEFAULT_BSP_MAX_EXPORT_BATCH_SIZE;
+        private Duration scheduleDelay = OtelSdkDefaults.DEFAULT_BSP_SCHEDULE_DELAY;
+        private Duration exportTimeout = OtelSdkDefaults.DEFAULT_BSP_EXPORT_TIMEOUT;
         private Duration shutdownTimeout = ExtensionDefaults.DEFAULT_DROP_OLDEST_SHUTDOWN_TIMEOUT;
 
         private Builder(SpanExporter exporter) {
@@ -200,11 +198,10 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
         }
 
         public PlatformDropOldestExportSpanProcessor build() {
-            validate();
-            return new PlatformDropOldestExportSpanProcessor(this);
+            return validate().build();
         }
 
-        private void validate() {
+        public PreparedBuild validate() {
             if (maxQueueSize <= 0) {
                 throw new IllegalArgumentException("maxQueueSize must be positive");
             }
@@ -231,6 +228,31 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
             if (shutdownTimeout == null || shutdownTimeout.isNegative() || shutdownTimeout.isZero()) {
                 throw new IllegalArgumentException("shutdownTimeout must be positive");
             }
+
+            return new PreparedBuild(this);
+        }
+    }
+
+    public static final class PreparedBuild {
+
+        private final SpanExporter exporter;
+        private final int maxQueueSize;
+        private final int maxExportBatchSize;
+        private final Duration scheduleDelay;
+        private final Duration exportTimeout;
+        private final Duration shutdownTimeout;
+
+        private PreparedBuild(Builder builder) {
+            this.exporter = builder.exporter;
+            this.maxQueueSize = builder.maxQueueSize;
+            this.maxExportBatchSize = builder.maxExportBatchSize;
+            this.scheduleDelay = builder.scheduleDelay;
+            this.exportTimeout = builder.exportTimeout;
+            this.shutdownTimeout = builder.shutdownTimeout;
+        }
+
+        public PlatformDropOldestExportSpanProcessor build() {
+            return new PlatformDropOldestExportSpanProcessor(this);
         }
     }
 }

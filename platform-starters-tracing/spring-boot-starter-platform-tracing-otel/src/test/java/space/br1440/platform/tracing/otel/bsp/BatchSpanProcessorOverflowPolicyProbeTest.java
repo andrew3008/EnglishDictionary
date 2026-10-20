@@ -27,7 +27,7 @@ import io.opentelemetry.sdk.trace.samplers.Sampler;
 
 /**
  * Probe-тест фактической политики переполнения очереди стандартного
- * {@link io.opentelemetry.sdk.trace.export.BatchSpanProcessor} на pinned OTel SDK 1.64.0.
+ * {@link io.opentelemetry.sdk.trace.export.BatchSpanProcessor} на SDK из version catalog.
  *
  * <p><b>Защита от timing flakiness через управляемый первый export:</b></p>
  * <ol>
@@ -59,7 +59,7 @@ class BatchSpanProcessorOverflowPolicyProbeTest {
     private static final int OVERFLOW_FACTOR = 8;
 
     @Test
-    @DisplayName("Probe: actual overflow policy of stock BSP SDK 1.64.0 (snapshot)")
+    @DisplayName("Probe: actual overflow policy of stock BSP on the catalog SDK (snapshot)")
     void observeOverflowPolicy_pinnedSdk() throws InterruptedException {
         int overflowTo = BATCH_SIZE + MAX_QUEUE * OVERFLOW_FACTOR;
         List<Long> exportedSeq;

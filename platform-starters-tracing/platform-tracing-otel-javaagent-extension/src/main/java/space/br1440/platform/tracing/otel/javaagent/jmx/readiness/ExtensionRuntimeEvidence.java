@@ -4,14 +4,6 @@ import java.util.Objects;
 
 import space.br1440.platform.common.util.StringUtils;
 
-/**
- * Нейтральное относительно загрузчиков свидетельство дистрибутива и topology агента.
- * В JMX payload из этого типа переносятся только строки, числа и boolean.
- *
- * <p>Каждое поле измеряется в рантайме. Поля, сравниваемые с константой сборки, здесь
- * не хранятся: такое сравнение ничего не проверяет, а потребителю readiness выглядит
- * как подтверждённый факт.
- */
 public record ExtensionRuntimeEvidence(String agentDistributionSha256,
                                        String upstreamAgentVersion,
                                        String extensionVersion,

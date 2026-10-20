@@ -10,11 +10,12 @@ public final class JavaAgentExtensionPaths {
 
     public static String resolveRawValue(ConfigProperties config) {
         String raw = config.getString(ExtensionPropertyNames.OTEL_JAVAAGENT_EXTENSIONS);
-        if (StringUtils.isNullOrBlank(raw)) {
+
+        if (StringUtils.isNullOrEmpty(raw)) {
             raw = System.getProperty(ExtensionPropertyNames.OTEL_JAVAAGENT_EXTENSIONS);
         }
 
-        if (StringUtils.isNullOrBlank(raw)) {
+        if (StringUtils.isNullOrEmpty(raw)) {
             raw = System.getenv(ExtensionEnvironmentVariables.OTEL_JAVAAGENT_EXTENSIONS);
         }
 

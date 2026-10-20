@@ -4,118 +4,62 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.lang.management.ManagementFactory;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
-
 import javax.management.MBeanServer;
 import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-
-import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.testsupport.BootstrapIsolatedClassLoader;
 
+import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
+
 @ExtendWith(AutoConfiguredSdkIsolationExtension.class)
+@ResourceLock(Resources.SYSTEM_PROPERTIES)
 class PlatformExtensionReadinessIntegrationTest {
 
     @Test
-    void completePipelineWithoutControlledAgentDigestFailsBeforePublishingReady() {
+    void default_verifier_fails_sdk_build_in_resource_phase_without_publishing_ready() throws Exception {
         // given
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         ClassLoader isolatedLoader = BootstrapIsolatedClassLoader.freshBootstrapClassLoader();
-        AutoConfiguredOpenTelemetrySdk sdk = AutoConfiguredOpenTelemetrySdk.builder()
-                .setServiceClassLoader(isolatedLoader)
-                .addPropertiesSupplier(() -> Map.of(
-                        "otel.service.name", "readiness-integration-test",
-                        "otel.traces.exporter", "logging",
-                        "otel.metrics.exporter", "none",
-                        "otel.logs.exporter", "none",
-                        "otel.propagators", "tracecontext,baggage,platform-trace-control",
-                        "platform.tracing.queue.overflow-policy", "UPSTREAM"))
-                .build();
-        try {
-            Class<?> listenerClass = isolatedLoader.loadClass(
-                    "space.br1440.platform.tracing.otel.javaagent.bootstrap.ActivationAgentListener");
-            Object listener = listenerClass.getDeclaredConstructor().newInstance();
+        assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isFalse();
 
-            try (AutoCloseable ignored = bootstrapOwner(isolatedLoader)) {
-                // when
-                assertThatThrownBy(() -> listenerClass
-                        .getMethod("afterAgent", AutoConfiguredOpenTelemetrySdk.class)
-                        .invoke(listener, sdk))
-                        .isInstanceOf(InvocationTargetException.class)
-                        .cause()
-                        .hasMessageContaining("DISTRIBUTION_EVIDENCE_MISSING");
+        try (AutoCloseable ignored = bootstrapOwner(isolatedLoader)) {
+            // when
+            assertThatThrownBy(() -> AutoConfiguredOpenTelemetrySdk.builder()
+                    .setServiceClassLoader(isolatedLoader)
+                    .addPropertiesSupplier(() -> Map.of(
+                            "otel.service.name", "readiness-integration-test",
+                            "otel.traces.exporter", "logging",
+                            "otel.metrics.exporter", "none",
+                            "otel.logs.exporter", "none",
+                            "otel.propagators", "tracecontext,baggage,platform-trace-control",
+                            "platform.tracing.queue.overflow-policy", "UPSTREAM"))
+                    .build())
+                    .hasStackTraceContaining("DISTRIBUTION_EVIDENCE_MISSING")
+                    .rootCause()
+                    .hasMessageContaining("Expected controlled agent SHA-256 is not set");
 
-                // then
-                CompositeData readiness = readinessSnapshot(server);
-                assertThat(readiness.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE))
-                        .isEqualTo("FAILED");
-                assertThat(readiness.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE))
-                        .isEqualTo("DISTRIBUTION_EVIDENCE_MISSING");
-                assertThat((String[]) readiness.get(
-                        JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES))
-                        .containsExactlyInAnyOrder(
-                                "CONFIGURATION_LOADED",
-                                "PLATFORM_SAMPLER_INSTALLED",
-                                "REQUIRED_SPAN_PROCESSORS_INSTALLED",
-                                "PROPAGATION_HOOKS_INSTALLED",
-                                "SAFE_EXPORTER_INSTALLED",
-                                "EXPORT_PATH_PROTECTED");
-            }
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        } finally {
-            sdk.getOpenTelemetrySdk().close();
+            // then
+            assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isTrue();
+            CompositeData readiness = readinessSnapshot(server);
+            assertThat(readiness.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE))
+                    .isEqualTo("FAILED")
+                    .isNotEqualTo("READY");
+            assertThat(readiness.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE))
+                    .isEqualTo("DISTRIBUTION_EVIDENCE_MISSING");
+            assertThat((String[]) readiness.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES))
+                    .doesNotContain("PLATFORM_SAMPLER_INSTALLED");
         }
-    }
 
-    @Test
-    void secureProfileWithExporterNoneFailsActivationAndNeverPublishesReady() throws Exception {
-        // given
-        MBeanServer server = ManagementFactory.getPlatformMBeanServer();
-        ClassLoader isolatedLoader = BootstrapIsolatedClassLoader.freshBootstrapClassLoader();
-        AutoConfiguredOpenTelemetrySdk sdk = AutoConfiguredOpenTelemetrySdk.builder()
-                .setServiceClassLoader(isolatedLoader)
-                .addPropertiesSupplier(() -> Map.of(
-                        "otel.service.name", "exporter-none-secure-profile",
-                        "otel.traces.exporter", "none",
-                        "otel.metrics.exporter", "none",
-                        "otel.logs.exporter", "none",
-                        "otel.propagators", "tracecontext,baggage,platform-trace-control"))
-                .build();
-        try {
-            Class<?> listenerClass = isolatedLoader.loadClass(
-                    "space.br1440.platform.tracing.otel.javaagent.bootstrap.ActivationAgentListener");
-            Object listener = listenerClass.getDeclaredConstructor().newInstance();
-
-            try (AutoCloseable ignored = bootstrapOwner(isolatedLoader)) {
-                // when
-                assertThatThrownBy(() -> listenerClass
-                        .getMethod("afterAgent", AutoConfiguredOpenTelemetrySdk.class)
-                        .invoke(listener, sdk))
-                        .isInstanceOf(InvocationTargetException.class)
-                        .cause()
-                        .hasMessageContaining("DISTRIBUTION_EVIDENCE_MISSING");
-
-                // then
-                CompositeData readiness = readinessSnapshot(server);
-                assertThat(readiness.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE))
-                        .isEqualTo("FAILED");
-                assertThat(readiness.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE))
-                        .isEqualTo("DISTRIBUTION_EVIDENCE_MISSING");
-                assertThat((String[]) readiness.get(
-                        JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES))
-                        .doesNotContain("SANITIZER_INSTALLED");
-            }
-        } finally {
-            sdk.getOpenTelemetrySdk().close();
-        }
+        assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isFalse();
     }
 
     private static CompositeData readinessSnapshot(MBeanServer server) throws Exception {

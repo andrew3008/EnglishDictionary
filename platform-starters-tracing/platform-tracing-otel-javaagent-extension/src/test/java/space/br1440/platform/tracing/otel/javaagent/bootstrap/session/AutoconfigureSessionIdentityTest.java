@@ -9,8 +9,10 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxMutationRegistrationAssessor;
+import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 class AutoconfigureSessionIdentityTest {
@@ -55,6 +57,8 @@ class AutoconfigureSessionIdentityTest {
                 agentInstanceId,
                 mock(ExtensionConfig.class),
                 policy,
+                mock(SafeSampler.class),
+                mock(ExtensionRuntimeEvidence.class),
                 registrar,
                 mock(ScrubbingRuntime.class),
                 mock(RemoteJmxMutationRegistrationAssessor.class)

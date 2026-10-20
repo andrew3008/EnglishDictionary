@@ -20,9 +20,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import jakarta.annotation.Nonnull;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventType;
@@ -32,9 +32,6 @@ import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCod
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
-/**
- * Контракт двухфазного ограничения частоты и однократного сообщения о восстановлении.
- */
 @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class RateLimitedLoggerTest {
 
@@ -46,17 +43,12 @@ class RateLimitedLoggerTest {
     private static final AgentLogFieldsWriter NO_FIELDS = fields -> {
     };
 
-    private final AgentLogCapture capture = new AgentLogCapture();
+    @RegisterExtension
+    final AgentLogCapture capture = new AgentLogCapture();
 
     @BeforeEach
-    void installCapture() {
-        capture.install();
+    void enableInfo() {
         capture.applyLevel(AgentLogLevel.INFO);
-    }
-
-    @AfterEach
-    void restoreRuntime() {
-        capture.restore();
     }
 
     @Test

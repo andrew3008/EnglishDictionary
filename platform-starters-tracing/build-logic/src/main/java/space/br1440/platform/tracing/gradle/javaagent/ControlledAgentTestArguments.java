@@ -34,6 +34,9 @@ public abstract class ControlledAgentTestArguments implements CommandLineArgumen
     @Input
     public abstract Property<String> getExpectedOtelSdkVersion();
 
+    @Input
+    public abstract Property<String> getExpectedUpstreamCoordinate();
+
     @Internal
     public abstract DirectoryProperty getTestRepositoryRoot();
 
@@ -46,6 +49,7 @@ public abstract class ControlledAgentTestArguments implements CommandLineArgumen
         arguments.add("-DplatformTracing.otelJavaAgentJar=" + getUpstreamAgentJar().get().getAsFile().getAbsolutePath());
         arguments.add("-DplatformTracing.distributionVersion=" + getDistributionVersion().get());
         arguments.add("-DplatformTracing.expectedOtelSdkVersion=" + getExpectedOtelSdkVersion().get());
+        arguments.add("-DplatformTracing.expectedUpstreamCoordinate=" + getExpectedUpstreamCoordinate().get());
 
         if (getTestRepositoryRoot().isPresent()) {
             arguments.add("-DplatformTracing.testRepository=" + getTestRepositoryRoot().get().getAsFile().getAbsolutePath());

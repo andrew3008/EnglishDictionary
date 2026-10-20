@@ -9,10 +9,6 @@ import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentL
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
-/**
- * События span-timeout: ёмкость трекинга, сканер, force-end.
- * Домен кодов: {@code EXPORT_SPAN_TIMEOUT*}.
- */
 public enum SpanTimeoutLogEvent implements AgentLogEventType {
 
     GLOBAL_TRACKED_SPAN_CAPACITY_BELOW_PER_TRACE_CAPACITY(

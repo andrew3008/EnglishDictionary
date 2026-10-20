@@ -5,10 +5,10 @@ import java.io.PrintStream;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
 
-public final class PlatformStderrSinkFd2Probe {
+import lombok.experimental.UtilityClass;
 
-    private PlatformStderrSinkFd2Probe() {
-    }
+@UtilityClass
+public final class PlatformStderrSinkFd2Probe {
 
     public static void main(String[] args) {
         System.setErr(new PrintStream(OutputStream.nullOutputStream()));

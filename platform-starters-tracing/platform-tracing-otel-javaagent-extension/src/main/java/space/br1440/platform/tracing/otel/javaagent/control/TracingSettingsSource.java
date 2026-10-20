@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import space.br1440.platform.common.util.MapUtils;
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ControlSettingsExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
@@ -49,14 +50,6 @@ public final class TracingSettingsSource {
                 agentInstanceId);
     }
 
-    public static TracingSettingsSource isolatedSampling(SamplingExtensionConfig sampling) {
-        return create(
-                sampling,
-                ControlSettingsExtensionConfig.defaults(),
-                ExtensionDefaults.DEFAULT_SPAN_ATTRIBUTE_VALIDATION_LEVEL,
-                AgentInstanceId.unbound());
-    }
-
     public static TracingSettingsSource isolatedDefaults() {
         return isolatedValidation(ExtensionDefaults.DEFAULT_SPAN_ATTRIBUTE_VALIDATION_LEVEL);
     }
@@ -66,7 +59,8 @@ public final class TracingSettingsSource {
                 ExtensionDefaults.DEFAULT_ENABLED,
                 ExtensionDefaults.DEFAULT_SAMPLING_RATIO,
                 parseRouteRatios(ExtensionDefaults.DEFAULT_SAMPLING_ROUTE_RATIOS),
-                validationLevel);
+                validationLevel
+        );
     }
 
     public static TracingSettingsSource isolatedSampling(boolean enabled,
@@ -157,7 +151,7 @@ public final class TracingSettingsSource {
             }
 
             String encodedRatio = entry.getValue();
-            if (encodedRatio == null || encodedRatio.isBlank()) {
+            if (StringUtils.isNullOrBlank(encodedRatio)) {
                 throw invalidRouteRatio(routePrefix, "value must not be blank");
             }
 

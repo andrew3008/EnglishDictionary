@@ -8,10 +8,6 @@ import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentL
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
-/**
- * События rate limiting самого агентского логирования.
- * Домен кодов: {@code RATE_*}.
- */
 public enum LogThrottlingLogEvent implements AgentLogEventType {
 
     RATE_RECOVERY(

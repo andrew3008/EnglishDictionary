@@ -1,12 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.diagnostics;
 
-/**
- * Сброс регистрации принятой политики между тестами.
- */
-public final class PlatformLogControlTestSupport {
+import lombok.experimental.UtilityClass;
 
-    private PlatformLogControlTestSupport() {
-    }
+@UtilityClass
+public final class PlatformLogControlTestSupport {
 
     public static void reset() {
         PlatformLogControl.reset();

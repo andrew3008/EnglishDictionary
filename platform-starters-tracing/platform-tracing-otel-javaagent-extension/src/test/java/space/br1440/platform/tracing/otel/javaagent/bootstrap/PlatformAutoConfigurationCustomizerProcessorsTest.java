@@ -3,12 +3,9 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.lang.management.ManagementFactory;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +13,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import javax.management.Attribute;
 import javax.management.MBeanServer;
+import javax.management.MBeanServerFactory;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
 
@@ -28,6 +26,7 @@ import org.junit.jupiter.api.parallel.Resources;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
@@ -35,15 +34,16 @@ import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
 
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
+import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
+import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
-import io.opentelemetry.sdk.trace.samplers.Sampler;
 
 @ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 @ResourceLock(Resources.SYSTEM_PROPERTIES)
 class PlatformAutoConfigurationCustomizerProcessorsTest {
 
-    private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+    private final MBeanServer server = MBeanServerFactory.newMBeanServer();
     private BootstrapCoordinator ownedCoordinator;
 
     @AfterEach
@@ -59,10 +59,16 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         return new BootstrapAutoConfigurationCustomizerProvider(coordinator);
     }
 
+    private BootstrapCoordinator coordinator() {
+        return RuntimeEvidenceTestFixtures.coordinator(server);
+    }
+
     private static void satisfyReadinessBarrier(BootstrapCoordinator coordinator) {
         AutoconfigureSession session = coordinator.session();
         for (PlatformExtensionCapability capability : PlatformExtensionCapability.values()) {
-            session.readiness().markInstalled(capability);
+            if (capability != PlatformExtensionCapability.PLATFORM_SAMPLER_INSTALLED) {
+                session.readiness().markInstalled(capability);
+            }
         }
         session.scrubbingRuntime().acknowledgeProcessorInstalled();
         session.scrubbingRuntime().acknowledgeExportModeResolved();
@@ -70,110 +76,129 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         session.scrubbingRuntime().acknowledgeExportPathProtected();
     }
 
+    private static SdkTracerProvider buildProvider(Recorder recorder,
+                                                   BootstrapCoordinator coordinator,
+                                                   ConfigProperties config) {
+        SdkTracerProviderBuilder builder = SdkTracerProvider.builder();
+        SdkTracerProviderBuilder customized = recorder.tracerProviderCustomizer.apply(builder, config);
+        assertThat(customized).isSameAs(builder);
+
+        SdkTracerProvider provider = builder.build();
+        SafeSampler sessionSampler = coordinator.session().sampler();
+        if (provider.getSampler() != sessionSampler) {
+            provider.close();
+            throw new AssertionError("Tracer-provider customizer did not install the exact session sampler");
+        }
+        return provider;
+    }
+
     @Test
     void all_enabled_subsystems_are_added_to_tracer_provider_builder() {
         // given
+        BootstrapCoordinator coordinator = coordinator();
         Recorder recorder = new Recorder();
-        newProvider(BootstrapCoordinator.createDefault()).customize(recorder.proxy());
+        newProvider(coordinator).customize(recorder.proxy());
 
-        recorder.primeWithConfig(new MapConfigProperties(Map.of()));
+        ConfigProperties config = recorder.primeWithConfig(Map.of());
         SdkTracerProviderBuilder builder = SdkTracerProvider.builder();
 
         // when
-        SdkTracerProviderBuilder result = recorder.tracerProviderCustomizer.apply(builder, new MapConfigProperties(Map.of()));
+        SdkTracerProviderBuilder result = recorder.tracerProviderCustomizer.apply(builder, config);
 
         // then
         assertThat(result).isSameAs(builder);
 
-        SdkTracerProvider provider = builder.build();
-        try {
-            assertThat(provider).isNotNull();
-        } finally {
-            provider.shutdown();
+        try (SdkTracerProvider provider = builder.build()) {
+            assertThat(provider.getSampler()).isSameAs(coordinator.session().sampler());
         }
     }
 
     @Test
-    void sampler_customizer_creates_PlatformRuleBasedSampler() {
+    void prepared_session_owns_safe_platform_sampler() {
         // given
+        BootstrapCoordinator coordinator = coordinator();
         Recorder recorder = new Recorder();
-        newProvider(BootstrapCoordinator.createDefault()).customize(recorder.proxy());
+        newProvider(coordinator).customize(recorder.proxy());
 
-        recorder.primeWithConfig(new MapConfigProperties(Map.of()));
+        recorder.primeWithConfig(Map.of());
 
         // when
-        Sampler produced = recorder.samplerCustomizer
-                .apply(Sampler.alwaysOn(), new MapConfigProperties(Map.of()));
+        SafeSampler produced = coordinator.session().sampler();
 
         // then
-        assertThat(produced).isInstanceOf(SafeSampler.class);
-        assertThat(produced.getDescription())
-                .contains("PlatformRuleBasedSampler");
+        assertThat(produced).isExactlyInstanceOf(SafeSampler.class);
     }
 
     @Test
-    void sampler_customizer_with_explicit_ratio_creates_accepted_policy_with_default_ratio() {
+    void prepared_session_sampler_uses_explicit_startup_ratio() {
         // given
+        BootstrapCoordinator coordinator = coordinator();
         Recorder recorder = new Recorder();
-        newProvider(BootstrapCoordinator.createDefault()).customize(recorder.proxy());
+        newProvider(coordinator).customize(recorder.proxy());
 
-        recorder.primeWithConfig(new MapConfigProperties(Map.of("platform.tracing.sampling.ratio", "0.1")));
+        recorder.primeWithConfig(Map.of("platform.tracing.sampling.ratio", "0.1"));
 
         // when
-        Sampler produced = recorder.samplerCustomizer
-                .apply(Sampler.alwaysOn(), new MapConfigProperties(Map.of()));
+        double actualRatio = coordinator.session().policy().current().samplingRatio();
 
         // then
-        assertThat(produced.getDescription())
-                .contains("PlatformRuleBasedSampler")
-                .contains("defaultRatio=0.10");
+        assertThat(actualRatio).isEqualTo(0.1d);
     }
 
     @Test
     void MBean_registration_runs_after_activation() {
         // given
-        BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
+        BootstrapCoordinator coordinator = coordinator();
         Recorder recorder = new Recorder();
         newProvider(coordinator).customize(recorder.proxy());
 
-        recorder.primeWithConfig(new MapConfigProperties(Map.of()));
-        recorder.samplerCustomizer.apply(Sampler.alwaysOn(), new MapConfigProperties(Map.of()));
+        ConfigProperties config = recorder.primeWithConfig(Map.of());
 
-        // then
-        assertThat(server.isRegistered(DomainObjectNames.SAMPLING))
-                .as("до activation() MBean ещё не зарегистрирован (BLOCKER-3, PREPARED owns no MBean)")
-                .isFalse();
+        try (SdkTracerProvider provider = buildProvider(recorder, coordinator, config)) {
+            // then
+            assertThat(server.isRegistered(DomainObjectNames.SAMPLING))
+                    .as("до activation() runtime SAMPLING MBean ещё не зарегистрирован")
+                    .isFalse();
 
-        // when
-        satisfyReadinessBarrier(coordinator);
-        coordinator.activate();
+            // when
+            satisfyReadinessBarrier(coordinator);
+            assertThat(coordinator.session().readiness().snapshot().installedCapabilities())
+                    .doesNotContain(PlatformExtensionCapability.PLATFORM_SAMPLER_INSTALLED);
+            coordinator.activate(provider);
 
-        // then
-        assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
+            // then
+            assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
+            assertThat(coordinator.session().readiness().snapshot().installedCapabilities())
+                    .contains(PlatformExtensionCapability.PLATFORM_SAMPLER_INSTALLED);
+        }
     }
 
     @Test
     void custom_sampling_ratio_is_reflected_in_registered_MBean() throws Exception {
         // given
-        BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
+        BootstrapCoordinator coordinator = coordinator();
         Recorder recorder = new Recorder();
         newProvider(coordinator).customize(recorder.proxy());
 
-        recorder.primeWithConfig(new MapConfigProperties(Map.of("platform.tracing.sampling.ratio", "0.42")));
-        recorder.samplerCustomizer.apply(Sampler.alwaysOn(), new MapConfigProperties(Map.of()));
-        satisfyReadinessBarrier(coordinator);
-        coordinator.activate();
+        ConfigProperties config = recorder.primeWithConfig(
+                Map.of("platform.tracing.sampling.ratio", "0.42")
+        );
 
-        ObjectName objectName = DomainObjectNames.SAMPLING;
+        try (SdkTracerProvider provider = buildProvider(recorder, coordinator, config)) {
+            satisfyReadinessBarrier(coordinator);
+            coordinator.activate(provider);
 
-        // then
-        assertThat(samplingRatioFromObservation(objectName)).isEqualTo(0.42d);
+            ObjectName objectName = DomainObjectNames.SAMPLING;
 
-        // when/then
-        org.junit.jupiter.api.Assertions.assertThrows(Exception.class,
-                () -> server.setAttribute(objectName,
-                        new javax.management.Attribute("SamplingObservation", null)));
-        assertThat(samplingRatioFromObservation(objectName)).isEqualTo(0.42d);
+            // then
+            assertThat(samplingRatioFromObservation(objectName)).isEqualTo(0.42d);
+
+            // when/then
+            org.junit.jupiter.api.Assertions.assertThrows(Exception.class,
+                    () -> server.setAttribute(objectName,
+                            new javax.management.Attribute("SamplingObservation", null)));
+            assertThat(samplingRatioFromObservation(objectName)).isEqualTo(0.42d);
+        }
     }
 
     private double samplingRatioFromObservation(ObjectName objectName) throws Exception {
@@ -184,56 +209,53 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     @Test
     void extension_order_equals_100_priority_over_default() {
         // given/when/then
-        assertThat(newProvider(BootstrapCoordinator.createDefault()).order()).isEqualTo(100);
+        assertThat(newProvider(coordinator()).order()).isEqualTo(100);
     }
 
     @Test
     void without_explicit_ratio_default_ratio_is_used() {
         // given
+        BootstrapCoordinator coordinator = coordinator();
         Recorder recorder = new Recorder();
-        newProvider(BootstrapCoordinator.createDefault()).customize(recorder.proxy());
+        newProvider(coordinator).customize(recorder.proxy());
 
-        recorder.primeWithConfig(new MapConfigProperties(Map.of()));
+        recorder.primeWithConfig(Map.of());
 
         // when
-        Sampler produced = recorder.samplerCustomizer
-                .apply(Sampler.alwaysOn(), new MapConfigProperties(Map.of()));
+        double actualRatio = coordinator.session().policy().current().samplingRatio();
 
         // then
-        assertThat(produced).isNotNull();
-        assertThat(produced.getDescription()).contains("defaultRatio=0.10");
+        assertThat(actualRatio).isEqualTo(ExtensionDefaults.DEFAULT_SAMPLING_RATIO);
     }
 
     @Test
     void unknown_scrubbing_rule_name_does_not_crash_configuration() {
         // given
+        BootstrapCoordinator coordinator = coordinator();
         Recorder recorder = new Recorder();
-        newProvider(BootstrapCoordinator.createDefault()).customize(recorder.proxy());
+        newProvider(coordinator).customize(recorder.proxy());
 
         SdkTracerProviderBuilder builder = SdkTracerProvider.builder();
-        Map<String, String> props = new HashMap<>();
-        recorder.primeWithConfig(new MapConfigPropertiesWithList(props,
+        ConfigProperties config = recorder.primeWithConfig(Map.of(
                 "platform.tracing.javaagent.scrubbing.built-in-rules",
-                List.of("unknown-rule-x", "email")));
+                "unknown-rule-x,email"
+        ));
 
         // when
-        SdkTracerProviderBuilder result = recorder.tracerProviderCustomizer.apply(builder,
-                new MapConfigPropertiesWithList(props,
-                        "platform.tracing.javaagent.scrubbing.built-in-rules",
-                        List.of("unknown-rule-x", "email")));
+        SdkTracerProviderBuilder result = recorder.tracerProviderCustomizer.apply(builder, config);
 
         // then
         assertThat(result).isSameAs(builder);
         try (SdkTracerProvider provider = builder.build()) {
-            assertThat(provider).isNotNull();
+            assertThat(provider.getSampler()).isSameAs(coordinator.session().sampler());
         }
     }
 
     @Test
-    void disabling_all_subsystems_does_not_create_MBean_before_sampler_creation() {
+    void disabling_all_subsystems_does_not_create_MBean_during_failed_preparation() {
         // given
         Recorder recorder = new Recorder();
-        newProvider(BootstrapCoordinator.createDefault()).customize(recorder.proxy());
+        newProvider(coordinator()).customize(recorder.proxy());
 
         Map<String, String> disableAll = Map.of(
                 "platform.tracing.javaagent.scrubbing.enabled", "false",
@@ -242,7 +264,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         );
 
         // when/then
-        assertThatThrownBy(() -> recorder.primeWithConfig(new MapConfigProperties(disableAll)))
+        assertThatThrownBy(() -> recorder.primeWithConfig(disableAll))
                 .isInstanceOf(BootstrapException.class)
                 .satisfies(failure -> assertThat(failure.getCause())
                         .hasMessageContaining("scrubbing.enabled=false is forbidden"));
@@ -251,15 +273,29 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     }
 
     private static final class Recorder {
-        BiFunction<Sampler, ConfigProperties, Sampler> samplerCustomizer;
         BiFunction<SdkTracerProviderBuilder, ConfigProperties, SdkTracerProviderBuilder> tracerProviderCustomizer;
+        BiFunction<Resource, ConfigProperties, Resource> resourceCustomizer;
 
         private final List<Function<ConfigProperties, Map<String, String>>> propertiesCustomizers = new ArrayList<>();
+        private boolean resourceCustomized;
 
-        void primeWithConfig(ConfigProperties config) {
+        ConfigProperties primeWithConfig(Map<String, String> initialProperties) {
+            Map<String, String> effectiveProperties = new HashMap<>(initialProperties);
+            ConfigProperties effective = DefaultConfigProperties.createFromMap(Map.copyOf(effectiveProperties));
             for (Function<ConfigProperties, Map<String, String>> pc : propertiesCustomizers) {
-                pc.apply(config);
+                effectiveProperties.putAll(pc.apply(effective));
+                effective = DefaultConfigProperties.createFromMap(Map.copyOf(effectiveProperties));
             }
+
+            if (resourceCustomizer == null) {
+                throw new IllegalStateException("Resource customizer was not registered");
+            }
+            if (resourceCustomized) {
+                throw new IllegalStateException("Resource customizer must be invoked exactly once");
+            }
+            resourceCustomized = true;
+            resourceCustomizer.apply(Resource.empty(), effective);
+            return effective;
         }
 
         @SuppressWarnings("unchecked")
@@ -268,14 +304,14 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
                     AutoConfigurationCustomizer.class.getClassLoader(),
                     new Class<?>[]{AutoConfigurationCustomizer.class},
                     (Object proxyObj, Method method, Object[] args) -> switch (method.getName()) {
-                        case "addSamplerCustomizer" -> {
-                            this.samplerCustomizer = (BiFunction<Sampler, ConfigProperties, Sampler>) args[0];
-                            yield proxyObj;
-                        }
-
                         case "addTracerProviderCustomizer" -> {
                             this.tracerProviderCustomizer =
                                     (BiFunction<SdkTracerProviderBuilder, ConfigProperties, SdkTracerProviderBuilder>) args[0];
+                            yield proxyObj;
+                        }
+
+                        case "addResourceCustomizer" -> {
+                            this.resourceCustomizer = (BiFunction<Resource, ConfigProperties, Resource>) args[0];
                             yield proxyObj;
                         }
 
@@ -292,62 +328,6 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         }
     }
 
-    private static class MapConfigProperties implements ConfigProperties {
-        protected final Map<String, String> data;
-
-        MapConfigProperties(Map<String, String> data) {
-            this.data = new HashMap<>(data);
-        }
-
-        @Override public String getString(String name) { return data.get(name); }
-
-        @Override public Boolean getBoolean(String name) {
-            String v = data.get(name);
-            return (v == null) ? null : Boolean.parseBoolean(v);
-        }
-
-        @Override public Integer getInt(String name) {
-            String v = data.get(name);
-            return (v == null) ? null : Integer.valueOf(v);
-        }
-
-        @Override public Long getLong(String name) {
-            String v = data.get(name);
-            return (v == null) ? null : Long.valueOf(v);
-        }
-
-        @Override public Double getDouble(String name) {
-            String v = data.get(name);
-            return (v == null) ? null : Double.valueOf(v);
-        }
-
-        @Override public Duration getDuration(String name) { return null; }
-
-        @Override public List<String> getList(String name) { return Collections.emptyList(); }
-
-        @Override public Map<String, String> getMap(String name) { return Collections.emptyMap(); }
-    }
-
-    private static final class MapConfigPropertiesWithList extends MapConfigProperties {
-        private final String listKey;
-        private final List<String> listValue;
-
-        MapConfigPropertiesWithList(Map<String, String> data, String listKey, List<String> listValue) {
-            super(data);
-            this.listKey = listKey;
-            this.listValue = listValue;
-        }
-
-        @Override
-        public List<String> getList(String name) {
-            if (listKey.equals(name)) {
-                return listValue;
-            }
-
-            return Collections.emptyList();
-        }
-    }
-
     @Test
     void object_name_sampling_MBean_matches_public_contract() {
         // given/when/then
@@ -358,25 +338,28 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     @Test
     void setSamplingRatio_via_platform_JMX_is_rejected() throws Exception {
         // given
-        BootstrapCoordinator coordinator = RuntimeEvidenceTestFixtures.coordinator();
+        BootstrapCoordinator coordinator = coordinator();
         Recorder recorder = new Recorder();
         newProvider(coordinator).customize(recorder.proxy());
 
-        recorder.primeWithConfig(new MapConfigProperties(Map.of("platform.tracing.sampling.ratio", "0.1")));
-        recorder.samplerCustomizer.apply(Sampler.alwaysOn(), new MapConfigProperties(Map.of()));
-
-        satisfyReadinessBarrier(coordinator);
-        coordinator.activate();
-
-        ObjectName objectName = DomainObjectNames.SAMPLING;
-
-        // when/then
-        Assertions.assertThrows(
-                Exception.class,
-                () -> server.setAttribute(objectName, new Attribute("SamplingObservation", null))
+        ConfigProperties config = recorder.primeWithConfig(
+                Map.of("platform.tracing.sampling.ratio", "0.1")
         );
 
-        // then
-        assertThat(samplingRatioFromObservation(objectName)).isEqualTo(0.1d);
+        try (SdkTracerProvider provider = buildProvider(recorder, coordinator, config)) {
+            satisfyReadinessBarrier(coordinator);
+            coordinator.activate(provider);
+
+            ObjectName objectName = DomainObjectNames.SAMPLING;
+
+            // when/then
+            Assertions.assertThrows(
+                    Exception.class,
+                    () -> server.setAttribute(objectName, new Attribute("SamplingObservation", null))
+            );
+
+            // then
+            assertThat(samplingRatioFromObservation(objectName)).isEqualTo(0.1d);
+        }
     }
 }

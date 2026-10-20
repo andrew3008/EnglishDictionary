@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import javax.management.MBeanServer;
+import javax.management.MBeanServerFactory;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -24,7 +25,7 @@ import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 @SuppressWarnings("resource")
 class PlatformTracingMBeanRegistrarRegistrationTest {
 
-    private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+    private final MBeanServer server = MBeanServerFactory.newMBeanServer();
     private final List<AutoCloseable> registrations = new ArrayList<>();
     private PlatformTracingMBeanRegistrar registrar;
 
@@ -40,17 +41,24 @@ class PlatformTracingMBeanRegistrarRegistrationTest {
 
     @Test
     void constructorDoesNotRegisterReadinessMBean() {
-        // given/when
+        // given
+        MBeanServer platformServer = ManagementFactory.getPlatformMBeanServer();
+        boolean registeredBefore =
+                platformServer.isRegistered(DomainObjectNames.EXTENSION_READINESS);
+
+        // when
         registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
+
         // then
-        assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isFalse();
+        assertThat(platformServer.isRegistered(DomainObjectNames.EXTENSION_READINESS))
+                .isEqualTo(registeredBefore);
     }
 
     @Test
     void diagnosticAndRuntimeRegistrationsAreGenerationSafe() throws Exception {
         // given
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
-        registrar = new PlatformTracingMBeanRegistrar(agentInstanceId);
+        registrar = new PlatformTracingMBeanRegistrar(server, agentInstanceId);
         TracingSettingsSource policyA = boundSampling(agentInstanceId, true, Map.of(), 0.1d);
         TracingSettingsSource policyB = boundSampling(agentInstanceId, true, Map.of(), 0.9d);
 
@@ -94,7 +102,7 @@ class PlatformTracingMBeanRegistrarRegistrationTest {
     void closedRuntimeGenerationAllowsNewRegistrationWithoutOwners() throws Exception {
         // given
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
-        registrar = new PlatformTracingMBeanRegistrar(agentInstanceId);
+        registrar = new PlatformTracingMBeanRegistrar(server, agentInstanceId);
         trackRegistration(registrar.registerDiagnosticReadiness(
                 initializingReadinessProjection(agentInstanceId)));
 

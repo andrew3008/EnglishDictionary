@@ -63,7 +63,7 @@
 Controlled Platform Agent поставляется артефактом
 `space.br1440.platform.starters.tracing:platform-tracing-javaagent:<version>`.
 
-Это один готовый к запуску JAR: полный OpenTelemetry Java Agent `2.30.0` со вложенным
+Это один готовый к запуску JAR: полный OpenTelemetry Java Agent `2.32.0` со вложенным
 `extensions/platform-tracing-otel-javaagent-extension.jar`. Extension не нужно и нельзя
 передавать отдельно через `otel.javaagent.extensions`. Версия агента должна точно совпадать
 с версией starter/BOM release train; сам агент не входит в application BOM. Deployment
@@ -107,9 +107,6 @@ plugins {
 Dockerfile-канал (`docker-build-args.env`, `PLATFORM_AGENT_JAR`) удалён: delivery в образ —
 только через Jib. Сборки, копирующие JAR из `build/platform-tracing/agent/` вручную,
 продолжают работать, но контракт запуска для них не формируется плагином.
-
-Это build-time верификация. Runtime-проверка SHA-256 до старта JVM остаётся за
-`ControlledAgentRuntimeAttestor` и deployment/GitOps-слоем.
 
 Стартовая проверка в `spring-boot-starter-platform-tracing-autoconfigure`
 (`AgentStartupVerifier`) сопоставляет прочитанный readiness snapshot агента с флагом

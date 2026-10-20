@@ -11,12 +11,12 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class AcceptedPolicyTestFixtures {
 
     public static final AgentInstanceId AGENT_INSTANCE_ID = AgentInstanceId.parse("00000000-0000-0000-0000-000000000001");
-
-    private AcceptedPolicyTestFixtures() {
-    }
 
     public static TracingSettingsStore bootstrapAgentDefaultsStore(AgentInstanceId agentInstanceId,
                                                                    TracingSettings policy) {

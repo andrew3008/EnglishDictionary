@@ -60,7 +60,7 @@ final class SpanAttributeInPlaceScrubber {
 
         try {
             attributes.forEach((key, value) -> {
-                if (boundaryOwned(key)) {
+                if (boundaryOwned(span, key)) {
                     return;
                 }
 
@@ -112,13 +112,18 @@ final class SpanAttributeInPlaceScrubber {
         return actions.hashMissingKey.sum();
     }
 
-    private static boolean boundaryOwned(AttributeKey<?> key) {
-        return (key.getType() == AttributeType.VALUE);
+    private static boolean boundaryOwned(ReadWriteSpan span, AttributeKey<?> snapshotKey) {
+        if (snapshotKey.getType() == AttributeType.VALUE) {
+            return true;
+        }
+
+        Object valueProjection = span.getAttribute(AttributeKey.valueKey(snapshotKey.getKey()));
+        return (valueProjection != null) && (span.getAttribute(snapshotKey) == null);
     }
 
     private void applyFailClosedSnapshot(ReadWriteSpan span, Attributes attributes) {
         attributes.forEach((key, ignored) -> {
-            if (boundaryOwned(key)) {
+            if (boundaryOwned(span, key)) {
                 return;
             }
 

@@ -4,10 +4,10 @@ import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogContr
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingTestSupport;
 import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagationGate;
 
-public final class SharedBootstrapBindingsReset {
+import lombok.experimental.UtilityClass;
 
-    private SharedBootstrapBindingsReset() {
-    }
+@UtilityClass
+public final class SharedBootstrapBindingsReset {
 
     public static void reset() {
         PlatformPropagationGate.resetSharedForTests();

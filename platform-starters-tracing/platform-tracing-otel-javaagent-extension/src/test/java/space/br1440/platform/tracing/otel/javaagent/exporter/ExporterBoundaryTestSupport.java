@@ -18,17 +18,14 @@ import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.sdk.trace.data.StatusData;
 import io.opentelemetry.sdk.testing.trace.TestSpanData;
 
-/**
- * Shared fixtures for exporter-boundary scrubbing tests (P5).
- */
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class ExporterBoundaryTestSupport {
 
     static final SpanContext LINK_TARGET = SpanContext.create(
             "00000000000000000000000000000abc", "000000000000abc1",
             TraceFlags.getDefault(), TraceState.getDefault());
-
-    private ExporterBoundaryTestSupport() {
-    }
 
     static ScrubbingRuntime runtimeOf(List<SpanAttributeScrubbingRule> builtIn) {
         return runtimeOf(builtIn, List.of(), null);
@@ -42,14 +39,18 @@ final class ExporterBoundaryTestSupport {
                                       List<SpanAttributeScrubbingRule> externalExtension,
                                       String hmacKey) {
         List<RuntimeRule> rules = new ArrayList<>();
+
         for (SpanAttributeScrubbingRule rule : builtIn) {
             rules.add(new RuntimeRule(new ExecutableRule(rule, new RuleCircuitBreaker(rule.name())), RuleOrigin.BUILT_IN));
         }
+
         for (SpanAttributeScrubbingRule rule : externalExtension) {
             rules.add(new RuntimeRule(new ExecutableRule(rule, new RuleCircuitBreaker(rule.name())), RuleOrigin.EXTERNAL_EXTENSION));
         }
+
         return ScrubbingRuntimeTestFixtures.create(
-                rules, 1L, MaskedSecret.of(hmacKey), false);
+                rules, 1L, MaskedSecret.of(hmacKey), false
+        );
     }
 
     static TestSpanData.Builder baseSpan(String name) {

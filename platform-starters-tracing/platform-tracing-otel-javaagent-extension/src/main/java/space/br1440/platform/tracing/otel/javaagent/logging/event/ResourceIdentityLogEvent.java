@@ -9,10 +9,6 @@ import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentL
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
-/**
- * События разрешения resource identity: hostname, upstream service, атрибуты ресурса.
- * Домен кодов: {@code BOOT_HOSTNAME_*, BOOT_RESOURCE_*, BOOT_UPSTREAM_*}.
- */
 public enum ResourceIdentityLogEvent implements AgentLogEventType {
 
     UPSTREAM_SERVICE_EXTRACTION_FAILED(

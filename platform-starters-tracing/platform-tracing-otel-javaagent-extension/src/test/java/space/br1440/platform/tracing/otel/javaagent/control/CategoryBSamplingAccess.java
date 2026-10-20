@@ -8,10 +8,10 @@ import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicySnapsh
 import space.br1440.platform.tracing.runtime.sampling.properties.SamplingPolicyProperties;
 import space.br1440.platform.tracing.runtime.sampling.properties.SamplingPolicySnapshotFactory;
 
-public final class CategoryBSamplingAccess {
+import lombok.experimental.UtilityClass;
 
-    private CategoryBSamplingAccess() {
-    }
+@UtilityClass
+public final class CategoryBSamplingAccess {
 
     public static SamplingPolicySnapshot snapshot(List<String> dropPaths, Set<String> forceRecordValues) {
         return SamplingPolicySnapshotFactory.create(new SamplingPolicyProperties(

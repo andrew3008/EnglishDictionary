@@ -36,7 +36,7 @@ public final class ExtensionDefaults {
     public static final int DEFAULT_SPAN_TIMEOUT_MAX_TRACKED_SPANS_PER_TRACE = 1_024;
     public static final int DEFAULT_SPAN_TIMEOUT_MAX_TRACKED_SPANS = 60_000;
 
-    public static final String DEFAULT_QUEUE_OVERFLOW_POLICY = "DROP_OLDEST";
+    public static final QueueOverflowPolicy DEFAULT_QUEUE_OVERFLOW_POLICY = QueueOverflowPolicy.DROP_OLDEST;
     public static final Duration DEFAULT_DROP_OLDEST_SHUTDOWN_TIMEOUT = Duration.ofSeconds(10);
 
     public static final boolean DEFAULT_BAGGAGE_PROPAGATION_ENABLED = true;

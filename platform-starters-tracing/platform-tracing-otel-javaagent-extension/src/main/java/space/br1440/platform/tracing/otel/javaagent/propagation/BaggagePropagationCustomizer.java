@@ -14,16 +14,15 @@ public final class BaggagePropagationCustomizer {
             return propagator;
         }
 
-        TextMapPropagator outboundPolicy = propagator;
-        if (baggage.propagationEnabled()) {
-            outboundPolicy = new FilteringBaggagePropagator(
-                    propagator,
-                    new HashSet<>(baggage.outboundHeaderAllowedKeys()),
-                    baggage.outboundHeaderDenyPatterns()
-            );
+        if (!baggage.propagationEnabled()) {
+            return TextMapPropagator.noop();
         }
 
-        SafeTextMapPropagator safePropagator = new SafeTextMapPropagator(outboundPolicy);
-        return new FailClosedCorrelationBaggagePropagator(safePropagator);
+        FilteringBaggagePropagator filtered = new FilteringBaggagePropagator(
+                propagator,
+                new HashSet<>(baggage.outboundHeaderAllowedKeys()),
+                baggage.outboundHeaderDenyPatterns()
+        );
+        return new FailClosedCorrelationBaggagePropagator(new SafeTextMapPropagator(filtered));
     }
 }

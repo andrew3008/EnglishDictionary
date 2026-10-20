@@ -253,6 +253,7 @@ def registerTestTask = { SourceSet sourceSet, String taskDescription ->
         arguments.getUpstreamAgentJar().fileProvider(upstreamAgentFile)
         arguments.getDistributionVersion().set(project.version.toString())
         arguments.getExpectedOtelSdkVersion().set(expectedOtelSdkVersion)
+        arguments.getExpectedUpstreamCoordinate().set(upstreamCoordinate)
         task.jvmArgumentProviders.add(arguments)
     }
 }

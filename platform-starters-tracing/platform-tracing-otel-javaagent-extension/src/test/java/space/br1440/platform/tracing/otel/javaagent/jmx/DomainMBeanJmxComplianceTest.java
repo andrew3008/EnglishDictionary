@@ -6,7 +6,6 @@ import static space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxR
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,11 +16,13 @@ import java.util.Map;
 import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
 import javax.management.MBeanServer;
+import javax.management.MBeanServerFactory;
 import javax.management.ObjectName;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
@@ -42,7 +43,7 @@ class DomainMBeanJmxComplianceTest {
             DomainObjectNames.EXTENSION_READINESS
     );
 
-    private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+    private final MBeanServer server = MBeanServerFactory.newMBeanServer();
     private final List<AutoCloseable> registrations = new ArrayList<>();
     private PlatformTracingMBeanRegistrar registrar;
 
@@ -61,7 +62,7 @@ class DomainMBeanJmxComplianceTest {
     void liveManagementContractMatchesCommittedBaseline() throws Exception {
         // given
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
-        registrar = new PlatformTracingMBeanRegistrar(agentInstanceId);
+        registrar = new PlatformTracingMBeanRegistrar(server, agentInstanceId);
         wireRequiredComponents(registrar, samplingPolicy(agentInstanceId));
 
         // when
@@ -95,7 +96,7 @@ class DomainMBeanJmxComplianceTest {
     void platformDomainMBeansExposeNoMutatingOperations() throws Exception {
         // given
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
-        registrar = new PlatformTracingMBeanRegistrar(agentInstanceId);
+        registrar = new PlatformTracingMBeanRegistrar(server, agentInstanceId);
         wireRequiredComponents(registrar, samplingPolicy(agentInstanceId));
 
         // when/then
@@ -170,7 +171,7 @@ class DomainMBeanJmxComplianceTest {
 
     private static String requiredProperty(String name) {
         String value = System.getProperty(name);
-        if (value == null || value.isBlank()) {
+        if (StringUtils.isNullOrBlank(value)) {
             throw new IllegalStateException("Required system property is not set: " + name);
         }
         return value;

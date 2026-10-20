@@ -20,7 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
-public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallback {
+public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallback, AutoCloseable {
 
     public static final String RESOURCE_LOCK = "agent-logging-runtime";
 
@@ -28,6 +28,12 @@ public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallb
 
     private ByteArrayOutputStream buffer;
     private AgentLoggingRuntime.ScopedInstallation installation;
+
+    public static AgentLogCapture installed() {
+        AgentLogCapture capture = new AgentLogCapture();
+        capture.install();
+        return capture;
+    }
 
     @Override
     public void beforeEach(ExtensionContext context) {
@@ -39,7 +45,12 @@ public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallb
         restore();
     }
 
-    public void install() {
+    @Override
+    public void close() {
+        restore();
+    }
+
+    private void install() {
         if (installation != null) {
             throw new IllegalStateException("Agent log capture is already installed");
         }
@@ -54,7 +65,7 @@ public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallb
         AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.TRACE);
     }
 
-    public void restore() {
+    private void restore() {
         if (installation != null) {
             installation.close();
             installation = null;
@@ -68,11 +79,7 @@ public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallb
     }
 
     public List<CapturedLogEvent> events() {
-        if (buffer == null) {
-            return List.of();
-        }
-
-        String text = buffer.toString(StandardCharsets.UTF_8);
+        String text = capturedText();
         List<CapturedLogEvent> events = new ArrayList<>();
         for (String line : text.split("\n", -1)) {
             if (line.isBlank()) {
@@ -86,11 +93,7 @@ public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallb
     }
 
     public List<JsonNode> jsonEvents() {
-        if (buffer == null) {
-            return List.of();
-        }
-
-        String text = buffer.toString(StandardCharsets.UTF_8);
+        String text = capturedText();
         List<JsonNode> events = new ArrayList<>();
         for (String line : text.split("\n", -1)) {
             if (line.isBlank()) {
@@ -123,6 +126,14 @@ public final class AgentLogCapture implements BeforeEachCallback, AfterEachCallb
         }
 
         return out.toString();
+    }
+
+    private String capturedText() {
+        if (buffer == null) {
+            throw new IllegalStateException("Agent log capture is not installed");
+        }
+
+        return buffer.toString(StandardCharsets.UTF_8);
     }
 
     private static AgentEventCode eventCode(String code) {

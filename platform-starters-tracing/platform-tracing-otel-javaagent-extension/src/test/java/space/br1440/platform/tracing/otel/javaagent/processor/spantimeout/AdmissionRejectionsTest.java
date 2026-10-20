@@ -5,9 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
@@ -22,18 +21,10 @@ class AdmissionRejectionsTest {
     private static final long WINDOW_NANOS = Duration.ofSeconds(60).toNanos();
 
     private final AtomicLong clock = new AtomicLong();
-    private final AgentLogCapture logs = new AgentLogCapture();
     private final AdmissionRejections rejections = new AdmissionRejections(7, 500, 40, clock::get);
 
-    @BeforeEach
-    void installCapture() {
-        logs.install();
-    }
-
-    @AfterEach
-    void restoreCapture() {
-        logs.restore();
-    }
+    @RegisterExtension
+    final AgentLogCapture logs = new AgentLogCapture();
 
     @Test
     void countIncrementsOnlyTheCounterOfItsOwnReason() {

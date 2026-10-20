@@ -1,18 +1,14 @@
 package space.br1440.platform.tracing.otel.javaagent.logging.event;
 
+import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.noCause;
+import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.requiresCause;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.ERROR;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.INFO;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.WARN;
-import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.noCause;
-import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.requiresCause;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
-/**
- * События установки и bootstrap расширения: SPI-guard, JMX-guard, регистрация процессоров, build metadata.
- * Домен кодов: {@code BOOT_ (кроме resource identity)}.
- */
 public enum BootstrapLogEvent implements AgentLogEventType {
 
     REMOTE_JMX_MUTATION_REGISTRATION_DENIED(

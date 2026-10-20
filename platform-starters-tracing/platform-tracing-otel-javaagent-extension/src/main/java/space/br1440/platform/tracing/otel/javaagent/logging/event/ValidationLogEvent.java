@@ -1,16 +1,12 @@
 package space.br1440.platform.tracing.otel.javaagent.logging.event;
 
 import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.noCause;
-import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.WARN;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.ERROR;
+import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.WARN;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
-/**
- * События валидации обязательных атрибутов span.
- * Домен кодов: {@code VALID_*}.
- */
 public enum ValidationLogEvent implements AgentLogEventType {
 
     VALIDATION_DISABLED(

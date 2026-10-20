@@ -3,20 +3,21 @@ package space.br1440.platform.tracing.otel.javaagent.factory;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collection;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import io.opentelemetry.sdk.common.CompletableResultCode;
-import io.opentelemetry.sdk.trace.data.SpanData;
-import io.opentelemetry.sdk.trace.export.SpanExporter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 
-/**
- * Проверяет safe export path и отсутствие повторного replacement-aware wrapping.
- */
+import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
+import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
+import io.opentelemetry.sdk.common.CompletableResultCode;
+import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.export.SpanExporter;
+
 class PlatformExportProcessorFactorySafeWrapTest {
 
     @Test
@@ -49,6 +50,49 @@ class PlatformExportProcessorFactorySafeWrapTest {
 
         // then
         assertThat(twice).isSameAs(once);
+    }
+
+    @Test
+    void real_otlp_http_exporter_accepts_wrapper_then_raw_delegate_shutdown() {
+        // given
+        SpanExporter rawDelegate = OtlpHttpSpanExporter.builder()
+                .setEndpoint("http://127.0.0.1:1/v1/traces")
+                .build();
+
+        assertWrapperThenRawDelegateShutdown(rawDelegate);
+    }
+
+    @Test
+    void real_otlp_grpc_exporter_accepts_wrapper_then_raw_delegate_shutdown() {
+        // given
+        SpanExporter rawDelegate = OtlpGrpcSpanExporter.builder()
+                .setEndpoint("http://127.0.0.1:1")
+                .build();
+
+        assertWrapperThenRawDelegateShutdown(rawDelegate);
+    }
+
+    private static void assertWrapperThenRawDelegateShutdown(SpanExporter rawDelegate) {
+        PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
+                null,
+                ScrubbingRuntimeTestFixtures.disabled()
+        );
+
+        try {
+            SpanExporter wrapper = factory.captureExporter(rawDelegate);
+
+            // when
+            CompletableResultCode wrapperShutdown = wrapper.shutdown().join(2, TimeUnit.SECONDS);
+            CompletableResultCode rawDelegateShutdown = rawDelegate.shutdown().join(2, TimeUnit.SECONDS);
+
+            // then
+            assertThat(wrapperShutdown.isDone()).isTrue();
+            assertThat(wrapperShutdown.isSuccess()).isTrue();
+            assertThat(rawDelegateShutdown.isDone()).isTrue();
+            assertThat(rawDelegateShutdown.isSuccess()).isTrue();
+        } finally {
+            rawDelegate.shutdown().join(2, TimeUnit.SECONDS);
+        }
     }
 
     private static final class CountingExporter implements SpanExporter {

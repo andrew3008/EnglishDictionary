@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test;
 class PublishedAgentCompositionTest {
 
     private static final String THIRD_PARTY_NOTICES_ENTRY = "META-INF/platform-tracing/THIRD-PARTY-NOTICES.txt";
-    private static final String OTEL_JAVAAGENT_COORDINATE = "io.opentelemetry.javaagent:opentelemetry-javaagent:2.30.0";
 
     @Test
     void published_agent_is_otel_payload_plus_one_extension_and_identity() throws IOException {
@@ -87,7 +86,7 @@ class PublishedAgentCompositionTest {
                 version,
                 AgentArchive.EXTENSION_ENTRY,
                 extensionSha256,
-                OTEL_JAVAAGENT_COORDINATE,
+                AgentArchive.requiredProperty("platformTracing.expectedUpstreamCoordinate"),
                 otelSha256
         );
 

@@ -42,7 +42,6 @@ class BspDropOldestNoDoubleExportTest {
                 .addPropertiesSupplier(() -> Map.of(
                         "otel.metrics.exporter", "none",
                         "otel.logs.exporter", "none",
-                        "otel.traces.sampler", "always_on",
                         "otel.traces.exporter", "otlp",
                         "otel.exporter.otlp.endpoint", "http://127.0.0.1:1",
                         "otel.bsp.schedule.delay", "100",
@@ -51,7 +50,7 @@ class BspDropOldestNoDoubleExportTest {
                         "platform.tracing.sampling.ratio", "1.0"
                 ))
                 .addSpanExporterCustomizer((existing, cfg) -> counting);
-        new BootstrapAutoConfigurationCustomizerProvider(BootstrapCoordinator.createDefault()).customize(builder);
+        new BootstrapAutoConfigurationCustomizerProvider(RuntimeEvidenceTestFixtures.coordinator()).customize(builder);
 
         // when
         AutoConfiguredOpenTelemetrySdk sdk = builder.build();

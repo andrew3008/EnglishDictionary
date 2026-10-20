@@ -3,17 +3,13 @@ package space.br1440.platform.tracing.otel.javaagent.logging.event;
 import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.noCause;
 import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.optionalCause;
 import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.requiresCause;
+import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.ERROR;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.INFO;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.WARN;
-import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.ERROR;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
-/**
- * События сборки и работы export pipeline: factory fallback, composite processor, worker, DROP_OLDEST.
- * Домен кодов: {@code EXPORT_FACTORY, EXPORT_COMPOSITE_LIFECYCLE, EXPORT_CALLBACK, EXPORT_WORKER, EXPORT_DROP_OLDEST}.
- */
 public enum ExportPipelineLogEvent implements AgentLogEventType {
 
     FOREIGN_SAFE_SPAN_EXPORTER_REWRAP_REJECTED(
@@ -54,13 +50,6 @@ public enum ExportPipelineLogEvent implements AgentLogEventType {
             )
     ),
 
-    STOCK_BATCH_SPAN_PROCESSOR_SHUTDOWN_FAILED(
-            requiresCause(
-                    AgentEventCode.EXPORT_FACTORY, WARN,
-                    "Stock BatchSpanProcessor.shutdown() failed"
-            )
-    ),
-
     STOCK_BATCH_SPAN_PROCESSOR_SHUTDOWN_UNSUCCESSFUL(
             noCause(
                     AgentEventCode.EXPORT_FACTORY, WARN,
@@ -74,14 +63,6 @@ public enum ExportPipelineLogEvent implements AgentLogEventType {
                     AgentEventCode.EXPORT_FACTORY, INFO,
                     "DROP_OLDEST export processor enabled",
                     AgentLogField.COUNT
-            )
-    ),
-
-    UNKNOWN_OVERFLOW_POLICY_DEFAULTED(
-            noCause(
-                    AgentEventCode.EXPORT_FACTORY, WARN,
-                    "Unknown overflow-policy; treating as DROP_OLDEST",
-                    AgentLogField.NAME
             )
     ),
 

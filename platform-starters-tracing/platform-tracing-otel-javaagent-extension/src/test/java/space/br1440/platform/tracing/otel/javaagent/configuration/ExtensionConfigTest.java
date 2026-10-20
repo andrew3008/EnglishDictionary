@@ -1,9 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.configuration;
 
-import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -11,12 +11,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.loader.ExtensionRuleLoader;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatNullPointerException;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
 class ExtensionConfigTest {
 
@@ -234,7 +238,7 @@ class ExtensionConfigTest {
         ExtensionConfig config = new ExtensionConfig(emptyConfig());
 
         // then
-        assertThat(config.queue().overflowPolicy()).isEqualTo("DROP_OLDEST");
+        assertThat(config.queue().overflowPolicy()).isEqualTo(QueueOverflowPolicy.DROP_OLDEST);
     }
 
     @Test
@@ -420,14 +424,33 @@ class ExtensionConfigTest {
                         + "platform.tracing.classification.normal-threshold");
     }
 
-    @Test
-    void queue_reads_explicit_upstream_policy() {
+    @ParameterizedTest
+    @ValueSource(strings = {"UPSTREAM", " upstream "})
+    void queue_reads_explicit_upstream_policy(String rawPolicy) {
         // given
         ExtensionConfig config = new ExtensionConfig(
-                stringConfig(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY, "UPSTREAM"));
+                stringConfig(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY, rawPolicy));
 
         // then
-        assertThat(config.queue().overflowPolicy()).isEqualTo("UPSTREAM");
+        assertThat(config.queue().overflowPolicy()).isEqualTo(QueueOverflowPolicy.UPSTREAM);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"BOGUS", "   "})
+    void queue_rejects_unknown_or_blank_overflow_policy(String rawPolicy) {
+        // given
+        ConfigProperties properties = stringConfig(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY, rawPolicy);
+
+        // when
+        Throwable failure = catchThrowable(() -> new ExtensionConfig(properties));
+
+        // then
+        assertThat(failure).isInstanceOf(ConfigurationPropertyException.class);
+        ConfigurationPropertyException propertyFailure = (ConfigurationPropertyException) failure;
+        assertThat(propertyFailure.propertyName()).isEqualTo(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY);
+        assertThat(propertyFailure.failure())
+                .hasMessage("platform.tracing.queue.overflow-policy must be one of: UPSTREAM, DROP_OLDEST");
+        assertThat(propertyFailure.getMessage()).doesNotContain("BOGUS");
     }
 
     @Test

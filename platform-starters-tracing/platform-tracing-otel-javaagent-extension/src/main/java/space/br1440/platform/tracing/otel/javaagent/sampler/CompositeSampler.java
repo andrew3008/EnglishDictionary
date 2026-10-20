@@ -7,7 +7,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
@@ -26,16 +25,16 @@ import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
 import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 import lombok.NonNull;
 
-public final class CompositeSampler implements Sampler, PlatformManagedSampler {
+public final class CompositeSampler implements Sampler {
 
-    private final AtomicReference<TracingSettingsSource> acceptedPolicy;
+    private final TracingSettingsSource acceptedPolicy;
     private final SamplingPolicyEngine policyEngine;
     private final SamplingPolicySnapshot categoryBOverrides;
 
     private final ConcurrentHashMap<String, LongAdder> decisionCounters = new ConcurrentHashMap<>();
 
     public CompositeSampler(TracingSettingsSource acceptedPolicy, SamplingPolicySnapshot categoryBOverrides) {
-        this.acceptedPolicy = new AtomicReference<>(Objects.requireNonNull(acceptedPolicy, "acceptedPolicy"));
+        this.acceptedPolicy = Objects.requireNonNull(acceptedPolicy, "acceptedPolicy");
         this.categoryBOverrides = Objects.requireNonNull(categoryBOverrides, "categoryBOverrides");
         this.policyEngine = SamplingPolicyEngine.productionEngine();
     }
@@ -44,8 +43,7 @@ public final class CompositeSampler implements Sampler, PlatformManagedSampler {
     public SamplingResult shouldSample(@NonNull Context parentContext, @NonNull String traceId, @NonNull String name,
                                        @NonNull SpanKind spanKind, @NonNull Attributes attributes,
                                        @NonNull List<LinkData> parentLinks) {
-        TracingSettingsSource access = acceptedPolicy.get();
-        TracingSettingsRevision policy = access.current();
+        TracingSettingsRevision policy = acceptedPolicy.current();
         SamplingPolicyRequest request = SamplingPolicyOtelAdapter.toRequest(
                 parentContext, traceId, attributes
         );
@@ -69,9 +67,10 @@ public final class CompositeSampler implements Sampler, PlatformManagedSampler {
 
     @Override
     public String getDescription() {
+        TracingSettingsRevision current = acceptedPolicy.current();
         return String.format(Locale.ROOT, "PlatformRuleBasedSampler{version=%d, defaultRatio=%.2f}",
-                acceptedPolicy.get().current().acceptedSequence(),
-                acceptedPolicy.get().current().samplingRatio()
+                current.acceptedSequence(),
+                current.samplingRatio()
         );
     }
 
@@ -80,21 +79,12 @@ public final class CompositeSampler implements Sampler, PlatformManagedSampler {
         return getDescription();
     }
 
-    @Override
-    public CompositeSampler platformCompositeSampler() {
-        return this;
-    }
-
     public TracingSettingsSource acceptedPolicy() {
-        return acceptedPolicy.get();
+        return acceptedPolicy;
     }
 
     public SamplingPolicySnapshot categoryBOverrides() {
         return categoryBOverrides;
-    }
-
-    public void bindAcceptedPolicy(TracingSettingsSource policy) {
-        acceptedPolicy.set(Objects.requireNonNull(policy, "policy"));
     }
 
     public SamplingPolicyEngine policyEngine() {

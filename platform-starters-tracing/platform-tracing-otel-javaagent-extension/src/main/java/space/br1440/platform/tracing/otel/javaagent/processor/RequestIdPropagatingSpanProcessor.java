@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.processor;
 
 import jakarta.annotation.Nonnull;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -34,7 +35,7 @@ public final class RequestIdPropagatingSpanProcessor implements SpanProcessor, P
         }
 
         String requestId = readableParent.getAttribute(REQUEST_ID);
-        if ((requestId != null) && !requestId.isEmpty()) {
+        if (!StringUtils.isNullOrEmpty(requestId)) {
             child.setAttribute(REQUEST_ID, requestId);
         }
     }

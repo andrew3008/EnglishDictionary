@@ -14,10 +14,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-final class ScrubbingCharacterizationSupport {
+import lombok.experimental.UtilityClass;
 
-    private ScrubbingCharacterizationSupport() {
-    }
+@UtilityClass
+final class ScrubbingCharacterizationSupport {
 
     static void assertScrubbingCase(ScrubbingDecisionCase c) {
         List<SpanAttributeScrubbingRule> rules = resolveRules(c.ruleNames());

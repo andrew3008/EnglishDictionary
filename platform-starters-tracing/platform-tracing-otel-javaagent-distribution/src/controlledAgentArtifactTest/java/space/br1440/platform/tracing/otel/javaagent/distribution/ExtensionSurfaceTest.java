@@ -26,6 +26,8 @@ class ExtensionSurfaceTest {
     private static final String EXTENSION_BUILD_METADATA =
             "space/br1440/platform/tracing/otel/javaagent/readiness/platform-extension-build.properties";
     private static final String LOG_EVENT_SCHEMA_RESOURCE = "platform-log-event.schema.json";
+    private static final String SAMPLER_PROVIDER_DESCRIPTOR =
+            "META-INF/services/io.opentelemetry.sdk.autoconfigure.spi.traces.ConfigurableSamplerProvider";
     private static final String ACP_PIN_PROVIDERS_CLASS =
             "space/br1440/platform/tracing/otel/javaagent/bootstrap/verification/UpstreamCustomizerProviderAllowlist.class";
     private static final String EXTENSION_IMPLEMENTATION_TITLE = "platform-tracing-otel-javaagent-extension";
@@ -36,8 +38,6 @@ class ExtensionSurfaceTest {
             "space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapAutoConfigurationCustomizerProvider",
             "META-INF/services/io.opentelemetry.sdk.autoconfigure.spi.ConfigurablePropagatorProvider",
             "space.br1440.platform.tracing.otel.javaagent.propagation.TraceControlPropagatorProvider",
-            "META-INF/services/io.opentelemetry.sdk.autoconfigure.spi.traces.ConfigurableSamplerProvider",
-            "space.br1440.platform.tracing.otel.javaagent.sampler.PlatformSamplerProvider",
             "META-INF/services/io.opentelemetry.sdk.common.export.GrpcSenderProvider",
             "space.br1440.platform.tracing.otel.javaagent.exporter.response.ObservingGrpcSenderProvider",
             "META-INF/services/io.opentelemetry.sdk.common.export.HttpSenderProvider",
@@ -98,7 +98,9 @@ class ExtensionSurfaceTest {
                 .filter(name -> !"META-INF/services/".equals(name))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        assertThat(actualDescriptors).containsExactlyInAnyOrderElementsOf(EXPECTED_SERVICE_DESCRIPTORS.keySet());
+        assertThat(actualDescriptors)
+                .doesNotContain(SAMPLER_PROVIDER_DESCRIPTOR)
+                .containsExactlyInAnyOrderElementsOf(EXPECTED_SERVICE_DESCRIPTORS.keySet());
         EXPECTED_SERVICE_DESCRIPTORS.forEach((path, expectedProvider) -> {
             List<String> providerLines = new String(entries.get(path), StandardCharsets.UTF_8)
                     .lines()

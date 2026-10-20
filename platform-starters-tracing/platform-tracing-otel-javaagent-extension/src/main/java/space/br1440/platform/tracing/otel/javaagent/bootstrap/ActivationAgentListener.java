@@ -4,6 +4,7 @@ import java.util.Objects;
 
 import io.opentelemetry.javaagent.extension.AgentListener;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
 public final class ActivationAgentListener implements AgentListener {
 
@@ -22,7 +23,8 @@ public final class ActivationAgentListener implements AgentListener {
 
     @Override
     public void afterAgent(AutoConfiguredOpenTelemetrySdk autoConfiguredSdk) {
-        bootstrap.activate();
+        SdkTracerProvider sdkTracerProvider = autoConfiguredSdk.getOpenTelemetrySdk().getSdkTracerProvider();
+        bootstrap.activate(sdkTracerProvider);
     }
 
     @Override

@@ -20,12 +20,16 @@ import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
 import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 import lombok.NonNull;
 
-public final class SafeSampler implements Sampler, PlatformManagedSampler {
+public final class SafeSampler implements Sampler {
 
     private final Sampler delegate;
     private final TracingDiagnostics diagnostics;
     private final DegradedModeController degradedController;
     private final RateLimitedLogger log = new RateLimitedLogger(SafeSampler.class);
+
+    public static SafeSampler protect(CompositeSampler delegate) {
+        return new SafeSampler(delegate);
+    }
 
     SafeSampler(Sampler delegate) {
         this(delegate, TracingDiagnostics.shared());
@@ -84,14 +88,5 @@ public final class SafeSampler implements Sampler, PlatformManagedSampler {
     @Override
     public String toString() {
         return getDescription();
-    }
-
-    @Override
-    public CompositeSampler platformCompositeSampler() {
-        if (delegate instanceof PlatformManagedSampler managed) {
-            return managed.platformCompositeSampler();
-        }
-
-        return null;
     }
 }

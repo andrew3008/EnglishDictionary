@@ -204,7 +204,8 @@ class AgentStartupVerifierTest {
         assertThatIllegalStateException()
                 .isThrownBy(() -> verifier.verify(true, true, false, true))
                 .withMessageContaining("runtimeState=EXTENSION_INITIALIZING")
-                .withMessageContaining("reason=EXTENSION_READINESS_TIMEOUT");
+                .withMessageContaining("reason=EXTENSION_READINESS_TIMEOUT")
+                .withMessageContaining("OpenTelemetry SDK autoconfiguration may have been aborted after platform preparation");
         assertThat(clock.get()).isEqualTo(Duration.ofMillis(50).toNanos());
         assertThat(sleeps.get()).isEqualTo(2);
     }

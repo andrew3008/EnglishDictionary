@@ -21,6 +21,7 @@ import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
 
@@ -344,7 +345,7 @@ class ControlledAgentVerifierTest {
             return BOOTSTRAP_LOADER_LABEL;
         }
         String name = loader.getName();
-        String stableName = (name == null || name.isBlank()) ? loader.getClass().getName() : name;
+        String stableName = StringUtils.isNullOrBlank(name) ? loader.getClass().getName() : name;
         return stableName + "@" + Integer.toHexString(System.identityHashCode(loader));
     }
 

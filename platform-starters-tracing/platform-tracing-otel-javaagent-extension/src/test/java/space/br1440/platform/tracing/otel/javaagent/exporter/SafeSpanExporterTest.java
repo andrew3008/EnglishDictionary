@@ -124,15 +124,12 @@ class SafeSpanExporterTest {
             }
         };
         RateLimitedLogger recoveryLog = new RateLimitedLogger(SafeSpanExporterTest.class);
-        SafeSpanExporter safe = new SafeSpanExporter(
+        try (SafeSpanExporter safe = new SafeSpanExporter(
                 sequencedDelegate,
                 TracingSettingsSource.isolatedDefaults(),
                 ScrubbingRuntimeTestFixtures.disabled(),
-                recoveryLog
-        );
-        AgentLogCapture capture = new AgentLogCapture();
-        capture.install();
-        try {
+                recoveryLog);
+             AgentLogCapture capture = AgentLogCapture.installed()) {
             // when
             safe.export(spansOfSize(1));
             safe.export(spansOfSize(1));
@@ -145,8 +142,6 @@ class SafeSpanExporterTest {
                     .satisfies(event -> assertThat(event.message()).isEqualTo(
                             "SafeSpanExporter: export recovered after a series of failures"
                     ));
-        } finally {
-            capture.restore();
         }
     }
 
@@ -156,10 +151,8 @@ class SafeSpanExporterTest {
         AtomicInteger firstCalls = new AtomicInteger();
         SafeSpanExporter first = safeExporter(failingOnceDelegate(firstCalls));
         SafeSpanExporter second = safeExporter(delegate(CompletableResultCode.ofSuccess()));
-        AgentLogCapture capture = new AgentLogCapture();
-        capture.install();
 
-        try {
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
             // when
             first.export(spansOfSize(1));
             second.export(spansOfSize(1));
@@ -169,8 +162,6 @@ class SafeSpanExporterTest {
             assertThat(capture.events())
                     .filteredOn(event -> event.eventCode() == AgentEventCode.RATE_RECOVERY)
                     .hasSize(1);
-        } finally {
-            capture.restore();
         }
     }
 
@@ -193,10 +184,8 @@ class SafeSpanExporterTest {
                 return CompletableResultCode.ofFailure();
             }
         });
-        AgentLogCapture capture = new AgentLogCapture();
-        capture.install();
 
-        try {
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
             for (int attempt = 0; attempt < 20; attempt++) {
                 safe.export(spansOfSize(1));
             }
@@ -211,8 +200,6 @@ class SafeSpanExporterTest {
             assertThat(capture.events())
                     .filteredOn(event -> "SAFE_SHUTDOWN_RETURNED_FAILURE".equals(event.eventName()))
                     .hasSize(1);
-        } finally {
-            capture.restore();
         }
     }
 
@@ -341,16 +328,12 @@ class SafeSpanExporterTest {
                 null,
                 CompletableResultCode.ofSuccess()
         );
-        SafeSpanExporter safe = new SafeSpanExporter(
+        try (SafeSpanExporter safe = new SafeSpanExporter(
                 delegate,
                 TracingSettingsSource.isolatedDefaults(),
                 ScrubbingRuntimeTestFixtures.disabled(),
-                new RateLimitedLogger(SafeSpanExporterTest.class)
-        );
-        AgentLogCapture logs = new AgentLogCapture();
-        logs.install();
-
-        try {
+                new RateLimitedLogger(SafeSpanExporterTest.class));
+             AgentLogCapture logs = AgentLogCapture.installed()) {
             // when
             CompletableResultCode result = safe.flush();
 
@@ -363,8 +346,6 @@ class SafeSpanExporterTest {
                     .satisfies(event -> assertThat(event.fields())
                             .containsOnly(Map.entry("exporterType", "LifecycleSpanExporter")));
             assertThat(logs.rendered()).doesNotContain("endpoint", "transport message");
-        } finally {
-            logs.restore();
         }
     }
 
@@ -376,16 +357,12 @@ class SafeSpanExporterTest {
                 CompletableResultCode.ofSuccess(),
                 pendingShutdown
         );
-        SafeSpanExporter safe = new SafeSpanExporter(
+        try (SafeSpanExporter safe = new SafeSpanExporter(
                 delegate,
                 TracingSettingsSource.isolatedDefaults(),
                 ScrubbingRuntimeTestFixtures.disabled(),
-                new RateLimitedLogger(SafeSpanExporterTest.class)
-        );
-        AgentLogCapture logs = new AgentLogCapture();
-        logs.install();
-
-        try {
+                new RateLimitedLogger(SafeSpanExporterTest.class));
+             AgentLogCapture logs = AgentLogCapture.installed()) {
             CompletableResultCode result = safe.shutdown();
 
             // when
@@ -400,8 +377,6 @@ class SafeSpanExporterTest {
                     .satisfies(event -> assertThat(event.fields())
                             .containsOnly(Map.entry("exporterType", "LifecycleSpanExporter")));
             assertThat(logs.rendered()).doesNotContain("endpoint", "transport message");
-        } finally {
-            logs.restore();
         }
     }
 
@@ -1130,9 +1105,7 @@ class SafeSpanExporterTest {
             }
         };
 
-        AgentLogCapture capture = new AgentLogCapture();
-        capture.install();
-        try {
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
             // when
             CompletableResultCode result = safe.export(hostileBatch);
 
@@ -1147,8 +1120,6 @@ class SafeSpanExporterTest {
                             .doesNotContain(secret, "Cannot process customer token");
                 }
             });
-        } finally {
-            capture.restore();
         }
     }
 
@@ -1263,22 +1234,22 @@ class SafeSpanExporterTest {
     void metricsSnapshotExposesBoundaryCountersOnlyWhenEnabled() {
         // given
         ScrubbingRuntime disabled = ScrubbingRuntimeTestFixtures.disabled();
-        SafeSpanExporter withDisabledRuntime = new SafeSpanExporter(
-                delegate(CompletableResultCode.ofSuccess()), TracingSettingsSource.isolatedDefaults(), disabled);
-
-        // when/then
-        assertThat(withDisabledRuntime.metricsSnapshot()).doesNotContainKey("boundary.input_spans");
+        try (SafeSpanExporter withDisabledRuntime = new SafeSpanExporter(
+                delegate(CompletableResultCode.ofSuccess()), TracingSettingsSource.isolatedDefaults(), disabled)) {
+            // when/then
+            assertThat(withDisabledRuntime.metricsSnapshot()).doesNotContainKey("boundary.input_spans");
+        }
 
         // given
         ScrubbingRuntime enabled = enabledRuntime("email");
-        SafeSpanExporter withEnabledRuntime = new SafeSpanExporter(
-                delegate(CompletableResultCode.ofSuccess()), TracingSettingsSource.isolatedDefaults(), enabled);
+        try (SafeSpanExporter withEnabledRuntime = new SafeSpanExporter(
+                delegate(CompletableResultCode.ofSuccess()), TracingSettingsSource.isolatedDefaults(), enabled)) {
+            // when
+            withEnabledRuntime.export(List.of(ExporterBoundaryTestSupport.baseSpan("op").build()));
 
-        // when
-        withEnabledRuntime.export(List.of(ExporterBoundaryTestSupport.baseSpan("op").build()));
-
-        // then
-        assertThat(withEnabledRuntime.metricsSnapshot()).containsKey("boundary.input_spans");
+            // then
+            assertThat(withEnabledRuntime.metricsSnapshot()).containsKey("boundary.input_spans");
+        }
     }
 
     @Test

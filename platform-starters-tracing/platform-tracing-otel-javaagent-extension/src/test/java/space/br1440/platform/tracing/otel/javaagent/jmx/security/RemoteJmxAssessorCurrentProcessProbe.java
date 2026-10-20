@@ -1,5 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.security;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class RemoteJmxAssessorCurrentProcessProbe {
 
     public static final String ALLOWS_PREFIX = "REMOTE_JMX_GATE_ALLOWS ";
@@ -7,25 +10,20 @@ public final class RemoteJmxAssessorCurrentProcessProbe {
     public static final String OFFENDING_PREFIX = "REMOTE_JMX_GATE_OFFENDING ";
     public static final String REMEDIATION_PREFIX = "REMOTE_JMX_GATE_REMEDIATION ";
 
-    private RemoteJmxAssessorCurrentProcessProbe() {
-        throw new AssertionError("No instances");
-    }
-
     public static void main(String[] args) {
         RemoteJmxRegistrationAssessment assessment = RemoteJmxMutationRegistrationAssessor.fromCurrentProcess().assess();
 
-        StringBuilder report = new StringBuilder()
-                .append(ALLOWS_PREFIX)
-                .append(assessment.allowsLocalMutationRegistration())
-                .append(System.lineSeparator())
-                .append(FAILURE_CODE_PREFIX)
-                .append(assessment.failureCode().name())
-                .append(System.lineSeparator())
-                .append(OFFENDING_PREFIX)
-                .append(String.join(",", assessment.offendingArguments()))
-                .append(System.lineSeparator())
-                .append(REMEDIATION_PREFIX)
-                .append(assessment.remediation());
+        String report = ALLOWS_PREFIX +
+                assessment.allowsLocalMutationRegistration() +
+                System.lineSeparator() +
+                FAILURE_CODE_PREFIX +
+                assessment.failureCode().name() +
+                System.lineSeparator() +
+                OFFENDING_PREFIX +
+                String.join(",", assessment.offendingArguments()) +
+                System.lineSeparator() +
+                REMEDIATION_PREFIX +
+                assessment.remediation();
 
         System.out.println(report);
     }

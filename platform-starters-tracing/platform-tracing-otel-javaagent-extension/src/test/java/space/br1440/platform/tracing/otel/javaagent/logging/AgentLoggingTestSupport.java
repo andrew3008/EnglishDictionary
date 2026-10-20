@@ -1,9 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.logging;
 
-public final class AgentLoggingTestSupport {
+import lombok.experimental.UtilityClass;
 
-    private AgentLoggingTestSupport() {
-    }
+@UtilityClass
+public final class AgentLoggingTestSupport {
 
     public static void reset() {
         AgentLoggingRuntime.reset();

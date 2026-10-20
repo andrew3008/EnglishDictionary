@@ -2,48 +2,80 @@ package space.br1440.platform.tracing.otel.javaagent.configuration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.reflect.Field;
 import java.time.Duration;
+import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
+
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
+import io.opentelemetry.sdk.common.CompletableResultCode;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.SpanLimits;
-import io.opentelemetry.sdk.trace.export.BatchSpanProcessorBuilder;
+import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.export.SpanExporter;
+import io.opentelemetry.sdk.trace.samplers.Sampler;
 
 @DisplayName("OtelSdkDefaults ↔ upstream OTel SDK parity")
 class OtelSdkDefaultsUpstreamParityTest {
 
     @Test
-    @DisplayName("BSP queue/batch/schedule match BatchSpanProcessorBuilder defaults")
-    void bsp_matching_defaults_equal_upstream_builder() throws Exception {
-        // given/when/then
-        assertThat(OtelSdkDefaults.DEFAULT_BSP_MAX_QUEUE_SIZE)
-                .as("otel.bsp.max.queue.size")
-                .isEqualTo(upstreamInt(BatchSpanProcessorBuilder.class, "DEFAULT_MAX_QUEUE_SIZE"));
-        assertThat(OtelSdkDefaults.DEFAULT_BSP_MAX_EXPORT_BATCH_SIZE)
-                .as("otel.bsp.max.export.batch.size")
-                .isEqualTo(upstreamInt(BatchSpanProcessorBuilder.class, "DEFAULT_MAX_EXPORT_BATCH_SIZE"));
-        assertThat(OtelSdkDefaults.DEFAULT_BSP_SCHEDULE_DELAY)
-                .as("otel.bsp.schedule.delay")
-                .isEqualTo(Duration.ofMillis(
-                        upstreamInt(BatchSpanProcessorBuilder.class, "DEFAULT_SCHEDULE_DELAY_MILLIS")));
+    @DisplayName("BSP fallback contract is applied to the platform processor")
+    void bsp_fallback_contract_is_applied_to_platform_processor() {
+        // given
+        PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor
+                .builder(exporter(CompletableResultCode.ofSuccess()))
+                .readBspConfigFrom(DefaultConfigProperties.createFromMap(Map.of()))
+                .build();
+
+        try {
+            // when
+            PlatformDropOldestExportSpanProcessor.MetricsSnapshot metrics = processor.metricsSnapshot();
+
+            // then
+            assertThat(metrics.queueCapacity()).isEqualTo(OtelSdkDefaults.DEFAULT_BSP_MAX_QUEUE_SIZE);
+            assertThat(OtelSdkDefaults.DEFAULT_BSP_MAX_QUEUE_SIZE).isEqualTo(2_048);
+            assertThat(OtelSdkDefaults.DEFAULT_BSP_MAX_EXPORT_BATCH_SIZE).isEqualTo(512);
+            assertThat(OtelSdkDefaults.DEFAULT_BSP_SCHEDULE_DELAY).isEqualTo(Duration.ofSeconds(5));
+        } finally {
+            processor.shutdown().join(2, TimeUnit.SECONDS);
+        }
     }
 
     @Test
-    @DisplayName("BSP export timeout is a documented platform override of upstream 30s")
-    void bsp_export_timeout_is_documented_platform_override() throws Exception {
+    @DisplayName("Missing otel.bsp.export.timeout uses the five-second platform fallback")
+    void missing_bsp_export_timeout_uses_five_second_platform_fallback() {
         // given
-        int upstreamMillis = upstreamInt(BatchSpanProcessorBuilder.class, "DEFAULT_EXPORT_TIMEOUT_MILLIS");
+        CompletableResultCode pendingExport = new CompletableResultCode();
+        PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor
+                .builder(exporter(pendingExport))
+                .readBspConfigFrom(DefaultConfigProperties.createFromMap(Map.of()))
+                .build();
+        SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
+                .setSampler(Sampler.alwaysOn())
+                .addSpanProcessor(processor)
+                .build();
+        Tracer tracer = tracerProvider.get("bsp-export-timeout-fallback-test");
 
-        // when/then
-        assertThat(upstreamMillis)
-                .as("upstream BatchSpanProcessorBuilder.DEFAULT_EXPORT_TIMEOUT_MILLIS")
-                .isEqualTo(30_000);
-        assertThat(OtelSdkDefaults.DEFAULT_BSP_EXPORT_TIMEOUT)
-                .as("platform otel.bsp.export.timeout override")
-                .isEqualTo(Duration.ofMillis(5_000))
-                .isNotEqualTo(Duration.ofMillis(upstreamMillis));
+        try {
+            // when
+            tracer.spanBuilder("timeout").startSpan().end();
+            CompletableResultCode flush = processor.forceFlush();
+
+            // then
+            assertThat(flush.join(7, TimeUnit.SECONDS).isDone()).isTrue();
+            assertThat(flush.isSuccess()).isFalse();
+            assertThat(processor.metricsSnapshot().timeoutsTotal()).isEqualTo(1L);
+            assertThat(OtelSdkDefaults.DEFAULT_BSP_EXPORT_TIMEOUT).isEqualTo(Duration.ofSeconds(5));
+        } finally {
+            pendingExport.succeed();
+            tracerProvider.shutdown().join(2, TimeUnit.SECONDS);
+        }
     }
 
     @Test
@@ -75,20 +107,22 @@ class OtelSdkDefaultsUpstreamParityTest {
                 .isEqualTo(16);
     }
 
-    private static int upstreamInt(Class<?> type, String fieldName) throws Exception {
-        Field field = type.getDeclaredField(fieldName);
-        field.setAccessible(true);
-        Object value = field.get(null);
-        if (value instanceof Integer integer) {
-            return integer;
-        }
+    private static SpanExporter exporter(CompletableResultCode exportResult) {
+        return new SpanExporter() {
+            @Override
+            public CompletableResultCode export(Collection<SpanData> spans) {
+                return exportResult;
+            }
 
-        if (value instanceof Long longValue) {
-            return Math.toIntExact(longValue);
-        }
+            @Override
+            public CompletableResultCode flush() {
+                return CompletableResultCode.ofSuccess();
+            }
 
-        throw new IllegalStateException(
-                type.getName() + '.' + fieldName + " has unexpected type " + value.getClass()
-        );
+            @Override
+            public CompletableResultCode shutdown() {
+                return CompletableResultCode.ofSuccess();
+            }
+        };
     }
 }

@@ -9,6 +9,8 @@ import java.util.Map;
 import java.util.stream.Stream;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -101,6 +103,40 @@ class ValueAttributeFailClosedContractTest {
         assertThat(runtime.boundaryMetrics().valueAttributesRemoved())
                 .as("удаление обязано быть наблюдаемым для оператора")
                 .isPositive();
+    }
+
+    @Test
+    void coerced_value_is_removed_at_export_when_no_rules_are_configured() {
+        // given
+        InMemorySpanExporter delegate = InMemorySpanExporter.create();
+        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of());
+        SpanExporter exporter = new SafeSpanExporter(
+                delegate, TracingSettingsSource.isolatedDefaults(), runtime);
+
+        // when
+        List<SpanData> finished;
+        try (SdkTracerProvider provider = SdkTracerProvider.builder()
+                .addSpanProcessor(new ScrubbingSpanProcessor(runtime))
+                .addSpanProcessor(SimpleSpanProcessor.create(exporter))
+                .build()) {
+            Span span = provider.get("value-contract").spanBuilder("op").startSpan();
+            span.setAttribute(KEY, Value.of(CANARY));
+            span.setAttribute(AttributeKey.stringKey("control.marker"), "present");
+            span.end();
+
+            finished = List.copyOf(delegate.getFinishedSpanItems());
+        }
+
+        // then
+        assertThat(finished).hasSize(1);
+        SpanData exported = finished.getFirst();
+        assertThat(exported.getAttributes().asMap().keySet())
+                .noneMatch(key -> PROBE_KEY.equals(key.getKey()));
+        assertThat(renderedPayload(exported)).doesNotContain(CANARY);
+        assertThat(exported.getAttributes().get(AttributeKey.stringKey("control.marker")))
+                .isEqualTo("present");
+        assertThat(runtime.attributesVerified()).isTrue();
+        assertThat(runtime.boundaryMetrics().valueAttributesRemoved()).isPositive();
     }
 
     private static String renderedPayload(SpanData spanData) {

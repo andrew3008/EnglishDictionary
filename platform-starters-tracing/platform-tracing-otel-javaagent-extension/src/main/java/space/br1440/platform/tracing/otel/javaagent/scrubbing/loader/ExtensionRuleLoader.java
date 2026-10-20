@@ -62,14 +62,12 @@ public final class ExtensionRuleLoader implements AutoCloseable {
     }
 
     private final ValidationMode validationMode;
-    private final Set<String> otelExtensionPaths;
     private volatile URLClassLoader urlClassLoader;
 
     private final List<FailedEntry> failedEntries = new ArrayList<>();
 
-    public ExtensionRuleLoader(ValidationMode validationMode, Set<String> otelExtensionPaths) {
+    public ExtensionRuleLoader(ValidationMode validationMode) {
         this.validationMode = Objects.requireNonNull(validationMode, "validationMode");
-        this.otelExtensionPaths = Objects.requireNonNull(otelExtensionPaths, "otelExtensionPaths");
     }
 
     public List<SpanAttributeScrubbingRule> load(String rawProperty) {
@@ -94,6 +92,7 @@ public final class ExtensionRuleLoader implements AutoCloseable {
                 if (!iterator.hasNext()) {
                     break;
                 }
+
                 provider = iterator.next();
             } catch (ServiceConfigurationError | RuntimeException e) {
                 PlatformThrowables.propagateFatalCauseChain(e);
@@ -180,11 +179,6 @@ public final class ExtensionRuleLoader implements AutoCloseable {
         }
 
         if (!seenCanonicalPaths.add(canonical)) {
-            return;
-        }
-
-        if (otelExtensionPaths.contains(canonical)) {
-            failOrWarn(jar.getName(), FailedProviderReason.DUPLICATE_CONFIG, "duplicate-config");
             return;
         }
 

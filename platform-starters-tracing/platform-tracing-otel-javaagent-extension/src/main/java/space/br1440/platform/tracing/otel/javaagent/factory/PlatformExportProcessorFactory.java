@@ -3,7 +3,6 @@ package space.br1440.platform.tracing.otel.javaagent.factory;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.IdentityHashMap;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -12,8 +11,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import jakarta.annotation.Nonnull;
 
-import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.configuration.QueueExtensionConfig;
+import space.br1440.platform.tracing.otel.javaagent.configuration.QueueOverflowPolicy;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
@@ -36,7 +35,6 @@ public final class PlatformExportProcessorFactory {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(PlatformExportProcessorFactory.class);
     private static final String SHUTDOWN_KIND_FAILED = "failed";
-    private static final String SHUTDOWN_KIND_TIMEOUT = "timeout";
 
     private final AtomicReference<SafeSpanExporter> capturedExporter = new AtomicReference<>();
     private final AtomicReference<ReplacementAwareSpanExporter> capturedStockExporter = new AtomicReference<>();
@@ -107,7 +105,7 @@ public final class PlatformExportProcessorFactory {
                                                      QueueExtensionConfig queueConfig,
                                                      ConfigProperties config) {
         scrubbingRuntime.acknowledgeExportModeResolved();
-        if (isExplicitUpstream(queueConfig)) {
+        if (queueConfig.overflowPolicy() == QueueOverflowPolicy.UPSTREAM) {
             markExportPathProtected();
             return processor;
         }
@@ -139,18 +137,16 @@ public final class PlatformExportProcessorFactory {
             return processor;
         }
 
-        stockExporter.suppressReplacementShutdown();
-        try {
-            // join не бросает исключение, если shutdown завершился ошибкой или не уложился в таймаут.
-            logUnsuccessfulStockShutdown(processor.shutdown().join(5, TimeUnit.SECONDS));
-        } catch (RuntimeException e) {
-            log.log(ExportPipelineLogEvent.STOCK_BATCH_SPAN_PROCESSOR_SHUTDOWN_FAILED, fields -> fields.cause(e));
-        }
-
-        PlatformDropOldestExportSpanProcessor replacement = PlatformDropOldestExportSpanProcessor
+        PlatformDropOldestExportSpanProcessor.PreparedBuild replacementBuild = PlatformDropOldestExportSpanProcessor
                 .builder(exporter)
                 .readBspConfigFrom(config)
-                .build();
+                .validate();
+
+        stockExporter.suppressReplacementShutdown();
+        CompletableResultCode shutdownResult = processor.shutdown().join(5, TimeUnit.SECONDS);
+        requireCompletedStockShutdown(shutdownResult);
+
+        PlatformDropOldestExportSpanProcessor replacement = replacementBuild.build();
 
         if (jmxRegistrar != null) {
             jmxRegistrar.setExportProcessor(replacement);
@@ -165,14 +161,17 @@ public final class PlatformExportProcessorFactory {
         return replacement;
     }
 
-    static void logUnsuccessfulStockShutdown(CompletableResultCode result) {
-        if (result != null && result.isSuccess()) {
+    static void requireCompletedStockShutdown(CompletableResultCode result) {
+        if (!result.isDone()) {
+            throw new IllegalStateException("Stock BatchSpanProcessor shutdown did not complete before replacement");
+        }
+
+        if (result.isSuccess()) {
             return;
         }
 
-        String kind = result != null && result.isDone() ? SHUTDOWN_KIND_FAILED : SHUTDOWN_KIND_TIMEOUT;
         log.log(ExportPipelineLogEvent.STOCK_BATCH_SPAN_PROCESSOR_SHUTDOWN_UNSUCCESSFUL,
-                fields -> fields.putString(AgentLogField.KIND, kind));
+                fields -> fields.putString(AgentLogField.KIND, SHUTDOWN_KIND_FAILED));
     }
 
     private void markExportPathProtected() {
@@ -180,24 +179,6 @@ public final class PlatformExportProcessorFactory {
             jmxRegistrar.extensionReadiness().markInstalled(PlatformExtensionCapability.EXPORT_PATH_PROTECTED);
             scrubbingRuntime.acknowledgeExportPathProtected();
         }
-    }
-
-    private static boolean isExplicitUpstream(QueueExtensionConfig queueConfig) {
-        String configuredPolicy = queueConfig.overflowPolicy();
-        String normalized = configuredPolicy.trim().toUpperCase(Locale.ROOT);
-        if (QueueOverflowPolicy.UPSTREAM.value().equals(normalized)) {
-            return true;
-        }
-
-        if (QueueOverflowPolicy.DROP_OLDEST.value().equals(normalized)) {
-            return false;
-        }
-
-        String diagnosticValue = StringUtils.hasText(configuredPolicy) ? configuredPolicy : "<blank>";
-        log.log(ExportPipelineLogEvent.UNKNOWN_OVERFLOW_POLICY_DEFAULTED,
-                fields -> fields.putString(AgentLogField.NAME, diagnosticValue));
-
-        return false;
     }
 
     private static final class ReplacementAwareSpanExporter implements SpanExporter {

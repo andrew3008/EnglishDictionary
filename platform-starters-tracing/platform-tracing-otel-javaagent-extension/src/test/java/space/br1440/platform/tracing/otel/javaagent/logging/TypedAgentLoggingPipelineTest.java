@@ -8,9 +8,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
@@ -24,19 +24,14 @@ class TypedAgentLoggingPipelineTest {
 
     private static final String FALLBACK_MESSAGE = "Platform Agent log event could not be encoded safely";
 
-    private final AgentLogCapture capture = new AgentLogCapture();
+    @RegisterExtension
+    final AgentLogCapture capture = new AgentLogCapture();
 
     private PlatformAgentLogger logger;
 
     @BeforeEach
-    void installCapture() {
-        capture.install();
+    void createLogger() {
         logger = PlatformAgentLogger.get(TypedAgentLoggingPipelineTest.class);
-    }
-
-    @AfterEach
-    void restoreRuntime() {
-        capture.restore();
     }
 
     @Test

@@ -1,9 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -12,11 +9,9 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import space.br1440.platform.common.util.ArrayUtils;
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
-import space.br1440.platform.tracing.otel.javaagent.configuration.JavaAgentExtensionPaths;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ScrubbingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.factory.ScrubbingMissingKeyPolicy;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
@@ -35,8 +30,6 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanA
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
-import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
-
 public final class PlatformScrubberFactory {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(PlatformScrubberFactory.class);
@@ -51,17 +44,17 @@ public final class PlatformScrubberFactory {
         this.spiScrubbingRuleSource = Objects.requireNonNull(spiScrubbingRuleSource, "spiScrubbingRuleSource must not be null");
     }
 
-    public ScrubbingRuntime buildRuntime(ExtensionConfig extConfig, ConfigProperties config) {
+    public ScrubbingRuntime buildRuntime(ExtensionConfig extConfig) {
         Objects.requireNonNull(extConfig, "extConfig must not be null");
-        Objects.requireNonNull(config, "config must not be null");
 
         if (!extConfig.scrubbing().enabled()) {
             return ScrubbingRuntime.disabled();
         }
 
-        List<RuntimeRule> rules = collectClassified(extConfig.scrubbing(), config);
+        List<RuntimeRule> rules = collectClassified(extConfig.scrubbing());
         if (rules.isEmpty()) {
-            throw new SanitizerBootstrapException(SanitizerBootstrapException.RULE_SET_EMPTY,
+            throw new SanitizerBootstrapException(
+                    SanitizerBootstrapException.RULE_SET_EMPTY,
                     "Scrubbing is enabled, but no effective sanitizing rules were loaded"
             );
         }
@@ -72,9 +65,9 @@ public final class PlatformScrubberFactory {
         return ScrubbingRuntime.create(rules, 1L, extConfig.scrubbing().hmacKey(), failFast);
     }
 
-    private List<RuntimeRule> collectClassified(ScrubbingExtensionConfig scrubbing, ConfigProperties config) {
+    private List<RuntimeRule> collectClassified(ScrubbingExtensionConfig scrubbing) {
         try {
-            return collectScrubbingRules(scrubbing, config);
+            return collectScrubbingRules(scrubbing);
         } catch (SanitizerBootstrapException e) {
             throw e;
         } catch (RuntimeException e) {
@@ -100,21 +93,7 @@ public final class PlatformScrubberFactory {
         );
     }
 
-    private static SanitizerBootstrapException classified(String message,
-                                                          String name,
-                                                          Throwable failure) {
-        PlatformThrowables.propagateIfFatal(failure);
-        log.log(ScrubbingLogEvent.EXTENSION_PATH_CANONICALIZATION_FAILED, fields -> fields
-                .putString(AgentLogField.NAME, name)
-                .cause(failure));
-        return new SanitizerBootstrapException(
-                SanitizerBootstrapException.RULE_LOADING_FAILED,
-                message + " (" + failure.getClass().getName() + ")",
-                failure
-        );
-    }
-
-    private List<RuntimeRule> collectScrubbingRules(ScrubbingExtensionConfig scrubbing, ConfigProperties config) {
+    private List<RuntimeRule> collectScrubbingRules(ScrubbingExtensionConfig scrubbing) {
         List<String> primaryNames = scrubbing.builtInRules();
         List<String> additionalNames = ScrubbingRulesLoader.load(
                 scrubbing.rulesConfig(),
@@ -138,14 +117,12 @@ public final class PlatformScrubberFactory {
         List<SpanAttributeScrubbingRule> bundledSpi = stabilizeBundledRules(spiScrubbingRuleSource.get());
 
         ExtensionRuleLoader.ValidationMode validationMode = resolveValidationMode(scrubbing);
-        Set<String> otelExtensionPaths = collectOtelExtensionCanonicalPaths(config);
-
-        ExtensionRuleLoader extensionRuleLoader = new ExtensionRuleLoader(validationMode, otelExtensionPaths);
         String extensionsProperty = scrubbing.rulesExtensions();
-        List<SpanAttributeScrubbingRule> custom = extensionRuleLoader.load(extensionsProperty);
-
-        emitStartupDiagnostics(builtIn, bundledSpi, custom, extensionsProperty, extensionRuleLoader);
-        return mergeRules(builtIn, bundledSpi, custom);
+        try (ExtensionRuleLoader extensionRuleLoader = new ExtensionRuleLoader(validationMode)) {
+            List<SpanAttributeScrubbingRule> custom = extensionRuleLoader.load(extensionsProperty);
+            emitStartupDiagnostics(builtIn, bundledSpi, custom, extensionsProperty, extensionRuleLoader);
+            return mergeRules(builtIn, bundledSpi, custom);
+        }
     }
 
     private static List<SpanAttributeScrubbingRule> loadSpiScrubbingRules() {
@@ -240,49 +217,5 @@ public final class PlatformScrubberFactory {
 
     private static ExtensionRuleLoader.ValidationMode resolveValidationMode(ScrubbingExtensionConfig scrubbing) {
         return scrubbing.rulesValidationMode();
-    }
-
-    private static Set<String> collectOtelExtensionCanonicalPaths(ConfigProperties config) {
-        String raw = JavaAgentExtensionPaths.resolveRawValue(config);
-        if (StringUtils.isNullOrBlank(raw)) {
-            return Set.of();
-        }
-
-        Set<String> canonicalPaths = new HashSet<>();
-        for (String token : raw.split(",")) {
-            String trimmed = token.trim();
-            if (StringUtils.isNullOrEmpty(trimmed)) {
-                continue;
-            }
-
-            File path = new File(trimmed);
-            if (path.isDirectory()) {
-                File[] jars = path.listFiles(f -> f.isFile() && f.getName().endsWith(".jar"));
-                if (ArrayUtils.isNullOrEmpty(jars)) {
-                    continue;
-                }
-
-                for (File jar : jars) {
-                    canonicalPaths.add(canonicalize(jar));
-                }
-            } else {
-                canonicalPaths.add(canonicalize(path));
-            }
-        }
-
-        return canonicalPaths;
-    }
-
-    private static String canonicalize(File f) {
-        try {
-            return f.getCanonicalPath();
-        } catch (IOException ex) {
-            String safeName = StringUtils.hasText(f.getName()) ? f.getName() : "<unnamed>";
-            throw classified(
-                    "Unable to canonicalize configured OpenTelemetry extension path '" + safeName + "'",
-                    safeName,
-                    ex
-            );
-        }
     }
 }

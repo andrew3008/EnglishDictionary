@@ -22,10 +22,6 @@ import io.opentelemetry.sdk.trace.samplers.Sampler;
 import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
 import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 
-/**
- * Failure-path тесты {@link SafeSampler}: падение делегата не уходит в application thread,
- * применяется fail-closed DROP, degraded-mode перестаёт дёргать стабильно падающий делегат.
- */
 @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class SafeSamplerTest {
 
@@ -116,7 +112,7 @@ class SafeSamplerTest {
                 return "counting";
             }
         };
-        // Дефолтный DegradedModeController: порог 5 сбоев, cooldown 60с.
+
         SafeSampler safe = new SafeSampler(counting, new TracingDiagnostics());
         SamplerHarness harness = SamplerHarness.of(safe);
 
@@ -125,7 +121,6 @@ class SafeSamplerTest {
             assertThat(harness.sample().getDecision()).isEqualTo(SamplingDecision.DROP);
         }
 
-        // После 5 сбоев breaker OPEN — делегат больше не вызывается (защита hot-path от лишней работы).
         // then
         assertThat(delegateCalls.get())
                 .as("делегат вызывался не более порога открытия breaker")

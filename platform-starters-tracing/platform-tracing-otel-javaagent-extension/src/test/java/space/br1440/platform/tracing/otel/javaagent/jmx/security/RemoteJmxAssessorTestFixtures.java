@@ -2,15 +2,14 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.security;
 
 import java.util.List;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class RemoteJmxAssessorTestFixtures {
 
     public static final String EXPLODING_SUPPLIER_MESSAGE = "simulated remote JMX evidence capture failure";
     public static final String REMEDIATION_MANAGEMENT_AGENT = RemoteJmxMutationRegistrationAssessor.REMEDIATION_MANAGEMENT_AGENT;
     public static final String REMEDIATION_CAPTURE_UNAVAILABLE = RemoteJmxMutationRegistrationAssessor.REMEDIATION_CAPTURE_UNAVAILABLE;
-
-    private RemoteJmxAssessorTestFixtures() {
-        throw new AssertionError("No instances");
-    }
 
     public static List<String> allowingArguments() {
         return List.of();

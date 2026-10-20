@@ -98,14 +98,13 @@ class BootstrapResourcesOrderTest {
         ByteArrayOutputStream rawStderr = new ByteArrayOutputStream();
         PrintStream previousStderr = System.err;
         PrintStream replacementStderr = new PrintStream(rawStderr, true, StandardCharsets.UTF_8);
-        AgentLogCapture logs = new AgentLogCapture();
-        logs.install();
 
-        try (BootstrapResources resources = new BootstrapResources((threadName, action) -> {
-            shutdownAction.set(action);
-            return () -> {
-            };
-        })) {
+        try (AgentLogCapture logs = AgentLogCapture.installed();
+             BootstrapResources resources = new BootstrapResources((threadName, action) -> {
+                 shutdownAction.set(action);
+                 return () -> {
+                 };
+             })) {
             resources.push(() -> {
                 throw cleanupCause;
             }, "failing-resource");
@@ -149,7 +148,6 @@ class BootstrapResourcesOrderTest {
         } finally {
             System.setErr(previousStderr);
             replacementStderr.close();
-            logs.restore();
         }
     }
 }

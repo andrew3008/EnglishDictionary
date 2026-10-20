@@ -1,11 +1,14 @@
 package space.br1440.platform.tracing.otel.javaagent.configuration;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;
 
 final class ExtensionConfigReader {
 
@@ -35,6 +38,29 @@ final class ExtensionConfigReader {
 
     String nullableString(String name) {
         return config.getString(name);
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    <E extends Enum<E>> E enumValue(String name, Class<E> enumType, E defaultValue) {
+        String configValue = config.getString(name);
+        if (configValue == null) {
+            return defaultValue;
+        }
+
+        try {
+            return Enum.valueOf(enumType, configValue.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ignored) {
+            String allowedValues = String.join(
+                    ", ",
+                    Arrays.stream(enumType.getEnumConstants()).map(Enum::name).toList()
+            );
+
+            ConfigurationException failure = new ConfigurationException(
+                    name + " must be one of: " + allowedValues
+            );
+
+            throw new ConfigurationPropertyException(name, failure);
+        }
     }
 
     List<String> listValue(String name, List<String> defaultValue) {

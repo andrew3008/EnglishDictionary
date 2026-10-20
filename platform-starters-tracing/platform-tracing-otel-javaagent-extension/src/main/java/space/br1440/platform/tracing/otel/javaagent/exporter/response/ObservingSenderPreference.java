@@ -13,14 +13,20 @@ public final class ObservingSenderPreference {
     static final String GRPC_PREFERENCE_KEY = "io.opentelemetry.sdk.common.export.GrpcSenderProvider";
 
     public static void install() {
-        install(HTTP_PREFERENCE_KEY, ObservingHttpSenderProvider.class.getName());
-        install(GRPC_PREFERENCE_KEY, ObservingGrpcSenderProvider.class.getName());
+        String httpProvider = ObservingHttpSenderProvider.class.getName();
+        String grpcProvider = ObservingGrpcSenderProvider.class.getName();
+        String configuredHttp = effectivePreference(HTTP_PREFERENCE_KEY);
+        String configuredGrpc = effectivePreference(GRPC_PREFERENCE_KEY);
+
+        requireCompatible(HTTP_PREFERENCE_KEY, httpProvider, configuredHttp);
+        requireCompatible(GRPC_PREFERENCE_KEY, grpcProvider, configuredGrpc);
+
+        installIfMissing(HTTP_PREFERENCE_KEY, httpProvider, configuredHttp);
+        installIfMissing(GRPC_PREFERENCE_KEY, grpcProvider, configuredGrpc);
     }
 
-    private static void install(String preferenceKey, String providerClassName) {
-        String configured = effectivePreference(preferenceKey);
+    private static void requireCompatible(String preferenceKey, String providerClassName, String configured) {
         if (configured.isEmpty()) {
-            System.setProperty(preferenceKey, providerClassName);
             return;
         }
 
@@ -31,6 +37,12 @@ public final class ObservingSenderPreference {
         String message = "Controlled agent requires %s to be %s, but it is configured as %s"
                 .formatted(preferenceKey, providerClassName, configured);
         throw new IllegalStateException(message);
+    }
+
+    private static void installIfMissing(String preferenceKey, String providerClassName, String configured) {
+        if (configured.isEmpty()) {
+            System.setProperty(preferenceKey, providerClassName);
+        }
     }
 
     private static String effectivePreference(String preferenceKey) {

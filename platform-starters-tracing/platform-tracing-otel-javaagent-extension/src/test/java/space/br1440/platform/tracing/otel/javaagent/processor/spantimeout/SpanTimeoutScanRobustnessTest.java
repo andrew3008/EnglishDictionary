@@ -214,9 +214,8 @@ class SpanTimeoutScanRobustnessTest {
     void cleanPassEmitsExactlyOneInfoSummary() {
         // given
         AtomicLong clock = new AtomicLong();
-        AgentLogCapture logs = new AgentLogCapture();
-        logs.install();
-        try (SpanTimeoutProcessor processor = manualProcessor(clock::get, 10)) {
+        try (AgentLogCapture logs = AgentLogCapture.installed();
+             SpanTimeoutProcessor processor = manualProcessor(clock::get, 10)) {
             for (int ordinal = 1; ordinal <= 3; ordinal++) {
                 processor.onStart(Context.root(), SpanTimeoutTestSpans.span(ordinal, 1));
             }
@@ -236,8 +235,6 @@ class SpanTimeoutScanRobustnessTest {
                     .containsEntry("spanTimeoutAttempts", "3")
                     .containsEntry("traceTimeoutAttempts", "0")
                     .containsEntry("failures", "0");
-        } finally {
-            logs.restore();
         }
     }
 
@@ -247,9 +244,8 @@ class SpanTimeoutScanRobustnessTest {
         AtomicLong clock = new AtomicLong();
         ReadWriteSpan failing = SpanTimeoutTestSpans.span(1, 1);
         doThrow(new IllegalStateException("injected end failure")).when(failing).end();
-        AgentLogCapture logs = new AgentLogCapture();
-        logs.install();
-        try (SpanTimeoutProcessor processor = manualProcessor(clock::get, 10)) {
+        try (AgentLogCapture logs = AgentLogCapture.installed();
+             SpanTimeoutProcessor processor = manualProcessor(clock::get, 10)) {
             processor.onStart(Context.root(), failing);
             processor.onStart(Context.root(), SpanTimeoutTestSpans.span(2, 1));
             clock.set(2L);
@@ -268,8 +264,6 @@ class SpanTimeoutScanRobustnessTest {
                     .containsEntry("failures", "1")
                     .containsEntry("failureSample", IllegalStateException.class.getName());
             assertThat(summary.fields().get("failureSample")).doesNotContain("injected end failure");
-        } finally {
-            logs.restore();
         }
     }
 
@@ -281,9 +275,8 @@ class SpanTimeoutScanRobustnessTest {
         ReadWriteSpan second = SpanTimeoutTestSpans.span(2, 1);
         doThrow(new IllegalStateException("first failure")).when(first).end();
         doThrow(new UnsupportedOperationException("second failure")).when(second).end();
-        AgentLogCapture logs = new AgentLogCapture();
-        logs.install();
-        try (SpanTimeoutProcessor processor = manualProcessor(clock::get, 10)) {
+        try (AgentLogCapture logs = AgentLogCapture.installed();
+             SpanTimeoutProcessor processor = manualProcessor(clock::get, 10)) {
             processor.onStart(Context.root(), first);
             processor.onStart(Context.root(), second);
             clock.set(2L);
@@ -303,8 +296,6 @@ class SpanTimeoutScanRobustnessTest {
                     .containsEntry("sampleTraceId", firstFailure.fields().get("traceId"))
                     .containsEntry("sampleSpanId", firstFailure.fields().get("spanId"))
                     .containsEntry("failureSample", firstFailure.fields().get("failureType"));
-        } finally {
-            logs.restore();
         }
     }
 

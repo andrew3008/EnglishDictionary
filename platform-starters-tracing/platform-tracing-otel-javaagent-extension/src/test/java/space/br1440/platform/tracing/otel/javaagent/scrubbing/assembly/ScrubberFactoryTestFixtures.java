@@ -5,10 +5,10 @@ import java.util.function.Supplier;
 
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 
-public final class ScrubberFactoryTestFixtures {
+import lombok.experimental.UtilityClass;
 
-    private ScrubberFactoryTestFixtures() {
-    }
+@UtilityClass
+public final class ScrubberFactoryTestFixtures {
 
     public static PlatformScrubberFactory factory(Supplier<List<SpanAttributeScrubbingRule>> builtInRulesSupplier) {
         return new PlatformScrubberFactory(builtInRulesSupplier);

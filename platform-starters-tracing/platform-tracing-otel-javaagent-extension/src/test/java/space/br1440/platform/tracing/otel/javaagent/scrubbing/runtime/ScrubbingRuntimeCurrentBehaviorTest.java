@@ -6,6 +6,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -18,6 +19,7 @@ import jakarta.annotation.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.common.util.ArrayUtils;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
@@ -28,6 +30,7 @@ import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.Value;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
 
 class ScrubbingRuntimeCurrentBehaviorTest {
@@ -177,6 +180,96 @@ class ScrubbingRuntimeCurrentBehaviorTest {
         assertThat(runtime.maskedActions()).isZero();
         assertThat(runtime.droppedActions()).isZero();
         assertThat(runtime.attributesVerified()).isTrue();
+    }
+
+    @Test
+    void liveLookupsPreserveValueOriginAfterSnapshotNormalization() {
+        // given
+        AttributeKey<Value<?>> valueKey = AttributeKey.valueKey("payload");
+        AttributeKey<String> typedKey = AttributeKey.stringKey("payload");
+
+        try (SdkTracerProvider provider = SdkTracerProvider.builder().build()) {
+            ReadWriteSpan valueOrigin = (ReadWriteSpan) provider.get("value-origin").spanBuilder("value-origin").startSpan();
+            valueOrigin.setAttribute(valueKey, Value.of("secret"));
+            ReadWriteSpan nativeOrigin = (ReadWriteSpan) provider.get("native-origin").spanBuilder("native-origin").startSpan();
+            nativeOrigin.setAttribute(typedKey, "secret");
+
+            // when
+            Attributes valueSnapshot = valueOrigin.toSpanData().getAttributes();
+            Attributes nativeSnapshot = nativeOrigin.toSpanData().getAttributes();
+
+            // then
+            assertThat(valueSnapshot.get(typedKey)).isEqualTo("secret");
+            assertThat(valueOrigin.getAttribute(valueKey)).isEqualTo(Value.of("secret"));
+            assertThat(valueOrigin.getAttribute(typedKey)).isNull();
+
+            assertThat(nativeSnapshot.get(typedKey)).isEqualTo("secret");
+            assertThat(nativeOrigin.getAttribute(valueKey)).isNull();
+            assertThat(nativeOrigin.getAttribute(typedKey)).isEqualTo("secret");
+
+            valueOrigin.end();
+            nativeOrigin.end();
+        }
+    }
+
+    @Test
+    void normalizedValueOriginIsReservedForBoundaryWhileNativeOriginIsScrubbed() {
+        // given
+        AttributeKey<Value<?>> valueKey = AttributeKey.valueKey("payload");
+        AttributeKey<String> typedKey = AttributeKey.stringKey("payload");
+        ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("test"));
+
+        try (SdkTracerProvider provider = SdkTracerProvider.builder().build()) {
+            ReadWriteSpan valueOrigin = (ReadWriteSpan) provider.get("value-origin").spanBuilder("value-origin").startSpan();
+            valueOrigin.setAttribute(valueKey, Value.of("secret"));
+            ReadWriteSpan nativeOrigin = (ReadWriteSpan) provider.get("native-origin").spanBuilder("native-origin").startSpan();
+            nativeOrigin.setAttribute(typedKey, "secret");
+
+            // when
+            runtime.scrubSpanAttributes(valueOrigin);
+            runtime.scrubSpanAttributes(nativeOrigin);
+
+            // then
+            assertThat(valueOrigin.getAttribute(valueKey)).isEqualTo(Value.of("secret"));
+            assertThat(valueOrigin.getAttribute(typedKey)).isNull();
+            assertThat(nativeOrigin.getAttribute(valueKey)).isNull();
+            assertThat(nativeOrigin.getAttribute(typedKey)).isEqualTo("***");
+            assertThat(runtime.maskedActions()).isEqualTo(1L);
+
+            valueOrigin.end();
+            nativeOrigin.end();
+        }
+    }
+
+    @Test
+    void normalizedValueOriginRemainsBoundaryOwnedDuringFailClosedSnapshot() {
+        // given
+        AttributeKey<Value<?>> valueKey = AttributeKey.valueKey("payload");
+        AttributeKey<String> projectedValueKey = AttributeKey.stringKey("payload");
+        AttributeKey<String> nativeKey = AttributeKey.stringKey("neighbor.secret");
+        ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("test"));
+
+        try (SdkTracerProvider provider = SdkTracerProvider.builder().build()) {
+            ReadWriteSpan span = (ReadWriteSpan) provider.get("fail-closed").spanBuilder("fail-closed").startSpan();
+            span.setAttribute(valueKey, Value.of("secret"));
+            span.setAttribute(nativeKey, "native-secret");
+            ReadWriteSpan failingSpan = failFirstMutation(span);
+
+            // when
+            runtime.scrubSpanAttributes(failingSpan);
+
+            // then
+            assertThat(span.toSpanData().getAttributes().get(projectedValueKey)).isEqualTo("secret");
+            assertThat(span.getAttribute(valueKey)).isEqualTo(Value.of("secret"));
+            assertThat(span.getAttribute(projectedValueKey)).isNull();
+            assertThat(span.getAttribute(nativeKey)).isEqualTo(FAILED);
+            assertThat(runtime.failures()).isEqualTo(1L);
+            assertThat(runtime.attributesVerified()).isFalse();
+            assertThat(runtime.collapseModeActivations()).isEqualTo(1L);
+            assertThat(runtime.maskedActions()).isEqualTo(2L);
+
+            span.end();
+        }
     }
 
     @Test
@@ -353,6 +446,25 @@ class ScrubbingRuntimeCurrentBehaviorTest {
         return snapshot;
     }
 
+    private static ReadWriteSpan failFirstMutation(ReadWriteSpan delegate) {
+        boolean[] failed = {false};
+        return (ReadWriteSpan) Proxy.newProxyInstance(
+                ScrubbingRuntimeCurrentBehaviorTest.class.getClassLoader(),
+                new Class<?>[] {ReadWriteSpan.class},
+                (proxy, method, args) -> {
+                    if ("setAttribute".equals(method.getName()) && !failed[0]) {
+                        failed[0] = true;
+                        throw new IllegalStateException("synthetic mutation failure");
+                    }
+
+                    try {
+                        return method.invoke(delegate, args);
+                    } catch (InvocationTargetException failure) {
+                        throw failure.getCause();
+                    }
+                });
+    }
+
     private static final class SyntheticVirtualMachineError extends VirtualMachineError {
         private SyntheticVirtualMachineError() {
             super("synthetic");
@@ -374,7 +486,7 @@ class ScrubbingRuntimeCurrentBehaviorTest {
                 ScrubbingRuntimeCurrentBehaviorTest.class.getClassLoader(),
                 new Class<?>[] {ReadWriteSpan.class},
                 (proxy, method, args) -> {
-                    if ("toSpanData".equals(method.getName()) && (args == null || args.length == 0)) {
+                    if ("toSpanData".equals(method.getName()) && ArrayUtils.isNullOrEmpty(args)) {
                         if (snapshotUnavailable) {
                             throw new IllegalStateException("snapshot unavailable");
                         }

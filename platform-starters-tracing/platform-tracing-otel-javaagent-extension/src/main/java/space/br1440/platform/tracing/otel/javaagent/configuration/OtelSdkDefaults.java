@@ -5,12 +5,12 @@ import java.time.Duration;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
-final class OtelSdkDefaults {
+public class OtelSdkDefaults {
 
-    static final int DEFAULT_BSP_MAX_QUEUE_SIZE = 2048;
-    static final int DEFAULT_BSP_MAX_EXPORT_BATCH_SIZE = 512;
-    static final Duration DEFAULT_BSP_EXPORT_TIMEOUT = Duration.ofMillis(5_000);
-    static final Duration DEFAULT_BSP_SCHEDULE_DELAY = Duration.ofMillis(5_000);
+    public static final int DEFAULT_BSP_MAX_QUEUE_SIZE = 2048;
+    public static final int DEFAULT_BSP_MAX_EXPORT_BATCH_SIZE = 512;
+    public static final Duration DEFAULT_BSP_EXPORT_TIMEOUT = Duration.ofMillis(5_000);
+    public static final Duration DEFAULT_BSP_SCHEDULE_DELAY = Duration.ofMillis(5_000);
 
     static final int DEFAULT_SPAN_ATTRIBUTE_COUNT_LIMIT = 50;
     static final int DEFAULT_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT = 1_000;

@@ -12,10 +12,10 @@ import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.internal.ExtendedSpanProcessor;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
 
-public final class OtelDirectIntegrationExtensionSpiRules {
+import lombok.experimental.UtilityClass;
 
-    private OtelDirectIntegrationExtensionSpiRules() {
-    }
+@UtilityClass
+public final class OtelDirectIntegrationExtensionSpiRules {
 
     public static final ArchRule BAGGAGE_SPAN_PROCESSOR_IMPLEMENTS_SPI = classes()
             .that().haveSimpleName("BaggageSpanProcessor")

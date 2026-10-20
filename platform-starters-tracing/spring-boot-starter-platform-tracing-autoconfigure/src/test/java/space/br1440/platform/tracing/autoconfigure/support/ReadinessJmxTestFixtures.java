@@ -31,6 +31,17 @@ public final class ReadinessJmxTestFixtures {
     public static final String BATCH_ID = "test-batch";
 
     private static final String SHA256 = "a".repeat(64);
+    private static final List<String> PRE_RUNTIME_BINDING_CAPABILITIES = List.of(
+            "CONFIGURATION_LOADED",
+            "REQUIRED_SPAN_PROCESSORS_INSTALLED",
+            "PROPAGATION_HOOKS_INSTALLED",
+            "SAFE_EXPORTER_INSTALLED",
+            "EXPORT_PATH_PROTECTED"
+    );
+    private static final List<String> PRE_RUNTIME_BINDING_MISSING_REQUIRED = List.of(
+            "PLATFORM_SAMPLER_INSTALLED",
+            "SANITIZER_INSTALLED"
+    );
 
     private ReadinessJmxTestFixtures() {
     }
@@ -52,6 +63,24 @@ public final class ReadinessJmxTestFixtures {
                 JmxWireContract.REQUIRED_CAPABILITIES,
                 List.of(),
                 "",
+                SHA256,
+                "2.30.0",
+                "1.2.3",
+                "agent-loader@7e57",
+                "sdk-loader@7e58");
+    }
+
+    public static CompositeData failedSnapshot(String failureCode) {
+        return composite(
+                JmxWireContract.SCHEMA_ID,
+                JmxWireContract.SCHEMA_DIGEST_SHA256,
+                AGENT_INSTANCE_ID,
+                0L,
+                "",
+                "FAILED",
+                PRE_RUNTIME_BINDING_CAPABILITIES,
+                PRE_RUNTIME_BINDING_MISSING_REQUIRED,
+                failureCode,
                 SHA256,
                 "2.30.0",
                 "1.2.3",
