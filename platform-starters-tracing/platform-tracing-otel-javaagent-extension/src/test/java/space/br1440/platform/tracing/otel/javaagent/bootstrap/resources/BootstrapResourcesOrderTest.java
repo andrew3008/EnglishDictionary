@@ -97,9 +97,9 @@ class BootstrapResourcesOrderTest {
         UnsupportedOperationException completionFailure = new UnsupportedOperationException("completion-" + SECRET_MARKER);
         ByteArrayOutputStream rawStderr = new ByteArrayOutputStream();
         PrintStream previousStderr = System.err;
-        PrintStream replacementStderr = new PrintStream(rawStderr, true, StandardCharsets.UTF_8);
 
-        try (AgentLogCapture logs = AgentLogCapture.installed();
+        try (PrintStream replacementStderr = new PrintStream(rawStderr, true, StandardCharsets.UTF_8);
+             AgentLogCapture logs = AgentLogCapture.installed();
              BootstrapResources resources = new BootstrapResources((threadName, action) -> {
                  shutdownAction.set(action);
                  return () -> {
@@ -147,7 +147,6 @@ class BootstrapResourcesOrderTest {
             assertThat(logs.rendered()).doesNotContain(SECRET_MARKER);
         } finally {
             System.setErr(previousStderr);
-            replacementStderr.close();
         }
     }
 }

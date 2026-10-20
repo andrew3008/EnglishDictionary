@@ -12,6 +12,7 @@ import org.assertj.core.api.AbstractAssert;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 
+@SuppressWarnings("UnusedReturnValue")
 final class DiagnosticReadinessMBeanAssert extends AbstractAssert<DiagnosticReadinessMBeanAssert, MBeanServer> {
 
     private DiagnosticReadinessMBeanAssert(MBeanServer actual) {
@@ -49,6 +50,7 @@ final class DiagnosticReadinessMBeanAssert extends AbstractAssert<DiagnosticRead
         return myself;
     }
 
+    @SuppressWarnings("SameParameterValue")
     DiagnosticReadinessMBeanAssert isOwnedBy(Class<?> expectedType) {
         isRegistered();
         String className;

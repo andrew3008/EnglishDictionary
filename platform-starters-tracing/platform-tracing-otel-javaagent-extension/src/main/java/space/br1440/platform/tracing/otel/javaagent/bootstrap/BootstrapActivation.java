@@ -77,6 +77,7 @@ final class BootstrapActivation {
         attempt.enter(ActivationPhase.SAMPLER_POSTCONDITION);
 
         AutoconfigureSession session = attempt.session();
+        //noinspection resource -- SdkTracerProvider принадлежит autoconfigure SDK и закрывается им, а не активацией
         if (attempt.tracerProvider().getSampler() != session.sampler()) {
             throw new IllegalStateException("Installed SDK sampler is not the platform session sampler");
         }

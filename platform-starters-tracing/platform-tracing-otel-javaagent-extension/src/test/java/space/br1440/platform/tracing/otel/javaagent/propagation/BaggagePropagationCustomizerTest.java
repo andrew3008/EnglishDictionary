@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -56,7 +57,7 @@ class BaggagePropagationCustomizerTest {
         Map<String, String> carrier = new java.util.HashMap<>();
 
         // when
-        result.inject(ctx, carrier, (c, k, v) -> c.put(k, v));
+        result.inject(ctx, carrier, (c, k, v) -> Objects.requireNonNull(c, "carrier").put(k, v));
 
         // then
         assertThat(result).isSameAs(TextMapPropagator.noop());
@@ -147,7 +148,7 @@ class BaggagePropagationCustomizerTest {
         Map<String, String> carrier = new java.util.HashMap<>();
 
         // when
-        chain.inject(ctx, carrier, (c, k, v) -> c.put(k, v));
+        chain.inject(ctx, carrier, (c, k, v) -> Objects.requireNonNull(c, "carrier").put(k, v));
 
         // then
         String header = carrier.get("baggage");
@@ -173,7 +174,7 @@ class BaggagePropagationCustomizerTest {
         Map<String, String> carrier = new java.util.HashMap<>();
 
         // when
-        chain.inject(ctx, carrier, (c, k, v) -> c.put(k, v));
+        chain.inject(ctx, carrier, (c, k, v) -> Objects.requireNonNull(c, "carrier").put(k, v));
 
         // then
         String header = carrier.get("baggage");
@@ -189,6 +190,7 @@ class BaggagePropagationCustomizerTest {
         return new ExtensionConfig(props).baggage();
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static BaggageExtensionConfig configWithOutboundAllowlist(String allowedKeys) {
         ConfigProperties props = DefaultConfigProperties.createFromMap(Map.of(
                 ExtensionPropertyNames.BAGGAGE_PROPAGATION_ENABLED, "true",

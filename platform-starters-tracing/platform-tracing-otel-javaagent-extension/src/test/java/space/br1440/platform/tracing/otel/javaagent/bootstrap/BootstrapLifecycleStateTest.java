@@ -3,7 +3,6 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
 
-import java.lang.reflect.Method;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -61,9 +60,9 @@ class BootstrapLifecycleStateTest {
         UnsupportedOperationException repeatedCleanupFailure = new UnsupportedOperationException("Repeated cleanup failure");
 
         // when
-        invokeRollbackEscalation(lifecycle, "close", cleanupFailure);
+        lifecycle.escalateRollbackIncomplete("close", cleanupFailure);
         BootstrapException escalated = lifecycle.stickyFailure("test");
-        invokeRollbackEscalation(lifecycle, "shutdown", repeatedCleanupFailure);
+        lifecycle.escalateRollbackIncomplete("shutdown", repeatedCleanupFailure);
         BootstrapException repeated = lifecycle.stickyFailure("test");
 
         // then
@@ -84,7 +83,7 @@ class BootstrapLifecycleStateTest {
         BootstrapException initial = lifecycle.fail("ACTIVATION_FAILED", "activate", primaryCause);
 
         // when
-        invokeRollbackEscalation(lifecycle, "rollback", cleanupFailure);
+        lifecycle.escalateRollbackIncomplete("rollback", cleanupFailure);
         BootstrapException repeated = lifecycle.fail("SUBSEQUENT_FAILURE", "close", subsequentCause);
 
         // then
@@ -93,21 +92,5 @@ class BootstrapLifecycleStateTest {
         assertThat(repeated.getCause().getSuppressed()).containsExactly(cleanupFailure);
         assertThat(subsequentCause.getSuppressed()).isEmpty();
         assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
-    }
-
-    private static void invokeRollbackEscalation(BootstrapLifecycleState lifecycle,
-                                                 String phase,
-                                                 Throwable cleanupFailure) {
-        try {
-            Method method = BootstrapLifecycleState.class.getDeclaredMethod(
-                    "escalateRollbackIncomplete",
-                    String.class,
-                    Throwable.class
-            );
-            method.setAccessible(true);
-            method.invoke(lifecycle, phase, cleanupFailure);
-        } catch (ReflectiveOperationException failure) {
-            throw new AssertionError("Cannot invoke rollback-incomplete escalation for test", failure);
-        }
     }
 }

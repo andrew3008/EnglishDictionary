@@ -56,25 +56,26 @@ class OtelSdkDefaultsUpstreamParityTest {
                 .builder(exporter(pendingExport))
                 .readBspConfigFrom(DefaultConfigProperties.createFromMap(Map.of()))
                 .build();
-        SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
+
+        try (SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .setSampler(Sampler.alwaysOn())
                 .addSpanProcessor(processor)
-                .build();
-        Tracer tracer = tracerProvider.get("bsp-export-timeout-fallback-test");
+                .build()) {
+            Tracer tracer = tracerProvider.get("bsp-export-timeout-fallback-test");
 
-        try {
-            // when
-            tracer.spanBuilder("timeout").startSpan().end();
-            CompletableResultCode flush = processor.forceFlush();
+            try {
+                // when
+                tracer.spanBuilder("timeout").startSpan().end();
+                CompletableResultCode flush = processor.forceFlush();
 
-            // then
-            assertThat(flush.join(7, TimeUnit.SECONDS).isDone()).isTrue();
-            assertThat(flush.isSuccess()).isFalse();
-            assertThat(processor.metricsSnapshot().timeoutsTotal()).isEqualTo(1L);
-            assertThat(OtelSdkDefaults.DEFAULT_BSP_EXPORT_TIMEOUT).isEqualTo(Duration.ofSeconds(5));
-        } finally {
-            pendingExport.succeed();
-            tracerProvider.shutdown().join(2, TimeUnit.SECONDS);
+                // then
+                assertThat(flush.join(7, TimeUnit.SECONDS).isDone()).isTrue();
+                assertThat(flush.isSuccess()).isFalse();
+                assertThat(processor.metricsSnapshot().timeoutsTotal()).isEqualTo(1L);
+                assertThat(OtelSdkDefaults.DEFAULT_BSP_EXPORT_TIMEOUT).isEqualTo(Duration.ofSeconds(5));
+            } finally {
+                pendingExport.succeed();
+            }
         }
     }
 

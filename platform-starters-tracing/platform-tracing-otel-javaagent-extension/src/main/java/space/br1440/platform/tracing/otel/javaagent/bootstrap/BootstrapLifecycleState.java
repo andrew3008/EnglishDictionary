@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
 
 import java.util.Objects;
@@ -180,6 +181,25 @@ final class BootstrapLifecycleState {
     void markFailed(String code, String phase, Throwable cause) {
         synchronized (monitor) {
             this.failure = new BootstrapFailure(code, phase, cause);
+            this.state = BootstrapState.FAILED;
+        }
+    }
+
+    void escalateRollbackIncomplete(String phase, Throwable cleanupFailure) {
+        Objects.requireNonNull(phase, "phase");
+        Objects.requireNonNull(cleanupFailure, "cleanupFailure");
+        synchronized (monitor) {
+            if (failure != null && FAILED_ROLLBACK_INCOMPLETE.equals(failure.code())) {
+                return;
+            }
+
+            Throwable effectiveCause = failure == null || failure.cause() == null
+                    ? cleanupFailure
+                    : failure.cause();
+            if (effectiveCause != cleanupFailure) {
+                effectiveCause.addSuppressed(cleanupFailure);
+            }
+            this.failure = new BootstrapFailure(FAILED_ROLLBACK_INCOMPLETE, phase, effectiveCause);
             this.state = BootstrapState.FAILED;
         }
     }

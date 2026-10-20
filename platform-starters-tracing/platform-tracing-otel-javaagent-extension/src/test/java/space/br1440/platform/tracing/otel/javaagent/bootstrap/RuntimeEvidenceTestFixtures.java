@@ -36,10 +36,6 @@ final class RuntimeEvidenceTestFixtures {
         return coordinator(new PlatformScrubberFactory(), MBeanServerFactory.newMBeanServer());
     }
 
-    static BootstrapCoordinator coordinator(PlatformScrubberFactory scrubberFactory) {
-        return coordinator(scrubberFactory, MBeanServerFactory.newMBeanServer());
-    }
-
     static BootstrapCoordinator coordinator(MBeanServer mbeanServer) {
         return coordinator(new PlatformScrubberFactory(), mbeanServer);
     }
