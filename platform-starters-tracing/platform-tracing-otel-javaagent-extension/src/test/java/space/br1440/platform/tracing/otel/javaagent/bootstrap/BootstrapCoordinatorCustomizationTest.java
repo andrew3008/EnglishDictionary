@@ -45,8 +45,7 @@ class BootstrapCoordinatorCustomizationTest {
         // given
         MBeanServer server = MBeanServerFactory.newMBeanServer();
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
-        IllegalStateException attestationFailure =
-                new IllegalStateException("simulated trace pipeline attestation failure");
+        IllegalStateException attestationFailure = new IllegalStateException("simulated trace pipeline attestation failure");
         BootstrapCoordinator coordinator = coordinator().server(server).agentInstanceId(agentInstanceId).build();
 
         try (coordinator) {
