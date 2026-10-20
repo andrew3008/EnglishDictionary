@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.emptyBuiltInRulesConfig;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.expectBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
 
 import java.util.List;
 import java.util.Map;
@@ -30,7 +30,7 @@ class BootstrapCoordinatorSanitizerPreparationTest {
                 .scrubberFactory(ScrubberFactoryTestFixtures.factory(List::of))
                 .build()) {
             // when/then
-            expectBootstrapFailure(
+            assertBootstrapFailure(
                     () -> coordinator.prepare(emptyBuiltInRulesConfig()),
                     SanitizerBootstrapException.RULE_SET_EMPTY
             );
@@ -42,7 +42,7 @@ class BootstrapCoordinatorSanitizerPreparationTest {
         // given
         try (BootstrapCoordinator coordinator = coordinator().build()) {
             // when/then
-            expectBootstrapFailure(
+            assertBootstrapFailure(
                     () -> coordinator.prepare(config(Map.of(
                             ExtensionPropertyNames.SCRUBBING_MISSING_KEY_POLICY,
                             "fail-fast"
@@ -73,7 +73,7 @@ class BootstrapCoordinatorSanitizerPreparationTest {
                 .scrubberFactory(ScrubberFactoryTestFixtures.factory(() -> List.of(brokenMetadata)))
                 .build()) {
             // when/then
-            expectBootstrapFailure(
+            assertBootstrapFailure(
                     () -> coordinator.prepare(config()),
                     SanitizerBootstrapException.RULE_METADATA_INVALID
             );

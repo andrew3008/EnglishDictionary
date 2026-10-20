@@ -7,7 +7,8 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.acknowledgeScrubbingExcept;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.expectBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.markCapabilitiesExcept;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.registerForeignReadinessMBean;
@@ -66,7 +67,7 @@ class BootstrapCoordinatorActivationTest {
                 assertThat(coordinator.currentWire().agentInstanceId()).isEqualTo(agentInstanceId);
 
                 // when
-                expectBootstrapFailure(() -> coordinator.activate(tracerProvider), DUPLICATE_ACTIVATION);
+                assertBootstrapFailure(() -> coordinator.activate(tracerProvider), DUPLICATE_ACTIVATION);
 
                 // then
                 assertThatCoordinator(coordinator).isActiveAndReady();
@@ -90,7 +91,7 @@ class BootstrapCoordinatorActivationTest {
 
             try (SdkTracerProvider tracerProvider = providerFor(session)) {
                 // when
-                BootstrapException failure = expectBootstrapFailure(
+                BootstrapException failure = catchBootstrapFailure(
                         () -> coordinator.activate(tracerProvider),
                         FAILED_ROLLBACK_INCOMPLETE
                 );
@@ -115,7 +116,7 @@ class BootstrapCoordinatorActivationTest {
                          session.jmxRegistrar().registerRuntimeControls(session.policy());
                  SdkTracerProvider tracerProvider = providerFor(session)) {
                 // when
-                expectBootstrapFailure(() -> coordinator.activate(tracerProvider), ACTIVATION_FAILED);
+                assertBootstrapFailure(() -> coordinator.activate(tracerProvider), ACTIVATION_FAILED);
 
                 // then
                 assertThat(session.readiness().snapshot().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
@@ -140,7 +141,7 @@ class BootstrapCoordinatorActivationTest {
 
             try (SdkTracerProvider tracerProvider = providerFor(session)) {
                 // when
-                expectBootstrapFailure(() -> coordinator.activate(tracerProvider), ACTIVATION_FAILED);
+                assertBootstrapFailure(() -> coordinator.activate(tracerProvider), ACTIVATION_FAILED);
             }
 
             // then
@@ -165,7 +166,7 @@ class BootstrapCoordinatorActivationTest {
 
             try (SdkTracerProvider tracerProvider = providerFor(session)) {
                 // when
-                expectBootstrapFailure(() -> coordinator.activate(tracerProvider), ACTIVATION_FAILED);
+                assertBootstrapFailure(() -> coordinator.activate(tracerProvider), ACTIVATION_FAILED);
             }
 
             // then
@@ -210,7 +211,7 @@ class BootstrapCoordinatorActivationTest {
 
         try (BootstrapCoordinator coordinator = coordinator().registrar(registrar).build()) {
             // when
-            expectBootstrapFailure(
+            assertBootstrapFailure(
                     () -> coordinator.prepare(config()),
                     DIAGNOSTIC_MBEAN_REGISTRATION_FAILED
             );

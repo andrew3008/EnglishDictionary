@@ -8,7 +8,8 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.DIAGNOSTIC_MBEAN_REGISTRATION_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.expectBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.recordingReadinessRegistration;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.registerForeignReadinessMBean;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
@@ -50,7 +51,7 @@ class BootstrapCoordinatorCustomizationTest {
 
         try (coordinator) {
             // when
-            BootstrapException failure = expectBootstrapFailure(
+            BootstrapException failure = catchBootstrapFailure(
                     () -> coordinator.execute(SanitizerBootstrapException.TRACE_PIPELINE_ATTESTATION_FAILED, () -> {
                         throw attestationFailure;
                     }),
@@ -98,7 +99,7 @@ class BootstrapCoordinatorCustomizationTest {
             AutoconfigureSession session = coordinator.prepare(config());
 
             // when
-            expectBootstrapFailure(
+            assertBootstrapFailure(
                     () -> coordinator.execute(EXPORTER_INITIALIZATION_FAILED, () -> {
                         throw new SanitizerBootstrapException(
                                 SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER,
@@ -130,7 +131,7 @@ class BootstrapCoordinatorCustomizationTest {
             coordinator.prepare(config());
 
             // when
-            BootstrapException failure = expectBootstrapFailure(
+            BootstrapException failure = catchBootstrapFailure(
                     () -> coordinator.execute(SPAN_PROCESSOR_INITIALIZATION_FAILED, () -> {
                         throw customizerFailure;
                     }),
@@ -161,7 +162,7 @@ class BootstrapCoordinatorCustomizationTest {
 
         try (BootstrapCoordinator coordinator = coordinator().server(server).build()) {
             // when
-            BootstrapException failure = expectBootstrapFailure(
+            BootstrapException failure = catchBootstrapFailure(
                     () -> coordinator.prepare(config()),
                     DIAGNOSTIC_MBEAN_REGISTRATION_FAILED
             );
@@ -194,7 +195,7 @@ class BootstrapCoordinatorCustomizationTest {
             coordinator.prepare(config());
 
             // when
-            BootstrapException failure = expectBootstrapFailure(
+            BootstrapException failure = catchBootstrapFailure(
                     () -> coordinator.execute(SPAN_PROCESSOR_INITIALIZATION_FAILED, () -> {
                         throw customizerFailure;
                     }),

@@ -4,9 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorAssert.assertThatCoordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_INITIALIZING;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.expectBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.invalidValidationLevelConfig;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.recordingReadinessRegistration;
@@ -111,7 +112,7 @@ class BootstrapCoordinatorPrepareTest {
 
         try (coordinator) {
             // when
-            BootstrapException failure = expectBootstrapFailure(
+            BootstrapException failure = catchBootstrapFailure(
                     () -> coordinator.prepare(config()),
                     failureCode.name()
             );
@@ -135,7 +136,7 @@ class BootstrapCoordinatorPrepareTest {
 
         try (coordinator) {
             // when
-            expectBootstrapFailure(
+            assertBootstrapFailure(
                     () -> coordinator.prepare(invalidValidationLevelConfig()),
                     CONFIGURATION_INITIALIZATION_FAILED
             );
@@ -165,13 +166,13 @@ class BootstrapCoordinatorPrepareTest {
         MBeanServer server = MBeanServerFactory.newMBeanServer();
 
         try (BootstrapCoordinator coordinator = coordinator().server(server).build()) {
-            BootstrapException first = expectBootstrapFailure(
+            BootstrapException first = catchBootstrapFailure(
                     () -> coordinator.prepare(invalidValidationLevelConfig()),
                     CONFIGURATION_INITIALIZATION_FAILED
             );
 
             // when
-            BootstrapException repeated = expectBootstrapFailure(
+            BootstrapException repeated = catchBootstrapFailure(
                     () -> coordinator.prepare(invalidValidationLevelConfig()),
                     CONFIGURATION_INITIALIZATION_FAILED
             );
@@ -188,7 +189,7 @@ class BootstrapCoordinatorPrepareTest {
         // given
         try (BootstrapCoordinator coordinator = coordinator().build()) {
             // when
-            expectBootstrapFailure(
+            assertBootstrapFailure(
                     () -> coordinator.prepare(invalidValidationLevelConfig()),
                     CONFIGURATION_INITIALIZATION_FAILED
             );
@@ -208,7 +209,7 @@ class BootstrapCoordinatorPrepareTest {
 
         try (BootstrapCoordinator coordinator = coordinator().build()) {
             // when
-            BootstrapException failure = expectBootstrapFailure(
+            BootstrapException failure = catchBootstrapFailure(
                     () -> coordinator.prepare(config(Map.of(), routeRatios)),
                     CONFIGURATION_INITIALIZATION_FAILED
             );
@@ -227,7 +228,7 @@ class BootstrapCoordinatorPrepareTest {
 
         try (BootstrapCoordinator coordinator = coordinator().build()) {
             // when
-            BootstrapException failure = expectBootstrapFailure(
+            BootstrapException failure = catchBootstrapFailure(
                     () -> coordinator.prepare(config(Map.of(), routeRatios)),
                     CONFIGURATION_INITIALIZATION_FAILED
             );
@@ -246,7 +247,7 @@ class BootstrapCoordinatorPrepareTest {
             coordinator.prepare(config());
 
             // when/then
-            expectBootstrapFailure(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
+            assertBootstrapFailure(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
         }
     }
 
@@ -267,7 +268,7 @@ class BootstrapCoordinatorPrepareTest {
             assertThat(acceptedRevision.acceptedSequence()).isEqualTo(1L);
 
             // when
-            expectBootstrapFailure(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
+            assertBootstrapFailure(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
             AutoconfigureSession retainedSession = coordinator.session();
 
             // then
@@ -288,7 +289,7 @@ class BootstrapCoordinatorPrepareTest {
             AutoconfigureSession originalSession = coordinator.prepare(config());
 
             // when
-            expectBootstrapFailure(
+            assertBootstrapFailure(
                     () -> coordinator.prepare(config(Map.of(ExtensionPropertyNames.SAMPLING_RATIO, "0.42"))),
                     SECOND_SDK_BUILD
             );
@@ -322,7 +323,7 @@ class BootstrapCoordinatorPrepareTest {
                 long evidenceGeneration = coordinator.currentWire().evidenceGeneration();
 
                 // when
-                expectBootstrapFailure(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
+                assertBootstrapFailure(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
 
                 // then
                 assertThatCoordinator(coordinator).isActiveAndReady();
@@ -351,7 +352,7 @@ class BootstrapCoordinatorPrepareTest {
 
         try (coordinator) {
             // when
-            BootstrapException failure = expectBootstrapFailure(
+            BootstrapException failure = catchBootstrapFailure(
                     () -> coordinator.prepare(config()),
                     VerificationFailureCode.DISTRIBUTION_MISMATCH.name()
             );
@@ -378,7 +379,7 @@ class BootstrapCoordinatorPrepareTest {
 
         try (coordinator) {
             // when
-            expectBootstrapFailure(() -> coordinator.prepare(configuration), REENTRANT_OR_OUT_OF_ORDER);
+            assertBootstrapFailure(() -> coordinator.prepare(configuration), REENTRANT_OR_OUT_OF_ORDER);
 
             // then
             assertThatCoordinator(coordinator).isTerminallyFailedWith(REENTRANT_OR_OUT_OF_ORDER);
@@ -403,7 +404,7 @@ class BootstrapCoordinatorPrepareTest {
 
             try (coordinator) {
                 // when
-                expectBootstrapFailure(() -> coordinator.prepare(configuration), REENTRANT_OR_OUT_OF_ORDER);
+                assertBootstrapFailure(() -> coordinator.prepare(configuration), REENTRANT_OR_OUT_OF_ORDER);
 
                 // then
                 assertThatCoordinator(coordinator).isTerminallyFailedWith(REENTRANT_OR_OUT_OF_ORDER);

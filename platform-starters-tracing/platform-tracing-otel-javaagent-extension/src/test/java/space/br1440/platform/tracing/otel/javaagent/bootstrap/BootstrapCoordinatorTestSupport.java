@@ -54,7 +54,13 @@ final class BootstrapCoordinatorTestSupport {
         return new CoordinatorBuilder();
     }
 
-    static BootstrapException expectBootstrapFailure(ThrowingCallable call, String expectedCode) {
+    static void assertBootstrapFailure(ThrowingCallable call, String expectedCode) {
+        assertThat(catchBootstrapFailure(call, expectedCode).failure().code())
+                .as("failure code")
+                .isEqualTo(expectedCode);
+    }
+
+    static BootstrapException catchBootstrapFailure(ThrowingCallable call, String expectedCode) {
         Throwable thrown = catchThrowable(call);
         assertThat(thrown).as("BootstrapException with code %s", expectedCode)
                 .isInstanceOf(BootstrapException.class);

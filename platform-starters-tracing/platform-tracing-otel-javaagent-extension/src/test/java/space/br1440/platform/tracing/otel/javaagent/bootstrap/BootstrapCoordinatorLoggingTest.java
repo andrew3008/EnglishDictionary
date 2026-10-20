@@ -6,7 +6,8 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_READY;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.expectBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.invalidValidationLevelConfig;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.registerForeignReadinessMBean;
@@ -81,7 +82,7 @@ class BootstrapCoordinatorLoggingTest {
 
             // when
             try (SdkTracerProvider tracerProvider = SdkTracerProvider.builder().build()) {
-                expectBootstrapFailure(() -> coordinator.activate(tracerProvider), PLATFORM_SAMPLER_REPLACED);
+                assertBootstrapFailure(() -> coordinator.activate(tracerProvider), PLATFORM_SAMPLER_REPLACED);
             }
 
             // then
@@ -102,11 +103,11 @@ class BootstrapCoordinatorLoggingTest {
 
         try (BootstrapCoordinator coordinator = coordinator().server(server).build()) {
             // when
-            BootstrapException first = expectBootstrapFailure(
+            BootstrapException first = catchBootstrapFailure(
                     () -> coordinator.prepare(invalidValidationLevelConfig()),
                     CONFIGURATION_INITIALIZATION_FAILED
             );
-            BootstrapException repeated = expectBootstrapFailure(
+            BootstrapException repeated = catchBootstrapFailure(
                     () -> coordinator.prepare(invalidValidationLevelConfig()),
                     CONFIGURATION_INITIALIZATION_FAILED
             );
@@ -133,7 +134,7 @@ class BootstrapCoordinatorLoggingTest {
         // given
         try (BootstrapCoordinator coordinator = coordinator().build()) {
             // when
-            expectBootstrapFailure(
+            assertBootstrapFailure(
                     () -> coordinator.prepare(config(Map.of(ExtensionPropertyNames.SCRUBBING_ENABLED, "false"))),
                     CONFIGURATION_INITIALIZATION_FAILED
             );
@@ -157,7 +158,7 @@ class BootstrapCoordinatorLoggingTest {
         // given
         try (BootstrapCoordinator coordinator = coordinator().build()) {
             // when
-            BootstrapException failure = expectBootstrapFailure(
+            BootstrapException failure = catchBootstrapFailure(
                     () -> coordinator.prepare(config(Map.of("otel.traces.sampler", "always_on"))),
                     CONFIGURATION_INITIALIZATION_FAILED
             );
@@ -190,7 +191,7 @@ class BootstrapCoordinatorLoggingTest {
                 }))
                 .build()) {
             // when
-            BootstrapException failure = expectBootstrapFailure(
+            BootstrapException failure = catchBootstrapFailure(
                     () -> coordinator.prepare(config()),
                     SanitizerBootstrapException.RULE_LOADING_FAILED
             );

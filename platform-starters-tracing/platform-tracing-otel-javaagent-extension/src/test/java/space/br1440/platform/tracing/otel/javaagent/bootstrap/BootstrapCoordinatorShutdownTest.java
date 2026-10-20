@@ -9,7 +9,7 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_READY;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.expectBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.invalidValidationLevelConfig;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.satisfyReadinessBarrier;
@@ -116,7 +116,7 @@ class BootstrapCoordinatorShutdownTest {
         DiagnosticReadinessHandle diagnosticHandle = new DiagnosticReadinessHandle();
 
         try (BootstrapCoordinator coordinator = coordinator().server(server).diagnosticHandle(diagnosticHandle).build()) {
-            expectBootstrapFailure(
+            assertBootstrapFailure(
                     () -> coordinator.prepare(invalidValidationLevelConfig()),
                     CONFIGURATION_INITIALIZATION_FAILED
             );

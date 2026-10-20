@@ -4,7 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorAssert.assertThatCoordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.expectBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.registerForeignReadinessMBean;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
@@ -32,7 +33,7 @@ class BootstrapCoordinatorMissingPreparationTest {
         try (BootstrapCoordinator coordinator = coordinator().build();
              SdkTracerProvider tracerProvider = SdkTracerProvider.builder().build()) {
             // when/then
-            expectBootstrapFailure(() -> coordinator.activate(tracerProvider), PLATFORM_ACP_NOT_EXECUTED);
+            assertBootstrapFailure(() -> coordinator.activate(tracerProvider), PLATFORM_ACP_NOT_EXECUTED);
         }
     }
 
@@ -45,7 +46,7 @@ class BootstrapCoordinatorMissingPreparationTest {
 
         try (coordinator; SdkTracerProvider tracerProvider = SdkTracerProvider.builder().build()) {
             // when
-            BootstrapException failure = expectBootstrapFailure(
+            BootstrapException failure = catchBootstrapFailure(
                     () -> coordinator.activate(tracerProvider),
                     PLATFORM_ACP_NOT_EXECUTED
             );
@@ -74,14 +75,14 @@ class BootstrapCoordinatorMissingPreparationTest {
 
         try (BootstrapCoordinator coordinator = coordinator().server(server).build();
              SdkTracerProvider tracerProvider = SdkTracerProvider.builder().build()) {
-            BootstrapException first = expectBootstrapFailure(
+            BootstrapException first = catchBootstrapFailure(
                     () -> coordinator.activate(tracerProvider),
                     PLATFORM_ACP_NOT_EXECUTED
             );
             int registeredMBeans = server.getMBeanCount();
 
             // when
-            BootstrapException repeated = expectBootstrapFailure(
+            BootstrapException repeated = catchBootstrapFailure(
                     () -> coordinator.activate(tracerProvider),
                     PLATFORM_ACP_NOT_EXECUTED
             );
@@ -104,7 +105,7 @@ class BootstrapCoordinatorMissingPreparationTest {
         try (BootstrapCoordinator coordinator = coordinator().server(server).build();
              SdkTracerProvider tracerProvider = SdkTracerProvider.builder().build()) {
             // when
-            BootstrapException failure = expectBootstrapFailure(
+            BootstrapException failure = catchBootstrapFailure(
                     () -> coordinator.activate(tracerProvider),
                     PLATFORM_ACP_NOT_EXECUTED
             );
@@ -123,12 +124,12 @@ class BootstrapCoordinatorMissingPreparationTest {
         // given
         try (BootstrapCoordinator coordinator = coordinator().build();
              SdkTracerProvider tracerProvider = SdkTracerProvider.builder().build()) {
-            expectBootstrapFailure(() -> coordinator.activate(tracerProvider), PLATFORM_ACP_NOT_EXECUTED);
+            assertBootstrapFailure(() -> coordinator.activate(tracerProvider), PLATFORM_ACP_NOT_EXECUTED);
 
             // when/then
-            expectBootstrapFailure(() -> coordinator.prepare(config()), PLATFORM_ACP_NOT_EXECUTED);
-            expectBootstrapFailure(() -> coordinator.activate(tracerProvider), PLATFORM_ACP_NOT_EXECUTED);
-            expectBootstrapFailure(
+            assertBootstrapFailure(() -> coordinator.prepare(config()), PLATFORM_ACP_NOT_EXECUTED);
+            assertBootstrapFailure(() -> coordinator.activate(tracerProvider), PLATFORM_ACP_NOT_EXECUTED);
+            assertBootstrapFailure(
                     () -> coordinator.execute("SPAN_PROCESSOR_INITIALIZATION_FAILED", () -> null),
                     PLATFORM_ACP_NOT_EXECUTED
             );

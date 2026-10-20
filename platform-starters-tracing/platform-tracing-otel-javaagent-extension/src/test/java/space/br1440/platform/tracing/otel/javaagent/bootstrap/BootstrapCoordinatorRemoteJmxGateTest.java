@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorAssert.assertThatCoordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.expectBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
 
@@ -118,7 +118,7 @@ class BootstrapCoordinatorRemoteJmxGateTest {
             AutoconfigureSession session = coordinator.prepare(config());
 
             try (SdkTracerProvider tracerProvider = providerFor(session)) {
-                expectBootstrapFailure(() -> coordinator.activate(tracerProvider), expectedReason.name());
+                assertBootstrapFailure(() -> coordinator.activate(tracerProvider), expectedReason.name());
             }
 
             assertThatCoordinator(coordinator).hasWireFailure(expectedReason.name());
