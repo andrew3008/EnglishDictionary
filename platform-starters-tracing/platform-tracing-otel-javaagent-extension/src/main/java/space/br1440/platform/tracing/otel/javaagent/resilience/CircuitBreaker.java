@@ -1,88 +1,131 @@
 package space.br1440.platform.tracing.otel.javaagent.resilience;
 
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-
-import lombok.Getter;
+import java.time.Duration;
+import java.util.Objects;
+import java.util.function.LongSupplier;
 
 public final class CircuitBreaker {
 
-    public enum State { CLOSED, OPEN, HALF_OPEN }
+    public enum Admission { CLOSED, PROBE, REJECTED }
 
-    @Getter
-    private final String name;
+    enum State { CLOSED, OPEN, HALF_OPEN }
+
     private final int failureThreshold;
-    private final long cooldownMs;
+    private final long cooldownNanos;
+    private final LongSupplier nanoTime;
+    private final Object monitor = new Object();
 
-    private final AtomicReference<State> state = new AtomicReference<>(State.CLOSED);
-    private final AtomicInteger failureCount = new AtomicInteger(0);
-    private final AtomicLong openedAtMs = new AtomicLong(0);
-    private final AtomicLong totalFailures = new AtomicLong(0);
-    private final AtomicInteger probeInProgress = new AtomicInteger(0);
+    private volatile State state = State.CLOSED;
+    private volatile int consecutiveFailures;
+    private long openedAtNanos;
 
-    public CircuitBreaker(String name) {
-        this(name, 5, 60_000L);
+    public CircuitBreaker(int failureThreshold, Duration cooldown) {
+        this(failureThreshold, cooldown, System::nanoTime);
     }
 
-    public CircuitBreaker(String name, int failureThreshold, long cooldownMs) {
-        this.name = name;
-        this.failureThreshold = failureThreshold;
-        this.cooldownMs = cooldownMs;
-    }
-
-    public State acquireExecutionState() {
-        State current = state.get();
-        if ((current == State.OPEN) && (System.currentTimeMillis() - openedAtMs.get() >= cooldownMs)) {
-            state.compareAndSet(State.OPEN, State.HALF_OPEN);
-            current = state.get();
+    CircuitBreaker(int failureThreshold, Duration cooldown, LongSupplier nanoTime) {
+        if (failureThreshold <= 0) {
+            throw new IllegalArgumentException("failureThreshold must be positive: " + failureThreshold);
         }
 
-        if (current == State.HALF_OPEN) {
-            if (probeInProgress.compareAndSet(0, 1)) {
-                return State.HALF_OPEN;
+        Objects.requireNonNull(cooldown, "cooldown");
+        if (!cooldown.isPositive()) {
+            throw new IllegalArgumentException("cooldown must be positive: " + cooldown);
+        }
+
+        this.failureThreshold = failureThreshold;
+        this.cooldownNanos = cooldown.toNanos();
+        this.nanoTime = Objects.requireNonNull(nanoTime, "nanoTime");
+    }
+
+    public Admission tryAcquire() {
+        if (state == State.CLOSED) {
+            return Admission.CLOSED;
+        }
+
+        synchronized (monitor) {
+            return switch (state) {
+                case CLOSED -> Admission.CLOSED;
+                case HALF_OPEN -> Admission.REJECTED;
+                case OPEN -> {
+                    if ((nanoTime.getAsLong() - openedAtNanos) < cooldownNanos) {
+                        yield Admission.REJECTED;
+                    }
+
+                    state = State.HALF_OPEN;
+                    yield Admission.PROBE;
+                }
+            };
+        }
+    }
+
+    public void recordSuccess(Admission admission) {
+        switch (admission) {
+            case CLOSED -> resetConsecutiveFailures();
+            case PROBE -> {
+                synchronized (monitor) {
+                    requireProbeInFlight();
+                    state = State.CLOSED;
+                }
+            }
+            case REJECTED -> throw rejectedOutcome();
+        }
+    }
+
+    public void recordFailure(Admission admission) {
+        switch (admission) {
+            case CLOSED -> {
+                synchronized (monitor) {
+                    if (state != State.CLOSED) {
+                        return;
+                    }
+
+                    int failures = consecutiveFailures + 1;
+                    consecutiveFailures = failures;
+                    if (failures >= failureThreshold) {
+                        open();
+                    }
+                }
             }
 
-            return State.OPEN;
-        }
+            case PROBE -> {
+                synchronized (monitor) {
+                    requireProbeInFlight();
+                    open();
+                }
+            }
 
-        return current;
-    }
-
-    public void recordSuccess() {
-        if (state.get() == State.HALF_OPEN) {
-            failureCount.set(0);
-            state.set(State.CLOSED);
-            probeInProgress.set(0);
+            case REJECTED -> throw rejectedOutcome();
         }
     }
 
-    public void recordFailure() {
-        totalFailures.incrementAndGet();
+    State state() {
+        return state;
+    }
 
-        if (state.get() == State.HALF_OPEN) {
-            openedAtMs.set(System.currentTimeMillis());
-            state.set(State.OPEN);
-            probeInProgress.set(0);
+    private void resetConsecutiveFailures() {
+        if (consecutiveFailures == 0) {
             return;
         }
 
-        int failures = failureCount.incrementAndGet();
-        if (failures >= failureThreshold && state.compareAndSet(State.CLOSED, State.OPEN)) {
-            openedAtMs.set(System.currentTimeMillis());
+        synchronized (monitor) {
+            consecutiveFailures = 0;
         }
     }
 
-    public State getState() {
-        return state.get();
+    private void open() {
+        openedAtNanos = nanoTime.getAsLong();
+        consecutiveFailures = 0;
+        state = State.OPEN;
     }
 
-    public boolean isOpen() {
-        return (state.get() == State.OPEN);
+    private void requireProbeInFlight() {
+        if (state != State.HALF_OPEN) {
+            throw new IllegalStateException("Probe outcome recorded outside HALF_OPEN state: " + state);
+        }
     }
 
-    public long getTotalFailures() {
-        return totalFailures.get();
+    private static IllegalArgumentException rejectedOutcome() {
+        return new IllegalArgumentException("Rejected admission has no outcome to record");
     }
-
 }

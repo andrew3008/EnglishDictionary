@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -122,9 +123,38 @@ class SafeSamplerTest {
         }
 
         // then
-        assertThat(delegateCalls.get())
-                .as("делегат вызывался не более порога открытия breaker")
-                .isLessThanOrEqualTo(5);
+        assertThat(delegateCalls.get()).isEqualTo(5);
+    }
+
+    @Test
+    void fatal_delegate_error_is_propagated_and_counted_by_breaker() {
+        // given
+        AtomicInteger delegateCalls = new AtomicInteger();
+        Sampler linkageBroken = new Sampler() {
+            @Override
+            public SamplingResult shouldSample(Context parentContext, String traceId, String name,
+                                               SpanKind spanKind, Attributes attributes, List<LinkData> parentLinks) {
+                delegateCalls.incrementAndGet();
+                throw new NoClassDefFoundError("missing");
+            }
+
+            @Override
+            public String getDescription() {
+                return "linkageBroken";
+            }
+        };
+        SafeSampler safe = new SafeSampler(linkageBroken, new TracingDiagnostics());
+        SamplerHarness harness = SamplerHarness.of(safe);
+
+        // when
+        for (int i = 0; i < 5; i++) {
+            assertThatThrownBy(harness::sample).isInstanceOf(NoClassDefFoundError.class);
+        }
+        SamplingResult afterOpen = harness.sample();
+
+        // then
+        assertThat(afterOpen.getDecision()).isEqualTo(SamplingDecision.DROP);
+        assertThat(delegateCalls.get()).isEqualTo(5);
     }
 
     private CapturedLogEvent samplerEvent() {

@@ -1,56 +1,49 @@
 package space.br1440.platform.tracing.otel.javaagent.resilience;
 
+import java.time.Duration;
 import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
 
 public final class DegradedModeController {
 
-    public enum Component { SAMPLER, PROCESSOR }
+    private static final int FAILURE_THRESHOLD = 5;
+    private static final Duration COOLDOWN = Duration.ofSeconds(60);
 
-    private final CircuitBreaker samplerBreaker;
-    private final CircuitBreaker processorBreaker;
+    private final CircuitBreaker breaker;
     private final TracingDiagnostics diagnostics;
 
     public DegradedModeController(TracingDiagnostics diagnostics) {
-        this(diagnostics,
-                new CircuitBreaker("sampler"),
-                new CircuitBreaker("processor")
-        );
+        this(diagnostics, new CircuitBreaker(FAILURE_THRESHOLD, COOLDOWN));
     }
 
-    DegradedModeController(TracingDiagnostics diagnostics,
-                           CircuitBreaker samplerBreaker,
-                           CircuitBreaker processorBreaker) {
+    DegradedModeController(TracingDiagnostics diagnostics, CircuitBreaker breaker) {
         this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
-        this.samplerBreaker = Objects.requireNonNull(samplerBreaker, "samplerBreaker");
-        this.processorBreaker = Objects.requireNonNull(processorBreaker, "processorBreaker");
+        this.breaker = Objects.requireNonNull(breaker, "breaker");
     }
 
-    public CircuitBreaker.State acquireExecutionState(Component component) {
-        return breaker(component).acquireExecutionState();
+    public CircuitBreaker.Admission tryAcquire() {
+        return breaker.tryAcquire();
     }
 
-    public void recordSuccess(Component component) {
-        breaker(component).recordSuccess();
-        refreshAggregate();
+    public void recordSuccess(CircuitBreaker.Admission admission) {
+        breaker.recordSuccess(admission);
+        publishDegradedMode();
     }
 
-    public void recordFailure(Component component) {
-        breaker(component).recordFailure();
-        refreshAggregate();
+    public void recordFailure(CircuitBreaker.Admission admission) {
+        breaker.recordFailure(admission);
+        publishDegradedMode();
     }
 
     public boolean isDegraded() {
-        return (samplerBreaker.getState() != CircuitBreaker.State.CLOSED)
-                || (processorBreaker.getState() != CircuitBreaker.State.CLOSED);
+        return breaker.state() != CircuitBreaker.State.CLOSED;
     }
 
-    private void refreshAggregate() {
-        diagnostics.setDegradedMode(isDegraded());
-    }
-
-    private CircuitBreaker breaker(Component component) {
-        return (component == Component.SAMPLER) ? samplerBreaker : processorBreaker;
+    private void publishDegradedMode() {
+        boolean degraded = isDegraded();
+        if (diagnostics.isDegradedMode() != degraded) {
+            diagnostics.setDegradedMode(degraded);
+        }
     }
 }

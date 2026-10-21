@@ -49,30 +49,34 @@ public final class SafeSampler implements Sampler {
     public SamplingResult shouldSample(@NonNull Context parentContext, @NonNull String traceId, @NonNull String name,
                                        @NonNull SpanKind spanKind, @NonNull Attributes attributes,
                                        @NonNull List<LinkData> parentLinks) {
-        CircuitBreaker.State execState = degradedController.acquireExecutionState(DegradedModeController.Component.SAMPLER);
-        if (execState != CircuitBreaker.State.OPEN) {
-            try {
-                SamplingResult result = delegate.shouldSample(parentContext, traceId, name, spanKind, attributes, parentLinks);
-                if (result != null) {
-                    degradedController.recordSuccess(DegradedModeController.Component.SAMPLER);
-                    return result;
-                }
-
-                degradedController.recordFailure(DegradedModeController.Component.SAMPLER);
-                diagnostics.recordSamplerFailure();
-                log.log(SamplingLogEvent.SAMPLER_FAILED_CLOSED_TO_DROP, fields ->
-                        fields.putString(AgentLogField.REASON, "RETURNED_NULL"));
-            } catch (Throwable ex) {
-                PlatformThrowables.propagateIfFatal(ex);
-                degradedController.recordFailure(DegradedModeController.Component.SAMPLER);
-                diagnostics.recordSamplerFailure();
-                log.log(SamplingLogEvent.SAMPLER_FAILED_CLOSED_TO_DROP, fields -> fields
-                        .putString(AgentLogField.REASON, "THREW")
-                        .cause(ex));
-            }
+        CircuitBreaker.Admission admission = degradedController.tryAcquire();
+        if (admission == CircuitBreaker.Admission.REJECTED) {
+            return SamplingResult.create(SamplingDecision.DROP);
         }
 
-        return SamplingResult.create(SamplingDecision.DROP);
+        SamplingResult result;
+        try {
+            result = delegate.shouldSample(parentContext, traceId, name, spanKind, attributes, parentLinks);
+        } catch (Throwable ex) {
+            degradedController.recordFailure(admission);
+            PlatformThrowables.propagateIfFatal(ex);
+            diagnostics.recordSamplerFailure();
+            log.log(SamplingLogEvent.SAMPLER_FAILED_CLOSED_TO_DROP, fields -> fields
+                    .putString(AgentLogField.REASON, "THREW")
+                    .cause(ex));
+            return SamplingResult.create(SamplingDecision.DROP);
+        }
+
+        if (result == null) {
+            degradedController.recordFailure(admission);
+            diagnostics.recordSamplerFailure();
+            log.log(SamplingLogEvent.SAMPLER_FAILED_CLOSED_TO_DROP, fields ->
+                    fields.putString(AgentLogField.REASON, "RETURNED_NULL"));
+            return SamplingResult.create(SamplingDecision.DROP);
+        }
+
+        degradedController.recordSuccess(admission);
+        return result;
     }
 
     @Override
