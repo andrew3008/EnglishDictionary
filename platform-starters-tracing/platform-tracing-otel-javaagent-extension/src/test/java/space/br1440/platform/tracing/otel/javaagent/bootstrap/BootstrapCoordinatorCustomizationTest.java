@@ -195,6 +195,7 @@ class BootstrapCoordinatorCustomizationTest {
         ));
         NoClassDefFoundError diagnosticFailure =
                 new NoClassDefFoundError("Fatal diagnostic registration failure");
+        //noinspection resource -- Mockito-заглушка, регистрация не создаётся
         doThrow(diagnosticFailure).when(registrar).registerDiagnosticReadiness(any());
         IllegalStateException customizationFailure = new IllegalStateException("Customizer failure");
 

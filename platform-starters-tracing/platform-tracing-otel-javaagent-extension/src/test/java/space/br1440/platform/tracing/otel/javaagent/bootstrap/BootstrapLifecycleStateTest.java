@@ -124,7 +124,8 @@ class BootstrapLifecycleStateTest {
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         IllegalStateException primaryCause = new IllegalStateException("Activation failure");
         AssertionError cleanupFailure = new AssertionError("Fatal cleanup failure");
-        lifecycle.fail("ACTIVATION_FAILED", "activate", "activate", null, primaryCause);
+        assertThat(lifecycle.fail("ACTIVATION_FAILED", "activate", "activate", null, primaryCause).getCause())
+                .isSameAs(primaryCause);
 
         // when
         lifecycle.escalateRollbackIncomplete("rollback", cleanupFailure);
@@ -143,7 +144,8 @@ class BootstrapLifecycleStateTest {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         IllegalStateException primaryCause = new IllegalStateException("Activation failure");
-        lifecycle.fail("ACTIVATION_FAILED", "activate", "activate", null, primaryCause);
+        assertThat(lifecycle.fail("ACTIVATION_FAILED", "activate", "activate", null, primaryCause).getCause())
+                .isSameAs(primaryCause);
 
         // when
         lifecycle.escalateRollbackIncomplete("rollback", primaryCause);
@@ -189,7 +191,8 @@ class BootstrapLifecycleStateTest {
         BootstrapResources resources = mock(BootstrapResources.class);
         IllegalStateException primaryCause = new IllegalStateException("Activation failure");
         lifecycle.attachResources(resources);
-        lifecycle.fail("ACTIVATION_FAILED", "activate", "activate", null, primaryCause);
+        assertThat(lifecycle.fail("ACTIVATION_FAILED", "activate", "activate", null, primaryCause).getCause())
+                .isSameAs(primaryCause);
 
         // when
         BootstrapLifecycleState.CloseTransition first = lifecycle.beginClose();

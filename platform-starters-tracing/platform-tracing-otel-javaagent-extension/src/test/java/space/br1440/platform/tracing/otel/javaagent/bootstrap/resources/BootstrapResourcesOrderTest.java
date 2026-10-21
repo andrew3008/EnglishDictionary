@@ -64,6 +64,7 @@ class BootstrapResourcesOrderTest {
         List<String> closeOrder = new ArrayList<>();
         IllegalStateException runtimeFailure = new IllegalStateException("simulated lower cleanup failure");
         NoClassDefFoundError fatalFailure = new NoClassDefFoundError("simulated fatal cleanup failure");
+        //noinspection resource -- повторный close обязан бросить тот же fatal, try-with-resources добавит ещё один бросок
         BootstrapResources resources = new BootstrapResources((threadName, action) -> () -> {
         });
         resources.push(() -> {
@@ -91,6 +92,7 @@ class BootstrapResourcesOrderTest {
     @Test
     void repeatedCloseAfterFailureRethrowsSameInstance() {
         // given
+        //noinspection resource -- повторный close обязан бросить тот же экземпляр, try-with-resources добавит ещё один бросок
         BootstrapResources resources = new BootstrapResources((threadName, action) -> () -> {
         });
         resources.push(() -> {
@@ -128,6 +130,7 @@ class BootstrapResourcesOrderTest {
         UnsupportedOperationException completionFailure = new UnsupportedOperationException("completion-" + SECRET_MARKER);
         ByteArrayOutputStream rawStderr = new ByteArrayOutputStream();
         PrintStream previousStderr = System.err;
+        //noinspection resource -- hook уже закрыл ресурсы, повторный close в конце проверяет тот же экземпляр ошибки
         BootstrapResources resources = new BootstrapResources((threadName, action) -> {
             shutdownAction.set(action);
             return () -> {

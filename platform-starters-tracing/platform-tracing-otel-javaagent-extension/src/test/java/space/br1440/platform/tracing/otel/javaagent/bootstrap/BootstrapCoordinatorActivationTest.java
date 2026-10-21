@@ -90,6 +90,7 @@ class BootstrapCoordinatorActivationTest {
             throw cleanupFailure;
         };
 
+        //noinspection resource -- второй close обязан быть тихим, try-with-resources добавит третий вызов
         BootstrapCoordinator coordinator = coordinator().hooks(hooks).build();
         AutoconfigureSession session = coordinator.prepare(config());
 

@@ -28,6 +28,7 @@ import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionR
 class BootstrapFailureOwnershipArchTest {
 
     @ArchTest
+    @SuppressWarnings("unused")
     static void only_terminal_transitions_can_fail_or_escalate_lifecycle(JavaClasses classes) {
         // given
         ArchRule rule = lifecycleFailureRule();
@@ -40,6 +41,7 @@ class BootstrapFailureOwnershipArchTest {
     }
 
     @ArchTest
+    @SuppressWarnings("unused")
     static void only_terminal_transitions_can_publish_failed_readiness(JavaClasses classes) {
         // given
         ArchRule rule = journalFailureRule();
@@ -52,6 +54,7 @@ class BootstrapFailureOwnershipArchTest {
     }
 
     @ArchTest
+    @SuppressWarnings("unused")
     static void only_readiness_journal_can_fail_platform_readiness(JavaClasses classes) {
         // given
         ArchRule rule = readinessFailureRule();
@@ -64,6 +67,7 @@ class BootstrapFailureOwnershipArchTest {
     }
 
     @ArchTest
+    @SuppressWarnings("unused")
     static void only_lifecycle_can_construct_bootstrap_failure(JavaClasses classes) {
         // given
         ArchRule rule = failureConstructionRule();
@@ -227,7 +231,7 @@ class BootstrapFailureOwnershipArchTest {
 
         // then
         assertThat(classes.get(TestOnlyOwner.NestedOwner.class).getAccessesFromSelf())
-                .anyMatch(access::test);
+                .anyMatch(access);
         assertThat(belongToAnyOf(TestOnlyOwner.class).test(classes.get(TestOnlyOwner.NestedOwner.class)))
                 .isTrue();
         assertThat(result.getFailureReport().getDetails()).isEmpty();
@@ -294,6 +298,7 @@ class BootstrapFailureOwnershipArchTest {
                 .contains(expectedOrigin);
     }
 
+    @SuppressWarnings("unused")
     private static final class TestOnlyOwner {
 
         static void touch(TestOnlyOwnedTarget target) {
@@ -316,12 +321,14 @@ class BootstrapFailureOwnershipArchTest {
 }
 
 @FunctionalInterface
+@SuppressWarnings("unused")
 interface LifecycleEscalationAccess {
 
     void escalate(String phase, Throwable cleanupFailure);
 }
 
 @FunctionalInterface
+@SuppressWarnings("unused")
 interface JournalFailureAccess {
 
     void publish(BootstrapReadinessJournal journal,
@@ -331,6 +338,7 @@ interface JournalFailureAccess {
 }
 
 @FunctionalInterface
+@SuppressWarnings("unused")
 interface ReadinessFailureAccess {
 
     PlatformExtensionReadinessSnapshot fail(PlatformExtensionReadiness readiness,
@@ -339,6 +347,7 @@ interface ReadinessFailureAccess {
 }
 
 @FunctionalInterface
+@SuppressWarnings("unused")
 interface BootstrapFailureFactory {
 
     BootstrapFailure create(String primaryCode,
@@ -347,6 +356,7 @@ interface BootstrapFailureFactory {
                             Throwable cause);
 }
 
+@SuppressWarnings("unused")
 final class DirectLifecycleFailureAccessFixture {
 
     private DirectLifecycleFailureAccessFixture() {
@@ -357,6 +367,7 @@ final class DirectLifecycleFailureAccessFixture {
     }
 }
 
+@SuppressWarnings("unused")
 final class LifecycleEscalationMethodReferenceFixture {
 
     private LifecycleEscalationMethodReferenceFixture() {
@@ -367,21 +378,25 @@ final class LifecycleEscalationMethodReferenceFixture {
     }
 }
 
+@SuppressWarnings("unused")
 final class JournalFailureLambdaFixture {
 
     private JournalFailureLambdaFixture() {
     }
 
+    @SuppressWarnings("Convert2MethodRef")
     static JournalFailureAccess publisher() {
         return (journal, failure, batchId, evidence) -> journal.publishFailed(failure, batchId, evidence);
     }
 }
 
+@SuppressWarnings("unused")
 final class ReadinessFailureAnonymousFixture {
 
     private ReadinessFailureAnonymousFixture() {
     }
 
+    @SuppressWarnings({"Anonymous2MethodRef", "Convert2Lambda"})
     static ReadinessFailureAccess access() {
         return new ReadinessFailureAccess() {
 
@@ -395,6 +410,7 @@ final class ReadinessFailureAnonymousFixture {
     }
 }
 
+@SuppressWarnings("unused")
 final class BootstrapFailureConstructorReferenceFixture {
 
     private BootstrapFailureConstructorReferenceFixture() {
@@ -405,6 +421,7 @@ final class BootstrapFailureConstructorReferenceFixture {
     }
 }
 
+@SuppressWarnings("unused")
 final class FieldAccessFixture {
 
     private FieldAccessFixture() {

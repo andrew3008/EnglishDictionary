@@ -136,6 +136,7 @@ class BootstrapCoordinatorMissingPreparationTest {
                 agentInstanceId
         ));
         NoClassDefFoundError diagnosticFailure = new NoClassDefFoundError("Fatal diagnostic registration failure");
+        //noinspection resource -- Mockito-заглушка, регистрация не создаётся
         doThrow(diagnosticFailure).when(registrar).registerDiagnosticReadiness(any());
 
         try (BootstrapCoordinator coordinator = coordinator()

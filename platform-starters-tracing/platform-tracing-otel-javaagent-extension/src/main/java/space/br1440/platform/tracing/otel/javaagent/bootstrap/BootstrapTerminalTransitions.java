@@ -155,8 +155,8 @@ final class BootstrapTerminalTransitions {
                 return;
             }
 
-            lifecycle.fail(TRANSPORT_STALE, "shutdown", "shutdown", null, cause);
-            journal.publishFailed(lifecycle.failure(), batchId, evidence);
+            BootstrapFailure failure = lifecycle.fail(TRANSPORT_STALE, "shutdown", "shutdown", null, cause).failure();
+            journal.publishFailed(failure, batchId, evidence);
         }
     }
 

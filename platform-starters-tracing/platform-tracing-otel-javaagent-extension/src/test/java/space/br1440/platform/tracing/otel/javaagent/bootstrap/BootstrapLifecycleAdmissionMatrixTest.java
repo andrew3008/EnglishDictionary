@@ -126,7 +126,8 @@ class BootstrapLifecycleAdmissionMatrixTest {
             }
             case FAILED -> {
                 IllegalStateException primaryCause = new IllegalStateException("Primary failure");
-                lifecycle.fail(PRIMARY_FAILURE, "prepare", "prepare", null, primaryCause);
+                assertThat(lifecycle.fail(PRIMARY_FAILURE, "prepare", "prepare", null, primaryCause).getCause())
+                        .isSameAs(primaryCause);
                 lifecycle.escalateRollbackIncomplete(
                         "rollback",
                         new IllegalStateException("Cleanup failure")

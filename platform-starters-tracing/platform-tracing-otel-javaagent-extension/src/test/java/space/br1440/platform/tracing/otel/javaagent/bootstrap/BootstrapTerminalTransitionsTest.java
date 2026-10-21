@@ -61,8 +61,7 @@ class BootstrapTerminalTransitionsTest {
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixture(lifecycle);
         AtomicBoolean staleCallbackInvoked = new AtomicBoolean();
-        IllegalStateException cleanupFailure =
-                new IllegalStateException("Runtime controls cleanup failed");
+        IllegalStateException cleanupFailure = new IllegalStateException("Runtime controls cleanup failed");
         BootstrapResources resources = new BootstrapResources(mock(ShutdownHookRegistry.class));
         resources.push(() -> {
             throw cleanupFailure;
@@ -97,6 +96,7 @@ class BootstrapTerminalTransitionsTest {
         Fixture fixture = activeFixture(lifecycle);
         NoClassDefFoundError activationFailure = new NoClassDefFoundError("simulated fatal activation failure");
         AssertionError cleanupFailure = new AssertionError("simulated fatal cleanup failure");
+        //noinspection resource -- повторный close бросает cleanup failure и затирает ожидаемый activation failure
         BootstrapResources resources = new BootstrapResources(mock(ShutdownHookRegistry.class));
         resources.push(() -> {
             throw cleanupFailure;
@@ -104,7 +104,9 @@ class BootstrapTerminalTransitionsTest {
 
         // when
         // then
-        assertThatThrownBy(() -> terminalizeActivationFailure(fixture, resources, activationFailure))
+        assertThatThrownBy(() -> {
+            throw terminalizeActivationFailure(fixture, resources, activationFailure);
+        })
                 .isSameAs(activationFailure);
         assertThat(activationFailure.getSuppressed()).containsExactly(cleanupFailure);
         assertThat(lifecycle.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);

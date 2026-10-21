@@ -52,6 +52,7 @@ class BootstrapCoordinatorShutdownTest {
         CapturingShutdownHookRegistry hooks = new CapturingShutdownHookRegistry(resourceCleanupFailure);
         DiagnosticReadinessHandle diagnosticHandle = new DiagnosticReadinessHandle();
 
+        //noinspection resource -- close в finally проверяет первопричину, try-with-resources её потеряет
         BootstrapCoordinator coordinator = coordinator().hooks(hooks).diagnosticHandle(diagnosticHandle).build();
         try {
             AutoconfigureSession session = coordinator.prepare(config());

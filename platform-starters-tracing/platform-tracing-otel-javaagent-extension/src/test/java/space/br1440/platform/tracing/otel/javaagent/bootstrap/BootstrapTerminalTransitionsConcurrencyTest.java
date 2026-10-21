@@ -72,6 +72,7 @@ class BootstrapTerminalTransitionsConcurrencyTest {
         CountDownLatch releaseRollback = new CountDownLatch(1);
         AtomicBoolean rollbackOutsideMonitor = new AtomicBoolean();
         AtomicReference<ExtensionReadinessWireSnapshot> rollbackSnapshot = new AtomicReference<>();
+        //noinspection resource -- close выполняет откат активации, повторный close в тесте меняет проверяемый контракт
         BootstrapResources resources = new BootstrapResources(noOpHooks());
         resources.push(() -> {
             rollbackOutsideMonitor.set(!Thread.holdsLock(fixture.lifecycle().monitor()));
@@ -144,6 +145,7 @@ class BootstrapTerminalTransitionsConcurrencyTest {
         CapturingShutdownHookRegistry capturedHooks = new CapturingShutdownHookRegistry();
         AtomicInteger hookRegistrationCloseCalls = new AtomicInteger();
         ShutdownHookRegistry hooks = (threadName, action) -> {
+            //noinspection resource -- регистрацию закрывает обёртка hook, а не создающий её поток
             Registration registered = capturedHooks.register(threadName, action);
             return () -> {
                 hookRegistrationCloseCalls.incrementAndGet();
@@ -154,113 +156,104 @@ class BootstrapTerminalTransitionsConcurrencyTest {
 
         AtomicInteger runtimeRegistrationCloseCalls = new AtomicInteger();
         UUID batchId = UUID.randomUUID();
-        PlatformTracingMBeanRegistrar.RuntimeRegistration runtimeRegistration =
-                new PlatformTracingMBeanRegistrar.RuntimeRegistration() {
-                    @Override
-                    public UUID batchId() {
-                        return batchId;
-                    }
+        try (CountingRuntimeRegistration runtimeRegistration =
+                     new CountingRuntimeRegistration(batchId, runtimeRegistrationCloseCalls)) {
+            stubRuntimeRegistration(registrar, runtimeRegistration);
 
-                    @Override
-                    public void close() {
-                        runtimeRegistrationCloseCalls.incrementAndGet();
-                    }
-                };
-        doReturn(runtimeRegistration).when(registrar).registerRuntimeControls(any());
-
-        ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
-        PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
-        doReturn(scrubbingRuntime).when(scrubberFactory).buildRuntime(any());
-        ExtensionRuntimeEvidence evidence = RuntimeEvidenceTestFixtures.evidence(
-                readiness.snapshot().extensionVersion()
-        );
-        AutoconfigureSessionFactory sessionFactory = new AutoconfigureSessionFactory(
-                scrubberFactory,
-                ignored -> RemoteJmxAssessorTestFixtures.allowingAssessor()
-        );
-        lifecycle.beginPrepare();
-        journal.publishInitializing();
-        AutoconfigureSession session = sessionFactory.create(
-                config(),
-                registrar,
-                agentInstanceId,
-                evidence
-        );
-        lifecycle.completePrepare(session);
-
-        CountDownLatch activationStepEntered = new CountDownLatch(1);
-        AtomicBoolean activationStepHoldsMonitor = new AtomicBoolean();
-        AtomicReference<ThreadInfo> blockedHook = new AtomicReference<>();
-        IllegalStateException activationCause = new IllegalStateException("Activation step failed");
-        FutureTask<Void> hookTask = new FutureTask<>(() -> {
-            capturedHooks.runHook();
-            return null;
-        });
-        Thread hookThread = daemonThread("hook-blocked-on-lifecycle-monitor", hookTask);
-
-        doAnswer(ignored -> {
-            boolean holdsMonitor = Thread.holdsLock(lifecycle.monitor());
-            activationStepHoldsMonitor.set(holdsMonitor);
-            activationStepEntered.countDown();
-            if (!holdsMonitor) {
-                throw new AssertionError("Activation step does not hold the lifecycle monitor");
-            }
-
-            blockedHook.set(awaitBlocked(
-                    hookThread,
-                    Thread.currentThread(),
-                    lifecycle.monitor(),
-                    "shutdown hook on the lifecycle monitor"
-            ));
-            throw activationCause;
-        }).when(scrubbingRuntime).requireInstallationComplete();
-
-        try (SdkTracerProvider tracerProvider = providerFor(session)) {
-            FutureTask<Throwable> activationTask = new FutureTask<>(
-                    () -> catchThrowable(() -> activation.activate(tracerProvider))
+            ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
+            PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
+            doReturn(scrubbingRuntime).when(scrubberFactory).buildRuntime(any());
+            ExtensionRuntimeEvidence evidence = RuntimeEvidenceTestFixtures.evidence(
+                    readiness.snapshot().extensionVersion()
             );
-            Thread activationThread = daemonThread("activation-owning-lifecycle-monitor", activationTask);
+            AutoconfigureSessionFactory sessionFactory = new AutoconfigureSessionFactory(
+                    scrubberFactory,
+                    ignored -> RemoteJmxAssessorTestFixtures.allowingAssessor()
+            );
+            lifecycle.beginPrepare();
+            journal.publishInitializing();
+            AutoconfigureSession session = sessionFactory.create(
+                    config(),
+                    registrar,
+                    agentInstanceId,
+                    evidence
+            );
+            lifecycle.completePrepare(session);
 
-            // when
-            activationThread.start();
-            try {
-                awaitLatch(activationStepEntered, "activation step entry");
-                hookThread.start();
-                Throwable activationThrown = awaitTask(activationTask, "failed activation");
-                awaitTask(hookTask, "shutdown hook");
-                awaitThreadTermination(activationThread, "activation thread");
-                awaitThreadTermination(hookThread, "shutdown hook thread");
+            CountDownLatch activationStepEntered = new CountDownLatch(1);
+            AtomicBoolean activationStepHoldsMonitor = new AtomicBoolean();
+            AtomicReference<ThreadInfo> blockedHook = new AtomicReference<>();
+            IllegalStateException activationCause = new IllegalStateException("Activation step failed");
+            FutureTask<Void> hookTask = new FutureTask<>(() -> {
+                capturedHooks.runHook();
+                return null;
+            });
+            Thread hookThread = daemonThread("hook-blocked-on-lifecycle-monitor", hookTask);
 
-                // then
-                assertThat(activationStepHoldsMonitor).isTrue();
-                assertThat(blockedHook.get().getThreadState()).isEqualTo(Thread.State.BLOCKED);
-                assertThat(blockedHook.get().getLockOwnerId()).isEqualTo(activationThread.threadId());
-                assertThat(blockedHook.get().getLockInfo().getClassName())
-                        .isEqualTo(lifecycle.monitor().getClass().getName());
-                assertThat(blockedHook.get().getLockInfo().getIdentityHashCode())
-                        .isEqualTo(System.identityHashCode(lifecycle.monitor()));
-                assertThat(activationThrown).isInstanceOf(BootstrapException.class);
-                BootstrapException activationFailure = (BootstrapException) activationThrown;
-                assertThat(activationFailure.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
-                assertThat(activationFailure.failure().effectiveCode()).isEqualTo(ACTIVATION_FAILED);
-                assertThat(activationFailure.getCause()).isSameAs(activationCause);
-                assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
-                assertThat(lifecycle.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
-                assertThat(lifecycle.failure().effectiveCode()).isEqualTo(ACTIVATION_FAILED);
-                assertThat(journal.current().primaryFailureCode()).isEqualTo(ACTIVATION_FAILED);
-                assertThat(journal.current().failureCode()).isEqualTo(ACTIVATION_FAILED);
-                assertThat(failureOf(readiness.snapshot()).primaryCode()).isEqualTo(ACTIVATION_FAILED);
-                assertThat(failureOf(readiness.snapshot()).effectiveCode()).isEqualTo(ACTIVATION_FAILED);
-                assertThat(hookRegistrationCloseCalls).hasValue(1);
-                assertThat(runtimeRegistrationCloseCalls).hasValue(1);
-                assertThat(activationTask.isDone()).isTrue();
-                assertThat(hookTask.isDone()).isTrue();
-                assertThat(activationThread.isAlive()).isFalse();
-                assertThat(hookThread.isAlive()).isFalse();
-                assertParticipantsNotDeadlocked(activationThread, hookThread);
-            } finally {
-                activationThread.interrupt();
-                hookThread.interrupt();
+            doAnswer(ignored -> {
+                boolean holdsMonitor = Thread.holdsLock(lifecycle.monitor());
+                activationStepHoldsMonitor.set(holdsMonitor);
+                activationStepEntered.countDown();
+                if (!holdsMonitor) {
+                    throw new AssertionError("Activation step does not hold the lifecycle monitor");
+                }
+
+                blockedHook.set(awaitBlocked(
+                        hookThread,
+                        Thread.currentThread(),
+                        lifecycle.monitor(),
+                        "shutdown hook on the lifecycle monitor"
+                ));
+                throw activationCause;
+            }).when(scrubbingRuntime).requireInstallationComplete();
+
+            try (SdkTracerProvider tracerProvider = providerFor(session)) {
+                FutureTask<Throwable> activationTask = new FutureTask<>(
+                        () -> catchThrowable(() -> activation.activate(tracerProvider))
+                );
+                Thread activationThread = daemonThread("activation-owning-lifecycle-monitor", activationTask);
+
+                // when
+                activationThread.start();
+                try {
+                    awaitLatch(activationStepEntered, "activation step entry");
+                    hookThread.start();
+                    Throwable activationThrown = awaitTask(activationTask, "failed activation");
+                    awaitTask(hookTask, "shutdown hook");
+                    awaitThreadTermination(activationThread, "activation thread");
+                    awaitThreadTermination(hookThread, "shutdown hook thread");
+
+                    // then
+                    assertThat(activationStepHoldsMonitor).isTrue();
+                    assertThat(blockedHook.get().getThreadState()).isEqualTo(Thread.State.BLOCKED);
+                    assertThat(blockedHook.get().getLockOwnerId()).isEqualTo(activationThread.threadId());
+                    assertThat(blockedHook.get().getLockInfo().getClassName())
+                            .isEqualTo(lifecycle.monitor().getClass().getName());
+                    assertThat(blockedHook.get().getLockInfo().getIdentityHashCode())
+                            .isEqualTo(System.identityHashCode(lifecycle.monitor()));
+                    assertThat(activationThrown).isInstanceOf(BootstrapException.class);
+                    BootstrapException activationFailure = (BootstrapException) activationThrown;
+                    assertThat(activationFailure.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
+                    assertThat(activationFailure.failure().effectiveCode()).isEqualTo(ACTIVATION_FAILED);
+                    assertThat(activationFailure.getCause()).isSameAs(activationCause);
+                    assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
+                    assertThat(lifecycle.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
+                    assertThat(lifecycle.failure().effectiveCode()).isEqualTo(ACTIVATION_FAILED);
+                    assertThat(journal.current().primaryFailureCode()).isEqualTo(ACTIVATION_FAILED);
+                    assertThat(journal.current().failureCode()).isEqualTo(ACTIVATION_FAILED);
+                    assertThat(failureOf(readiness.snapshot()).primaryCode()).isEqualTo(ACTIVATION_FAILED);
+                    assertThat(failureOf(readiness.snapshot()).effectiveCode()).isEqualTo(ACTIVATION_FAILED);
+                    assertThat(hookRegistrationCloseCalls).hasValue(1);
+                    assertThat(runtimeRegistrationCloseCalls).hasValue(1);
+                    assertThat(activationTask.isDone()).isTrue();
+                    assertThat(hookTask.isDone()).isTrue();
+                    assertThat(activationThread.isAlive()).isFalse();
+                    assertThat(hookThread.isAlive()).isFalse();
+                    assertParticipantsNotDeadlocked(activationThread, hookThread);
+                } finally {
+                    activationThread.interrupt();
+                    hookThread.interrupt();
+                }
             }
         }
     }
@@ -289,6 +282,7 @@ class BootstrapTerminalTransitionsConcurrencyTest {
         CapturingShutdownHookRegistry capturedHooks = new CapturingShutdownHookRegistry();
         AtomicInteger hookRegistrationCloseCalls = new AtomicInteger();
         ShutdownHookRegistry hooks = (threadName, action) -> {
+            //noinspection resource -- регистрацию закрывает обёртка hook, а не создающий её поток
             Registration registered = capturedHooks.register(threadName, action);
             return () -> {
                 hookRegistrationCloseCalls.incrementAndGet();
@@ -299,75 +293,66 @@ class BootstrapTerminalTransitionsConcurrencyTest {
 
         AtomicInteger runtimeRegistrationCloseCalls = new AtomicInteger();
         UUID batchId = UUID.randomUUID();
-        PlatformTracingMBeanRegistrar.RuntimeRegistration runtimeRegistration =
-                new PlatformTracingMBeanRegistrar.RuntimeRegistration() {
-                    @Override
-                    public UUID batchId() {
-                        return batchId;
-                    }
+        try (CountingRuntimeRegistration runtimeRegistration =
+                     new CountingRuntimeRegistration(batchId, runtimeRegistrationCloseCalls)) {
+            stubRuntimeRegistration(registrar, runtimeRegistration);
 
-                    @Override
-                    public void close() {
-                        runtimeRegistrationCloseCalls.incrementAndGet();
-                    }
-                };
-        doReturn(runtimeRegistration).when(registrar).registerRuntimeControls(any());
+            IllegalStateException activationCause = new IllegalStateException("Activation step failed");
+            ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
+            doAnswer(ignored -> {
+                throw activationCause;
+            }).when(scrubbingRuntime).requireInstallationComplete();
+            PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
+            doReturn(scrubbingRuntime).when(scrubberFactory).buildRuntime(any());
+            ExtensionRuntimeEvidence evidence = RuntimeEvidenceTestFixtures.evidence(
+                    readiness.snapshot().extensionVersion()
+            );
+            AutoconfigureSessionFactory sessionFactory = new AutoconfigureSessionFactory(
+                    scrubberFactory,
+                    ignored -> RemoteJmxAssessorTestFixtures.allowingAssessor()
+            );
+            lifecycle.beginPrepare();
+            journal.publishInitializing();
+            AutoconfigureSession session = sessionFactory.create(
+                    config(),
+                    registrar,
+                    agentInstanceId,
+                    evidence
+            );
+            lifecycle.completePrepare(session);
 
-        IllegalStateException activationCause = new IllegalStateException("Activation step failed");
-        ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
-        doAnswer(ignored -> {
-            throw activationCause;
-        }).when(scrubbingRuntime).requireInstallationComplete();
-        PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
-        doReturn(scrubbingRuntime).when(scrubberFactory).buildRuntime(any());
-        ExtensionRuntimeEvidence evidence = RuntimeEvidenceTestFixtures.evidence(
-                readiness.snapshot().extensionVersion()
-        );
-        AutoconfigureSessionFactory sessionFactory = new AutoconfigureSessionFactory(
-                scrubberFactory,
-                ignored -> RemoteJmxAssessorTestFixtures.allowingAssessor()
-        );
-        lifecycle.beginPrepare();
-        journal.publishInitializing();
-        AutoconfigureSession session = sessionFactory.create(
-                config(),
-                registrar,
-                agentInstanceId,
-                evidence
-        );
-        lifecycle.completePrepare(session);
+            UnsupportedOperationException sectionFailure =
+                    new UnsupportedOperationException("Failed readiness publication");
+            AtomicBoolean publicationObservedFailed = new AtomicBoolean();
+            AtomicInteger failurePublicationCalls = new AtomicInteger();
+            doAnswer(invocation -> {
+                if (failurePublicationCalls.getAndIncrement() == 0) {
+                    publicationObservedFailed.set(
+                            lifecycle.state() == BootstrapState.FAILED
+                                    && lifecycle.failure().primaryCode().equals(ACTIVATION_FAILED)
+                    );
+                    throw sectionFailure;
+                }
+                return invocation.callRealMethod();
+            }).when(journal).publishFailed(any(), any(), any());
 
-        UnsupportedOperationException sectionFailure =
-                new UnsupportedOperationException("Failed readiness publication");
-        AtomicBoolean publicationObservedFailed = new AtomicBoolean();
-        AtomicInteger failurePublicationCalls = new AtomicInteger();
-        doAnswer(invocation -> {
-            if (failurePublicationCalls.getAndIncrement() == 0) {
-                publicationObservedFailed.set(
-                        lifecycle.state() == BootstrapState.FAILED
-                                && lifecycle.failure().primaryCode().equals(ACTIVATION_FAILED)
-                );
-                throw sectionFailure;
+            // when
+            Throwable thrown;
+            try (SdkTracerProvider tracerProvider = providerFor(session)) {
+                thrown = catchThrowable(() -> activation.activate(tracerProvider));
             }
-            return invocation.callRealMethod();
-        }).when(journal).publishFailed(any(), any(), any());
 
-        // when
-        Throwable thrown;
-        try (SdkTracerProvider tracerProvider = providerFor(session)) {
-            thrown = catchThrowable(() -> activation.activate(tracerProvider));
+            // then
+            assertThat(thrown).isSameAs(sectionFailure);
+            assertThat(publicationObservedFailed).isTrue();
+            assertThat(failurePublicationCalls).hasValue(1);
+            assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
+            assertThat(lifecycle.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
+            assertThat(lifecycle.failure().effectiveCode()).isEqualTo(ACTIVATION_FAILED);
+            assertThat(lifecycle.failure().cause()).isSameAs(activationCause);
+            assertThat(hookRegistrationCloseCalls).hasValue(1);
+            assertThat(runtimeRegistrationCloseCalls).hasValue(1);
         }
-
-        // then
-        assertThat(thrown).isSameAs(sectionFailure);
-        assertThat(publicationObservedFailed).isTrue();
-        assertThat(failurePublicationCalls).hasValue(1);
-        assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
-        assertThat(lifecycle.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
-        assertThat(lifecycle.failure().effectiveCode()).isEqualTo(ACTIVATION_FAILED);
-        assertThat(lifecycle.failure().cause()).isSameAs(activationCause);
-        assertThat(hookRegistrationCloseCalls).hasValue(1);
-        assertThat(runtimeRegistrationCloseCalls).hasValue(1);
     }
 
     @Test
@@ -466,7 +451,7 @@ class BootstrapTerminalTransitionsConcurrencyTest {
             Thread hookThread = daemonThread("shutdown-hook-owning-resources", hookTask);
             FutureTask<Throwable> closeTask = new FutureTask<>(() -> catchThrowable(coordinator::close));
             Thread closeThread = daemonThread("close-racing-with-shutdown-hook", closeTask);
-            try (AutoCloseable previousRegistration = diagnosticHandle.replace(() -> {
+            try (AutoCloseable ignored = diagnosticHandle.replace(() -> {
                 diagnosticCloseOwner.set(Thread.currentThread());
                 diagnosticCloseEntered.countDown();
                 awaitLatch(releaseDiagnosticClose, "diagnostic close release");
@@ -538,36 +523,38 @@ class BootstrapTerminalTransitionsConcurrencyTest {
         // given
         TerminalFixture fixture = terminalFixture();
         AtomicInteger closeCalls = new AtomicInteger();
-        BootstrapResources resources = new BootstrapResources(noOpHooks());
-        resources.push(closeCalls::incrementAndGet, "close-probe");
-        IllegalStateException activationCause = new IllegalStateException("Activation failed");
-        BootstrapException classified = fixture.transitions().recordActivationFailure(
-                ACTIVATION_FAILED,
-                "readiness-publication",
-                activationCause,
-                BATCH_ID,
-                fixture.evidence()
-        );
-
-        // when
-        Throwable monitorViolation;
-        synchronized (fixture.lifecycle().monitor()) {
-            monitorViolation = catchThrowable(() -> fixture.transitions().completeActivationFailure(
-                    classified,
-                    resources,
+        try (BootstrapResources resources = new BootstrapResources(noOpHooks())) {
+            resources.push(closeCalls::incrementAndGet, "close-probe");
+            IllegalStateException activationCause = new IllegalStateException("Activation failed");
+            BootstrapException classified = fixture.transitions().recordActivationFailure(
+                    ACTIVATION_FAILED,
+                    "readiness-publication",
                     activationCause,
-                    null,
                     BATCH_ID,
                     fixture.evidence()
-            ));
-        }
+            );
 
-        // then
-        assertThat(monitorViolation)
-                .isInstanceOf(IllegalMonitorStateException.class)
-                .hasMessage("Activation rollback must run outside the bootstrap lifecycle monitor");
-        assertThat(closeCalls).hasValue(0);
-        resources.close();
+            // when
+            Throwable monitorViolation;
+            synchronized (fixture.lifecycle().monitor()) {
+                monitorViolation = catchThrowable(() -> {
+                    throw fixture.transitions().completeActivationFailure(
+                            classified,
+                            resources,
+                            activationCause,
+                            null,
+                            BATCH_ID,
+                            fixture.evidence()
+                    );
+                });
+            }
+
+            // then
+            assertThat(monitorViolation)
+                    .isInstanceOf(IllegalMonitorStateException.class)
+                    .hasMessage("Activation rollback must run outside the bootstrap lifecycle monitor");
+            assertThat(closeCalls).hasValue(0);
+        }
         assertThat(closeCalls).hasValue(1);
     }
 
@@ -636,8 +623,8 @@ class BootstrapTerminalTransitionsConcurrencyTest {
             LockInfo observedLock = last == null ? null : last.getLockInfo();
             boolean expectedLockObserved = expectedLock == null
                     || (observedLock != null
-                            && observedLock.getIdentityHashCode() == System.identityHashCode(expectedLock)
-                            && observedLock.getClassName().equals(expectedLock.getClass().getName()));
+                    && observedLock.getIdentityHashCode() == System.identityHashCode(expectedLock)
+                    && observedLock.getClassName().equals(expectedLock.getClass().getName()));
             if (last != null
                     && last.getThreadState() == Thread.State.BLOCKED
                     && last.getLockOwnerId() == owner.threadId()
@@ -684,6 +671,21 @@ class BootstrapTerminalTransitionsConcurrencyTest {
             throw new AssertionError(description + " failed", executionFailure.getCause());
         } catch (TimeoutException timeout) {
             throw new AssertionError(description + " did not finish within " + WAIT_SECONDS + " seconds", timeout);
+        }
+    }
+
+    private static void stubRuntimeRegistration(PlatformTracingMBeanRegistrar registrar,
+                                                PlatformTracingMBeanRegistrar.RuntimeRegistration registration) {
+        //noinspection resource -- результат stubbing-вызова имеет тип RuntimeRegistration, но это не живая регистрация
+        doReturn(registration).when(registrar).registerRuntimeControls(any());
+    }
+
+    private record CountingRuntimeRegistration(UUID batchId,
+                                               AtomicInteger closeCalls) implements PlatformTracingMBeanRegistrar.RuntimeRegistration {
+
+        @Override
+        public void close() {
+            closeCalls.incrementAndGet();
         }
     }
 

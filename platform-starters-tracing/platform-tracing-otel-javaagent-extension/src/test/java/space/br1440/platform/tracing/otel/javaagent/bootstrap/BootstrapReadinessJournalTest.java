@@ -17,10 +17,11 @@ class BootstrapReadinessJournalTest {
     private static final AgentInstanceId AGENT_INSTANCE_ID =
             AgentInstanceId.parse("00000000-0000-0000-0000-000000000001");
 
+    private final Object monitor = new Object();
+
     @Test
     void failedPublicationRequiresLifecycleMonitor() {
         // given
-        Object monitor = new Object();
         PlatformExtensionReadiness readiness = PlatformExtensionReadiness.forCurrentExtension();
         BootstrapReadinessJournal journal = new BootstrapReadinessJournal(monitor, readiness, AGENT_INSTANCE_ID);
 
@@ -36,10 +37,9 @@ class BootstrapReadinessJournalTest {
     @Test
     void repeatedFailurePairPreservesFirstFailedGeneration() {
         // given
-        Object monitor = new Object();
         PlatformExtensionReadiness readiness = PlatformExtensionReadiness.forCurrentExtension();
         BootstrapReadinessJournal journal = new BootstrapReadinessJournal(monitor, readiness, AGENT_INSTANCE_ID);
-        BootstrapFailure failure = failure("PRIMARY_FAILURE", "PRIMARY_FAILURE");
+        BootstrapFailure failure = failure("PRIMARY_FAILURE");
 
         // when
         ExtensionReadinessWireSnapshot first;
@@ -61,12 +61,11 @@ class BootstrapReadinessJournalTest {
     @Test
     void escalationPreservesMetadataFromFirstFailedSnapshot() {
         // given
-        Object monitor = new Object();
         PlatformExtensionReadiness readiness = PlatformExtensionReadiness.forCurrentExtension();
         BootstrapReadinessJournal journal =
                 new BootstrapReadinessJournal(monitor, readiness, AGENT_INSTANCE_ID);
-        BootstrapFailure primary = failure("PRIMARY_FAILURE", "PRIMARY_FAILURE");
-        BootstrapFailure escalated = failure("PRIMARY_FAILURE", "FAILED_ROLLBACK_INCOMPLETE");
+        BootstrapFailure primary = failure("PRIMARY_FAILURE");
+        BootstrapFailure escalated = failure("FAILED_ROLLBACK_INCOMPLETE");
 
         // when
         ExtensionReadinessWireSnapshot first;
@@ -92,14 +91,13 @@ class BootstrapReadinessJournalTest {
     @Test
     void failureWithoutBatchHasNoEvidenceGeneration() {
         // given
-        Object monitor = new Object();
         PlatformExtensionReadiness readiness = PlatformExtensionReadiness.forCurrentExtension();
         BootstrapReadinessJournal journal = new BootstrapReadinessJournal(monitor, readiness, AGENT_INSTANCE_ID);
 
         // when
         ExtensionReadinessWireSnapshot failed;
         synchronized (monitor) {
-            journal.publishFailed(failure("PRIMARY_FAILURE", "PRIMARY_FAILURE"), "", evidence(readiness, "first"));
+            journal.publishFailed(failure("PRIMARY_FAILURE"), "", evidence(readiness, "first"));
             failed = journal.current();
         }
 
@@ -109,8 +107,8 @@ class BootstrapReadinessJournalTest {
         assertThat(failed.evidenceGeneration()).isZero();
     }
 
-    private static BootstrapFailure failure(String primaryCode, String effectiveCode) {
-        return new BootstrapFailure(primaryCode, effectiveCode, "test", new IllegalStateException("test failure"));
+    private static BootstrapFailure failure(String effectiveCode) {
+        return new BootstrapFailure("PRIMARY_FAILURE", effectiveCode, "test", new IllegalStateException("test failure"));
     }
 
     private static ExtensionRuntimeEvidence evidence(PlatformExtensionReadiness readiness, String loaderSuffix) {

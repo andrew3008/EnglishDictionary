@@ -111,14 +111,14 @@ final class AgentReadinessProbe {
 
         return new AgentReadinessSnapshot.AnchorIdentity(
                 agentInstanceId,
-                fields.longValue(JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION),
+                fields.evidenceGeneration(),
                 fields.string(JmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID)
         );
     }
 
     private static AgentReadinessSnapshot.LifecycleState lifecycleState(ReadinessFields fields) {
         return new AgentReadinessSnapshot.LifecycleState(
-                fields.token(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE),
+                fields.lifecycle(),
                 fields.optionalToken(JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE),
                 fields.optionalToken(JmxWireContract.FIELD_READINESS_SNAPSHOT_PRIMARY_FAILURE_CODE),
                 fields.tokenSet(JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES),
@@ -147,12 +147,15 @@ final class AgentReadinessProbe {
             return field(fieldName, String.class);
         }
 
-        long longValue(String fieldName) {
-            return field(fieldName, Long.class);
+        long evidenceGeneration() {
+            return field(JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION, Long.class);
         }
 
-        String token(String fieldName) {
-            return requireToken(string(fieldName), fieldName);
+        String lifecycle() {
+            return requireToken(
+                    string(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE),
+                    JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE
+            );
         }
 
         String optionalToken(String fieldName) {
