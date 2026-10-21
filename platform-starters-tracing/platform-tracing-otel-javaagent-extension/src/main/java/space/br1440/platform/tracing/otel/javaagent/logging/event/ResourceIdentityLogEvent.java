@@ -41,6 +41,14 @@ public enum ResourceIdentityLogEvent implements AgentLogEventType {
             )
     ),
 
+    BUILD_INFO_UNREADABLE(
+            requiresCause(
+                    AgentEventCode.BOOT_RESOURCE_IDENTITY, WARN,
+                    "Application build info is unreadable",
+                    AgentLogField.RESOURCE
+            )
+    ),
+
     RESOURCE_IDENTITY_RESOLVED(
             noCause(
                     AgentEventCode.BOOT_RESOURCE_IDENTITY, INFO,

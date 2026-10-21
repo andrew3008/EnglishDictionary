@@ -7,9 +7,14 @@ import java.util.Properties;
 import java.util.function.Function;
 
 import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ResourceIdentityLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
 final class BuildInfoReader {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(BuildInfoReader.class);
 
     static final String BUILD_INFO_PATH = "META-INF/build-info.properties";
     static final String BUILD_INFO_PATH_BOOT_INF = "BOOT-INF/classes/META-INF/build-info.properties";
@@ -18,7 +23,7 @@ final class BuildInfoReader {
     private final Function<String, InputStream> loader;
 
     BuildInfoReader() {
-        this(BuildInfoReader::openFromTcclFirst);
+        this(BuildInfoReader::openFromContextClassLoader);
     }
 
     BuildInfoReader(Function<String, InputStream> loader) {
@@ -51,19 +56,15 @@ final class BuildInfoReader {
             return Optional.empty();
         } catch (Throwable failure) {
             PlatformThrowables.propagateIfFatal(failure);
+            log.log(ResourceIdentityLogEvent.BUILD_INFO_UNREADABLE, fields -> fields
+                    .putString(AgentLogField.RESOURCE, path)
+                    .cause(failure));
             return Optional.empty();
         }
     }
 
-    private static InputStream openFromTcclFirst(String path) {
+    private static InputStream openFromContextClassLoader(String path) {
         ClassLoader contextLoader = Thread.currentThread().getContextClassLoader();
-        if (contextLoader != null) {
-            InputStream fromContext = contextLoader.getResourceAsStream(path);
-            if (fromContext != null) {
-                return fromContext;
-            }
-        }
-
-        return BuildInfoReader.class.getClassLoader().getResourceAsStream(path);
+        return (contextLoader == null) ? null : contextLoader.getResourceAsStream(path);
     }
 }

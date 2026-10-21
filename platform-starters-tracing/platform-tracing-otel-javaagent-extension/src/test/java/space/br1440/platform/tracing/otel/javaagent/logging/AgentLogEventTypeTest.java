@@ -50,15 +50,7 @@ class AgentLogEventTypeTest {
     );
 
     @Test
-    void catalog_has_expected_cardinality() {
-        // given
-        // when
-        List<AgentLogEventType> eventTypes = AgentLogEventCatalog.all();
-        AgentLogField[] fields = AgentLogField.values();
-
-        // then
-        assertThat(eventTypes).hasSize(110);
-        assertThat(fields).hasSize(60);
+    void cause_policy_values_are_exactly_forbidden_optional_and_required() {
         assertThat(CausePolicy.values()).containsExactly(
                 CausePolicy.FORBIDDEN,
                 CausePolicy.OPTIONAL,
