@@ -2,11 +2,16 @@ package space.br1440.platform.tracing.autoconfigure.agent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.artifact.PlatformExtensionArtifact;
@@ -33,7 +38,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 "contract",
                 "digest",
-                "agent-instance",
+                "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a",
                 1L,
                 "batch",
                 extensionVersion
@@ -61,7 +66,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 "",
                 "digest",
-                "agent-instance",
+                "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a",
                 1L,
                 "batch",
                 "9.9.9"
@@ -81,7 +86,7 @@ class AgentContractFailureMessagesTest {
     }
 
     @Test
-    void formatsGenerationInconsistentContextWithMissingAgentInstanceIdAndBatch() {
+    void formatsGenerationInconsistentContextWithMissingBatch() {
         // given
         TracingDeploymentDiagnostics diagnostics = diagnostics(
                 AgentRuntimeState.EXTENSION_INCOMPATIBLE,
@@ -89,7 +94,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 "contract",
                 "digest",
-                "",
+                ReadinessTestFixtures.AGENT_INSTANCE_ID,
                 0L,
                 "",
                 "1.2.0"
@@ -103,7 +108,7 @@ class AgentContractFailureMessagesTest {
                 AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
                         AgentRuntimeState.EXTENSION_INCOMPATIBLE,
                         "READINESS_GENERATION_INCONSISTENT")
-                        + ", agentInstanceId=<missing>, evidenceGeneration=0, batchId=<missing>. "
+                        + ", evidenceGeneration=0, batchId=<missing>. "
                         + AgentContractFailureMessages.READINESS_GENERATION_INVALID_EXPLANATION
         );
     }
@@ -117,7 +122,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 "contract",
                 "digest",
-                "agent-instance",
+                "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a",
                 0L,
                 "batch",
                 "1.2.0"
@@ -137,19 +142,22 @@ class AgentContractFailureMessagesTest {
     }
 
     @Test
-    void formatsGenerationInconsistentContextWithSingleMissingAnchor() {
+    void usesStarterFailureCodeAndDropsPrimaryWhenSnapshotFailureCodeDiffers() {
         // given
-        TracingDeploymentDiagnostics diagnostics = diagnostics(
+        AgentReadinessSnapshot snapshot = ReadinessTestFixtures.toBuilder(ReadinessTestFixtures.readySnapshot())
+                .lifecycleState(new AgentReadinessSnapshot.LifecycleState(
+                        "FAILED",
+                        "FAILED_ROLLBACK_INCOMPLETE",
+                        "ACTIVATION_FAILED",
+                        Set.of(),
+                        Set.of()))
+                .build();
+        TracingDeploymentDiagnostics diagnostics = TracingDeploymentDiagnostics.withAgentData(
+                true,
+                true,
                 AgentRuntimeState.EXTENSION_INCOMPATIBLE,
-                "READINESS_GENERATION_INCONSISTENT",
-                "READY",
-                "contract",
-                "digest",
-                "",
-                5L,
-                "batch",
-                "1.2.0"
-        );
+                snapshot,
+                "READINESS_ANCHOR_CONTENT_DRIFT");
 
         // when
         String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
@@ -158,9 +166,11 @@ class AgentContractFailureMessagesTest {
         assertThat(message).isEqualTo(
                 AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
                         AgentRuntimeState.EXTENSION_INCOMPATIBLE,
-                        "READINESS_GENERATION_INCONSISTENT")
-                        + ", agentInstanceId=<missing>, evidenceGeneration=5. "
-                        + AgentContractFailureMessages.READINESS_GENERATION_INVALID_EXPLANATION
+                        "READINESS_ANCHOR_CONTENT_DRIFT")
+                        + ", agentInstanceId=" + ReadinessTestFixtures.AGENT_INSTANCE_ID
+                        + ", evidenceGeneration=1, batchId=" + ReadinessTestFixtures.BATCH_ID
+                        + ". "
+                        + AgentContractFailureMessages.DEFAULT_EXPLANATION_TEMPLATE.formatted("FAILED")
         );
     }
 
@@ -173,7 +183,7 @@ class AgentContractFailureMessagesTest {
                 "INITIALIZING",
                 "contract",
                 "digest",
-                "agent-instance",
+                "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a",
                 0L,
                 "batch",
                 "1.2.0"
@@ -201,7 +211,7 @@ class AgentContractFailureMessagesTest {
                 "INITIALIZING",
                 "contract",
                 "digest",
-                "agent-instance",
+                "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a",
                 0L,
                 "",
                 "1.2.0"
@@ -229,7 +239,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 "contract",
                 "digest",
-                "agent-instance",
+                "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a",
                 -1L,
                 "batch",
                 "1.2.0"
@@ -257,7 +267,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 "contract",
                 "digest",
-                "agent-instance",
+                "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a",
                 1L,
                 "batch",
                 "1.2.0"
@@ -271,7 +281,7 @@ class AgentContractFailureMessagesTest {
                 AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
                         AgentRuntimeState.EXTENSION_INCOMPATIBLE,
                         "READINESS_ANCHOR_CONTENT_DRIFT")
-                        + ", agentInstanceId=agent-instance, evidenceGeneration=1, batchId=batch. "
+                        + ", agentInstanceId=5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a, evidenceGeneration=1, batchId=batch. "
                         + AgentContractFailureMessages.DEFAULT_EXPLANATION_TEMPLATE.formatted("READY")
         );
     }
@@ -285,7 +295,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 "another-contract",
                 "digest",
-                "agent-instance",
+                "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a",
                 1L,
                 "batch",
                 "1.2.0"
@@ -314,7 +324,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 JmxWireContract.SCHEMA_ID,
                 "0".repeat(64),
-                "agent-instance",
+                "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a",
                 1L,
                 "batch",
                 "1.2.0"
@@ -344,7 +354,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 "",
                 "digest",
-                "agent-instance",
+                "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a",
                 1L,
                 "batch",
                 "1.2.0"
@@ -396,7 +406,7 @@ class AgentContractFailureMessagesTest {
                 "FAILED",
                 "contract",
                 "digest",
-                "agent-instance",
+                "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a",
                 1L,
                 "batch",
                 "1.2.0"
@@ -471,7 +481,7 @@ class AgentContractFailureMessagesTest {
                 "READY",
                 "contract",
                 "digest",
-                "agent-instance",
+                "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a",
                 1L,
                 "batch",
                 "development"
@@ -493,6 +503,95 @@ class AgentContractFailureMessagesTest {
         );
     }
 
+    @Test
+    void includesPrimaryFailureCodeWhenEffectiveFailureCodeWasEscalated() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_FAILED,
+                "FAILED_ROLLBACK_INCOMPLETE",
+                "ACTIVATION_FAILED",
+                "FAILED",
+                "contract",
+                "digest",
+                "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a",
+                1L,
+                "batch",
+                "1.2.0"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.EXTENSION_FAILED,
+                        "FAILED_ROLLBACK_INCOMPLETE")
+                        + ", primaryFailureCode=ACTIVATION_FAILED, lifecycle=FAILED. "
+                        + AgentContractFailureMessages.DEFAULT_EXPLANATION_TEMPLATE.formatted("FAILED")
+        );
+    }
+
+    @Test
+    void reportsReadyFailureCodeWithoutInventingObservedValue() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "EXTENSION_READY_WITH_FAILURE_CODE",
+                "READY",
+                "contract",
+                "digest",
+                "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a",
+                1L,
+                "batch",
+                "1.2.0"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                        "EXTENSION_READY_WITH_FAILURE_CODE")
+                        + ", lifecycle=READY. "
+                        + AgentContractFailureMessages.EXTENSION_READY_WITH_FAILURE_CODE_EXPLANATION
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("classifierReasonCodes")
+    void everyClassifierReasonCodeHasExplicitExplanation(Field reasonCodeField) throws IllegalAccessException {
+        // given
+        String reasonCode = (String) reasonCodeField.get(null);
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                reasonCode,
+                "READY",
+                "contract",
+                "digest",
+                "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a",
+                1L,
+                "batch",
+                "1.2.0"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
+
+        // then
+        assertThat(reasonCode).isEqualTo(reasonCodeField.getName());
+        assertThat(message).doesNotEndWith(AgentContractFailureMessages.DEFAULT_EXPLANATION_TEMPLATE.formatted("READY"));
+    }
+
+    private static Stream<Field> classifierReasonCodes() {
+        return Arrays.stream(AgentNotReadyReasonCodes.class.getDeclaredFields())
+                .filter(field -> Modifier.isStatic(field.getModifiers())
+                        && Modifier.isFinal(field.getModifiers())
+                        && field.getType() == String.class);
+    }
+
     @SuppressWarnings("SameParameterValue")
     private static TracingDeploymentDiagnostics diagnostics(AgentRuntimeState runtimeState,
                                                             String failureCode,
@@ -503,32 +602,53 @@ class AgentContractFailureMessagesTest {
                                                             long evidenceGeneration,
                                                             String batchId,
                                                             String extensionVersion) {
-        return new TracingDeploymentDiagnostics(
+        return diagnostics(
+                runtimeState,
+                failureCode,
+                failureCode,
+                lifecycle,
+                contractId,
+                schemaDigest,
+                agentInstanceId,
+                evidenceGeneration,
+                batchId,
+                extensionVersion
+        );
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    private static TracingDeploymentDiagnostics diagnostics(AgentRuntimeState runtimeState,
+                                                            String failureCode,
+                                                            String primaryFailureCode,
+                                                            String lifecycle,
+                                                            String contractId,
+                                                            String schemaDigest,
+                                                            String agentInstanceId,
+                                                            long evidenceGeneration,
+                                                            String batchId,
+                                                            String extensionVersion) {
+        return TracingDeploymentDiagnostics.withAgentData(
                 true,
                 true,
                 runtimeState,
-                new TracingDeploymentDiagnostics.AgentReadiness(
-                        true,
-
-                        new TracingDeploymentDiagnostics.ContractIdentity(contractId, schemaDigest),
-
-                        new TracingDeploymentDiagnostics.ReadinessAnchor(agentInstanceId, evidenceGeneration, batchId),
-
-                        new TracingDeploymentDiagnostics.LifecycleState(
+                new AgentReadinessSnapshot(
+                        new AgentReadinessSnapshot.ContractIdentity(contractId, schemaDigest),
+                        new AgentReadinessSnapshot.AnchorIdentity(agentInstanceId, evidenceGeneration, batchId),
+                        new AgentReadinessSnapshot.LifecycleState(
                                 lifecycle,
                                 failureCode,
+                                primaryFailureCode,
                                 Set.of(),
                                 Set.of()
                         ),
-
-                        new TracingDeploymentDiagnostics.DistributionIdentity(
+                        new AgentReadinessSnapshot.DistributionIdentity(
                                 "a".repeat(64),
                                 "2.30.0",
                                 extensionVersion
                         ),
-
-                        new TracingDeploymentDiagnostics.ClassloaderTopology("agent-loader@1", "sdk-loader@2")
-                )
+                        new AgentReadinessSnapshot.ClassloaderTopology("agent-loader@1", "sdk-loader@2")
+                ),
+                failureCode
         );
     }
 }

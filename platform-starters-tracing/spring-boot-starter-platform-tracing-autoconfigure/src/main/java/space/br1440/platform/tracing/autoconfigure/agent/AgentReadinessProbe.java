@@ -39,16 +39,14 @@ final class AgentReadinessProbe {
     }
 
     ProbeResult read(ObjectName readinessName) {
-        Object raw;
         try {
-            MBeanInfo metadata = server.getMBeanInfo(readinessName);
-            JmxMBeanInfoShape.requireReadOnlySnapshot(
-                    metadata,
-                    READINESS_ATTRIBUTE,
-                    JmxOpenTypes.READINESS_SNAPSHOT
-            );
-            raw = server.getAttribute(readinessName, READINESS_ATTRIBUTE);
+            Object raw = readAttributeOfVerifiedShape(readinessName);
+            if (hasNullPrimaryFailureCode(raw)) {
+                return new ProbeResult.Rejected(ProbeReason.MALFORMED_SNAPSHOT);
+            }
+
             wireValidator.validate(raw);
+            return decode(raw);
         } catch (InstanceNotFoundException disappeared) {
             return new ProbeResult.Rejected(ProbeReason.ENDPOINT_DISAPPEARED);
         } catch (JmxMBeanInfoShapeViolationException | AttributeNotFoundException incompatibleMetadata) {
@@ -61,109 +59,137 @@ final class AgentReadinessProbe {
         } catch (SecurityException accessDenied) {
             return new ProbeResult.Indeterminate(ProbeReason.ACCESS_DENIED, accessDenied);
         }
+    }
 
+    private Object readAttributeOfVerifiedShape(ObjectName readinessName)
+            throws InstanceNotFoundException, IntrospectionException, ReflectionException,
+                   AttributeNotFoundException, MBeanException {
+        MBeanInfo metadata = server.getMBeanInfo(readinessName);
+        JmxMBeanInfoShape.requireReadOnlySnapshot(metadata, READINESS_ATTRIBUTE, JmxOpenTypes.READINESS_SNAPSHOT);
+        return server.getAttribute(readinessName, READINESS_ATTRIBUTE);
+    }
+
+    private static boolean hasNullPrimaryFailureCode(Object raw) {
+        return raw instanceof CompositeData composite
+                && (raw.getClass().getClassLoader() == null)
+                && JmxOpenTypes.READINESS_SNAPSHOT.equals(composite.getCompositeType())
+                && (composite.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_PRIMARY_FAILURE_CODE) == null);
+    }
+
+    private static ProbeResult decode(Object raw) {
         if (!(raw instanceof CompositeData composite)
                 || !JmxOpenTypes.READINESS_SNAPSHOT.equals(composite.getCompositeType())) {
             return new ProbeResult.Rejected(ProbeReason.MALFORMED_SNAPSHOT);
         }
 
+        ReadinessFields fields = new ReadinessFields(composite);
         try {
-            return new ProbeResult.Present(decode(composite));
+            return new ProbeResult.Present(new AgentReadinessSnapshot(
+                    contractIdentity(fields),
+                    anchorIdentity(fields),
+                    lifecycleState(fields),
+                    distributionIdentity(fields),
+                    classloaderTopology(fields)
+            ));
         } catch (IllegalArgumentException | IllegalStateException malformedSnapshot) {
             return new ProbeResult.Rejected(ProbeReason.MALFORMED_SNAPSHOT);
         }
     }
 
-    private static AgentReadinessSnapshot decode(CompositeData snapshot) {
-        String contractId = field(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_CONTRACT_ID, String.class);
-        String schemaDigest = field(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_DIGEST, String.class);
+    private static AgentReadinessSnapshot.ContractIdentity contractIdentity(ReadinessFields fields) {
+        return new AgentReadinessSnapshot.ContractIdentity(
+                fields.string(JmxWireContract.FIELD_READINESS_SNAPSHOT_CONTRACT_ID),
+                fields.string(JmxWireContract.FIELD_READINESS_SNAPSHOT_SCHEMA_DIGEST)
+        );
+    }
+
+    private static AgentReadinessSnapshot.AnchorIdentity anchorIdentity(ReadinessFields fields) {
         String agentInstanceId = AgentInstanceIdValidator.requireCanonical(
-                field(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_INSTANCE_ID, String.class),
+                fields.string(JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_INSTANCE_ID),
                 JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_INSTANCE_ID
         );
-        long evidenceGeneration = field(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION, Long.class);
-        String batchId = field(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID, String.class);
-        String lifecycle = token(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE);
-        Set<String> capabilities = stringSet(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES);
-        Set<String> missingRequired = stringSet(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_MISSING_REQUIRED);
-        String failureCode = optionalToken(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE);
 
-        String agentDistributionSha256 = field(
-                snapshot,
-                JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_DISTRIBUTION_SHA256,
-                String.class
-        );
-
-        String upstreamAgentVersion = field(
-                snapshot,
-                JmxWireContract.FIELD_READINESS_SNAPSHOT_UPSTREAM_AGENT_VERSION,
-                String.class
-        );
-
-        String extensionVersion = field(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_VERSION, String.class);
-
-        String extensionDefiningLoader = field(
-                snapshot,
-                JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_DEFINING_LOADER,
-                String.class
-        );
-
-        String sdkDefiningLoader = field(
-                snapshot,
-                JmxWireContract.FIELD_READINESS_SNAPSHOT_SDK_DEFINING_LOADER,
-                String.class
-        );
-
-        return new AgentReadinessSnapshot(
-                new AgentReadinessSnapshot.ContractIdentity(contractId, schemaDigest),
-                new AgentReadinessSnapshot.AnchorIdentity(agentInstanceId, evidenceGeneration, batchId),
-                new AgentReadinessSnapshot.LifecycleState(lifecycle, failureCode, capabilities, missingRequired),
-                new AgentReadinessSnapshot.DistributionIdentity(agentDistributionSha256, upstreamAgentVersion, extensionVersion),
-                new AgentReadinessSnapshot.ClassloaderTopology(extensionDefiningLoader, sdkDefiningLoader)
+        return new AgentReadinessSnapshot.AnchorIdentity(
+                agentInstanceId,
+                fields.longValue(JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION),
+                fields.string(JmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID)
         );
     }
 
-    private static Set<String> stringSet(CompositeData snapshot, String fieldName) {
-        String[] values = field(snapshot, fieldName, String[].class);
-        if (values.length > JmxWireContract.MAX_CAPABILITY_ENTRIES) {
-            throw new IllegalArgumentException("Readiness string set exceeds the generated entry limit");
+    private static AgentReadinessSnapshot.LifecycleState lifecycleState(ReadinessFields fields) {
+        return new AgentReadinessSnapshot.LifecycleState(
+                fields.token(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE),
+                fields.optionalToken(JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE),
+                fields.optionalToken(JmxWireContract.FIELD_READINESS_SNAPSHOT_PRIMARY_FAILURE_CODE),
+                fields.tokenSet(JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES),
+                fields.tokenSet(JmxWireContract.FIELD_READINESS_SNAPSHOT_MISSING_REQUIRED)
+        );
+    }
+
+    private static AgentReadinessSnapshot.DistributionIdentity distributionIdentity(ReadinessFields fields) {
+        return new AgentReadinessSnapshot.DistributionIdentity(
+                fields.string(JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_DISTRIBUTION_SHA256),
+                fields.string(JmxWireContract.FIELD_READINESS_SNAPSHOT_UPSTREAM_AGENT_VERSION),
+                fields.string(JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_VERSION)
+        );
+    }
+
+    private static AgentReadinessSnapshot.ClassloaderTopology classloaderTopology(ReadinessFields fields) {
+        return new AgentReadinessSnapshot.ClassloaderTopology(
+                fields.string(JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_DEFINING_LOADER),
+                fields.string(JmxWireContract.FIELD_READINESS_SNAPSHOT_SDK_DEFINING_LOADER)
+        );
+    }
+
+    private record ReadinessFields(CompositeData data) {
+
+        String string(String fieldName) {
+            return field(fieldName, String.class);
         }
 
-        Set<String> result = new LinkedHashSet<>(values.length);
-        for (String value : values) {
-            String token = requireToken(value, fieldName);
-            if (!result.add(token)) {
-                throw new IllegalArgumentException("Readiness string set contains a duplicate token");
+        long longValue(String fieldName) {
+            return field(fieldName, Long.class);
+        }
+
+        String token(String fieldName) {
+            return requireToken(string(fieldName), fieldName);
+        }
+
+        String optionalToken(String fieldName) {
+            String value = string(fieldName);
+            return value.isEmpty() ? value : requireToken(value, fieldName);
+        }
+
+        Set<String> tokenSet(String fieldName) {
+            String[] values = field(fieldName, String[].class);
+            if (values.length > JmxWireContract.MAX_CAPABILITY_ENTRIES) {
+                throw new IllegalArgumentException("Readiness string set exceeds the generated entry limit: " + fieldName);
             }
+
+            Set<String> tokens = new LinkedHashSet<>(values.length);
+            for (String value : values) {
+                if (!tokens.add(requireToken(value, fieldName))) {
+                    throw new IllegalArgumentException("Readiness string set contains a duplicate token: " + fieldName);
+                }
+            }
+            return Set.copyOf(tokens);
         }
-        return Set.copyOf(result);
-    }
 
-    @SuppressWarnings("SameParameterValue")
-    private static String token(CompositeData snapshot, String fieldName) {
-        return requireToken(field(snapshot, fieldName, String.class), fieldName);
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private static String optionalToken(CompositeData snapshot, String fieldName) {
-        String value = field(snapshot, fieldName, String.class);
-        return value.isEmpty() ? value : requireToken(value, fieldName);
-    }
-
-    private static String requireToken(String value, String fieldName) {
-        if (value == null || value.isBlank() || !value.equals(value.trim())
-                || value.chars().anyMatch(Character::isISOControl)) {
-            throw new IllegalArgumentException("Readiness field is not a canonical token: " + fieldName);
+        private <T> T field(String fieldName, Class<T> expectedType) {
+            Object value = data.get(fieldName);
+            if (!expectedType.isInstance(value)) {
+                throw new IllegalArgumentException("Readiness field has an invalid type: " + fieldName);
+            }
+            return expectedType.cast(value);
         }
-        return value;
-    }
 
-    private static <T> T field(CompositeData snapshot, String fieldName, Class<T> expectedType) {
-        Object value = snapshot.get(fieldName);
-        if (!expectedType.isInstance(value)) {
-            throw new IllegalArgumentException("Readiness field has an invalid type: " + fieldName);
+        private static String requireToken(String value, String fieldName) {
+            if (value == null || value.isBlank() || !value.equals(value.trim())
+                    || value.chars().anyMatch(Character::isISOControl)) {
+                throw new IllegalArgumentException("Readiness field is not a canonical token: " + fieldName);
+            }
+            return value;
         }
-        return expectedType.cast(value);
     }
 
     enum ProbeReason {

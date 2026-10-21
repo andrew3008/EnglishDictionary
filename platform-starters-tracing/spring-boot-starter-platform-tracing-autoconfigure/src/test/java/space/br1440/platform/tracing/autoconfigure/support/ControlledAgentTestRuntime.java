@@ -8,6 +8,7 @@ import javax.management.MBeanServer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.event.ContextClosedEvent;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
@@ -92,7 +93,10 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
     }
 
     public static AgentStartupVerifier verifier() {
-        return new AgentStartupVerifier(ManagementFactory.getPlatformMBeanServer(), "1.2.3");
+        return new AgentStartupVerifier(
+                new AgentReadinessCoherenceGuard(ManagementFactory.getPlatformMBeanServer()),
+                () -> "1.2.3"
+        );
     }
 
     private static void closeWithContext(ConfigurableApplicationContext context,

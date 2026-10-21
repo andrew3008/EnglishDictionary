@@ -1,6 +1,10 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.spy;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorAssert.assertThatCoordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
@@ -21,6 +25,7 @@ import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationEx
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationException;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
@@ -52,8 +57,11 @@ class BootstrapCoordinatorMissingPreparationTest {
             );
 
             // then
+            assertThat(failure.failure().primaryCode()).isEqualTo(PLATFORM_ACP_NOT_EXECUTED);
+            assertThat(failure.failure().effectiveCode()).isEqualTo(PLATFORM_ACP_NOT_EXECUTED);
             assertThat(failure.getCause().getSuppressed()).isEmpty();
             assertThatCoordinator(coordinator).isTerminallyFailedWith(PLATFORM_ACP_NOT_EXECUTED);
+            assertThat(coordinator.currentWire().primaryFailureCode()).isEqualTo(PLATFORM_ACP_NOT_EXECUTED);
             assertThat(coordinator.currentWire().agentInstanceId()).isEqualTo(agentInstanceId.toString());
             assertThat(coordinator.currentWire().batchId()).isEmpty();
             assertThat(coordinator.currentWire().evidenceGeneration()).isZero();
@@ -116,6 +124,36 @@ class BootstrapCoordinatorMissingPreparationTest {
                     .satisfies(suppressed -> assertThat(suppressed).hasMessageContaining("ownership collision"));
             assertThatCoordinator(coordinator).isTerminallyFailedWith(PLATFORM_ACP_NOT_EXECUTED);
             assertThatDiagnosticMBean(server).isOwnedBy(Timer.class);
+        }
+    }
+
+    @Test
+    void fatal_diagnostic_registration_is_suppressed_on_missing_preparation_cause_and_propagated() {
+        // given
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
+        PlatformTracingMBeanRegistrar registrar = spy(new PlatformTracingMBeanRegistrar(
+                MBeanServerFactory.newMBeanServer(),
+                agentInstanceId
+        ));
+        NoClassDefFoundError diagnosticFailure = new NoClassDefFoundError("Fatal diagnostic registration failure");
+        doThrow(diagnosticFailure).when(registrar).registerDiagnosticReadiness(any());
+
+        try (BootstrapCoordinator coordinator = coordinator()
+                .agentInstanceId(agentInstanceId)
+                .registrar(registrar)
+                .build();
+             SdkTracerProvider tracerProvider = SdkTracerProvider.builder().build()) {
+            // when
+            assertThatThrownBy(() -> coordinator.activate(tracerProvider)).isSameAs(diagnosticFailure);
+
+            // then
+            BootstrapException sticky = catchBootstrapFailure(
+                    () -> coordinator.prepare(config()),
+                    PLATFORM_ACP_NOT_EXECUTED
+            );
+            assertThat(sticky.getCause().getSuppressed()).containsExactly(diagnosticFailure);
+            assertThat(diagnosticFailure.getSuppressed()).isEmpty();
+            assertThatCoordinator(coordinator).isTerminallyFailedWith(PLATFORM_ACP_NOT_EXECUTED);
         }
     }
 

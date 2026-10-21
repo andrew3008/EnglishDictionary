@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
 
 import java.util.List;
@@ -11,7 +12,6 @@ import javax.management.MBeanServerFactory;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
-import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
 
 class MBeanRegistrationScopeTest {
 
@@ -25,10 +25,18 @@ class MBeanRegistrationScopeTest {
 
         // when
         // then
-        assertThatThrownBy(() -> scope.registerOne(registration))
+        assertThatThrownBy(() -> {
+            try (MBeanBatchRegistrar.RegisteredBatch batch = scope.registerOne(registration)) {
+                fail("registration without the serialization lock returned " + batch.batchId());
+            }
+        })
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("MBean batch mutation requires MBeanRegistrationScope serialization lock");
-        assertThatThrownBy(() -> scope.registerAllOrRollback(List.of(registration)))
+        assertThatThrownBy(() -> {
+            try (MBeanBatchRegistrar.RegisteredBatch batch = scope.registerAllOrRollback(List.of(registration))) {
+                fail("registration without the serialization lock returned " + batch.batchId());
+            }
+        })
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("MBean batch mutation requires MBeanRegistrationScope serialization lock");
         assertThatThrownBy(scope::reclaimUnreclaimed)
@@ -47,8 +55,6 @@ class MBeanRegistrationScopeTest {
     }
 
     private static MBeanRegistrationScope newScope() {
-        return new MBeanRegistrationScope(
-                MBeanServerFactory.newMBeanServer(),
-                new PlatformExtensionReadiness());
+        return new MBeanRegistrationScope(MBeanServerFactory.newMBeanServer());
     }
 }

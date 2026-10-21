@@ -38,6 +38,54 @@ class AgentReadinessClassifierTest {
     }
 
     @Test
+    void rejectsInitializingSnapshotWithEffectiveFailureCode() {
+        // given
+        AgentReadinessSnapshot initializing = ReadinessTestFixtures.initializingSnapshot();
+        AgentReadinessSnapshot snapshot = ReadinessTestFixtures.toBuilder(initializing)
+                .lifecycleState(new AgentReadinessSnapshot.LifecycleState(
+                        "INITIALIZING",
+                        "PREPARATION_FAILED",
+                        "",
+                        initializing.lifecycleState().capabilities(),
+                        initializing.lifecycleState().missingRequired()))
+                .build();
+
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "EXTENSION_INITIALIZING_INCONSISTENT");
+    }
+
+    @Test
+    void rejectsInitializingSnapshotWithPrimaryFailureCode() {
+        // given
+        AgentReadinessSnapshot initializing = ReadinessTestFixtures.initializingSnapshot();
+        AgentReadinessSnapshot snapshot = ReadinessTestFixtures.toBuilder(initializing)
+                .lifecycleState(new AgentReadinessSnapshot.LifecycleState(
+                        "INITIALIZING",
+                        "",
+                        "PREPARATION_FAILED",
+                        initializing.lifecycleState().capabilities(),
+                        initializing.lifecycleState().missingRequired()))
+                .build();
+
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "EXTENSION_INITIALIZING_INCONSISTENT");
+    }
+
+    @Test
     void preservesFailedLifecycleCodeAsStickyFailure() {
         // given
         AgentReadinessSnapshot snapshot = ReadinessTestFixtures.failedSnapshot("DISTRIBUTION_MISMATCH");
@@ -49,6 +97,162 @@ class AgentReadinessClassifierTest {
         // then
         assertDecision(decision, AgentRuntimeState.EXTENSION_FAILED, "DISTRIBUTION_MISMATCH");
         assertThat(AgentReadinessClassifier.sticky(decision.state())).isTrue();
+    }
+
+    @Test
+    void acceptsRollbackEscalationAndUsesEffectiveFailureCode() {
+        // given
+        AgentReadinessSnapshot snapshot = ReadinessTestFixtures.failedSnapshot(
+                "ACTIVATION_FAILED",
+                "FAILED_ROLLBACK_INCOMPLETE");
+
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_FAILED,
+                "FAILED_ROLLBACK_INCOMPLETE");
+    }
+
+    @Test
+    void rejectsFailedSnapshotWithoutBothFailureCodesBeforePairValidation() {
+        // given
+        AgentReadinessSnapshot snapshot = ReadinessTestFixtures.failedSnapshot("", "");
+
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "EXTENSION_FAILED_WITHOUT_CODE");
+    }
+
+    @Test
+    void rejectsFailedSnapshotWithoutPrimaryFailureCode() {
+        // given
+        AgentReadinessSnapshot snapshot = ReadinessTestFixtures.failedSnapshot("", "ACTIVATION_FAILED");
+
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "EXTENSION_FAILED_CODE_PAIR_INCONSISTENT");
+    }
+
+    @Test
+    void rejectsFailedSnapshotWithoutEffectiveFailureCode() {
+        // given
+        AgentReadinessSnapshot snapshot = ReadinessTestFixtures.failedSnapshot("ACTIVATION_FAILED", "");
+
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "EXTENSION_FAILED_CODE_PAIR_INCONSISTENT");
+    }
+
+    @Test
+    void rejectsFailedSnapshotWithUnrelatedEffectiveFailureCode() {
+        // given
+        AgentReadinessSnapshot snapshot = ReadinessTestFixtures.failedSnapshot(
+                "ACTIVATION_FAILED",
+                "DISTRIBUTION_MISMATCH");
+
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "EXTENSION_FAILED_CODE_PAIR_INCONSISTENT");
+    }
+
+    @Test
+    void rejectsReversedRollbackEscalation() {
+        // given
+        AgentReadinessSnapshot snapshot = ReadinessTestFixtures.failedSnapshot(
+                "FAILED_ROLLBACK_INCOMPLETE",
+                "ACTIVATION_FAILED");
+
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "EXTENSION_FAILED_CODE_PAIR_INCONSISTENT");
+    }
+
+    @Test
+    void acceptsFailedSnapshotAfterBatchPublicationWithCompleteAnchor() {
+        // given
+        AgentReadinessSnapshot snapshot = ReadinessTestFixtures.toBuilder(ReadinessTestFixtures.failedSnapshot("ACTIVATION_FAILED"))
+                .anchorIdentity(new AgentReadinessSnapshot.AnchorIdentity(
+                        ReadinessTestFixtures.AGENT_INSTANCE_ID, 2L, ReadinessTestFixtures.BATCH_ID))
+                .build();
+
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(decision, AgentRuntimeState.EXTENSION_FAILED, "ACTIVATION_FAILED");
+    }
+
+    @Test
+    void rejectsFailedSnapshotCarryingBatchBeforePublication() {
+        // given
+        AgentReadinessSnapshot snapshot = ReadinessTestFixtures.toBuilder(ReadinessTestFixtures.failedSnapshot("ACTIVATION_FAILED"))
+                .anchorIdentity(new AgentReadinessSnapshot.AnchorIdentity(
+                        ReadinessTestFixtures.AGENT_INSTANCE_ID, 0L, ReadinessTestFixtures.BATCH_ID))
+                .build();
+
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "READINESS_GENERATION_INCONSISTENT");
+    }
+
+    @Test
+    void rejectsFailedSnapshotAfterPublicationWithoutBatchId() {
+        // given
+        AgentReadinessSnapshot snapshot = ReadinessTestFixtures.toBuilder(ReadinessTestFixtures.failedSnapshot("ACTIVATION_FAILED"))
+                .anchorIdentity(new AgentReadinessSnapshot.AnchorIdentity(
+                        ReadinessTestFixtures.AGENT_INSTANCE_ID, 2L, ""))
+                .build();
+
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "READINESS_GENERATION_INCONSISTENT");
     }
 
     @Test
@@ -75,7 +279,11 @@ class AgentReadinessClassifierTest {
         // given
         AgentReadinessSnapshot snapshot = builder()
                 .lifecycleState(new AgentReadinessSnapshot.LifecycleState(
-                        "READY", "", ReadinessTestFixtures.COMPLETE_CAPABILITIES, Set.of("SAFE_EXPORTER_INSTALLED")))
+                        "READY",
+                        "",
+                        "",
+                        ReadinessTestFixtures.COMPLETE_CAPABILITIES,
+                        Set.of("SAFE_EXPORTER_INSTALLED")))
                 .build();
 
         // when
@@ -96,7 +304,7 @@ class AgentReadinessClassifierTest {
         capabilities.remove("SAFE_EXPORTER_INSTALLED");
         AgentReadinessSnapshot snapshot = builder()
                 .lifecycleState(new AgentReadinessSnapshot.LifecycleState(
-                        "READY", "", capabilities, Set.of("SAFE_EXPORTER_INSTALLED")))
+                        "READY", "", "", capabilities, Set.of("SAFE_EXPORTER_INSTALLED")))
                 .build();
 
         // when
@@ -116,6 +324,25 @@ class AgentReadinessClassifierTest {
                         0L,
                         ""
                 ))
+                .build();
+
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "READINESS_GENERATION_INCONSISTENT");
+    }
+
+    @Test
+    void rejectsReadySnapshotWithoutPublishedBatchId() {
+        // given
+        AgentReadinessSnapshot snapshot = builder()
+                .anchorIdentity(new AgentReadinessSnapshot.AnchorIdentity(
+                        ReadinessTestFixtures.AGENT_INSTANCE_ID, 1L, ""))
                 .build();
 
         // when
@@ -200,7 +427,7 @@ class AgentReadinessClassifierTest {
     }
 
     @Test
-    void rejectsDevelopmentExtensionVersion() {
+    void rejectsDevelopmentExtensionVersionAsMismatchWithTheStarterVersion() {
         // given
         AgentReadinessSnapshot snapshot = builder()
                 .distributionIdentity(new AgentReadinessSnapshot.DistributionIdentity(
@@ -209,13 +436,36 @@ class AgentReadinessClassifierTest {
 
         // when
         AgentReadinessClassifier.Decision decision =
-                AgentReadinessClassifier.decide(snapshot, "development");
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
 
         // then
         assertDecision(
                 decision,
                 AgentRuntimeState.EXTENSION_INCOMPATIBLE,
-                "DEVELOPMENT_VERSION_FORBIDDEN");
+                "EXTENSION_VERSION_MISMATCH");
+    }
+
+    @Test
+    void rejectsBlankDistributionVersions() {
+        // given
+        AgentReadinessSnapshot blankUpstream = builder()
+                .distributionIdentity(new AgentReadinessSnapshot.DistributionIdentity(
+                        ReadinessTestFixtures.SHA256, "", ReadinessTestFixtures.APPLICATION_VERSION))
+                .build();
+        AgentReadinessSnapshot blankExtension = builder()
+                .distributionIdentity(new AgentReadinessSnapshot.DistributionIdentity(
+                        ReadinessTestFixtures.SHA256, "2.30.0", ""))
+                .build();
+
+        // when
+        AgentReadinessClassifier.Decision upstreamDecision =
+                AgentReadinessClassifier.decide(blankUpstream, ReadinessTestFixtures.APPLICATION_VERSION);
+        AgentReadinessClassifier.Decision extensionDecision =
+                AgentReadinessClassifier.decide(blankExtension, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(upstreamDecision, AgentRuntimeState.EXTENSION_INCOMPATIBLE, "DISTRIBUTION_EVIDENCE_INVALID");
+        assertDecision(extensionDecision, AgentRuntimeState.EXTENSION_INCOMPATIBLE, "DISTRIBUTION_EVIDENCE_INVALID");
     }
 
     @Test
@@ -223,7 +473,7 @@ class AgentReadinessClassifierTest {
         // given
         AgentReadinessSnapshot snapshot = builder()
                 .lifecycleState(new AgentReadinessSnapshot.LifecycleState(
-                        "UNKNOWN", "", ReadinessTestFixtures.COMPLETE_CAPABILITIES, Set.of()))
+                        "UNKNOWN", "", "", ReadinessTestFixtures.COMPLETE_CAPABILITIES, Set.of()))
                 .build();
 
         // when
@@ -247,7 +497,7 @@ class AgentReadinessClassifierTest {
         for (String lifecycle : lifecycles) {
             AgentReadinessSnapshot snapshot = builder()
                     .lifecycleState(new AgentReadinessSnapshot.LifecycleState(
-                            lifecycle, "", ReadinessTestFixtures.COMPLETE_CAPABILITIES, Set.of()))
+                            lifecycle, "", "", ReadinessTestFixtures.COMPLETE_CAPABILITIES, Set.of()))
                     .build();
 
             AgentReadinessClassifier.Decision decision = AgentReadinessClassifier.decide(
@@ -262,6 +512,52 @@ class AgentReadinessClassifierTest {
 
         // then
         assertThat(unexpectedLifecycles).isEmpty();
+    }
+
+    @Test
+    void rejectsReadySnapshotWithEffectiveFailureCode() {
+        // given
+        AgentReadinessSnapshot snapshot = builder()
+                .lifecycleState(new AgentReadinessSnapshot.LifecycleState(
+                        "READY",
+                        "ACTIVATION_FAILED",
+                        "",
+                        ReadinessTestFixtures.COMPLETE_CAPABILITIES,
+                        Set.of()))
+                .build();
+
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "EXTENSION_READY_WITH_FAILURE_CODE");
+    }
+
+    @Test
+    void rejectsReadySnapshotWithPrimaryFailureCode() {
+        // given
+        AgentReadinessSnapshot snapshot = builder()
+                .lifecycleState(new AgentReadinessSnapshot.LifecycleState(
+                        "READY",
+                        "",
+                        "ACTIVATION_FAILED",
+                        ReadinessTestFixtures.COMPLETE_CAPABILITIES,
+                        Set.of()))
+                .build();
+
+        // when
+        AgentReadinessClassifier.Decision decision =
+                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
+
+        // then
+        assertDecision(
+                decision,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                "EXTENSION_READY_WITH_FAILURE_CODE");
     }
 
     private static ReadinessTestFixtures.Builder builder() {

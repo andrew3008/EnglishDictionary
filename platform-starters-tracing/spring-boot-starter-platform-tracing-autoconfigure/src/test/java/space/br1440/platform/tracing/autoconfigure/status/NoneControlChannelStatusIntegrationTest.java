@@ -133,7 +133,7 @@ class NoneControlChannelStatusIntegrationTest {
 
     private static void runNoneContext(ContextConsumer<AssertableApplicationContext> assertions) {
         AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard();
-        TracingDeploymentDiagnostics diagnostics = new AgentStartupVerifier(coherenceGuard, "1.2.3")
+        TracingDeploymentDiagnostics diagnostics = new AgentStartupVerifier(coherenceGuard, () -> "1.2.3")
                 .verify(true, true, false, true);
         TracingRuntime healthRuntime = mock(TracingRuntime.class, RETURNS_DEEP_STUBS);
         when(healthRuntime.state().mode()).thenReturn(TracingRuntimeMode.ENABLED);

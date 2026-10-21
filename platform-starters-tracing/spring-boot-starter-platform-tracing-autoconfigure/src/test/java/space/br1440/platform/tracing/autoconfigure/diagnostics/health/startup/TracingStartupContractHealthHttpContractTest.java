@@ -89,7 +89,7 @@ class TracingStartupContractHealthHttpContractTest {
         );
         context.getBeanFactory().registerSingleton(
                 AGENT_STARTUP_VERIFIER_BEAN_NAME,
-                new AgentStartupVerifier(coherenceGuard, "1.2.3")
+                new AgentStartupVerifier(coherenceGuard, () -> "1.2.3")
         );
     }
 

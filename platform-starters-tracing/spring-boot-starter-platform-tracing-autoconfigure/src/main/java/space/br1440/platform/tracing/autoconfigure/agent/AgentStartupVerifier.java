@@ -6,14 +6,17 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
-import javax.management.MBeanServer;
-
-import space.br1440.platform.common.util.StringUtils;
 
 public final class AgentStartupVerifier {
 
     private static final Duration STARTUP_READINESS_TIMEOUT = Duration.ofSeconds(2);
     private static final Duration READINESS_POLL_INTERVAL = Duration.ofMillis(25);
+
+    private static final String EXTENSION_READINESS_TIMEOUT = "EXTENSION_READINESS_TIMEOUT";
+    private static final String PLATFORM_EXTENSION_MISSING = "PLATFORM_EXTENSION_MISSING";
+    private static final String CONTROLLED_AGENT_MISSING = "CONTROLLED_AGENT_MISSING";
+    private static final String CONTROLLED_AGENT_FORBIDDEN = "CONTROLLED_AGENT_FORBIDDEN";
+    private static final String NO_FAILURE_CODE = "";
 
     @FunctionalInterface
     interface Sleeper {
@@ -27,75 +30,16 @@ public final class AgentStartupVerifier {
     private final Supplier<String> applicationVersion;
     private final AtomicReference<TracingDeploymentDiagnostics> stickyFailure = new AtomicReference<>();
 
-    public AgentStartupVerifier() {
-        this(new AgentReadinessCoherenceGuard(),
-                STARTUP_READINESS_TIMEOUT,
-                System::nanoTime,
-                AgentStartupVerifier::parkAndPreserveInterrupt,
-                StarterModuleVersionLoader::starterModuleVersion
-        );
-    }
-
-    public AgentStartupVerifier(MBeanServer server, String applicationVersion) {
-        this(new AgentReadinessCoherenceGuard(server),
-                STARTUP_READINESS_TIMEOUT,
-                System::nanoTime,
-                AgentStartupVerifier::parkAndPreserveInterrupt,
-                () -> applicationVersion
-        );
-    }
-
     public AgentStartupVerifier(AgentReadinessCoherenceGuard coherenceGuard) {
-        this(coherenceGuard,
-                STARTUP_READINESS_TIMEOUT,
-                System::nanoTime,
-                AgentStartupVerifier::parkAndPreserveInterrupt,
-                StarterModuleVersionLoader::starterModuleVersion
-        );
+        this(coherenceGuard, StarterModuleVersionLoader::starterModuleVersion);
     }
 
-    public AgentStartupVerifier(AgentReadinessCoherenceGuard coherenceGuard,
-                                String applicationVersion) {
-        this(coherenceGuard,
-                STARTUP_READINESS_TIMEOUT,
-                System::nanoTime,
-                AgentStartupVerifier::parkAndPreserveInterrupt,
-                () -> applicationVersion
-        );
-    }
-
-    AgentStartupVerifier(MBeanServer server,
-                         Duration startupReadinessTimeout,
-                         LongSupplier nanoTime,
-                         Sleeper sleeper,
-                         String applicationVersion) {
-        this(new AgentReadinessCoherenceGuard(server),
-                startupReadinessTimeout,
-                nanoTime,
-                sleeper,
-                () -> applicationVersion
-        );
-    }
-
-    AgentStartupVerifier(AgentReadinessCoherenceGuard coherenceGuard, Supplier<String> applicationVersion) {
+    public AgentStartupVerifier(AgentReadinessCoherenceGuard coherenceGuard, Supplier<String> applicationVersion) {
         this(coherenceGuard,
                 STARTUP_READINESS_TIMEOUT,
                 System::nanoTime,
                 AgentStartupVerifier::parkAndPreserveInterrupt,
                 applicationVersion
-        );
-    }
-
-    AgentStartupVerifier(AgentReadinessCoherenceGuard coherenceGuard,
-                         Duration startupReadinessTimeout,
-                         LongSupplier nanoTime,
-                         Sleeper sleeper,
-                         String applicationVersion) {
-        this(coherenceGuard,
-                startupReadinessTimeout,
-                nanoTime,
-                sleeper,
-                () -> applicationVersion
         );
     }
 
@@ -126,286 +70,30 @@ public final class AgentStartupVerifier {
                                                boolean agentMarkerVisible,
                                                boolean userOpenTelemetryBeanPresent,
                                                boolean globalOpenTelemetrySet) {
-        TracingDeploymentDiagnostics retainedFailure = stickyFailure.get();
-        if (retainedFailure != null) {
-            return enforceContract(tracingEnabled, retainedFailure, applicationVersion);
-        }
-
-        TracingDeploymentDiagnostics diagnostics = decide(
-                tracingEnabled,
-                agentMarkerVisible,
-                userOpenTelemetryBeanPresent,
-                globalOpenTelemetrySet
-        );
-
-        if (AgentReadinessClassifier.sticky(diagnostics.runtimeState())) {
-            stickyFailure.compareAndSet(null, diagnostics);
-            diagnostics = stickyFailure.get();
-        }
-
-        return enforceContract(tracingEnabled, diagnostics, applicationVersion);
-    }
-
-    private TracingDeploymentDiagnostics decide(boolean tracingEnabled,
-                                                boolean agentMarkerVisible,
-                                                boolean userOpenTelemetryBeanPresent,
-                                                boolean globalOpenTelemetrySet) {
-        long start = nanoTime.getAsLong();
-        boolean everSucceeded = false;
-
-        while (true) {
-            boolean endpointPresent = coherenceGuard.endpointRegistered();
-            if (userOpenTelemetryBeanPresent || (globalOpenTelemetrySet && !agentMarkerVisible && !endpointPresent)) {
-                return terminalWithoutSnapshot(
-                        tracingEnabled,
-                        AgentRuntimeState.DUAL_SDK_DETECTED,
-                        agentMarkerVisible,
-                        endpointPresent,
-                        "DUAL_SDK_COLLISION"
-                );
-            }
-
-            if (!endpointPresent) {
-                if (!tracingEnabled && isAbsentSignals(agentMarkerVisible, globalOpenTelemetrySet)) {
-                    return disabled();
-                }
-
-                if (tracingEnabled && agentMarkerVisible) {
-                    long elapsed = nanoTime.getAsLong() - start;
-                    if (elapsed < startupReadinessTimeout.toNanos()) {
-                        sleeper.sleep(pollDelay(elapsed));
-                        continue;
-                    }
-                }
-
-                return missing(tracingEnabled, agentMarkerVisible);
-            }
-
-            AgentReadinessProbe.ProbeResult result = readCoherent();
-            if (result instanceof AgentReadinessProbe.ProbeResult.Present(AgentReadinessSnapshot snapshot)) {
-                everSucceeded = true;
-                AgentReadinessClassifier.Decision decision = AgentReadinessClassifier.decide(snapshot, applicationVersion.get());
-                AgentRuntimeState state = decision.state();
-
-                if (tracingEnabled && state == AgentRuntimeState.EXTENSION_INITIALIZING) {
-                    long elapsed = nanoTime.getAsLong() - start;
-                    if (elapsed >= startupReadinessTimeout.toNanos()) {
-                        return terminalFromSnapshot(
-                                true,
-                                state,
-                                agentMarkerVisible,
-                                snapshot,
-                                "EXTENSION_READINESS_TIMEOUT");
-                    }
-
-                    sleeper.sleep(pollDelay(elapsed));
-                    continue;
-                }
-
-                if (tracingEnabled && state == AgentRuntimeState.AGENT_READY) {
-                    try {
-                        coherenceGuard.pin(snapshot);
-                    } catch (AgentReadinessCoherenceException coherenceFailure) {
-                        return terminalFromSnapshot(
-                                true,
-                                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
-                                agentMarkerVisible,
-                                snapshot,
-                                coherenceFailure.failureCode());
-                    }
-                }
-
-                return terminalFromSnapshot(
-                        tracingEnabled,
-                        state,
-                        agentMarkerVisible,
-                        snapshot,
-                        resolveSnapshotFailureCode(tracingEnabled, snapshot, decision)
-                );
-            }
-
-            AgentReadinessProbe.ProbeReason reason = AgentReadinessProbe.ProbeResult.reasonOf(result);
-            if (reason == AgentReadinessProbe.ProbeReason.MIXED_GENERATION && tracingEnabled) {
-                long elapsed = nanoTime.getAsLong() - start;
-                if (elapsed >= startupReadinessTimeout.toNanos()) {
-                    return terminalWithoutSnapshot(
-                            true,
-                            AgentRuntimeState.EXTENSION_INCOMPATIBLE,
-                            agentMarkerVisible,
-                            true,
-                            reason.failureCode());
-                }
-
-                sleeper.sleep(pollDelay(elapsed));
-                continue;
-            }
-
-            if (reason == AgentReadinessProbe.ProbeReason.ENDPOINT_DISAPPEARED && !everSucceeded) {
-                if (!tracingEnabled
-                        && isAbsentSignals(agentMarkerVisible, globalOpenTelemetrySet)) {
-                    return disabled();
-                }
-
-                return missing(tracingEnabled, agentMarkerVisible);
-            }
-
-            return terminalWithoutSnapshot(
-                    tracingEnabled,
-                    AgentRuntimeState.EXTENSION_INCOMPATIBLE,
-                    agentMarkerVisible,
-                    true,
-                    reason.failureCode()
-            );
-        }
-    }
-
-    private AgentReadinessProbe.ProbeResult readCoherent() {
-        AgentReadinessProbe.ProbeResult first = coherenceGuard.readSnapshot();
-        if (!(first instanceof AgentReadinessProbe.ProbeResult.Present(AgentReadinessSnapshot firstSnapshot))) {
-            return first;
-        }
-
-        AgentReadinessProbe.ProbeResult second = coherenceGuard.readSnapshot();
-        if (!(second instanceof AgentReadinessProbe.ProbeResult.Present(AgentReadinessSnapshot secondSnapshot))) {
-            return second;
-        }
-
-        if (!firstSnapshot.anchorIdentity().equals(secondSnapshot.anchorIdentity())
-                || !firstSnapshot.equals(secondSnapshot)) {
-            return new AgentReadinessProbe.ProbeResult.Rejected(
-                    AgentReadinessProbe.ProbeReason.MIXED_GENERATION);
-        }
-
-        return second;
-    }
-
-    private long pollDelay(long elapsed) {
-        long remaining = startupReadinessTimeout.toNanos() - elapsed;
-        return Math.min(remaining, READINESS_POLL_INTERVAL.toNanos());
-    }
-
-    private static boolean isAbsentSignals(boolean agentMarkerVisible, boolean globalOpenTelemetrySet) {
-        return !agentMarkerVisible && !globalOpenTelemetrySet;
-    }
-
-    private static TracingDeploymentDiagnostics disabled() {
-        return terminalWithoutSnapshot(false, AgentRuntimeState.DISABLED, false, false, "");
-    }
-
-    private static TracingDeploymentDiagnostics missing(boolean tracingEnabled, boolean agentMarkerVisible) {
-        AgentRuntimeState state = agentMarkerVisible
-                ? AgentRuntimeState.EXTENSION_MISSING
-                : AgentRuntimeState.AGENT_MISSING;
-        String failureCode = agentMarkerVisible ? "PLATFORM_EXTENSION_MISSING" : "CONTROLLED_AGENT_MISSING";
-        return terminalWithoutSnapshot(tracingEnabled, state, agentMarkerVisible, false, failureCode);
-    }
-
-    private static String resolveSnapshotFailureCode(boolean tracingEnabled,
-                                                     AgentReadinessSnapshot snapshot,
-                                                     AgentReadinessClassifier.Decision decision) {
-        if (!tracingEnabled && decision.state() != AgentRuntimeState.DISABLED) {
-            return "CONTROLLED_AGENT_FORBIDDEN";
-        }
-
-        String resolved = firstNonBlank(snapshot.lifecycleState().failureCode(), decision.reasonCode());
-        if (StringUtils.hasText(resolved)) {
-            return resolved;
-        }
-
-        return "";
-    }
-
-    private static String firstNonBlank(String first, String second) {
-        if (StringUtils.hasText(first)) {
-            return first;
-        }
-
-        return (second == null) ? "" : second;
-    }
-
-    private static TracingDeploymentDiagnostics terminalFromSnapshot(boolean tracingEnabled,
-                                                                      AgentRuntimeState state,
-                                                                      boolean agentMarkerVisible,
-                                                                      AgentReadinessSnapshot snapshot,
-                                                                      String failureCode) {
-        AgentReadinessSnapshot.ContractIdentity contractIdentity = snapshot.contractIdentity();
-        AgentReadinessSnapshot.AnchorIdentity anchorIdentity = snapshot.anchorIdentity();
-        AgentReadinessSnapshot.LifecycleState lifecycleState = snapshot.lifecycleState();
-        AgentReadinessSnapshot.DistributionIdentity distributionIdentity = snapshot.distributionIdentity();
-        AgentReadinessSnapshot.ClassloaderTopology classloaderTopology = snapshot.classloaderTopology();
-
-        return new TracingDeploymentDiagnostics(
-                tracingEnabled,
-                agentMarkerVisible,
-                state,
-                new TracingDeploymentDiagnostics.AgentReadiness(
-                        true,
-
-                        new TracingDeploymentDiagnostics.ContractIdentity(
-                                contractIdentity.contractId(),
-                                contractIdentity.schemaDigest()
-                        ),
-
-                        new TracingDeploymentDiagnostics.ReadinessAnchor(
-                                anchorIdentity.agentInstanceId(),
-                                anchorIdentity.evidenceGeneration(),
-                                anchorIdentity.batchId()
-                        ),
-
-                        new TracingDeploymentDiagnostics.LifecycleState(
-                                lifecycleState.lifecycle(),
-                                failureCode,
-                                lifecycleState.capabilities(),
-                                lifecycleState.missingRequired()
-                        ),
-
-                        new TracingDeploymentDiagnostics.DistributionIdentity(
-                                distributionIdentity.agentDistributionSha256(),
-                                distributionIdentity.upstreamAgentVersion(),
-                                distributionIdentity.extensionVersion()
-                        ),
-
-                        new TracingDeploymentDiagnostics.ClassloaderTopology(
-                                classloaderTopology.extensionDefiningLoader(),
-                                classloaderTopology.sdkDefiningLoader()
-                        )
-                )
-        );
-    }
-
-    private static TracingDeploymentDiagnostics terminalWithoutSnapshot(boolean tracingEnabled,
-                                                                        AgentRuntimeState state,
-                                                                        boolean agentMarkerVisible,
-                                                                        boolean readinessEndpointPresent,
-                                                                        String failureCode) {
-        if (!readinessEndpointPresent) {
-            return TracingDeploymentDiagnostics.withoutAgentData(
+        TracingDeploymentDiagnostics diagnostics = stickyFailure.get();
+        if (diagnostics == null) {
+            Verification verification = new Verification(
                     tracingEnabled,
                     agentMarkerVisible,
-                    state,
-                    failureCode
+                    userOpenTelemetryBeanPresent,
+                    globalOpenTelemetrySet
             );
+            diagnostics = retainIfSticky(verification.run());
         }
 
-        TracingDeploymentDiagnostics.AgentReadiness unavailable = TracingDeploymentDiagnostics.AgentReadiness.unavailable(failureCode);
-        return new TracingDeploymentDiagnostics(
-                tracingEnabled,
-                agentMarkerVisible,
-                state,
-                new TracingDeploymentDiagnostics.AgentReadiness(
-                        true,
-                        unavailable.contractIdentity(),
-                        unavailable.readinessAnchor(),
-                        unavailable.lifecycleState(),
-                        unavailable.distributionIdentity(),
-                        unavailable.classloaderTopology()
-                )
-        );
+        return enforceContract(tracingEnabled, diagnostics);
     }
 
-    private static TracingDeploymentDiagnostics enforceContract(boolean tracingEnabled,
-                                                                TracingDeploymentDiagnostics diagnostics,
-                                                                Supplier<String> applicationVersion) {
+    private TracingDeploymentDiagnostics retainIfSticky(TracingDeploymentDiagnostics decided) {
+        if (!AgentReadinessClassifier.sticky(decided.runtimeState())) {
+            return decided;
+        }
+
+        return stickyFailure.updateAndGet(current -> current != null ? current : decided);
+    }
+
+    private TracingDeploymentDiagnostics enforceContract(boolean tracingEnabled,
+                                                         TracingDeploymentDiagnostics diagnostics) {
         AgentRuntimeState expected = tracingEnabled ? AgentRuntimeState.AGENT_READY : AgentRuntimeState.DISABLED;
         if (diagnostics.runtimeState() != expected) {
             throw new IllegalStateException(
@@ -418,5 +106,173 @@ public final class AgentStartupVerifier {
         }
 
         return diagnostics;
+    }
+
+    private sealed interface Verdict {
+
+        record Decided(TracingDeploymentDiagnostics diagnostics) implements Verdict {
+        }
+
+        record Pending(Supplier<TracingDeploymentDiagnostics> onTimeout) implements Verdict {
+        }
+    }
+
+    private final class Verification {
+
+        private final boolean tracingEnabled;
+        private final boolean agentMarkerVisible;
+        private final boolean userOpenTelemetryBeanPresent;
+        private final boolean globalOpenTelemetrySet;
+        private final long startedAt;
+        private boolean snapshotEverRead;
+
+        Verification(boolean tracingEnabled,
+                     boolean agentMarkerVisible,
+                     boolean userOpenTelemetryBeanPresent,
+                     boolean globalOpenTelemetrySet) {
+            this.tracingEnabled = tracingEnabled;
+            this.agentMarkerVisible = agentMarkerVisible;
+            this.userOpenTelemetryBeanPresent = userOpenTelemetryBeanPresent;
+            this.globalOpenTelemetrySet = globalOpenTelemetrySet;
+            this.startedAt = nanoTime.getAsLong();
+        }
+
+        TracingDeploymentDiagnostics run() {
+            while (true) {
+                switch (probe()) {
+                    case Verdict.Decided decided -> {
+                        return decided.diagnostics();
+                    }
+
+                    case Verdict.Pending pending -> {
+                        long remaining = startupReadinessTimeout.toNanos() - (nanoTime.getAsLong() - startedAt);
+                        if (remaining <= 0L) {
+                            return pending.onTimeout().get();
+                        }
+
+                        sleeper.sleep(Math.min(remaining, READINESS_POLL_INTERVAL.toNanos()));
+                    }
+                }
+            }
+        }
+
+        private Verdict probe() {
+            boolean endpointPresent = coherenceGuard.endpointRegistered();
+            if (dualSdkDetected(endpointPresent)) {
+                return decided(withoutSnapshot(
+                        AgentRuntimeState.DUAL_SDK_DETECTED, endpointPresent, AgentNotReadyReasonCodes.DUAL_SDK_COLLISION));
+            }
+
+            if (!endpointPresent) {
+                return endpointAbsent();
+            }
+
+            AgentReadinessProbe.ProbeResult result = coherenceGuard.readStableSnapshot();
+            if (result instanceof AgentReadinessProbe.ProbeResult.Present(AgentReadinessSnapshot snapshot)) {
+                return snapshotRead(snapshot);
+            }
+
+            return snapshotRejected(AgentReadinessProbe.ProbeResult.reasonOf(result));
+        }
+
+        private Verdict endpointAbsent() {
+            if (disabledWithoutAgentSignals()) {
+                return decided(disabled());
+            }
+
+            if (tracingEnabled && agentMarkerVisible) {
+                return pending(this::missing);
+            }
+
+            return decided(missing());
+        }
+
+        private Verdict snapshotRead(AgentReadinessSnapshot snapshot) {
+            snapshotEverRead = true;
+            AgentReadinessClassifier.Decision decision = AgentReadinessClassifier.decide(snapshot, applicationVersion.get());
+            AgentRuntimeState state = decision.state();
+
+            if (tracingEnabled && state == AgentRuntimeState.EXTENSION_INITIALIZING) {
+                return pending(() -> fromSnapshot(state, snapshot, EXTENSION_READINESS_TIMEOUT));
+            }
+
+            if (tracingEnabled && state == AgentRuntimeState.AGENT_READY) {
+                try {
+                    coherenceGuard.pin(snapshot);
+                } catch (AgentReadinessCoherenceException coherenceFailure) {
+                    return decided(fromSnapshot(
+                            AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                            snapshot,
+                            coherenceFailure.failureCode()
+                    ));
+                }
+            }
+
+            return decided(fromSnapshot(state, snapshot, snapshotFailureCode(snapshot, decision)));
+        }
+
+        private Verdict snapshotRejected(AgentReadinessProbe.ProbeReason reason) {
+            if (reason == AgentReadinessProbe.ProbeReason.MIXED_GENERATION && tracingEnabled) {
+                return pending(() -> withoutSnapshot(AgentRuntimeState.EXTENSION_INCOMPATIBLE, true, reason.failureCode()));
+            }
+
+            if (reason == AgentReadinessProbe.ProbeReason.ENDPOINT_DISAPPEARED && !snapshotEverRead) {
+                return decided(disabledWithoutAgentSignals() ? disabled() : missing());
+            }
+
+            return decided(withoutSnapshot(AgentRuntimeState.EXTENSION_INCOMPATIBLE, true, reason.failureCode()));
+        }
+
+        private boolean dualSdkDetected(boolean endpointPresent) {
+            return userOpenTelemetryBeanPresent || (globalOpenTelemetrySet && !agentMarkerVisible && !endpointPresent);
+        }
+
+        private boolean disabledWithoutAgentSignals() {
+            return !tracingEnabled && !agentMarkerVisible && !globalOpenTelemetrySet;
+        }
+
+        private String snapshotFailureCode(AgentReadinessSnapshot snapshot, AgentReadinessClassifier.Decision decision) {
+            if (!tracingEnabled && decision.state() != AgentRuntimeState.DISABLED) {
+                return CONTROLLED_AGENT_FORBIDDEN;
+            }
+
+            if (decision.state() == AgentRuntimeState.EXTENSION_FAILED) {
+                return snapshot.lifecycleState().failureCode();
+            }
+
+            return decision.reasonCode();
+        }
+
+        private TracingDeploymentDiagnostics missing() {
+            return agentMarkerVisible
+                    ? withoutSnapshot(AgentRuntimeState.EXTENSION_MISSING, false, PLATFORM_EXTENSION_MISSING)
+                    : withoutSnapshot(AgentRuntimeState.AGENT_MISSING, false, CONTROLLED_AGENT_MISSING);
+        }
+
+        private TracingDeploymentDiagnostics withoutSnapshot(AgentRuntimeState state,
+                                                             boolean endpointPresent,
+                                                             String failureCode) {
+            return endpointPresent
+                    ? TracingDeploymentDiagnostics.withUnreadableAgentData(tracingEnabled, agentMarkerVisible, state, failureCode)
+                    : TracingDeploymentDiagnostics.withoutAgentData(tracingEnabled, agentMarkerVisible, state, failureCode);
+        }
+
+        private TracingDeploymentDiagnostics fromSnapshot(AgentRuntimeState state,
+                                                          AgentReadinessSnapshot snapshot,
+                                                          String failureCode) {
+            return TracingDeploymentDiagnostics.withAgentData(tracingEnabled, agentMarkerVisible, state, snapshot, failureCode);
+        }
+
+        private static TracingDeploymentDiagnostics disabled() {
+            return TracingDeploymentDiagnostics.withoutAgentData(false, false, AgentRuntimeState.DISABLED, NO_FAILURE_CODE);
+        }
+
+        private static Verdict decided(TracingDeploymentDiagnostics diagnostics) {
+            return new Verdict.Decided(diagnostics);
+        }
+
+        private static Verdict pending(Supplier<TracingDeploymentDiagnostics> onTimeout) {
+            return new Verdict.Pending(onTimeout);
+        }
     }
 }

@@ -17,6 +17,7 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFa
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.TRANSPORT_STALE;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
+import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSnapshotAssertions.failureOf;
 
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
@@ -51,7 +52,8 @@ class BootstrapCoordinatorShutdownTest {
         CapturingShutdownHookRegistry hooks = new CapturingShutdownHookRegistry(resourceCleanupFailure);
         DiagnosticReadinessHandle diagnosticHandle = new DiagnosticReadinessHandle();
 
-        try (BootstrapCoordinator coordinator = coordinator().hooks(hooks).diagnosticHandle(diagnosticHandle).build()) {
+        BootstrapCoordinator coordinator = coordinator().hooks(hooks).diagnosticHandle(diagnosticHandle).build();
+        try {
             AutoconfigureSession session = coordinator.prepare(config());
             satisfyReadinessBarrier(session);
             try (SdkTracerProvider tracerProvider = providerFor(session)) {
@@ -67,11 +69,14 @@ class BootstrapCoordinatorShutdownTest {
                 // then
                 assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
                 assertThat(coordinator.currentWire().failureCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
+                assertThat(coordinator.currentWire().primaryFailureCode()).isEqualTo(TRANSPORT_STALE);
                 assertThat(coordinator.currentWire().evidenceGeneration())
                         .isEqualTo(ROLLBACK_ESCALATION_EVIDENCE_GENERATION);
-                assertThat(session.readiness().snapshot().failureCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
+                assertThat(failureOf(session.readiness().snapshot()).effectiveCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
+                assertThat(failureOf(session.readiness().snapshot()).primaryCode()).isEqualTo(TRANSPORT_STALE);
                 assertThat(logs.events())
-                        .filteredOn(event -> event.eventCode() == AgentEventCode.BOOT_CLASSIFIED_FAILURE)
+                        .filteredOn(event -> event.eventCode() == AgentEventCode.BOOT_CLASSIFIED_FAILURE
+                                && "shutdown-completion".equals(event.fields().get("resourceLabel")))
                         .singleElement()
                         .satisfies(event -> {
                             assertThat(event.fields())
@@ -82,11 +87,15 @@ class BootstrapCoordinatorShutdownTest {
                                     .contains(UnsupportedOperationException.class.getName());
                         });
             }
+        } finally {
+            Throwable closeFailure = catchThrowable(coordinator::close);
+            assertThat(closeFailure).hasRootCause(resourceCleanupFailure);
+            assertThatCode(coordinator::close).doesNotThrowAnyException();
         }
     }
 
     @Test
-    void shutdown_publishes_transport_stale_before_closing_registered_resources() {
+    void clean_shutdown_is_reported_as_failed_transport_stale_by_design() {
         // given
         CapturingShutdownHookRegistry hooks = new CapturingShutdownHookRegistry();
 
@@ -103,6 +112,9 @@ class BootstrapCoordinatorShutdownTest {
 
             // then
             assertThatCoordinator(coordinator).hasWireFailure(TRANSPORT_STALE);
+            assertThat(coordinator.currentWire().primaryFailureCode()).isEqualTo(TRANSPORT_STALE);
+            assertThat(failureOf(session.readiness().snapshot()).primaryCode()).isEqualTo(TRANSPORT_STALE);
+            assertThat(failureOf(session.readiness().snapshot()).effectiveCode()).isEqualTo(TRANSPORT_STALE);
             assertThat(coordinator.currentWire().evidenceGeneration()).isEqualTo(TRANSPORT_STALE_EVIDENCE_GENERATION);
         }
     }

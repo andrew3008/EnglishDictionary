@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.readiness;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSnapshotAssertions.failureOf;
 
 import javax.management.openmbean.CompositeData;
 
@@ -19,87 +20,11 @@ class ExtensionReadinessWireSnapshotTest {
     private static final String AGENT_INSTANCE_ID = "00000000-0000-0000-0000-000000000001";
 
     @Test
-    void initializingRejectsAReadySnapshot() {
-        // given
-        PlatformExtensionReadinessSnapshot ready = completeReadiness().snapshot();
-
-        // when
-        Throwable failure = catchThrowable(() ->
-                ExtensionReadinessWireSnapshot.initializing(ready, AGENT_INSTANCE_ID));
-
-        // then
-        assertThat(failure)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("underlying lifecycle=READY");
-    }
-
-    @Test
-    void readyRejectsAnInitializingSnapshot() {
-        // given
-        PlatformExtensionReadinessSnapshot initializing = new PlatformExtensionReadiness().snapshot();
-
-        // when
-        Throwable failure = catchThrowable(() -> ExtensionReadinessWireSnapshot.ready(
-                initializing,
-                AGENT_INSTANCE_ID,
-                "batch-1",
-                1L,
-                evidence(initializing.extensionVersion())
-        ));
-
-        // then
-        assertThat(failure)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("underlying lifecycle=INITIALIZING");
-    }
-
-    @Test
-    void readyRejectsAFailedSnapshot() {
-        // given
-        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
-        PlatformExtensionReadinessSnapshot failed = readiness.fail("SOME_FAILURE");
-
-        // when
-        Throwable failure = catchThrowable(() -> ExtensionReadinessWireSnapshot.ready(
-                failed,
-                AGENT_INSTANCE_ID,
-                "batch-1",
-                1L,
-                evidence(failed.extensionVersion())
-        ));
-
-        // then
-        assertThat(failure)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("underlying lifecycle=FAILED");
-    }
-
-    @Test
-    void failedRejectsAnInitializingSnapshot() {
-        // given
-        PlatformExtensionReadinessSnapshot initializing = new PlatformExtensionReadiness().snapshot();
-
-        // when
-        Throwable failure = catchThrowable(() -> ExtensionReadinessWireSnapshot.failed(
-                initializing,
-                AGENT_INSTANCE_ID,
-                "batch-1",
-                1L,
-                evidence(initializing.extensionVersion())
-        ));
-
-        // then
-        assertThat(failure)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("underlying lifecycle=INITIALIZING");
-    }
-
-    @Test
     void initializingUsesOneCapturedCapabilityGeneration() {
         // given
-        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
-        readiness.markInstalled(PlatformExtensionCapability.CONFIGURATION_LOADED);
-        PlatformExtensionReadinessSnapshot captured = readiness.snapshot();
+        PlatformExtensionReadiness readiness = PlatformExtensionReadiness.forCurrentExtension();
+        PlatformExtensionReadinessSnapshot.Initializing captured = (PlatformExtensionReadinessSnapshot.Initializing)
+                readiness.markInstalled(PlatformExtensionCapability.CONFIGURATION_LOADED);
 
         for (PlatformExtensionCapability capability : PlatformExtensionCapability.values()) {
             readiness.markInstalled(capability);
@@ -117,14 +42,17 @@ class ExtensionReadinessWireSnapshotTest {
                 .doesNotContain("CONFIGURATION_LOADED")
                 .contains("SANITIZER_INSTALLED", "EXPORT_PATH_PROTECTED");
         assertThat(snapshot.failureCode()).isEmpty();
+        assertThat(snapshot.primaryFailureCode()).isEmpty();
     }
 
     @Test
     void failedUsesTheFailureCodeFromTheCapturedGeneration() {
         // given
-        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
-        PlatformExtensionReadinessSnapshot captured = readiness.fail("REMOTE_JMX_EVIDENCE_UNKNOWN");
-        readiness.recordTerminalCleanupFailure("FAILED_ROLLBACK_INCOMPLETE");
+        PlatformExtensionReadiness readiness = PlatformExtensionReadiness.forCurrentExtension();
+        PlatformExtensionReadinessSnapshot.Failed captured = readiness.fail(
+                "REMOTE_JMX_EVIDENCE_UNKNOWN",
+                "REMOTE_JMX_EVIDENCE_UNKNOWN");
+        readiness.fail("REMOTE_JMX_EVIDENCE_UNKNOWN", "FAILED_ROLLBACK_INCOMPLETE");
 
         // when
         ExtensionReadinessWireSnapshot snapshot = ExtensionReadinessWireSnapshot.failed(
@@ -138,16 +66,49 @@ class ExtensionReadinessWireSnapshotTest {
         // then
         assertThat(snapshot.lifecycle()).isEqualTo("FAILED");
         assertThat(snapshot.failureCode()).isEqualTo("REMOTE_JMX_EVIDENCE_UNKNOWN");
+        assertThat(snapshot.primaryFailureCode()).isEqualTo("REMOTE_JMX_EVIDENCE_UNKNOWN");
         assertThat(snapshot.readinessSnapshot().get(
                 JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE))
                 .isEqualTo("REMOTE_JMX_EVIDENCE_UNKNOWN");
-        assertThat(readiness.snapshot().failureCode()).isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
+        assertThat(snapshot.readinessSnapshot().get(
+                JmxWireContract.FIELD_READINESS_SNAPSHOT_PRIMARY_FAILURE_CODE))
+                .isEqualTo("REMOTE_JMX_EVIDENCE_UNKNOWN");
+        assertThat(failureOf(readiness.snapshot()).effectiveCode()).isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
+        assertThat(failureOf(readiness.snapshot()).primaryCode()).isEqualTo("REMOTE_JMX_EVIDENCE_UNKNOWN");
+    }
+
+    @Test
+    void failedPublishesPrimaryAndEscalatedEffectiveFailureCodes() {
+        // given
+        PlatformExtensionReadiness readiness = PlatformExtensionReadiness.forCurrentExtension();
+        PlatformExtensionReadinessSnapshot.Failed failed = readiness.fail(
+                "ACTIVATION_FAILED",
+                "FAILED_ROLLBACK_INCOMPLETE");
+
+        // when
+        ExtensionReadinessWireSnapshot snapshot = ExtensionReadinessWireSnapshot.failed(
+                failed,
+                AGENT_INSTANCE_ID,
+                "batch-1",
+                1L,
+                evidence(failed.extensionVersion())
+        );
+
+        // then
+        assertThat(snapshot.failureCode()).isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
+        assertThat(snapshot.primaryFailureCode()).isEqualTo("ACTIVATION_FAILED");
+        assertThat(snapshot.readinessSnapshot().get(
+                JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE))
+                .isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
+        assertThat(snapshot.readinessSnapshot().get(
+                JmxWireContract.FIELD_READINESS_SNAPSHOT_PRIMARY_FAILURE_CODE))
+                .isEqualTo("ACTIVATION_FAILED");
     }
 
     @Test
     void generatedManifestDefinesRequiredCapabilities() {
         // given
-        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
+        PlatformExtensionReadiness readiness = PlatformExtensionReadiness.forCurrentExtension();
         ExtensionReadinessWireSnapshot initial = ExtensionReadinessWireSnapshot.initializing();
 
         // when
@@ -167,8 +128,8 @@ class ExtensionReadinessWireSnapshotTest {
     void readyPublishesOneCapturedCoherentCompositeDataEnvelope() {
         // given
         PlatformExtensionReadiness readiness = completeReadiness();
-        PlatformExtensionReadinessSnapshot captured = readiness.snapshot();
-        readiness.fail("LATE_FAILURE");
+        PlatformExtensionReadinessSnapshot.Ready captured = readiness.completeInitialization();
+        readiness.fail("LATE_FAILURE", "LATE_FAILURE");
 
         // when
         ExtensionReadinessWireSnapshot snapshot = ExtensionReadinessWireSnapshot.ready(
@@ -184,6 +145,8 @@ class ExtensionReadinessWireSnapshotTest {
         assertThat(readiness.snapshot().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
         assertThat(snapshot.lifecycle()).isEqualTo("READY");
         assertThat(snapshot.missingRequired()).isEmpty();
+        assertThat(snapshot.failureCode()).isEmpty();
+        assertThat(snapshot.primaryFailureCode()).isEmpty();
         assertThat(wire.getCompositeType()).isEqualTo(JmxOpenTypes.READINESS_SNAPSHOT);
         assertThat(wire.get(JmxWireContract.FIELD_READINESS_SNAPSHOT_CONTRACT_ID))
                 .isEqualTo(JmxWireContract.SCHEMA_ID);
@@ -202,8 +165,8 @@ class ExtensionReadinessWireSnapshotTest {
     @Test
     void failedRejectsBlankAgentInstanceId() {
         // given
-        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
-        PlatformExtensionReadinessSnapshot failed = readiness.fail("SOME_FAILURE");
+        PlatformExtensionReadiness readiness = PlatformExtensionReadiness.forCurrentExtension();
+        PlatformExtensionReadinessSnapshot.Failed failed = readiness.fail("SOME_FAILURE", "SOME_FAILURE");
 
         // when
         Throwable failure = catchThrowable(() -> ExtensionReadinessWireSnapshot.failed(
@@ -221,7 +184,7 @@ class ExtensionReadinessWireSnapshotTest {
     }
 
     private static PlatformExtensionReadiness completeReadiness() {
-        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
+        PlatformExtensionReadiness readiness = PlatformExtensionReadiness.forCurrentExtension();
         for (PlatformExtensionCapability capability : PlatformExtensionCapability.values()) {
             readiness.markInstalled(capability);
         }

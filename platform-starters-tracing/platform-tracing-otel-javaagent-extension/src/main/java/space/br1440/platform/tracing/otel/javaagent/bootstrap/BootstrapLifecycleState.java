@@ -1,10 +1,14 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.BOOTSTRAP_TERMINAL;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.DUPLICATE_ACTIVATION;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.REENTRANT_OR_OUT_OF_ORDER;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.SECOND_SDK_BUILD;
 
 import java.util.Objects;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
@@ -15,12 +19,16 @@ final class BootstrapLifecycleState {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(BootstrapLifecycleState.class);
 
+    private static final String PREPARE_PHASE = "prepare";
+    private static final String ACTIVATE_PHASE = "activate";
+
     private final Object monitor = new Object();
 
     private BootstrapState state = BootstrapState.NEW;
     private AutoconfigureSession session;
     private BootstrapFailure failure;
     private BootstrapResources resources;
+    private boolean closeStarted;
 
     Object monitor() {
         return monitor;
@@ -29,28 +37,26 @@ final class BootstrapLifecycleState {
     void beginPrepare() {
         synchronized (monitor) {
             if (terminal()) {
-                throw stickyFailure("prepare");
+                throw stickyFailure(PREPARE_PHASE);
             }
 
-            if (state == BootstrapState.PREPARING) {
-                throw fail(
-                        "REENTRANT_OR_OUT_OF_ORDER",
-                        "prepare",
-                        new IllegalStateException("Bootstrap preparation is already in progress")
+            state = switch (state) {
+                case NEW -> BootstrapState.PREPARING;
+
+                case PREPARING -> throw reject(
+                        REENTRANT_OR_OUT_OF_ORDER,
+                        PREPARE_PHASE,
+                        "Bootstrap preparation is already in progress"
                 );
-            }
 
-            if (state != BootstrapState.NEW) {
-                throw rejectWithoutStateChange(
-                        "SECOND_SDK_BUILD",
-                        "prepare",
-                        new IllegalStateException("""
-                            Bootstrap coordinator already prepared/activated for this JVM; \
-                            a second AutoConfiguredOpenTelemetrySdk build is not supported""")
+                default -> throw reject(
+                        SECOND_SDK_BUILD,
+                        PREPARE_PHASE,
+                        """
+                        Bootstrap coordinator already prepared/activated for this JVM; \
+                        a second AutoConfiguredOpenTelemetrySdk build is not supported"""
                 );
-            }
-
-            state = BootstrapState.PREPARING;
+            };
         }
     }
 
@@ -58,6 +64,18 @@ final class BootstrapLifecycleState {
         Objects.requireNonNull(prepared, "prepared");
 
         synchronized (monitor) {
+            if (state != BootstrapState.PREPARING) {
+                if (failure != null) {
+                    throw stickyFailure(PREPARE_PHASE);
+                }
+
+                throw reject(
+                        REENTRANT_OR_OUT_OF_ORDER,
+                        PREPARE_PHASE,
+                        "Bootstrap preparation cannot complete from state " + state
+                );
+            }
+
             this.session = prepared;
             this.state = BootstrapState.PREPARED;
         }
@@ -65,45 +83,32 @@ final class BootstrapLifecycleState {
 
     AutoconfigureSession beginActivation() {
         synchronized (monitor) {
-            if (state == BootstrapState.NEW) {
-                throw fail(
-                        PLATFORM_ACP_NOT_EXECUTED,
-                        "activate",
-                        new IllegalStateException("""
-                            AgentListener.afterAgent invoked without a prior ACP prepare() call \
-                            (declarative configuration bypass or missing platform ACP registration)""")
+            state = switch (state) {
+                case PREPARED -> BootstrapState.ACTIVATING;
+
+                case NEW -> throw reject(
+                        REENTRANT_OR_OUT_OF_ORDER,
+                        ACTIVATE_PHASE,
+                        """
+                        AgentListener.afterAgent invoked without a prior ACP prepare() call \
+                        (declarative configuration bypass or missing platform ACP registration)"""
                 );
-            }
 
-            if (state == BootstrapState.PREPARING) {
-                throw fail(
-                        "REENTRANT_OR_OUT_OF_ORDER",
-                        "activate",
-                        new IllegalStateException("afterAgent invoked while bootstrap preparation is still in progress")
+                case PREPARING -> throw reject(
+                        REENTRANT_OR_OUT_OF_ORDER,
+                        ACTIVATE_PHASE,
+                        "afterAgent invoked while bootstrap preparation is still in progress"
                 );
-            }
 
-            if (state == BootstrapState.ACTIVATING) {
-                throw fail(
-                        "DUPLICATE_ACTIVATION",
-                        "activate",
-                        new IllegalStateException("afterAgent invoked more than once for this coordinator")
+                case ACTIVATING, ACTIVE -> throw reject(
+                        DUPLICATE_ACTIVATION,
+                        ACTIVATE_PHASE,
+                        "afterAgent invoked more than once for this coordinator"
                 );
-            }
 
-            if (state == BootstrapState.ACTIVE) {
-                throw rejectWithoutStateChange(
-                        "DUPLICATE_ACTIVATION",
-                        "activate",
-                        new IllegalStateException("afterAgent invoked more than once for this coordinator")
-                );
-            }
+                case FAILED, CLOSING, CLOSED -> throw stickyFailure(ACTIVATE_PHASE);
+            };
 
-            if (terminal()) {
-                throw stickyFailure("activate");
-            }
-
-            state = BootstrapState.ACTIVATING;
             return session;
         }
     }
@@ -144,8 +149,19 @@ final class BootstrapLifecycleState {
         }
     }
 
+    BootstrapFailure failure() {
+        synchronized (monitor) {
+            if (failure == null) {
+                throw new IllegalStateException("Bootstrap failure is not recorded");
+            }
+
+            return failure;
+        }
+    }
+
     void commitActive(AutoconfigureSession activeSession) {
         Objects.requireNonNull(activeSession, "activeSession");
+
         synchronized (monitor) {
             this.session = activeSession;
             this.state = BootstrapState.ACTIVE;
@@ -154,6 +170,7 @@ final class BootstrapLifecycleState {
 
     void attachResources(BootstrapResources activationResources) {
         Objects.requireNonNull(activationResources, "activationResources");
+
         synchronized (monitor) {
             this.resources = activationResources;
         }
@@ -161,11 +178,15 @@ final class BootstrapLifecycleState {
 
     CloseTransition beginClose() {
         synchronized (monitor) {
-            if (state == BootstrapState.CLOSED || state == BootstrapState.CLOSING) {
+            if (closeStarted) {
                 return CloseTransition.alreadyClosing();
             }
 
-            state = BootstrapState.CLOSING;
+            closeStarted = true;
+            if (state != BootstrapState.FAILED) {
+                state = BootstrapState.CLOSING;
+            }
+
             BootstrapResources owned = resources;
             resources = null;
             return new CloseTransition(true, owned);
@@ -174,38 +195,32 @@ final class BootstrapLifecycleState {
 
     void markClosed() {
         synchronized (monitor) {
-            state = BootstrapState.CLOSED;
-        }
-    }
-
-    void markFailed(String code, String phase, Throwable cause) {
-        synchronized (monitor) {
-            this.failure = new BootstrapFailure(code, phase, cause);
-            this.state = BootstrapState.FAILED;
+            if (state == BootstrapState.CLOSING) {
+                state = BootstrapState.CLOSED;
+            }
         }
     }
 
     void escalateRollbackIncomplete(String phase, Throwable cleanupFailure) {
         Objects.requireNonNull(phase, "phase");
         Objects.requireNonNull(cleanupFailure, "cleanupFailure");
+
         synchronized (monitor) {
-            if (failure != null && FAILED_ROLLBACK_INCOMPLETE.equals(failure.code())) {
+            if (state == BootstrapState.CLOSED) {
+                logRejected(FAILED_ROLLBACK_INCOMPLETE, phase, phase, null, cleanupFailure);
                 return;
             }
 
-            Throwable effectiveCause = failure == null || failure.cause() == null
-                    ? cleanupFailure
-                    : failure.cause();
-            if (effectiveCause != cleanupFailure) {
-                effectiveCause.addSuppressed(cleanupFailure);
+            if (failure != null) {
+                BootstrapCleanupFailures.suppressPreservingPrimary(failure.cause(), cleanupFailure);
+                if (FAILED_ROLLBACK_INCOMPLETE.equals(failure.effectiveCode())) {
+                    logRejected(FAILED_ROLLBACK_INCOMPLETE, phase, phase, null, cleanupFailure);
+                    return;
+                }
             }
-            this.failure = new BootstrapFailure(FAILED_ROLLBACK_INCOMPLETE, phase, effectiveCause);
-            this.state = BootstrapState.FAILED;
-        }
-    }
 
-    BootstrapException fail(String code, String phase, Throwable cause) {
-        return fail(code, phase, phase, null, cause);
+            recordFailure(escalatedFailure(phase, cleanupFailure), phase, null, cleanupFailure);
+        }
     }
 
     BootstrapException fail(String code,
@@ -213,52 +228,48 @@ final class BootstrapLifecycleState {
                             String subphase,
                             String propertyName,
                             Throwable cause) {
+        Objects.requireNonNull(cause, "cause");
+
         synchronized (monitor) {
-            if (state == BootstrapState.FAILED) {
-                logFailure(
-                        BootstrapLogEvent.BOOTSTRAP_OPERATION_REJECTED,
-                        code,
-                        phase,
-                        subphase,
-                        propertyName,
-                        cause
-                );
+            if (failure != null) {
+                logRejected(code, phase, subphase, propertyName, cause);
                 return new BootstrapException(failure);
             }
 
-            this.failure = new BootstrapFailure(code, phase, cause);
-            this.state = BootstrapState.FAILED;
-            logFailure(BootstrapLogEvent.BOOTSTRAP_PHASE_FAILED, code, phase, subphase, propertyName, cause);
+            if (state == BootstrapState.CLOSED) {
+                return rejectWithoutStateChange(code, phase, cause);
+            }
 
+            recordFailure(new BootstrapFailure(code, code, phase, cause), subphase, propertyName, cause);
             return new BootstrapException(failure);
         }
     }
 
     BootstrapException rejectWithoutStateChange(String code, String phase, Throwable cause) {
-        synchronized (monitor) {
-            BootstrapFailure rejection = new BootstrapFailure(code, phase, cause);
-            log.log(BootstrapLogEvent.BOOTSTRAP_OPERATION_REJECTED, fields -> fields
-                    .putString(AgentLogField.FAILURE_CODE, code)
-                    .putString(AgentLogField.PHASE, phase)
-                    .putString(AgentLogField.SUBPHASE, phase)
-                    .cause(cause));
-            return new BootstrapException(rejection);
-        }
+        logRejected(code, phase, phase, null, cause);
+        return new BootstrapException(new BootstrapFailure(code, code, phase, cause));
     }
 
     BootstrapException stickyFailure(String phase) {
         synchronized (monitor) {
+            BootstrapFailure sticky;
             if (failure == null) {
-                BootstrapFailure cause = new BootstrapFailure(
-                        "BOOTSTRAP_TERMINAL",
+                sticky = new BootstrapFailure(
+                        BOOTSTRAP_TERMINAL,
+                        BOOTSTRAP_TERMINAL,
                         phase,
                         new IllegalStateException("Bootstrap coordinator is in terminal state " + state)
                 );
-                return new BootstrapException(cause);
+            } else {
+                sticky = new BootstrapFailure(
+                        failure.primaryCode(),
+                        failure.effectiveCode(),
+                        phase,
+                        failure.cause()
+                );
             }
 
-            BootstrapFailure cause = new BootstrapFailure(failure.code(), phase, failure.cause());
-            return new BootstrapException(cause);
+            return new BootstrapException(sticky);
         }
     }
 
@@ -266,6 +277,42 @@ final class BootstrapLifecycleState {
         return state == BootstrapState.FAILED
                 || state == BootstrapState.CLOSED
                 || state == BootstrapState.CLOSING;
+    }
+
+    private void recordFailure(BootstrapFailure next,
+                               String subphase,
+                               String propertyName,
+                               Throwable loggedCause) {
+        this.failure = next;
+        this.state = BootstrapState.FAILED;
+        logFailure(
+                BootstrapLogEvent.BOOTSTRAP_PHASE_FAILED,
+                next.effectiveCode(),
+                next.phase(),
+                subphase,
+                propertyName,
+                loggedCause
+        );
+    }
+
+    private BootstrapFailure escalatedFailure(String phase, Throwable cleanupFailure) {
+        if (failure == null) {
+            return new BootstrapFailure(FAILED_ROLLBACK_INCOMPLETE, FAILED_ROLLBACK_INCOMPLETE, phase, cleanupFailure);
+        } else {
+            return new BootstrapFailure(failure.primaryCode(), FAILED_ROLLBACK_INCOMPLETE, phase, failure.cause());
+        }
+    }
+
+    private BootstrapException reject(String code, String phase, String message) {
+        return rejectWithoutStateChange(code, phase, new IllegalStateException(message));
+    }
+
+    private static void logRejected(String code,
+                                    String phase,
+                                    String subphase,
+                                    String propertyName,
+                                    Throwable cause) {
+        logFailure(BootstrapLogEvent.BOOTSTRAP_OPERATION_REJECTED, code, phase, subphase, propertyName, cause);
     }
 
     private static void logFailure(BootstrapLogEvent event,
@@ -278,9 +325,11 @@ final class BootstrapLifecycleState {
             fields.putString(AgentLogField.FAILURE_CODE, code)
                     .putString(AgentLogField.PHASE, phase)
                     .putString(AgentLogField.SUBPHASE, subphase);
+
             if (propertyName != null) {
                 fields.putString(AgentLogField.PROPERTY_NAME, propertyName);
             }
+
             fields.cause(cause);
         });
     }

@@ -63,6 +63,7 @@ public final class ReadinessJmxTestFixtures {
                 JmxWireContract.REQUIRED_CAPABILITIES,
                 List.of(),
                 "",
+                "",
                 SHA256,
                 "2.30.0",
                 "1.2.3",
@@ -71,6 +72,11 @@ public final class ReadinessJmxTestFixtures {
     }
 
     public static CompositeData failedSnapshot(String failureCode) {
+        return failedSnapshot(failureCode, failureCode);
+    }
+
+    public static CompositeData failedSnapshot(String primaryFailureCode,
+                                               String effectiveFailureCode) {
         return composite(
                 JmxWireContract.SCHEMA_ID,
                 JmxWireContract.SCHEMA_DIGEST_SHA256,
@@ -80,7 +86,8 @@ public final class ReadinessJmxTestFixtures {
                 "FAILED",
                 PRE_RUNTIME_BINDING_CAPABILITIES,
                 PRE_RUNTIME_BINDING_MISSING_REQUIRED,
-                failureCode,
+                effectiveFailureCode,
+                primaryFailureCode,
                 SHA256,
                 "2.30.0",
                 "1.2.3",
@@ -97,6 +104,7 @@ public final class ReadinessJmxTestFixtures {
                                           Collection<String> capabilities,
                                           Collection<String> missingRequired,
                                           String failureCode,
+                                          String primaryFailureCode,
                                           String agentDistributionSha256,
                                           String upstreamAgentVersion,
                                           String extensionVersion,
@@ -115,6 +123,7 @@ public final class ReadinessJmxTestFixtures {
             fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_MISSING_REQUIRED,
                     missingRequired.toArray(String[]::new));
             fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE, failureCode);
+            fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_PRIMARY_FAILURE_CODE, primaryFailureCode);
             fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_DISTRIBUTION_SHA256,
                     agentDistributionSha256);
             fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_UPSTREAM_AGENT_VERSION, upstreamAgentVersion);
@@ -175,10 +184,11 @@ public final class ReadinessJmxTestFixtures {
             }
 
             @Override
-            public Object invoke(String actionName, Object[] params, String[] signature)
-                    throws ReflectionException {
-                throw new ReflectionException(new NoSuchMethodException(actionName),
-                        "Readiness endpoint exposes no operations");
+            public Object invoke(String actionName, Object[] params, String[] signature) throws ReflectionException {
+                throw new ReflectionException(
+                        new NoSuchMethodException(actionName),
+                        "Readiness endpoint exposes no operations"
+                );
             }
 
             @Override

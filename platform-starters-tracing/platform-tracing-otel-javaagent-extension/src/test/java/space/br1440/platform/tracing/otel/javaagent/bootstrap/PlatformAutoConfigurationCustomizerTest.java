@@ -320,7 +320,7 @@ class PlatformAutoConfigurationCustomizerTest {
                 );
 
                 // then
-                assertThat(failure.failure().code()).isEqualTo("RESOURCE_INITIALIZATION_FAILED");
+                assertThat(failure.failure().effectiveCode()).isEqualTo("RESOURCE_INITIALIZATION_FAILED");
                 assertThat(System.getProperty(HTTP_SENDER_PREFERENCE)).isNull();
                 assertThat(System.getProperty(GRPC_SENDER_PREFERENCE)).isNull();
             }
@@ -368,10 +368,10 @@ class PlatformAutoConfigurationCustomizerTest {
             );
 
             // then
-            assertThat(first.failure().code()).isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
+            assertThat(first.failure().effectiveCode()).isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
             assertThat(first.getCause()).hasMessageContaining(invalid.expectedProperty());
             assertThat(first.failure().cause()).isSameAs(first.getCause());
-            assertThat(repeated.failure().code()).isEqualTo(first.failure().code());
+            assertThat(repeated.failure().effectiveCode()).isEqualTo(first.failure().effectiveCode());
             assertThat(repeated.getCause()).isSameAs(first.getCause());
             assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
             assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
@@ -382,9 +382,9 @@ class PlatformAutoConfigurationCustomizerTest {
             assertThat(coordinator.currentWire().evidenceGeneration()).isZero();
             assertThat(coordinator.currentWire().evidence().complete()).isFalse();
 
-            assertThat(exporterFailure.failure().code()).isEqualTo(first.failure().code());
+            assertThat(exporterFailure.failure().effectiveCode()).isEqualTo(first.failure().effectiveCode());
             assertThat(exporterFailure.getCause()).isSameAs(first.getCause());
-            assertThat(processorFailure.failure().code()).isEqualTo(first.failure().code());
+            assertThat(processorFailure.failure().effectiveCode()).isEqualTo(first.failure().effectiveCode());
             assertThat(processorFailure.getCause()).isSameAs(first.getCause());
 
             List<Throwable> readerFailures = causeChain(first)
@@ -575,8 +575,7 @@ class PlatformAutoConfigurationCustomizerTest {
                         }
 
                         case "addResourceCustomizer" -> {
-                            this.resourceCustomizer =
-                                    (BiFunction<Resource, ConfigProperties, Resource>) args[0];
+                            this.resourceCustomizer = (BiFunction<Resource, ConfigProperties, Resource>) args[0];
                             yield proxyObj;
                         }
 
@@ -598,14 +597,12 @@ class PlatformAutoConfigurationCustomizerTest {
                         }
 
                         case "addSpanExporterCustomizer" -> {
-                            this.spanExporterCustomizer =
-                                    (BiFunction<SpanExporter, ConfigProperties, SpanExporter>) args[0];
+                            this.spanExporterCustomizer = (BiFunction<SpanExporter, ConfigProperties, SpanExporter>) args[0];
                             yield proxyObj;
                         }
 
                         case "addSpanProcessorCustomizer" -> {
-                            this.spanProcessorCustomizer =
-                                    (BiFunction<SpanProcessor, ConfigProperties, SpanProcessor>) args[0];
+                            this.spanProcessorCustomizer = (BiFunction<SpanProcessor, ConfigProperties, SpanProcessor>) args[0];
                             yield proxyObj;
                         }
 

@@ -23,7 +23,7 @@ final class ReadinessTestFixtures {
         return new AgentReadinessSnapshot(
                 new AgentReadinessSnapshot.ContractIdentity(JmxWireContract.SCHEMA_ID, JmxWireContract.SCHEMA_DIGEST_SHA256),
                 new AgentReadinessSnapshot.AnchorIdentity(AGENT_INSTANCE_ID, 1L, BATCH_ID),
-                new AgentReadinessSnapshot.LifecycleState("READY", "", COMPLETE_CAPABILITIES, Set.of()),
+                new AgentReadinessSnapshot.LifecycleState("READY", "", "", COMPLETE_CAPABILITIES, Set.of()),
                 new AgentReadinessSnapshot.DistributionIdentity(SHA256, "2.30.0", APPLICATION_VERSION),
                 new AgentReadinessSnapshot.ClassloaderTopology("agent-loader@1", "sdk-loader@2"));
     }
@@ -32,19 +32,25 @@ final class ReadinessTestFixtures {
         return new AgentReadinessSnapshot(
                 new AgentReadinessSnapshot.ContractIdentity(JmxWireContract.SCHEMA_ID, JmxWireContract.SCHEMA_DIGEST_SHA256),
                 new AgentReadinessSnapshot.AnchorIdentity(AGENT_INSTANCE_ID, 0L, ""),
-                new AgentReadinessSnapshot.LifecycleState("INITIALIZING", "", Set.of(), COMPLETE_CAPABILITIES),
+                new AgentReadinessSnapshot.LifecycleState("INITIALIZING", "", "", Set.of(), COMPLETE_CAPABILITIES),
                 new AgentReadinessSnapshot.DistributionIdentity("", "", APPLICATION_VERSION),
                 new AgentReadinessSnapshot.ClassloaderTopology("", ""));
     }
 
     static AgentReadinessSnapshot failedSnapshot(String failureCode) {
+        return failedSnapshot(failureCode, failureCode);
+    }
+
+    static AgentReadinessSnapshot failedSnapshot(String primaryFailureCode,
+                                                 String effectiveFailureCode) {
         AgentReadinessSnapshot initializing = initializingSnapshot();
         AgentReadinessSnapshot.LifecycleState initializingLifecycle = initializing.lifecycleState();
 
         return toBuilder(initializing)
                 .lifecycleState(new AgentReadinessSnapshot.LifecycleState(
                         "FAILED",
-                        failureCode,
+                        effectiveFailureCode,
+                        primaryFailureCode,
                         initializingLifecycle.capabilities(),
                         initializingLifecycle.missingRequired())
                 )
@@ -72,6 +78,7 @@ final class ReadinessTestFixtures {
                 lifecycleState.capabilities(),
                 lifecycleState.missingRequired(),
                 lifecycleState.failureCode(),
+                lifecycleState.primaryFailureCode(),
                 distributionIdentity.agentDistributionSha256(),
                 distributionIdentity.upstreamAgentVersion(),
                 distributionIdentity.extensionVersion(),

@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures.boundSampling;
@@ -118,8 +119,7 @@ class PlatformTracingMBeanRegistrarTest {
     void runtimeRegistrationRejectsDifferentAgentInstanceId() {
         // given
         TracingSettingsSource holder = TracingSettingsSource.isolatedDefaults();
-        PlatformTracingMBeanRegistrar registrar =
-                new PlatformTracingMBeanRegistrar(server, AgentInstanceId.random());
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(server, AgentInstanceId.random());
 
         // when
         assertThatThrownBy(() -> registrar.registerRuntimeControls(holder))
@@ -160,10 +160,17 @@ class PlatformTracingMBeanRegistrarTest {
         wireRequiredComponents(first, holder);
         PlatformTracingMBeanRegistrar second = registrar();
 
-        // when/then
-        assertThatThrownBy(() -> wireRequiredComponents(second, holder))
-                .isInstanceOf(JmxRegistrationException.class)
-                .hasMessageContaining("JMX ObjectName ownership collision");
+        // when
+        JmxRegistrationException failure = catchThrowableOfType(
+                JmxRegistrationException.class,
+                () -> wireRequiredComponents(second, holder)
+        );
+
+        // then
+        assertThat(failure).hasMessageContaining("JMX ObjectName ownership collision");
+        assertThat(failure.failureCode()).isNull();
+        assertThat(second.extensionReadiness().snapshot().lifecycle())
+                .isEqualTo(PlatformExtensionLifecycle.INITIALIZING);
         assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
     }
 
@@ -354,7 +361,10 @@ class PlatformTracingMBeanRegistrarTest {
             // then
             assertThat(ex.getCause()).isNotNull();
             assertThat(ex.getSuppressed()).isNotEmpty();
+            assertThat(ex.failureCode()).isEqualTo("JMX_BATCH_REGISTRATION_FAILED");
             assertThat(ex.rollbackIncomplete()).isTrue();
+            assertThat(registrar.extensionReadiness().snapshot())
+                    .isInstanceOf(PlatformExtensionReadinessSnapshot.Initializing.class);
             assertThat(failureLoggedBeforeRollback).isFalse();
             assertThat(logs.events())
                     .filteredOn(event -> "MBEAN_BATCH_REGISTRATION_FAILED".equals(event.eventName()))
@@ -364,7 +374,7 @@ class PlatformTracingMBeanRegistrarTest {
     }
 
     @Test
-    void fatalRuntimeRegistrationFailureRollsBackBatchAndFailsReadiness() {
+    void fatalRuntimeRegistrationFailureRollsBackBatchWithoutMutatingReadiness() {
         // given
         NoClassDefFoundError fatalFailure = new NoClassDefFoundError("simulated runtime MBean linkage failure");
         MBeanServer failingServer = new DelegatingMBeanServer(server) {
@@ -403,9 +413,97 @@ class PlatformTracingMBeanRegistrarTest {
         assertThat(server.isRegistered(DomainObjectNames.SETTINGS_STATUS)).isFalse();
         assertThat(server.isRegistered(DomainObjectNames.SETTINGS_MUTATION)).isFalse();
 
-        PlatformExtensionReadinessSnapshot readiness = registrar.extensionReadiness().snapshot();
-        assertThat(readiness.lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
-        assertThat(readiness.failureCode()).isEqualTo("JMX_BATCH_REGISTRATION_FAILED");
+        assertThat(registrar.extensionReadiness().snapshot())
+                .isInstanceOf(PlatformExtensionReadinessSnapshot.Initializing.class);
+    }
+
+    @Test
+    void runtimeCloseFailureReleasesGenerationAndLeavesLeftoverForScopeReclaim() throws Exception {
+        // given
+        AtomicBoolean failSamplingUnregisterOnce = new AtomicBoolean();
+        MBeanServer faultySpy = new DelegatingMBeanServer(server) {
+            @Override
+            public void unregisterMBean(ObjectName name)
+                    throws InstanceNotFoundException,
+                    MBeanRegistrationException {
+                if (DomainObjectNames.SAMPLING.equals(name) && failSamplingUnregisterOnce.compareAndSet(true, false)) {
+                    throw new InstanceNotFoundException("simulated cleanup failure");
+                }
+                super.unregisterMBean(name);
+            }
+        };
+        TracingSettingsSource holder = boundSampling(agentInstanceId, true, Map.of(), 0.5);
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(faultySpy, agentInstanceId);
+        AutoCloseable diagnostic = registrar.registerDiagnosticReadiness(initializingReadinessProjection(agentInstanceId));
+        wireOwners(registrar, holder);
+        PlatformTracingMBeanRegistrar.RuntimeRegistration runtime = registrar.registerRuntimeControls(holder);
+        failSamplingUnregisterOnce.set(true);
+
+        // when
+        JmxRegistrationException failure = catchThrowableOfType(JmxRegistrationException.class, runtime::close);
+
+        // then
+        assertThat(failure).isNotNull();
+        assertThat(failure.rollbackIncomplete()).isTrue();
+        assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
+        assertThat(server.isRegistered(DomainObjectNames.SCRUBBING)).isFalse();
+        assertThatCode(runtime::close).doesNotThrowAnyException();
+
+        diagnostic.close();
+        assertThat(server.isRegistered(DomainObjectNames.SAMPLING))
+                .as("scope reclaim on the next serialized release removes the leftover")
+                .isFalse();
+        trackRegistration(registrar.registerRuntimeControls(holder));
+        assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
+    }
+
+    @Test
+    void batchRegistrationFailureKeepsIncompleteRollbackLeftoverUntilScopeReclaim() throws Exception {
+        // given
+        AtomicBoolean failScrubbingUnregisterOnce = new AtomicBoolean(true);
+        MBeanServer faultySpy = new DelegatingMBeanServer(server) {
+            @Override
+            public ObjectInstance registerMBean(Object object, ObjectName name)
+                    throws InstanceAlreadyExistsException,
+                    MBeanRegistrationException,
+                    NotCompliantMBeanException {
+                if (DomainObjectNames.VALIDATION.equals(name)) {
+                    throw new NotCompliantMBeanException("simulated registration failure");
+                }
+                return super.registerMBean(object, name);
+            }
+
+            @Override
+            public void unregisterMBean(ObjectName name)
+                    throws InstanceNotFoundException,
+                    MBeanRegistrationException {
+                if (DomainObjectNames.SCRUBBING.equals(name) && failScrubbingUnregisterOnce.compareAndSet(true, false)) {
+                    throw new InstanceNotFoundException("simulated rollback failure");
+                }
+                super.unregisterMBean(name);
+            }
+        };
+        TracingSettingsSource holder = boundSampling(agentInstanceId, true, Map.of(), 0.5);
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(faultySpy, agentInstanceId);
+        AutoCloseable diagnostic = registrar.registerDiagnosticReadiness(initializingReadinessProjection(agentInstanceId));
+        wireOwners(registrar, holder);
+
+        // when
+        JmxRegistrationException failure = catchThrowableOfType(
+                JmxRegistrationException.class,
+                () -> registrar.registerRuntimeControls(holder)
+        );
+
+        // then
+        assertThat(failure.failureCode()).isEqualTo("JMX_BATCH_REGISTRATION_FAILED");
+        assertThat(failure.rollbackIncomplete()).isTrue();
+        assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isFalse();
+        assertThat(server.isRegistered(DomainObjectNames.SCRUBBING))
+                .as("failed registration reports the leftover instead of reclaiming it in the same call")
+                .isTrue();
+
+        diagnostic.close();
+        assertThat(server.isRegistered(DomainObjectNames.SCRUBBING)).isFalse();
     }
 
     private PlatformTracingMBeanRegistrar.RuntimeRegistration wireRequiredComponents(PlatformTracingMBeanRegistrar registrar,
@@ -419,7 +517,10 @@ class PlatformTracingMBeanRegistrarTest {
         trackRegistration(registrar.registerDiagnosticReadiness(
                 initializingReadinessProjection(registrar.agentInstanceId()))
         );
+        wireOwners(registrar, acceptedPolicy);
+    }
 
+    private static void wireOwners(PlatformTracingMBeanRegistrar registrar, TracingSettingsSource acceptedPolicy) {
         CompositeSampler sampler = new CompositeSampler(
                 acceptedPolicy,
                 CategoryBSamplingAccess.snapshot(List.of(), List.of())

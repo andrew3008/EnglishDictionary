@@ -18,7 +18,7 @@ class AgentReadinessSnapshotGroupsTest {
             new AgentReadinessSnapshot.AnchorIdentity(ReadinessTestFixtures.AGENT_INSTANCE_ID, 1L, "batch-1");
 
     private static final AgentReadinessSnapshot.LifecycleState LIFECYCLE_STATE =
-            new AgentReadinessSnapshot.LifecycleState("READY", "", Set.of("CAP"), Set.of());
+            new AgentReadinessSnapshot.LifecycleState("READY", "", "", Set.of("CAP"), Set.of());
 
     private static final AgentReadinessSnapshot.DistributionIdentity DISTRIBUTION_IDENTITY =
             new AgentReadinessSnapshot.DistributionIdentity("a".repeat(64), "2.30.0", "1.2.3");
@@ -108,8 +108,19 @@ class AgentReadinessSnapshotGroupsTest {
         // then
         assertThatNullPointerException()
                 .isThrownBy(() -> new AgentReadinessSnapshot.LifecycleState(
-                        "READY", null, Set.of(), Set.of()))
+                        "READY", null, "", Set.of(), Set.of()))
                 .withMessageContaining("failureCode");
+    }
+
+    @Test
+    void lifecycleStateRejectsNullPrimaryFailureCode() {
+        // given
+        // when
+        // then
+        assertThatNullPointerException()
+                .isThrownBy(() -> new AgentReadinessSnapshot.LifecycleState(
+                        "READY", "", null, Set.of(), Set.of()))
+                .withMessageContaining("primaryFailureCode");
     }
 
     @Test
@@ -140,7 +151,8 @@ class AgentReadinessSnapshotGroupsTest {
 
         // when
         AgentReadinessSnapshot.LifecycleState lifecycleState =
-                new AgentReadinessSnapshot.LifecycleState("READY", "", mutableCapabilities, Set.of());
+                new AgentReadinessSnapshot.LifecycleState(
+                        "READY", "", "", mutableCapabilities, Set.of());
         mutableCapabilities.add("CAP_B");
 
         // then
@@ -154,7 +166,8 @@ class AgentReadinessSnapshotGroupsTest {
 
         // when
         AgentReadinessSnapshot.LifecycleState lifecycleState =
-                new AgentReadinessSnapshot.LifecycleState("READY", "", Set.of(), mutableMissingRequired);
+                new AgentReadinessSnapshot.LifecycleState(
+                        "READY", "", "", Set.of(), mutableMissingRequired);
         mutableMissingRequired.add("CAP_B");
 
         // then

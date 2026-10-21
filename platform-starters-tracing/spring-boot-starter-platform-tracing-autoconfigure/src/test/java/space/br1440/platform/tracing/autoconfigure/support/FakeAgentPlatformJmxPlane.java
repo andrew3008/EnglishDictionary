@@ -197,7 +197,7 @@ public final class FakeAgentPlatformJmxPlane implements AutoCloseable {
 
     public PlatformJmxTracingSettingsClient client() {
         AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard(server);
-        AgentStartupVerifier startupVerifier = new AgentStartupVerifier(coherenceGuard, "1.2.3");
+        AgentStartupVerifier startupVerifier = new AgentStartupVerifier(coherenceGuard, () -> "1.2.3");
         startupVerifier.verify(true, true, false, true);
         PlatformJmxTracingSettingsClient client = new PlatformJmxTracingSettingsClient(server, coherenceGuard);
         client.initialize();

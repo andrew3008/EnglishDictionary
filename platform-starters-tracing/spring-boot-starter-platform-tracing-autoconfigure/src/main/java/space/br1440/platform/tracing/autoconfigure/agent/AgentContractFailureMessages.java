@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.autoconfigure.agent;
 
+import java.util.Set;
 import java.util.function.Supplier;
 
 import space.br1440.platform.common.util.StringUtils;
@@ -92,14 +93,17 @@ final class AgentContractFailureMessages {
     static final String EXTENSION_FAILED_WITHOUT_CODE_EXPLANATION =
             "The extension reported lifecycle=FAILED without a failureCode.";
 
+    static final String EXTENSION_FAILED_CODE_PAIR_INCONSISTENT_EXPLANATION =
+            "The extension reported an inconsistent primary and effective failure-code pair.";
+
     static final String EXTENSION_INITIALIZING_INCONSISTENT_EXPLANATION =
             "The extension reported an inconsistent INITIALIZING envelope.";
 
     static final String EXTENSION_LIFECYCLE_UNEXPECTED_EXPLANATION =
             "The extension lifecycle is not READY, INITIALIZING, or FAILED.";
 
-    static final String EXTENSION_READY_WITH_FAILURE_CODE_TEMPLATE =
-            "The extension reported READY with a non-blank failureCode=%s.";
+    static final String EXTENSION_READY_WITH_FAILURE_CODE_EXPLANATION =
+            "The extension reported READY with a non-blank failure code.";
 
     static final String UNSPECIFIED_CONTRACT_FAILURE_TEMPLATE =
             "Observed runtimeState=%s is not allowed for platform.tracing.enabled=%s.";
@@ -119,49 +123,60 @@ final class AgentContractFailureMessages {
                          TracingDeploymentDiagnostics diagnostics,
                          Supplier<String> applicationVersion) {
         TracingDeploymentDiagnostics.AgentReadiness readiness = diagnostics.agentReadiness();
-        String reason = resolveReason(readiness.lifecycleState());
+        String reason = resolveReason(readiness.failureCode());
 
         String summary = SUMMARY_TEMPLATE.formatted(diagnostics.runtimeState(), reason);
-        String context = context(reason, readiness, applicationVersion);
+        String context = readiness instanceof TracingDeploymentDiagnostics.Observed observed
+                ? primaryFailureContext(observed) + context(reason, observed, applicationVersion)
+                : "";
         String explanation = explanation(reason, tracingEnabled, diagnostics.runtimeState(), readiness);
         return summary + context + ". " + explanation;
     }
 
-    private static String resolveReason(TracingDeploymentDiagnostics.LifecycleState lifecycleState) {
-        return StringUtils.hasText(lifecycleState.failureCode())
-                ? lifecycleState.failureCode()
-                : "UNSPECIFIED_CONTRACT_FAILURE";
+    private static String resolveReason(String failureCode) {
+        return StringUtils.hasText(failureCode) ? failureCode : "UNSPECIFIED_CONTRACT_FAILURE";
+    }
+
+    private static String primaryFailureContext(TracingDeploymentDiagnostics.Observed observed) {
+        String primaryFailureCode = observed.primaryFailureCode();
+        if (!StringUtils.hasText(primaryFailureCode) || primaryFailureCode.equals(observed.failureCode())) {
+            return "";
+        }
+
+        return join(requiredField("primaryFailureCode", primaryFailureCode));
     }
 
     private static String context(String reason,
-                                  TracingDeploymentDiagnostics.AgentReadiness readiness,
+                                  TracingDeploymentDiagnostics.Observed observed,
                                   Supplier<String> applicationVersion) {
         return switch (reason) {
-            case "EXTENSION_VERSION_MISMATCH", "DEVELOPMENT_VERSION_FORBIDDEN" -> versionContext(applicationVersion.get(), readiness);
+            case AgentNotReadyReasonCodes.EXTENSION_VERSION_MISMATCH,
+                 AgentNotReadyReasonCodes.DEVELOPMENT_VERSION_FORBIDDEN -> versionContext(applicationVersion.get(), observed);
 
-            case "READINESS_SCHEMA_ID_MISMATCH" -> schemaIdContext(readiness);
+            case AgentNotReadyReasonCodes.READINESS_SCHEMA_ID_MISMATCH -> schemaIdContext(observed);
 
-            case "READINESS_SCHEMA_DIGEST_MISMATCH" -> schemaDigestContext(readiness);
+            case AgentNotReadyReasonCodes.READINESS_SCHEMA_DIGEST_MISMATCH -> schemaDigestContext(observed);
 
-            case "READINESS_GENERATION_INVALID" -> generationInvalidContext(readiness);
+            case AgentNotReadyReasonCodes.READINESS_GENERATION_INVALID -> generationInvalidContext(observed);
 
-            case "READINESS_GENERATION_INCONSISTENT" -> generationInconsistentContext(readiness);
+            case AgentNotReadyReasonCodes.READINESS_GENERATION_INCONSISTENT -> generationInconsistentContext(observed);
 
             case "READINESS_ANCHOR_CONTENT_DRIFT",
                  "READINESS_PINNED_ANCHOR_CHANGED",
-                 "READINESS_ANCHOR_NOT_PINNED" -> requiredAnchorContext(readiness);
+                 "READINESS_ANCHOR_NOT_PINNED" -> requiredAnchorContext(observed);
 
-            case "EXTENSION_INITIALIZING_INCONSISTENT" -> initializingInconsistentContext(readiness);
+            case AgentNotReadyReasonCodes.EXTENSION_INITIALIZING_INCONSISTENT -> initializingInconsistentContext(observed);
 
             case "DISTRIBUTION_MISMATCH",
-                 "DISTRIBUTION_EVIDENCE_INVALID",
-                 "DISTRIBUTION_EVIDENCE_MISSING" -> distributionContext(readiness);
+                 AgentNotReadyReasonCodes.DISTRIBUTION_EVIDENCE_INVALID,
+                 "DISTRIBUTION_EVIDENCE_MISSING" -> distributionContext(observed);
 
-            case "CLASSLOADER_TOPOLOGY_INVALID", "EXTENSION_LINKAGE_ERROR" -> classloaderContext(readiness);
+            case AgentNotReadyReasonCodes.CLASSLOADER_TOPOLOGY_INVALID,
+                 AgentNotReadyReasonCodes.EXTENSION_LINKAGE_ERROR -> classloaderContext(observed);
 
             case "CONTROLLED_AGENT_MISSING",
                  "PLATFORM_EXTENSION_MISSING",
-                 "DUAL_SDK_COLLISION",
+                 AgentNotReadyReasonCodes.DUAL_SDK_COLLISION,
                  "CONTROLLED_AGENT_FORBIDDEN",
                  "READINESS_ENDPOINT_DISAPPEARED",
                  "READINESS_ACCESS_DENIED",
@@ -170,43 +185,42 @@ final class AgentContractFailureMessages {
                  "JMX_WIRE_TYPE_VIOLATION",
                  "MALFORMED_READINESS_SNAPSHOT",
                  "READINESS_MIXED_GENERATION",
-                 "REQUIRED_CAPABILITY_MISSING",
-                 "READINESS_MISSING_REQUIRED_MISMATCH",
+                 AgentNotReadyReasonCodes.REQUIRED_CAPABILITY_MISSING,
+                 AgentNotReadyReasonCodes.READINESS_MISSING_REQUIRED_MISMATCH,
                  "UNSPECIFIED_CONTRACT_FAILURE" -> "";
 
-            default -> lifecycleContext(readiness);
+            default -> lifecycleContext(observed);
         };
     }
 
     private static String versionContext(String applicationVersion,
-                                         TracingDeploymentDiagnostics.AgentReadiness readiness) {
+                                         TracingDeploymentDiagnostics.Observed observed) {
         return join(
                 requiredField("applicationVersion", applicationVersion),
-                requiredField("extensionVersion", readiness.distributionIdentity().extensionVersion())
+                requiredField("extensionVersion", observed.snapshot().distributionIdentity().extensionVersion())
         );
     }
 
-    private static String schemaIdContext(TracingDeploymentDiagnostics.AgentReadiness readiness) {
+    private static String schemaIdContext(TracingDeploymentDiagnostics.Observed observed) {
         return join(
                 optionalField("expectedContractId", JmxWireContract.SCHEMA_ID),
-                requiredField("observedContractId", readiness.contractIdentity().contractId())
+                requiredField("observedContractId", observed.snapshot().contractIdentity().contractId())
         );
     }
 
-    private static String schemaDigestContext(TracingDeploymentDiagnostics.AgentReadiness readiness) {
+    private static String schemaDigestContext(TracingDeploymentDiagnostics.Observed observed) {
         return join(
                 optionalField("expectedSchemaDigest", JmxWireContract.SCHEMA_DIGEST_SHA256),
-                requiredField("observedSchemaDigest", readiness.contractIdentity().schemaDigest())
+                requiredField("observedSchemaDigest", observed.snapshot().contractIdentity().schemaDigest())
         );
     }
 
-    private static String generationInvalidContext(TracingDeploymentDiagnostics.AgentReadiness readiness) {
-        TracingDeploymentDiagnostics.ReadinessAnchor anchor = readiness.readinessAnchor();
-        return join(requiredGeneration(anchor.evidenceGeneration()));
+    private static String generationInvalidContext(TracingDeploymentDiagnostics.Observed observed) {
+        return join(requiredGeneration(observed.snapshot().anchorIdentity().evidenceGeneration()));
     }
 
-    private static String generationInconsistentContext(TracingDeploymentDiagnostics.AgentReadiness readiness) {
-        TracingDeploymentDiagnostics.ReadinessAnchor anchor = readiness.readinessAnchor();
+    private static String generationInconsistentContext(TracingDeploymentDiagnostics.Observed observed) {
+        AgentReadinessSnapshot.AnchorIdentity anchor = observed.snapshot().anchorIdentity();
         return join(
                 missingOnlyField("agentInstanceId", anchor.agentInstanceId()),
                 requiredGeneration(anchor.evidenceGeneration()),
@@ -214,8 +228,8 @@ final class AgentContractFailureMessages {
         );
     }
 
-    private static String requiredAnchorContext(TracingDeploymentDiagnostics.AgentReadiness readiness) {
-        TracingDeploymentDiagnostics.ReadinessAnchor anchor = readiness.readinessAnchor();
+    private static String requiredAnchorContext(TracingDeploymentDiagnostics.Observed observed) {
+        AgentReadinessSnapshot.AnchorIdentity anchor = observed.snapshot().anchorIdentity();
         return join(
                 requiredField("agentInstanceId", anchor.agentInstanceId()),
                 requiredGeneration(anchor.evidenceGeneration()),
@@ -223,35 +237,37 @@ final class AgentContractFailureMessages {
         );
     }
 
-    private static String initializingInconsistentContext(TracingDeploymentDiagnostics.AgentReadiness readiness) {
-        TracingDeploymentDiagnostics.ReadinessAnchor anchor = readiness.readinessAnchor();
+    private static String initializingInconsistentContext(TracingDeploymentDiagnostics.Observed observed) {
+        AgentReadinessSnapshot snapshot = observed.snapshot();
         return join(
-                requiredField("lifecycle", readiness.lifecycleState().lifecycle()),
-                requiredGeneration(anchor.evidenceGeneration()),
-                unexpectedField("batchId", anchor.batchId())
+                requiredField("lifecycle", snapshot.lifecycleState().lifecycle()),
+                requiredGeneration(snapshot.anchorIdentity().evidenceGeneration()),
+                unexpectedField("batchId", snapshot.anchorIdentity().batchId())
         );
     }
 
-    private static String lifecycleContext(TracingDeploymentDiagnostics.AgentReadiness readiness) {
-        return join(requiredField("lifecycle", readiness.lifecycleState().lifecycle()));
+    private static String lifecycleContext(TracingDeploymentDiagnostics.Observed observed) {
+        return join(requiredField("lifecycle", observed.snapshot().lifecycleState().lifecycle()));
     }
 
-    private static String distributionContext(TracingDeploymentDiagnostics.AgentReadiness readiness) {
-        TracingDeploymentDiagnostics.DistributionIdentity distribution = readiness.distributionIdentity();
+    private static String distributionContext(TracingDeploymentDiagnostics.Observed observed) {
+        AgentReadinessSnapshot snapshot = observed.snapshot();
+        AgentReadinessSnapshot.DistributionIdentity distribution = snapshot.distributionIdentity();
         return join(
                 requiredField("extensionVersion", distribution.extensionVersion()),
                 requiredField("upstreamAgentVersion", distribution.upstreamAgentVersion()),
-                requiredField("lifecycle", readiness.lifecycleState().lifecycle())
+                requiredField("lifecycle", snapshot.lifecycleState().lifecycle())
         );
     }
 
-    private static String classloaderContext(TracingDeploymentDiagnostics.AgentReadiness readiness) {
-        TracingDeploymentDiagnostics.ClassloaderTopology topology = readiness.classloaderTopology();
+    private static String classloaderContext(TracingDeploymentDiagnostics.Observed observed) {
+        AgentReadinessSnapshot snapshot = observed.snapshot();
+        AgentReadinessSnapshot.ClassloaderTopology topology = snapshot.classloaderTopology();
         return join(
-                requiredField("extensionVersion", readiness.distributionIdentity().extensionVersion()),
+                requiredField("extensionVersion", snapshot.distributionIdentity().extensionVersion()),
                 requiredField("extensionDefiningLoader", topology.extensionDefiningLoader()),
                 requiredField("sdkDefiningLoader", topology.sdkDefiningLoader()),
-                requiredField("lifecycle", readiness.lifecycleState().lifecycle())
+                requiredField("lifecycle", snapshot.lifecycleState().lifecycle())
         );
     }
 
@@ -264,7 +280,7 @@ final class AgentContractFailureMessages {
 
             case "PLATFORM_EXTENSION_MISSING" -> PLATFORM_EXTENSION_MISSING_EXPLANATION;
 
-            case "DUAL_SDK_COLLISION" -> DUAL_SDK_COLLISION_EXPLANATION;
+            case AgentNotReadyReasonCodes.DUAL_SDK_COLLISION -> DUAL_SDK_COLLISION_EXPLANATION;
 
             case "CONTROLLED_AGENT_FORBIDDEN" -> CONTROLLED_AGENT_FORBIDDEN_EXPLANATION;
 
@@ -284,36 +300,64 @@ final class AgentContractFailureMessages {
 
             case "EXTENSION_READINESS_TIMEOUT" -> EXTENSION_READINESS_TIMEOUT_EXPLANATION;
 
-            case "EXTENSION_VERSION_MISMATCH" -> versionMismatchExplanation(readiness.distributionIdentity().extensionVersion());
+            case AgentNotReadyReasonCodes.EXTENSION_VERSION_MISMATCH ->
+                    versionMismatchExplanation(observedExtensionVersion(readiness));
 
-            case "DEVELOPMENT_VERSION_FORBIDDEN" -> DEVELOPMENT_VERSION_FORBIDDEN_EXPLANATION;
+            case AgentNotReadyReasonCodes.DEVELOPMENT_VERSION_FORBIDDEN -> DEVELOPMENT_VERSION_FORBIDDEN_EXPLANATION;
 
-            case "READINESS_SCHEMA_ID_MISMATCH", "READINESS_SCHEMA_DIGEST_MISMATCH" -> READINESS_SCHEMA_MISMATCH_EXPLANATION;
+            case AgentNotReadyReasonCodes.READINESS_SCHEMA_ID_MISMATCH,
+                 AgentNotReadyReasonCodes.READINESS_SCHEMA_DIGEST_MISMATCH -> READINESS_SCHEMA_MISMATCH_EXPLANATION;
 
-            case "READINESS_MISSING_REQUIRED_MISMATCH" -> READINESS_MISSING_REQUIRED_MISMATCH_EXPLANATION;
+            case AgentNotReadyReasonCodes.READINESS_MISSING_REQUIRED_MISMATCH -> READINESS_MISSING_REQUIRED_MISMATCH_EXPLANATION;
 
-            case "REQUIRED_CAPABILITY_MISSING" -> REQUIRED_CAPABILITY_MISSING_TEMPLATE.formatted(readiness.lifecycleState().missingRequired());
+            case AgentNotReadyReasonCodes.REQUIRED_CAPABILITY_MISSING ->
+                    REQUIRED_CAPABILITY_MISSING_TEMPLATE.formatted(observedMissingRequired(readiness));
 
-            case "READINESS_GENERATION_INVALID", "READINESS_GENERATION_INCONSISTENT" -> READINESS_GENERATION_INVALID_EXPLANATION;
+            case AgentNotReadyReasonCodes.READINESS_GENERATION_INVALID,
+                 AgentNotReadyReasonCodes.READINESS_GENERATION_INCONSISTENT -> READINESS_GENERATION_INVALID_EXPLANATION;
 
-            case "DISTRIBUTION_EVIDENCE_INVALID", "DISTRIBUTION_MISMATCH", "DISTRIBUTION_EVIDENCE_MISSING" -> DISTRIBUTION_EVIDENCE_INVALID_EXPLANATION;
+            case AgentNotReadyReasonCodes.DISTRIBUTION_EVIDENCE_INVALID,
+                 "DISTRIBUTION_MISMATCH",
+                 "DISTRIBUTION_EVIDENCE_MISSING" -> DISTRIBUTION_EVIDENCE_INVALID_EXPLANATION;
 
             case "SPI_ATTESTATION_EVIDENCE_INVALID", "SPI_DISCOVERY_INCOMPLETE" -> SPI_ATTESTATION_EVIDENCE_INVALID_EXPLANATION;
 
-            case "CLASSLOADER_TOPOLOGY_INVALID", "EXTENSION_LINKAGE_ERROR" -> CLASSLOADER_TOPOLOGY_INVALID_EXPLANATION;
+            case AgentNotReadyReasonCodes.CLASSLOADER_TOPOLOGY_INVALID,
+                 AgentNotReadyReasonCodes.EXTENSION_LINKAGE_ERROR -> CLASSLOADER_TOPOLOGY_INVALID_EXPLANATION;
 
-            case "EXTENSION_FAILED_WITHOUT_CODE" -> EXTENSION_FAILED_WITHOUT_CODE_EXPLANATION;
+            case AgentNotReadyReasonCodes.EXTENSION_FAILED_WITHOUT_CODE -> EXTENSION_FAILED_WITHOUT_CODE_EXPLANATION;
 
-            case "EXTENSION_INITIALIZING_INCONSISTENT" -> EXTENSION_INITIALIZING_INCONSISTENT_EXPLANATION;
+            case AgentNotReadyReasonCodes.EXTENSION_FAILED_CODE_PAIR_INCONSISTENT ->
+                    EXTENSION_FAILED_CODE_PAIR_INCONSISTENT_EXPLANATION;
 
-            case "EXTENSION_LIFECYCLE_UNEXPECTED" -> EXTENSION_LIFECYCLE_UNEXPECTED_EXPLANATION;
+            case AgentNotReadyReasonCodes.EXTENSION_INITIALIZING_INCONSISTENT -> EXTENSION_INITIALIZING_INCONSISTENT_EXPLANATION;
 
-            case "EXTENSION_READY_WITH_FAILURE_CODE" -> EXTENSION_READY_WITH_FAILURE_CODE_TEMPLATE.formatted(display(readiness.lifecycleState().failureCode()));
+            case AgentNotReadyReasonCodes.EXTENSION_LIFECYCLE_UNEXPECTED -> EXTENSION_LIFECYCLE_UNEXPECTED_EXPLANATION;
+
+            case AgentNotReadyReasonCodes.EXTENSION_READY_WITH_FAILURE_CODE -> EXTENSION_READY_WITH_FAILURE_CODE_EXPLANATION;
 
             case "UNSPECIFIED_CONTRACT_FAILURE" -> UNSPECIFIED_CONTRACT_FAILURE_TEMPLATE.formatted(runtimeState, tracingEnabled);
 
-            default -> DEFAULT_EXPLANATION_TEMPLATE.formatted(display(readiness.lifecycleState().lifecycle()));
+            default -> DEFAULT_EXPLANATION_TEMPLATE.formatted(display(observedLifecycle(readiness)));
         };
+    }
+
+    private static String observedExtensionVersion(TracingDeploymentDiagnostics.AgentReadiness readiness) {
+        return readiness instanceof TracingDeploymentDiagnostics.Observed observed
+                ? observed.snapshot().distributionIdentity().extensionVersion()
+                : "";
+    }
+
+    private static String observedLifecycle(TracingDeploymentDiagnostics.AgentReadiness readiness) {
+        return readiness instanceof TracingDeploymentDiagnostics.Observed observed
+                ? observed.snapshot().lifecycleState().lifecycle()
+                : "";
+    }
+
+    private static Set<String> observedMissingRequired(TracingDeploymentDiagnostics.AgentReadiness readiness) {
+        return readiness instanceof TracingDeploymentDiagnostics.Observed observed
+                ? observed.snapshot().lifecycleState().missingRequired()
+                : Set.of();
     }
 
     private static String versionMismatchExplanation(String extensionVersion) {

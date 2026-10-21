@@ -2,6 +2,9 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.spy;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorAssert.assertThatCoordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_INITIALIZING;
@@ -13,6 +16,7 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.recordingReadinessRegistration;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.registerForeignReadinessMBean;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
+import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSnapshotAssertions.failureOf;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +34,7 @@ import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.Verif
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationException;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
@@ -110,7 +115,7 @@ class BootstrapCoordinatorCustomizationTest {
 
             // then
             assertThat(session.readiness().snapshot().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
-            assertThat(session.readiness().snapshot().failureCode())
+            assertThat(failureOf(session.readiness().snapshot()).effectiveCode())
                     .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER);
             assertThat(session.readiness().snapshot().has(PlatformExtensionCapability.SANITIZER_INSTALLED)).isFalse();
             assertThat(coordinator.currentWire().lifecycle()).isEqualTo(WIRE_FAILED);
@@ -177,6 +182,40 @@ class BootstrapCoordinatorCustomizationTest {
                             .hasMessageContaining("ownership collision"));
             assertThatCoordinator(coordinator).isTerminallyFailedWith(DIAGNOSTIC_MBEAN_REGISTRATION_FAILED);
             assertThatDiagnosticMBean(server).isOwnedBy(Timer.class);
+        }
+    }
+
+    @Test
+    void fatal_diagnostic_registration_is_suppressed_on_sticky_cause_and_propagated() {
+        // given
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
+        PlatformTracingMBeanRegistrar registrar = spy(new PlatformTracingMBeanRegistrar(
+                MBeanServerFactory.newMBeanServer(),
+                agentInstanceId
+        ));
+        NoClassDefFoundError diagnosticFailure =
+                new NoClassDefFoundError("Fatal diagnostic registration failure");
+        doThrow(diagnosticFailure).when(registrar).registerDiagnosticReadiness(any());
+        IllegalStateException customizationFailure = new IllegalStateException("Customizer failure");
+
+        try (BootstrapCoordinator coordinator = coordinator()
+                .agentInstanceId(agentInstanceId)
+                .registrar(registrar)
+                .build()) {
+            // when
+            assertThatThrownBy(() -> coordinator.execute(SPAN_PROCESSOR_INITIALIZATION_FAILED, () -> {
+                throw customizationFailure;
+            })).isSameAs(diagnosticFailure);
+
+            // then
+            BootstrapException sticky = catchBootstrapFailure(
+                    () -> coordinator.prepare(config()),
+                    SPAN_PROCESSOR_INITIALIZATION_FAILED
+            );
+            assertThat(sticky.getCause()).isSameAs(customizationFailure);
+            assertThat(customizationFailure.getSuppressed()).containsExactly(diagnosticFailure);
+            assertThat(diagnosticFailure.getSuppressed()).isEmpty();
+            assertThatCoordinator(coordinator).isTerminallyFailedWith(SPAN_PROCESSOR_INITIALIZATION_FAILED);
         }
     }
 

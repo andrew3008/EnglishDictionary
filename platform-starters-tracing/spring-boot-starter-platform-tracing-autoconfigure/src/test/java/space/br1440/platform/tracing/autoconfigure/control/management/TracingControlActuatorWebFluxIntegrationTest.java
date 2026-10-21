@@ -120,7 +120,7 @@ class TracingControlActuatorWebFluxIntegrationTest {
 
         @Bean
         TracingDeploymentDiagnostics platformTracingDeploymentDiagnostics(AgentReadinessCoherenceGuard coherenceGuard) {
-            return new AgentStartupVerifier(coherenceGuard, EXTENSION_VERSION)
+            return new AgentStartupVerifier(coherenceGuard, () -> EXTENSION_VERSION)
                     .verify(true, true, false, true);
         }
     }

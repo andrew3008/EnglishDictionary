@@ -1,15 +1,14 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.TRANSPORT_STALE;
 
 import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
-import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationException;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
@@ -31,38 +30,121 @@ final class BootstrapTerminalTransitions {
         this.diagnosticHandle = Objects.requireNonNull(diagnosticHandle, "diagnosticHandle");
     }
 
-    BootstrapException terminalizeActivationFailure(AutoconfigureSession activeSession,
-                                                    BootstrapResources resources,
-                                                    String failureCode,
-                                                    String subphase,
-                                                    Throwable cause,
-                                                    String batchId,
-                                                    ExtensionRuntimeEvidence evidence) {
-        Throwable cleanupFailure = BootstrapCleanupFailures.rollback(resources, cause);
-        boolean rollbackIncomplete = cleanupFailure != null
-                || FAILED_ROLLBACK_INCOMPLETE.equals(
-                        activeSession.readiness().snapshot().failureCode()
-                );
-        String effectiveFailureCode = rollbackIncomplete ? FAILED_ROLLBACK_INCOMPLETE : failureCode;
-        BootstrapException classified = lifecycle.fail(effectiveFailureCode, "activate", subphase, null, cause);
-        if (rollbackIncomplete) {
-            activeSession.readiness().recordTerminalCleanupFailure(FAILED_ROLLBACK_INCOMPLETE);
-        }
-
-        journal.publishFailed(
-                activeSession.readiness(),
-                activeSession.agentInstanceId(),
-                effectiveFailureCode,
+    BootstrapException recordActivationFailure(String failureCode,
+                                               String subphase,
+                                               Throwable cause,
+                                               String batchId,
+                                               ExtensionRuntimeEvidence evidence) {
+        return terminalizeFailure(
+                failureCode,
+                "activate",
+                subphase,
+                null,
+                cause,
                 batchId,
                 evidence
         );
-        PlatformThrowables.propagateIfFatal(cause);
-        PlatformThrowables.propagateIfFatal(cleanupFailure);
-        return classified;
     }
 
-    void publishTransportStale(AutoconfigureSession activeSession,
-                               String batchId,
+    BootstrapException completeActivationFailure(BootstrapException classified,
+                                                 BootstrapResources resources,
+                                                 Throwable cause,
+                                                 Throwable sectionFailure,
+                                                 String batchId,
+                                                 ExtensionRuntimeEvidence evidence) {
+        if (Thread.holdsLock(lifecycle.monitor())) {
+            throw new IllegalMonitorStateException(
+                    "Activation rollback must run outside the bootstrap lifecycle monitor"
+            );
+        }
+
+        Throwable cleanupFailure = BootstrapCleanupFailures.rollback(resources, cause);
+        if (sectionFailure != null) {
+            rethrowSectionFailure(sectionFailure);
+        }
+
+        BootstrapException effectiveFailure = Objects.requireNonNull(classified, "classified");
+        try {
+            if (cleanupFailure != null || JmxRegistrationException.rollbackIncompleteIn(cause)) {
+                Throwable escalationCause = cleanupFailure == null ? cause : cleanupFailure;
+                synchronized (lifecycle.monitor()) {
+                    lifecycle.escalateRollbackIncomplete("activate", escalationCause);
+                    journal.publishFailed(lifecycle.failure(), batchId, evidence);
+                    effectiveFailure = new BootstrapException(lifecycle.failure());
+                }
+            }
+
+            return effectiveFailure;
+        } finally {
+            PlatformThrowables.propagateIfFatal(cause);
+            PlatformThrowables.propagateIfFatal(cleanupFailure);
+        }
+    }
+
+    BootstrapException terminalizePreparationFailure(String failureCode,
+                                                     String subphase,
+                                                     String propertyName,
+                                                     Throwable cause,
+                                                     ExtensionRuntimeEvidence evidence) {
+        return terminalizeFailure(
+                failureCode,
+                "prepare",
+                subphase,
+                propertyName,
+                cause,
+                "",
+                evidence
+        );
+    }
+
+    BootstrapException terminalizeCustomizationFailure(String failureCode,
+                                                       String phase,
+                                                       Throwable cause,
+                                                       ExtensionRuntimeEvidence evidence) {
+        return terminalizeFailure(
+                failureCode,
+                phase,
+                phase,
+                null,
+                cause,
+                "",
+                evidence
+        );
+    }
+
+    void failMissingPreparation(ExtensionRuntimeEvidence evidence, Runnable diagnosticRegistration) {
+        Objects.requireNonNull(diagnosticRegistration, "diagnosticRegistration");
+        BootstrapException classified;
+        synchronized (lifecycle.monitor()) {
+            if (lifecycle.state() != BootstrapState.NEW) {
+                return;
+            }
+
+            IllegalStateException cause = new IllegalStateException(
+                    "AgentListener.afterAgent invoked without a prior ACP prepare() call"
+            );
+            classified = terminalizeFailure(
+                    PLATFORM_ACP_NOT_EXECUTED,
+                    "activate",
+                    "activate",
+                    null,
+                    cause,
+                    "",
+                    evidence
+            );
+        }
+
+        try {
+            diagnosticRegistration.run();
+        } catch (RuntimeException | Error diagnosticFailure) {
+            BootstrapCleanupFailures.suppressPreservingPrimary(classified.failure().cause(), diagnosticFailure);
+            PlatformThrowables.propagateIfFatal(diagnosticFailure);
+        }
+
+        throw classified;
+    }
+
+    void publishTransportStale(String batchId,
                                ExtensionRuntimeEvidence evidence) {
         IllegalStateException cause = new IllegalStateException(
                 "JMX runtime controls are being deregistered"
@@ -73,19 +155,12 @@ final class BootstrapTerminalTransitions {
                 return;
             }
 
-            lifecycle.markFailed(TRANSPORT_STALE, "shutdown", cause);
-            journal.publishFailed(
-                    activeSession.readiness(),
-                    activeSession.agentInstanceId(),
-                    TRANSPORT_STALE,
-                    batchId,
-                    evidence
-            );
+            lifecycle.fail(TRANSPORT_STALE, "shutdown", "shutdown", null, cause);
+            journal.publishFailed(lifecycle.failure(), batchId, evidence);
         }
     }
 
-    void completeShutdown(AutoconfigureSession activeSession,
-                          String batchId,
+    void completeShutdown(String batchId,
                           ExtensionRuntimeEvidence evidence,
                           Throwable cleanupFailure) {
         Throwable terminalFailure = cleanupFailure;
@@ -106,7 +181,7 @@ final class BootstrapTerminalTransitions {
         }
 
         try {
-            publishRollbackIncomplete(activeSession, "shutdown", terminalFailure, batchId, evidence);
+            publishRollbackIncomplete("shutdown", terminalFailure, batchId, evidence);
         } catch (RuntimeException | Error failure) {
             terminalFailure = BootstrapCleanupFailures.aggregate(terminalFailure, failure);
             completionFailure = BootstrapCleanupFailures.aggregate(completionFailure, failure);
@@ -123,50 +198,51 @@ final class BootstrapTerminalTransitions {
                 .cause(failureToLog));
     }
 
-    void completeCloseFailure(Throwable cleanupFailure) {
+    void completeCloseFailure(Throwable cleanupFailure,
+                              String batchId,
+                              ExtensionRuntimeEvidence evidence) {
+        publishRollbackIncomplete("close", cleanupFailure, batchId, evidence);
+    }
+
+    private BootstrapException terminalizeFailure(String failureCode,
+                                                  String phase,
+                                                  String subphase,
+                                                  String propertyName,
+                                                  Throwable cause,
+                                                  String batchId,
+                                                  ExtensionRuntimeEvidence evidence) {
         synchronized (lifecycle.monitor()) {
-            AutoconfigureSession activeSession = lifecycle.currentSession();
-            if (activeSession == null) {
-                lifecycle.markFailed(FAILED_ROLLBACK_INCOMPLETE, "close", cleanupFailure);
-                return;
-            }
-
-            ExtensionReadinessWireSnapshot current = journal.current();
-            publishRollbackIncomplete(
-                    activeSession,
-                    "close",
-                    cleanupFailure,
-                    current.batchId(),
-                    current.evidence()
-            );
-        }
-    }
-
-    void publishSessionFailure(AutoconfigureSession failedSession, String failureCode) {
-        if (failedSession != null) {
-            journal.publishFailed(
-                    failedSession.readiness(),
-                    failedSession.agentInstanceId(),
+            BootstrapException classified = lifecycle.fail(
                     failureCode,
-                    "",
-                    failedSession.evidence()
+                    phase,
+                    subphase,
+                    propertyName,
+                    cause
             );
+            if (lifecycle.state() == BootstrapState.FAILED) {
+                journal.publishFailed(lifecycle.failure(), batchId, evidence);
+            }
+            return classified;
         }
     }
 
-    private void publishRollbackIncomplete(AutoconfigureSession activeSession,
-                                           String phase,
+    private void publishRollbackIncomplete(String phase,
                                            Throwable cause,
                                            String batchId,
                                            ExtensionRuntimeEvidence evidence) {
-        lifecycle.markFailed(FAILED_ROLLBACK_INCOMPLETE, phase, cause);
-        activeSession.readiness().recordTerminalCleanupFailure(FAILED_ROLLBACK_INCOMPLETE);
-        journal.publishFailed(
-                activeSession.readiness(),
-                activeSession.agentInstanceId(),
-                FAILED_ROLLBACK_INCOMPLETE,
-                batchId,
-                evidence
-        );
+        synchronized (lifecycle.monitor()) {
+            lifecycle.escalateRollbackIncomplete(phase, cause);
+            if (lifecycle.state() == BootstrapState.FAILED) {
+                journal.publishFailed(lifecycle.failure(), batchId, evidence);
+            }
+        }
+    }
+
+    private static void rethrowSectionFailure(Throwable sectionFailure) {
+        if (sectionFailure instanceof Error error) {
+            throw error;
+        }
+
+        throw (RuntimeException) sectionFailure;
     }
 }

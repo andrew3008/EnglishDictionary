@@ -19,6 +19,7 @@ public final class BootstrapResources implements AutoCloseable {
 
     private Registration shutdownHook;
     private boolean closed;
+    private Throwable closeFailure;
 
     public BootstrapResources(ShutdownHookRegistry hookRegistry) {
         this.hookRegistry = Objects.requireNonNull(hookRegistry, "hookRegistry");
@@ -57,8 +58,13 @@ public final class BootstrapResources implements AutoCloseable {
     public void close() {
         synchronized (lock) {
             if (closed) {
+                if (closeFailure != null) {
+                    rethrow(closeFailure);
+                }
+
                 return;
             }
+
             closed = true;
 
             Throwable aggregate = null;
@@ -68,6 +74,7 @@ public final class BootstrapResources implements AutoCloseable {
                 } catch (RuntimeException | Error failure) {
                     aggregate = aggregate(aggregate, failure, "shutdown-hook");
                 }
+
                 shutdownHook = null;
             }
 
@@ -81,6 +88,7 @@ public final class BootstrapResources implements AutoCloseable {
             }
 
             if (aggregate != null) {
+                closeFailure = aggregate;
                 rethrow(aggregate);
             }
         }

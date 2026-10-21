@@ -3,9 +3,10 @@ package space.br1440.platform.tracing.otel.javaagent.readiness;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
+import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSnapshotAssertions.failureOf;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -45,7 +46,6 @@ class PlatformExtensionReadinessTest {
         assertThat(ready.lifecycle()).isEqualTo(PlatformExtensionLifecycle.READY);
         assertThat(ready.installedCapabilities()).containsExactlyInAnyOrder(capabilities);
         assertThat(ready.missingRequiredCapabilities()).isEmpty();
-        assertThat(ready.failureCode()).isEmpty();
         assertThat(readiness.snapshot()).isSameAs(ready);
         assertThat(readiness.completeInitialization()).isSameAs(ready);
     }
@@ -85,71 +85,52 @@ class PlatformExtensionReadinessTest {
 
     @Test
     void snapshotDefensivelyCopiesCapabilitySets() {
-        EnumSet<PlatformExtensionCapability> installed =
-                EnumSet.of(PlatformExtensionCapability.CONFIGURATION_LOADED);
-        EnumSet<PlatformExtensionCapability> missing = EnumSet.allOf(PlatformExtensionCapability.class);
-        missing.removeAll(installed);
+        // given
+        EnumSet<PlatformExtensionCapability> installed = EnumSet.of(PlatformExtensionCapability.CONFIGURATION_LOADED);
 
-        PlatformExtensionReadinessSnapshot snapshot = new PlatformExtensionReadinessSnapshot(
-                EXTENSION_VERSION,
-                PlatformExtensionLifecycle.INITIALIZING,
-                installed,
-                missing,
-                ""
-        );
+        // when
+        PlatformExtensionReadinessSnapshot snapshot = new PlatformExtensionReadinessSnapshot.Initializing(EXTENSION_VERSION, installed);
         installed.clear();
-        missing.clear();
 
+        // then
         assertThat(snapshot.installedCapabilities())
                 .containsExactly(PlatformExtensionCapability.CONFIGURATION_LOADED);
-        assertThat(snapshot.missingRequiredCapabilities()).isNotEmpty();
+        assertThat(snapshot.missingRequiredCapabilities())
+                .doesNotContain(PlatformExtensionCapability.CONFIGURATION_LOADED)
+                .hasSize(PlatformExtensionCapability.values().length - 1);
     }
 
     @Test
-    void snapshotRejectsBrokenStateInvariants() {
-        Set<PlatformExtensionCapability> allCapabilities =
-                EnumSet.allOf(PlatformExtensionCapability.class);
-        Set<PlatformExtensionCapability> oneCapability =
-                EnumSet.of(PlatformExtensionCapability.CONFIGURATION_LOADED);
-        Set<PlatformExtensionCapability> incompletePartition =
-                EnumSet.allOf(PlatformExtensionCapability.class);
-        incompletePartition.remove(PlatformExtensionCapability.CONFIGURATION_LOADED);
+    void snapshotRejectsBlankExtensionVersion() {
+        assertThatThrownBy(() -> new PlatformExtensionReadinessSnapshot.Initializing("  ", Set.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("extensionVersion");
+    }
 
-        assertThatThrownBy(() -> new PlatformExtensionReadinessSnapshot(
-                EXTENSION_VERSION,
-                PlatformExtensionLifecycle.INITIALIZING,
-                oneCapability,
-                oneCapability,
-                ""
-        )).isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("overlap");
+    @Test
+    void readinessFailureRejectsMalformedCodes() {
+        assertThatThrownBy(() -> new ReadinessFailure("", "EFFECTIVE_FAILURE"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("primaryCode");
+        assertThatThrownBy(() -> new ReadinessFailure("PRIMARY_FAILURE", "lower_case"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("effectiveCode");
+    }
 
-        assertThatThrownBy(() -> new PlatformExtensionReadinessSnapshot(
-                EXTENSION_VERSION,
-                PlatformExtensionLifecycle.INITIALIZING,
-                Set.of(),
-                incompletePartition,
-                ""
-        )).isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("every capability");
+    @Test
+    void capabilityInstalledAfterReadyReusesTheReadyGeneration() {
+        // given
+        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness(EXTENSION_VERSION);
+        installAllCapabilities(readiness);
+        PlatformExtensionReadinessSnapshot ready = readiness.completeInitialization();
 
-        assertThatThrownBy(() -> new PlatformExtensionReadinessSnapshot(
-                EXTENSION_VERSION,
-                PlatformExtensionLifecycle.READY,
-                allCapabilities,
-                Set.of(),
-                "UNEXPECTED_FAILURE"
-        )).isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("READY");
+        // when
+        PlatformExtensionReadinessSnapshot late =
+                readiness.markInstalled(PlatformExtensionCapability.SANITIZER_INSTALLED);
 
-        assertThatThrownBy(() -> new PlatformExtensionReadinessSnapshot(
-                EXTENSION_VERSION,
-                PlatformExtensionLifecycle.FAILED,
-                Set.of(),
-                allCapabilities,
-                ""
-        )).isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("failure code");
+        // then
+        assertThat(late).isSameAs(ready);
+        assertThat(readiness.snapshot()).isSameAs(ready);
     }
 
     @Test
@@ -168,42 +149,59 @@ class PlatformExtensionReadinessTest {
         for (String invalidCode : invalidCodes) {
             PlatformExtensionReadiness readiness = new PlatformExtensionReadiness(EXTENSION_VERSION);
 
-            PlatformExtensionReadinessSnapshot failed = readiness.fail(invalidCode);
+            PlatformExtensionReadinessSnapshot.Failed failed = readiness.fail(invalidCode, invalidCode);
 
             assertThat(failed.lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
-            assertThat(failed.failureCode()).isEqualTo(DEFAULT_FAILURE_CODE);
+            assertThat(failed.failure().primaryCode()).isEqualTo(DEFAULT_FAILURE_CODE);
+            assertThat(failed.failure().effectiveCode()).isEqualTo(DEFAULT_FAILURE_CODE);
         }
 
         PlatformExtensionReadiness boundary = new PlatformExtensionReadiness(EXTENSION_VERSION);
-        assertThat(boundary.fail("A".repeat(128)).failureCode()).hasSize(128);
+        PlatformExtensionReadinessSnapshot.Failed failed = boundary.fail("A".repeat(128), "B".repeat(128));
+        assertThat(failed.failure().primaryCode()).hasSize(128);
+        assertThat(failed.failure().effectiveCode()).hasSize(128);
     }
 
     @Test
-    void firstFailureWinsAndLateCapabilitiesAreIgnored() {
+    void repeatedFailurePairReusesCurrentGenerationAndLateCapabilitiesAreIgnored() {
+        // given
         PlatformExtensionReadiness readiness = new PlatformExtensionReadiness(EXTENSION_VERSION);
-        PlatformExtensionReadinessSnapshot first = readiness.fail("FIRST_FAILURE");
+        PlatformExtensionReadinessSnapshot first = readiness.fail("FIRST_FAILURE", "FIRST_FAILURE");
 
-        PlatformExtensionReadinessSnapshot second = readiness.fail("SECOND_FAILURE");
+        // when
+        PlatformExtensionReadinessSnapshot repeated = readiness.fail("FIRST_FAILURE", "FIRST_FAILURE");
         PlatformExtensionReadinessSnapshot late =
                 readiness.markInstalled(PlatformExtensionCapability.SANITIZER_INSTALLED);
+        Throwable completion = catchThrowable(readiness::completeInitialization);
 
-        assertThat(second).isSameAs(first);
+        // then
+        assertThat(repeated).isSameAs(first);
         assertThat(late).isSameAs(first);
-        assertThat(readiness.snapshot().failureCode()).isEqualTo("FIRST_FAILURE");
+        assertThat(completion)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("lifecycle=FAILED");
+        assertThat(readiness.snapshot()).isSameAs(first);
+        assertThat(failureOf(readiness.snapshot())).isEqualTo(new ReadinessFailure("FIRST_FAILURE", "FIRST_FAILURE"));
         assertThat(readiness.snapshot().installedCapabilities()).isEmpty();
     }
 
     @Test
-    void terminalCleanupFailureOverridesThePreliminaryClassification() {
+    void effectiveFailureCodeEscalatesWithoutReplacingPrimaryCode() {
+        // given
         PlatformExtensionReadiness readiness = new PlatformExtensionReadiness(EXTENSION_VERSION);
-        PlatformExtensionReadinessSnapshot preliminary = readiness.fail("JMX_TRANSPORT_STALE");
+        PlatformExtensionReadinessSnapshot preliminary = readiness.fail("JMX_TRANSPORT_STALE", "JMX_TRANSPORT_STALE");
 
-        PlatformExtensionReadinessSnapshot terminal =
-                readiness.recordTerminalCleanupFailure("FAILED_ROLLBACK_INCOMPLETE");
+        // when
+        PlatformExtensionReadinessSnapshot.Failed terminal = readiness.fail(
+                "JMX_TRANSPORT_STALE",
+                "FAILED_ROLLBACK_INCOMPLETE"
+        );
 
+        // then
         assertThat(terminal).isNotSameAs(preliminary);
         assertThat(terminal.lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
-        assertThat(terminal.failureCode()).isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
+        assertThat(terminal.failure().primaryCode()).isEqualTo("JMX_TRANSPORT_STALE");
+        assertThat(terminal.failure().effectiveCode()).isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
     }
 
     @Test
@@ -226,14 +224,14 @@ class PlatformExtensionReadinessTest {
         installAllCapabilities(readiness);
         PlatformExtensionReadinessSnapshot ready = readiness.completeInitialization();
 
-        PlatformExtensionReadinessSnapshot failed = readiness.fail("LATE_FAILURE");
+        PlatformExtensionReadinessSnapshot.Failed failed = readiness.fail("LATE_FAILURE", "LATE_FAILURE");
 
         assertThat(ready.lifecycle()).isEqualTo(PlatformExtensionLifecycle.READY);
         assertThat(failed.lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
-        assertThat(failed.failureCode()).isEqualTo("LATE_FAILURE");
-        assertThatThrownBy(readiness::completeInitialization)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("FAILED");
+        assertThat(failed.failure()).isEqualTo(new ReadinessFailure("LATE_FAILURE", "LATE_FAILURE"));
+        assertThat(failed.installedCapabilities()).containsExactlyInAnyOrder(PlatformExtensionCapability.values());
+        assertThatThrownBy(readiness::completeInitialization).isInstanceOf(IllegalStateException.class);
+        assertThat(readiness.snapshot()).isSameAs(failed);
     }
 
     @Test
@@ -286,7 +284,6 @@ class PlatformExtensionReadinessTest {
         assertThat(completed.lifecycle()).isEqualTo(PlatformExtensionLifecycle.READY);
         assertThat(completed.installedCapabilities()).containsExactlyInAnyOrder(capabilities);
         assertThat(completed.missingRequiredCapabilities()).isEmpty();
-        assertSnapshotPartition(completed);
     }
 
     @Test
@@ -307,7 +304,7 @@ class PlatformExtensionReadinessTest {
                     Future<PlatformExtensionReadinessSnapshot> failure = executor.submit(() -> {
                         poised.countDown();
                         requireLatch(start);
-                        return readiness.fail("CONCURRENT_FAILURE");
+                        return readiness.fail("CONCURRENT_FAILURE", "CONCURRENT_FAILURE");
                     });
 
                     assertThat(poised.await(5, TimeUnit.SECONDS)).isTrue();
@@ -317,13 +314,13 @@ class PlatformExtensionReadinessTest {
 
                     PlatformExtensionReadinessSnapshot terminal = readiness.snapshot();
                     assertThat(terminal.lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
-                    assertThat(terminal.failureCode()).isEqualTo("CONCURRENT_FAILURE");
+                    assertThat(failureOf(terminal))
+                            .isEqualTo(new ReadinessFailure("CONCURRENT_FAILURE", "CONCURRENT_FAILURE"));
                     assertThat(terminal.installedCapabilities().size())
                             .isIn(
                                     PlatformExtensionCapability.values().length - 1,
                                     PlatformExtensionCapability.values().length
                             );
-                    assertSnapshotPartition(terminal);
                 } finally {
                     start.countDown();
                 }
@@ -355,19 +352,6 @@ class PlatformExtensionReadinessTest {
         for (PlatformExtensionCapability capability : PlatformExtensionCapability.values()) {
             readiness.markInstalled(capability);
         }
-    }
-
-    private static void assertSnapshotPartition(PlatformExtensionReadinessSnapshot snapshot) {
-        assertThat(Collections.disjoint(
-                snapshot.installedCapabilities(),
-                snapshot.missingRequiredCapabilities()
-        )).isTrue();
-
-        EnumSet<PlatformExtensionCapability> accounted =
-                EnumSet.noneOf(PlatformExtensionCapability.class);
-        accounted.addAll(snapshot.installedCapabilities());
-        accounted.addAll(snapshot.missingRequiredCapabilities());
-        assertThat(accounted).containsExactlyInAnyOrder(PlatformExtensionCapability.values());
     }
 
     private static void requireLatch(CountDownLatch latch) throws InterruptedException {

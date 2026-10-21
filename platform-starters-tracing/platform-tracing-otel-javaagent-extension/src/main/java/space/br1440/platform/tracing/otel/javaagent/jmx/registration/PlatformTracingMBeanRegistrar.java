@@ -40,7 +40,7 @@ public final class PlatformTracingMBeanRegistrar {
     }
 
     public PlatformTracingMBeanRegistrar(MBeanServer mbeanServer, AgentInstanceId agentInstanceId) {
-        this(mbeanServer, new PlatformExtensionReadiness(), agentInstanceId);
+        this(mbeanServer, PlatformExtensionReadiness.forCurrentExtension(), agentInstanceId);
     }
 
     PlatformTracingMBeanRegistrar(MBeanServer mbeanServer,
@@ -50,8 +50,9 @@ public final class PlatformTracingMBeanRegistrar {
         if (requiredAgentInstanceId.isUnbound()) {
             throw new IllegalArgumentException("JMX registrar agentInstanceId must be bound");
         }
-        MBeanRegistrationScope scope = new MBeanRegistrationScope(mbeanServer, extensionReadiness);
-        this.extensionReadiness = scope.extensionReadiness();
+
+        MBeanRegistrationScope scope = new MBeanRegistrationScope(mbeanServer);
+        this.extensionReadiness = Objects.requireNonNull(extensionReadiness, "extensionReadiness");
         this.diagnosticPlane = new DiagnosticReadinessRegistrar(scope);
         this.agentInstanceId = requiredAgentInstanceId;
         this.runtimePlane = new RuntimeControlsRegistrar(scope, requiredAgentInstanceId);

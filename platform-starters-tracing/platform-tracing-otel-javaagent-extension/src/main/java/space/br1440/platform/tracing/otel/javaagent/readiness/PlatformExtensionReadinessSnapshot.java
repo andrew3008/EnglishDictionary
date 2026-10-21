@@ -5,44 +5,26 @@ import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
 
-import space.br1440.platform.common.util.StringUtils;
-
-/**
- * Неизменяемое представление состояния готовности расширения на определённый момент времени (point-in-time).
- * <p>
- * Наборы установленных и недостающих capabilities относятся к одному и тому же переходу состояния.
- * При передаче между подсистемами вызывающая сторона должна передавать этот объект целиком, а не
- * читать несколько полей readiness по отдельности.
- */
-public final class PlatformExtensionReadinessSnapshot {
+public abstract sealed class PlatformExtensionReadinessSnapshot
+        permits PlatformExtensionReadinessSnapshot.Initializing,
+                PlatformExtensionReadinessSnapshot.Ready,
+                PlatformExtensionReadinessSnapshot.Failed {
 
     private static final int CAPABILITY_COUNT = PlatformExtensionCapability.values().length;
 
     private final String extensionVersion;
-    private final PlatformExtensionLifecycle lifecycle;
     private final Set<PlatformExtensionCapability> installedCapabilities;
-    private final Set<PlatformExtensionCapability> missingRequiredCapabilities;
-    private final String failureCode;
 
-    PlatformExtensionReadinessSnapshot(String extensionVersion,
-                                       PlatformExtensionLifecycle lifecycle,
-                                       Set<PlatformExtensionCapability> installedCapabilities,
-                                       Set<PlatformExtensionCapability> missingRequiredCapabilities,
-                                       String failureCode) {
-        this.extensionVersion = requireText(extensionVersion, "extensionVersion");
-        this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
-        this.installedCapabilities = immutableCapabilities(installedCapabilities);
-        this.missingRequiredCapabilities = immutableCapabilities(missingRequiredCapabilities);
-        this.failureCode = Objects.requireNonNull(failureCode, "failureCode");
-        validateInvariant();
+    private PlatformExtensionReadinessSnapshot(String extensionVersion,
+                                               Set<PlatformExtensionCapability> installedCapabilities) {
+        this.extensionVersion = requireVersion(extensionVersion);
+        this.installedCapabilities = Collections.unmodifiableSet(copyOf(installedCapabilities));
     }
+
+    public abstract PlatformExtensionLifecycle lifecycle();
 
     public String extensionVersion() {
         return extensionVersion;
-    }
-
-    public PlatformExtensionLifecycle lifecycle() {
-        return lifecycle;
     }
 
     public Set<PlatformExtensionCapability> installedCapabilities() {
@@ -50,11 +32,7 @@ public final class PlatformExtensionReadinessSnapshot {
     }
 
     public Set<PlatformExtensionCapability> missingRequiredCapabilities() {
-        return missingRequiredCapabilities;
-    }
-
-    public String failureCode() {
-        return failureCode;
+        return Collections.unmodifiableSet(EnumSet.complementOf(copyOf(installedCapabilities)));
     }
 
     public boolean has(PlatformExtensionCapability capability) {
@@ -62,85 +40,104 @@ public final class PlatformExtensionReadinessSnapshot {
         return installedCapabilities.contains(capability);
     }
 
-    @Override
-    public String toString() {
-        return """
-            PlatformExtensionReadinessSnapshot{\
-            extensionVersion=%s, \
-            lifecycle=%s, \
-            capabilities=%d/%d\
-            %s}""".formatted(
-                extensionVersion,
-                lifecycle,
-                installedCapabilities.size(),
-                CAPABILITY_COUNT,
-                failureSuffix()
-        );
+    Failed failed(ReadinessFailure failure) {
+        return new Failed(extensionVersion, installedCapabilities, failure);
     }
 
-    private String failureSuffix() {
-        if (lifecycle == PlatformExtensionLifecycle.FAILED) {
-            return ", failureCode=" + failureCode;
+    @Override
+    public String toString() {
+        return "PlatformExtensionReadinessSnapshot{"
+                + "extensionVersion=" + extensionVersion
+                + ", lifecycle=" + lifecycle()
+                + ", capabilities=" + installedCapabilities.size() + "/" + CAPABILITY_COUNT
+                + failureDetails()
+                + '}';
+    }
+
+    private String failureDetails() {
+        if (this instanceof Failed failed) {
+            return ", primaryFailureCode=" + failed.failure().primaryCode()
+                    + ", failureCode=" + failed.failure().effectiveCode();
         }
 
         return "";
     }
 
-    private void validateInvariant() {
-        EnumSet<PlatformExtensionCapability> installed = copyOf(installedCapabilities);
-        EnumSet<PlatformExtensionCapability> missing = copyOf(missingRequiredCapabilities);
-        if (!Collections.disjoint(installed, missing)) {
-            throw new IllegalArgumentException("Installed and missing capability sets overlap");
-        }
-
-        installed.addAll(missing);
-        if (!installed.equals(EnumSet.allOf(PlatformExtensionCapability.class))) {
-            throw new IllegalArgumentException("Readiness snapshot must account for every capability");
-        }
-
-        switch (lifecycle) {
-            case INITIALIZING -> {
-                if (!failureCode.isEmpty()) {
-                    throw new IllegalArgumentException("INITIALIZING readiness snapshot is inconsistent");
-                }
-            }
-
-            case READY -> {
-                if (!missingRequiredCapabilities.isEmpty() || !failureCode.isEmpty()) {
-                    throw new IllegalArgumentException("READY readiness snapshot is inconsistent");
-                }
-            }
-
-            case FAILED -> {
-                if (failureCode.isEmpty()) {
-                    throw new IllegalArgumentException("FAILED readiness snapshot requires a failure code");
-                }
-            }
-        }
-    }
-
-    private static Set<PlatformExtensionCapability> immutableCapabilities(Set<PlatformExtensionCapability> capabilities) {
-        Objects.requireNonNull(capabilities, "capabilities");
-
-        if (capabilities.isEmpty()) {
-            return Set.of();
-        }
-
-        return Set.copyOf(EnumSet.copyOf(capabilities));
-    }
-
     private static EnumSet<PlatformExtensionCapability> copyOf(Set<PlatformExtensionCapability> capabilities) {
+        Objects.requireNonNull(capabilities, "capabilities");
         return capabilities.isEmpty()
                 ? EnumSet.noneOf(PlatformExtensionCapability.class)
                 : EnumSet.copyOf(capabilities);
     }
 
-    @SuppressWarnings("SameParameterValue")
-    private static String requireText(String value, String name) {
-        if (StringUtils.isNullOrBlank(value)) {
-            throw new IllegalArgumentException(name + " must not be blank");
+    private static String requireVersion(String extensionVersion) {
+        if (extensionVersion == null || extensionVersion.isBlank()) {
+            throw new IllegalArgumentException("extensionVersion must not be blank");
         }
 
-        return value;
+        return extensionVersion;
+    }
+
+    public static final class Initializing extends PlatformExtensionReadinessSnapshot {
+
+        Initializing(String extensionVersion, Set<PlatformExtensionCapability> installedCapabilities) {
+            super(extensionVersion, installedCapabilities);
+        }
+
+        @Override
+        public PlatformExtensionLifecycle lifecycle() {
+            return PlatformExtensionLifecycle.INITIALIZING;
+        }
+
+        Initializing withInstalled(PlatformExtensionCapability capability) {
+            EnumSet<PlatformExtensionCapability> installed = copyOf(installedCapabilities());
+            installed.add(capability);
+            return new Initializing(extensionVersion(), installed);
+        }
+
+        Ready ready() {
+            Set<PlatformExtensionCapability> missing = missingRequiredCapabilities();
+            if (!missing.isEmpty()) {
+                throw new IllegalStateException(
+                        "Platform extension readiness is not READY: lifecycle=%s, missingCapabilities=%s"
+                                .formatted(lifecycle(), missing)
+                );
+            }
+
+            return new Ready(extensionVersion());
+        }
+    }
+
+    public static final class Ready extends PlatformExtensionReadinessSnapshot {
+
+        private Ready(String extensionVersion) {
+            super(extensionVersion, EnumSet.allOf(PlatformExtensionCapability.class));
+        }
+
+        @Override
+        public PlatformExtensionLifecycle lifecycle() {
+            return PlatformExtensionLifecycle.READY;
+        }
+    }
+
+    public static final class Failed extends PlatformExtensionReadinessSnapshot {
+
+        private final ReadinessFailure failure;
+
+        private Failed(String extensionVersion,
+                       Set<PlatformExtensionCapability> installedCapabilities,
+                       ReadinessFailure failure) {
+            super(extensionVersion, installedCapabilities);
+            this.failure = Objects.requireNonNull(failure, "failure");
+        }
+
+        @Override
+        public PlatformExtensionLifecycle lifecycle() {
+            return PlatformExtensionLifecycle.FAILED;
+        }
+
+        public ReadinessFailure failure() {
+            return failure;
+        }
     }
 }

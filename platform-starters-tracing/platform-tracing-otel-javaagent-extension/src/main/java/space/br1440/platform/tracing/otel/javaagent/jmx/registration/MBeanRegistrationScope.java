@@ -6,19 +6,13 @@ import java.util.function.Supplier;
 
 import javax.management.MBeanServer;
 
-import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
-
 final class MBeanRegistrationScope {
 
-    private static final String FAILED_ROLLBACK_INCOMPLETE = "FAILED_ROLLBACK_INCOMPLETE";
-
     private final MBeanBatchRegistrar batchRegistrar;
-    private final PlatformExtensionReadiness extensionReadiness;
     private final Object serializationLock = new Object();
 
-    MBeanRegistrationScope(MBeanServer mbeanServer, PlatformExtensionReadiness extensionReadiness) {
+    MBeanRegistrationScope(MBeanServer mbeanServer) {
         this.batchRegistrar = new MBeanBatchRegistrar(Objects.requireNonNull(mbeanServer, "mbeanServer"));
-        this.extensionReadiness = Objects.requireNonNull(extensionReadiness, "extensionReadiness");
     }
 
     void runSerialized(Runnable action) {
@@ -37,10 +31,6 @@ final class MBeanRegistrationScope {
         }
     }
 
-    PlatformExtensionReadiness extensionReadiness() {
-        return extensionReadiness;
-    }
-
     MBeanBatchRegistrar.RegisteredBatch registerOne(MBeanBatchRegistrar.Registration registration) {
         requireSerialized();
         return batchRegistrar.registerOne(registration);
@@ -49,14 +39,6 @@ final class MBeanRegistrationScope {
     MBeanBatchRegistrar.RegisteredBatch registerAllOrRollback(List<MBeanBatchRegistrar.Registration> registrations) {
         requireSerialized();
         return batchRegistrar.registerAllOrRollback(registrations);
-    }
-
-    void failRegistration(String code) {
-        if (FAILED_ROLLBACK_INCOMPLETE.equals(code)) {
-            extensionReadiness.recordTerminalCleanupFailure(code);
-            return;
-        }
-        extensionReadiness.fail(code);
     }
 
     void reclaimUnreclaimed() {
@@ -70,7 +52,6 @@ final class MBeanRegistrationScope {
         JmxRegistrationException aggregate = new JmxRegistrationException("MBean cleanup retry failed", failures.getFirst());
         failures.stream().skip(1).forEach(aggregate::addSuppressed);
         aggregate.markRollbackIncomplete();
-        failRegistration(FAILED_ROLLBACK_INCOMPLETE);
         throw aggregate;
     }
 

@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 
+import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSnapshotAssertions.initializingOf;
+
 import java.util.function.Supplier;
 
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
@@ -14,7 +16,7 @@ public final class JmxRegistrationTestFixtures {
     public static Supplier<ExtensionReadinessWireSnapshot> initializingReadinessProjection(
             AgentInstanceId agentInstanceId) {
         ExtensionReadinessWireSnapshot snapshot = ExtensionReadinessWireSnapshot.initializing(
-                new PlatformExtensionReadiness().snapshot(),
+                initializingOf(PlatformExtensionReadiness.forCurrentExtension().snapshot()),
                 agentInstanceId.toString()
         );
         return () -> snapshot;

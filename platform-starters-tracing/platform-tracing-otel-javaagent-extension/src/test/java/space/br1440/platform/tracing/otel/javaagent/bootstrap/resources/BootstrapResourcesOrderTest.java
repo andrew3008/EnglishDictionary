@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap.resources;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -63,28 +64,58 @@ class BootstrapResourcesOrderTest {
         List<String> closeOrder = new ArrayList<>();
         IllegalStateException runtimeFailure = new IllegalStateException("simulated lower cleanup failure");
         NoClassDefFoundError fatalFailure = new NoClassDefFoundError("simulated fatal cleanup failure");
-        try (BootstrapResources resources = new BootstrapResources((threadName, action) -> () -> {
-        })) {
-            resources.push(() -> {
-                closeOrder.add("bottom");
-                throw runtimeFailure;
-            }, "bottom");
-            resources.push(() -> {
-                closeOrder.add("top");
-                throw fatalFailure;
-            }, "top");
+        BootstrapResources resources = new BootstrapResources((threadName, action) -> () -> {
+        });
+        resources.push(() -> {
+            closeOrder.add("bottom");
+            throw runtimeFailure;
+        }, "bottom");
+        resources.push(() -> {
+            closeOrder.add("top");
+            throw fatalFailure;
+        }, "top");
 
-            // when
-            assertThatThrownBy(resources::close)
-                    .isSameAs(fatalFailure)
-                    .satisfies(failure -> {
-                        assertThat(failure.getSuppressed()).hasSize(1);
-                        assertThat(failure.getSuppressed()[0].getCause()).isSameAs(runtimeFailure);
-                    });
+        // when
+        assertThatThrownBy(resources::close)
+                .isSameAs(fatalFailure)
+                .satisfies(failure -> {
+                    assertThat(failure.getSuppressed()).hasSize(1);
+                    assertThat(failure.getSuppressed()[0].getCause()).isSameAs(runtimeFailure);
+                });
 
-            // then
-            assertThat(closeOrder).containsExactly("top", "bottom");
-        }
+        // then
+        assertThat(closeOrder).containsExactly("top", "bottom");
+        assertThatThrownBy(resources::close).isSameAs(fatalFailure);
+    }
+
+    @Test
+    void repeatedCloseAfterFailureRethrowsSameInstance() {
+        // given
+        BootstrapResources resources = new BootstrapResources((threadName, action) -> () -> {
+        });
+        resources.push(() -> {
+            throw new IllegalStateException("simulated cleanup failure");
+        }, "runtime-controls");
+
+        // when
+        Throwable firstFailure = catchThrowable(resources::close);
+
+        // then
+        assertThat(firstFailure).isInstanceOf(BootstrapResourceCleanupException.class);
+        assertThatThrownBy(resources::close).isSameAs(firstFailure);
+    }
+
+    @Test
+    void repeatedCloseAfterSuccessReturnsNormally() {
+        // given
+        BootstrapResources resources = new BootstrapResources((threadName, action) -> () -> {
+        });
+
+        // when
+        resources.close();
+
+        // then
+        assertThatCode(resources::close).doesNotThrowAnyException();
     }
 
     @Test
@@ -97,14 +128,14 @@ class BootstrapResourcesOrderTest {
         UnsupportedOperationException completionFailure = new UnsupportedOperationException("completion-" + SECRET_MARKER);
         ByteArrayOutputStream rawStderr = new ByteArrayOutputStream();
         PrintStream previousStderr = System.err;
+        BootstrapResources resources = new BootstrapResources((threadName, action) -> {
+            shutdownAction.set(action);
+            return () -> {
+            };
+        });
 
         try (PrintStream replacementStderr = new PrintStream(rawStderr, true, StandardCharsets.UTF_8);
-             AgentLogCapture logs = AgentLogCapture.installed();
-             BootstrapResources resources = new BootstrapResources((threadName, action) -> {
-                 shutdownAction.set(action);
-                 return () -> {
-                 };
-             })) {
+             AgentLogCapture logs = AgentLogCapture.installed()) {
             resources.push(() -> {
                 throw cleanupCause;
             }, "failing-resource");
@@ -145,6 +176,7 @@ class BootstrapResourcesOrderTest {
 
             assertThat(rawStderr.toString(StandardCharsets.UTF_8)).isEmpty();
             assertThat(logs.rendered()).doesNotContain(SECRET_MARKER);
+            assertThatThrownBy(resources::close).isSameAs(receivedCleanupFailure.get());
         } finally {
             System.setErr(previousStderr);
         }

@@ -3,13 +3,13 @@ package space.br1440.platform.tracing.autoconfigure.agent;
 import java.util.Objects;
 import java.util.Set;
 
-record AgentReadinessSnapshot(ContractIdentity contractIdentity,
-                              AnchorIdentity anchorIdentity,
-                              LifecycleState lifecycleState,
-                              DistributionIdentity distributionIdentity,
-                              ClassloaderTopology classloaderTopology) {
+public record AgentReadinessSnapshot(ContractIdentity contractIdentity,
+                                     AnchorIdentity anchorIdentity,
+                                     LifecycleState lifecycleState,
+                                     DistributionIdentity distributionIdentity,
+                                     ClassloaderTopology classloaderTopology) {
 
-    AgentReadinessSnapshot {
+    public AgentReadinessSnapshot {
         Objects.requireNonNull(contractIdentity, "contractIdentity");
         Objects.requireNonNull(anchorIdentity, "anchorIdentity");
         Objects.requireNonNull(lifecycleState, "lifecycleState");
@@ -17,45 +17,51 @@ record AgentReadinessSnapshot(ContractIdentity contractIdentity,
         Objects.requireNonNull(classloaderTopology, "classloaderTopology");
     }
 
-    record ContractIdentity(String contractId, String schemaDigest) {
-        ContractIdentity {
+    public record ContractIdentity(String contractId, String schemaDigest) {
+
+        public ContractIdentity {
             Objects.requireNonNull(contractId, "contractId");
             Objects.requireNonNull(schemaDigest, "schemaDigest");
         }
     }
 
-    record AnchorIdentity(String agentInstanceId, long evidenceGeneration, String batchId) {
-        AnchorIdentity {
+    public record AnchorIdentity(String agentInstanceId, long evidenceGeneration, String batchId) {
+
+        public AnchorIdentity {
             agentInstanceId = AgentInstanceIdValidator.requireCanonical(agentInstanceId, "agentInstanceId");
             Objects.requireNonNull(batchId, "batchId");
         }
     }
 
-    record LifecycleState(String lifecycle,
-                          String failureCode,
-                          Set<String> capabilities,
-                          Set<String> missingRequired) {
-        LifecycleState {
+    public record LifecycleState(String lifecycle,
+                                 String failureCode,
+                                 String primaryFailureCode,
+                                 Set<String> capabilities,
+                                 Set<String> missingRequired) {
+
+        public LifecycleState {
             Objects.requireNonNull(lifecycle, "lifecycle");
             Objects.requireNonNull(failureCode, "failureCode");
+            Objects.requireNonNull(primaryFailureCode, "primaryFailureCode");
             capabilities = Set.copyOf(Objects.requireNonNull(capabilities, "capabilities"));
             missingRequired = Set.copyOf(Objects.requireNonNull(missingRequired, "missingRequired"));
         }
     }
 
-    record DistributionIdentity(String agentDistributionSha256,
-                                String upstreamAgentVersion,
-                                String extensionVersion) {
-        DistributionIdentity {
+    public record DistributionIdentity(String agentDistributionSha256,
+                                       String upstreamAgentVersion,
+                                       String extensionVersion) {
+
+        public DistributionIdentity {
             Objects.requireNonNull(agentDistributionSha256, "agentDistributionSha256");
             Objects.requireNonNull(upstreamAgentVersion, "upstreamAgentVersion");
             Objects.requireNonNull(extensionVersion, "extensionVersion");
         }
     }
 
-    record ClassloaderTopology(String extensionDefiningLoader,
-                               String sdkDefiningLoader) {
-        ClassloaderTopology {
+    public record ClassloaderTopology(String extensionDefiningLoader, String sdkDefiningLoader) {
+
+        public ClassloaderTopology {
             Objects.requireNonNull(extensionDefiningLoader, "extensionDefiningLoader");
             Objects.requireNonNull(sdkDefiningLoader, "sdkDefiningLoader");
         }

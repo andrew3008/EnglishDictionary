@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceTestSupport;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessSnapshot;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
@@ -587,43 +588,111 @@ class TracingStatusAssemblerTest {
         }
     }
 
+    @Test
+    void endpointAbsentAgentSectionOmitsSnapshotFields() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = TracingDeploymentDiagnostics.withoutAgentData(
+                true,
+                false,
+                AgentRuntimeState.AGENT_MISSING,
+                "CONTROLLED_AGENT_MISSING");
+
+        // when
+        Map<String, Object> agent = assembler(true, TracingControlChannel.NONE, diagnostics).assemble().agent();
+
+        // then
+        assertThat(agent).containsOnlyKeys(
+                "state",
+                "markerVisible",
+                "readinessEndpointPresent",
+                "failureCode");
+        assertThat(agent)
+                .containsEntry("state", AgentRuntimeState.AGENT_MISSING.name())
+                .containsEntry("markerVisible", false)
+                .containsEntry("readinessEndpointPresent", false)
+                .containsEntry("failureCode", "CONTROLLED_AGENT_MISSING");
+    }
+
+    @Test
+    void unreadableAgentSectionKeepsEndpointPresenceAndOmitsSnapshotFields() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = new TracingDeploymentDiagnostics(
+                true,
+                true,
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                new TracingDeploymentDiagnostics.SnapshotUnreadable("READINESS_INVOCATION_FAILED"));
+
+        // when
+        Map<String, Object> agent = assembler(true, TracingControlChannel.NONE, diagnostics).assemble().agent();
+
+        // then
+        assertThat(agent).containsOnlyKeys(
+                "state",
+                "markerVisible",
+                "readinessEndpointPresent",
+                "failureCode");
+        assertThat(agent)
+                .containsEntry("state", AgentRuntimeState.EXTENSION_INCOMPATIBLE.name())
+                .containsEntry("markerVisible", true)
+                .containsEntry("readinessEndpointPresent", true)
+                .containsEntry("failureCode", "READINESS_INVOCATION_FAILED");
+    }
+
+    @Test
+    void agentSectionReportsStarterFailureCodeWhenSnapshotFailureCodeDiffers() {
+        // given
+        AgentReadinessSnapshot snapshot = new AgentReadinessSnapshot(
+                new AgentReadinessSnapshot.ContractIdentity("platform-tracing-jmx-wire-contract", "schema-digest"),
+                new AgentReadinessSnapshot.AnchorIdentity(AGENT_INSTANCE_ID, 4L, "batch-4"),
+                new AgentReadinessSnapshot.LifecycleState(
+                        "FAILED",
+                        "AGENT_EMITTED",
+                        "AGENT_PRIMARY",
+                        Set.of(),
+                        Set.of()),
+                new AgentReadinessSnapshot.DistributionIdentity("a".repeat(64), "2.30.0", "1.2.3"),
+                new AgentReadinessSnapshot.ClassloaderTopology("agent-loader@1", "sdk-loader@2"));
+        TracingDeploymentDiagnostics diagnostics = new TracingDeploymentDiagnostics(
+                true,
+                true,
+                AgentRuntimeState.EXTENSION_FAILED,
+                TracingDeploymentDiagnostics.Observed.of(snapshot, "STARTER_DECISION"));
+
+        // when
+        Map<String, Object> agent = assembler(true, TracingControlChannel.NONE, diagnostics).assemble().agent();
+
+        // then
+        assertThat(agent)
+                .containsEntry("failureCode", "STARTER_DECISION")
+                .containsEntry("readinessEndpointPresent", true)
+                .containsEntry("lifecycle", "FAILED")
+                .containsEntry("evidenceGeneration", 4L)
+                .doesNotContainValue("AGENT_EMITTED")
+                .doesNotContainValue("AGENT_PRIMARY");
+    }
+
     private static TracingDeploymentDiagnostics diagnostics(AgentRuntimeState state) {
+        boolean ready = state == AgentRuntimeState.AGENT_READY;
         return new TracingDeploymentDiagnostics(
-                state == AgentRuntimeState.AGENT_READY,
-                state == AgentRuntimeState.AGENT_READY,
+                ready,
+                ready,
                 state,
-                new TracingDeploymentDiagnostics.AgentReadiness(
-                        state == AgentRuntimeState.AGENT_READY,
+                ready
+                        ? TracingDeploymentDiagnostics.Observed.of(readySnapshot(), "")
+                        : new TracingDeploymentDiagnostics.EndpointAbsent("TEST_FAILURE")
+        );
+    }
 
-                        new TracingDeploymentDiagnostics.ContractIdentity(
-                                "platform-tracing-jmx-wire-contract",
-                                "schema-digest"
-                        ),
-
-                        new TracingDeploymentDiagnostics.ReadinessAnchor(
-                                AGENT_INSTANCE_ID,
-                                1L,
-                                "batch-1"
-                        ),
-
-                        new TracingDeploymentDiagnostics.LifecycleState(
-                                state == AgentRuntimeState.AGENT_READY ? "READY" : "FAILED",
-                                state == AgentRuntimeState.AGENT_READY ? "" : "TEST_FAILURE",
-                                Set.of(),
-                                Set.of()
-                        ),
-
-                        new TracingDeploymentDiagnostics.DistributionIdentity(
-                                "a".repeat(64),
-                                "2.30.0",
-                                "1.2.3"
-                        ),
-
-                        new TracingDeploymentDiagnostics.ClassloaderTopology(
-                                "agent-loader@1",
-                                "sdk-loader@2"
-                        )
-                )
+    private static AgentReadinessSnapshot readySnapshot() {
+        return new AgentReadinessSnapshot(
+                new AgentReadinessSnapshot.ContractIdentity(
+                        "platform-tracing-jmx-wire-contract",
+                        "schema-digest"
+                ),
+                new AgentReadinessSnapshot.AnchorIdentity(AGENT_INSTANCE_ID, 1L, "batch-1"),
+                new AgentReadinessSnapshot.LifecycleState("READY", "", "", Set.of(), Set.of()),
+                new AgentReadinessSnapshot.DistributionIdentity("a".repeat(64), "2.30.0", "1.2.3"),
+                new AgentReadinessSnapshot.ClassloaderTopology("agent-loader@1", "sdk-loader@2")
         );
     }
 

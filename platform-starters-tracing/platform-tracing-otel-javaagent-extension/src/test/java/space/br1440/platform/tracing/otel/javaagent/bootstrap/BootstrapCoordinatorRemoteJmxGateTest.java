@@ -7,6 +7,7 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
+import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSnapshotAssertions.failureOf;
 
 import java.util.List;
 import javax.management.MBeanServer;
@@ -46,7 +47,7 @@ class BootstrapCoordinatorRemoteJmxGateTest {
         );
 
         // then
-        assertThat(outcome.readiness().failureCode())
+        assertThat(failureOf(outcome.readiness()).effectiveCode())
                 .isEqualTo(RemoteJmxDenialReason.REMOTE_JMX_MANAGEMENT_AGENT_CONFIGURED.name());
         assertThat(singleRemoteJmxDenialEvent(outcome).fields())
                 .containsEntry("failureCode", RemoteJmxDenialReason.REMOTE_JMX_MANAGEMENT_AGENT_CONFIGURED.name())
@@ -63,7 +64,7 @@ class BootstrapCoordinatorRemoteJmxGateTest {
         );
 
         // then
-        assertThat(outcome.readiness().failureCode())
+        assertThat(failureOf(outcome.readiness()).effectiveCode())
                 .isEqualTo(RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name());
         assertThat(singleRemoteJmxDenialEvent(outcome).fields())
                 .containsEntry("failureCode", RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name())
@@ -97,7 +98,7 @@ class BootstrapCoordinatorRemoteJmxGateTest {
         );
 
         // then
-        assertThat(outcome.readiness().failureCode())
+        assertThat(failureOf(outcome.readiness()).effectiveCode())
                 .isEqualTo(RemoteJmxDenialReason.REMOTE_JMX_EVIDENCE_UNKNOWN.name());
         assertThat(eventsWithCode(outcome, AgentEventCode.BOOT_REMOTE_JMX_DENIED))
                 .as("the exception path is not a classified assessment denial")
@@ -123,7 +124,7 @@ class BootstrapCoordinatorRemoteJmxGateTest {
 
             assertThatCoordinator(coordinator).hasWireFailure(expectedReason.name());
             assertThat(coordinator.currentWire().batchId()).isEmpty();
-            assertThat(session.readiness().snapshot().failureCode()).isEqualTo(expectedReason.name());
+            assertThat(failureOf(session.readiness().snapshot()).effectiveCode()).isEqualTo(expectedReason.name());
             assertThat(server.isRegistered(DomainObjectNames.SETTINGS_MUTATION))
                     .as("mutation surface must stay unregistered after gate denial")
                     .isFalse();

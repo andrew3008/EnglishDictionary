@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.function.Supplier;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
@@ -24,8 +25,7 @@ final class RuntimeControlsRegistrar {
     private final OwnerRegistrationSlots slots = new OwnerRegistrationSlots();
     private final AgentInstanceId agentInstanceId;
 
-    private long generation;
-    private long activeGeneration;
+    private Handle active;
     private MBeanBatchRegistrar.RegisteredBatch batch;
 
     private volatile ObservationSnapshotPublisher observationPublisher;
@@ -39,7 +39,7 @@ final class RuntimeControlsRegistrar {
         Objects.requireNonNull(acceptedPolicy, "acceptedPolicy");
 
         return scope.callSerialized(() -> {
-            if (activeGeneration != 0L) {
+            if (active != null) {
                 throw new IllegalStateException("PlatformTracingMBeanRegistrar already has an active runtime registration");
             }
 
@@ -84,81 +84,46 @@ final class RuntimeControlsRegistrar {
         requestObservationSnapshotPublication();
     }
 
-    private PlatformTracingMBeanRegistrar.RuntimeRegistration registerLocked(TracingSettingsSource acceptedPolicy) {
-        long token = ++generation;
-
-        DomainMBeanFactory.DomainMBeans domainMBeans;
-        try {
-            domainMBeans = DomainMBeanFactory.build(
-                    slots,
-                    acceptedPolicy,
-                    sharedInvalidConfigCounter,
-                    agentInstanceId
-            );
-        } catch (RuntimeException | Error failure) {
-            scope.failRegistration("JMX_OBSERVATION_INITIALIZATION_FAILED");
-            throw failure;
-        }
-
-        try {
-            batch = scope.registerAllOrRollback(domainMBeans.registrations());
-        } catch (RuntimeException | Error failure) {
-            failBatchRegistrationLocked(domainMBeans.observationPublisher(), failure);
-            throw failure;
-        }
+    private Handle registerLocked(TracingSettingsSource acceptedPolicy) {
+        DomainMBeanFactory.DomainMBeans domainMBeans = callClassified(
+                Stage.OBSERVATION_INITIALIZATION,
+                () -> DomainMBeanFactory.build(slots, acceptedPolicy, sharedInvalidConfigCounter, agentInstanceId)
+        );
 
         observationPublisher = domainMBeans.observationPublisher();
         try {
-            observationPublisher.start();
+            batch = callClassified(
+                    Stage.BATCH_REGISTRATION,
+                    () -> scope.registerAllOrRollback(domainMBeans.registrations())
+            );
+            runClassified(Stage.PUBLISHER_START, observationPublisher::start);
         } catch (RuntimeException | Error failure) {
-            failPublisherStartLocked(failure);
+            releaseLocked().suppressInto(failure);
             throw failure;
         }
 
-        activeGeneration = token;
-        return new Handle(token, batch.batchId());
+        active = new Handle(batch.batchId());
+        return active;
     }
 
-    private void failBatchRegistrationLocked(ObservationSnapshotPublisher unstartedPublisher, Throwable failure) {
-        closeSuppressing(unstartedPublisher, failure);
-        scope.failRegistration(batchFailureReason(failure));
-    }
+    private Release releaseLocked() {
+        ObservationSnapshotPublisher publisher = observationPublisher;
+        MBeanBatchRegistrar.RegisteredBatch registered = batch;
+        observationPublisher = null;
+        batch = null;
+        active = null;
 
-    private void failPublisherStartLocked(Throwable failure) {
-        ObservationSnapshotPublisher startedPublisher = detachPublisherLocked();
-        String reason = "JMX_OBSERVATION_PUBLISHER_START_FAILED";
+        if (registered == null) {
+            return new Release(publisher, null);
+        }
+
         try {
-            closeLocked();
-        } catch (RuntimeException | Error rollbackFailure) {
-            failure.addSuppressed(rollbackFailure);
-            reason = "FAILED_ROLLBACK_INCOMPLETE";
-        } finally {
-            closeSuppressing(startedPublisher, failure);
+            registered.close();
+            scope.reclaimUnreclaimed();
+            return new Release(publisher, null);
+        } catch (RuntimeException | Error batchFailure) {
+            return new Release(publisher, batchFailure);
         }
-
-        scope.failRegistration(reason);
-    }
-
-    private static String batchFailureReason(Throwable failure) {
-        return rollbackIncomplete(failure) ? "FAILED_ROLLBACK_INCOMPLETE" : "JMX_BATCH_REGISTRATION_FAILED";
-    }
-
-    private static boolean rollbackIncomplete(Throwable failure) {
-        if (markedRollbackIncomplete(failure)) {
-            return true;
-        }
-
-        for (Throwable suppressed : failure.getSuppressed()) {
-            if (markedRollbackIncomplete(suppressed)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static boolean markedRollbackIncomplete(Throwable failure) {
-        return failure instanceof JmxRegistrationException jmxFailure && jmxFailure.rollbackIncomplete();
     }
 
     private void requestObservationSnapshotPublication() {
@@ -168,10 +133,21 @@ final class RuntimeControlsRegistrar {
         }
     }
 
-    private ObservationSnapshotPublisher detachPublisherLocked() {
-        ObservationSnapshotPublisher publisher = observationPublisher;
-        observationPublisher = null;
-        return publisher;
+    private static <T> T callClassified(Stage stage, Supplier<T> action) {
+        try {
+            return action.get();
+        } catch (RuntimeException failure) {
+            throw JmxRegistrationException.classify(stage.failureCode, stage.message, failure);
+        }
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    private static void runClassified(Stage stage, Runnable action) {
+        try {
+            action.run();
+        } catch (RuntimeException failure) {
+            throw JmxRegistrationException.classify(stage.failureCode, stage.message, failure);
+        }
     }
 
     private static void closeSuppressing(ObservationSnapshotPublisher publisher, Throwable primaryFailure) {
@@ -186,35 +162,55 @@ final class RuntimeControlsRegistrar {
         }
     }
 
-    private void closeLocked() {
-        if (batch == null) {
-            activeGeneration = 0L;
-            scope.reclaimUnreclaimed();
-            return;
+    private enum Stage {
+        OBSERVATION_INITIALIZATION("JMX_OBSERVATION_INITIALIZATION_FAILED", "JMX observation initialization failed"),
+        BATCH_REGISTRATION("JMX_BATCH_REGISTRATION_FAILED", "Runtime MBean batch registration failed"),
+        PUBLISHER_START("JMX_OBSERVATION_PUBLISHER_START_FAILED", "JMX observation publisher start failed");
+
+        private final String failureCode;
+        private final String message;
+
+        Stage(String failureCode, String message) {
+            this.failureCode = failureCode;
+            this.message = message;
+        }
+    }
+
+    private record Release(ObservationSnapshotPublisher publisher, Throwable batchFailure) {
+
+        private static final Release NONE = new Release(null, null);
+
+        void suppressInto(Throwable primaryFailure) {
+            if (batchFailure != null) {
+                primaryFailure.addSuppressed(batchFailure);
+            }
+
+            closeSuppressing(publisher, primaryFailure);
         }
 
-        try {
-            batch.close();
-        } catch (JmxRegistrationException failure) {
-            scope.failRegistration("FAILED_ROLLBACK_INCOMPLETE");
-            throw failure;
-        } finally {
-            batch = null;
-            activeGeneration = 0L;
-        }
+        void completeOutsideLock() {
+            if (batchFailure == null) {
+                if (publisher != null) {
+                    publisher.close();
+                }
 
-        scope.reclaimUnreclaimed();
+                return;
+            }
+
+            closeSuppressing(publisher, batchFailure);
+            if (batchFailure instanceof Error error) {
+                throw error;
+            }
+
+            throw (RuntimeException) batchFailure;
+        }
     }
 
     private final class Handle implements PlatformTracingMBeanRegistrar.RuntimeRegistration {
 
-        private final long token;
         private final UUID batchId;
-        private boolean closed;
-        private ObservationSnapshotPublisher detachedPublisher;
 
-        private Handle(long token, UUID batchId) {
-            this.token = token;
+        private Handle(UUID batchId) {
             this.batchId = batchId;
         }
 
@@ -225,44 +221,8 @@ final class RuntimeControlsRegistrar {
 
         @Override
         public void close() {
-            boolean closePublisherOutside;
-            try {
-                closePublisherOutside = scope.callSerialized(this::closeLockedOnce);
-            } catch (RuntimeException | Error batchFailure) {
-                closeSuppressing(takeDetachedPublisher(), batchFailure);
-                throw batchFailure;
-            }
-
-            if (closePublisherOutside) {
-                closeDetachedPublisher(takeDetachedPublisher());
-            }
-        }
-
-        private boolean closeLockedOnce() {
-            if (closed) {
-                return false;
-            }
-
-            closed = true;
-            if (activeGeneration != token) {
-                return false;
-            }
-
-            detachedPublisher = detachPublisherLocked();
-            closeLocked();
-            return true;
-        }
-
-        private ObservationSnapshotPublisher takeDetachedPublisher() {
-            ObservationSnapshotPublisher publisher = detachedPublisher;
-            detachedPublisher = null;
-            return publisher;
-        }
-
-        private void closeDetachedPublisher(ObservationSnapshotPublisher publisher) {
-            if (publisher != null) {
-                publisher.close();
-            }
+            scope.callSerialized(() -> (active == this) ? releaseLocked() : Release.NONE)
+                    .completeOutsideLock();
         }
     }
 }

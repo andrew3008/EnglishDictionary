@@ -1,7 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
 
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
@@ -12,72 +11,96 @@ import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionR
 
 final class BootstrapReadinessJournal {
 
-    private final Object monitor;
-    private final AtomicReference<ExtensionReadinessWireSnapshot> snapshot = new AtomicReference<>(
-            ExtensionReadinessWireSnapshot.initializing()
-    );
+    private static final String FAILED_LIFECYCLE = PlatformExtensionLifecycle.FAILED.name();
+    private static final long NO_EVIDENCE_GENERATION = 0L;
+    private static final long FIRST_EVIDENCE_GENERATION = 1L;
 
-    BootstrapReadinessJournal(Object monitor) {
+    private final Object monitor;
+    private final PlatformExtensionReadiness readiness;
+    private final String agentInstanceId;
+
+    private volatile ExtensionReadinessWireSnapshot snapshot = ExtensionReadinessWireSnapshot.initializing();
+
+    BootstrapReadinessJournal(Object monitor,
+                              PlatformExtensionReadiness readiness,
+                              AgentInstanceId agentInstanceId) {
         this.monitor = Objects.requireNonNull(monitor, "monitor");
+        this.readiness = Objects.requireNonNull(readiness, "readiness");
+        this.agentInstanceId = Objects.requireNonNull(agentInstanceId, "agentInstanceId").toString();
     }
 
     ExtensionReadinessWireSnapshot current() {
-        return snapshot.get();
+        return snapshot;
     }
 
-    void publishInitializing(PlatformExtensionReadiness readiness, AgentInstanceId agentInstanceId) {
-        snapshot.set(ExtensionReadinessWireSnapshot.initializing(
-                readiness.snapshot(),
-                agentInstanceId.toString()
-        ));
+    void publishInitializing() {
+        PlatformExtensionReadinessSnapshot observed = readiness.snapshot();
+        if (!(observed instanceof PlatformExtensionReadinessSnapshot.Initializing initializing)) {
+            throw new IllegalStateException("INITIALIZING readiness publication observed " + observed);
+        }
+
+        snapshot = ExtensionReadinessWireSnapshot.initializing(initializing, agentInstanceId);
     }
 
     void publishReady(ExtensionReadinessWireSnapshot ready) {
-        snapshot.set(Objects.requireNonNull(ready, "ready"));
+        snapshot = Objects.requireNonNull(ready, "ready");
     }
 
-    void publishFailed(PlatformExtensionReadiness readiness,
-                       AgentInstanceId agentInstanceId,
-                       String failureCode) {
-        ExtensionReadinessWireSnapshot current = snapshot.get();
-        PlatformExtensionReadinessSnapshot readinessSnapshot = readiness.snapshot();
-        boolean sameAgentInstance = agentInstanceId.toString().equals(current.agentInstanceId());
-        String batchId = sameAgentInstance ? current.batchId() : "";
-        ExtensionRuntimeEvidence evidence = sameAgentInstance
-                ? current.evidence()
-                : ExtensionRuntimeEvidence.unavailable(readinessSnapshot.extensionVersion());
-        publishFailed(readiness, agentInstanceId, failureCode, batchId, evidence);
+    void publishFailed(BootstrapFailure failure, String batchId, ExtensionRuntimeEvidence evidence) {
+        requireMonitorHeld();
+        Objects.requireNonNull(failure, "failure");
+        Objects.requireNonNull(batchId, "batchId");
+        Objects.requireNonNull(evidence, "evidence");
+
+        ExtensionReadinessWireSnapshot current = snapshot;
+        if (alreadyPublished(current, failure)) {
+            return;
+        }
+
+        boolean escalation = isOwnFailure(current);
+        String publishedBatchId = escalation ? current.batchId() : batchId;
+        ExtensionRuntimeEvidence publishedEvidence = escalation ? current.evidence() : evidence;
+
+        PlatformExtensionReadinessSnapshot.Failed failed = readiness.fail(failure.primaryCode(), failure.effectiveCode());
+        snapshot = ExtensionReadinessWireSnapshot.failed(
+                failed,
+                agentInstanceId,
+                publishedBatchId,
+                nextEvidenceGeneration(current, publishedBatchId),
+                publishedEvidence
+        );
     }
 
-    void publishFailed(PlatformExtensionReadiness readiness,
-                       AgentInstanceId agentInstanceId,
-                       String failureCode,
-                       String batchId,
-                       ExtensionRuntimeEvidence evidence) {
-        synchronized (monitor) {
-            PlatformExtensionReadinessSnapshot readinessSnapshot = readiness.fail(failureCode);
-            String agentInstanceIdValue = agentInstanceId.toString();
-            ExtensionReadinessWireSnapshot current = snapshot.get();
-            String effectiveFailureCode = readinessSnapshot.failureCode();
-            if (PlatformExtensionLifecycle.FAILED.name().equals(current.lifecycle())
-                    && agentInstanceIdValue.equals(current.agentInstanceId())
-                    && effectiveFailureCode.equals(current.failureCode())) {
-                return;
-            }
+    private void requireMonitorHeld() {
+        if (!Thread.holdsLock(monitor)) {
+            String message = "FAILED readiness publication requires the bootstrap lifecycle monitor";
+            throw new IllegalMonitorStateException(message);
+        }
+    }
 
-            long evidenceGeneration = batchId.isEmpty()
-                    ? 0L
-                    : agentInstanceIdValue.equals(current.agentInstanceId())
-                            ? current.evidenceGeneration() + 1L
-                            : 1L;
+    private boolean alreadyPublished(ExtensionReadinessWireSnapshot current, BootstrapFailure failure) {
+        return isOwnFailure(current)
+                && failure.primaryCode().equals(current.primaryFailureCode())
+                && failure.effectiveCode().equals(current.failureCode());
+    }
 
-            snapshot.set(ExtensionReadinessWireSnapshot.failed(
-                    readinessSnapshot,
-                    agentInstanceIdValue,
-                    batchId,
-                    evidenceGeneration,
-                    evidence
-            ));
+    private boolean isOwnFailure(ExtensionReadinessWireSnapshot current) {
+        return isOwnSnapshot(current) && FAILED_LIFECYCLE.equals(current.lifecycle());
+    }
+
+    private boolean isOwnSnapshot(ExtensionReadinessWireSnapshot current) {
+        return agentInstanceId.equals(current.agentInstanceId());
+    }
+
+    private long nextEvidenceGeneration(ExtensionReadinessWireSnapshot current, String publishedBatchId) {
+        if (publishedBatchId.isEmpty()) {
+            return NO_EVIDENCE_GENERATION;
+        }
+
+        if (isOwnSnapshot(current)) {
+            return current.evidenceGeneration() + 1L;
+        } else {
+            return FIRST_EVIDENCE_GENERATION;
         }
     }
 }

@@ -143,7 +143,7 @@ class PlatformSamplerInstallationTest {
                 );
 
                 // then
-                assertThat(failure.failure().code()).isEqualTo("PLATFORM_SAMPLER_REPLACED");
+                assertThat(failure.failure().effectiveCode()).isEqualTo("PLATFORM_SAMPLER_REPLACED");
                 assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
                 assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
                 assertThat(coordinator.currentWire().failureCode()).isEqualTo("PLATFORM_SAMPLER_REPLACED");
@@ -183,7 +183,7 @@ class PlatformSamplerInstallationTest {
             );
 
             // then
-            assertThat(failure.failure().code()).isEqualTo("DISTRIBUTION_MISMATCH");
+            assertThat(failure.failure().effectiveCode()).isEqualTo("DISTRIBUTION_MISMATCH");
             assertThat(failure.getCause()).isSameAs(attestationFailure);
             assertThat(tracerProviderCustomizerInvoked).isFalse();
             assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
@@ -215,7 +215,7 @@ class PlatformSamplerInstallationTest {
             );
 
             // then
-            assertThat(failure.failure().code()).isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
+            assertThat(failure.failure().effectiveCode()).isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
             assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
             assertThat(coordinator.currentWire().failureCode()).isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
             assertThat(tracerProviderCustomizerInvoked).isFalse();

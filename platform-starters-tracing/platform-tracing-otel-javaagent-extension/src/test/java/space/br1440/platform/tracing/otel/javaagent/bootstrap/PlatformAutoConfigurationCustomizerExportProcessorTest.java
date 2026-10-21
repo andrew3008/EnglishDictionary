@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_INITIALIZING;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
+import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSnapshotAssertions.failureOf;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -153,9 +154,6 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
 
             try {
                 // then
-                // SDK 1.66 SpanExporterConfiguration.configureSpanExporters вызывает exporter
-                // customizer один раз на каждое имя otel.traces.exporter. otlp,logging даёт count=2;
-                // OTLP-ветка остаётся stock BatchSpanProcessor.
                 assertThat(observedProcessors)
                         .filteredOn(BatchSpanProcessor.class::isInstance)
                         .singleElement()
@@ -196,7 +194,7 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
             assertThat(failure).isInstanceOfSatisfying(
                     BootstrapException.class,
                     bootstrapFailure -> {
-                        assertThat(bootstrapFailure.failure().code())
+                        assertThat(bootstrapFailure.failure().effectiveCode())
                                 .isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
                         assertThat(bootstrapFailure.getCause()).isInstanceOf(ConfigurationException.class);
                     }
@@ -273,11 +271,11 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
             // then
             assertThat(failure).isInstanceOf(ConfigurationException.class);
             assertThat(failure.getCause()).isInstanceOfSatisfying(BootstrapException.class,
-                    bootstrapFailure -> assertThat(bootstrapFailure.failure().code())
+                    bootstrapFailure -> assertThat(bootstrapFailure.failure().effectiveCode())
                             .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER));
             AutoconfigureSession session = bootstrap.session();
             assertThat(session.readiness().snapshot().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
-            assertThat(session.readiness().snapshot().failureCode())
+            assertThat(failureOf(session.readiness().snapshot()).effectiveCode())
                     .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER);
             assertThat(session.readiness().snapshot().has(PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED))
                     .isFalse();

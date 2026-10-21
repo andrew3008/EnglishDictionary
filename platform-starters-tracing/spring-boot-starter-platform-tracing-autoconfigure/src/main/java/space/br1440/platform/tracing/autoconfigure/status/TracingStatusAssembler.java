@@ -9,6 +9,7 @@ import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessSnapshot;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
@@ -102,17 +103,42 @@ public final class TracingStatusAssembler {
     }
 
     private Map<String, Object> agentSection(AgentRuntimeState runtimeState, String failureCode) {
-        TracingDeploymentDiagnostics.AgentReadiness readiness = diagnostics.agentReadiness();
-        TracingDeploymentDiagnostics.ContractIdentity contract = readiness.contractIdentity();
-        TracingDeploymentDiagnostics.ReadinessAnchor anchor = readiness.readinessAnchor();
-        TracingDeploymentDiagnostics.LifecycleState lifecycle = readiness.lifecycleState();
-        TracingDeploymentDiagnostics.DistributionIdentity distribution = readiness.distributionIdentity();
-        TracingDeploymentDiagnostics.ClassloaderTopology classloaders = readiness.classloaderTopology();
-
-        return StatusSection.create()
+        StatusSection<Void> section = StatusSection.create()
                 .value("state", runtimeState.name())
-                .value("markerVisible", diagnostics.agentMarkerVisible())
-                .value("readinessEndpointPresent", readiness.endpointPresent())
+                .value("markerVisible", diagnostics.agentMarkerVisible());
+
+        return switch (diagnostics.agentReadiness()) {
+            case TracingDeploymentDiagnostics.EndpointAbsent ignored ->
+                    unobservedSection(section, false, failureCode);
+
+            case TracingDeploymentDiagnostics.SnapshotUnreadable ignored ->
+                    unobservedSection(section, true, failureCode);
+
+            case TracingDeploymentDiagnostics.Observed observed ->
+                    observedSection(section, observed.snapshot(), failureCode);
+        };
+    }
+
+    private static Map<String, Object> unobservedSection(StatusSection<Void> section,
+                                                         boolean endpointPresent,
+                                                         String failureCode) {
+        return section
+                .value("readinessEndpointPresent", endpointPresent)
+                .value("failureCode", failureCode)
+                .build();
+    }
+
+    private static Map<String, Object> observedSection(StatusSection<Void> section,
+                                                       AgentReadinessSnapshot snapshot,
+                                                       String failureCode) {
+        AgentReadinessSnapshot.ContractIdentity contract = snapshot.contractIdentity();
+        AgentReadinessSnapshot.AnchorIdentity anchor = snapshot.anchorIdentity();
+        AgentReadinessSnapshot.LifecycleState lifecycle = snapshot.lifecycleState();
+        AgentReadinessSnapshot.DistributionIdentity distribution = snapshot.distributionIdentity();
+        AgentReadinessSnapshot.ClassloaderTopology classloaders = snapshot.classloaderTopology();
+
+        return section
+                .value("readinessEndpointPresent", true)
                 .value("contractId", contract.contractId())
                 .value("schemaDigest", contract.schemaDigest())
                 .value("agentInstanceId", anchor.agentInstanceId())
@@ -131,7 +157,7 @@ public final class TracingStatusAssembler {
     }
 
     private String lifecycleFailureCode() {
-        return diagnostics.agentReadiness().lifecycleState().failureCode();
+        return diagnostics.agentReadiness().failureCode();
     }
 
     private String effectiveFailureCode(String failureCode) {

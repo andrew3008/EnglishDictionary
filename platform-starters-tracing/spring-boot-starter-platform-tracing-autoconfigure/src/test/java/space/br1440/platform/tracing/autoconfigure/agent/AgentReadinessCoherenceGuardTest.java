@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
 
@@ -32,6 +33,50 @@ final class AgentReadinessCoherenceGuardTest {
                 .satisfies(failure -> assertThat(
                         ((AgentReadinessCoherenceException) failure).failureCode())
                         .isEqualTo(AgentReadinessCoherenceGuard.CONTENT_DRIFT));
+    }
+
+    @Test
+    void anchorAdvanceDuringTrustedReadIsMixedGenerationRatherThanContentDrift() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot pinned = ReadinessTestFixtures.readySnapshot();
+        AtomicReference<AgentReadinessSnapshot> current = new AtomicReference<>(pinned);
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(current.get()));
+        AgentReadinessCoherenceGuard guard = new AgentReadinessCoherenceGuard(server);
+        guard.pin(pinned);
+
+        // when
+        // then
+        assertThatThrownBy(() -> guard.readCoherently(() -> {
+            current.set(withGeneration(pinned, 2L, "batch-2"));
+            return "untrusted";
+        }))
+                .isInstanceOf(AgentReadinessCoherenceException.class)
+                .satisfies(failure -> assertThat(
+                        ((AgentReadinessCoherenceException) failure).failureCode())
+                        .isEqualTo(AgentReadinessCoherenceGuard.MIXED_GENERATION));
+    }
+
+    @Test
+    void trustFailureRecordedDuringTrustedReadInvalidatesItsResult() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot ready = ReadinessTestFixtures.readySnapshot();
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(ready));
+        AgentReadinessCoherenceGuard guard = new AgentReadinessCoherenceGuard(server);
+        guard.pin(ready);
+
+        // when
+        // then
+        assertThatThrownBy(() -> guard.readCoherently(() -> {
+            guard.recordTrustFailure("JMX_OBSERVATION_PROVIDER_FAILURE");
+            return "untrusted";
+        }))
+                .isInstanceOf(AgentReadinessCoherenceException.class)
+                .satisfies(failure -> assertThat(
+                        ((AgentReadinessCoherenceException) failure).failureCode())
+                        .isEqualTo("JMX_OBSERVATION_PROVIDER_FAILURE"));
+        assertThat(guard.terminalFailureCode()).isEqualTo("JMX_OBSERVATION_PROVIDER_FAILURE");
     }
 
     @Test
@@ -160,6 +205,59 @@ final class AgentReadinessCoherenceGuardTest {
                 .satisfies(failure -> assertThat(
                         ((AgentReadinessCoherenceException) failure).failureCode())
                         .isEqualTo(AgentReadinessCoherenceGuard.JMX_AGENT_INSTANCE_MISMATCH));
+        assertThat(trustedReads).hasValue(0);
+    }
+
+    @Test
+    void inconsistentFailedCodePairUsesClassifierReasonBeforeTrustedRead() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot pinned = ReadinessTestFixtures.readySnapshot();
+        AgentReadinessSnapshot inconsistent = ReadinessTestFixtures.failedSnapshot(
+                "PRIMARY_FAILURE",
+                "UNRELATED_EFFECTIVE_FAILURE"
+        );
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(inconsistent));
+        AgentReadinessCoherenceGuard guard = new AgentReadinessCoherenceGuard(server);
+        guard.pin(pinned);
+        AtomicInteger trustedReads = new AtomicInteger();
+
+        // when
+        // then
+        assertThatThrownBy(() -> guard.readCoherently(trustedReads::incrementAndGet))
+                .isInstanceOf(AgentReadinessCoherenceException.class)
+                .satisfies(failure -> assertThat(
+                        ((AgentReadinessCoherenceException) failure).failureCode())
+                        .isEqualTo("EXTENSION_FAILED_CODE_PAIR_INCONSISTENT"));
+        assertThat(trustedReads).hasValue(0);
+    }
+
+    @Test
+    void readyFailureCodeUsesClassifierReasonBeforeTrustedRead() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot pinned = ReadinessTestFixtures.readySnapshot();
+        AgentReadinessSnapshot.LifecycleState lifecycle = pinned.lifecycleState();
+        AgentReadinessSnapshot inconsistent = ReadinessTestFixtures.toBuilder(pinned)
+                .lifecycleState(new AgentReadinessSnapshot.LifecycleState(
+                        "READY",
+                        "ILLEGAL_READY_FAILURE",
+                        "",
+                        lifecycle.capabilities(),
+                        lifecycle.missingRequired()))
+                .build();
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(inconsistent));
+        AgentReadinessCoherenceGuard guard = new AgentReadinessCoherenceGuard(server);
+        guard.pin(pinned);
+        AtomicInteger trustedReads = new AtomicInteger();
+
+        // when
+        // then
+        assertThatThrownBy(() -> guard.readCoherently(trustedReads::incrementAndGet))
+                .isInstanceOf(AgentReadinessCoherenceException.class)
+                .satisfies(failure -> assertThat(
+                        ((AgentReadinessCoherenceException) failure).failureCode())
+                        .isEqualTo("EXTENSION_READY_WITH_FAILURE_CODE"));
         assertThat(trustedReads).hasValue(0);
     }
 

@@ -249,6 +249,7 @@ openTypes:
       - { name: capabilities, type: stringArray, required: true, nullable: false }
       - { name: missingRequired, type: stringArray, required: true, nullable: false }
       - { name: failureCode, type: string, required: true, nullable: false }
+      - { name: primaryFailureCode, type: string, required: true, nullable: false }
       - { name: agentDistributionSha256, type: string, required: true, nullable: false }
       - { name: upstreamAgentVersion, type: string, required: true, nullable: false }
       - { name: extensionVersion, type: string, required: true, nullable: false }

@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorAssert.assertThatCoordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_FAILED;
@@ -9,16 +10,18 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.failingRuntimeBatchRegistration;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.markCapabilitiesExcept;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.registerForeignReadinessMBean;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.satisfyReadinessBarrier;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.ACTIVATION_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.DIAGNOSTIC_MBEAN_REGISTRATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_SAMPLER_REPLACED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_SAMPLER_REPLACED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.TRANSPORT_STALE;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
+import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSnapshotAssertions.failureOf;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -51,6 +54,7 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 class BootstrapCoordinatorActivationTest {
 
     private static final String DUPLICATE_ACTIVATION = "DUPLICATE_ACTIVATION";
+    private static final String JMX_BATCH_REGISTRATION_FAILED = "JMX_BATCH_REGISTRATION_FAILED";
 
     @Test
     void repeated_activate_after_successful_activation_classified_as_DUPLICATE_ACTIVATION() {
@@ -86,23 +90,26 @@ class BootstrapCoordinatorActivationTest {
             throw cleanupFailure;
         };
 
-        try (BootstrapCoordinator coordinator = coordinator().hooks(hooks).build()) {
-            AutoconfigureSession session = coordinator.prepare(config());
+        BootstrapCoordinator coordinator = coordinator().hooks(hooks).build();
+        AutoconfigureSession session = coordinator.prepare(config());
 
-            try (SdkTracerProvider tracerProvider = providerFor(session)) {
-                // when
-                BootstrapException failure = catchBootstrapFailure(
-                        () -> coordinator.activate(tracerProvider),
-                        FAILED_ROLLBACK_INCOMPLETE
-                );
+        try (SdkTracerProvider tracerProvider = providerFor(session)) {
+            // when
+            BootstrapException failure = catchBootstrapFailure(
+                    () -> coordinator.activate(tracerProvider),
+                    FAILED_ROLLBACK_INCOMPLETE
+            );
 
-                // then
-                assertThat(failure.getCause().getSuppressed()).singleElement()
-                        .satisfies(suppressed -> assertThat(suppressed.getCause()).isSameAs(cleanupFailure));
-                assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
-                assertThat(coordinator.currentWire().failureCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
-                assertThat(session.readiness().snapshot().failureCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
-            }
+            // then
+            assertThat(failure.getCause().getSuppressed()).singleElement()
+                    .satisfies(suppressed -> assertThat(suppressed.getCause()).isSameAs(cleanupFailure));
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+            assertThat(coordinator.currentWire().failureCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
+            assertThat(failureOf(session.readiness().snapshot()).effectiveCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
+
+            Throwable rollbackFailure = failure.getCause().getSuppressed()[0];
+            assertThat(catchThrowable(coordinator::close)).isSameAs(rollbackFailure);
+            assertThatCode(coordinator::close).doesNotThrowAnyException();
         }
     }
 
@@ -120,7 +127,36 @@ class BootstrapCoordinatorActivationTest {
 
                 // then
                 assertThat(session.readiness().snapshot().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
-                assertThat(session.readiness().snapshot().failureCode()).isEqualTo(ACTIVATION_FAILED);
+                assertThat(failureOf(session.readiness().snapshot()).effectiveCode()).isEqualTo(ACTIVATION_FAILED);
+            }
+        }
+    }
+
+    @Test
+    void runtime_batch_failure_uses_owner_code_in_lifecycle_readiness_and_wire() {
+        // given
+        MBeanServer server = failingRuntimeBatchRegistration();
+
+        try (BootstrapCoordinator coordinator = coordinator().server(server).build()) {
+            AutoconfigureSession session = coordinator.prepare(config());
+            satisfyReadinessBarrier(session);
+
+            try (SdkTracerProvider tracerProvider = providerFor(session)) {
+                // when
+                BootstrapException failure = catchBootstrapFailure(
+                        () -> coordinator.activate(tracerProvider),
+                        JMX_BATCH_REGISTRATION_FAILED
+                );
+
+                // then
+                assertThat(failure.failure().primaryCode()).isEqualTo(JMX_BATCH_REGISTRATION_FAILED);
+                assertThat(failure.failure().effectiveCode()).isEqualTo(JMX_BATCH_REGISTRATION_FAILED);
+                assertThat(failureOf(session.readiness().snapshot()).primaryCode())
+                        .isEqualTo(JMX_BATCH_REGISTRATION_FAILED);
+                assertThat(failureOf(session.readiness().snapshot()).effectiveCode())
+                        .isEqualTo(JMX_BATCH_REGISTRATION_FAILED);
+                assertThat(coordinator.currentWire().primaryFailureCode()).isEqualTo(JMX_BATCH_REGISTRATION_FAILED);
+                assertThat(coordinator.currentWire().failureCode()).isEqualTo(JMX_BATCH_REGISTRATION_FAILED);
             }
         }
     }
@@ -192,7 +228,8 @@ class BootstrapCoordinatorActivationTest {
                 assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
                 assertThat(coordinator.currentWire().lifecycle()).isEqualTo(WIRE_FAILED);
                 assertThat(failure).isInstanceOf(BootstrapException.class);
-                assertThat(((BootstrapException) failure).failure().code()).isEqualTo(PLATFORM_SAMPLER_REPLACED);
+                assertThat(((BootstrapException) failure).failure().effectiveCode())
+                        .isEqualTo(PLATFORM_SAMPLER_REPLACED);
                 assertThat(coordinator.currentWire().failureCode()).isEqualTo(PLATFORM_SAMPLER_REPLACED);
                 assertThatDiagnosticMBean(server).isFailedWith(PLATFORM_SAMPLER_REPLACED);
             }
@@ -211,14 +248,20 @@ class BootstrapCoordinatorActivationTest {
 
         try (BootstrapCoordinator coordinator = coordinator().registrar(registrar).build()) {
             // when
-            assertBootstrapFailure(
+            BootstrapException failure = catchBootstrapFailure(
                     () -> coordinator.prepare(config()),
                     DIAGNOSTIC_MBEAN_REGISTRATION_FAILED
             );
 
             // then
+            assertThat(failure.failure().primaryCode()).isEqualTo(DIAGNOSTIC_MBEAN_REGISTRATION_FAILED);
+            assertThat(failure.failure().effectiveCode()).isEqualTo(DIAGNOSTIC_MBEAN_REGISTRATION_FAILED);
             assertThatCoordinator(coordinator).isTerminallyFailedWith(DIAGNOSTIC_MBEAN_REGISTRATION_FAILED);
-            assertThat(registrar.extensionReadiness().snapshot().failureCode())
+            assertThat(coordinator.currentWire().primaryFailureCode())
+                    .isEqualTo(DIAGNOSTIC_MBEAN_REGISTRATION_FAILED);
+            assertThat(failureOf(registrar.extensionReadiness().snapshot()).effectiveCode())
+                    .isEqualTo(DIAGNOSTIC_MBEAN_REGISTRATION_FAILED);
+            assertThat(failureOf(registrar.extensionReadiness().snapshot()).primaryCode())
                     .isEqualTo(DIAGNOSTIC_MBEAN_REGISTRATION_FAILED);
             assertThatDiagnosticMBean(server).isOwnedBy(Timer.class);
         }

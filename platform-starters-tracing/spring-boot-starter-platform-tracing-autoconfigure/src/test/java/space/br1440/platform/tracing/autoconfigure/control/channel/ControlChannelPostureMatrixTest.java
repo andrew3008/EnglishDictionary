@@ -77,7 +77,7 @@ class ControlChannelPostureMatrixTest {
         try (FakeAgentPlatformJmxPlane ignored = FakeAgentPlatformJmxPlane.compliant(UUID.randomUUID().toString(), 0L)) {
             AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard();
             TracingDeploymentDiagnostics startupDiagnostics =
-                    new AgentStartupVerifier(coherenceGuard, "1.2.3")
+                    new AgentStartupVerifier(coherenceGuard, () -> "1.2.3")
                             .verify(true, true, false, true);
 
             // when
@@ -116,7 +116,7 @@ class ControlChannelPostureMatrixTest {
                      FakeAgentPlatformJmxPlane.compliant(UUID.randomUUID().toString(), 0L)) {
             AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard();
             TracingDeploymentDiagnostics startupDiagnostics =
-                    new AgentStartupVerifier(coherenceGuard, "1.2.3")
+                    new AgentStartupVerifier(coherenceGuard, () -> "1.2.3")
                             .verify(true, true, false, true);
 
             // when
@@ -166,7 +166,7 @@ class ControlChannelPostureMatrixTest {
                      FakeAgentPlatformJmxPlane.compliant(UUID.randomUUID().toString(), 0L)) {
             AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard();
             TracingDeploymentDiagnostics startupDiagnostics =
-                    new AgentStartupVerifier(coherenceGuard, "1.2.3")
+                    new AgentStartupVerifier(coherenceGuard, () -> "1.2.3")
                             .verify(true, true, false, true);
 
             // when / then
@@ -209,7 +209,7 @@ class ControlChannelPostureMatrixTest {
                      FakeAgentPlatformJmxPlane.compliant(UUID.randomUUID().toString(), 0L)) {
             AgentReadinessCoherenceGuard coherenceGuard = new AgentReadinessCoherenceGuard();
             TracingDeploymentDiagnostics startupDiagnostics =
-                    new AgentStartupVerifier(coherenceGuard, "1.2.3")
+                    new AgentStartupVerifier(coherenceGuard, () -> "1.2.3")
                             .verify(true, true, false, true);
 
             // when

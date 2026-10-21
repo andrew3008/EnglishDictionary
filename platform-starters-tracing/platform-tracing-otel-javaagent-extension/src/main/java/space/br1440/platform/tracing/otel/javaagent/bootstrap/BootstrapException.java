@@ -19,12 +19,8 @@ final class BootstrapException extends RuntimeException {
         Objects.requireNonNull(failure, "failure");
 
         String baseMessage = "Platform bootstrap failure [%s] during phase '%s'"
-                .formatted(failure.code(), failure.phase());
-        if (failure.cause() == null) {
-            return baseMessage;
-        }
+                .formatted(failure.effectiveCode(), failure.phase());
 
-        String causeMessage = failure.cause().toString();
-        return "%s: %s".formatted(baseMessage, causeMessage);
+        return "%s: %s".formatted(baseMessage, failure.cause());
     }
 }

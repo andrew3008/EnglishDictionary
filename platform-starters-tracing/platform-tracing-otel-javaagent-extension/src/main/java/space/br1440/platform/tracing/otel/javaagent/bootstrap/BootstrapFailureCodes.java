@@ -19,4 +19,12 @@ final class BootstrapFailureCodes {
 
     static final String TRANSPORT_STALE = "JMX_TRANSPORT_STALE";
 
+    static final String REENTRANT_OR_OUT_OF_ORDER = "REENTRANT_OR_OUT_OF_ORDER";
+
+    static final String SECOND_SDK_BUILD = "SECOND_SDK_BUILD";
+
+    static final String DUPLICATE_ACTIVATION = "DUPLICATE_ACTIVATION";
+
+    static final String BOOTSTRAP_TERMINAL = "BOOTSTRAP_TERMINAL";
+
 }

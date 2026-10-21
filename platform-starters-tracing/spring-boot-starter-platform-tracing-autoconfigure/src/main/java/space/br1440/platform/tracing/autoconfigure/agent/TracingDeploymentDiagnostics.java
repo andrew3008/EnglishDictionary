@@ -1,7 +1,6 @@
 package space.br1440.platform.tracing.autoconfigure.agent;
 
 import java.util.Objects;
-import java.util.Set;
 
 public record TracingDeploymentDiagnostics(boolean tracingEnabled,
                                            boolean agentMarkerVisible,
@@ -21,100 +20,70 @@ public record TracingDeploymentDiagnostics(boolean tracingEnabled,
                 tracingEnabled,
                 agentMarkerVisible,
                 runtimeState,
-                AgentReadiness.unavailable(failureCode)
+                new EndpointAbsent(failureCode)
         );
     }
 
-    /**
-     * Идентичность JMX-контракта, с которым агент предъявил readiness-снимок.
-     */
-    public record ContractIdentity(String contractId, String schemaDigest) {
+    static TracingDeploymentDiagnostics withUnreadableAgentData(boolean tracingEnabled,
+                                                                boolean agentMarkerVisible,
+                                                                AgentRuntimeState runtimeState,
+                                                                String failureCode) {
+        return new TracingDeploymentDiagnostics(
+                tracingEnabled,
+                agentMarkerVisible,
+                runtimeState,
+                new SnapshotUnreadable(failureCode)
+        );
+    }
 
-        public ContractIdentity {
-            contractId = normalize(contractId);
-            schemaDigest = normalize(schemaDigest);
+    static TracingDeploymentDiagnostics withAgentData(boolean tracingEnabled,
+                                                      boolean agentMarkerVisible,
+                                                      AgentRuntimeState runtimeState,
+                                                      AgentReadinessSnapshot snapshot,
+                                                      String failureCode) {
+        return new TracingDeploymentDiagnostics(
+                tracingEnabled,
+                agentMarkerVisible,
+                runtimeState,
+                Observed.of(snapshot, failureCode)
+        );
+    }
+
+    public sealed interface AgentReadiness permits EndpointAbsent, SnapshotUnreadable, Observed {
+
+        String failureCode();
+    }
+
+    public record EndpointAbsent(String failureCode) implements AgentReadiness {
+
+        public EndpointAbsent {
+            Objects.requireNonNull(failureCode, "failureCode");
         }
     }
 
-    /**
-     * Якорь поколения evidence: экземпляр агента, монотонная генерация и идентификатор батча.
-     */
-    public record ReadinessAnchor(String agentInstanceId, long evidenceGeneration, String batchId) {
+    public record SnapshotUnreadable(String failureCode) implements AgentReadiness {
 
-        public ReadinessAnchor {
-            agentInstanceId = normalize(agentInstanceId);
-            batchId = normalize(batchId);
+        public SnapshotUnreadable {
+            Objects.requireNonNull(failureCode, "failureCode");
         }
     }
 
-    /**
-     * Состояние жизненного цикла extension и объявленные capability.
-     */
-    public record LifecycleState(String lifecycle,
-                                 String failureCode,
-                                 Set<String> capabilities,
-                                 Set<String> missingRequired) {
+    public record Observed(AgentReadinessSnapshot snapshot, String failureCode) implements AgentReadiness {
 
-        public LifecycleState {
-            lifecycle = normalize(lifecycle);
-            failureCode = normalize(failureCode);
-            capabilities = (capabilities == null) ? Set.of() : Set.copyOf(capabilities);
-            missingRequired = (missingRequired == null) ? Set.of() : Set.copyOf(missingRequired);
-        }
-    }
-
-    /**
-     * Идентичность дистрибутива Controlled Platform Agent и версии extension.
-     */
-    public record DistributionIdentity(String agentDistributionSha256,
-                                       String upstreamAgentVersion,
-                                       String extensionVersion) {
-
-        public DistributionIdentity {
-            agentDistributionSha256 = normalize(agentDistributionSha256);
-            upstreamAgentVersion = normalize(upstreamAgentVersion);
-            extensionVersion = normalize(extensionVersion);
-        }
-    }
-
-    /**
-     * Наблюдаемая топология classloader'ов extension и SDK.
-     */
-    public record ClassloaderTopology(String extensionDefiningLoader, String sdkDefiningLoader) {
-
-        public ClassloaderTopology {
-            extensionDefiningLoader = normalize(extensionDefiningLoader);
-            sdkDefiningLoader = normalize(sdkDefiningLoader);
-        }
-    }
-
-    public record AgentReadiness(boolean endpointPresent,
-                                 ContractIdentity contractIdentity,
-                                 ReadinessAnchor readinessAnchor,
-                                 LifecycleState lifecycleState,
-                                 DistributionIdentity distributionIdentity,
-                                 ClassloaderTopology classloaderTopology) {
-
-        public AgentReadiness {
-            Objects.requireNonNull(contractIdentity, "contractIdentity");
-            Objects.requireNonNull(readinessAnchor, "readinessAnchor");
-            Objects.requireNonNull(lifecycleState, "lifecycleState");
-            Objects.requireNonNull(distributionIdentity, "distributionIdentity");
-            Objects.requireNonNull(classloaderTopology, "classloaderTopology");
+        public Observed {
+            Objects.requireNonNull(snapshot, "snapshot");
+            Objects.requireNonNull(failureCode, "failureCode");
         }
 
-        public static AgentReadiness unavailable(String failureCode) {
-            return new AgentReadiness(
-                    false,
-                    new ContractIdentity("", ""),
-                    new ReadinessAnchor("", -1L, ""),
-                    new LifecycleState("", failureCode, Set.of(), Set.of()),
-                    new DistributionIdentity("", "", ""),
-                    new ClassloaderTopology("", ""));
+        public static Observed of(AgentReadinessSnapshot snapshot, String failureCode) {
+            return new Observed(snapshot, failureCode);
         }
-    }
 
-    private static String normalize(String value) {
-        return (value == null) ? "" : value;
+        public String primaryFailureCode() {
+            AgentReadinessSnapshot.LifecycleState lifecycleState = snapshot.lifecycleState();
+            return lifecycleState.failureCode().equals(failureCode)
+                    ? lifecycleState.primaryFailureCode()
+                    : "";
+        }
     }
 }

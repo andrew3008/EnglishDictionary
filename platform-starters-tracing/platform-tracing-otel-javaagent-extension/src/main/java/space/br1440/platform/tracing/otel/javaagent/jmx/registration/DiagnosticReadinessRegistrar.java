@@ -41,9 +41,6 @@ final class DiagnosticReadinessRegistrar {
 
         try {
             batch.close();
-        } catch (JmxRegistrationException failure) {
-            scope.failRegistration("FAILED_ROLLBACK_INCOMPLETE");
-            throw failure;
         } finally {
             batch = null;
         }

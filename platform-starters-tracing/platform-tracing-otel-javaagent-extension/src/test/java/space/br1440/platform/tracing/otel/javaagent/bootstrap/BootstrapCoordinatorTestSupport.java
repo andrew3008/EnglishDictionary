@@ -16,6 +16,7 @@ import java.util.function.Consumer;
 import javax.management.JMException;
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
+import javax.management.NotCompliantMBeanException;
 import javax.management.timer.Timer;
 
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
@@ -55,7 +56,7 @@ final class BootstrapCoordinatorTestSupport {
     }
 
     static void assertBootstrapFailure(ThrowingCallable call, String expectedCode) {
-        assertThat(catchBootstrapFailure(call, expectedCode).failure().code())
+        assertThat(catchBootstrapFailure(call, expectedCode).failure().effectiveCode())
                 .as("failure code")
                 .isEqualTo(expectedCode);
     }
@@ -65,7 +66,7 @@ final class BootstrapCoordinatorTestSupport {
         assertThat(thrown).as("BootstrapException with code %s", expectedCode)
                 .isInstanceOf(BootstrapException.class);
         BootstrapException failure = (BootstrapException) thrown;
-        assertThat(failure.failure().code()).as("failure code").isEqualTo(expectedCode);
+        assertThat(failure.failure().effectiveCode()).as("failure code").isEqualTo(expectedCode);
         return failure;
     }
 
@@ -140,6 +141,28 @@ final class BootstrapCoordinatorTestSupport {
                                 wire.lifecycle(),
                                 wire.failureCode()
                         ));
+                    }
+
+                    try {
+                        return method.invoke(delegate, arguments);
+                    } catch (InvocationTargetException failure) {
+                        throw failure.getCause();
+                    }
+                }
+        );
+    }
+
+    static MBeanServer failingRuntimeBatchRegistration() {
+        MBeanServer delegate = MBeanServerFactory.newMBeanServer();
+        return (MBeanServer) Proxy.newProxyInstance(
+                BootstrapCoordinatorTestSupport.class.getClassLoader(),
+                new Class<?>[] {MBeanServer.class},
+                (proxy, method, arguments) -> {
+                    if ("registerMBean".equals(method.getName())
+                            && arguments != null
+                            && arguments.length == 2
+                            && DomainObjectNames.SAMPLING.equals(arguments[1])) {
+                        throw new NotCompliantMBeanException("simulated runtime batch registration failure");
                     }
 
                     try {

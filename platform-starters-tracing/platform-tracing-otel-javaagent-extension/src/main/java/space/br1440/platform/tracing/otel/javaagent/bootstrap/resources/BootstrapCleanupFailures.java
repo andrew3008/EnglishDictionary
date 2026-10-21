@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap.resources;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.Objects;
 import java.util.Set;
 
 import lombok.experimental.UtilityClass;
@@ -45,6 +46,16 @@ public final class BootstrapCleanupFailures {
 
         aggregate.addSuppressed(failure);
         return aggregate;
+    }
+
+    public static void suppressPreservingPrimary(Throwable primary, Throwable secondary) {
+        Throwable requiredPrimary = Objects.requireNonNull(primary, "primary");
+        Throwable requiredSecondary = Objects.requireNonNull(secondary, "secondary");
+        if (contains(requiredPrimary, requiredSecondary) || contains(requiredSecondary, requiredPrimary)) {
+            return;
+        }
+
+        requiredPrimary.addSuppressed(requiredSecondary);
     }
 
     public static void rethrow(Throwable failure) {

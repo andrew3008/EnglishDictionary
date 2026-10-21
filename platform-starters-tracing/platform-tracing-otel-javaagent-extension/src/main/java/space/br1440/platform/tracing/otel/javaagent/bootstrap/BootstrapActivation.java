@@ -13,12 +13,13 @@ import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.Verif
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationException;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxDenialReason;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxRegistrationAssessment;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagationGate;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
@@ -51,25 +52,60 @@ final class BootstrapActivation {
     }
 
     void activate(SdkTracerProvider tracerProvider) {
+        Objects.requireNonNull(tracerProvider, "tracerProvider");
+
+        ActivationAttempt attempt;
+        ActivationFailure failure;
         synchronized (lifecycle.monitor()) {
-            activateExclusively(Objects.requireNonNull(tracerProvider, "tracerProvider"));
+            attempt = beginAttempt(tracerProvider);
+            failure = runPhases(attempt);
         }
+
+        if (failure == null) {
+            return;
+        }
+
+        throw terminalTransitions.completeActivationFailure(
+                failure.classified(),
+                attempt.resources(),
+                failure.cause(),
+                failure.sectionFailure(),
+                attempt.batchId(),
+                attempt.evidence()
+        );
     }
 
-    private void activateExclusively(SdkTracerProvider tracerProvider) {
+    private ActivationAttempt beginAttempt(SdkTracerProvider tracerProvider) {
         AutoconfigureSession session = lifecycle.beginActivation();
-
         BootstrapResources resources = new BootstrapResources(hookRegistry);
         lifecycle.attachResources(resources);
+        return new ActivationAttempt(session, resources, tracerProvider);
+    }
 
-        ActivationAttempt attempt = new ActivationAttempt(session, resources, tracerProvider);
+    private ActivationFailure runPhases(ActivationAttempt attempt) {
         try {
             requireSessionSampler(attempt);
             assessRemoteJmx(attempt);
             bindRuntime(attempt);
             publishReady(attempt);
-        } catch (RuntimeException | Error failure) {
-            throw terminalize(attempt, failure);
+            return null;
+        } catch (RuntimeException | Error cause) {
+            return recordFailure(attempt, cause);
+        }
+    }
+
+    private ActivationFailure recordFailure(ActivationAttempt attempt, Throwable cause) {
+        try {
+            BootstrapException classified = terminalTransitions.recordActivationFailure(
+                    failureCodeOf(attempt, cause),
+                    attempt.phase().subphase(),
+                    cause,
+                    attempt.batchId(),
+                    attempt.evidence()
+            );
+            return ActivationFailure.classified(classified, cause);
+        } catch (RuntimeException | Error sectionFailure) {
+            return ActivationFailure.unclassified(cause, sectionFailure);
         }
     }
 
@@ -84,7 +120,7 @@ final class BootstrapActivation {
         session.readiness().markInstalled(PlatformExtensionCapability.PLATFORM_SAMPLER_INSTALLED);
     }
 
-    private void assessRemoteJmx(ActivationAttempt attempt) {
+    private static void assessRemoteJmx(ActivationAttempt attempt) {
         attempt.enter(ActivationPhase.REMOTE_JMX_ASSESSMENT);
 
         RemoteJmxRegistrationAssessment assessment = attempt.session().remoteJmxMutationRegistrationAssessor().assess();
@@ -115,12 +151,12 @@ final class BootstrapActivation {
         String batchId = attempt.batchId();
         ExtensionRuntimeEvidence evidence = attempt.evidence();
         resources.push(
-                () -> terminalTransitions.publishTransportStale(session, batchId, evidence),
+                () -> terminalTransitions.publishTransportStale(batchId, evidence),
                 "readiness-stale-transition"
         );
         resources.installShutdownHook(
                 SHUTDOWN_HOOK_THREAD_NAME,
-                cleanupFailure -> terminalTransitions.completeShutdown(session, batchId, evidence, cleanupFailure)
+                cleanupFailure -> terminalTransitions.completeShutdown(batchId, evidence, cleanupFailure)
         );
     }
 
@@ -133,7 +169,7 @@ final class BootstrapActivation {
         }
         session.scrubbingRuntime().requireInstallationComplete();
         session.readiness().markInstalled(PlatformExtensionCapability.SANITIZER_INSTALLED);
-        PlatformExtensionReadinessSnapshot readiness = session.readiness().completeInitialization();
+        PlatformExtensionReadinessSnapshot.Ready readiness = session.readiness().completeInitialization();
 
         ExtensionReadinessWireSnapshot ready = ExtensionReadinessWireSnapshot.ready(
                 readiness,
@@ -147,29 +183,18 @@ final class BootstrapActivation {
         emitInstalled(ready);
     }
 
-    private BootstrapException terminalize(ActivationAttempt attempt, Throwable failure) {
-        return terminalTransitions.terminalizeActivationFailure(
-                attempt.session(),
-                attempt.resources(),
-                failureCodeOf(attempt, failure),
-                attempt.phase().subphase(),
-                failure,
-                attempt.batchId(),
-                attempt.evidence()
-        );
-    }
-
     private static String failureCodeOf(ActivationAttempt attempt, Throwable failure) {
         return switch (failure) {
             case LinkageError ignored -> VerificationFailureCode.EXTENSION_LINKAGE_ERROR.name();
             case RemoteJmxRegistrationDeniedException denied -> denied.failureCode().name();
+            case JmxRegistrationException registration when (registration.failureCode() != null) -> registration.failureCode();
             default -> attempt.phase().failureCode();
         };
     }
 
     private static void emitInstalled(ExtensionReadinessWireSnapshot ready) {
         log.log(BootstrapLogEvent.EXTENSION_INSTALLED, fields -> fields
-                .putEnum(AgentLogField.LIFECYCLE, PlatformExtensionLifecycle.valueOf(ready.lifecycle()))
+                .putEnum(AgentLogField.LIFECYCLE, PlatformExtensionLifecycle.READY)
                 .putString(AgentLogField.PROFILE, INSTALLATION_PROFILE)
                 .putLong(AgentLogField.PROTOCOL_VERSION, INSTALLATION_PROTOCOL_VERSION)
                 .putString(AgentLogField.EXTENSION_VERSION, ready.evidence().extensionVersion()));
@@ -201,15 +226,28 @@ final class BootstrapActivation {
         }
     }
 
+    private record ActivationFailure(BootstrapException classified, Throwable cause, Throwable sectionFailure) {
+
+        static ActivationFailure classified(BootstrapException classified, Throwable cause) {
+            return new ActivationFailure(Objects.requireNonNull(classified, "classified"), cause, null);
+        }
+
+        static ActivationFailure unclassified(Throwable cause, Throwable sectionFailure) {
+            return new ActivationFailure(null, cause, Objects.requireNonNull(sectionFailure, "sectionFailure"));
+        }
+    }
+
     private static final class ActivationAttempt {
+
+        private static final String NO_BATCH_ID = "";
 
         private final AutoconfigureSession session;
         private final BootstrapResources resources;
         private final SdkTracerProvider tracerProvider;
+        private final ExtensionRuntimeEvidence evidence;
 
         private ActivationPhase phase = ActivationPhase.SAMPLER_POSTCONDITION;
-        private String batchId = "";
-        private final ExtensionRuntimeEvidence evidence;
+        private String batchId = NO_BATCH_ID;
 
         ActivationAttempt(AutoconfigureSession session,
                           BootstrapResources resources,

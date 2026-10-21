@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.CONFIGURATION_INITIALIZATION_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.DIAGNOSTIC_MBEAN_REGISTRATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
 
 import java.util.Objects;
 import java.util.function.Function;
@@ -32,8 +31,6 @@ import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
 final class BootstrapCoordinator implements AutoCloseable {
-
-    private static final String PREPARE_PHASE = "prepare";
 
     private final BootstrapLifecycleState lifecycle;
     private final BootstrapReadinessJournal journal;
@@ -65,11 +62,11 @@ final class BootstrapCoordinator implements AutoCloseable {
                          PlatformTracingMBeanRegistrar jmxRegistrar,
                          DiagnosticReadinessHandle diagnosticHandle) {
         this.lifecycle = new BootstrapLifecycleState();
-        this.journal = new BootstrapReadinessJournal(lifecycle.monitor());
         this.diagnosticHandle = Objects.requireNonNull(diagnosticHandle, "diagnosticHandle");
         this.jmxRegistrar = Objects.requireNonNull(jmxRegistrar, "jmxRegistrar");
         this.readiness = jmxRegistrar.extensionReadiness();
         this.agentInstanceId = jmxRegistrar.agentInstanceId();
+        this.journal = new BootstrapReadinessJournal(lifecycle.monitor(), readiness, agentInstanceId);
         this.terminalTransitions = new BootstrapTerminalTransitions(lifecycle, journal, diagnosticHandle);
         this.sessionFactory = new AutoconfigureSessionFactory(scrubberFactory, remoteJmxAssessorFactory);
         this.runtimeVerifier = Objects.requireNonNull(runtimeVerifier, "runtimeVerifier");
@@ -85,22 +82,23 @@ final class BootstrapCoordinator implements AutoCloseable {
         Objects.requireNonNull(config, "config");
 
         lifecycle.beginPrepare();
+        journal.publishInitializing();
 
         AutoconfigureSession prepared = createPreparedSession(config);
 
-        // Отказ SDK после prepare() не вызывает afterAgent, поэтому diagnostic readiness публикуется здесь.
-        // Регистрация вынесена из try создания сессии: её отказ классифицируется ровно один раз.
         try {
-            journal.publishInitializing(prepared.readiness(), prepared.agentInstanceId());
             registerDiagnosticReadiness();
         } catch (RuntimeException | Error registrationFailure) {
-            PlatformThrowables.propagateIfFatal(registrationFailure);
-            throw failPreparation(
+            BootstrapException classified = terminalTransitions.terminalizePreparationFailure(
                     DIAGNOSTIC_MBEAN_REGISTRATION_FAILED,
                     "diagnostic-registration",
                     null,
-                    registrationFailure
+                    registrationFailure,
+                    prepared.evidence()
             );
+            registerDiagnosticAfterFailure(classified);
+            PlatformThrowables.propagateIfFatal(registrationFailure);
+            throw classified;
         }
 
         lifecycle.completePrepare(prepared);
@@ -133,8 +131,7 @@ final class BootstrapCoordinator implements AutoCloseable {
                     e.failure()
             );
         } catch (BootstrapException classified) {
-            Throwable cause = (classified.getCause() == null) ? classified : classified.getCause();
-            throw failPreparation(classified.failure().code(), cause);
+            throw classified;
         } catch (RuntimeException | Error e) {
             PlatformThrowables.propagateIfFatal(e);
             throw failPreparation(CONFIGURATION_INITIALIZATION_FAILED, e);
@@ -165,19 +162,8 @@ final class BootstrapCoordinator implements AutoCloseable {
 
     void activate(SdkTracerProvider tracerProvider) {
         Objects.requireNonNull(tracerProvider, "tracerProvider");
-
-        synchronized (lifecycle.monitor()) {
-            boolean prepareExecuted = (lifecycle.state() != BootstrapState.NEW);
-            try {
-                activation.activate(tracerProvider);
-            } catch (BootstrapException failure) {
-                if (!prepareExecuted) {
-                    publishMissingPreparation(failure);
-                }
-
-                throw failure;
-            }
-        }
+        terminalTransitions.failMissingPreparation(unavailableEvidence(), this::registerDiagnosticReadiness);
+        activation.activate(tracerProvider);
     }
 
     ExtensionReadinessWireSnapshot currentWire() {
@@ -206,7 +192,7 @@ final class BootstrapCoordinator implements AutoCloseable {
         }
 
         if (cleanupFailure != null) {
-            terminalTransitions.completeCloseFailure(cleanupFailure);
+            terminalTransitions.completeCloseFailure(cleanupFailure, "", currentEvidence());
             BootstrapCleanupFailures.rethrow(cleanupFailure);
         }
 
@@ -214,36 +200,14 @@ final class BootstrapCoordinator implements AutoCloseable {
     }
 
     private BootstrapException failCustomization(String code, String phase, Throwable cause) {
-        BootstrapException classified = lifecycle.fail(code, phase, cause);
-        AutoconfigureSession failedSession = lifecycle.currentSession();
-        if (failedSession == null) {
-            journal.publishFailed(readiness, agentInstanceId, code);
-        } else {
-            terminalTransitions.publishSessionFailure(failedSession, code);
-        }
-
-        try {
-            registerDiagnosticReadiness();
-        } catch (RuntimeException | Error diagnosticFailure) {
-            if (diagnosticFailure != cause) {
-                cause.addSuppressed(diagnosticFailure);
-            }
-
-            PlatformThrowables.propagateIfFatal(diagnosticFailure);
-        }
-
+        BootstrapException classified = terminalTransitions.terminalizeCustomizationFailure(
+                code,
+                phase,
+                cause,
+                currentEvidence()
+        );
+        registerDiagnosticAfterFailure(classified);
         return classified;
-    }
-
-    private void publishMissingPreparation(BootstrapException failure) {
-        Throwable primary = failure.getCause();
-        try {
-            journal.publishFailed(readiness, agentInstanceId, PLATFORM_ACP_NOT_EXECUTED);
-            registerDiagnosticReadiness();
-        } catch (RuntimeException | Error diagnosticFailure) {
-            primary.addSuppressed(diagnosticFailure);
-            PlatformThrowables.propagateIfFatal(diagnosticFailure);
-        }
     }
 
     private BootstrapException failPreparation(String code, Throwable cause) {
@@ -254,26 +218,39 @@ final class BootstrapCoordinator implements AutoCloseable {
                                                String subphase,
                                                String propertyName,
                                                Throwable cause) {
-        try {
-            journal.publishFailed(readiness, agentInstanceId, code);
-            registerDiagnosticReadiness();
-        } catch (RuntimeException | Error diagnosticFailure) {
-            if (diagnosticFailure != cause) {
-                cause.addSuppressed(diagnosticFailure);
-            }
-
-            BootstrapException classified = lifecycle.fail(code, PREPARE_PHASE, subphase, propertyName, cause);
-            PlatformThrowables.propagateIfFatal(diagnosticFailure);
-            return classified;
-        }
-
-        return lifecycle.fail(code, PREPARE_PHASE, subphase, propertyName, cause);
+        BootstrapException classified = terminalTransitions.terminalizePreparationFailure(
+                code,
+                subphase,
+                propertyName,
+                cause,
+                unavailableEvidence()
+        );
+        registerDiagnosticAfterFailure(classified);
+        return classified;
     }
 
     private void registerDiagnosticReadiness() {
         diagnosticHandle.registerIfAbsent(
                 () -> jmxRegistrar.registerDiagnosticReadiness(journal::current)
         );
+    }
+
+    private void registerDiagnosticAfterFailure(BootstrapException classified) {
+        try {
+            registerDiagnosticReadiness();
+        } catch (RuntimeException | Error diagnosticFailure) {
+            BootstrapCleanupFailures.suppressPreservingPrimary(classified.failure().cause(), diagnosticFailure);
+            PlatformThrowables.propagateIfFatal(diagnosticFailure);
+        }
+    }
+
+    private ExtensionRuntimeEvidence currentEvidence() {
+        AutoconfigureSession currentSession = lifecycle.currentSession();
+        return currentSession == null ? unavailableEvidence() : currentSession.evidence();
+    }
+
+    private ExtensionRuntimeEvidence unavailableEvidence() {
+        return ExtensionRuntimeEvidence.unavailable(readiness.snapshot().extensionVersion());
     }
 
     private static Throwable closeActivationResources(BootstrapResources resources) {

@@ -365,51 +365,85 @@ class BootstrapCoordinatorPrepareTest {
     }
 
     @Test
-    void reentrant_prepare_publishes_REENTRANT_OR_OUT_OF_ORDER_to_wire_and_diagnostic_mbean() {
+    void reentrant_prepare_is_rejected_without_terminalizing_or_registering_diagnostics() {
         // given
         ConfigProperties configuration = config();
         AtomicReference<BootstrapCoordinator> coordinatorReference = new AtomicReference<>();
+        AtomicReference<BootstrapException> nestedRejection = new AtomicReference<>();
         MBeanServer server = MBeanServerFactory.newMBeanServer();
         ExtensionRuntimeVerifier verifier = extensionVersion -> {
-            coordinatorReference.get().prepare(configuration);
-            return RuntimeEvidenceTestFixtures.evidence(extensionVersion);
+            BootstrapException rejection = catchBootstrapFailure(
+                    () -> coordinatorReference.get().prepare(configuration),
+                    REENTRANT_OR_OUT_OF_ORDER
+            );
+            nestedRejection.set(rejection);
+            throw rejection;
         };
         BootstrapCoordinator coordinator = coordinator().server(server).verifier(verifier).build();
         coordinatorReference.set(coordinator);
 
         try (coordinator) {
             // when
-            assertBootstrapFailure(() -> coordinator.prepare(configuration), REENTRANT_OR_OUT_OF_ORDER);
+            BootstrapException propagated = catchBootstrapFailure(
+                    () -> coordinator.prepare(configuration),
+                    REENTRANT_OR_OUT_OF_ORDER
+            );
 
             // then
-            assertThatCoordinator(coordinator).isTerminallyFailedWith(REENTRANT_OR_OUT_OF_ORDER);
-            assertThatDiagnosticMBean(server).isFailedWith(REENTRANT_OR_OUT_OF_ORDER);
+            assertThat(propagated).isSameAs(nestedRejection.get());
+            assertThat(propagated.getCause()).isSameAs(nestedRejection.get().getCause());
+            assertThat(propagated.failure().primaryCode()).isEqualTo(REENTRANT_OR_OUT_OF_ORDER);
+            assertThat(propagated.failure().effectiveCode()).isEqualTo(REENTRANT_OR_OUT_OF_ORDER);
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.PREPARING);
+            assertThat(coordinator.currentWire().lifecycle()).isEqualTo(WIRE_INITIALIZING);
+            assertThat(coordinator.currentWire().primaryFailureCode()).isEmpty();
+            assertThat(coordinator.currentWire().failureCode()).isEmpty();
+            assertThatDiagnosticMBean(server).isNotRegistered();
         }
+
+        assertThatDiagnosticMBean(server).isNotRegistered();
     }
 
     @Test
-    void activate_during_prepare_publishes_REENTRANT_OR_OUT_OF_ORDER_to_wire_and_diagnostic_mbean() {
+    void activate_during_prepare_is_rejected_without_terminalizing_or_registering_diagnostics() {
         // given
         ConfigProperties configuration = config();
         AtomicReference<BootstrapCoordinator> coordinatorReference = new AtomicReference<>();
+        AtomicReference<BootstrapException> nestedRejection = new AtomicReference<>();
         MBeanServer server = MBeanServerFactory.newMBeanServer();
 
         try (SdkTracerProvider tracerProvider = SdkTracerProvider.builder().build()) {
             ExtensionRuntimeVerifier verifier = extensionVersion -> {
-                coordinatorReference.get().activate(tracerProvider);
-                return RuntimeEvidenceTestFixtures.evidence(extensionVersion);
+                BootstrapException rejection = catchBootstrapFailure(
+                        () -> coordinatorReference.get().activate(tracerProvider),
+                        REENTRANT_OR_OUT_OF_ORDER
+                );
+                nestedRejection.set(rejection);
+                throw rejection;
             };
             BootstrapCoordinator coordinator = coordinator().server(server).verifier(verifier).build();
             coordinatorReference.set(coordinator);
 
             try (coordinator) {
                 // when
-                assertBootstrapFailure(() -> coordinator.prepare(configuration), REENTRANT_OR_OUT_OF_ORDER);
+                BootstrapException propagated = catchBootstrapFailure(
+                        () -> coordinator.prepare(configuration),
+                        REENTRANT_OR_OUT_OF_ORDER
+                );
 
                 // then
-                assertThatCoordinator(coordinator).isTerminallyFailedWith(REENTRANT_OR_OUT_OF_ORDER);
-                assertThatDiagnosticMBean(server).isFailedWith(REENTRANT_OR_OUT_OF_ORDER);
+                assertThat(propagated).isSameAs(nestedRejection.get());
+                assertThat(propagated.getCause()).isSameAs(nestedRejection.get().getCause());
+                assertThat(propagated.failure().primaryCode()).isEqualTo(REENTRANT_OR_OUT_OF_ORDER);
+                assertThat(propagated.failure().effectiveCode()).isEqualTo(REENTRANT_OR_OUT_OF_ORDER);
+                assertThat(coordinator.state()).isEqualTo(BootstrapState.PREPARING);
+                assertThat(coordinator.currentWire().lifecycle()).isEqualTo(WIRE_INITIALIZING);
+                assertThat(coordinator.currentWire().primaryFailureCode()).isEmpty();
+                assertThat(coordinator.currentWire().failureCode()).isEmpty();
+                assertThatDiagnosticMBean(server).isNotRegistered();
             }
         }
+
+        assertThatDiagnosticMBean(server).isNotRegistered();
     }
 }
