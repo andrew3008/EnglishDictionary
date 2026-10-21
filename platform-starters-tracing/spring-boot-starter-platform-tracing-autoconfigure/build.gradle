@@ -101,6 +101,7 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-actuator'
     testImplementation 'io.opentelemetry:opentelemetry-sdk'
     testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
     testImplementation 'io.micrometer:micrometer-tracing-bridge-otel'
     testImplementation 'io.micrometer:context-propagation'
     testImplementation 'org.springframework.cloud:spring-cloud-context'

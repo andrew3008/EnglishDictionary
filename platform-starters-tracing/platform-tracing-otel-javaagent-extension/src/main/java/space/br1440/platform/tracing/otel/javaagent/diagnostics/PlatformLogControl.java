@@ -4,15 +4,17 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 public final class PlatformLogControl {
 
     private static final PlatformLogControl SHARED = new PlatformLogControl();
+    private static final TracingSettings UNBOUND_POLICY = TracingSettingsSource.defaultPolicy();
 
     private final AtomicLong bindCount = new AtomicLong();
-    private TracingSettingsSource active = TracingSettingsSource.isolatedDefaults();
+    private TracingSettingsSource active;
     private final AtomicLong generation = new AtomicLong();
     private final Object bindLock = new Object();
     private long activeGeneration;
@@ -27,9 +29,14 @@ public final class PlatformLogControl {
 
     private void releaseActive() {
         synchronized (bindLock) {
-            active = TracingSettingsSource.isolatedDefaults();
+            active = null;
             activeGeneration = 0L;
+            applyUnboundDiagnosticsLevel();
         }
+    }
+
+    private static void applyUnboundDiagnosticsLevel() {
+        AgentLoggingRuntime.shared().applyLevel(UNBOUND_POLICY.diagnosticsLogLevel());
     }
 
     public AgentLogLevel getLevel() {
@@ -84,7 +91,11 @@ public final class PlatformLogControl {
 
                 active = previous;
                 activeGeneration = 0L;
-                previous.projectDiagnosticsLevel();
+                if (previous == null) {
+                    applyUnboundDiagnosticsLevel();
+                } else {
+                    previous.projectDiagnosticsLevel();
+                }
             }
         }
     }

@@ -36,10 +36,6 @@ public final class TracingSettingsStore {
         Objects.requireNonNull(sourceAuthority, "sourceAuthority");
 
         TracingSettingsRevision currentRevision = current.get();
-        if (currentRevision.agentInstanceId().isUnbound()) {
-            throw new IllegalStateException("Cannot commit tracing settings to an unbound store");
-        }
-
         if (!matches(currentRevision, expectedRevision)) {
             return new SettingsCommitResult(SettingsCommitOutcome.STALE, currentRevision);
         }

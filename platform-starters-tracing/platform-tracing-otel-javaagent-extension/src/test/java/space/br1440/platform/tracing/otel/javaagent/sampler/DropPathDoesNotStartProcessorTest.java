@@ -20,6 +20,8 @@ import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.test.harness.SamplerHarness;
 
 class DropPathDoesNotStartProcessorTest {
@@ -27,7 +29,7 @@ class DropPathDoesNotStartProcessorTest {
     @Test
     void dropPathSamplerReturnsDrop() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 1.0d);
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 1.0d);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("/internal/state"), List.of("on")));
 

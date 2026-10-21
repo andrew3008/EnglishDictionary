@@ -1,7 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.control.settings.update;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
 import static space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures.boundDefaults;
 
 import java.util.UUID;
@@ -69,26 +68,6 @@ class DiagnosticsLogLevelProjectionTest {
             assertThat(AgentLoggingRuntime.shared().effectiveLevel())
                     .isEqualTo(source.current().policy().diagnosticsLogLevel());
         }
-    }
-
-    @Test
-    void unbound_store_rejects_updater_apply() {
-        // given
-        TracingSettingsSource source = TracingSettingsSource.isolatedDefaults();
-        TracingSettingsRevision initial = source.current();
-        TracingSettings candidate = withLevel(initial.policy(), AgentLogLevel.DEBUG);
-
-        // when
-        Throwable failure = catchThrowable(() -> source.updater().apply(
-                attempt(),
-                initial.base(),
-                candidate));
-
-        // then
-        assertThat(failure)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Cannot apply tracing settings to an unbound store");
-        assertThat(source.current()).isSameAs(initial);
     }
 
     private static Thread applyThread(TracingSettingsSource source,

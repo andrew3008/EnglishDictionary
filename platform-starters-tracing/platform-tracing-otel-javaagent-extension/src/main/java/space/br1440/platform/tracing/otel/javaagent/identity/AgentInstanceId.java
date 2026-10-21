@@ -3,28 +3,20 @@ package space.br1440.platform.tracing.otel.javaagent.identity;
 import java.util.Objects;
 import java.util.UUID;
 
-public final class AgentInstanceId {
+public record AgentInstanceId(UUID value) {
 
-    private static final UUID UNBOUND_VALUE = new UUID(0L, 0L);
-    private static final AgentInstanceId UNBOUND = new AgentInstanceId(UNBOUND_VALUE);
+    private static final UUID NIL = new UUID(0L, 0L);
 
-    private final UUID value;
+    public AgentInstanceId {
+        Objects.requireNonNull(value, "value");
 
-    private AgentInstanceId(UUID value) {
-        this.value = Objects.requireNonNull(value, "value");
+        if (NIL.equals(value)) {
+            throw new IllegalArgumentException("AgentInstanceId must not be a nil UUID");
+        }
     }
 
     public static AgentInstanceId random() {
-        return from(UUID.randomUUID());
-    }
-
-    public static AgentInstanceId from(UUID value) {
-        UUID requiredValue = Objects.requireNonNull(value, "value");
-        if (isNil(requiredValue)) {
-            throw new IllegalArgumentException("AgentInstanceId must not be a nil UUID");
-        }
-
-        return new AgentInstanceId(requiredValue);
+        return new AgentInstanceId(UUID.randomUUID());
     }
 
     public static AgentInstanceId parse(String value) {
@@ -34,40 +26,14 @@ public final class AgentInstanceId {
         try {
             parsed = UUID.fromString(value);
         } catch (IllegalArgumentException exception) {
-            throw new IllegalArgumentException("AgentInstanceId must be a canonical UUID", exception);
+            throw notCanonical(exception);
         }
 
         if (!parsed.toString().equals(value)) {
-            throw new IllegalArgumentException("AgentInstanceId must be a canonical lowercase UUID");
+            throw notCanonical(null);
         }
 
-        return from(parsed);
-    }
-
-    public static AgentInstanceId unbound() {
-        return UNBOUND;
-    }
-
-    public boolean isUnbound() {
-        return isNil(value);
-    }
-
-    public UUID asUuid() {
-        return value;
-    }
-
-    @Override
-    public boolean equals(Object other) {
-        if (this == other) {
-            return true;
-        }
-
-        return other instanceof AgentInstanceId that && value.equals(that.value);
-    }
-
-    @Override
-    public int hashCode() {
-        return value.hashCode();
+        return new AgentInstanceId(parsed);
     }
 
     @Override
@@ -75,7 +41,7 @@ public final class AgentInstanceId {
         return value.toString();
     }
 
-    private static boolean isNil(UUID value) {
-        return (value.getMostSignificantBits() == 0L) && (value.getLeastSignificantBits() == 0L);
+    private static IllegalArgumentException notCanonical(Throwable cause) {
+        return new IllegalArgumentException("AgentInstanceId must be a canonical lowercase UUID", cause);
     }
 }

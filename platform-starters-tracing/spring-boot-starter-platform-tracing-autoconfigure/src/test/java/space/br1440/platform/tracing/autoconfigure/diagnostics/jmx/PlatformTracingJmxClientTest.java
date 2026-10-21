@@ -18,6 +18,7 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.sampling.Samp
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxDiagnosticSnapshot;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxMBeanRegistrationState;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+import space.br1440.platform.tracing.autoconfigure.support.BoundTracingSettingsSources;
 import space.br1440.platform.tracing.autoconfigure.support.DomainSnapshotEndpoints;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
@@ -138,7 +139,7 @@ class PlatformTracingJmxClientTest {
     }
 
     private void registerSamplingMBean() throws Exception {
-        TracingSettingsSource acceptedPolicy = TracingSettingsSource.isolatedSampling(
+        TracingSettingsSource acceptedPolicy = BoundTracingSettingsSources.sampling(
                 true, Collections.emptyMap(), 0.42d
         );
 

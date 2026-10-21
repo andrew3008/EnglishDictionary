@@ -22,15 +22,31 @@ import space.br1440.platform.tracing.otel.javaagent.logging.event.ValidationLogE
 public final class TracingSettingsSource {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(TracingSettingsSource.class);
+    private static final TracingSettings DEFAULT_POLICY = createDefaultPolicy();
 
     private final TracingSettingsStore store;
     private final TracingSettingsUpdater updater;
 
     private TracingSettingsSource(TracingSettingsStore store) {
         this.store = Objects.requireNonNull(store, "store");
-        this.updater = store.current().agentInstanceId().isUnbound()
-                ? null
-                : new TracingSettingsUpdater(store, AgentLoggingRuntime.shared()::applyLevel);
+        this.updater = new TracingSettingsUpdater(store, AgentLoggingRuntime.shared()::applyLevel);
+    }
+
+    public static TracingSettings defaultPolicy() {
+        return DEFAULT_POLICY;
+    }
+
+    private static TracingSettings createDefaultPolicy() {
+        ControlSettingsExtensionConfig controlSettings = ControlSettingsExtensionConfig.defaults();
+        return TracingSettings.of(
+                ExtensionDefaults.DEFAULT_ENABLED,
+                ExtensionDefaults.DEFAULT_SAMPLING_RATIO,
+                Map.of(),
+                ExtensionDefaults.DEFAULT_SPAN_ATTRIBUTE_VALIDATION_LEVEL,
+                controlSettings.exporterEnabled(),
+                controlSettings.traceControlHeadersEnabled(),
+                controlSettings.diagnosticsLogLevel()
+        );
     }
 
     public static TracingSettingsSource fromStartup(ExtensionConfig config,
@@ -50,48 +66,6 @@ public final class TracingSettingsSource {
                 agentInstanceId);
     }
 
-    public static TracingSettingsSource isolatedDefaults() {
-        return isolatedValidation(ExtensionDefaults.DEFAULT_SPAN_ATTRIBUTE_VALIDATION_LEVEL);
-    }
-
-    public static TracingSettingsSource isolatedValidation(SpanAttributeValidationLevel validationLevel) {
-        return createIsolated(
-                ExtensionDefaults.DEFAULT_ENABLED,
-                ExtensionDefaults.DEFAULT_SAMPLING_RATIO,
-                parseRouteRatios(ExtensionDefaults.DEFAULT_SAMPLING_ROUTE_RATIOS),
-                validationLevel
-        );
-    }
-
-    public static TracingSettingsSource isolatedSampling(boolean enabled,
-                                                         Map<String, Double> routeRatios,
-                                                         double defaultRatio) {
-        return createIsolated(
-                enabled,
-                defaultRatio,
-                routeRatios,
-                SpanAttributeValidationLevel.DISABLED);
-    }
-
-    private static TracingSettingsSource createIsolated(boolean samplingEnabled,
-                                                        double samplingRatio,
-                                                        Map<String, Double> routeRatios,
-                                                        SpanAttributeValidationLevel validationLevel) {
-        ControlSettingsExtensionConfig controlSettings = ControlSettingsExtensionConfig.defaults();
-        TracingSettings settings = TracingSettings.of(
-                samplingEnabled,
-                samplingRatio,
-                routeRatios,
-                validationLevel,
-                controlSettings.exporterEnabled(),
-                controlSettings.traceControlHeadersEnabled(),
-                controlSettings.diagnosticsLogLevel()
-        );
-
-        TracingSettingsStore store = new TracingSettingsStore(AgentInstanceId.unbound(), settings);
-        return new TracingSettingsSource(store);
-    }
-
     public TracingSettingsRevision current() {
         return store.current();
     }
@@ -101,17 +75,10 @@ public final class TracingSettingsSource {
     }
 
     public TracingSettingsUpdater updater() {
-        if (updater == null) {
-            throw new IllegalStateException("Cannot apply tracing settings to an unbound store");
-        }
         return updater;
     }
 
     public void projectDiagnosticsLevel() {
-        if (updater == null) {
-            AgentLoggingRuntime.shared().applyLevel(current().policy().diagnosticsLogLevel());
-            return;
-        }
         updater.projectDiagnosticsLevel();
     }
 

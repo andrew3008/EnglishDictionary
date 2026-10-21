@@ -1,13 +1,15 @@
 package space.br1440.platform.tracing.otel.javaagent.diagnostics;
 
-import org.junit.jupiter.api.Test;
-
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 
 class PlatformLogControlRegistrationTest {
 
@@ -15,8 +17,8 @@ class PlatformLogControlRegistrationTest {
     void bindCloseRestoresPreviousAndStaleCloseDoesNotClearNewerBinding() throws Exception {
         // given
         PlatformLogControl control = new PlatformLogControl();
-        TracingSettingsSource policyA = TracingSettingsSource.isolatedDefaults();
-        TracingSettingsSource policyB = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5d);
+        TracingSettingsSource policyA = TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random());
+        TracingSettingsSource policyB = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 0.5d);
 
         // when
         AutoCloseable token1 = control.bindAcceptedPolicy(policyA);
@@ -36,10 +38,10 @@ class PlatformLogControlRegistrationTest {
     void rebindWhileActiveFails() throws Exception {
         // given
         PlatformLogControl control = new PlatformLogControl();
-        AutoCloseable token1 = control.bindAcceptedPolicy(TracingSettingsSource.isolatedDefaults());
+        AutoCloseable token1 = control.bindAcceptedPolicy(TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
 
         // when/then
-        assertThatThrownBy(() -> control.bindAcceptedPolicy(TracingSettingsSource.isolatedDefaults()))
+        assertThatThrownBy(() -> control.bindAcceptedPolicy(TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random())))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("already has an active");
         token1.close();

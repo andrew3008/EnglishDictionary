@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -15,8 +17,9 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
@@ -36,12 +39,6 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.data.StatusData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * HMAC, circuit breakers и счётчики принадлежат сессии. Проверяется, что параллельное
- * использование одного runtime детерминировано, а два runtime полностью изолированы.
- */
 class ScrubbingRuntimeConcurrencyTest {
 
     private static final int THREADS = 8;
@@ -121,7 +118,7 @@ class ScrubbingRuntimeConcurrencyTest {
         ScrubbingSpanProcessor processor = new ScrubbingSpanProcessor(runtime);
         InMemorySpanExporter delegate = InMemorySpanExporter.create();
         SpanExporter boundaryExporter = new SafeSpanExporter(
-                delegate, TracingSettingsSource.isolatedDefaults(), runtime);
+                delegate, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         SpanData eventCarryingSpan = TestSpanData.builder()
                 .setName("op")

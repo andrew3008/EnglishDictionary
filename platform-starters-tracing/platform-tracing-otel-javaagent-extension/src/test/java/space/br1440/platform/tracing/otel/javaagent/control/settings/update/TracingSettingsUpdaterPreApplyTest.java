@@ -24,7 +24,7 @@ class TracingSettingsUpdaterPreApplyTest {
     @BeforeEach
     void setUp() {
         store = AcceptedPolicyTestFixtures.bootstrapAgentDefaultsStore(
-                AgentInstanceId.from(UUID.randomUUID()),
+                new AgentInstanceId(UUID.randomUUID()),
                 TracingSettings.of(
                         true,
                         1.0d,

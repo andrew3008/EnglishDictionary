@@ -34,6 +34,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
@@ -118,25 +119,13 @@ class PlatformTracingMBeanRegistrarTest {
     @Test
     void runtimeRegistrationRejectsDifferentAgentInstanceId() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedDefaults();
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random());
         PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(server, AgentInstanceId.random());
 
         // when
         assertThatThrownBy(() -> registrar.registerRuntimeControls(holder))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("JMX registrar and tracing settings agentInstanceId values must match");
-    }
-
-    @Test
-    void constructorRejectsUnboundAgentInstanceId() {
-        // given
-        AgentInstanceId agentInstanceId = AgentInstanceId.unbound();
-
-        // when
-        // then
-        assertThatThrownBy(() -> new PlatformTracingMBeanRegistrar(server, agentInstanceId))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("JMX registrar agentInstanceId must be bound");
     }
 
     @Test

@@ -19,6 +19,7 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.Jmx
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+import space.br1440.platform.tracing.autoconfigure.support.BoundTracingSettingsSources;
 import space.br1440.platform.tracing.autoconfigure.support.DomainSnapshotEndpoints;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
@@ -110,7 +111,6 @@ class DomainAbsentOwnerEncodingRoundTripTest {
         assertThat(client.diagnostics().observation()).isPresent();
         assertThat(client.diagnostics().observation().orElseThrow().agentInstanceId()).isEqualTo(expectedAgentInstanceId);
 
-        // Observation присутствует (transport Present), владельцы Absent, CV не записывается.
         assertThat(client.sampling().lastSuccessAge()).isPresent();
         assertThat(client.export().lastSuccessAge()).isPresent();
         assertThat(client.jmxContractDiagnostics()).isEmpty();
@@ -120,7 +120,8 @@ class DomainAbsentOwnerEncodingRoundTripTest {
     void validationViolationCounterRoundTripsFromAgentOwner() throws Exception {
         OwnerRegistrationSlot<ValidatingSpanProcessor> slot = new OwnerRegistrationSlot<>();
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(
-                TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING));
+                BoundTracingSettingsSources.validation(SpanAttributeValidationLevel.WARNING)
+        );
         slot.replace(processor);
         processor.onEnding(mock(ReadWriteSpan.class));
         ValidationObservationSource validation = new ValidationObservationSource(slot, agentInstanceId);
@@ -137,7 +138,7 @@ class DomainAbsentOwnerEncodingRoundTripTest {
     }
 
     private void registerAllDomainsWithEmptyOwnerSlots() throws Exception {
-        TracingSettingsSource acceptedPolicy = TracingSettingsSource.isolatedSampling(
+        TracingSettingsSource acceptedPolicy = BoundTracingSettingsSources.sampling(
                 true, Collections.emptyMap(), 0.5d
         );
         SamplingObservationSource sampling = new SamplingObservationSource(

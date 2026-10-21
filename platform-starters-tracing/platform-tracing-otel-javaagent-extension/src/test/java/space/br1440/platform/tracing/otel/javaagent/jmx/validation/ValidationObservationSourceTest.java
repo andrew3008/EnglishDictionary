@@ -6,7 +6,7 @@ import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
@@ -52,7 +52,7 @@ class ValidationObservationSourceTest {
     void ownerPresentReflectsProcessorStateAndPositiveGeneration() {
         // given
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(
-                TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.ERROR)
+                TracingSettingsSourceTestFixtures.boundValidation(AgentInstanceId.random(), SpanAttributeValidationLevel.ERROR)
         );
 
         try (SpanProcessorHarness harness = SpanProcessorHarness.of(processor, Resource.empty())) {

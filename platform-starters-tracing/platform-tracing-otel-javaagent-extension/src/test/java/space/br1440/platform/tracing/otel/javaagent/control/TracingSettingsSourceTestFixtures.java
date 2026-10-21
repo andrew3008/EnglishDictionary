@@ -8,30 +8,37 @@ import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
-
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public final class TracingSettingsSourceTestFixtures {
 
     public static TracingSettingsSource boundDefaults(AgentInstanceId agentInstanceId) {
-        return create(agentInstanceId, null, null, Map.of());
+        return create(agentInstanceId, null, null, Map.of(), null);
     }
 
     public static TracingSettingsSource boundSampling(AgentInstanceId agentInstanceId,
                                                       boolean enabled,
                                                       Map<String, Double> routeRatios,
                                                       double defaultRatio) {
-        return create(agentInstanceId, enabled, defaultRatio, routeRatios);
+        return create(agentInstanceId, enabled, defaultRatio, routeRatios, null);
+    }
+
+    public static TracingSettingsSource boundValidation(AgentInstanceId agentInstanceId,
+                                                        SpanAttributeValidationLevel validationLevel) {
+        Objects.requireNonNull(validationLevel, "validationLevel");
+        return create(agentInstanceId, null, null, Map.of(), validationLevel);
     }
 
     private static TracingSettingsSource create(AgentInstanceId agentInstanceId,
                                                 Boolean enabled,
                                                 Double defaultRatio,
-                                                Map<String, Double> routeRatios) {
+                                                Map<String, Double> routeRatios,
+                                                SpanAttributeValidationLevel validationLevel) {
         Objects.requireNonNull(agentInstanceId, "agentInstanceId");
         Objects.requireNonNull(routeRatios, "routeRatios");
 
@@ -41,14 +48,16 @@ public final class TracingSettingsSourceTestFixtures {
         ExtensionConfig config = configWithSystemPropertyEvidence(
                 enabled,
                 defaultRatio,
-                Map.copyOf(encodedRouteRatios)
+                Map.copyOf(encodedRouteRatios),
+                validationLevel
         );
         return TracingSettingsSource.fromStartup(config, agentInstanceId);
     }
 
     private static ExtensionConfig configWithSystemPropertyEvidence(Boolean enabled,
                                                                     Double defaultRatio,
-                                                                    Map<String, String> routeRatios) {
+                                                                    Map<String, String> routeRatios,
+                                                                    SpanAttributeValidationLevel validationLevel) {
         Map<String, String> properties = new LinkedHashMap<>();
 
         if (enabled != null) {
@@ -57,6 +66,10 @@ public final class TracingSettingsSourceTestFixtures {
 
         if (defaultRatio != null) {
             properties.put(ExtensionPropertyNames.SAMPLING_RATIO, defaultRatio.toString());
+        }
+
+        if (validationLevel != null) {
+            properties.put(ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL, validationLevel.name());
         }
 
         if (!routeRatios.isEmpty()) {
@@ -76,7 +89,12 @@ public final class TracingSettingsSourceTestFixtures {
                     System.setProperty(name, value);
                 });
 
-                SamplingConfigProperties configProperties = new SamplingConfigProperties(enabled, defaultRatio, routeRatios);
+                SamplingConfigProperties configProperties = new SamplingConfigProperties(
+                        enabled,
+                        defaultRatio,
+                        routeRatios,
+                        validationLevel
+                );
                 return new ExtensionConfig(configProperties);
             } finally {
                 previousValues.forEach((name, value) -> {
@@ -92,10 +110,15 @@ public final class TracingSettingsSourceTestFixtures {
 
     private record SamplingConfigProperties(Boolean enabled,
                                             Double defaultRatio,
-                                            Map<String, String> routeRatios) implements ConfigProperties {
+                                            Map<String, String> routeRatios,
+                                            SpanAttributeValidationLevel validationLevel) implements ConfigProperties {
 
         @Override
         public String getString(String name) {
+            if (validationLevel != null
+                    && ExtensionPropertyNames.SPAN_ATTRIBUTES_VALIDATION_LEVEL.equals(name)) {
+                return validationLevel.name();
+            }
             return null;
         }
 

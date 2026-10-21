@@ -6,7 +6,9 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.test.assertions.ValidationAssertions;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
@@ -19,7 +21,7 @@ class ValidatingSpanProcessorCharacterizationTest {
     @Test
     void runtime_policy_update_disables_subsequent_validation() {
         // given
-        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.DISABLED);
+        TracingSettingsSource access = TracingSettingsSourceTestFixtures.boundValidation(AgentInstanceId.random(), SpanAttributeValidationLevel.DISABLED);
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access);
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
@@ -35,7 +37,10 @@ class ValidatingSpanProcessorCharacterizationTest {
     void warn_level_records_missing_but_export_continues() {
         // given
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(
-                TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING)
+                TracingSettingsSourceTestFixtures.boundValidation(
+                        AgentInstanceId.random(),
+                        SpanAttributeValidationLevel.WARNING
+                )
         );
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {

@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-
 import jakarta.annotation.Nonnull;
 
 import org.junit.jupiter.api.DisplayName;
@@ -30,12 +29,12 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseObservation;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseScope;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -53,7 +52,7 @@ class SafeSpanExporterTest {
     }
 
     private static SafeSpanExporter safeExporter(SpanExporter delegate) {
-        return safeExporter(delegate, TracingSettingsSource.isolatedDefaults(),
+        return safeExporter(delegate, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled());
     }
 
@@ -126,7 +125,7 @@ class SafeSpanExporterTest {
         RateLimitedLogger recoveryLog = new RateLimitedLogger(SafeSpanExporterTest.class);
         try (SafeSpanExporter safe = new SafeSpanExporter(
                 sequencedDelegate,
-                TracingSettingsSource.isolatedDefaults(),
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled(),
                 recoveryLog);
              AgentLogCapture capture = AgentLogCapture.installed()) {
@@ -330,7 +329,7 @@ class SafeSpanExporterTest {
         );
         try (SafeSpanExporter safe = new SafeSpanExporter(
                 delegate,
-                TracingSettingsSource.isolatedDefaults(),
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled(),
                 new RateLimitedLogger(SafeSpanExporterTest.class));
              AgentLogCapture logs = AgentLogCapture.installed()) {
@@ -359,7 +358,7 @@ class SafeSpanExporterTest {
         );
         try (SafeSpanExporter safe = new SafeSpanExporter(
                 delegate,
-                TracingSettingsSource.isolatedDefaults(),
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled(),
                 new RateLimitedLogger(SafeSpanExporterTest.class));
              AgentLogCapture logs = AgentLogCapture.installed()) {
@@ -905,7 +904,7 @@ class SafeSpanExporterTest {
             public CompletableResultCode shutdown() {
                 return CompletableResultCode.ofSuccess();
             }
-        }, TracingSettingsSource.isolatedDefaults(), runtime);
+        }, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         // when
         SpanData span = ExporterBoundaryTestSupport.baseSpan("op")
@@ -943,7 +942,7 @@ class SafeSpanExporterTest {
             public CompletableResultCode shutdown() {
                 return CompletableResultCode.ofSuccess();
             }
-        }, TracingSettingsSource.isolatedDefaults(), runtime);
+        }, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         SpanData healthy = ExporterBoundaryTestSupport.baseSpan("op-1").build();
         SpanData poisoned = new DelegatingSpanData(
@@ -987,7 +986,7 @@ class SafeSpanExporterTest {
             public CompletableResultCode shutdown() {
                 return CompletableResultCode.ofSuccess();
             }
-        }, TracingSettingsSource.isolatedDefaults(), runtime);
+        }, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         Collection<SpanData> hostileBatch = new AbstractCollection<>() {
             @Nonnull
@@ -1038,7 +1037,7 @@ class SafeSpanExporterTest {
             public CompletableResultCode shutdown() {
                 return CompletableResultCode.ofSuccess();
             }
-        }, TracingSettingsSource.isolatedDefaults(), runtime);
+        }, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         Collection<SpanData> hostileBatch = new AbstractCollection<>() {
             @Nonnull
@@ -1090,7 +1089,7 @@ class SafeSpanExporterTest {
             public CompletableResultCode shutdown() {
                 return CompletableResultCode.ofSuccess();
             }
-        }, TracingSettingsSource.isolatedDefaults(), runtime);
+        }, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         Collection<SpanData> hostileBatch = new AbstractCollection<>() {
             @Nonnull
@@ -1145,7 +1144,7 @@ class SafeSpanExporterTest {
             public CompletableResultCode shutdown() {
                 return CompletableResultCode.ofSuccess();
             }
-        }, TracingSettingsSource.isolatedDefaults(), runtime);
+        }, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         SpanData span = ExporterBoundaryTestSupport.baseSpan("op").build();
         AtomicInteger sizeCalls = new AtomicInteger();
@@ -1209,7 +1208,7 @@ class SafeSpanExporterTest {
             public CompletableResultCode shutdown() {
                 return CompletableResultCode.ofSuccess();
             }
-        }, TracingSettingsSource.isolatedDefaults(), runtime);
+        }, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         SpanData poisoned = new DelegatingSpanData(
                 ExporterBoundaryTestSupport.baseSpan("op").build()
@@ -1235,7 +1234,7 @@ class SafeSpanExporterTest {
         // given
         ScrubbingRuntime disabled = ScrubbingRuntimeTestFixtures.disabled();
         try (SafeSpanExporter withDisabledRuntime = new SafeSpanExporter(
-                delegate(CompletableResultCode.ofSuccess()), TracingSettingsSource.isolatedDefaults(), disabled)) {
+                delegate(CompletableResultCode.ofSuccess()), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), disabled)) {
             // when/then
             assertThat(withDisabledRuntime.metricsSnapshot()).doesNotContainKey("boundary.input_spans");
         }
@@ -1243,7 +1242,7 @@ class SafeSpanExporterTest {
         // given
         ScrubbingRuntime enabled = enabledRuntime("email");
         try (SafeSpanExporter withEnabledRuntime = new SafeSpanExporter(
-                delegate(CompletableResultCode.ofSuccess()), TracingSettingsSource.isolatedDefaults(), enabled)) {
+                delegate(CompletableResultCode.ofSuccess()), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), enabled)) {
             // when
             withEnabledRuntime.export(List.of(ExporterBoundaryTestSupport.baseSpan("op").build()));
 
@@ -1312,7 +1311,7 @@ class SafeSpanExporterTest {
             public CompletableResultCode shutdown() {
                 return CompletableResultCode.ofSuccess();
             }
-        }, TracingSettingsSource.isolatedDefaults(), enabled);
+        }, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), enabled);
 
         Collection<SpanData> batch = List.of(ExporterBoundaryTestSupport.baseSpan("clean").build());
 

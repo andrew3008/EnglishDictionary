@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
@@ -31,7 +31,7 @@ class PlatformExportProcessorFactorySafeWrapTest {
         CountingExporter delegate = new CountingExporter();
 
         // when
-        SpanExporter result = factory.captureExporter(delegate, TracingSettingsSource.isolatedDefaults());
+        SpanExporter result = factory.captureExporter(delegate, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
         result.export(java.util.List.of()).join(1, java.util.concurrent.TimeUnit.SECONDS);
 
         // then
@@ -46,8 +46,8 @@ class PlatformExportProcessorFactorySafeWrapTest {
         PlatformExportProcessorFactory factory = factory();
 
         // when
-        SpanExporter once = factory.captureExporter(SpanExporter.noop(), TracingSettingsSource.isolatedDefaults());
-        SpanExporter twice = factory.captureExporter(once, TracingSettingsSource.isolatedDefaults());
+        SpanExporter once = factory.captureExporter(SpanExporter.noop(), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
+        SpanExporter twice = factory.captureExporter(once, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
 
         // then
         assertThat(twice).isSameAs(once);
@@ -84,7 +84,7 @@ class PlatformExportProcessorFactorySafeWrapTest {
         PlatformExportProcessorFactory factory = factory();
 
         try {
-            SpanExporter wrapper = factory.captureExporter(rawDelegate, TracingSettingsSource.isolatedDefaults());
+            SpanExporter wrapper = factory.captureExporter(rawDelegate, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
 
             // when
             CompletableResultCode wrapperShutdown = wrapper.shutdown().join(2, TimeUnit.SECONDS);

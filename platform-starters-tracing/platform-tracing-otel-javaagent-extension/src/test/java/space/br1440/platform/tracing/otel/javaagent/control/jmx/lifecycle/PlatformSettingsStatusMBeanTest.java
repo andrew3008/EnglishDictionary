@@ -38,7 +38,7 @@ class PlatformSettingsStatusMBeanTest {
     void exposesExactGeneratedOpenMBeanContract() {
         // given
         TracingSettingsUpdater updater = updater(
-                AgentInstanceId.from(UUID.randomUUID()),
+                new AgentInstanceId(UUID.randomUUID()),
                 settings(1.0d, Map.of()));
         PlatformSettingsStatusMBean mBean = new PlatformSettingsStatusMBean(updater);
 
@@ -93,7 +93,7 @@ class PlatformSettingsStatusMBeanTest {
     @Test
     void returnsCoherentGeneratedAcceptedPolicySnapshot() throws Exception {
         // given
-        AgentInstanceId agentInstanceId = AgentInstanceId.from(UUID.randomUUID());
+        AgentInstanceId agentInstanceId = new AgentInstanceId(UUID.randomUUID());
         TracingSettings initial = settings(1.0d, Map.of());
         TracingSettings candidate = settings(0.25d, Map.of("/orders", 0.5d));
         TracingSettingsStore store = AcceptedPolicyTestFixtures.bootstrapAgentDefaultsStore(agentInstanceId, initial);

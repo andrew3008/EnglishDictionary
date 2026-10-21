@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.exporter;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -12,14 +14,16 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
-import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.sun.net.httpserver.HttpServer;
+
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -38,8 +42,6 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.data.StatusData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class ExporterBoundaryRealPayloadTest {
 
@@ -97,7 +99,7 @@ class ExporterBoundaryRealPayloadTest {
         try (SpanExporter delegate = OtlpJsonLoggingSpanExporter.create()) {
             ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(RULES);
             SpanExporter exporter = new SafeSpanExporter(
-                    delegate, TracingSettingsSource.isolatedDefaults(), runtime);
+                    delegate, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
             // when
             exporter.export(List.of(spanWithSecretsEverywhere()));
@@ -128,7 +130,7 @@ class ExporterBoundaryRealPayloadTest {
         try (LoggingSpanExporter delegate = LoggingSpanExporter.create()) {
             ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(RULES);
             SpanExporter exporter = new SafeSpanExporter(
-                    delegate, TracingSettingsSource.isolatedDefaults(), runtime);
+                    delegate, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
             // when
             exporter.export(List.of(spanWithSecretsEverywhere()));
@@ -151,7 +153,7 @@ class ExporterBoundaryRealPayloadTest {
         InMemorySpanExporter delegate = InMemorySpanExporter.create();
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(RULES);
         SpanExporter exporter = new SafeSpanExporter(
-                delegate, TracingSettingsSource.isolatedDefaults(), runtime);
+                delegate, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         List<SpanData> finished;
         try (SdkTracerProvider provider = SdkTracerProvider.builder()
@@ -251,7 +253,7 @@ class ExporterBoundaryRealPayloadTest {
     private static void recordExceptionThrough(SpanExporter delegate) {
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(RULES);
         SpanExporter exporter = new SafeSpanExporter(
-                delegate, TracingSettingsSource.isolatedDefaults(), runtime);
+                delegate, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         try (SdkTracerProvider provider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))

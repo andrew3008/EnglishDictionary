@@ -47,9 +47,6 @@ public final class PlatformTracingMBeanRegistrar {
                                   PlatformExtensionReadiness extensionReadiness,
                                   AgentInstanceId agentInstanceId) {
         AgentInstanceId requiredAgentInstanceId = Objects.requireNonNull(agentInstanceId, "agentInstanceId");
-        if (requiredAgentInstanceId.isUnbound()) {
-            throw new IllegalArgumentException("JMX registrar agentInstanceId must be bound");
-        }
 
         MBeanRegistrationScope scope = new MBeanRegistrationScope(mbeanServer);
         this.extensionReadiness = Objects.requireNonNull(extensionReadiness, "extensionReadiness");
@@ -114,10 +111,12 @@ public final class PlatformTracingMBeanRegistrar {
         return agentInstanceId;
     }
 
-    private ExtensionReadinessWireSnapshot requireOwnedReadinessSnapshot(
-            ExtensionReadinessWireSnapshot snapshot) {
-        ExtensionReadinessWireSnapshot requiredSnapshot =
-                Objects.requireNonNull(snapshot, "Readiness projection must not return null");
+    private ExtensionReadinessWireSnapshot requireOwnedReadinessSnapshot(ExtensionReadinessWireSnapshot snapshot) {
+        ExtensionReadinessWireSnapshot requiredSnapshot = Objects.requireNonNull(
+                snapshot,
+                "Readiness projection must not return null"
+        );
+
         if (!agentInstanceId.toString().equals(requiredSnapshot.agentInstanceId())) {
             throw new IllegalStateException(
                     "JMX registrar and readiness snapshot agentInstanceId values must match"

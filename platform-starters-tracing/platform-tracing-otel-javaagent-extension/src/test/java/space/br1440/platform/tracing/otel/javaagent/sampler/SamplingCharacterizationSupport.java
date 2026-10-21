@@ -1,6 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 
@@ -29,7 +31,7 @@ import lombok.experimental.UtilityClass;
 final class SamplingCharacterizationSupport {
 
     static void assertCharacterizedCase(SamplingDecisionCase c) {
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(),
                 c.enabled(),
                 c.routeRatios(),
                 c.defaultRatio());

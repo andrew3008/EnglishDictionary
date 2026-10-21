@@ -26,27 +26,23 @@ public final class TracingSettingsUpdater {
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(TracingSettingsUpdater.class);
 
     private final Supplier<TracingSettingsRevision> current;
-    private final TracingSettingsStore store;
-    private final SettingsCommit commitOverride;
+    private final SettingsCommit settingsCommit;
     private final Consumer<AgentLogLevel> diagnosticsLevelApplier;
     private final Object updateMonitor = new Object();
 
     public TracingSettingsUpdater(TracingSettingsStore store, Consumer<AgentLogLevel> diagnosticsLevelApplier) {
-        this.store = requireNonNull(store, "store");
-        this.current = store::current;
-        this.commitOverride = null;
+        TracingSettingsStore requiredStore = requireNonNull(store, "store");
+        this.current = requiredStore::current;
+        this.settingsCommit = requiredStore::commit;
         this.diagnosticsLevelApplier = requireNonNull(diagnosticsLevelApplier, "diagnosticsLevelApplier");
-        requireBound(this.current.get());
     }
 
     TracingSettingsUpdater(Supplier<TracingSettingsRevision> current,
-                           SettingsCommit commitOverride,
+                           SettingsCommit settingsCommit,
                            Consumer<AgentLogLevel> diagnosticsLevelApplier) {
-        this.store = null;
         this.current = requireNonNull(current, "current");
-        this.commitOverride = requireNonNull(commitOverride, "commitOverride");
+        this.settingsCommit = requireNonNull(settingsCommit, "settingsCommit");
         this.diagnosticsLevelApplier = requireNonNull(diagnosticsLevelApplier, "diagnosticsLevelApplier");
-        requireBound(this.current.get());
     }
 
     public TracingSettingsRevision current() {
@@ -138,11 +134,7 @@ public final class TracingSettingsUpdater {
     private SettingsCommitResult commit(SettingsRevision expectedBase,
                                         TracingSettings candidate,
                                         SettingsSourceAuthority authority) {
-        if (commitOverride != null) {
-            return commitOverride.commit(expectedBase, candidate, authority);
-        }
-
-        return store.commit(expectedBase, candidate, authority);
+        return settingsCommit.commit(expectedBase, candidate, authority);
     }
 
     private void applyDiagnosticsLevel(SettingsUpdateAttempt attempt, TracingSettingsRevision accepted) {
@@ -157,12 +149,6 @@ public final class TracingSettingsUpdater {
 
     private SettingsUpdateResult terminal(SettingsUpdateStatus status, SettingsRejectionReason reason) {
         return result(status, current.get(), reason);
-    }
-
-    private static void requireBound(TracingSettingsRevision revision) {
-        if (revision.agentInstanceId().isUnbound()) {
-            throw new IllegalArgumentException("TracingSettingsUpdater requires a store bound to an agent instance");
-        }
     }
 
     private static SettingsRejectionReason requireRejectionReason(SettingsRejectionReason reason) {

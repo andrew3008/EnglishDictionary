@@ -1,7 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.control.settings.update;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Map;
 import java.util.UUID;
@@ -19,7 +18,6 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
-import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
@@ -86,18 +84,6 @@ class TracingSettingsUpdaterLostCommitTest {
         assertThat(capture.events())
                 .extracting(CapturedLogEvent::eventName)
                 .containsExactly("DIAGNOSTICS_LOG_LEVEL_APPLY_FAILED", "TRACING_SETTINGS_UPDATE_RESOLVED");
-    }
-
-    @Test
-    void unboundStoreIsRejectedByConstructor() {
-        // given
-        TracingSettingsStore store = new TracingSettingsStore(AgentInstanceId.unbound(), policy());
-
-        // when
-        // then
-        assertThatThrownBy(() -> new TracingSettingsUpdater(store, level -> { }))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("TracingSettingsUpdater requires a store bound to an agent instance");
     }
 
     private static TracingSettingsStore store() {

@@ -5,8 +5,9 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.test.assertions.EnrichmentAssertions;
@@ -48,7 +49,7 @@ class PipelinePolicyCharacterizationTest {
     void validation_runs_before_enrichment_in_composite_onEnding() {
         // given
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(
-                new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING)),
+                new ValidatingSpanProcessor(TracingSettingsSourceTestFixtures.boundValidation(AgentInstanceId.random(), SpanAttributeValidationLevel.WARNING)),
                 new EnrichingSpanProcessor(),
                 ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
                         List.of(BuiltInSpanAttributeScrubbingRules.OAUTH_HEADER.create())))
@@ -73,7 +74,7 @@ class PipelinePolicyCharacterizationTest {
     void validation_marker_absent_whenValidationDisabled() {
         // given
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(
-                new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.DISABLED)),
+                new ValidatingSpanProcessor(TracingSettingsSourceTestFixtures.boundValidation(AgentInstanceId.random(), SpanAttributeValidationLevel.DISABLED)),
                 new EnrichingSpanProcessor(),
                 ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
                         List.of(BuiltInSpanAttributeScrubbingRules.OAUTH_HEADER.create())))

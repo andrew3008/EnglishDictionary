@@ -1,19 +1,17 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-
-import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
-
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
-/**
- * Фиксирует порядок правил {@code SamplingPolicyEngine} после PR-6B delegation.
- */
+import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
+import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+
 class SamplingRuleOrderCharacterizationTest {
 
     private static final List<String> EXPECTED_RULE_NAMES = List.of(
@@ -29,15 +27,17 @@ class SamplingRuleOrderCharacterizationTest {
     @Test
     void policy_engine_order_matches_prior_composite_rule_chain() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, java.util.Map.of(), 1.0);
-        CompositeSampler sampler = new CompositeSampler(
-                holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, java.util.Map.of(), 1.0);
 
         // when/then
-        assertThat(sampler.policyEngine().ruleCount()).isEqualTo(7);
-        for (int i = 0; i < EXPECTED_RULE_NAMES.size(); i++) {
-            assertThat(sampler.policyEngine().ruleNameAt(i))
-                    .isEqualTo(EXPECTED_RULE_NAMES.get(i));
+        try (CompositeSampler sampler = new CompositeSampler(
+                holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on"))
+        )) {
+            assertThat(sampler.policyEngine().ruleCount()).isEqualTo(7);
+            for (int i = 0; i < EXPECTED_RULE_NAMES.size(); i++) {
+                assertThat(sampler.policyEngine().ruleNameAt(i))
+                        .isEqualTo(EXPECTED_RULE_NAMES.get(i));
+            }
         }
     }
 }

@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
+import space.br1440.platform.tracing.autoconfigure.support.BoundTracingSettingsSources;
 import space.br1440.platform.tracing.autoconfigure.support.DomainSnapshotEndpoints;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
@@ -116,12 +117,15 @@ class PlatformTracingJmxDomainHealthMetricsBinderTest {
     }
 
     private void registerSamplingMBean() throws Exception {
-        TracingSettingsSource acceptedPolicy = TracingSettingsSource.isolatedSampling(
-                true, Collections.emptyMap(), 0.42d);
+        TracingSettingsSource acceptedPolicy = BoundTracingSettingsSources.sampling(
+                true, Collections.emptyMap(), 0.42d
+        );
+
         OwnerRegistrationSlot<CompositeSampler> slot = new OwnerRegistrationSlot<>();
         SamplingObservationSource impl = new SamplingObservationSource(acceptedPolicy, slot, AgentInstanceId.random());
         server.registerMBean(
                 DomainSnapshotEndpoints.sampling(impl::getSamplingObservation),
-                DomainObjectNames.SAMPLING);
+                DomainObjectNames.SAMPLING
+        );
     }
 }

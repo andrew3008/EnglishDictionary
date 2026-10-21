@@ -17,7 +17,7 @@ import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ConfigurationPropertyException;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
@@ -50,7 +50,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
         PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(registrar, runtime);
         List<SpanData> captured = new ArrayList<>();
-        SpanExporter wrapped = factory.captureExporter(capturing(captured), TracingSettingsSource.isolatedDefaults());
+        SpanExporter wrapped = factory.captureExporter(capturing(captured), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
 
         ExtensionConfig upstream = new ExtensionConfig(stringConfig("UPSTREAM"));
         SpanProcessor stock = SimpleSpanProcessor.create(wrapped);
@@ -87,7 +87,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
             }
             @Override public CompletableResultCode flush() { return CompletableResultCode.ofSuccess(); }
             @Override public CompletableResultCode shutdown() { return CompletableResultCode.ofSuccess(); }
-        }, TracingSettingsSource.isolatedDefaults());
+        }, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
 
         ExtensionConfig dropOldest = new ExtensionConfig(stringConfig("DROP_OLDEST"));
 
@@ -121,7 +121,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
         ScrubbingRuntime session = runtimeOfPassword();
         List<SpanData> captured = new ArrayList<>();
         SafeSpanExporter foreign = new SafeSpanExporter(
-                capturing(captured), TracingSettingsSource.isolatedDefaults(),
+                capturing(captured), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled());
 
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
@@ -129,7 +129,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
 
         // when
         Throwable failure = catchThrowable(
-                () -> factory.captureExporter(foreign, TracingSettingsSource.isolatedDefaults()));
+                () -> factory.captureExporter(foreign, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random())));
 
         // then
         assertThat(failure)
@@ -148,7 +148,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
         ScrubbingRuntime session = runtimeOfPassword();
         List<SpanData> captured = new ArrayList<>();
         SafeSpanExporter lookalike = new SafeSpanExporter(
-                capturing(captured), TracingSettingsSource.isolatedDefaults(), session
+                capturing(captured), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), session
         );
 
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
@@ -156,7 +156,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
 
         // when
         Throwable failure = catchThrowable(
-                () -> factory.captureExporter(lookalike, TracingSettingsSource.isolatedDefaults()));
+                () -> factory.captureExporter(lookalike, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random())));
 
         // then
         assertThat(failure)
@@ -176,8 +176,8 @@ class PlatformExportProcessorFactoryBoundaryTest {
                 new PlatformTracingMBeanRegistrar(AgentInstanceId.random()), session
         );
 
-        SpanExporter firstCapture = factory.captureExporter(capturing(captured), TracingSettingsSource.isolatedDefaults());
-        SpanExporter secondCapture = factory.captureExporter(firstCapture, TracingSettingsSource.isolatedDefaults());
+        SpanExporter firstCapture = factory.captureExporter(capturing(captured), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
+        SpanExporter secondCapture = factory.captureExporter(firstCapture, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
 
         // then
         assertThat(secondCapture).isSameAs(firstCapture);

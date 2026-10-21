@@ -303,45 +303,27 @@ class TracingSettingsSourceStartupTest {
     }
 
     @Test
-    void isolatedDisabledStateStartsDisabled() {
+    void disabledValidationLevelIsStoredAtStartup() {
         // given
         SpanAttributeValidationLevel level = SpanAttributeValidationLevel.DISABLED;
 
         // when
-        TracingSettingsSource source = TracingSettingsSource.isolatedValidation(level);
+        TracingSettingsSource source = TracingSettingsSourceTestFixtures.boundValidation(AgentInstanceId.random(), level);
 
         // then
         assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.DISABLED);
     }
 
     @Test
-    void isolatedErrorStateIsNotBlockedByRemovedEnvironmentGate() {
+    void errorValidationLevelIsStoredAtStartup() {
         // given
         SpanAttributeValidationLevel level = SpanAttributeValidationLevel.ERROR;
 
         // when
-        TracingSettingsSource source = TracingSettingsSource.isolatedValidation(level);
+        TracingSettingsSource source = TracingSettingsSourceTestFixtures.boundValidation(AgentInstanceId.random(), level);
 
         // then
         assertThat(source.current().validationLevel()).isEqualTo(SpanAttributeValidationLevel.ERROR);
-    }
-
-    @Test
-    void isolatedSourceRejectsDirectStoreMutation() {
-        // given
-        TracingSettingsSource source = TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.DISABLED);
-        TracingSettingsRevision initial = source.current();
-
-        // when
-        Throwable failure = catchThrowable(() -> AcceptedPolicyMutationAccess.applyValidation(
-                source, SpanAttributeValidationLevel.ERROR));
-
-        // then
-        assertThat(failure)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Cannot commit tracing settings to an unbound store");
-        assertThat(source.current().acceptedSequence()).isZero();
-        assertThat(source.current().policy()).isEqualTo(initial.policy());
     }
 
     private static ExtensionConfig config(Map<String, String> values) {

@@ -7,6 +7,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.test.assertions.ValidationAssertions;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
@@ -17,9 +19,6 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.data.SpanData;
 
-/**
- * Characterization validation policy modes.
- */
 class ValidationPolicyCharacterizationTest {
 
     static Stream<ValidationDecisionCase> characterizedCases() {
@@ -38,7 +37,7 @@ class ValidationPolicyCharacterizationTest {
     @MethodSource("characterizedCases")
     void matrix_case(ValidationDecisionCase c) {
         // given
-        TracingSettingsSource access = TracingSettingsSource.isolatedValidation(
+        TracingSettingsSource access = TracingSettingsSourceTestFixtures.boundValidation(AgentInstanceId.random(),
                 SpanAttributeValidationLevel.valueOf(c.validationLevel())
         );
 

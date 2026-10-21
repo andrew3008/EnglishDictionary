@@ -13,8 +13,9 @@ import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.spantimeout.SpanTimeoutProcessor;
@@ -41,7 +42,7 @@ class ProcessorDiagnosticIdentityContractTest {
                     new EnrichingSpanProcessor(),
                     new RequestIdPropagatingSpanProcessor(),
                     ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of()),
-                    new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING)),
+                    new ValidatingSpanProcessor(TracingSettingsSourceTestFixtures.boundValidation(AgentInstanceId.random(), SpanAttributeValidationLevel.WARNING)),
                     new ClassificationSpanProcessor(Duration.ofSeconds(5), Duration.ofSeconds(1)),
                     spanTimeout,
                     new SpanLimitsMetricsProcessor()

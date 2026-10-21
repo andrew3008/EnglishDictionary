@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
@@ -24,7 +25,7 @@ class SamplingObservationSourceTest {
     @Test
     void samplingRatioAndEnabledReflectAcceptedPolicy() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.42d);
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 0.42d);
         SamplingObservationSource source = new SamplingObservationSource(
                 holder, new OwnerRegistrationSlot<>(), AGENT_INSTANCE_ID);
 
@@ -41,8 +42,8 @@ class SamplingObservationSourceTest {
     @Test
     void samplerEnabledReflectsAcceptedPolicyToggle() {
         // given
-        TracingSettingsSource enabled = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5d);
-        TracingSettingsSource disabled = TracingSettingsSource.isolatedSampling(false, Map.of(), 0.5d);
+        TracingSettingsSource enabled = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 0.5d);
+        TracingSettingsSource disabled = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), false, Map.of(), 0.5d);
 
         // when/then
         assertThat((Boolean) new SamplingObservationSource(enabled, new OwnerRegistrationSlot<>(), AGENT_INSTANCE_ID)
@@ -56,7 +57,7 @@ class SamplingObservationSourceTest {
     @Test
     void routeRatiosReflectAcceptedPolicy() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(),
                 true, Map.of("/api", 0.2d), 0.5d);
         SamplingObservationSource source = new SamplingObservationSource(
                 holder, new OwnerRegistrationSlot<>(), AGENT_INSTANCE_ID);
@@ -73,7 +74,7 @@ class SamplingObservationSourceTest {
     @Test
     void decisionCountsAreEmptyAndOwnerAbsentWhenCompositeSamplerOwnerAbsent() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5d);
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 0.5d);
         SamplingObservationSource source = new SamplingObservationSource(
                 holder, new OwnerRegistrationSlot<>(), AGENT_INSTANCE_ID);
 
@@ -91,7 +92,7 @@ class SamplingObservationSourceTest {
     @Test
     void decisionCountsReflectCompositeSamplerOwnerWhenPresent() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5d);
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 0.5d);
         OwnerRegistrationSlot<CompositeSampler> slot = new OwnerRegistrationSlot<>();
         CompositeSampler sampler = new CompositeSampler(holder, CategoryBSamplingAccess.snapshot(List.of(), List.of()));
         slot.replace(sampler);
@@ -114,7 +115,7 @@ class SamplingObservationSourceTest {
     @Test
     void configLastUpdatedSourceIsAcceptedState() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5d);
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 0.5d);
         SamplingObservationSource source = new SamplingObservationSource(
                 holder, new OwnerRegistrationSlot<>(), AGENT_INSTANCE_ID);
 

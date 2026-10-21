@@ -18,7 +18,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
@@ -71,7 +72,7 @@ class ValueAttributeFailClosedContractTest {
         InMemorySpanExporter delegate = InMemorySpanExporter.create();
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(ruleReturning(action)));
         SpanExporter exporter = new SafeSpanExporter(
-                delegate, TracingSettingsSource.isolatedDefaults(), runtime);
+                delegate, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         // when
         List<SpanData> finished;
@@ -111,7 +112,7 @@ class ValueAttributeFailClosedContractTest {
         InMemorySpanExporter delegate = InMemorySpanExporter.create();
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of());
         SpanExporter exporter = new SafeSpanExporter(
-                delegate, TracingSettingsSource.isolatedDefaults(), runtime);
+                delegate, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         // when
         List<SpanData> finished;

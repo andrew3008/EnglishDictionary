@@ -5,16 +5,16 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 
 public final class PlatformPropagationGate {
 
     private static final PlatformPropagationGate SHARED = new PlatformPropagationGate();
+    private static final TracingSettings UNBOUND_POLICY = TracingSettingsSource.defaultPolicy();
 
     private long activeGeneration;
     private final AtomicLong generation = new AtomicLong();
-    private final AtomicReference<TracingSettingsSource> acceptedPolicy = new AtomicReference<>(
-            TracingSettingsSource.isolatedDefaults()
-    );
+    private final AtomicReference<TracingSettingsSource> acceptedPolicy = new AtomicReference<>();
     private final Object bindLock = new Object();
 
     PlatformPropagationGate() {
@@ -30,13 +30,18 @@ public final class PlatformPropagationGate {
 
     private void releaseActiveForTests() {
         synchronized (bindLock) {
-            acceptedPolicy.set(TracingSettingsSource.isolatedDefaults());
+            acceptedPolicy.set(null);
             activeGeneration = 0L;
         }
     }
 
     public boolean isEnabled() {
-        return acceptedPolicy.get().current().traceControlHeadersEnabled();
+        TracingSettingsSource bound = acceptedPolicy.get();
+        if (bound == null) {
+            return UNBOUND_POLICY.traceControlHeadersEnabled();
+        }
+
+        return bound.current().traceControlHeadersEnabled();
     }
 
     public AutoCloseable bindAcceptedPolicy(TracingSettingsSource policy) {

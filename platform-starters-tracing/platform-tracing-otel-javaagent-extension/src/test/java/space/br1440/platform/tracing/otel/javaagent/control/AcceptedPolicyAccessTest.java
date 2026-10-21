@@ -16,21 +16,6 @@ import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 class AcceptedPolicyAccessTest {
 
     @Test
-    void isolatedSourcesShareStableUnboundAgentInstanceId() {
-        // given
-        TracingSettingsSource first = TracingSettingsSource.isolatedDefaults();
-        TracingSettingsSource second = TracingSettingsSource.isolatedDefaults();
-
-        // when
-        AgentInstanceId firstAgentInstanceId = first.current().agentInstanceId();
-        AgentInstanceId secondAgentInstanceId = second.current().agentInstanceId();
-
-        // then
-        assertThat(firstAgentInstanceId).isSameAs(secondAgentInstanceId);
-        assertThat(firstAgentInstanceId.isUnbound()).isTrue();
-    }
-
-    @Test
     void allCategoryALeavesArePublishedThroughOneAcceptedEnvelope() {
         // given
         TracingSettingsSource access = TracingSettingsSourceTestFixtures.boundSampling(
@@ -90,7 +75,7 @@ class AcceptedPolicyAccessTest {
     @Test
     void routeRatiosRemainImmutableAfterPublication() {
         // given
-        TracingSettingsSource access = TracingSettingsSource.isolatedSampling(
+        TracingSettingsSource access = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(),
                 true,
                 Map.of("/orders", 0.4d),
                 0.2d);
@@ -110,7 +95,7 @@ class AcceptedPolicyAccessTest {
         Assumptions.assumeTrue(allocationBean.isThreadAllocatedMemorySupported());
         allocationBean.setThreadAllocatedMemoryEnabled(true);
 
-        TracingSettingsSource access = TracingSettingsSource.isolatedDefaults();
+        TracingSettingsSource access = TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random());
         int warmupIterations = 200_000;
         int measuredIterations = 2_000_000;
         long sum = 0L;

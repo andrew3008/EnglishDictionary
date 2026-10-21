@@ -11,7 +11,7 @@ import javax.management.openmbean.CompositeType;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
@@ -30,7 +30,7 @@ class ObservationSnapshotSourcesTest {
     void allGettersReturnPrecomputedSnapshotsUntilExplicitPublication() {
         // given
         SamplingObservationSource sampling = new SamplingObservationSource(
-                TracingSettingsSource.isolatedSampling(true, Map.of(), 1.0d),
+                TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 1.0d),
                 new OwnerRegistrationSlot<>(),
                 AGENT_INSTANCE_ID);
         ScrubbingObservationSource scrubbing = new ScrubbingObservationSource(

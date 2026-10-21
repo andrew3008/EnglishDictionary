@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
@@ -74,7 +75,7 @@ class ValidationRuntimeFoundationTest {
     void warn_level_validation_failure_still_exports_span_not_dropped() {
         // given
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(
-                TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING));
+                TracingSettingsSourceTestFixtures.boundValidation(AgentInstanceId.random(), SpanAttributeValidationLevel.WARNING));
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
             Tracer tracer = h.tracer("t");

@@ -1,6 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -83,14 +85,6 @@ class SamplingPolicyDecisionOtelAdapterTest {
                 .isEqualTo(PlatformSamplingReasons.FALLBACK_DROP);
     }
 
-    /**
-     * Полный список 11 wire-ключей {@code decision:reasonCode}, включая синтетический
-     * {@code ABSTAIN → fallback_drop}, который недостижим через production-цепочку правил
-     * ({@link space.br1440.platform.tracing.runtime.sampling.policy.ProductionSamplingPolicyChain#production()}
-     * всегда завершается {@code DefaultRatioPolicyRule}, возвращающим только {@code SAMPLE}/
-     * {@code DROP}) — поэтому проверяется здесь изолированно от {@link CompositeSampler},
-     * а не через реальный прогон движка (см. интеграционный тест на 10 достижимых веток).
-     */
     @ParameterizedTest(name = "{0} -> {1}")
     @MethodSource("allReasonCodeMappings")
     void metricKeyCoversAllElevenWireKeys(SamplingPolicyDecision decision, String expectedWireKey) {
@@ -145,7 +139,7 @@ class SamplingPolicyDecisionOtelAdapterTest {
     @MethodSource("characterizedCases")
     void adapterRequest_producesSameDecisionAsComposite(SamplingDecisionCase c) {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(),
                 c.enabled(),
                 c.routeRatios(),
                 c.defaultRatio());

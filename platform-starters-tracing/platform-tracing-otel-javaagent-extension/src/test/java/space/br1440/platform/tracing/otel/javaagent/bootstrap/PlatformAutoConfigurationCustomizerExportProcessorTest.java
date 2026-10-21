@@ -21,7 +21,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
@@ -261,7 +261,7 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
         BootstrapCoordinator bootstrap = coordinator(server);
         AutoConfiguredOpenTelemetrySdkBuilder builder = baseBuilder();
         builder.addSpanExporterCustomizer((exporter, config) -> new SafeSpanExporter(
-                exporter, TracingSettingsSource.isolatedDefaults(), ScrubbingRuntimeTestFixtures.disabled()));
+                exporter, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), ScrubbingRuntimeTestFixtures.disabled()));
         new BootstrapAutoConfigurationCustomizerProvider(bootstrap).customize(builder);
 
         try (bootstrap) {

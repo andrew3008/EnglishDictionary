@@ -19,46 +19,34 @@ class AgentInstanceIdTest {
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
 
         // then
-        assertThat(agentInstanceId.asUuid().version()).isEqualTo(4);
+        assertThat(agentInstanceId.value().version()).isEqualTo(4);
         assertThat(agentInstanceId.toString())
+                .isEqualTo(agentInstanceId.value().toString())
                 .matches("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}");
     }
 
     @Test
-    void fromAndParseAcceptNonNilVersionOneUuid() {
+    void constructorAndParseAcceptNonNilUuid() {
         // given
         UUID value = UUID.fromString("6ba7b810-9dad-11d1-80b4-00c04fd430c8");
 
         // when
-        AgentInstanceId agentInstanceId = AgentInstanceId.from(value);
+        AgentInstanceId agentInstanceId = new AgentInstanceId(value);
         AgentInstanceId parsed = AgentInstanceId.parse(agentInstanceId.toString());
 
         // then
-        assertThat(agentInstanceId.asUuid()).isEqualTo(value);
+        assertThat(agentInstanceId.value()).isEqualTo(value);
         assertThat(parsed).isEqualTo(agentInstanceId);
+        assertThat(parsed.hashCode()).isEqualTo(agentInstanceId.hashCode());
     }
 
     @Test
-    void unboundSentinelIsStable() {
-        // given
-        AgentInstanceId first = AgentInstanceId.unbound();
-
-        // when
-        AgentInstanceId second = AgentInstanceId.unbound();
-
-        // then
-        assertThat(first).isSameAs(second);
-        assertThat(first.isUnbound()).isTrue();
-        assertThat(first.toString()).isEqualTo("00000000-0000-0000-0000-000000000000");
-    }
-
-    @Test
-    void fromRejectsNilUuid() {
+    void constructorRejectsNilUuid() {
         // given
         UUID value = new UUID(0L, 0L);
 
         // when
-        Throwable failure = catchThrowable(() -> AgentInstanceId.from(value));
+        Throwable failure = catchThrowable(() -> new AgentInstanceId(value));
 
         // then
         assertThat(failure)
@@ -67,9 +55,9 @@ class AgentInstanceIdTest {
     }
 
     @Test
-    void parseRejectsReservedUnboundUuid() {
+    void parseRejectsNilUuid() {
         // given
-        String value = AgentInstanceId.unbound().toString();
+        String value = "00000000-0000-0000-0000-000000000000";
 
         // when
         Throwable failure = catchThrowable(() -> AgentInstanceId.parse(value));
@@ -97,6 +85,6 @@ class AgentInstanceIdTest {
         // then
         assertThat(failure)
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageStartingWith("AgentInstanceId must be a canonical");
+                .hasMessage("AgentInstanceId must be a canonical lowercase UUID");
     }
 }

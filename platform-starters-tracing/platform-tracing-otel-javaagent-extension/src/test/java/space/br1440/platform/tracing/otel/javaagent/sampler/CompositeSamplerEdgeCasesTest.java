@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
 import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
 import space.br1440.platform.tracing.test.harness.InboundTraceControls;
@@ -24,6 +26,7 @@ class CompositeSamplerEdgeCasesTest {
                 InboundTraceControls.of(force, qa, null, reason, force ? "on" : null));
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static Context withControlRaw(String raw) {
         boolean force = "on".equalsIgnoreCase(raw);
         return Context.root().with(
@@ -34,7 +37,7 @@ class CompositeSamplerEdgeCasesTest {
     @Test
     void does_not_fail_on_empty_value_list() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, java.util.Map.of(), 0.0);
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, java.util.Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of()));
 
@@ -49,7 +52,7 @@ class CompositeSamplerEdgeCasesTest {
     @Test
     void empty_prefix_in_config_does_not_drop_all_paths() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, java.util.Map.of(), 1.0);
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, java.util.Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("", "   ", "/actuator/health"), List.of("on")));
 
@@ -64,7 +67,7 @@ class CompositeSamplerEdgeCasesTest {
     @Test
     void null_url_path_does_not_cause_npe() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, java.util.Map.of(), 1.0);
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, java.util.Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("/actuator"), List.of("on")));
 
@@ -79,7 +82,7 @@ class CompositeSamplerEdgeCasesTest {
     @Test
     void kill_switch_overrides_even_force_and_qa() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(false, java.util.Map.of(), 1.0);
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), false, java.util.Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
 
@@ -93,7 +96,7 @@ class CompositeSamplerEdgeCasesTest {
     @Test
     void forcing_does_not_override_drop_paths() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, java.util.Map.of(), 0.0);
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, java.util.Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("/actuator"), List.of("on")));
 
@@ -108,7 +111,7 @@ class CompositeSamplerEdgeCasesTest {
     @Test
     void qa_signal_does_not_override_drop_paths() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, java.util.Map.of(), 0.0);
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, java.util.Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("/actuator"), List.of("on")));
 

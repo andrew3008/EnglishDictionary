@@ -10,6 +10,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
@@ -33,11 +34,11 @@ class ValidatingSpanProcessorTest {
     AgentLogCapture capture = new AgentLogCapture();
 
     private static ValidatingSpanProcessor warnLevel() {
-        return new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING));
+        return new ValidatingSpanProcessor(TracingSettingsSourceTestFixtures.boundValidation(AgentInstanceId.random(), SpanAttributeValidationLevel.WARNING));
     }
 
     private static ValidatingSpanProcessor errorLevel() {
-        return new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.ERROR));
+        return new ValidatingSpanProcessor(TracingSettingsSourceTestFixtures.boundValidation(AgentInstanceId.random(), SpanAttributeValidationLevel.ERROR));
     }
 
     @Test
@@ -101,7 +102,10 @@ class ValidatingSpanProcessorTest {
         // given
         ValidatingSpanProcessor validator = new ValidatingSpanProcessor(
                 () -> 1000L,
-                TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING)
+                TracingSettingsSourceTestFixtures.boundValidation(
+                        AgentInstanceId.random(),
+                        SpanAttributeValidationLevel.WARNING
+                )
         );
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(validator, Resource.empty())) {
@@ -170,14 +174,12 @@ class ValidatingSpanProcessorTest {
     @Test
     void strictValidationDoesNotUseResourceAttributeAsTraceTypeFallback() {
         // given
-        // platform.trace.type Ð·Ð°Ð´Ð°Ð½ Ñ‚Ð¾Ð»ÑŒÐºÐ¾ ÐºÐ°Ðº resource-Ð°Ñ‚Ñ€Ð¸Ð±ÑƒÑ‚, NOT on span
         Resource resourceWithType = Resource.create(
                 Attributes.of(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TYPE), "http_server"));
 
         ValidatingSpanProcessor validator = errorLevel();
         try (SpanProcessorHarness h = SpanProcessorHarness.of(validator, resourceWithType)) {
             Tracer tracer = h.tracer("test");
-            // platform.trace.result Ð·Ð°Ð´Ð°Ð½ Ð½Ð° span'Ðµ, Ñ‚Ð¾Ð»ÑŒÐºÐ¾ type â€” Ð½ÐµÑ‚
             io.opentelemetry.api.trace.SpanBuilder builder = tracer.spanBuilder("op")
                     .setAttribute(PlatformAttributes.PLATFORM_RESULT, "success");
 
@@ -195,14 +197,12 @@ class ValidatingSpanProcessorTest {
     @Test
     void strictValidationDoesNotUseResourceAttributeAsTraceResultFallback() {
         // given
-        // platform.trace.result Ð·Ð°Ð´Ð°Ð½ Ñ‚Ð¾Ð»ÑŒÐºÐ¾ ÐºÐ°Ðº resource-Ð°Ñ‚Ñ€Ð¸Ð±ÑƒÑ‚, NOT on span
         Resource resourceWithResult = Resource.create(
                 Attributes.of(AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT), "success"));
 
         ValidatingSpanProcessor validator = errorLevel();
         try (SpanProcessorHarness h = SpanProcessorHarness.of(validator, resourceWithResult)) {
             Tracer tracer = h.tracer("test");
-            // platform.trace.type Ð·Ð°Ð´Ð°Ð½ Ð½Ð° span'Ðµ, Ñ‚Ð¾Ð»ÑŒÐºÐ¾ result â€” Ð½ÐµÑ‚
             io.opentelemetry.api.trace.SpanBuilder builder = tracer.spanBuilder("op")
                     .setAttribute(PlatformAttributes.PLATFORM_TYPE, "http_server");
 
@@ -223,7 +223,6 @@ class ValidatingSpanProcessorTest {
         ValidatingSpanProcessor validator = errorLevel();
         try (SpanProcessorHarness h = SpanProcessorHarness.of(validator, Resource.empty())) {
             Tracer tracer = h.tracer("test");
-            // ÐžÐ±Ð° Ð¾Ð±ÑÐ·Ð°Ñ‚ÐµÐ»ÑŒÐ½Ñ‹Ñ… Ð°Ñ‚Ñ€Ð¸Ð±ÑƒÑ‚Ð° Ð·Ð°Ð´Ð°Ð½Ñ‹ Ð½Ð° span'Ðµ â€” Ð¸ÑÐºÐ»ÑŽÑ‡ÐµÐ½Ð¸Ñ Ð±Ñ‹Ñ‚ÑŒ Ð½Ðµ Ð´Ð¾Ð»Ð¶Ð½Ð¾
             tracer.spanBuilder("op")
                     .setAttribute(PlatformAttributes.PLATFORM_TYPE, "http_server")
                     .setAttribute(PlatformAttributes.PLATFORM_RESULT, "success")
@@ -244,7 +243,6 @@ class ValidatingSpanProcessorTest {
                 .put(PlatformAttributes.PLATFORM_RESULT, "success")
                 .build());
 
-        // WARN (strict=false) â€” Ð½Ðµ Ð´Ð¾Ð»Ð¶ÐµÐ½ Ð±Ñ€Ð¾ÑÐ°Ñ‚ÑŒ
         try (SpanProcessorHarness h = SpanProcessorHarness.of(warnLevel(), resourceWithBoth)) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();

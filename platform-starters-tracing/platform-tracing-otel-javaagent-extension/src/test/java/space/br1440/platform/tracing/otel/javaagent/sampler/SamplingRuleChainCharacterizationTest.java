@@ -1,32 +1,31 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
+import java.util.List;
+import java.util.Map;
 
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 import org.junit.jupiter.api.Test;
+
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
+import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
 import space.br1440.platform.tracing.test.assertions.SamplingAssertions;
 import space.br1440.platform.tracing.test.harness.SamplerHarness;
 import space.br1440.platform.tracing.test.harness.SamplingContextFactory;
 
-import java.util.List;
-import java.util.Map;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * Приоритеты и взаимодействия правил rule chain — observed current behavior (PR-5A).
- */
 class SamplingRuleChainCharacterizationTest {
 
     @Test
     void kill_switch_blocks_force_qa_route_and_global_ratio() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(false, Map.of("/api", 1.0), 1.0);
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), false, Map.of("/api", 1.0), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
         sampler.resetCounters();
@@ -47,7 +46,7 @@ class SamplingRuleChainCharacterizationTest {
     @Test
     void hard_drop_before_force_header_and_qa() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of("/internal", 1.0), 1.0);
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of("/internal", 1.0), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("/internal"), List.of("on")));
 
@@ -73,7 +72,7 @@ class SamplingRuleChainCharacterizationTest {
     @Test
     void force_header_before_parent_decision() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.0);
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
 
@@ -91,7 +90,7 @@ class SamplingRuleChainCharacterizationTest {
     @Test
     void qa_trace_before_parent_decision() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.0);
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
 
@@ -109,7 +108,7 @@ class SamplingRuleChainCharacterizationTest {
     @Test
     void absent_url_path_skips_hard_drop_and_route_ratio() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of("/api", 0.0), 1.0);
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of("/api", 0.0), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("/actuator"), List.of("on")));
 
@@ -124,7 +123,7 @@ class SamplingRuleChainCharacterizationTest {
     @Test
     void custom_force_value_fires_when_forceRecordValues_match() {
         // given
-        TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.0);
+        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("custom-force")));
 

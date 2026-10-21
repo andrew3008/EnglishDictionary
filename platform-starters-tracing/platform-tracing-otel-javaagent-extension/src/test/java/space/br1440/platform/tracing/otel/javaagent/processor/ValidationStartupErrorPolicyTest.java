@@ -7,8 +7,9 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
@@ -25,7 +26,7 @@ class ValidationStartupErrorPolicyTest {
     @Test
     void error_violation_emits_sanitized_error() {
         // given
-        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.ERROR));
+        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSourceTestFixtures.boundValidation(AgentInstanceId.random(), SpanAttributeValidationLevel.ERROR));
 
         // when
         try (SpanProcessorHarness harness = SpanProcessorHarness.of(processor, Resource.empty())) {
@@ -49,7 +50,7 @@ class ValidationStartupErrorPolicyTest {
     @Test
     void warning_level_violation_emits_warn_instead_of_error() {
         // given
-        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.WARNING));
+        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSourceTestFixtures.boundValidation(AgentInstanceId.random(), SpanAttributeValidationLevel.WARNING));
 
         // when
         try (SpanProcessorHarness harness = SpanProcessorHarness.of(processor, Resource.empty())) {
@@ -68,7 +69,7 @@ class ValidationStartupErrorPolicyTest {
     @Test
     void startup_error_preserves_error_behavior() {
         // given/when
-        try (ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(SpanAttributeValidationLevel.ERROR))) {
+        try (ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSourceTestFixtures.boundValidation(AgentInstanceId.random(), SpanAttributeValidationLevel.ERROR))) {
             // then
             assertThat(processor.validationLevel()).isEqualTo(SpanAttributeValidationLevel.ERROR);
         }

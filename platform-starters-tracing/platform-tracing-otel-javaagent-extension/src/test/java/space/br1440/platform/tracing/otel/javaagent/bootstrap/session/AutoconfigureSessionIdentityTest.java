@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
@@ -20,7 +21,7 @@ class AutoconfigureSessionIdentityTest {
     @Test
     void constructorRejectsRegistrarFromDifferentAgentInstance() {
         // given
-        TracingSettingsSource policy = TracingSettingsSource.isolatedDefaults();
+        TracingSettingsSource policy = TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random());
         AgentInstanceId agentInstanceId = policy.current().agentInstanceId();
         PlatformTracingMBeanRegistrar registrar =
                 new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
@@ -38,7 +39,7 @@ class AutoconfigureSessionIdentityTest {
     void constructorRejectsSettingsFromDifferentAgentInstance() {
         // given
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
-        TracingSettingsSource policy = TracingSettingsSource.isolatedDefaults();
+        TracingSettingsSource policy = TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random());
         PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(agentInstanceId);
 
         // when

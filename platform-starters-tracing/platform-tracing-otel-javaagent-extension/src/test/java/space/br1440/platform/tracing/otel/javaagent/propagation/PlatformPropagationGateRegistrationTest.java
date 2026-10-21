@@ -1,13 +1,19 @@
 package space.br1440.platform.tracing.otel.javaagent.propagation;
 
-import org.junit.jupiter.api.Test;
-
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
+
+import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 
 class PlatformPropagationGateRegistrationTest {
 
@@ -15,8 +21,8 @@ class PlatformPropagationGateRegistrationTest {
     void bindCloseRestoresPreviousAndStaleCloseDoesNotClearNewerBinding() throws Exception {
         // given
         PlatformPropagationGate gate = new PlatformPropagationGate();
-        TracingSettingsSource policyA = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.1d);
-        TracingSettingsSource policyB = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.9d);
+        TracingSettingsSource policyA = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 0.1d);
+        TracingSettingsSource policyB = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 0.9d);
 
         AutoCloseable token1 = gate.bindAcceptedPolicy(policyA);
         assertThat(gate.isEnabled()).isEqualTo(policyA.current().traceControlHeadersEnabled());
@@ -28,7 +34,11 @@ class PlatformPropagationGateRegistrationTest {
 
         token1.close();
         // then
-        assertThatThrownBy(() -> gate.bindAcceptedPolicy(policyA))
+        assertThatThrownBy(() -> {
+            try (AutoCloseable ignored = gate.bindAcceptedPolicy(policyA)) {
+                // регистрация не должна открыться
+            }
+        })
                 .as("stale close of token1 must not clear policy B")
                 .isInstanceOf(IllegalStateException.class);
 
@@ -42,8 +52,8 @@ class PlatformPropagationGateRegistrationTest {
     void rebindWhileActiveFails() throws Exception {
         // given
         PlatformPropagationGate gate = new PlatformPropagationGate();
-        TracingSettingsSource policyA = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.1d);
-        TracingSettingsSource policyB = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.9d);
+        TracingSettingsSource policyA = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 0.1d);
+        TracingSettingsSource policyB = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 0.9d);
 
         AutoCloseable token1 = gate.bindAcceptedPolicy(policyA);
         // when/then
@@ -61,7 +71,30 @@ class PlatformPropagationGateRegistrationTest {
         assertThatThrownBy(() -> gate.bindAcceptedPolicy(null))
                 .isInstanceOf(NullPointerException.class);
         AutoCloseable token = gate.bindAcceptedPolicy(
-                TracingSettingsSource.isolatedSampling(true, Map.of(), 0.2d));
+                TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 0.2d));
         token.close();
+    }
+
+    @Test
+    @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
+    void unboundStateUsesCapturedDefaultAndBoundStateReadsAcceptedPolicy() throws Exception {
+        // given
+        PlatformPropagationGate gate = new PlatformPropagationGate();
+        TracingSettingsSource policy = TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random());
+        assertThat(AcceptedPolicyMutationAccess.applyTraceControlHeaders(policy, false))
+                .isEqualTo(SettingsUpdateStatus.APPLIED);
+
+        // when
+        boolean beforeBind = gate.isEnabled();
+        AutoCloseable registration = gate.bindAcceptedPolicy(policy);
+        boolean whileBound = gate.isEnabled();
+        registration.close();
+        boolean afterClose = gate.isEnabled();
+
+        // then
+        assertThat(beforeBind).isEqualTo(TracingSettingsSource.defaultPolicy().traceControlHeadersEnabled());
+        assertThat(whileBound).isFalse();
+        assertThat(afterClose).isEqualTo(beforeBind);
+        gate.bindAcceptedPolicy(policy).close();
     }
 }

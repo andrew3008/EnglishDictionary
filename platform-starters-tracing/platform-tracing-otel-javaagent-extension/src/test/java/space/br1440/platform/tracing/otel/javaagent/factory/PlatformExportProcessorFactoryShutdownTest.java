@@ -21,7 +21,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.configuration.QueueExtensionConfig;
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
@@ -52,7 +52,7 @@ class PlatformExportProcessorFactoryShutdownTest {
                 new PlatformTracingMBeanRegistrar(AgentInstanceId.random())
         );
         AtomicInteger delegateShutdowns = new AtomicInteger();
-        SpanExporter captured = factory.captureExporter(exporter(delegateShutdowns), TracingSettingsSource.isolatedDefaults());
+        SpanExporter captured = factory.captureExporter(exporter(delegateShutdowns), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
         BatchSpanProcessor stock = BatchSpanProcessor.builder(captured).build();
 
         try (stock) {
@@ -84,7 +84,7 @@ class PlatformExportProcessorFactoryShutdownTest {
         PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
         PlatformExportProcessorFactory factory = factory(registrar);
         AtomicInteger delegateShutdowns = new AtomicInteger();
-        SpanExporter captured = factory.captureExporter(exporter(delegateShutdowns), TracingSettingsSource.isolatedDefaults());
+        SpanExporter captured = factory.captureExporter(exporter(delegateShutdowns), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
         BatchSpanProcessor stock = mock(BatchSpanProcessor.class);
         ConfigProperties invalid = config(Map.of("otel.bsp.max.queue.size", "0"));
 
@@ -111,7 +111,7 @@ class PlatformExportProcessorFactoryShutdownTest {
                 new PlatformTracingMBeanRegistrar(AgentInstanceId.random())
         );
         PlatformExportProcessorFactory factory = factory(registrar);
-        factory.captureExporter(exporter(new AtomicInteger()), TracingSettingsSource.isolatedDefaults());
+        factory.captureExporter(exporter(new AtomicInteger()), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
         BatchSpanProcessor stock = mock(BatchSpanProcessor.class);
         CompletableResultCode unfinished = new CompletableResultCode();
         when(stock.shutdown()).thenReturn(unfinished);
@@ -147,7 +147,7 @@ class PlatformExportProcessorFactoryShutdownTest {
         // given
         PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
         PlatformExportProcessorFactory factory = factory(registrar);
-        factory.captureExporter(exporter(new AtomicInteger()), TracingSettingsSource.isolatedDefaults());
+        factory.captureExporter(exporter(new AtomicInteger()), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
         BatchSpanProcessor stock = mock(BatchSpanProcessor.class);
         IllegalStateException marker = new IllegalStateException("stock shutdown failed");
         when(stock.shutdown()).thenThrow(marker);
@@ -171,7 +171,7 @@ class PlatformExportProcessorFactoryShutdownTest {
         // given
         PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
         PlatformExportProcessorFactory factory = factory(registrar);
-        factory.captureExporter(exporter(new AtomicInteger()), TracingSettingsSource.isolatedDefaults());
+        factory.captureExporter(exporter(new AtomicInteger()), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
         BatchSpanProcessor stock = mock(BatchSpanProcessor.class);
         when(stock.shutdown()).thenReturn(CompletableResultCode.ofFailure());
 
