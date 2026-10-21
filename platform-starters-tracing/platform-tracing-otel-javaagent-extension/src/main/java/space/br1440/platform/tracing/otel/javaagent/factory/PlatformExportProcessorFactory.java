@@ -35,7 +35,6 @@ public final class PlatformExportProcessorFactory {
     private static final Duration STOCK_PROCESSOR_SHUTDOWN_TIMEOUT = Duration.ofSeconds(5);
 
     private final List<ReplacementAwareSpanExporter> capturedExporters = new ArrayList<>();
-
     private final PlatformTracingMBeanRegistrar jmxRegistrar;
     private final ScrubbingRuntime scrubbingRuntime;
 
