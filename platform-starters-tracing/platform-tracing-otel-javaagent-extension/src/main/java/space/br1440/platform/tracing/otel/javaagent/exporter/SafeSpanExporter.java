@@ -142,9 +142,11 @@ public final class SafeSpanExporter implements SpanExporter {
                 result = new ArrayList<>(ordered.size());
                 result.addAll(ordered.subList(0, index));
             }
+
             if (result != null && !outcome.dropSpan()) {
                 result.add(outcome.spanData());
             }
+
             index++;
         }
 

@@ -31,50 +31,48 @@ public final class ObservingHttpSenderProvider implements HttpSenderProvider {
         return new ObservingHttpSender(delegate.createSender(httpSenderConfig));
     }
 
-    private static final class ObservingHttpSender implements HttpSender {
+    private record ObservingHttpSender(HttpSender delegate) implements HttpSender {
 
-        private final HttpSender delegate;
-
-        private ObservingHttpSender(HttpSender delegate) {
-            this.delegate = Objects.requireNonNull(delegate, "delegate");
-        }
-
-        @Override
-        public void send(MessageWriter messageWriter,
-                         Consumer<HttpResponse> onResponse,
-                         Consumer<Throwable> onError) {
-            ExportResponseObservation observation = ExportResponseScope.current();
-            if (observation == null) {
-                delegate.send(messageWriter, onResponse, onError);
-                return;
+            private ObservingHttpSender(HttpSender delegate) {
+                this.delegate = Objects.requireNonNull(delegate, "delegate");
             }
 
-            delegate.send(messageWriter, response -> {
-                try {
-                    observe(observation, response);
-                } finally {
-                    onResponse.accept(response);
-                }
-            }, onError);
-        }
-
-        @Override
-        public CompletableResultCode shutdown() {
-            return delegate.shutdown();
-        }
-
-        private static void observe(ExportResponseObservation observation,
-                                    HttpResponse response) {
-            try {
-                if (response.getStatusCode() / 100 != 2) {
+            @Override
+            public void send(MessageWriter messageWriter,
+                             Consumer<HttpResponse> onResponse,
+                             Consumer<Throwable> onError) {
+                ExportResponseObservation observation = ExportResponseScope.current();
+                if (observation == null) {
+                    delegate.send(messageWriter, onResponse, onError);
                     return;
                 }
 
-                OtlpTraceResponseReader.record(observation, response.getResponseBody());
-            } catch (Throwable failure) {
-                PlatformThrowables.propagateIfFatal(failure);
-                observation.recordNotDetermined();
+                delegate.send(messageWriter, response -> {
+                    try {
+                        observe(observation, response);
+                    } finally {
+                        onResponse.accept(response);
+                    }
+                }, onError);
+            }
+
+            @Override
+            public CompletableResultCode shutdown() {
+                return delegate.shutdown();
+            }
+
+            private static void observe(ExportResponseObservation observation,
+                                        HttpResponse response) {
+                try {
+                    if (response.getStatusCode() / 100 != 2) {
+                        return;
+                    }
+
+                    OtlpTraceResponseReader.record(observation, response.getResponseBody());
+                } catch (Throwable failure) {
+                    PlatformThrowables.propagateIfFatal(failure);
+                    observation.recordNotDetermined();
+                }
             }
         }
-    }
 }

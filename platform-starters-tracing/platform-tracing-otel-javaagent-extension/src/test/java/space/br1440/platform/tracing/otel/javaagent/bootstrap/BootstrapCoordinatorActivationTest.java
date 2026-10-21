@@ -3,6 +3,8 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorAssert.assertThatCoordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.acknowledgeScrubbingExcept;
@@ -47,6 +49,7 @@ import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
+import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
 
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
@@ -131,6 +134,51 @@ class BootstrapCoordinatorActivationTest {
                 assertThat(failureOf(session.readiness().snapshot()).effectiveCode()).isEqualTo(ACTIVATION_FAILED);
             }
         }
+    }
+
+    @Test
+    void failure_after_activation_guard_is_terminalized_and_published() {
+        // given
+        IllegalStateException prologueFailure = new IllegalStateException("Activation prologue failed");
+        AutoconfigureSession session = mock(AutoconfigureSession.class);
+        when(session.evidence()).thenThrow(prologueFailure);
+
+        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
+        PlatformExtensionReadiness readiness = PlatformExtensionReadiness.forCurrentExtension();
+        BootstrapReadinessJournal journal = new BootstrapReadinessJournal(
+                lifecycle.monitor(),
+                readiness,
+                agentInstanceId
+        );
+        BootstrapTerminalTransitions transitions = new BootstrapTerminalTransitions(
+                lifecycle,
+                journal,
+                new DiagnosticReadinessHandle()
+        );
+        BootstrapActivation activation = new BootstrapActivation(
+                lifecycle,
+                journal,
+                transitions,
+                new CapturingShutdownHookRegistry()
+        );
+        lifecycle.beginPrepare();
+        journal.publishInitializing();
+        lifecycle.completePrepare(session);
+
+        // when
+        Throwable thrown = catchThrowable(() -> activation.activate(mock(SdkTracerProvider.class)));
+
+        // then
+        assertThat(thrown).isInstanceOf(BootstrapException.class);
+        BootstrapFailure failure = ((BootstrapException) thrown).failure();
+        assertThat(failure.primaryCode()).isEqualTo(ACTIVATION_FAILED);
+        assertThat(failure.effectiveCode()).isEqualTo(ACTIVATION_FAILED);
+        assertThat(failure.cause()).isSameAs(prologueFailure);
+        assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
+        assertThat(journal.current().lifecycle()).isEqualTo(WIRE_FAILED);
+        assertThat(journal.current().primaryFailureCode()).isEqualTo(ACTIVATION_FAILED);
+        assertThat(journal.current().failureCode()).isEqualTo(ACTIVATION_FAILED);
     }
 
     @Test

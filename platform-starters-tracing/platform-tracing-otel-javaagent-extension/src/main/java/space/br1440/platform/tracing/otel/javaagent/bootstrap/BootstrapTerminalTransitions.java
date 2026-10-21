@@ -58,8 +58,13 @@ final class BootstrapTerminalTransitions {
             );
         }
 
-        Throwable cleanupFailure = BootstrapCleanupFailures.rollback(resources, cause);
+        Throwable cleanupFailure = (resources == null)
+                ? null
+                : BootstrapCleanupFailures.rollback(resources, cause);
         if (sectionFailure != null) {
+            BootstrapCleanupFailures.suppressPreservingPrimary(cause, sectionFailure);
+            PlatformThrowables.propagateIfFatal(cause);
+            PlatformThrowables.propagateIfFatal(cleanupFailure);
             rethrowSectionFailure(sectionFailure);
         }
 

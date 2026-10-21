@@ -114,6 +114,41 @@ class BootstrapTerminalTransitionsTest {
     }
 
     @Test
+    void fatal_activation_cause_wins_over_failure_publication_error() {
+        // given
+        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
+        Fixture fixture = activeFixture(lifecycle);
+        NoClassDefFoundError activationFailure = new NoClassDefFoundError("Fatal activation failure");
+        UnsupportedOperationException publicationFailure =
+                new UnsupportedOperationException("Failed readiness publication");
+        BootstrapException classified;
+        synchronized (lifecycle.monitor()) {
+            classified = fixture.transitions().recordActivationFailure(
+                    ACTIVATION_FAILED,
+                    "activation-prologue",
+                    activationFailure,
+                    "",
+                    fixture.evidence()
+            );
+        }
+
+        // when
+        // then
+        assertThatThrownBy(() -> {
+            throw fixture.transitions().completeActivationFailure(
+                    classified,
+                    null,
+                    activationFailure,
+                    publicationFailure,
+                    "",
+                    fixture.evidence()
+            );
+        }).isSameAs(activationFailure);
+        assertThat(activationFailure.getSuppressed()).containsExactly(publicationFailure);
+        assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
+    }
+
+    @Test
     void rollback_marker_escalates_without_mutating_primary_cause_suppressed() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();

@@ -27,6 +27,19 @@ import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionR
         importOptions = ImportOption.DoNotIncludeTests.class)
 class BootstrapFailureOwnershipArchTest {
 
+    private static final DescribedPredicate<JavaAccess<?>> LIFECYCLE_FAIL_ACCESS =
+            targetIs(BootstrapLifecycleState.class, "fail");
+    private static final DescribedPredicate<JavaAccess<?>> LIFECYCLE_ESCALATION_ACCESS =
+            targetIs(BootstrapLifecycleState.class, "escalateRollbackIncomplete");
+    private static final DescribedPredicate<JavaAccess<?>> JOURNAL_FAILURE_ACCESS =
+            targetIs(BootstrapReadinessJournal.class, "publishFailed");
+    private static final DescribedPredicate<JavaAccess<?>> READINESS_FAILURE_ACCESS =
+            targetIs(PlatformExtensionReadiness.class, "fail");
+    private static final DescribedPredicate<JavaAccess<?>> FAILURE_CONSTRUCTION_ACCESS =
+            targetIs(BootstrapFailure.class, CONSTRUCTOR_NAME);
+    private static final DescribedPredicate<JavaAccess<?>> DIAGNOSTIC_REGISTRATION_ACCESS =
+            targetIs(DiagnosticReadinessHandle.class, "registerIfAbsent");
+
     @ArchTest
     @SuppressWarnings("unused")
     static void only_terminal_transitions_can_fail_or_escalate_lifecycle(JavaClasses classes) {
@@ -37,6 +50,16 @@ class BootstrapFailureOwnershipArchTest {
         EvaluationResult result = rule.evaluate(classes);
 
         // then
+        assertAllowedProductionAccessExists(
+                classes,
+                BootstrapTerminalTransitions.class,
+                LIFECYCLE_FAIL_ACCESS
+        );
+        assertAllowedProductionAccessExists(
+                classes,
+                BootstrapTerminalTransitions.class,
+                LIFECYCLE_ESCALATION_ACCESS
+        );
         assertThat(result.getFailureReport().getDetails()).isEmpty();
     }
 
@@ -50,6 +73,11 @@ class BootstrapFailureOwnershipArchTest {
         EvaluationResult result = rule.evaluate(classes);
 
         // then
+        assertAllowedProductionAccessExists(
+                classes,
+                BootstrapTerminalTransitions.class,
+                JOURNAL_FAILURE_ACCESS
+        );
         assertThat(result.getFailureReport().getDetails()).isEmpty();
     }
 
@@ -63,6 +91,11 @@ class BootstrapFailureOwnershipArchTest {
         EvaluationResult result = rule.evaluate(classes);
 
         // then
+        assertAllowedProductionAccessExists(
+                classes,
+                BootstrapReadinessJournal.class,
+                READINESS_FAILURE_ACCESS
+        );
         assertThat(result.getFailureReport().getDetails()).isEmpty();
     }
 
@@ -76,6 +109,29 @@ class BootstrapFailureOwnershipArchTest {
         EvaluationResult result = rule.evaluate(classes);
 
         // then
+        assertAllowedProductionAccessExists(
+                classes,
+                BootstrapLifecycleState.class,
+                FAILURE_CONSTRUCTION_ACCESS
+        );
+        assertThat(result.getFailureReport().getDetails()).isEmpty();
+    }
+
+    @ArchTest
+    @SuppressWarnings("unused")
+    static void only_coordinator_can_register_diagnostic_readiness(JavaClasses classes) {
+        // given
+        ArchRule rule = diagnosticRegistrationRule();
+
+        // when
+        EvaluationResult result = rule.evaluate(classes);
+
+        // then
+        assertAllowedProductionAccessExists(
+                classes,
+                BootstrapCoordinator.class,
+                DIAGNOSTIC_REGISTRATION_ACCESS
+        );
         assertThat(result.getFailureReport().getDetails()).isEmpty();
     }
 
@@ -191,6 +247,28 @@ class BootstrapFailureOwnershipArchTest {
     }
 
     @Test
+    void diagnostic_registration_rule_detects_direct_call_origin() {
+        // given
+        ArchRule rule = diagnosticRegistrationRule();
+        JavaClasses classes = importFixture(
+                DiagnosticReadinessRegistrationFixture.class,
+                DiagnosticReadinessHandle.class
+        );
+
+        // when
+        EvaluationResult result = rule.evaluate(classes);
+
+        // then
+        assertViolation(
+                classes,
+                result,
+                BootstrapCoordinator.class,
+                DiagnosticReadinessRegistrationFixture.class,
+                DiagnosticReadinessRegistrationFixture.class.getName()
+        );
+    }
+
+    @Test
     void access_builder_detects_field_access_origin() {
         // given
         ArchRule rule = onlyOwner(
@@ -238,29 +316,37 @@ class BootstrapFailureOwnershipArchTest {
     }
 
     private static ArchRule lifecycleFailureRule() {
-        DescribedPredicate<JavaAccess<?>> access = targetIs(BootstrapLifecycleState.class, "fail")
-                .or(targetIs(BootstrapLifecycleState.class, "escalateRollbackIncomplete"));
-        return onlyOwner(BootstrapTerminalTransitions.class, access);
+        return onlyOwner(
+                BootstrapTerminalTransitions.class,
+                LIFECYCLE_FAIL_ACCESS.or(LIFECYCLE_ESCALATION_ACCESS)
+        );
     }
 
     private static ArchRule journalFailureRule() {
         return onlyOwner(
                 BootstrapTerminalTransitions.class,
-                targetIs(BootstrapReadinessJournal.class, "publishFailed")
+                JOURNAL_FAILURE_ACCESS
         );
     }
 
     private static ArchRule readinessFailureRule() {
         return onlyOwner(
                 BootstrapReadinessJournal.class,
-                targetIs(PlatformExtensionReadiness.class, "fail")
+                READINESS_FAILURE_ACCESS
         );
     }
 
     private static ArchRule failureConstructionRule() {
         return onlyOwner(
                 BootstrapLifecycleState.class,
-                targetIs(BootstrapFailure.class, CONSTRUCTOR_NAME)
+                FAILURE_CONSTRUCTION_ACCESS
+        );
+    }
+
+    private static ArchRule diagnosticRegistrationRule() {
+        return onlyOwner(
+                BootstrapCoordinator.class,
+                DIAGNOSTIC_REGISTRATION_ACCESS
         );
     }
 
@@ -284,6 +370,18 @@ class BootstrapFailureOwnershipArchTest {
 
     private static JavaClasses importFixture(Class<?> fixture, Class<?> target) {
         return new ClassFileImporter().importClasses(fixture, target);
+    }
+
+    private static void assertAllowedProductionAccessExists(
+            JavaClasses classes,
+            Class<?> allowedOwner,
+            DescribedPredicate<JavaAccess<?>> target) {
+        assertThat(classes.stream()
+                .flatMap(javaClass -> javaClass.getAccessesFromSelf().stream())
+                .anyMatch(access -> belongToAnyOf(allowedOwner).test(access.getOriginOwner())
+                        && target.test(access)))
+                .as("production access from %s to %s", allowedOwner.getName(), target.getDescription())
+                .isTrue();
     }
 
     private static void assertViolation(JavaClasses classes,
@@ -418,6 +516,18 @@ final class BootstrapFailureConstructorReferenceFixture {
 
     static BootstrapFailureFactory factory() {
         return BootstrapFailure::new;
+    }
+}
+
+@SuppressWarnings("unused")
+final class DiagnosticReadinessRegistrationFixture {
+
+    private DiagnosticReadinessRegistrationFixture() {
+    }
+
+    static void register(DiagnosticReadinessHandle handle) {
+        handle.registerIfAbsent(() -> () -> {
+        });
     }
 }
 

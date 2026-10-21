@@ -62,6 +62,7 @@ final class BootstrapReadinessJournal {
         ExtensionRuntimeEvidence publishedEvidence = escalation ? current.evidence() : evidence;
 
         PlatformExtensionReadinessSnapshot.Failed failed = readiness.fail(failure.primaryCode(), failure.effectiveCode());
+        publishedEvidence = evidenceForFailedReadiness(failed, publishedEvidence);
         snapshot = ExtensionReadinessWireSnapshot.failed(
                 failed,
                 agentInstanceId,
@@ -69,6 +70,15 @@ final class BootstrapReadinessJournal {
                 nextEvidenceGeneration(current, publishedBatchId),
                 publishedEvidence
         );
+    }
+
+    private static ExtensionRuntimeEvidence evidenceForFailedReadiness(PlatformExtensionReadinessSnapshot.Failed failed,
+                                                                       ExtensionRuntimeEvidence evidence) {
+        if (evidence.complete() || failed.extensionVersion().equals(evidence.extensionVersion())) {
+            return evidence;
+        }
+
+        return ExtensionRuntimeEvidence.unavailable(failed.extensionVersion());
     }
 
     private void requireMonitorHeld() {

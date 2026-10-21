@@ -54,32 +54,46 @@ final class BootstrapActivation {
     void activate(SdkTracerProvider tracerProvider) {
         Objects.requireNonNull(tracerProvider, "tracerProvider");
 
-        ActivationAttempt attempt;
-        ActivationFailure failure;
+        ActivationAttempt attempt = null;
+        BootstrapResources resources = null;
+        ActivationFailure failure = null;
+        ExtensionRuntimeEvidence fallbackEvidence = journal.current().evidence();
         synchronized (lifecycle.monitor()) {
-            attempt = beginAttempt(tracerProvider);
-            failure = runPhases(attempt);
+            AutoconfigureSession session = lifecycle.beginActivation();
+            try {
+                resources = new BootstrapResources(hookRegistry);
+                lifecycle.attachResources(resources);
+                attempt = new ActivationAttempt(session, resources, tracerProvider);
+            } catch (RuntimeException | Error cause) {
+                failure = recordPrologueFailure(cause, fallbackEvidence);
+            }
+
+            if (failure == null) {
+                failure = runPhases(attempt);
+            }
         }
 
         if (failure == null) {
             return;
         }
 
+        String batchId = attempt == null ? "" : attempt.batchId();
+        ExtensionRuntimeEvidence evidence = attempt == null ? fallbackEvidence : attempt.evidence();
         throw terminalTransitions.completeActivationFailure(
                 failure.classified(),
-                attempt.resources(),
+                resources,
                 failure.cause(),
                 failure.sectionFailure(),
-                attempt.batchId(),
-                attempt.evidence()
+                batchId,
+                evidence
         );
     }
 
-    private ActivationAttempt beginAttempt(SdkTracerProvider tracerProvider) {
-        AutoconfigureSession session = lifecycle.beginActivation();
-        BootstrapResources resources = new BootstrapResources(hookRegistry);
-        lifecycle.attachResources(resources);
-        return new ActivationAttempt(session, resources, tracerProvider);
+    private ActivationFailure recordPrologueFailure(Throwable cause, ExtensionRuntimeEvidence evidence) {
+        String failureCode = cause instanceof LinkageError
+                ? VerificationFailureCode.EXTENSION_LINKAGE_ERROR.name()
+                : ACTIVATION_FAILED;
+        return recordFailure(failureCode, "activation-prologue", cause, "", evidence);
     }
 
     private ActivationFailure runPhases(ActivationAttempt attempt) {
@@ -95,13 +109,27 @@ final class BootstrapActivation {
     }
 
     private ActivationFailure recordFailure(ActivationAttempt attempt, Throwable cause) {
+        return recordFailure(
+                failureCodeOf(attempt, cause),
+                attempt.phase().subphase(),
+                cause,
+                attempt.batchId(),
+                attempt.evidence()
+        );
+    }
+
+    private ActivationFailure recordFailure(String failureCode,
+                                             String subphase,
+                                             Throwable cause,
+                                             String batchId,
+                                             ExtensionRuntimeEvidence evidence) {
         try {
             BootstrapException classified = terminalTransitions.recordActivationFailure(
-                    failureCodeOf(attempt, cause),
-                    attempt.phase().subphase(),
+                    failureCode,
+                    subphase,
                     cause,
-                    attempt.batchId(),
-                    attempt.evidence()
+                    batchId,
+                    evidence
             );
             return ActivationFailure.classified(classified, cause);
         } catch (RuntimeException | Error sectionFailure) {

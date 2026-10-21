@@ -23,8 +23,7 @@ public final class ScrubbingObservationSource {
 
     private final OwnerRegistrationSlot<ScrubbingRuntime> scrubbingSlot;
     private final ObservationCaptureEnvelope envelope;
-    private final ObservationSnapshotStore snapshotStore =
-            new ObservationSnapshotStore(JmxOpenTypes.SCRUBBING_OBSERVATION);
+    private final ObservationSnapshotStore snapshotStore = new ObservationSnapshotStore(JmxOpenTypes.SCRUBBING_OBSERVATION);
 
     public ScrubbingObservationSource(OwnerRegistrationSlot<ScrubbingRuntime> scrubbingSlot,
                                       AgentInstanceId agentInstanceId) {

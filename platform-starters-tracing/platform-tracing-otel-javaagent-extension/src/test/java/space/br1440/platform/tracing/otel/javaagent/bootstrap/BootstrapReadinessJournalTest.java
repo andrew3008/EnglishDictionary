@@ -107,6 +107,27 @@ class BootstrapReadinessJournalTest {
         assertThat(failed.evidenceGeneration()).isZero();
     }
 
+    @Test
+    void failedPublicationAlignsUnavailableEvidenceWithReadinessVersion() {
+        // given
+        PlatformExtensionReadiness readiness = PlatformExtensionReadiness.forCurrentExtension();
+        BootstrapReadinessJournal journal = new BootstrapReadinessJournal(monitor, readiness, AGENT_INSTANCE_ID);
+
+        // when
+        synchronized (monitor) {
+            journal.publishFailed(
+                    failure("PRIMARY_FAILURE"),
+                    "",
+                    ExtensionRuntimeEvidence.unavailable("unknown-version")
+            );
+        }
+
+        // then
+        assertThat(journal.current().evidence().extensionVersion())
+                .isEqualTo(readiness.snapshot().extensionVersion());
+        assertThat(journal.current().evidence().complete()).isFalse();
+    }
+
     private static BootstrapFailure failure(String effectiveCode) {
         return new BootstrapFailure("PRIMARY_FAILURE", effectiveCode, "test", new IllegalStateException("test failure"));
     }

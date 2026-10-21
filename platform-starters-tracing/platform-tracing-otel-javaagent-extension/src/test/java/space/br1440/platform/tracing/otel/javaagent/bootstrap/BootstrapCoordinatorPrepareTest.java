@@ -2,6 +2,12 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorAssert.assertThatCoordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_INITIALIZING;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
@@ -43,6 +49,8 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
@@ -90,6 +98,38 @@ class BootstrapCoordinatorPrepareTest {
         }
 
         assertThatDiagnosticMBean(server).isNotRegistered();
+    }
+
+    @Test
+    void fatal_initializing_publication_failure_remains_primary_when_diagnostic_registration_fails() {
+        // given
+        NoClassDefFoundError publicationFailure =
+                new NoClassDefFoundError("Readiness initialization publication failed");
+        NoClassDefFoundError registrationFailure =
+                new NoClassDefFoundError("Diagnostic readiness registration failed");
+        PlatformExtensionReadiness readiness = spy(PlatformExtensionReadiness.forCurrentExtension());
+        doThrow(publicationFailure).when(readiness).snapshot();
+
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
+        PlatformTracingMBeanRegistrar registrar = mock(PlatformTracingMBeanRegistrar.class);
+        when(registrar.extensionReadiness()).thenReturn(readiness);
+        when(registrar.agentInstanceId()).thenReturn(agentInstanceId);
+        when(registrar.registerDiagnosticReadiness(any())).thenThrow(registrationFailure);
+
+        try (BootstrapCoordinator coordinator = coordinator().registrar(registrar).build()) {
+            // when
+            Throwable thrown = catchThrowable(() -> coordinator.prepare(config()));
+
+            // then
+            assertThat(thrown).isSameAs(publicationFailure);
+            assertThat(publicationFailure.getSuppressed()).containsExactly(registrationFailure);
+            assertThatCoordinator(coordinator)
+                    .isTerminallyFailedWith(VerificationFailureCode.EXTENSION_LINKAGE_ERROR.name());
+            assertThat(coordinator.currentWire().primaryFailureCode())
+                    .isEqualTo(VerificationFailureCode.EXTENSION_LINKAGE_ERROR.name());
+            assertThat(coordinator.currentWire().failureCode())
+                    .isEqualTo(VerificationFailureCode.EXTENSION_LINKAGE_ERROR.name());
+        }
     }
 
     @ParameterizedTest

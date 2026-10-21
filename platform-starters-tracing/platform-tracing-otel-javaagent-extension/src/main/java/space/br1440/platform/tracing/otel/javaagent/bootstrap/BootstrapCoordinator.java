@@ -82,7 +82,31 @@ final class BootstrapCoordinator implements AutoCloseable {
         Objects.requireNonNull(config, "config");
 
         lifecycle.beginPrepare();
-        journal.publishInitializing();
+        try {
+            journal.publishInitializing();
+        } catch (RuntimeException | Error publicationFailure) {
+            String failureCode = publicationFailure instanceof LinkageError
+                    ? VerificationFailureCode.EXTENSION_LINKAGE_ERROR.name()
+                    : CONFIGURATION_INITIALIZATION_FAILED;
+
+            BootstrapException classified;
+            try {
+                classified = failPreparation(
+                        failureCode,
+                        "readiness-publication",
+                        null,
+                        publicationFailure,
+                        journal.current().evidence()
+                );
+            } catch (RuntimeException | Error handlingFailure) {
+                BootstrapCleanupFailures.suppressPreservingPrimary(publicationFailure, handlingFailure);
+                PlatformThrowables.propagateIfFatal(publicationFailure);
+                throw handlingFailure;
+            }
+
+            PlatformThrowables.propagateIfFatal(publicationFailure);
+            throw classified;
+        }
 
         AutoconfigureSession prepared = createPreparedSession(config);
 
@@ -218,12 +242,20 @@ final class BootstrapCoordinator implements AutoCloseable {
                                                String subphase,
                                                String propertyName,
                                                Throwable cause) {
+        return failPreparation(code, subphase, propertyName, cause, unavailableEvidence());
+    }
+
+    private BootstrapException failPreparation(String code,
+                                               String subphase,
+                                               String propertyName,
+                                               Throwable cause,
+                                               ExtensionRuntimeEvidence evidence) {
         BootstrapException classified = terminalTransitions.terminalizePreparationFailure(
                 code,
                 subphase,
                 propertyName,
                 cause,
-                unavailableEvidence()
+                evidence
         );
         registerDiagnosticAfterFailure(classified);
         return classified;
