@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import javax.management.Attribute;
@@ -85,6 +86,7 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
                 result.add(new Attribute(attribute, captured));
             }
         }
+
         return result;
     }
 
@@ -172,14 +174,17 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
 
     private static TabularData routeRatios(TracingSettingsRevision accepted) throws OpenDataException {
         TabularDataSupport table = new TabularDataSupport(JmxOpenTypes.ROUTE_RATIOS);
-        for (Map.Entry<String, Double> entry : accepted.samplingRouteRatios().entrySet().stream()
+        List<Map.Entry<String, Double>> entries = accepted.samplingRouteRatios().entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
-                .toList()) {
+                .toList();
+
+        for (Map.Entry<String, Double> entry : entries) {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put(JmxWireContract.FIELD_ROUTE_RATIO_ROUTE_PREFIX, entry.getKey());
             row.put(JmxWireContract.FIELD_ROUTE_RATIO_RATIO, entry.getValue());
             table.put(new CompositeDataSupport(JmxOpenTypes.ROUTE_RATIO, row));
         }
+
         return table;
     }
 
