@@ -61,7 +61,7 @@ class PlatformLogControlTest {
 
         // then
         assertThat(control.getLevel()).isEqualTo(TracingSettingsSource.defaultPolicy().diagnosticsLogLevel());
-        try (AutoCloseable rebound = control.bindAcceptedPolicy(source)) {
+        try (AutoCloseable ignored = control.bindAcceptedPolicy(source)) {
             assertThat(control.getLevel()).isEqualTo(AgentLogLevel.DEBUG);
         }
     }

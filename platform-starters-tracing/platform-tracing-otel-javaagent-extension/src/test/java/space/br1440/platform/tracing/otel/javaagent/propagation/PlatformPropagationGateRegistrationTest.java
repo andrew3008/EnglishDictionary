@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.propagation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
 
 import java.util.Map;
 
@@ -36,7 +37,7 @@ class PlatformPropagationGateRegistrationTest {
         // then
         assertThatThrownBy(() -> {
             try (AutoCloseable ignored = gate.bindAcceptedPolicy(policyA)) {
-                // регистрация не должна открыться
+                fail("registration opened");
             }
         })
                 .as("stale close of token1 must not clear policy B")
@@ -57,7 +58,11 @@ class PlatformPropagationGateRegistrationTest {
 
         AutoCloseable token1 = gate.bindAcceptedPolicy(policyA);
         // when/then
-        assertThatThrownBy(() -> gate.bindAcceptedPolicy(policyB))
+        assertThatThrownBy(() -> {
+            try (AutoCloseable ignored = gate.bindAcceptedPolicy(policyB)) {
+                fail("registration opened");
+            }
+        })
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("already has an active");
         token1.close();
@@ -68,7 +73,11 @@ class PlatformPropagationGateRegistrationTest {
         // given
         PlatformPropagationGate gate = new PlatformPropagationGate();
         // when/then
-        assertThatThrownBy(() -> gate.bindAcceptedPolicy(null))
+        assertThatThrownBy(() -> {
+            try (AutoCloseable ignored = gate.bindAcceptedPolicy(null)) {
+                fail("registration opened");
+            }
+        })
                 .isInstanceOf(NullPointerException.class);
         AutoCloseable token = gate.bindAcceptedPolicy(
                 TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 0.2d));

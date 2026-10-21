@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.diagnostics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
 
 import java.util.Map;
 
@@ -41,7 +42,12 @@ class PlatformLogControlRegistrationTest {
         AutoCloseable token1 = control.bindAcceptedPolicy(TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
 
         // when/then
-        assertThatThrownBy(() -> control.bindAcceptedPolicy(TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random())))
+        assertThatThrownBy(() -> {
+            try (AutoCloseable ignored = control.bindAcceptedPolicy(
+                    TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()))) {
+                fail("registration opened");
+            }
+        })
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("already has an active");
         token1.close();
