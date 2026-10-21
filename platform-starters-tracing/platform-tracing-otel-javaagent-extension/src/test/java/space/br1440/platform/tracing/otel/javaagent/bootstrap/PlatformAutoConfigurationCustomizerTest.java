@@ -28,6 +28,7 @@ import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSessionFactory;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
+import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
@@ -98,7 +99,8 @@ class PlatformAutoConfigurationCustomizerTest {
                     .containsEntry("otel.bsp.max.queue.size", "2048")
                     .containsEntry("otel.bsp.max.export.batch.size", "512")
                     .containsEntry("otel.bsp.schedule.delay", "5000")
-                    .containsEntry("otel.bsp.export.timeout", "5000")
+                    .containsEntry("otel.bsp.export.timeout",
+                            String.valueOf(OtelSdkDefaults.DEFAULT_BSP_EXPORT_TIMEOUT.toMillis()))
                     .doesNotContainKey("otel.instrumentation.http.server.capture-request-headers");
 
             assertThat(defaults)

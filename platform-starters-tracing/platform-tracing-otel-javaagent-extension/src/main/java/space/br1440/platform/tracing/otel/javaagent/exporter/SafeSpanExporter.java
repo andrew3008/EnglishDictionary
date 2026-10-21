@@ -69,10 +69,6 @@ public final class SafeSpanExporter implements SpanExporter {
         this.exporterType = exporterType(delegate);
     }
 
-    public boolean isProtectedBy(ScrubbingRuntime expectedRuntime) {
-        return this.scrubbingRuntime == expectedRuntime;
-    }
-
     @Override
     public CompletableResultCode export(@Nullable Collection<SpanData> spans) {
         Collection<SpanData> batch = (spans == null) ? List.of() : spans;

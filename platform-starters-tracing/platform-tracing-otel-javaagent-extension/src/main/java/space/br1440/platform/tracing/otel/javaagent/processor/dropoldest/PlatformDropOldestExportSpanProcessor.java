@@ -29,27 +29,27 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
     private final ExportBuffer buffer;
     private final ExportWorker worker;
 
-    private PlatformDropOldestExportSpanProcessor(PreparedBuild preparedBuild) {
-        this.queueCapacity = preparedBuild.maxQueueSize;
+    private PlatformDropOldestExportSpanProcessor(Builder builder) {
+        this.queueCapacity = builder.maxQueueSize;
         this.metrics = new DropOldestExportMetrics();
         this.buffer = new ExportBuffer(
-                preparedBuild.maxQueueSize,
-                preparedBuild.maxExportBatchSize,
+                builder.maxQueueSize,
+                builder.maxExportBatchSize,
                 metrics
         );
 
         TimedSpanExporter timedSpanExporter = new TimedSpanExporter(
-                preparedBuild.exporter,
-                preparedBuild.exportTimeout.toNanos(),
-                preparedBuild.shutdownTimeout.toNanos(),
+                builder.exporter,
+                builder.exportTimeout.toNanos(),
+                builder.shutdownTimeout.toNanos(),
                 metrics
         );
 
         this.worker = new ExportWorker(
                 buffer,
                 timedSpanExporter,
-                preparedBuild.scheduleDelay.toNanos(),
-                preparedBuild.shutdownTimeout.toNanos()
+                builder.scheduleDelay.toNanos(),
+                builder.shutdownTimeout.toNanos()
         );
         worker.start();
     }
@@ -198,10 +198,11 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
         }
 
         public PlatformDropOldestExportSpanProcessor build() {
-            return validate().build();
+            validate();
+            return new PlatformDropOldestExportSpanProcessor(this);
         }
 
-        public PreparedBuild validate() {
+        public Builder validate() {
             if (maxQueueSize <= 0) {
                 throw new IllegalArgumentException("maxQueueSize must be positive");
             }
@@ -229,30 +230,7 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
                 throw new IllegalArgumentException("shutdownTimeout must be positive");
             }
 
-            return new PreparedBuild(this);
-        }
-    }
-
-    public static final class PreparedBuild {
-
-        private final SpanExporter exporter;
-        private final int maxQueueSize;
-        private final int maxExportBatchSize;
-        private final Duration scheduleDelay;
-        private final Duration exportTimeout;
-        private final Duration shutdownTimeout;
-
-        private PreparedBuild(Builder builder) {
-            this.exporter = builder.exporter;
-            this.maxQueueSize = builder.maxQueueSize;
-            this.maxExportBatchSize = builder.maxExportBatchSize;
-            this.scheduleDelay = builder.scheduleDelay;
-            this.exportTimeout = builder.exportTimeout;
-            this.shutdownTimeout = builder.shutdownTimeout;
-        }
-
-        public PlatformDropOldestExportSpanProcessor build() {
-            return new PlatformDropOldestExportSpanProcessor(this);
+            return this;
         }
     }
 }

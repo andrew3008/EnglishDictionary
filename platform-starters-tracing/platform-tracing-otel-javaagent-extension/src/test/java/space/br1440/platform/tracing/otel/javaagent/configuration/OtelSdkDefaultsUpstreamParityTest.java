@@ -12,14 +12,12 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
 
-import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
 import io.opentelemetry.sdk.common.CompletableResultCode;
-import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.SpanLimits;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
-import io.opentelemetry.sdk.trace.samplers.Sampler;
 
 @DisplayName("OtelSdkDefaults ↔ upstream OTel SDK parity")
 class OtelSdkDefaultsUpstreamParityTest {
@@ -48,34 +46,17 @@ class OtelSdkDefaultsUpstreamParityTest {
     }
 
     @Test
-    @DisplayName("Missing otel.bsp.export.timeout uses the five-second platform fallback")
-    void missing_bsp_export_timeout_uses_five_second_platform_fallback() {
+    @DisplayName("Missing otel.bsp.export.timeout matches the upstream BatchSpanProcessor default")
+    void missing_bsp_export_timeout_matches_upstream_batch_span_processor() {
         // given
-        CompletableResultCode pendingExport = new CompletableResultCode();
-        PlatformDropOldestExportSpanProcessor processor = PlatformDropOldestExportSpanProcessor
-                .builder(exporter(pendingExport))
-                .readBspConfigFrom(DefaultConfigProperties.createFromMap(Map.of()))
-                .build();
-
-        try (SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
-                .setSampler(Sampler.alwaysOn())
-                .addSpanProcessor(processor)
+        try (BatchSpanProcessor upstream = BatchSpanProcessor
+                .builder(exporter(CompletableResultCode.ofSuccess()))
                 .build()) {
-            Tracer tracer = tracerProvider.get("bsp-export-timeout-fallback-test");
+            // when
+            long upstreamTimeoutNanos = exporterTimeoutNanos(upstream.toString());
 
-            try {
-                // when
-                tracer.spanBuilder("timeout").startSpan().end();
-                CompletableResultCode flush = processor.forceFlush();
-
-                // then
-                assertThat(flush.join(7, TimeUnit.SECONDS).isDone()).isTrue();
-                assertThat(flush.isSuccess()).isFalse();
-                assertThat(processor.metricsSnapshot().timeoutsTotal()).isEqualTo(1L);
-                assertThat(OtelSdkDefaults.DEFAULT_BSP_EXPORT_TIMEOUT).isEqualTo(Duration.ofSeconds(5));
-            } finally {
-                pendingExport.succeed();
-            }
+            // then
+            assertThat(upstreamTimeoutNanos).isEqualTo(OtelSdkDefaults.DEFAULT_BSP_EXPORT_TIMEOUT.toNanos());
         }
     }
 
@@ -106,6 +87,21 @@ class OtelSdkDefaultsUpstreamParityTest {
                 .isNotEqualTo(upstream.getMaxAttributeValueLength());
         assertThat(OtelSdkDefaults.DEFAULT_ATTRIBUTE_COUNT_LIMIT)
                 .isEqualTo(16);
+    }
+
+    private static long exporterTimeoutNanos(String rendered) {
+        String marker = "exporterTimeoutNanos=";
+        int start = rendered.lastIndexOf(marker);
+        assertThat(start).as("upstream BatchSpanProcessor.toString()").isNotNegative();
+
+        int valueStart = start + marker.length();
+        int valueEnd = valueStart;
+        while (valueEnd < rendered.length() && Character.isDigit(rendered.charAt(valueEnd))) {
+            valueEnd++;
+        }
+
+        assertThat(valueEnd).isGreaterThan(valueStart);
+        return Long.parseLong(rendered.substring(valueStart, valueEnd));
     }
 
     private static SpanExporter exporter(CompletableResultCode exportResult) {

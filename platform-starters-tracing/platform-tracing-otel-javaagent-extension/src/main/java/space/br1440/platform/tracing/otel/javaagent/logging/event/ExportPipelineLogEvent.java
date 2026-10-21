@@ -43,18 +43,10 @@ public enum ExportPipelineLogEvent implements AgentLogEventType {
             )
     ),
 
-    REPLACEMENT_AWARE_EXPORTER_ABSENT_FALLBACK(
-            noCause(
-                    AgentEventCode.EXPORT_FACTORY, WARN,
-                    "Replacement-aware exporter is absent; falling back"
-            )
-    ),
-
     STOCK_BATCH_SPAN_PROCESSOR_SHUTDOWN_UNSUCCESSFUL(
             noCause(
                     AgentEventCode.EXPORT_FACTORY, WARN,
-                    "Stock BatchSpanProcessor.shutdown() did not succeed",
-                    AgentLogField.KIND
+                    "Stock BatchSpanProcessor.shutdown() did not succeed"
             )
     ),
 

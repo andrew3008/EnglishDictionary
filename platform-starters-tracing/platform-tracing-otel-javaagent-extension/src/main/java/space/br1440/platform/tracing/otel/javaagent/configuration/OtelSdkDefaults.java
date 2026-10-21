@@ -9,7 +9,7 @@ public class OtelSdkDefaults {
 
     public static final int DEFAULT_BSP_MAX_QUEUE_SIZE = 2048;
     public static final int DEFAULT_BSP_MAX_EXPORT_BATCH_SIZE = 512;
-    public static final Duration DEFAULT_BSP_EXPORT_TIMEOUT = Duration.ofMillis(5_000);
+    public static final Duration DEFAULT_BSP_EXPORT_TIMEOUT = Duration.ofMillis(30_000);
     public static final Duration DEFAULT_BSP_SCHEDULE_DELAY = Duration.ofMillis(5_000);
 
     static final int DEFAULT_SPAN_ATTRIBUTE_COUNT_LIMIT = 50;

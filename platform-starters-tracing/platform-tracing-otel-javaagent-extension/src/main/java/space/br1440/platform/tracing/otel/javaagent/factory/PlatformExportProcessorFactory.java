@@ -1,14 +1,12 @@
 package space.br1440.platform.tracing.otel.javaagent.factory;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.QueueExtensionConfig;
@@ -34,21 +32,15 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 public final class PlatformExportProcessorFactory {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(PlatformExportProcessorFactory.class);
-    private static final String SHUTDOWN_KIND_FAILED = "failed";
+    private static final Duration STOCK_PROCESSOR_SHUTDOWN_TIMEOUT = Duration.ofSeconds(5);
 
-    private final AtomicReference<SafeSpanExporter> capturedExporter = new AtomicReference<>();
-    private final AtomicReference<ReplacementAwareSpanExporter> capturedStockExporter = new AtomicReference<>();
-    private final AtomicInteger exporterCount = new AtomicInteger();
-    private final AtomicBoolean dropOldestEnabledLogged = new AtomicBoolean();
-    private final Set<SafeSpanExporter> ownedExporters = Collections.synchronizedSet(
-            Collections.newSetFromMap(new IdentityHashMap<>())
-    );
+    private final List<ReplacementAwareSpanExporter> capturedExporters = new ArrayList<>();
 
     private final PlatformTracingMBeanRegistrar jmxRegistrar;
     private final ScrubbingRuntime scrubbingRuntime;
 
     public PlatformExportProcessorFactory(PlatformTracingMBeanRegistrar jmxRegistrar, ScrubbingRuntime scrubbingRuntime) {
-        this.jmxRegistrar = jmxRegistrar;
+        this.jmxRegistrar = Objects.requireNonNull(jmxRegistrar, "jmxRegistrar");
         this.scrubbingRuntime = Objects.requireNonNull(scrubbingRuntime, "scrubbingRuntime");
     }
 
@@ -57,136 +49,120 @@ public final class PlatformExportProcessorFactory {
         if (exporter instanceof ReplacementAwareSpanExporter replacementAware) {
             return replacementAware;
         }
-        int exporterRegistrationIndex = exporterCount.incrementAndGet();
 
-        SafeSpanExporter safeExporter = wrapOnce(exporter, acceptedPolicy);
+        rejectForeignSafeExporter(exporter);
+
+        SafeSpanExporter safeExporter = new SafeSpanExporter(exporter, acceptedPolicy, scrubbingRuntime);
         scrubbingRuntime.acknowledgeExporterWrapped();
 
         ReplacementAwareSpanExporter stockExporter = new ReplacementAwareSpanExporter(safeExporter);
-        if (exporterRegistrationIndex == 1) {
-            capturedExporter.set(safeExporter);
-            capturedStockExporter.set(stockExporter);
-
-            if (jmxRegistrar != null) {
-                jmxRegistrar.setSafeExporter(safeExporter);
-                jmxRegistrar.extensionReadiness().markInstalled(PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED);
-            }
+        capturedExporters.add(stockExporter);
+        if (capturedExporters.size() == 1) {
+            jmxRegistrar.setSafeExporter(safeExporter);
+            jmxRegistrar.extensionReadiness().markInstalled(PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED);
         }
 
         return stockExporter;
     }
 
-    SpanExporter captureExporter(SpanExporter exporter) {
-        return captureExporter(exporter, TracingSettingsSource.isolatedDefaults());
-    }
-
-    private SafeSpanExporter wrapOnce(SpanExporter exporter, TracingSettingsSource acceptedPolicy) {
-        if (exporter instanceof SafeSpanExporter safe) {
-            if (ownedExporters.contains(safe) && safe.isProtectedBy(scrubbingRuntime)) {
-                return safe;
-            }
-
-            log.log(ExportPipelineLogEvent.FOREIGN_SAFE_SPAN_EXPORTER_REWRAP_REJECTED,
-                    fields -> fields.putString(AgentLogField.TYPE, exporter.getClass().getName()));
-
-            throw new SanitizerBootstrapException(
-                    SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER,
-                    "Foreign SafeSpanExporter is not protected by the session scrubbing runtime ("
-                            + exporter.getClass().getName() + ")"
-            );
+    private static void rejectForeignSafeExporter(SpanExporter exporter) {
+        if (!(exporter instanceof SafeSpanExporter)) {
+            return;
         }
 
-        SafeSpanExporter created = new SafeSpanExporter(exporter, acceptedPolicy, scrubbingRuntime);
-        ownedExporters.add(created);
-        return created;
+        String type = exporter.getClass().getName();
+        log.log(ExportPipelineLogEvent.FOREIGN_SAFE_SPAN_EXPORTER_REWRAP_REJECTED,
+                fields -> fields.putString(AgentLogField.TYPE, type));
+
+        throw new SanitizerBootstrapException(
+                SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER,
+                "Foreign SafeSpanExporter is not protected by the session scrubbing runtime (%s)".formatted(type)
+        );
     }
 
     public SpanProcessor maybeReplaceExportProcessor(SpanProcessor processor,
                                                      QueueExtensionConfig queueConfig,
                                                      ConfigProperties config) {
         scrubbingRuntime.acknowledgeExportModeResolved();
+        SpanProcessor exportProcessor = selectExportProcessor(processor, queueConfig, config);
+        markExportPathProtected();
+        return exportProcessor;
+    }
+
+    private SpanProcessor selectExportProcessor(SpanProcessor processor,
+                                                QueueExtensionConfig queueConfig,
+                                                ConfigProperties config) {
         if (queueConfig.overflowPolicy() == QueueOverflowPolicy.UPSTREAM) {
-            markExportPathProtected();
             return processor;
         }
 
-        if (exporterCount.get() > 1) {
+        if (capturedExporters.size() > 1) {
             log.log(ExportPipelineLogEvent.MULTIPLE_SPAN_EXPORTERS_FALLBACK,
-                    fields -> fields.putLong(AgentLogField.COUNT, exporterCount.get()));
-            markExportPathProtected();
+                    fields -> fields.putLong(AgentLogField.COUNT, capturedExporters.size()));
             return processor;
         }
 
-        SpanExporter exporter = capturedExporter.get();
-        if (exporter == null) {
+        if (capturedExporters.isEmpty()) {
             log.log(ExportPipelineLogEvent.CAPTURED_SPAN_EXPORTER_NULL_FALLBACK);
             return processor;
         }
 
-        if (!(processor instanceof BatchSpanProcessor)) {
+        if (!(processor instanceof BatchSpanProcessor stockProcessor)) {
             log.log(ExportPipelineLogEvent.NON_BATCH_SPAN_PROCESSOR_FALLBACK,
                     fields -> fields.putString(AgentLogField.TYPE, processor.getClass().getName()));
-            markExportPathProtected();
             return processor;
         }
 
-        ReplacementAwareSpanExporter stockExporter = capturedStockExporter.get();
-        if (stockExporter == null) {
-            log.log(ExportPipelineLogEvent.REPLACEMENT_AWARE_EXPORTER_ABSENT_FALLBACK);
-            markExportPathProtected();
-            return processor;
-        }
+        return replaceStockProcessor(stockProcessor, capturedExporters.getFirst(), config);
+    }
 
-        PlatformDropOldestExportSpanProcessor.PreparedBuild replacementBuild = PlatformDropOldestExportSpanProcessor
-                .builder(exporter)
+    private PlatformDropOldestExportSpanProcessor replaceStockProcessor(BatchSpanProcessor stockProcessor,
+                                                                        ReplacementAwareSpanExporter stockExporter,
+                                                                        ConfigProperties config) {
+        PlatformDropOldestExportSpanProcessor.Builder replacementBuilder = PlatformDropOldestExportSpanProcessor
+                .builder(stockExporter.safeExporter())
                 .readBspConfigFrom(config)
                 .validate();
 
         stockExporter.suppressReplacementShutdown();
-        CompletableResultCode shutdownResult = processor.shutdown().join(5, TimeUnit.SECONDS);
-        requireCompletedStockShutdown(shutdownResult);
+        CompletableResultCode shutdownResult = stockProcessor.shutdown()
+                .join(STOCK_PROCESSOR_SHUTDOWN_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
 
-        PlatformDropOldestExportSpanProcessor replacement = replacementBuild.build();
-
-        if (jmxRegistrar != null) {
-            jmxRegistrar.setExportProcessor(replacement);
+        if (!shutdownResult.isDone()) {
+            throw new IllegalStateException("Stock BatchSpanProcessor shutdown did not complete before replacement");
         }
-        markExportPathProtected();
 
-        if (dropOldestEnabledLogged.compareAndSet(false, true)) {
-            log.log(ExportPipelineLogEvent.DROP_OLDEST_EXPORT_PROCESSOR_ENABLED,
-                    fields -> fields.putLong(AgentLogField.COUNT, replacement.metricsSnapshot().queueCapacity()));
+        if (!shutdownResult.isSuccess()) {
+            log.log(ExportPipelineLogEvent.STOCK_BATCH_SPAN_PROCESSOR_SHUTDOWN_UNSUCCESSFUL);
         }
+
+        PlatformDropOldestExportSpanProcessor replacement = replacementBuilder.build();
+        jmxRegistrar.setExportProcessor(replacement);
+        log.log(ExportPipelineLogEvent.DROP_OLDEST_EXPORT_PROCESSOR_ENABLED,
+                fields -> fields.putLong(AgentLogField.COUNT, replacement.metricsSnapshot().queueCapacity()));
 
         return replacement;
     }
 
-    static void requireCompletedStockShutdown(CompletableResultCode result) {
-        if (!result.isDone()) {
-            throw new IllegalStateException("Stock BatchSpanProcessor shutdown did not complete before replacement");
-        }
-
-        if (result.isSuccess()) {
+    private void markExportPathProtected() {
+        if (capturedExporters.isEmpty()) {
             return;
         }
 
-        log.log(ExportPipelineLogEvent.STOCK_BATCH_SPAN_PROCESSOR_SHUTDOWN_UNSUCCESSFUL,
-                fields -> fields.putString(AgentLogField.KIND, SHUTDOWN_KIND_FAILED));
-    }
-
-    private void markExportPathProtected() {
-        if (jmxRegistrar != null && capturedExporter.get() != null) {
-            jmxRegistrar.extensionReadiness().markInstalled(PlatformExtensionCapability.EXPORT_PATH_PROTECTED);
-            scrubbingRuntime.acknowledgeExportPathProtected();
-        }
+        jmxRegistrar.extensionReadiness().markInstalled(PlatformExtensionCapability.EXPORT_PATH_PROTECTED);
+        scrubbingRuntime.acknowledgeExportPathProtected();
     }
 
     private static final class ReplacementAwareSpanExporter implements SpanExporter {
-        private final SpanExporter delegate;
+        private final SafeSpanExporter delegate;
         private final AtomicBoolean suppressReplacementShutdown = new AtomicBoolean();
 
-        private ReplacementAwareSpanExporter(SpanExporter delegate) {
+        private ReplacementAwareSpanExporter(SafeSpanExporter delegate) {
             this.delegate = delegate;
+        }
+
+        private SafeSpanExporter safeExporter() {
+            return delegate;
         }
 
         private void suppressReplacementShutdown() {

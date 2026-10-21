@@ -123,7 +123,6 @@ class PlatformExportProcessorFactoryBoundaryTest {
         SafeSpanExporter foreign = new SafeSpanExporter(
                 capturing(captured), TracingSettingsSource.isolatedDefaults(),
                 ScrubbingRuntimeTestFixtures.disabled());
-        assertThat(foreign.isProtectedBy(session)).isFalse();
 
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
                 new PlatformTracingMBeanRegistrar(AgentInstanceId.random()), session);
@@ -149,10 +148,8 @@ class PlatformExportProcessorFactoryBoundaryTest {
         ScrubbingRuntime session = runtimeOfPassword();
         List<SpanData> captured = new ArrayList<>();
         SafeSpanExporter lookalike = new SafeSpanExporter(
-                capturing(captured), TracingSettingsSource.isolatedDefaults(), session);
-        assertThat(lookalike.isProtectedBy(session))
-                .as("runtime identity matches, but this instance was never produced by the factory")
-                .isTrue();
+                capturing(captured), TracingSettingsSource.isolatedDefaults(), session
+        );
 
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
                 new PlatformTracingMBeanRegistrar(AgentInstanceId.random()), session);
@@ -176,7 +173,8 @@ class PlatformExportProcessorFactoryBoundaryTest {
         ScrubbingRuntime session = runtimeOfPassword();
         List<SpanData> captured = new ArrayList<>();
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
-                new PlatformTracingMBeanRegistrar(AgentInstanceId.random()), session);
+                new PlatformTracingMBeanRegistrar(AgentInstanceId.random()), session
+        );
 
         SpanExporter firstCapture = factory.captureExporter(capturing(captured), TracingSettingsSource.isolatedDefaults());
         SpanExporter secondCapture = factory.captureExporter(firstCapture, TracingSettingsSource.isolatedDefaults());

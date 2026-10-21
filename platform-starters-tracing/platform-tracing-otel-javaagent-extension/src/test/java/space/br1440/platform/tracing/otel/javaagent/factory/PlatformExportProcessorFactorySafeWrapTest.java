@@ -9,7 +9,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 
 import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
@@ -24,12 +27,11 @@ class PlatformExportProcessorFactorySafeWrapTest {
     @DisplayName("captureExporter сохраняет safe export path за replacement-aware границей")
     void captureExporterKeepsSafeExportPathBehindReplacementBoundary() {
         // given
-        PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
-                null, ScrubbingRuntimeTestFixtures.disabled());
+        PlatformExportProcessorFactory factory = factory();
         CountingExporter delegate = new CountingExporter();
 
         // when
-        SpanExporter result = factory.captureExporter(delegate);
+        SpanExporter result = factory.captureExporter(delegate, TracingSettingsSource.isolatedDefaults());
         result.export(java.util.List.of()).join(1, java.util.concurrent.TimeUnit.SECONDS);
 
         // then
@@ -41,12 +43,11 @@ class PlatformExportProcessorFactorySafeWrapTest {
     @DisplayName("Повторный проход не создаёт вторую replacement-aware границу")
     void captureExporterDoesNotDoubleWrap() {
         // given
-        PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
-                null, ScrubbingRuntimeTestFixtures.disabled());
+        PlatformExportProcessorFactory factory = factory();
 
         // when
-        SpanExporter once = factory.captureExporter(SpanExporter.noop());
-        SpanExporter twice = factory.captureExporter(once);
+        SpanExporter once = factory.captureExporter(SpanExporter.noop(), TracingSettingsSource.isolatedDefaults());
+        SpanExporter twice = factory.captureExporter(once, TracingSettingsSource.isolatedDefaults());
 
         // then
         assertThat(twice).isSameAs(once);
@@ -72,14 +73,18 @@ class PlatformExportProcessorFactorySafeWrapTest {
         assertWrapperThenRawDelegateShutdown(rawDelegate);
     }
 
-    private static void assertWrapperThenRawDelegateShutdown(SpanExporter rawDelegate) {
-        PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
-                null,
+    private static PlatformExportProcessorFactory factory() {
+        return new PlatformExportProcessorFactory(
+                new PlatformTracingMBeanRegistrar(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled()
         );
+    }
+
+    private static void assertWrapperThenRawDelegateShutdown(SpanExporter rawDelegate) {
+        PlatformExportProcessorFactory factory = factory();
 
         try {
-            SpanExporter wrapper = factory.captureExporter(rawDelegate);
+            SpanExporter wrapper = factory.captureExporter(rawDelegate, TracingSettingsSource.isolatedDefaults());
 
             // when
             CompletableResultCode wrapperShutdown = wrapper.shutdown().join(2, TimeUnit.SECONDS);
