@@ -19,6 +19,7 @@ class ControlledAgentStartupTest {
 
     private static final String EXPECTED_PROBE_CAPABILITIES = "7";
     private static final String PROBE_OK_PREFIX = "CONTROLLED_AGENT_PROBE_OK";
+    private static final String SHUTDOWN_OK_MARKER = ControlledAgentRuntimeProbe.SHUTDOWN_OK_MARKER;
     private static final String BOOTSTRAP_POLICY_PROBE_OK_PREFIX = "CONTROLLED_AGENT_BOOTSTRAP_POLICY_OK";
     private static final String VERIFY_BOOTSTRAP_POLICY_ARGUMENT = "verify-bootstrap-policy";
     private static final String ANY_PTA_EVENT_CODE = "\"event_code\":\"PTA-";
@@ -112,6 +113,11 @@ class ControlledAgentStartupTest {
                 .lines()
                 .filter(line -> line.startsWith(PROBE_OK_PREFIX)))
                 .containsExactly(expectedLine);
+        assertThat(result.stdout()
+                .lines()
+                .filter(SHUTDOWN_OK_MARKER::equals))
+                .as("Child stdout must contain exactly one successful shutdown marker: %s", result.stdout())
+                .containsExactly(SHUTDOWN_OK_MARKER);
     }
 
     private static void assertStderrIsFreeOfLoggingAndExtensionFailures(ChildProcessResult result) {
@@ -120,6 +126,14 @@ class ControlledAgentStartupTest {
                 .doesNotContain("Defaulting to no-operation (NOP) logger implementation")
                 .doesNotContain("Failed to load extension")
                 .doesNotContain("Unable to load extension")
+                .doesNotContain("JMX_TRANSPORT_STALE")
+                .doesNotContain("SHUTDOWN_CLEANUP_FAILED")
+                .doesNotContain("PTA-BOOT-002")
+                .doesNotContain("BOOTSTRAP_PHASE_FAILED")
+                .doesNotContain("BOOTSTRAP_SHUTDOWN_CLEANUP_FAILED")
+                .doesNotContain("BOOTSTRAP_SHUTDOWN_COMPLETION_FAILED")
+                .doesNotContain("Exception in thread")
+                .doesNotContain("\tat ")
                 .doesNotContain("FATAL");
     }
 }

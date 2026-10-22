@@ -391,7 +391,7 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
 
     private static BootstrapCoordinator coordinator(MBeanServer server) {
         return new BootstrapCoordinator(
-                (threadName, action) -> () -> {
+                (threadName, action) -> {
                 },
                 new PlatformScrubberFactory(),
                 RuntimeEvidenceTestFixtures.trustedVerifier(),

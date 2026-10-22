@@ -105,6 +105,10 @@ final class AgentContractFailureMessages {
     static final String EXTENSION_READY_WITH_FAILURE_CODE_EXPLANATION =
             "The extension reported READY with a non-blank failure code.";
 
+    static final String SHUTDOWN_CLEANUP_FAILED_EXPLANATION = """
+            The Java-agent extension could not release one or more runtime resources during JVM shutdown. \
+            Inspect the structured agent log entry with phase=close for the failed resource and cause.""";
+
     static final String UNSPECIFIED_CONTRACT_FAILURE_TEMPLATE =
             "Observed runtimeState=%s is not allowed for platform.tracing.enabled=%s.";
 
@@ -335,6 +339,8 @@ final class AgentContractFailureMessages {
             case AgentNotReadyReasonCodes.EXTENSION_LIFECYCLE_UNEXPECTED -> EXTENSION_LIFECYCLE_UNEXPECTED_EXPLANATION;
 
             case AgentNotReadyReasonCodes.EXTENSION_READY_WITH_FAILURE_CODE -> EXTENSION_READY_WITH_FAILURE_CODE_EXPLANATION;
+
+            case "SHUTDOWN_CLEANUP_FAILED" -> SHUTDOWN_CLEANUP_FAILED_EXPLANATION;
 
             case "UNSPECIFIED_CONTRACT_FAILURE" -> UNSPECIFIED_CONTRACT_FAILURE_TEMPLATE.formatted(runtimeState, tracingEnabled);
 

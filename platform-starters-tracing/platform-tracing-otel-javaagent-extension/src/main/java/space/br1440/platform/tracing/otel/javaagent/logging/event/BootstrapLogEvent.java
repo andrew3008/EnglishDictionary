@@ -33,7 +33,7 @@ public enum BootstrapLogEvent implements AgentLogEventType {
                     AgentEventCode.BOOT_CLASSIFIED_FAILURE, WARN,
                     "Bootstrap phase failed",
                     AgentLogField.FAILURE_CODE, AgentLogField.PHASE, AgentLogField.SUBPHASE,
-                    AgentLogField.PROPERTY_NAME
+                    AgentLogField.PROPERTY_NAME, AgentLogField.RESOURCE_LABEL
             )
     ),
 
@@ -43,22 +43,6 @@ public enum BootstrapLogEvent implements AgentLogEventType {
                     "Bootstrap operation rejected",
                     AgentLogField.FAILURE_CODE, AgentLogField.PHASE, AgentLogField.SUBPHASE,
                     AgentLogField.PROPERTY_NAME
-            )
-    ),
-
-    BOOTSTRAP_SHUTDOWN_CLEANUP_FAILED(
-            requiresCause(
-                    AgentEventCode.BOOT_CLASSIFIED_FAILURE, WARN,
-                    "Platform bootstrap shutdown cleanup failed",
-                    AgentLogField.PHASE, AgentLogField.RESOURCE_LABEL
-            )
-    ),
-
-    BOOTSTRAP_SHUTDOWN_COMPLETION_FAILED(
-            requiresCause(
-                    AgentEventCode.BOOT_CLASSIFIED_FAILURE, WARN,
-                    "Platform bootstrap shutdown completion failed",
-                    AgentLogField.PHASE, AgentLogField.RESOURCE_LABEL
             )
     ),
 

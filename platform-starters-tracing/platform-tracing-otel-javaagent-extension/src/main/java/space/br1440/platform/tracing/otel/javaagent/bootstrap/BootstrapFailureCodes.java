@@ -17,7 +17,7 @@ final class BootstrapFailureCodes {
 
     static final String FAILED_ROLLBACK_INCOMPLETE = "FAILED_ROLLBACK_INCOMPLETE";
 
-    static final String TRANSPORT_STALE = "JMX_TRANSPORT_STALE";
+    static final String SHUTDOWN_CLEANUP_FAILED = "SHUTDOWN_CLEANUP_FAILED";
 
     static final String REENTRANT_OR_OUT_OF_ORDER = "REENTRANT_OR_OUT_OF_ORDER";
 

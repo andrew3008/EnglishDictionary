@@ -1,12 +1,12 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorAssert.assertThatCoordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_READY;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.acknowledgeScrubbingExcept;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
@@ -19,9 +19,7 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.satisfyReadinessBarrier;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.ACTIVATION_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.DIAGNOSTIC_MBEAN_REGISTRATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_SAMPLER_REPLACED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.TRANSPORT_STALE;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
 import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSnapshotAssertions.failureOf;
 
@@ -46,6 +44,7 @@ import space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinat
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.ShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
@@ -78,42 +77,46 @@ class BootstrapCoordinatorActivationTest {
 
                 // then
                 assertThatCoordinator(coordinator).isActiveAndReady();
+                assertThat(hooks.registrationCount()).isOne();
+                assertThat(hooks.threadName()).isEqualTo("platform-tracing-bootstrap-shutdown");
                 hooks.runHook();
-                assertThatCoordinator(coordinator).hasWireFailure(TRANSPORT_STALE);
+                assertThat(coordinator.state()).isEqualTo(BootstrapState.CLOSED);
+                assertThat(coordinator.currentWire().lifecycle()).isEqualTo(WIRE_READY);
+                assertThat(coordinator.currentWire().failureCode()).isEmpty();
+                assertThat(coordinator.currentWire().primaryFailureCode()).isEmpty();
                 assertThat(coordinator.currentWire().agentInstanceId()).isEqualTo(agentInstanceId);
             }
         }
     }
 
     @Test
-    void activation_rollback_failure_publishes_rollback_incomplete_and_preserves_original_cause() {
+    void hook_registration_failure_is_terminalized_before_runtime_binding() {
         // given
-        IllegalStateException cleanupFailure = new IllegalStateException("simulated shutdown hook removal failure");
-        ShutdownHookRegistry hooks = (threadName, action) -> () -> {
-            throw cleanupFailure;
+        IllegalStateException registrationFailure =
+                new IllegalStateException("Simulated shutdown hook registration failure");
+        ShutdownHookRegistry hooks = (threadName, action) -> {
+            throw registrationFailure;
         };
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
 
-        //noinspection resource -- второй close обязан быть тихим, try-with-resources добавит третий вызов
-        BootstrapCoordinator coordinator = coordinator().hooks(hooks).build();
-        AutoconfigureSession session = coordinator.prepare(config());
+        try (BootstrapCoordinator coordinator = coordinator().server(server).hooks(hooks).build()) {
+            AutoconfigureSession session = coordinator.prepare(config());
+            satisfyReadinessBarrier(session);
 
-        try (SdkTracerProvider tracerProvider = providerFor(session)) {
-            // when
-            BootstrapException failure = catchBootstrapFailure(
-                    () -> coordinator.activate(tracerProvider),
-                    FAILED_ROLLBACK_INCOMPLETE
-            );
+            try (SdkTracerProvider tracerProvider = providerFor(session)) {
+                // when
+                BootstrapException failure = catchBootstrapFailure(
+                        () -> coordinator.activate(tracerProvider),
+                        ACTIVATION_FAILED
+                );
 
-            // then
-            assertThat(failure.getCause().getSuppressed()).singleElement()
-                    .satisfies(suppressed -> assertThat(suppressed.getCause()).isSameAs(cleanupFailure));
-            assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
-            assertThat(coordinator.currentWire().failureCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
-            assertThat(failureOf(session.readiness().snapshot()).effectiveCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
-
-            Throwable rollbackFailure = failure.getCause().getSuppressed()[0];
-            assertThat(catchThrowable(coordinator::close)).isSameAs(rollbackFailure);
-            assertThatCode(coordinator::close).doesNotThrowAnyException();
+                // then
+                assertThat(failure.getCause()).isSameAs(registrationFailure);
+                assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+                assertThat(coordinator.currentWire().failureCode()).isEqualTo(ACTIVATION_FAILED);
+                assertThat(failureOf(session.readiness().snapshot()).effectiveCode()).isEqualTo(ACTIVATION_FAILED);
+                assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isFalse();
+            }
         }
     }
 
@@ -153,21 +156,20 @@ class BootstrapCoordinatorActivationTest {
         );
         BootstrapTerminalTransitions transitions = new BootstrapTerminalTransitions(
                 lifecycle,
-                journal,
-                new DiagnosticReadinessHandle()
+                journal
         );
         BootstrapActivation activation = new BootstrapActivation(
                 lifecycle,
                 journal,
-                transitions,
-                new CapturingShutdownHookRegistry()
+                transitions
         );
         lifecycle.beginPrepare();
         journal.publishInitializing();
         lifecycle.completePrepare(session);
 
         // when
-        Throwable thrown = catchThrowable(() -> activation.activate(mock(SdkTracerProvider.class)));
+        Throwable thrown = catchThrowable(() -> activation.activate(mock(SdkTracerProvider.class), () -> {
+        }));
 
         // then
         assertThat(thrown).isInstanceOf(BootstrapException.class);

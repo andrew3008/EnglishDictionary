@@ -133,10 +133,11 @@ class BootstrapLifecycleAdmissionMatrixTest {
                         new IllegalStateException("Cleanup failure")
                 );
             }
-            case CLOSING -> lifecycle.beginClose();
+            case CLOSING -> lifecycle.acquireClose();
             case CLOSED -> {
-                lifecycle.beginClose();
+                BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
                 lifecycle.markClosed();
+                lifecycle.completeClose(acquisition.flight(), null);
             }
         }
 

@@ -21,16 +21,6 @@ final class DiagnosticReadinessHandle {
         );
     }
 
-    synchronized AutoCloseable replace(AutoCloseable registration) {
-        if (closed) {
-            throw new IllegalStateException("Diagnostic readiness handle is already closed");
-        }
-
-        AutoCloseable previous = handle;
-        handle = Objects.requireNonNull(registration, "registration");
-        return previous;
-    }
-
     synchronized void close() {
         if (closed) {
             if (closeFailure != null) {

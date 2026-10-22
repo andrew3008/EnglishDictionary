@@ -3,7 +3,6 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
 
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.JvmShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.ExtensionRuntimeVerifier;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
@@ -44,7 +43,7 @@ final class RuntimeEvidenceTestFixtures {
                                                     MBeanServer mbeanServer) {
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
         return new BootstrapCoordinator(
-                JvmShutdownHookRegistry.INSTANCE,
+                new BootstrapCoordinatorTestSupport.CapturingShutdownHookRegistry(),
                 scrubberFactory,
                 trustedVerifier(),
                 ignored -> RemoteJmxAssessorTestFixtures.allowingAssessor(),

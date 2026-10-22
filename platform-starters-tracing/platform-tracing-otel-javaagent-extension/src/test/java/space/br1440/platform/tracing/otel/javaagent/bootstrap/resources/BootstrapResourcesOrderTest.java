@@ -5,57 +5,27 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.parallel.ResourceLock;
-import org.junit.jupiter.api.parallel.Resources;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
-import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
-
-@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class BootstrapResourcesOrderTest {
 
-    private static final String SECRET_MARKER = "shutdown-completion-secret";
-
     @Test
-    void readinessTransitionRunsBeforeRuntimeAndAnchorClosesLast() {
+    void resourcesCloseInStrictLifoOrder() {
         // given
         List<String> closeOrder = new ArrayList<>();
-        AtomicReference<String> readiness = new AtomicReference<>("READY");
-        AtomicReference<Runnable> shutdownAction = new AtomicReference<>();
-        try (BootstrapResources resources = new BootstrapResources((threadName, action) -> {
-            shutdownAction.set(action);
-            return () -> {
-            };
-        })) {
-            resources.push(() -> {
-                assertThat(readiness.get()).isEqualTo("FAILED");
-                closeOrder.add("runtime");
-            }, "runtime-batch");
-            resources.push(() -> {
-                readiness.set("FAILED");
-                closeOrder.add("transition");
-            }, "readiness-transition");
-            resources.installShutdownHook("test-shutdown", cleanupFailure -> {
-                assertThat(cleanupFailure).isNull();
-                assertThat(closeOrder).containsExactly("transition", "runtime");
-                closeOrder.add("anchor");
-            });
+        BootstrapResources resources = new BootstrapResources();
+        resources.push(() -> closeOrder.add("bottom"), "bottom");
+        resources.push(() -> closeOrder.add("middle"), "middle");
+        resources.push(() -> closeOrder.add("top"), "top");
 
-            // when
-            shutdownAction.get().run();
+        // when
+        resources.close();
 
-            // then
-            assertThat(closeOrder).containsExactly("transition", "runtime", "anchor");
-        }
+        // then
+        assertThat(closeOrder).containsExactly("top", "middle", "bottom");
     }
 
     @Test
@@ -64,9 +34,8 @@ class BootstrapResourcesOrderTest {
         List<String> closeOrder = new ArrayList<>();
         IllegalStateException runtimeFailure = new IllegalStateException("simulated lower cleanup failure");
         NoClassDefFoundError fatalFailure = new NoClassDefFoundError("simulated fatal cleanup failure");
-        //noinspection resource -- повторный close обязан бросить тот же fatal, try-with-resources добавит ещё один бросок
-        BootstrapResources resources = new BootstrapResources((threadName, action) -> () -> {
-        });
+        //noinspection resource — close() вызывается в тесте повторно и обязан бросить тот же отказ
+        BootstrapResources resources = new BootstrapResources();
         resources.push(() -> {
             closeOrder.add("bottom");
             throw runtimeFailure;
@@ -90,11 +59,37 @@ class BootstrapResourcesOrderTest {
     }
 
     @Test
+    void identicalFatalFailuresDoNotStopRemainingCleanupOrSelfSuppress() {
+        // given
+        List<String> closeOrder = new ArrayList<>();
+        NoClassDefFoundError sharedFailure = new NoClassDefFoundError("shared fatal cleanup failure");
+        //noinspection resource — close() вызывается в тесте повторно и обязан бросить тот же отказ
+        BootstrapResources resources = new BootstrapResources();
+        resources.push(() -> closeOrder.add("bottom"), "bottom");
+        resources.push(() -> {
+            closeOrder.add("middle");
+            throw sharedFailure;
+        }, "middle");
+        resources.push(() -> {
+            closeOrder.add("top");
+            throw sharedFailure;
+        }, "top");
+
+        // when
+        Throwable firstFailure = catchThrowable(resources::close);
+
+        // then
+        assertThat(firstFailure).isSameAs(sharedFailure);
+        assertThat(sharedFailure.getSuppressed()).isEmpty();
+        assertThat(closeOrder).containsExactly("top", "middle", "bottom");
+        assertThatThrownBy(resources::close).isSameAs(sharedFailure);
+    }
+
+    @Test
     void repeatedCloseAfterFailureRethrowsSameInstance() {
         // given
-        //noinspection resource -- повторный close обязан бросить тот же экземпляр, try-with-resources добавит ещё один бросок
-        BootstrapResources resources = new BootstrapResources((threadName, action) -> () -> {
-        });
+        //noinspection resource — close() вызывается в тесте повторно и обязан бросить тот же отказ
+        BootstrapResources resources = new BootstrapResources();
         resources.push(() -> {
             throw new IllegalStateException("simulated cleanup failure");
         }, "runtime-controls");
@@ -110,78 +105,12 @@ class BootstrapResourcesOrderTest {
     @Test
     void repeatedCloseAfterSuccessReturnsNormally() {
         // given
-        BootstrapResources resources = new BootstrapResources((threadName, action) -> () -> {
-        });
+        BootstrapResources resources = new BootstrapResources();
 
         // when
         resources.close();
 
         // then
         assertThatCode(resources::close).doesNotThrowAnyException();
-    }
-
-    @Test
-    @ResourceLock(Resources.SYSTEM_ERR)
-    void shutdownCompletionFailurePreservesCleanupCauseAndUsesOnlyStructuredStderr() {
-        // given
-        AtomicReference<Runnable> shutdownAction = new AtomicReference<>();
-        AtomicReference<Throwable> receivedCleanupFailure = new AtomicReference<>();
-        IllegalArgumentException cleanupCause = new IllegalArgumentException("cleanup-" + SECRET_MARKER);
-        UnsupportedOperationException completionFailure = new UnsupportedOperationException("completion-" + SECRET_MARKER);
-        ByteArrayOutputStream rawStderr = new ByteArrayOutputStream();
-        PrintStream previousStderr = System.err;
-        //noinspection resource -- hook уже закрыл ресурсы, повторный close в конце проверяет тот же экземпляр ошибки
-        BootstrapResources resources = new BootstrapResources((threadName, action) -> {
-            shutdownAction.set(action);
-            return () -> {
-            };
-        });
-
-        try (PrintStream replacementStderr = new PrintStream(rawStderr, true, StandardCharsets.UTF_8);
-             AgentLogCapture logs = AgentLogCapture.installed()) {
-            resources.push(() -> {
-                throw cleanupCause;
-            }, "failing-resource");
-
-            resources.installShutdownHook("test-shutdown", cleanupFailure -> {
-                receivedCleanupFailure.set(cleanupFailure);
-                throw completionFailure;
-            });
-
-            System.setErr(replacementStderr);
-
-            // when
-            assertThatCode(shutdownAction.get()::run).doesNotThrowAnyException();
-
-            // then
-            assertThat(receivedCleanupFailure.get())
-                    .isInstanceOf(IllegalStateException.class)
-                    .rootCause()
-                    .isSameAs(cleanupCause);
-
-            List<CapturedLogEvent> failures = logs.events()
-                    .stream()
-                    .filter(event -> event.eventCode() == AgentEventCode.BOOT_CLASSIFIED_FAILURE)
-                    .toList();
-            assertThat(failures)
-                    .singleElement()
-                    .satisfies(event -> {
-                        assertThat(event.fields())
-                                .hasSize(2)
-                                .containsEntry("phase", "shutdown")
-                                .containsEntry("resourceLabel", "shutdown-completion");
-                        assertThat(event.throwableDigest())
-                                .contains("caused by " + IllegalArgumentException.class.getName())
-                                .contains("suppressed " + BootstrapResourceCleanupException.class.getName())
-                                .contains("caused by " + UnsupportedOperationException.class.getName())
-                                .doesNotContain(SECRET_MARKER);
-                    });
-
-            assertThat(rawStderr.toString(StandardCharsets.UTF_8)).isEmpty();
-            assertThat(logs.rendered()).doesNotContain(SECRET_MARKER);
-            assertThatThrownBy(resources::close).isSameAs(receivedCleanupFailure.get());
-        } finally {
-            System.setErr(previousStderr);
-        }
     }
 }

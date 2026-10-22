@@ -1,17 +1,17 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.TRANSPORT_STALE;
 
 import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
+import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationException;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
 final class BootstrapTerminalTransitions {
@@ -20,14 +20,11 @@ final class BootstrapTerminalTransitions {
 
     private final BootstrapLifecycleState lifecycle;
     private final BootstrapReadinessJournal journal;
-    private final DiagnosticReadinessHandle diagnosticHandle;
 
     BootstrapTerminalTransitions(BootstrapLifecycleState lifecycle,
-                                 BootstrapReadinessJournal journal,
-                                 DiagnosticReadinessHandle diagnosticHandle) {
+                                 BootstrapReadinessJournal journal) {
         this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
         this.journal = Objects.requireNonNull(journal, "journal");
-        this.diagnosticHandle = Objects.requireNonNull(diagnosticHandle, "diagnosticHandle");
     }
 
     BootstrapException recordActivationFailure(String failureCode,
@@ -58,17 +55,17 @@ final class BootstrapTerminalTransitions {
             );
         }
 
+        if (sectionFailure != null) {
+            BootstrapCleanupFailures.suppressPreservingPrimary(cause, sectionFailure);
+        }
         Throwable cleanupFailure = (resources == null)
                 ? null
                 : BootstrapCleanupFailures.rollback(resources, cause);
-        if (sectionFailure != null) {
-            BootstrapCleanupFailures.suppressPreservingPrimary(cause, sectionFailure);
-            PlatformThrowables.propagateIfFatal(cause);
-            PlatformThrowables.propagateIfFatal(cleanupFailure);
-            rethrowSectionFailure(sectionFailure);
-        }
 
-        BootstrapException effectiveFailure = Objects.requireNonNull(classified, "classified");
+        Throwable activationOutcome = BootstrapCleanupFailures.aggregate(cause, sectionFailure);
+        activationOutcome = BootstrapCleanupFailures.aggregate(activationOutcome, cleanupFailure);
+
+        BootstrapException effectiveFailure = classified;
         try {
             if (cleanupFailure != null || JmxRegistrationException.rollbackIncompleteIn(cause)) {
                 Throwable escalationCause = cleanupFailure == null ? cause : cleanupFailure;
@@ -78,12 +75,18 @@ final class BootstrapTerminalTransitions {
                     effectiveFailure = new BootstrapException(lifecycle.failure());
                 }
             }
-
-            return effectiveFailure;
+        } catch (RuntimeException | Error settlementFailure) {
+            activationOutcome = BootstrapCleanupFailures.aggregate(activationOutcome, settlementFailure);
+            throw settlementFailure;
         } finally {
-            PlatformThrowables.propagateIfFatal(cause);
-            PlatformThrowables.propagateIfFatal(cleanupFailure);
+            PlatformThrowables.propagateIfFatal(activationOutcome);
         }
+
+        if (sectionFailure != null) {
+            rethrowSectionFailure(sectionFailure);
+        }
+
+        return Objects.requireNonNull(effectiveFailure, "classified");
     }
 
     BootstrapException terminalizePreparationFailure(String failureCode,
@@ -149,64 +152,88 @@ final class BootstrapTerminalTransitions {
         throw classified;
     }
 
-    void publishTransportStale(String batchId,
-                               ExtensionRuntimeEvidence evidence) {
-        IllegalStateException cause = new IllegalStateException(
-                "JMX runtime controls are being deregistered"
-        );
+    void publishCloseFailureSnapshot(BootstrapLifecycleState.CloseContext context,
+                                     Throwable cleanupFailure) {
+        Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(cleanupFailure, "cleanupFailure");
 
         synchronized (lifecycle.monitor()) {
-            if (!lifecycle.active()) {
-                return;
+            BootstrapFailure classified = lifecycle.classifyCloseFailure(context, cleanupFailure);
+            publishCurrentFailure(classified);
+        }
+    }
+
+    Throwable completeCloseFailure(BootstrapLifecycleState.CloseContext context,
+                                   Throwable cleanupFailure,
+                                   Throwable priorPublicationFailure,
+                                   boolean failureSnapshotPublished) {
+        Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(cleanupFailure, "cleanupFailure");
+
+        BootstrapFailure settledFailure;
+        Throwable finalPublicationFailure = null;
+        Throwable baseOutcome;
+        synchronized (lifecycle.monitor()) {
+            if (priorPublicationFailure == null
+                    && lifecycle.closeFailureAlreadyRecorded(cleanupFailure)) {
+                try {
+                    publishCurrentFailure(lifecycle.failure());
+                    return cleanupFailure;
+                } catch (RuntimeException | Error publicationFailure) {
+                    BootstrapCleanupFailures.suppressPreservingPrimary(
+                            lifecycle.failure().cause(),
+                            publicationFailure
+                    );
+                    return BootstrapCleanupFailures.aggregate(cleanupFailure, publicationFailure);
+                }
             }
 
-            BootstrapFailure failure = lifecycle.fail(TRANSPORT_STALE, "shutdown", "shutdown", null, cause).failure();
-            journal.publishFailed(failure, batchId, evidence);
-        }
-    }
+            settledFailure = lifecycle.recordCloseFailure(context, cleanupFailure);
+            if (priorPublicationFailure != null) {
+                BootstrapCleanupFailures.suppressPreservingPrimary(
+                        settledFailure.cause(),
+                        priorPublicationFailure
+                );
+            }
 
-    void completeShutdown(String batchId,
-                          ExtensionRuntimeEvidence evidence,
-                          Throwable cleanupFailure) {
-        Throwable terminalFailure = cleanupFailure;
-        Throwable completionFailure = null;
+            if (!failureSnapshotPublished) {
+                try {
+                    publishCurrentFailure(settledFailure);
+                } catch (RuntimeException | Error publicationFailure) {
+                    finalPublicationFailure = publicationFailure;
+                    BootstrapCleanupFailures.suppressPreservingPrimary(
+                            settledFailure.cause(),
+                            publicationFailure
+                    );
+                }
+            }
+
+            baseOutcome = BootstrapCleanupFailures.aggregate(cleanupFailure, priorPublicationFailure);
+            baseOutcome = BootstrapCleanupFailures.aggregate(baseOutcome, finalPublicationFailure);
+        }
+
+        Throwable outcomeToLog = baseOutcome;
         try {
-            diagnosticHandle.close();
-        } catch (RuntimeException | Error failure) {
-            Throwable labeledFailure = BootstrapCleanupFailures.withResourceLabel(
-                    "diagnostic-readiness",
-                    failure
-            );
-            terminalFailure = BootstrapCleanupFailures.aggregate(terminalFailure, labeledFailure);
-            completionFailure = labeledFailure;
+            log.log(BootstrapLogEvent.BOOTSTRAP_PHASE_FAILED, fields -> fields
+                    .putString(AgentLogField.FAILURE_CODE, settledFailure.effectiveCode())
+                    .putString(AgentLogField.PHASE, "close")
+                    .putString(AgentLogField.SUBPHASE, "close")
+                    .putString(
+                            AgentLogField.RESOURCE_LABEL,
+                            BootstrapCleanupFailures.resourceLabel(outcomeToLog)
+                    )
+                    .cause(outcomeToLog));
+            return baseOutcome;
+        } catch (RuntimeException | Error loggerFailure) {
+            synchronized (lifecycle.monitor()) {
+                BootstrapCleanupFailures.suppressPreservingPrimary(
+                        lifecycle.failure().cause(),
+                        loggerFailure
+                );
+            }
+
+            return BootstrapCleanupFailures.aggregate(baseOutcome, loggerFailure);
         }
-
-        if (terminalFailure == null) {
-            return;
-        }
-
-        try {
-            publishRollbackIncomplete("shutdown", terminalFailure, batchId, evidence);
-        } catch (RuntimeException | Error failure) {
-            terminalFailure = BootstrapCleanupFailures.aggregate(terminalFailure, failure);
-            completionFailure = BootstrapCleanupFailures.aggregate(completionFailure, failure);
-        }
-
-        if (completionFailure != null) {
-            BootstrapCleanupFailures.rethrow(terminalFailure);
-        }
-
-        Throwable failureToLog = terminalFailure;
-        log.log(BootstrapLogEvent.BOOTSTRAP_SHUTDOWN_CLEANUP_FAILED, fields -> fields
-                .putString(AgentLogField.PHASE, "shutdown")
-                .putString(AgentLogField.RESOURCE_LABEL, BootstrapCleanupFailures.resourceLabel(failureToLog))
-                .cause(failureToLog));
-    }
-
-    void completeCloseFailure(Throwable cleanupFailure,
-                              String batchId,
-                              ExtensionRuntimeEvidence evidence) {
-        publishRollbackIncomplete("close", cleanupFailure, batchId, evidence);
     }
 
     private BootstrapException terminalizeFailure(String failureCode,
@@ -231,16 +258,9 @@ final class BootstrapTerminalTransitions {
         }
     }
 
-    private void publishRollbackIncomplete(String phase,
-                                           Throwable cause,
-                                           String batchId,
-                                           ExtensionRuntimeEvidence evidence) {
-        synchronized (lifecycle.monitor()) {
-            lifecycle.escalateRollbackIncomplete(phase, cause);
-            if (lifecycle.state() == BootstrapState.FAILED) {
-                journal.publishFailed(lifecycle.failure(), batchId, evidence);
-            }
-        }
+    private void publishCurrentFailure(BootstrapFailure failure) {
+        ExtensionReadinessWireSnapshot current = journal.current();
+        journal.publishFailed(failure, current.batchId(), current.evidence());
     }
 
     private static void rethrowSectionFailure(Throwable sectionFailure) {

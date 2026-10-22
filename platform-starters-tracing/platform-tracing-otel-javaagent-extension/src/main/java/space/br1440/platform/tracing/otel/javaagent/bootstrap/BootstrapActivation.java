@@ -7,7 +7,6 @@ import java.util.Objects;
 import java.util.UUID;
 
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.ShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.VerificationFailureCode;
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
@@ -33,26 +32,23 @@ final class BootstrapActivation {
 
     private static final String INSTALLATION_PROFILE = "platform-agent-secure-v1";
     private static final int INSTALLATION_PROTOCOL_VERSION = 1;
-    private static final String SHUTDOWN_HOOK_THREAD_NAME = "platform-tracing-bootstrap-shutdown";
     private static final long INITIAL_EVIDENCE_GENERATION = 1L;
 
     private final BootstrapLifecycleState lifecycle;
     private final BootstrapReadinessJournal journal;
     private final BootstrapTerminalTransitions terminalTransitions;
-    private final ShutdownHookRegistry hookRegistry;
 
     BootstrapActivation(BootstrapLifecycleState lifecycle,
                         BootstrapReadinessJournal journal,
-                        BootstrapTerminalTransitions terminalTransitions,
-                        ShutdownHookRegistry hookRegistry) {
+                        BootstrapTerminalTransitions terminalTransitions) {
         this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
         this.journal = Objects.requireNonNull(journal, "journal");
         this.terminalTransitions = Objects.requireNonNull(terminalTransitions, "terminalTransitions");
-        this.hookRegistry = Objects.requireNonNull(hookRegistry, "hookRegistry");
     }
 
-    void activate(SdkTracerProvider tracerProvider) {
+    void activate(SdkTracerProvider tracerProvider, Runnable installLifecycleShutdownHook) {
         Objects.requireNonNull(tracerProvider, "tracerProvider");
+        Objects.requireNonNull(installLifecycleShutdownHook, "installLifecycleShutdownHook");
 
         ActivationAttempt attempt = null;
         BootstrapResources resources = null;
@@ -61,7 +57,8 @@ final class BootstrapActivation {
         synchronized (lifecycle.monitor()) {
             AutoconfigureSession session = lifecycle.beginActivation();
             try {
-                resources = new BootstrapResources(hookRegistry);
+                installLifecycleShutdownHook.run();
+                resources = new BootstrapResources();
                 lifecycle.attachResources(resources);
                 attempt = new ActivationAttempt(session, resources, tracerProvider);
             } catch (RuntimeException | Error cause) {
@@ -167,7 +164,7 @@ final class BootstrapActivation {
         attempt.enter(ActivationPhase.RUNTIME_BINDING);
 
         AutoconfigureSession session = attempt.session();
-        //noinspection resource -- владение передаётся жизненному циклу BootstrapResources, закрытие происходит через shutdown hook / завершение attempt
+        //noinspection resource -- runtime-регистрации принадлежат BootstrapResources, lifecycle hook — BootstrapCoordinator
         BootstrapResources resources = attempt.resources();
         resources.push(PlatformPropagationGate.shared().bindAcceptedPolicy(session.policy()), "propagation-gate");
         resources.push(PlatformLogControl.shared().bindAcceptedPolicy(session.policy()), "log-control");
@@ -175,17 +172,6 @@ final class BootstrapActivation {
         PlatformTracingMBeanRegistrar.RuntimeRegistration runtimeRegistration = session.jmxRegistrar().registerRuntimeControls(session.policy());
         attempt.recordRuntimeRegistration(runtimeRegistration.batchId());
         resources.push(runtimeRegistration, "runtime-jmx-controls");
-
-        String batchId = attempt.batchId();
-        ExtensionRuntimeEvidence evidence = attempt.evidence();
-        resources.push(
-                () -> terminalTransitions.publishTransportStale(batchId, evidence),
-                "readiness-stale-transition"
-        );
-        resources.installShutdownHook(
-                SHUTDOWN_HOOK_THREAD_NAME,
-                cleanupFailure -> terminalTransitions.completeShutdown(batchId, evidence, cleanupFailure)
-        );
     }
 
     private void publishReady(ActivationAttempt attempt) {

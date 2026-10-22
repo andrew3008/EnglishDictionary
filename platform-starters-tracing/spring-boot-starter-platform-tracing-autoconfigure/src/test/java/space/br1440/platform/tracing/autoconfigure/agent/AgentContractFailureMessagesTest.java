@@ -533,6 +533,33 @@ class AgentContractFailureMessagesTest {
     }
 
     @Test
+    void explainsShutdownCleanupFailure() {
+        // given
+        TracingDeploymentDiagnostics diagnostics = diagnostics(
+                AgentRuntimeState.EXTENSION_FAILED,
+                "SHUTDOWN_CLEANUP_FAILED",
+                "FAILED",
+                "contract",
+                "digest",
+                "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a",
+                2L,
+                "batch",
+                "1.2.0"
+        );
+
+        // when
+        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
+
+        // then
+        assertThat(message).isEqualTo(
+                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
+                        AgentRuntimeState.EXTENSION_FAILED, "SHUTDOWN_CLEANUP_FAILED")
+                        + ", lifecycle=FAILED. "
+                        + AgentContractFailureMessages.SHUTDOWN_CLEANUP_FAILED_EXPLANATION
+        );
+    }
+
+    @Test
     void reportsReadyFailureCodeWithoutInventingObservedValue() {
         // given
         TracingDeploymentDiagnostics diagnostics = diagnostics(

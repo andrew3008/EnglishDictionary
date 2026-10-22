@@ -334,7 +334,7 @@ class PlatformSamplerInstallationTest {
                                                     ExtensionRuntimeVerifier runtimeVerifier) {
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
         return new BootstrapCoordinator(
-                (threadName, action) -> () -> {
+                (threadName, action) -> {
                 },
                 new PlatformScrubberFactory(),
                 runtimeVerifier,

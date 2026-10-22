@@ -18,30 +18,30 @@ public final class BootstrapCleanupFailures {
             resources.close();
             return null;
         } catch (RuntimeException | Error cleanupFailure) {
-            if (cleanupFailure != primary) {
-                primary.addSuppressed(cleanupFailure);
-            }
-
+            suppressPreservingPrimary(primary, cleanupFailure);
             return cleanupFailure;
         }
     }
 
     public static Throwable aggregate(Throwable aggregate, Throwable failure) {
+        if (failure == null) {
+            return aggregate;
+        }
+
         if (aggregate == null) {
             return failure;
         }
 
-        if (contains(aggregate, failure)) {
-            return aggregate;
-        }
-
-        if (contains(failure, aggregate)) {
-            return failure;
-        }
-
         if (failure instanceof Error && !(aggregate instanceof Error)) {
-            failure.addSuppressed(aggregate);
+            if (!contains(aggregate, failure) && !contains(failure, aggregate)) {
+                failure.addSuppressed(aggregate);
+            }
+
             return failure;
+        }
+
+        if (contains(aggregate, failure) || contains(failure, aggregate)) {
+            return aggregate;
         }
 
         aggregate.addSuppressed(failure);
@@ -51,11 +51,14 @@ public final class BootstrapCleanupFailures {
     public static void suppressPreservingPrimary(Throwable primary, Throwable secondary) {
         Throwable requiredPrimary = Objects.requireNonNull(primary, "primary");
         Throwable requiredSecondary = Objects.requireNonNull(secondary, "secondary");
-        if (contains(requiredPrimary, requiredSecondary) || contains(requiredSecondary, requiredPrimary)) {
-            return;
-        }
 
-        requiredPrimary.addSuppressed(requiredSecondary);
+        synchronized (BootstrapCleanupFailures.class) {
+            if (contains(requiredPrimary, requiredSecondary) || contains(requiredSecondary, requiredPrimary)) {
+                return;
+            }
+
+            requiredPrimary.addSuppressed(requiredSecondary);
+        }
     }
 
     public static void rethrow(Throwable failure) {
@@ -76,40 +79,29 @@ public final class BootstrapCleanupFailures {
 
     public static String resourceLabel(Throwable failure) {
         Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-        ArrayDeque<Throwable> pending = new ArrayDeque<>();
-        pending.push(failure);
-
-        while (!pending.isEmpty()) {
-            Throwable current = pending.pop();
-            if (!visited.add(current)) {
-                continue;
-            }
-
+        Throwable current = Objects.requireNonNull(failure, "failure");
+        while (current != null && visited.add(current)) {
             if (current instanceof BootstrapResourceCleanupException cleanupFailure) {
                 return cleanupFailure.resourceLabel();
             }
 
-            for (Throwable suppressed : current.getSuppressed()) {
-                pending.push(suppressed);
-            }
-
-            Throwable cause = current.getCause();
-            if (cause != null) {
-                pending.push(cause);
-            }
+            current = current.getCause();
         }
 
         return UNKNOWN_RESOURCE_LABEL;
     }
 
-    private static boolean contains(Throwable root, Throwable target) {
+    public static boolean contains(Throwable root, Throwable target) {
+        Throwable requiredRoot = Objects.requireNonNull(root, "root");
+        Throwable requiredTarget = Objects.requireNonNull(target, "target");
+
         Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
         ArrayDeque<Throwable> pending = new ArrayDeque<>();
-        pending.push(root);
+        pending.push(requiredRoot);
 
         while (!pending.isEmpty()) {
             Throwable current = pending.pop();
-            if (current == target) {
+            if (current == requiredTarget) {
                 return true;
             }
 

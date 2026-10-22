@@ -10,7 +10,73 @@ import javax.management.MBeanServerFactory;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
+
 final class AgentReadinessCoherenceGuardTest {
+
+    private static final String READINESS_ENDPOINT_DISAPPEARED = "READINESS_ENDPOINT_DISAPPEARED";
+
+    @Test
+    void emptyServerRejectsBeforeTrustedRead() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessCoherenceGuard guard = new AgentReadinessCoherenceGuard(server);
+        AtomicInteger trustedReads = new AtomicInteger();
+
+        // when
+        // then
+        assertThatThrownBy(() -> guard.readCoherently(trustedReads::incrementAndGet))
+                .isInstanceOf(AgentReadinessCoherenceException.class)
+                .satisfies(failure -> assertThat(
+                        ((AgentReadinessCoherenceException) failure).failureCode())
+                        .isEqualTo(READINESS_ENDPOINT_DISAPPEARED));
+        assertThat(trustedReads).hasValue(0);
+    }
+
+    @Test
+    void removedPinnedEndpointRejectsBeforeTrustedRead() throws Exception {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot ready = ReadinessTestFixtures.readySnapshot();
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(ready));
+        AgentReadinessCoherenceGuard guard = new AgentReadinessCoherenceGuard(server);
+        guard.pin(ready);
+        server.unregisterMBean(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME);
+        AtomicInteger trustedReads = new AtomicInteger();
+
+        // when
+        // then
+        assertThatThrownBy(() -> guard.readCoherently(trustedReads::incrementAndGet))
+                .isInstanceOf(AgentReadinessCoherenceException.class)
+                .satisfies(failure -> assertThat(
+                        ((AgentReadinessCoherenceException) failure).failureCode())
+                        .isEqualTo(READINESS_ENDPOINT_DISAPPEARED));
+        assertThat(trustedReads).hasValue(0);
+    }
+
+    @Test
+    void endpointRemovedDuringTrustedReadRejectsCollectedValue() {
+        // given
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        AgentReadinessSnapshot ready = ReadinessTestFixtures.readySnapshot();
+        ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(ready));
+        AgentReadinessCoherenceGuard guard = new AgentReadinessCoherenceGuard(server);
+        guard.pin(ready);
+        AtomicInteger trustedReads = new AtomicInteger();
+
+        // when
+        // then
+        assertThatThrownBy(() -> guard.readCoherently(() -> {
+            trustedReads.incrementAndGet();
+            server.unregisterMBean(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME);
+            return "trusted";
+        }))
+                .isInstanceOf(AgentReadinessCoherenceException.class)
+                .satisfies(failure -> assertThat(
+                        ((AgentReadinessCoherenceException) failure).failureCode())
+                        .isEqualTo(READINESS_ENDPOINT_DISAPPEARED));
+        assertThat(trustedReads).hasValue(1);
+    }
 
     @Test
     void contentDriftWithoutAnchorAdvanceIsRejected() {

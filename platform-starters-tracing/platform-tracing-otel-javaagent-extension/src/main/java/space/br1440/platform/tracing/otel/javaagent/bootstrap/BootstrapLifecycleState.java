@@ -5,8 +5,10 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFa
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.REENTRANT_OR_OUT_OF_ORDER;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.SECOND_SDK_BUILD;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.SHUTDOWN_CLEANUP_FAILED;
 
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
 
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
@@ -28,7 +30,7 @@ final class BootstrapLifecycleState {
     private AutoconfigureSession session;
     private BootstrapFailure failure;
     private BootstrapResources resources;
-    private boolean closeStarted;
+    private CloseFlight closeFlight;
 
     Object monitor() {
         return monitor;
@@ -137,12 +139,6 @@ final class BootstrapLifecycleState {
         }
     }
 
-    boolean active() {
-        synchronized (monitor) {
-            return state == BootstrapState.ACTIVE;
-        }
-    }
-
     BootstrapState state() {
         synchronized (monitor) {
             return state;
@@ -176,21 +172,38 @@ final class BootstrapLifecycleState {
         }
     }
 
-    CloseTransition beginClose() {
+    CloseAcquisition acquireClose() {
         synchronized (monitor) {
-            if (closeStarted) {
-                return CloseTransition.alreadyClosing();
+            if (closeFlight != null) {
+                if (closeFlight.ownedByCurrentThread() && closeFlight.inProgress()) {
+                    return CloseAcquisition.reentrant(closeFlight);
+                }
+
+                return CloseAcquisition.follower(closeFlight);
             }
 
-            closeStarted = true;
             if (state != BootstrapState.FAILED) {
                 state = BootstrapState.CLOSING;
             }
 
             BootstrapResources owned = resources;
             resources = null;
-            return new CloseTransition(true, owned);
+            CloseContext context = new CloseContext(failure, owned);
+            closeFlight = new CloseFlight(Thread.currentThread(), context);
+            return CloseAcquisition.owner(closeFlight);
         }
+    }
+
+    void completeClose(CloseFlight flight, Throwable outcome) {
+        Objects.requireNonNull(flight, "flight");
+
+        synchronized (monitor) {
+            if (closeFlight != flight) {
+                throw new IllegalStateException("Bootstrap close flight is not owned by this lifecycle");
+            }
+        }
+
+        flight.complete(outcome);
     }
 
     void markClosed() {
@@ -199,6 +212,59 @@ final class BootstrapLifecycleState {
                 state = BootstrapState.CLOSED;
             }
         }
+    }
+
+    BootstrapFailure classifyCloseFailure(CloseContext context, Throwable cleanupFailure) {
+        Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(cleanupFailure, "cleanupFailure");
+
+        BootstrapFailure priorFailure = context.failureBeforeClose();
+        if (priorFailure == null) {
+            return new BootstrapFailure(
+                    SHUTDOWN_CLEANUP_FAILED,
+                    SHUTDOWN_CLEANUP_FAILED,
+                    "close",
+                    cleanupFailure
+            );
+        }
+
+        return new BootstrapFailure(
+                priorFailure.primaryCode(),
+                FAILED_ROLLBACK_INCOMPLETE,
+                "close",
+                priorFailure.cause()
+        );
+    }
+
+    BootstrapFailure recordCloseFailure(CloseContext context, Throwable cleanupFailure) {
+        Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(cleanupFailure, "cleanupFailure");
+        requireMonitorHeld("Close failure recording");
+
+        BootstrapFailure currentFailure = failure;
+        if (currentFailure == null) {
+            failure = classifyCloseFailure(context, cleanupFailure);
+        } else {
+            BootstrapCleanupFailures.suppressPreservingPrimary(currentFailure.cause(), cleanupFailure);
+            failure = new BootstrapFailure(
+                    currentFailure.primaryCode(),
+                    FAILED_ROLLBACK_INCOMPLETE,
+                    "close",
+                    currentFailure.cause()
+            );
+        }
+
+        state = BootstrapState.FAILED;
+        return failure;
+    }
+
+    boolean closeFailureAlreadyRecorded(Throwable cleanupFailure) {
+        Objects.requireNonNull(cleanupFailure, "cleanupFailure");
+        requireMonitorHeld("Close failure check");
+
+        return failure != null
+                && FAILED_ROLLBACK_INCOMPLETE.equals(failure.effectiveCode())
+                && BootstrapCleanupFailures.contains(failure.cause(), cleanupFailure);
     }
 
     void escalateRollbackIncomplete(String phase, Throwable cleanupFailure) {
@@ -212,8 +278,16 @@ final class BootstrapLifecycleState {
             }
 
             if (failure != null) {
-                BootstrapCleanupFailures.suppressPreservingPrimary(failure.cause(), cleanupFailure);
+                boolean alreadyRecorded = BootstrapCleanupFailures.contains(failure.cause(), cleanupFailure);
+                if (!alreadyRecorded) {
+                    BootstrapCleanupFailures.suppressPreservingPrimary(failure.cause(), cleanupFailure);
+                }
+
                 if (FAILED_ROLLBACK_INCOMPLETE.equals(failure.effectiveCode())) {
+                    if (alreadyRecorded) {
+                        return;
+                    }
+
                     logRejected(FAILED_ROLLBACK_INCOMPLETE, phase, phase, null, cleanupFailure);
                     return;
                 }
@@ -236,7 +310,7 @@ final class BootstrapLifecycleState {
                 return new BootstrapException(failure);
             }
 
-            if (state == BootstrapState.CLOSED) {
+            if (state == BootstrapState.CLOSING || state == BootstrapState.CLOSED) {
                 return rejectWithoutStateChange(code, phase, cause);
             }
 
@@ -277,6 +351,12 @@ final class BootstrapLifecycleState {
         return state == BootstrapState.FAILED
                 || state == BootstrapState.CLOSED
                 || state == BootstrapState.CLOSING;
+    }
+
+    private void requireMonitorHeld(String operation) {
+        if (!Thread.holdsLock(monitor)) {
+            throw new IllegalMonitorStateException(operation + " requires the bootstrap lifecycle monitor");
+        }
     }
 
     private void recordFailure(BootstrapFailure next,
@@ -334,10 +414,89 @@ final class BootstrapLifecycleState {
         });
     }
 
-    record CloseTransition(boolean started, BootstrapResources resources) {
+    record CloseContext(BootstrapFailure failureBeforeClose, BootstrapResources resources) {
+    }
 
-        static CloseTransition alreadyClosing() {
-            return new CloseTransition(false, null);
+    record CloseAcquisition(boolean owner, boolean reentrant, CloseFlight flight) {
+
+        CloseAcquisition {
+            Objects.requireNonNull(flight, "flight");
+        }
+
+        static CloseAcquisition owner(CloseFlight flight) {
+            return new CloseAcquisition(true, false, flight);
+        }
+
+        static CloseAcquisition follower(CloseFlight flight) {
+            return new CloseAcquisition(false, false, flight);
+        }
+
+        static CloseAcquisition reentrant(CloseFlight flight) {
+            return new CloseAcquisition(false, true, flight);
+        }
+
+        CloseContext context() {
+            return flight.context();
+        }
+
+        Throwable awaitOutcome() {
+            return flight.awaitOutcome();
+        }
+    }
+
+    static final class CloseFlight {
+
+        private final Thread owner;
+        private final CloseContext context;
+        private final CountDownLatch completion = new CountDownLatch(1);
+
+        private volatile Throwable outcome;
+
+        private CloseFlight(Thread owner, CloseContext context) {
+            this.owner = Objects.requireNonNull(owner, "owner");
+            this.context = Objects.requireNonNull(context, "context");
+        }
+
+        CloseContext context() {
+            return context;
+        }
+
+        private boolean ownedByCurrentThread() {
+            return owner == Thread.currentThread();
+        }
+
+        private boolean inProgress() {
+            return completion.getCount() != 0L;
+        }
+
+        private void complete(Throwable completedOutcome) {
+            if (!ownedByCurrentThread()) {
+                throw new IllegalStateException("Only the bootstrap close owner can complete the close flight");
+            }
+            if (!inProgress()) {
+                throw new IllegalStateException("Bootstrap close flight is already complete");
+            }
+
+            outcome = completedOutcome;
+            completion.countDown();
+        }
+
+        private Throwable awaitOutcome() {
+            boolean interrupted = false;
+            while (true) {
+                try {
+                    completion.await();
+                    break;
+                } catch (InterruptedException ignored) {
+                    interrupted = true;
+                }
+            }
+
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+
+            return outcome;
         }
     }
 }

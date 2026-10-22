@@ -6,6 +6,10 @@ import static org.mockito.Mockito.mock;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -162,8 +166,9 @@ class BootstrapLifecycleStateTest {
     void rollbackEscalationFromClosedIsRejectedWithoutStateChange() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-        lifecycle.beginClose();
+        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
         lifecycle.markClosed();
+        lifecycle.completeClose(acquisition.flight(), null);
         IllegalStateException cleanupFailure = new IllegalStateException("Late cleanup failure");
 
         // when
@@ -185,29 +190,131 @@ class BootstrapLifecycleStateTest {
     }
 
     @Test
-    void closeFromFailedReleasesResourcesAndKeepsFailedTerminal() {
+    void firstCloseFromFailedOwnsResourcesAndReplaysItsOutcome() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         BootstrapResources resources = mock(BootstrapResources.class);
         IllegalStateException primaryCause = new IllegalStateException("Activation failure");
+        IllegalStateException cleanupFailure = new IllegalStateException("Cleanup failure");
         lifecycle.attachResources(resources);
         assertThat(lifecycle.fail("ACTIVATION_FAILED", "activate", "activate", null, primaryCause).getCause())
                 .isSameAs(primaryCause);
 
         // when
-        BootstrapLifecycleState.CloseTransition first = lifecycle.beginClose();
+        BootstrapLifecycleState.CloseAcquisition first = lifecycle.acquireClose();
         lifecycle.markClosed();
-        BootstrapLifecycleState.CloseTransition repeated = lifecycle.beginClose();
+        lifecycle.completeClose(first.flight(), cleanupFailure);
+        BootstrapLifecycleState.CloseAcquisition repeated = lifecycle.acquireClose();
 
         // then
-        assertThat(first.started()).isTrue();
-        assertThat(first.resources()).isSameAs(resources);
-        assertThat(repeated.started()).isFalse();
-        assertThat(repeated.resources()).isNull();
+        assertThat(first.owner()).isTrue();
+        assertThat(first.reentrant()).isFalse();
+        assertThat(first.context().resources()).isSameAs(resources);
+        assertThat(first.context().failureBeforeClose()).isSameAs(lifecycle.failure());
+        assertThat(repeated.owner()).isFalse();
+        assertThat(repeated.reentrant()).isFalse();
+        assertThat(repeated.awaitOutcome()).isSameAs(cleanupFailure);
         assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
         assertThat(lifecycle.failure().primaryCode()).isEqualTo("ACTIVATION_FAILED");
         assertThat(lifecycle.failure().effectiveCode()).isEqualTo("ACTIVATION_FAILED");
         assertThat(lifecycle.failure().cause()).isSameAs(primaryCause);
+    }
+
+    @Test
+    void closeFlightSharesExactOutcomeWithFollowerAndCompletedReplay() throws InterruptedException {
+        // given
+        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
+        BootstrapLifecycleState.CloseAcquisition owner = lifecycle.acquireClose();
+        IllegalStateException closeFailure = new IllegalStateException("Close failure");
+        AtomicReference<BootstrapLifecycleState.CloseAcquisition> followerAcquisition = new AtomicReference<>();
+        AtomicReference<Throwable> followerOutcome = new AtomicReference<>();
+        CountDownLatch followerAcquired = new CountDownLatch(1);
+        Thread follower = new Thread(() -> {
+            BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+            followerAcquisition.set(acquisition);
+            followerAcquired.countDown();
+            followerOutcome.set(acquisition.awaitOutcome());
+        }, "bootstrap-close-follower");
+        follower.setDaemon(true);
+
+        // when
+        follower.start();
+        try {
+            assertThat(followerAcquired.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(followerAcquisition.get().owner()).isFalse();
+            assertThat(followerAcquisition.get().reentrant()).isFalse();
+        } finally {
+            lifecycle.completeClose(owner.flight(), closeFailure);
+            follower.join(TimeUnit.SECONDS.toMillis(5));
+        }
+        BootstrapLifecycleState.CloseAcquisition replay = lifecycle.acquireClose();
+
+        // then
+        assertThat(follower.isAlive()).isFalse();
+        assertThat(owner.awaitOutcome()).isSameAs(closeFailure);
+        assertThat(followerOutcome.get()).isSameAs(closeFailure);
+        assertThat(replay.owner()).isFalse();
+        assertThat(replay.reentrant()).isFalse();
+        assertThat(replay.awaitOutcome()).isSameAs(closeFailure);
+    }
+
+    @Test
+    void closeOwnerReentrancyDoesNotWaitForItsOwnFlight() {
+        // given
+        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
+        BootstrapLifecycleState.CloseAcquisition owner = lifecycle.acquireClose();
+
+        // when
+        BootstrapLifecycleState.CloseAcquisition reentrant = lifecycle.acquireClose();
+        lifecycle.completeClose(owner.flight(), null);
+        BootstrapLifecycleState.CloseAcquisition replay = lifecycle.acquireClose();
+
+        // then
+        assertThat(owner.owner()).isTrue();
+        assertThat(reentrant.owner()).isFalse();
+        assertThat(reentrant.reentrant()).isTrue();
+        assertThat(reentrant.flight()).isSameAs(owner.flight());
+        assertThat(replay.reentrant()).isFalse();
+        assertThat(replay.awaitOutcome()).isNull();
+    }
+
+    @Test
+    void interruptedFollowerWaitsForOutcomeAndRestoresInterruptFlag() throws InterruptedException {
+        // given
+        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
+        BootstrapLifecycleState.CloseAcquisition owner = lifecycle.acquireClose();
+        IllegalStateException closeFailure = new IllegalStateException("Close failure");
+        AtomicReference<Throwable> followerOutcome = new AtomicReference<>();
+        AtomicBoolean interruptRestored = new AtomicBoolean();
+        CountDownLatch awaitingOutcome = new CountDownLatch(1);
+        CountDownLatch followerFinished = new CountDownLatch(1);
+        Thread follower = new Thread(() -> {
+            BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+            Thread.currentThread().interrupt();
+            awaitingOutcome.countDown();
+            try {
+                followerOutcome.set(acquisition.awaitOutcome());
+                interruptRestored.set(Thread.currentThread().isInterrupted());
+            } finally {
+                followerFinished.countDown();
+            }
+        }, "interrupted-bootstrap-close-follower");
+        follower.setDaemon(true);
+
+        // when
+        follower.start();
+        try {
+            assertThat(awaitingOutcome.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(followerFinished.getCount()).isEqualTo(1L);
+        } finally {
+            lifecycle.completeClose(owner.flight(), closeFailure);
+            follower.join(TimeUnit.SECONDS.toMillis(5));
+        }
+
+        // then
+        assertThat(follower.isAlive()).isFalse();
+        assertThat(followerOutcome.get()).isSameAs(closeFailure);
+        assertThat(interruptRestored).isTrue();
     }
 
     @Test
@@ -242,8 +349,9 @@ class BootstrapLifecycleStateTest {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         AutoconfigureSession session = mock(AutoconfigureSession.class);
-        lifecycle.beginClose();
+        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
         lifecycle.markClosed();
+        lifecycle.completeClose(acquisition.flight(), null);
 
         // when
         Throwable thrown = catchThrowable(() -> lifecycle.completePrepare(session));

@@ -10,7 +10,9 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import javax.management.JMException;
@@ -21,7 +23,6 @@ import javax.management.timer.Timer;
 
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.Registration;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.ShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.ExtensionRuntimeVerifier;
@@ -45,8 +46,7 @@ final class BootstrapCoordinatorTestSupport {
     static final String WIRE_READY = "READY";
     static final String WIRE_FAILED = "FAILED";
 
-    static final long TRANSPORT_STALE_EVIDENCE_GENERATION = 2L;
-    static final long ROLLBACK_ESCALATION_EVIDENCE_GENERATION = 3L;
+    static final long CLOSE_FAILURE_EVIDENCE_GENERATION = 2L;
 
     private BootstrapCoordinatorTestSupport() {
     }
@@ -264,36 +264,42 @@ final class BootstrapCoordinatorTestSupport {
     static final class CapturingShutdownHookRegistry implements ShutdownHookRegistry {
 
         private final AtomicReference<Runnable> action = new AtomicReference<>();
-        private final RuntimeException removalFailure;
-
-        CapturingShutdownHookRegistry() {
-            this(null);
-        }
-
-        CapturingShutdownHookRegistry(RuntimeException removalFailure) {
-            this.removalFailure = removalFailure;
-        }
+        private final AtomicReference<String> threadName = new AtomicReference<>();
+        private final AtomicInteger registrationCount = new AtomicInteger();
 
         @Override
-        public Registration register(String threadName, Runnable registeredAction) {
-            if (!action.compareAndSet(null, registeredAction)) {
+        public void register(String registeredThreadName, Runnable registeredAction) {
+            String requiredThreadName = Objects.requireNonNull(registeredThreadName, "registeredThreadName");
+            Runnable requiredAction = Objects.requireNonNull(registeredAction, "registeredAction");
+            if (!action.compareAndSet(null, requiredAction)) {
                 throw new IllegalStateException("Shutdown hook is already registered");
             }
-
-            return () -> {
-                if (removalFailure != null) {
-                    throw removalFailure;
-                }
-            };
+            threadName.set(requiredThreadName);
+            registrationCount.incrementAndGet();
         }
 
-        void runHook() {
+        Runnable action() {
             Runnable registeredAction = action.get();
             if (registeredAction == null) {
                 throw new IllegalStateException("Shutdown hook is not registered");
             }
+            return registeredAction;
+        }
 
-            registeredAction.run();
+        String threadName() {
+            String registeredThreadName = threadName.get();
+            if (registeredThreadName == null) {
+                throw new IllegalStateException("Shutdown hook is not registered");
+            }
+            return registeredThreadName;
+        }
+
+        int registrationCount() {
+            return registrationCount.get();
+        }
+
+        void runHook() {
+            action().run();
         }
     }
 

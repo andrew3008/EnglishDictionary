@@ -32,9 +32,12 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
 final class BootstrapCoordinator implements AutoCloseable {
 
+    private static final String SHUTDOWN_HOOK_THREAD_NAME = "platform-tracing-bootstrap-shutdown";
+
     private final BootstrapLifecycleState lifecycle;
     private final BootstrapReadinessJournal journal;
     private final DiagnosticReadinessHandle diagnosticHandle;
+    private final ShutdownHookRegistry hookRegistry;
     private final PlatformTracingMBeanRegistrar jmxRegistrar;
     private final PlatformExtensionReadiness readiness;
     private final AgentInstanceId agentInstanceId;
@@ -42,6 +45,8 @@ final class BootstrapCoordinator implements AutoCloseable {
     private final AutoconfigureSessionFactory sessionFactory;
     private final ExtensionRuntimeVerifier runtimeVerifier;
     private final BootstrapActivation activation;
+
+    private boolean lifecycleShutdownHookInstalled;
 
     static BootstrapCoordinator createDefault() {
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
@@ -63,18 +68,18 @@ final class BootstrapCoordinator implements AutoCloseable {
                          DiagnosticReadinessHandle diagnosticHandle) {
         this.lifecycle = new BootstrapLifecycleState();
         this.diagnosticHandle = Objects.requireNonNull(diagnosticHandle, "diagnosticHandle");
+        this.hookRegistry = Objects.requireNonNull(hookRegistry, "hookRegistry");
         this.jmxRegistrar = Objects.requireNonNull(jmxRegistrar, "jmxRegistrar");
         this.readiness = jmxRegistrar.extensionReadiness();
         this.agentInstanceId = jmxRegistrar.agentInstanceId();
         this.journal = new BootstrapReadinessJournal(lifecycle.monitor(), readiness, agentInstanceId);
-        this.terminalTransitions = new BootstrapTerminalTransitions(lifecycle, journal, diagnosticHandle);
+        this.terminalTransitions = new BootstrapTerminalTransitions(lifecycle, journal);
         this.sessionFactory = new AutoconfigureSessionFactory(scrubberFactory, remoteJmxAssessorFactory);
         this.runtimeVerifier = Objects.requireNonNull(runtimeVerifier, "runtimeVerifier");
         this.activation = new BootstrapActivation(
                 lifecycle,
                 journal,
-                terminalTransitions,
-                hookRegistry
+                terminalTransitions
         );
     }
 
@@ -187,7 +192,7 @@ final class BootstrapCoordinator implements AutoCloseable {
     void activate(SdkTracerProvider tracerProvider) {
         Objects.requireNonNull(tracerProvider, "tracerProvider");
         terminalTransitions.failMissingPreparation(unavailableEvidence(), this::registerDiagnosticReadiness);
-        activation.activate(tracerProvider);
+        activation.activate(tracerProvider, this::installLifecycleShutdownHook);
     }
 
     ExtensionReadinessWireSnapshot currentWire() {
@@ -200,27 +205,90 @@ final class BootstrapCoordinator implements AutoCloseable {
 
     @Override
     public void close() {
-        BootstrapLifecycleState.CloseTransition transition = lifecycle.beginClose();
-        if (!transition.started()) {
+        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+        if (acquisition.reentrant()) {
             return;
         }
 
-        Throwable cleanupFailure = closeActivationResources(transition.resources());
+        if (!acquisition.owner()) {
+            rethrowIfPresent(acquisition.awaitOutcome());
+            return;
+        }
+
+        Throwable outcome = null;
+        try {
+            outcome = closeAsOwner(acquisition.context());
+        } catch (RuntimeException | Error unexpectedFailure) {
+            outcome = unexpectedFailure;
+        } finally {
+            lifecycle.completeClose(acquisition.flight(), outcome);
+        }
+
+        rethrowIfPresent(outcome);
+    }
+
+    private Throwable closeAsOwner(BootstrapLifecycleState.CloseContext context) {
+        Throwable cleanupFailure = null;
+        Throwable priorPublicationFailure = null;
+        boolean failureSnapshotPublished = false;
+        boolean runtimeCleanupAllowed = true;
+
         try {
             diagnosticHandle.close();
-        } catch (RuntimeException | Error failure) {
-            cleanupFailure = BootstrapCleanupFailures.aggregate(
-                    cleanupFailure,
-                    BootstrapCleanupFailures.withResourceLabel("diagnostic-readiness", failure)
+        } catch (RuntimeException | Error withdrawalFailure) {
+            cleanupFailure = BootstrapCleanupFailures.withResourceLabel(
+                    "diagnostic-readiness",
+                    withdrawalFailure
+            );
+            try {
+                terminalTransitions.publishCloseFailureSnapshot(context, cleanupFailure);
+                failureSnapshotPublished = true;
+            } catch (RuntimeException | Error publicationFailure) {
+                priorPublicationFailure = publicationFailure;
+                runtimeCleanupAllowed = false;
+            }
+        }
+
+        if (runtimeCleanupAllowed) {
+            Throwable runtimeCleanupFailure = closeActivationResources(context.resources());
+            if (runtimeCleanupFailure != null) {
+                cleanupFailure = BootstrapCleanupFailures.aggregate(cleanupFailure, runtimeCleanupFailure);
+            }
+        }
+
+        if (cleanupFailure == null) {
+            lifecycle.markClosed();
+            return null;
+        }
+
+        return terminalTransitions.completeCloseFailure(
+                context,
+                cleanupFailure,
+                priorPublicationFailure,
+                failureSnapshotPublished
+        );
+    }
+
+    private void installLifecycleShutdownHook() {
+        if (!Thread.holdsLock(lifecycle.monitor())) {
+            throw new IllegalMonitorStateException(
+                    "Lifecycle shutdown hook installation requires the bootstrap lifecycle monitor"
             );
         }
 
-        if (cleanupFailure != null) {
-            terminalTransitions.completeCloseFailure(cleanupFailure, "", currentEvidence());
-            BootstrapCleanupFailures.rethrow(cleanupFailure);
+        if (lifecycleShutdownHookInstalled) {
+            return;
         }
 
-        lifecycle.markClosed();
+        hookRegistry.register(SHUTDOWN_HOOK_THREAD_NAME, this::closeFromShutdownHook);
+        lifecycleShutdownHookInstalled = true;
+    }
+
+    private void closeFromShutdownHook() {
+        try {
+            close();
+        } catch (RuntimeException | Error ignored) {
+        }
     }
 
     private BootstrapException failCustomization(String code, String phase, Throwable cause) {
@@ -295,6 +363,12 @@ final class BootstrapCoordinator implements AutoCloseable {
             return null;
         } catch (RuntimeException | Error failure) {
             return failure;
+        }
+    }
+
+    private static void rethrowIfPresent(Throwable failure) {
+        if (failure != null) {
+            BootstrapCleanupFailures.rethrow(failure);
         }
     }
 }

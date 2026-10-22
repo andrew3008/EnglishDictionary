@@ -59,6 +59,9 @@ public final class ControlledAgentRuntimeProbe {
 
     private static final Duration READINESS_TIMEOUT = Duration.ofSeconds(20);
     private static final Duration READINESS_POLL_INTERVAL = Duration.ofMillis(50);
+    private static final Duration SHUTDOWN_OBSERVER_TIMEOUT = Duration.ofSeconds(20);
+
+    public static final String SHUTDOWN_OK_MARKER = "CONTROLLED_AGENT_SHUTDOWN_OK";
 
     private static final String AGENT_OWNED_CLASS_MARKER = "io.opentelemetry.sdk.OpenTelemetrySdk";
 
@@ -84,10 +87,38 @@ public final class ControlledAgentRuntimeProbe {
         }
 
         verifyProcessValidationState(server, agentInstanceId);
+        installShutdownObserver(server);
 
         System.out.printf("CONTROLLED_AGENT_PROBE_OK version=%s schema=%s capabilities=%d%n",
                 probeArguments.version(), JmxWireContract.SCHEMA_ID,
                 JmxWireContract.REQUIRED_CAPABILITIES.size());
+    }
+
+    private static void installShutdownObserver(MBeanServer server) {
+        Thread observer = new Thread(
+                () -> awaitReadinessWithdrawal(server),
+                "controlled-agent-readiness-withdrawal-observer"
+        );
+        Runtime.getRuntime().addShutdownHook(observer);
+    }
+
+    private static void awaitReadinessWithdrawal(MBeanServer server) {
+        MonotonicDeadline deadline = MonotonicDeadline.after(SHUTDOWN_OBSERVER_TIMEOUT);
+        while (deadline.hasRemaining()) {
+            if (!server.isRegistered(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME)) {
+                System.out.println(SHUTDOWN_OK_MARKER);
+                return;
+            }
+
+            try {
+                Thread.sleep(READINESS_POLL_INTERVAL);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Shutdown readiness observer was interrupted", interrupted);
+            }
+        }
+
+        throw new IllegalStateException("Readiness MBean remained registered after shutdown");
     }
 
     private static void verifyHermeticLaunch(Path controlledAgent, ProbeMode mode) throws IOException {

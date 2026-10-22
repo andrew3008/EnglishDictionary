@@ -61,6 +61,19 @@ class AgentLogEventCatalogTest {
     }
 
     @Test
+    void bootstrap_phase_failure_allows_resource_label() {
+        // given
+        AgentLogEventType event = BootstrapLogEvent.BOOTSTRAP_PHASE_FAILED;
+
+        // when
+        Set<AgentLogField> allowedFields = event.allowedFields();
+
+        // then
+        assertThat(AgentLogEventCatalog.all()).contains(event);
+        assertThat(allowedFields).contains(AgentLogField.RESOURCE_LABEL);
+    }
+
+    @Test
     void everyDomainEnumOwnsOnlyItsEventCodes() {
         assertThat(CODE_DOMAINS.keySet())
                 .containsExactlyInAnyOrder(AgentLogEventType.class.getPermittedSubclasses());

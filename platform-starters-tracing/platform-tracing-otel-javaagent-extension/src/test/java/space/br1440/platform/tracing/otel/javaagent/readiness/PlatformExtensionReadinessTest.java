@@ -189,18 +189,18 @@ class PlatformExtensionReadinessTest {
     void effectiveFailureCodeEscalatesWithoutReplacingPrimaryCode() {
         // given
         PlatformExtensionReadiness readiness = new PlatformExtensionReadiness(EXTENSION_VERSION);
-        PlatformExtensionReadinessSnapshot preliminary = readiness.fail("JMX_TRANSPORT_STALE", "JMX_TRANSPORT_STALE");
+        PlatformExtensionReadinessSnapshot preliminary = readiness.fail("ACTIVATION_FAILED", "ACTIVATION_FAILED");
 
         // when
         PlatformExtensionReadinessSnapshot.Failed terminal = readiness.fail(
-                "JMX_TRANSPORT_STALE",
+                "ACTIVATION_FAILED",
                 "FAILED_ROLLBACK_INCOMPLETE"
         );
 
         // then
         assertThat(terminal).isNotSameAs(preliminary);
         assertThat(terminal.lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
-        assertThat(terminal.failure().primaryCode()).isEqualTo("JMX_TRANSPORT_STALE");
+        assertThat(terminal.failure().primaryCode()).isEqualTo("ACTIVATION_FAILED");
         assertThat(terminal.failure().effectiveCode()).isEqualTo("FAILED_ROLLBACK_INCOMPLETE");
     }
 
