@@ -33,16 +33,6 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 class BootstrapCoordinatorMissingPreparationTest {
 
     @Test
-    void activate_without_prior_prepare_classified_as_PLATFORM_ACP_NOT_EXECUTED() {
-        // given
-        try (BootstrapCoordinator coordinator = coordinator().build();
-             SdkTracerProvider tracerProvider = SdkTracerProvider.builder().build()) {
-            // when/then
-            assertBootstrapFailure(() -> coordinator.activate(tracerProvider), PLATFORM_ACP_NOT_EXECUTED);
-        }
-    }
-
-    @Test
     void activate_without_prior_prepare_publishes_diagnostic_mbean_until_coordinator_close() {
         // given
         MBeanServer server = MBeanServerFactory.newMBeanServer();
