@@ -199,7 +199,7 @@ final class BootstrapCoordinatorTestSupport {
         private ExtensionRuntimeVerifier verifier = RuntimeEvidenceTestFixtures.trustedVerifier();
         private PlatformScrubberFactory scrubberFactory = new PlatformScrubberFactory();
         private RemoteJmxMutationRegistrationAssessor assessor = RemoteJmxAssessorTestFixtures.allowingAssessor();
-        private DiagnosticReadinessHandle diagnosticHandle = new DiagnosticReadinessHandle();
+        private final DiagnosticReadinessHandle diagnosticHandle = new DiagnosticReadinessHandle();
         private PlatformTracingMBeanRegistrar registrar;
 
         private CoordinatorBuilder() {
@@ -232,11 +232,6 @@ final class BootstrapCoordinatorTestSupport {
 
         CoordinatorBuilder assessor(RemoteJmxMutationRegistrationAssessor assessor) {
             this.assessor = assessor;
-            return this;
-        }
-
-        CoordinatorBuilder diagnosticHandle(DiagnosticReadinessHandle diagnosticHandle) {
-            this.diagnosticHandle = diagnosticHandle;
             return this;
         }
 

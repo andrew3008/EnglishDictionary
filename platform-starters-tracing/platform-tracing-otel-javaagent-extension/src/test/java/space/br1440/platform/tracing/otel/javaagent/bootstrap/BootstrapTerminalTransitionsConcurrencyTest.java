@@ -746,7 +746,6 @@ class BootstrapTerminalTransitionsConcurrencyTest {
     }
 
     private static Throwable closeCapturing(BootstrapCoordinator coordinator) {
-        //noinspection resource — закрытие является предметом теста, отказ возвращается вызывающему коду
         return catchThrowable(coordinator::close);
     }
 
@@ -784,8 +783,7 @@ class BootstrapTerminalTransitionsConcurrencyTest {
         }
     }
 
-    private static final class ControllableRuntimeRegistration
-            implements PlatformTracingMBeanRegistrar.RuntimeRegistration {
+    private static final class ControllableRuntimeRegistration implements PlatformTracingMBeanRegistrar.RuntimeRegistration {
 
         private final UUID batchId = UUID.randomUUID();
         private final AtomicInteger closeCalls = new AtomicInteger();
@@ -811,32 +809,20 @@ class BootstrapTerminalTransitionsConcurrencyTest {
         }
     }
 
-    private static final class ActivatedFixture {
-
-        private final BootstrapCoordinator coordinator;
-        private final CapturingShutdownHookRegistry hooks;
-
-        private ActivatedFixture(BootstrapCoordinator coordinator, CapturingShutdownHookRegistry hooks) {
-            this.coordinator = coordinator;
-            this.hooks = hooks;
-        }
-
-        private CapturingShutdownHookRegistry hooks() {
-            return hooks;
-        }
+    private record ActivatedFixture(BootstrapCoordinator coordinator, CapturingShutdownHookRegistry hooks) {
 
         private BootstrapState state() {
-            return coordinator.state();
-        }
+                return coordinator.state();
+            }
 
-        private ExtensionReadinessWireSnapshot currentWire() {
-            return coordinator.currentWire();
-        }
+            private ExtensionReadinessWireSnapshot currentWire() {
+                return coordinator.currentWire();
+            }
 
-        private void close() {
-            coordinator.close();
+            private void close() {
+                coordinator.close();
+            }
         }
-    }
 
     private record InterruptedCloseOutcome(Throwable failure, boolean interrupted) {
     }

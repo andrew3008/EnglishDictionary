@@ -326,8 +326,8 @@ class BootstrapCoordinatorShutdownTest {
                 agentInstanceId
         ));
         NoClassDefFoundError fatal = new NoClassDefFoundError("Runtime cleanup linkage failed");
-        //noinspection resource — регистрацию закрывает координатор
         PlatformTracingMBeanRegistrar.RuntimeRegistration runtime = runtimeRegistration(fatal);
+        //noinspection resource — регистрацию закрывает координатор
         doReturn(runtime).when(registrar).registerRuntimeControls(any());
         CapturingShutdownHookRegistry hooks = new CapturingShutdownHookRegistry();
         BootstrapCoordinator coordinator = coordinator()
@@ -403,10 +403,10 @@ class BootstrapCoordinatorShutdownTest {
         ));
         UnsupportedOperationException diagnosticFailure =
                 new UnsupportedOperationException("Diagnostic readiness cleanup failed");
-        //noinspection resource — регистрацию закрывает координатор
         AutoCloseable diagnosticRegistration = () -> {
             throw diagnosticFailure;
         };
+        //noinspection resource — регистрацию закрывает координатор
         doReturn(diagnosticRegistration).when(registrar).registerDiagnosticReadiness(any());
         BootstrapCoordinator coordinator = coordinator()
                 .agentInstanceId(agentInstanceId)
@@ -491,7 +491,6 @@ class BootstrapCoordinatorShutdownTest {
 
     private static PlatformTracingMBeanRegistrar.RuntimeRegistration runtimeRegistration(Throwable failure) {
         UUID batchId = UUID.randomUUID();
-        //noinspection resource — владельцем становится вызывающий код
         return new PlatformTracingMBeanRegistrar.RuntimeRegistration() {
 
             @Override

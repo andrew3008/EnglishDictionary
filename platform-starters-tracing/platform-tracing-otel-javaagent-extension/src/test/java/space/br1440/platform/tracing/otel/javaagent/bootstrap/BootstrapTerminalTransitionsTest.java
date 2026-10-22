@@ -51,7 +51,6 @@ class BootstrapTerminalTransitionsTest {
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixture(lifecycle);
         IllegalStateException cleanupFailure = new IllegalStateException("Runtime controls cleanup failed");
-        //noinspection resource — close выполняет completeActivationFailure; повторный close бросит тот же отказ
         BootstrapResources resources = new BootstrapResources();
         resources.push(() -> {
             throw cleanupFailure;
@@ -310,7 +309,6 @@ class BootstrapTerminalTransitionsTest {
                 "Runtime MBean rollback was incomplete",
                 new IllegalStateException("Runtime MBean failure")
         );
-        //noinspection resource — close выполняет completeActivationFailure; повторный close бросит тот же отказ
         BootstrapResources resources = new BootstrapResources();
 
         // when
