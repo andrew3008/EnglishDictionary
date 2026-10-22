@@ -31,9 +31,6 @@ public final class PlatformAttributes {
     /** Финальный статус операции согласно платформенному стандарту. См. {@link space.br1440.platform.tracing.api.span.SpanResult}. */
     public static final String PLATFORM_RESULT = "platform.trace.result";
 
-    /** Идентификатор сервиса в реестре платформы. */
-    public static final String PLATFORM_ID = "platform.id";
-
     /**
      * Среда исполнения (OTel semconv {@code deployment.environment.name}; legacy: {@code deployment.environment}).
      * @see <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/deployment/">OTel: deployment attributes</a>

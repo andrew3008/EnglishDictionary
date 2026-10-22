@@ -317,7 +317,7 @@ class PlatformAutoConfigurationCustomizerTest {
                         BootstrapException.class,
                         () -> recorder.primeWithConfig(Map.of(
                                 ExtensionPropertyNames.RESOURCE_VALIDATION_MODE,
-                                "INVALID"
+                                "ERROR"
                         ))
                 );
 

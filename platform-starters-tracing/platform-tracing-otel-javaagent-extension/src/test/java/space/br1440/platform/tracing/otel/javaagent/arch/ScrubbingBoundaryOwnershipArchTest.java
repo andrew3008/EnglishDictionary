@@ -95,6 +95,5 @@ class ScrubbingBoundaryOwnershipArchTest {
                     .orShould().accessField(PlatformAttributes.class, "CONTAINER_ID")
                     .orShould().accessField(PlatformAttributes.class, "PLATFORM_HOST")
                     .orShould().accessField(PlatformAttributes.class, "PLATFORM_ENVIRONMENT")
-                    .orShould().accessField(PlatformAttributes.class, "PLATFORM_ID")
                     .because("resource identity belongs to Resource rather than span processors");
 }

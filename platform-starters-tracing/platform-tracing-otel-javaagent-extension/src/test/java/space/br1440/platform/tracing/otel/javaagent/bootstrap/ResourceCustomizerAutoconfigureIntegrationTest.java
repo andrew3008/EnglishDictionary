@@ -12,7 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
-import space.br1440.platform.tracing.otel.javaagent.resource.PlatformResourceCustomizer;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -25,7 +25,6 @@ class ResourceCustomizerAutoconfigureIntegrationTest {
 
     private static final AttributeKey<String> SERVICE_NAME = AttributeKey.stringKey(PlatformAttributes.SERVICE_NAME);
     private static final AttributeKey<String> ENVIRONMENT = AttributeKey.stringKey(PlatformAttributes.PLATFORM_ENVIRONMENT);
-    private static final AttributeKey<String> PLATFORM_ID = AttributeKey.stringKey(PlatformAttributes.PLATFORM_ID);
     private static final AttributeKey<String> HOST_NAME = AttributeKey.stringKey(PlatformAttributes.PLATFORM_HOST);
     private static final AttributeKey<String> CONTAINER_ID = AttributeKey.stringKey(PlatformAttributes.CONTAINER_ID);
     private static final AttributeKey<String> DETECTOR_MARKER = AttributeKey.stringKey("test.detector.marker");
@@ -37,10 +36,10 @@ class ResourceCustomizerAutoconfigureIntegrationTest {
                 "otel.service.name", "otel-service",
                 "otel.resource.attributes",
                 "deployment.environment.name=staging,host.name=otel-host,container.id=otel-container",
-                PlatformResourceCustomizer.PROP_SERVICE_NAME, "platform-service",
-                PlatformResourceCustomizer.PROP_ENVIRONMENT, "production",
-                PlatformResourceCustomizer.PROP_HOST, "platform-host",
-                PlatformResourceCustomizer.PROP_CONTAINER_ID, "platform-container");
+                ExtensionPropertyNames.SERVICE_NAME, "platform-service",
+                ExtensionPropertyNames.SERVICE_ENVIRONMENT, "production",
+                ExtensionPropertyNames.SERVICE_HOST, "platform-host",
+                ExtensionPropertyNames.SERVICE_CONTAINER_ID, "platform-container");
 
         // when
         Resource resource = configure(properties, builder -> {
@@ -57,9 +56,8 @@ class ResourceCustomizerAutoconfigureIntegrationTest {
     void platform_fills_only_missing_keys_and_preserves_detector_attributes() {
         // given
         Map<String, String> properties = Map.of(
-                PlatformResourceCustomizer.PROP_SERVICE_NAME, "platform-service",
-                PlatformResourceCustomizer.PROP_ENVIRONMENT, "production",
-                PlatformResourceCustomizer.PROP_ID, "platform-001"
+                ExtensionPropertyNames.SERVICE_NAME, "platform-service",
+                ExtensionPropertyNames.SERVICE_ENVIRONMENT, "production"
         );
 
         // when
@@ -69,7 +67,6 @@ class ResourceCustomizerAutoconfigureIntegrationTest {
         // then
         assertThat(resource.getAttribute(SERVICE_NAME)).isEqualTo("platform-service");
         assertThat(resource.getAttribute(ENVIRONMENT)).isEqualTo("production");
-        assertThat(resource.getAttribute(PLATFORM_ID)).isEqualTo("platform-001");
         assertThat(resource.getAttribute(DETECTOR_MARKER)).isEqualTo("present");
     }
 
@@ -77,11 +74,10 @@ class ResourceCustomizerAutoconfigureIntegrationTest {
     void disabled_keys_are_not_returned_by_platform_customizer() {
         // given
         Map<String, String> properties = Map.of(
-                "otel.resource.disabled.keys", "platform.id,host.name",
-                PlatformResourceCustomizer.PROP_SERVICE_NAME, "platform-service",
-                PlatformResourceCustomizer.PROP_ENVIRONMENT, "production",
-                PlatformResourceCustomizer.PROP_ID, "platform-001",
-                PlatformResourceCustomizer.PROP_HOST, "platform-host"
+                "otel.resource.disabled.keys", PlatformAttributes.PLATFORM_HOST,
+                ExtensionPropertyNames.SERVICE_NAME, "platform-service",
+                ExtensionPropertyNames.SERVICE_ENVIRONMENT, "production",
+                ExtensionPropertyNames.SERVICE_HOST, "platform-host"
         );
 
         // when
@@ -90,7 +86,6 @@ class ResourceCustomizerAutoconfigureIntegrationTest {
 
         // then
         assertThat(resource.getAttribute(SERVICE_NAME)).isEqualTo("platform-service");
-        assertThat(resource.getAttribute(PLATFORM_ID)).isNull();
         assertThat(resource.getAttribute(HOST_NAME)).isNull();
     }
 

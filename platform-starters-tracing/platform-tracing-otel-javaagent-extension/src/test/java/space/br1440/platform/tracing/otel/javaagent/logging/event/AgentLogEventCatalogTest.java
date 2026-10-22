@@ -22,8 +22,7 @@ import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel
 
 class AgentLogEventCatalogTest {
 
-    private static final Predicate<String> RESOURCE_IDENTITY_CODES = code -> code.startsWith("BOOT_HOSTNAME_")
-            || code.startsWith("BOOT_RESOURCE_")
+    private static final Predicate<String> RESOURCE_IDENTITY_CODES = code -> code.startsWith("BOOT_RESOURCE_")
             || code.startsWith("BOOT_UPSTREAM_");
 
     private static final Map<Class<?>, Predicate<String>> CODE_DOMAINS = Map.ofEntries(

@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.otel.javaagent.logging.event;
 
 import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.noCause;
 import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.requiresCause;
-import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.DEBUG;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.INFO;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.WARN;
 
@@ -15,22 +14,6 @@ public enum ResourceIdentityLogEvent implements AgentLogEventType {
             noCause(
                     AgentEventCode.BOOT_UPSTREAM_SERVICE, WARN,
                     "Failed to extract upstream service name"
-            )
-    ),
-
-    HOSTNAME_RESOLUTION_FAILED(
-            requiresCause(
-                    AgentEventCode.BOOT_HOSTNAME_FAILED, DEBUG,
-                    "Hostname resolution failed",
-                    AgentLogField.FAILURE_TYPE
-            )
-    ),
-
-    HOSTNAME_RESOLUTION_TIMED_OUT(
-            noCause(
-                    AgentEventCode.BOOT_HOSTNAME_TIMEOUT, WARN,
-                    "Hostname resolution timed out",
-                    AgentLogField.TIMEOUT_MS
             )
     ),
 
@@ -53,8 +36,7 @@ public enum ResourceIdentityLogEvent implements AgentLogEventType {
             noCause(
                     AgentEventCode.BOOT_RESOURCE_IDENTITY, INFO,
                     "Resource identity resolved",
-                    AgentLogField.SERVICE, AgentLogField.ENVIRONMENT, AgentLogField.VERSION, AgentLogField.KIND,
-                    AgentLogField.COUNT
+                    AgentLogField.SERVICE, AgentLogField.ENVIRONMENT, AgentLogField.VERSION
             )
     ),
 
@@ -62,7 +44,7 @@ public enum ResourceIdentityLogEvent implements AgentLogEventType {
             noCause(
                     AgentEventCode.BOOT_RESOURCE_IDENTITY, WARN,
                     "Resource identity incomplete",
-                    AgentLogField.SERVICE, AgentLogField.ENVIRONMENT, AgentLogField.VERSION, AgentLogField.KIND,
+                    AgentLogField.SERVICE, AgentLogField.ENVIRONMENT, AgentLogField.VERSION,
                     AgentLogField.MISSING_KEYS
             )
     );

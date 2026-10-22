@@ -37,6 +37,7 @@ public final class ExtensionDefaults {
     public static final int DEFAULT_SPAN_TIMEOUT_MAX_TRACKED_SPANS = 60_000;
 
     public static final QueueOverflowPolicy DEFAULT_QUEUE_OVERFLOW_POLICY = QueueOverflowPolicy.DROP_OLDEST;
+    public static final ResourceValidationMode DEFAULT_RESOURCE_VALIDATION_MODE = ResourceValidationMode.WARNING;
     public static final Duration DEFAULT_DROP_OLDEST_SHUTDOWN_TIMEOUT = Duration.ofSeconds(10);
 
     public static final boolean DEFAULT_BAGGAGE_PROPAGATION_ENABLED = true;

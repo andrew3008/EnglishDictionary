@@ -19,6 +19,7 @@ public final class ExtensionConfig {
     private final SpanTimeoutExtensionConfig spanTimeout;
     private final QueueExtensionConfig queue;
     private final BaggageExtensionConfig baggage;
+    private final ResourceExtensionConfig resource;
 
     public ExtensionConfig(ConfigProperties config) {
         Objects.requireNonNull(config, "config");
@@ -33,5 +34,6 @@ public final class ExtensionConfig {
         this.spanTimeout = new SpanTimeoutExtensionConfig(reader);
         this.queue = new QueueExtensionConfig(reader);
         this.baggage = new BaggageExtensionConfig(reader);
+        this.resource = new ResourceExtensionConfig(reader);
     }
 }

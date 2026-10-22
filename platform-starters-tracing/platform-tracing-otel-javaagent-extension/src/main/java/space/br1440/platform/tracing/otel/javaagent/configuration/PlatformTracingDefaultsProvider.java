@@ -3,7 +3,6 @@ package space.br1440.platform.tracing.otel.javaagent.configuration;
 import java.util.HashMap;
 import java.util.Map;
 
-import space.br1440.platform.tracing.otel.javaagent.resource.PlatformResourceCustomizer;
 import space.br1440.platform.common.util.StringUtils;
 
 public final class PlatformTracingDefaultsProvider {
@@ -26,9 +25,6 @@ public final class PlatformTracingDefaultsProvider {
     public Map<String, String> supply() {
         Map<String, String> defaults = getDefaults();
         putEnvFallback(defaults, ExtensionEnvironmentVariables.QUEUE_OVERFLOW_POLICY, ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY);
-        putEnvFallback(defaults, ExtensionEnvironmentVariables.SERVICE_NAME, PlatformResourceCustomizer.PROP_SERVICE_NAME);
-        putEnvFallback(defaults, ExtensionEnvironmentVariables.SERVICE_VERSION, PlatformResourceCustomizer.PROP_SERVICE_VERSION);
-        putEnvFallback(defaults, ExtensionEnvironmentVariables.SERVICE_ENVIRONMENT, PlatformResourceCustomizer.PROP_ENVIRONMENT);
         return defaults;
     }
 
@@ -54,6 +50,7 @@ public final class PlatformTracingDefaultsProvider {
         return defaults;
     }
 
+    @SuppressWarnings("SameParameterValue")
     private void putEnvFallback(Map<String, String> defaults, String envKey, String propKey) {
         String value = envSupplier.get(envKey);
         if (StringUtils.hasText(value)) {

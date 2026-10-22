@@ -82,18 +82,14 @@ class AgentLoggingGoldenTest {
                 Map.of(
                         "service", "orders",
                         "environment", "production",
-                        "version", "2025.1",
-                        "kind", "resourceAttributes",
-                        "count", "5"
+                        "version", "2025.1"
                 )
         );
 
         // when
         logger.log(ResourceIdentityLogEvent.RESOURCE_IDENTITY_RESOLVED, fields -> fields
                 .putString(AgentLogField.VERSION, "2025.1")
-                .putLong(AgentLogField.COUNT, 5L)
                 .putString(AgentLogField.SERVICE, "orders")
-                .putString(AgentLogField.KIND, "resourceAttributes")
                 .putString(AgentLogField.ENVIRONMENT, "production"));
 
         // then
@@ -189,12 +185,8 @@ class AgentLoggingGoldenTest {
         AgentLogFieldsWriter forward = fields -> fields
                 .putString(AgentLogField.SERVICE, "orders")
                 .putString(AgentLogField.ENVIRONMENT, "production")
-                .putString(AgentLogField.VERSION, "2025.1")
-                .putString(AgentLogField.KIND, "resourceAttributes")
-                .putLong(AgentLogField.COUNT, 5L);
+                .putString(AgentLogField.VERSION, "2025.1");
         AgentLogFieldsWriter reverse = fields -> fields
-                .putLong(AgentLogField.COUNT, 5L)
-                .putString(AgentLogField.KIND, "resourceAttributes")
                 .putString(AgentLogField.VERSION, "2025.1")
                 .putString(AgentLogField.ENVIRONMENT, "production")
                 .putString(AgentLogField.SERVICE, "orders");

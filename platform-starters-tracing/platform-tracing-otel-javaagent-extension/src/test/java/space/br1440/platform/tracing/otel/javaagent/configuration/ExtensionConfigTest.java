@@ -15,6 +15,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
@@ -115,6 +116,15 @@ class ExtensionConfigTest {
             // when/then
             assertThat(cfg.baggage()).isSameAs(cfg.baggage());
         }
+
+        @Test
+        void resource_returns_same_instance() {
+            // given
+            ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
+
+            // when/then
+            assertThat(cfg.resource()).isSameAs(cfg.resource());
+        }
     }
 
     @Test
@@ -175,6 +185,47 @@ class ExtensionConfigTest {
         )))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("platform.tracing.javaagent.span-attributes.validation.level");
+    }
+
+    @Test
+    void resource_validation_mode_defaults_to_warning_when_absent() {
+        // given
+        ExtensionConfig config = new ExtensionConfig(emptyConfig());
+
+        // then
+        assertThat(config.resource().validationMode()).isEqualTo(ResourceValidationMode.WARNING);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "WARNING, WARNING",
+            "error, ERROR"
+    })
+    void resource_validation_mode_accepts_canonical_values(String raw, ResourceValidationMode expected) {
+        // given
+        ExtensionConfig config = new ExtensionConfig(stringConfig(
+                ExtensionPropertyNames.RESOURCE_VALIDATION_MODE,
+                raw
+        ));
+
+        // then
+        assertThat(config.resource().validationMode()).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", " ", "NOPE"})
+    void resource_validation_mode_rejects_blank_and_unknown_values(String raw) {
+        // given/when/then
+        assertThatThrownBy(() -> new ExtensionConfig(stringConfig(
+                ExtensionPropertyNames.RESOURCE_VALIDATION_MODE,
+                raw
+        )))
+                .isInstanceOf(ConfigurationPropertyException.class)
+                .satisfies(failure -> {
+                    ConfigurationPropertyException propertyFailure = (ConfigurationPropertyException) failure;
+                    assertThat(propertyFailure.propertyName()).isEqualTo(ExtensionPropertyNames.RESOURCE_VALIDATION_MODE);
+                    assertThat(propertyFailure.failure()).hasMessageContaining("must be one of: WARNING, ERROR");
+                });
     }
 
     @Test

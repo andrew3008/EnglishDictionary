@@ -11,6 +11,11 @@ public final class ExtensionPropertyNames {
     public static final String METRICS_ENABLED = "platform.tracing.metrics.enabled";
 
     public static final String RESOURCE_VALIDATION_MODE = "platform.tracing.resource.validation-mode";
+    public static final String SERVICE_NAME = "platform.tracing.service.name";
+    public static final String SERVICE_VERSION = "platform.tracing.service.version";
+    public static final String SERVICE_ENVIRONMENT = "platform.tracing.service.environment";
+    public static final String SERVICE_HOST = "platform.tracing.service.host";
+    public static final String SERVICE_CONTAINER_ID = "platform.tracing.service.container-id";
     public static final String SPAN_ATTRIBUTES_VALIDATION_LEVEL = "platform.tracing.javaagent.span-attributes.validation.level";
 
     public static final String SAMPLING_ENABLED = "platform.tracing.sampling.enabled";

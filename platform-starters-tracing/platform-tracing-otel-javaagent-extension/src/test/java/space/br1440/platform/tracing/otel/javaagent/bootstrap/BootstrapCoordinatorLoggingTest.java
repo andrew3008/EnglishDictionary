@@ -35,6 +35,7 @@ import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionC
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.ScrubberFactoryTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
 
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
 @ExtendWith(AutoConfiguredSdkIsolationExtension.class)
@@ -150,6 +151,37 @@ class BootstrapCoordinatorLoggingTest {
                             .containsEntry("propertyName", ExtensionPropertyNames.SCRUBBING_ENABLED)
                             .doesNotContainValue("false"));
             assertThat(logs.rendered()).doesNotContain("=false");
+        }
+    }
+
+    @Test
+    void unknown_resource_validation_mode_fails_preparation_with_property_name() {
+        // given
+        try (BootstrapCoordinator coordinator = coordinator().build()) {
+            // when
+            BootstrapException failure = catchBootstrapFailure(
+                    () -> coordinator.prepare(config(Map.of(
+                            ExtensionPropertyNames.RESOURCE_VALIDATION_MODE,
+                            "NOPE"
+                    ))),
+                    CONFIGURATION_INITIALIZATION_FAILED
+            );
+
+            // then
+            assertThatCoordinator(coordinator).isTerminallyFailedWith(CONFIGURATION_INITIALIZATION_FAILED);
+            assertThat(failure.getCause())
+                    .isInstanceOf(ConfigurationException.class)
+                    .hasMessageContaining(ExtensionPropertyNames.RESOURCE_VALIDATION_MODE);
+            assertThat(logs.events())
+                    .filteredOn(event -> BOOTSTRAP_PHASE_FAILED.equals(event.eventName()))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.fields())
+                            .containsEntry("failureCode", CONFIGURATION_INITIALIZATION_FAILED)
+                            .containsEntry("phase", "prepare")
+                            .containsEntry("subphase", "configuration-validation")
+                            .containsEntry("propertyName", ExtensionPropertyNames.RESOURCE_VALIDATION_MODE)
+                            .doesNotContainValue("NOPE"));
+            assertThat(logs.rendered()).doesNotContain("NOPE");
         }
     }
 

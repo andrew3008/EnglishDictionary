@@ -323,8 +323,8 @@ class PackagedTracingCertificationTest {
         // then
         assertSuccessful(result, "build-info-service-version");
         assertThat(resourceIdentityLine(result.combinedOutput()))
-                .as("platform resolver must supply service.version from BOOT-INF build-info; "
-                        + "an <absent> version means the upstream detector already owns this path")
+                .as("platform customizer supplies service.version from BOOT-INF build-info; "
+                        + "a missing version field means the build-info detector produced no value")
                 .contains("\"version\":\"" + fixtureVersion + "\"");
     }
 

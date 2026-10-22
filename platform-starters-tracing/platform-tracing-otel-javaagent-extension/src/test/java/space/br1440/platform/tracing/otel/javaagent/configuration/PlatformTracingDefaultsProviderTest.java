@@ -114,4 +114,28 @@ class PlatformTracingDefaultsProviderTest {
         // then
         assertThat(second).doesNotContainKey("otel.injected");
     }
+
+    @Test
+    void supply_ignores_service_identity_environment_variables() {
+        // given
+        PlatformTracingDefaultsProvider provider = new PlatformTracingDefaultsProvider(name -> switch (name) {
+            case "PLATFORM_TRACING_SERVICE_NAME" -> "via-env";
+            case "PLATFORM_TRACING_SERVICE_VERSION" -> "1.2.3";
+            case "PLATFORM_TRACING_SERVICE_ENVIRONMENT" -> "production";
+            case "PLATFORM_TRACING_SERVICE_HOST" -> "host";
+            case "PLATFORM_TRACING_SERVICE_CONTAINER_ID" -> "container";
+            default -> null;
+        });
+
+        // when
+        Map<String, String> defaults = provider.supply();
+
+        // then
+        assertThat(defaults)
+                .doesNotContainKey(ExtensionPropertyNames.SERVICE_NAME)
+                .doesNotContainKey(ExtensionPropertyNames.SERVICE_VERSION)
+                .doesNotContainKey(ExtensionPropertyNames.SERVICE_ENVIRONMENT)
+                .doesNotContainKey(ExtensionPropertyNames.SERVICE_HOST)
+                .doesNotContainKey(ExtensionPropertyNames.SERVICE_CONTAINER_ID);
+    }
 }

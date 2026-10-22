@@ -198,7 +198,7 @@ class AgentLoggingSchemaConformanceTest {
                 "RESOURCE_IDENTITY_RESOLVED",
                 getClass().getName(),
                 "Resource identity resolved",
-                Map.of("phase", "before-spring", "kind", "identity"),
+                Map.of("service", "orders", "environment", "production", "version", "2025.1"),
                 null,
                 null
         );
