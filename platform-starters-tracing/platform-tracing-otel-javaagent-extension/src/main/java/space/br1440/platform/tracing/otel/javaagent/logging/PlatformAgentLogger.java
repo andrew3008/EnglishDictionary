@@ -7,9 +7,6 @@ import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel
 
 public final class PlatformAgentLogger {
 
-    private static final AgentLogFieldsWriter NO_FIELDS = fields -> {
-    };
-
     private final String ownerName;
     private final AgentLoggingRuntime runtime;
 
@@ -26,7 +23,7 @@ public final class PlatformAgentLogger {
     }
 
     public void log(AgentLogEventType eventType) {
-        log(eventType, NO_FIELDS);
+        log(eventType, AgentLogFieldsWriter.NONE);
     }
 
     public void log(AgentLogEventType eventType, AgentLogFieldsWriter fieldsWriter) {

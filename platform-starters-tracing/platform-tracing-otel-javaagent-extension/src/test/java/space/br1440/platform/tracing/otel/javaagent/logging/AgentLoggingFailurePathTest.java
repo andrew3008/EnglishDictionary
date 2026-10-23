@@ -67,7 +67,8 @@ class AgentLoggingFailurePathTest {
         // when
         EmitResult result = logger.emitAdmitted(
                 BootstrapLogEvent.EXTENSION_INSTALLED,
-                fields -> fields.putString(AgentLogField.PROFILE, "caller-secret")
+                fields -> fields.putString(AgentLogField.PROFILE, "caller-secret"),
+                17L
         );
 
         // then
@@ -77,6 +78,7 @@ class AgentLoggingFailurePathTest {
                 .contains("\"fallback_reason\":\"invariant_violation\"")
                 .contains("event_name", "ENCODE_FALLBACK")
                 .contains("original_event_name", "EXTENSION_INSTALLED")
+                .contains("\"suppressed_count\":\"17\"")
                 .doesNotContain("caller-secret");
         assertThat(sink.toString(StandardCharsets.UTF_8).lines()).hasSize(1);
     }
@@ -94,9 +96,10 @@ class AgentLoggingFailurePathTest {
             @Override
             byte[] encodeFallback(java.time.Instant timestamp,
                                   AgentLogLevel level,
-                                  AgentEventCode original,
-                                  String originalEventName,
-                                  FallbackReason reason) {
+                                   AgentEventCode original,
+                                   String originalEventName,
+                                   FallbackReason reason,
+                                   long suppressedCount) {
                 throw new IllegalStateException("Fallback encoder failed");
             }
         };

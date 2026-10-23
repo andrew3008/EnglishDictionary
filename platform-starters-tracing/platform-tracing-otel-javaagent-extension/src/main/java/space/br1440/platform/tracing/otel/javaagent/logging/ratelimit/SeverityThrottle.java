@@ -1,12 +1,12 @@
 package space.br1440.platform.tracing.otel.javaagent.logging.ratelimit;
 
+import java.time.Duration;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.LongSupplier;
 
 public final class SeverityThrottle {
+
+    private static final Acquisition DENIED = new Acquisition(Decision.DENY, 0L);
 
     public record Acquisition(Decision decision, long suppressedCount) {
     }
@@ -17,75 +17,91 @@ public final class SeverityThrottle {
         DENY
     }
 
-    private enum Phase {
-        FAST,
-        TRANSITIONING,
-        SLOW
-    }
+    private final int burst;
+    private final long intervalNanos;
+    private final long capacity;
+    private final LongSupplier nanoClock;
 
-    private final TokenBucketRateLimiter fastGate;
-    private final MinIntervalRateLimiter slowGate;
-    private final AtomicReference<Phase> phase = new AtomicReference<>(Phase.FAST);
-    private final AtomicLong suppressed = new AtomicLong();
+    private boolean slowMode;
+    private long credit;
+    private long lastRefillNanos;
+    private long nextSlowAdmitNanos;
+    private long suppressed;
 
-    public SeverityThrottle(double fastPermits,
-                            double slowPermits,
-                            long interval,
-                            TimeUnit unit,
+    public SeverityThrottle(int burst,
+                            Duration interval,
                             LongSupplier nanoClock) {
-        if (Double.compare(slowPermits, 1.0d) != 0) {
-            throw new IllegalArgumentException("slowPermits must be exactly 1");
+        if (burst < 1) {
+            throw new IllegalArgumentException("burst must be greater than zero");
         }
 
-        Objects.requireNonNull(unit, "unit");
-        Objects.requireNonNull(nanoClock, "nanoClock");
-        long intervalNanos = unit.toNanos(interval);
-        this.fastGate = TokenBucketRateLimiter.perInterval(fastPermits, interval, unit, nanoClock);
-        this.slowGate = new MinIntervalRateLimiter(intervalNanos, nanoClock);
+        Duration requiredInterval = Objects.requireNonNull(interval, "interval");
+        this.nanoClock = Objects.requireNonNull(nanoClock, "nanoClock");
+        if (requiredInterval.isZero() || requiredInterval.isNegative()) {
+            throw new IllegalArgumentException("interval must be greater than zero");
+        }
+
+        try {
+            this.intervalNanos = requiredInterval.toNanos();
+            this.capacity = Math.multiplyExact(this.intervalNanos, burst);
+        } catch (ArithmeticException exception) {
+            throw new IllegalArgumentException("interval and burst must fit in a long nanosecond capacity", exception);
+        }
+
+        this.burst = burst;
+        this.credit = capacity;
+        this.lastRefillNanos = this.nanoClock.getAsLong();
     }
 
-    public Acquisition tryAcquire() {
-        for (; ; ) {
-            Phase current = phase.get();
-            if (current == Phase.SLOW) {
-                return slowGate.tryAcquire() ? admitted(Decision.ADMIT) : denied();
-            }
+    public synchronized Acquisition tryAcquire() {
+        long now = nanoClock.getAsLong();
+        refill(now);
 
-            if (current == Phase.TRANSITIONING) {
-                Thread.onSpinWait();
-                continue;
-            }
-
-            if (fastGate.trySpend(1.0d)) {
+        if (!slowMode) {
+            if (credit >= intervalNanos) {
+                credit -= intervalNanos;
                 return admitted(Decision.ADMIT);
             }
 
-            if (!phase.compareAndSet(Phase.FAST, Phase.TRANSITIONING)) {
-                continue;
-            }
-
-            try {
-                return slowGate.tryAcquire() ? admitted(Decision.ADMIT_WITH_MARKER) : denied();
-            } finally {
-                phase.set(Phase.SLOW);
-            }
+            slowMode = true;
+            credit = 0L;
+            nextSlowAdmitNanos = now + intervalNanos;
+            return admitted(Decision.ADMIT_WITH_MARKER);
         }
-    }
 
-    public boolean isThrottled() {
-        return (phase.get() != Phase.FAST);
-    }
+        if (credit == capacity) {
+            slowMode = false;
+            credit -= intervalNanos;
+            return admitted(Decision.ADMIT);
+        }
 
-    public long drainSuppressed() {
-        return suppressed.getAndSet(0L);
+        credit = (credit >= intervalNanos) ? credit - intervalNanos : 0L;
+        if ((now - nextSlowAdmitNanos) >= 0L) {
+            nextSlowAdmitNanos = now + intervalNanos;
+            return admitted(Decision.ADMIT);
+        }
+
+        if (suppressed < Long.MAX_VALUE) {
+            suppressed++;
+        }
+        return DENIED;
     }
 
     private Acquisition admitted(Decision decision) {
-        return new Acquisition(decision, drainSuppressed());
+        long suppressedCount = suppressed;
+        suppressed = 0L;
+        return new Acquisition(decision, suppressedCount);
     }
 
-    private Acquisition denied() {
-        suppressed.incrementAndGet();
-        return new Acquisition(Decision.DENY, 0L);
+    private void refill(long now) {
+        long elapsed = now - lastRefillNanos;
+        if (elapsed <= 0L) {
+            return;
+        }
+
+        long refill = Math.min(elapsed, intervalNanos) * burst;
+        long missing = (capacity - credit);
+        credit = (refill >= missing) ? capacity : credit + refill;
+        lastRefillNanos = now;
     }
 }

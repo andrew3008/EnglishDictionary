@@ -156,7 +156,8 @@ public final class AgentLoggingRuntime {
                     level,
                     eventType.eventCode(),
                     eventType.name(),
-                    FallbackReason.INVARIANT_VIOLATION
+                    FallbackReason.INVARIANT_VIOLATION,
+                    suppressedCount
             );
         }
 
@@ -172,11 +173,19 @@ public final class AgentLoggingRuntime {
     private EmitResult encodeAndDeliverFallback(AgentLogLevel level,
                                                 AgentEventCode original,
                                                 String originalEventName,
-                                                FallbackReason reason) {
+                                                FallbackReason reason,
+                                                long suppressedCount) {
         byte[] fallback;
         try {
             fallback = Objects.requireNonNull(
-                    encoder.encodeFallback(Instant.now(), level, original, originalEventName, reason),
+                    encoder.encodeFallback(
+                            Instant.now(),
+                            level,
+                            original,
+                            originalEventName,
+                            reason,
+                            suppressedCount
+                    ),
                     "fallback"
             );
 

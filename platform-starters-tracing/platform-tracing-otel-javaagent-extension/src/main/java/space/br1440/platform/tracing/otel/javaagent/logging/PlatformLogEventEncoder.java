@@ -40,7 +40,8 @@ class PlatformLogEventEncoder {
                         event.level(),
                         event.eventCode(),
                         event.eventName(),
-                        FallbackReason.BYTE_BUDGET
+                        FallbackReason.BYTE_BUDGET,
+                        event.suppressedCount()
                 )
         );
     }
@@ -49,8 +50,9 @@ class PlatformLogEventEncoder {
                           AgentLogLevel level,
                           AgentEventCode original,
                           String originalEventName,
-                          FallbackReason reason) {
-        return renderFallback(timestamp, level, original, originalEventName, reason)
+                          FallbackReason reason,
+                          long suppressedCount) {
+        return renderFallback(timestamp, level, original, originalEventName, reason, suppressedCount)
                 .getBytes(StandardCharsets.UTF_8);
     }
 
@@ -82,10 +84,11 @@ class PlatformLogEventEncoder {
     }
 
     private static String renderFallback(Instant timestamp,
-                                         AgentLogLevel level,
-                                         AgentEventCode original,
-                                         String originalEventName,
-                                         FallbackReason reason) {
+                                          AgentLogLevel level,
+                                          AgentEventCode original,
+                                          String originalEventName,
+                                          FallbackReason reason,
+                                          long suppressedCount) {
         JsonWriter json = new JsonWriter();
         json.beginObject();
         json.writeField("timestamp", TIMESTAMP_FORMAT.format(timestamp));
@@ -95,6 +98,9 @@ class PlatformLogEventEncoder {
         json.writeField("event_code", AgentEventCode.ENCODE_FALLBACK.code());
         json.writeField("event_name", FALLBACK_EVENT_NAME);
         json.writeField("original_event_name", originalEventName);
+        if (suppressedCount > 0L) {
+            json.writeField("suppressed_count", Long.toString(suppressedCount));
+        }
         json.writeKey("fields");
         json.beginObject();
         json.writeField("original_event_code", original.code());

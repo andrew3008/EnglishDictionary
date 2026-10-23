@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.exporter;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -8,17 +9,19 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.function.LongSupplier;
 import jakarta.annotation.Nullable;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseObservation;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseScope;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventType;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ExporterLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.ratelimit.MinIntervalRateLimiter;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingBoundaryMetrics;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
@@ -29,6 +32,7 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 
 public final class SafeSpanExporter implements SpanExporter {
 
+    private static final long RECOVERY_PUBLICATION_INTERVAL_NANOS = Duration.ofMinutes(1L).toNanos();
     private static final PlatformAgentLogger LIFECYCLE_LOG = PlatformAgentLogger.get(SafeSpanExporter.class);
 
     private final SpanExporter delegate;
@@ -37,6 +41,13 @@ public final class SafeSpanExporter implements SpanExporter {
     private final SpanDataBoundaryScrubber boundaryScrubber;
     private final RateLimitedLogger log;
     private final String exporterType;
+    private final MinIntervalRateLimiter recoveryPublication;
+    private final Object recoveryLock = new Object();
+
+    private long operationSeq;
+    private long episodeFailures;
+    private long lastFailureSeq;
+    private long lastSuccessSeq;
 
     private final LongAdder exportBatches = new LongAdder();
     private final LongAdder exportFailures = new LongAdder();
@@ -54,17 +65,28 @@ public final class SafeSpanExporter implements SpanExporter {
     public SafeSpanExporter(SpanExporter delegate,
                             TracingSettingsSource acceptedPolicy,
                             ScrubbingRuntime scrubbingRuntime) {
-        this(delegate, acceptedPolicy, scrubbingRuntime, new RateLimitedLogger(SafeSpanExporter.class));
+        this(
+                delegate,
+                acceptedPolicy,
+                scrubbingRuntime,
+                new RateLimitedLogger(SafeSpanExporter.class),
+                System::nanoTime
+        );
     }
 
     SafeSpanExporter(SpanExporter delegate,
                      TracingSettingsSource acceptedPolicy,
                      ScrubbingRuntime scrubbingRuntime,
-                     RateLimitedLogger log) {
+                     RateLimitedLogger log,
+                     LongSupplier nanoClock) {
         this.delegate = Objects.requireNonNull(delegate, "delegate");
         this.acceptedPolicy = Objects.requireNonNull(acceptedPolicy, "acceptedPolicy");
         this.scrubbingRuntime = Objects.requireNonNull(scrubbingRuntime, "scrubbingRuntime");
         this.log = Objects.requireNonNull(log, "log");
+        this.recoveryPublication = new MinIntervalRateLimiter(
+                RECOVERY_PUBLICATION_INTERVAL_NANOS,
+                Objects.requireNonNull(nanoClock, "nanoClock")
+        );
         this.boundaryScrubber = new SpanDataBoundaryScrubber(this.scrubbingRuntime);
         this.exporterType = exporterType(delegate);
     }
@@ -97,21 +119,34 @@ public final class SafeSpanExporter implements SpanExporter {
 
         exportBatches.increment();
         long startedAt = System.nanoTime();
-
         ExportResponseObservation observation = new ExportResponseObservation(effectiveCount);
         try (ExportResponseScope.Handle ignored = ExportResponseScope.open(observation)) {
-            CompletableResultCode result = delegate.export(batch);
-            if (result == null) {
-                recordSyncFailure(effectiveCount, startedAt, ExporterLogEvent.SAFE_EXPORT_RETURNED_NULL);
+            long operationSequence = nextOperationSequence();
+            try {
+                CompletableResultCode result = delegate.export(batch);
+                if (result == null) {
+                    recordSyncFailure(
+                            effectiveCount,
+                            startedAt,
+                            operationSequence,
+                            ExporterLogEvent.SAFE_EXPORT_RETURNED_NULL
+                    );
+                    return CompletableResultCode.ofFailure();
+                }
+
+                result.whenComplete(() -> onExportComplete(result, observation, startedAt, operationSequence));
+                return result;
+            } catch (Throwable ex) {
+                PlatformThrowables.propagateIfFatal(ex);
+                recordSyncFailure(
+                        effectiveCount,
+                        startedAt,
+                        operationSequence,
+                        ExporterLogEvent.SAFE_EXPORT_THROWN,
+                        ex
+                );
                 return CompletableResultCode.ofFailure();
             }
-
-            result.whenComplete(() -> onExportComplete(result, observation, startedAt));
-            return result;
-        } catch (Throwable ex) {
-            PlatformThrowables.propagateIfFatal(ex);
-            recordSyncFailure(effectiveCount, startedAt, ExporterLogEvent.SAFE_EXPORT_THROWN, ex);
-            return CompletableResultCode.ofFailure();
         }
     }
 
@@ -159,16 +194,20 @@ public final class SafeSpanExporter implements SpanExporter {
 
     private void onExportComplete(CompletableResultCode result,
                                   ExportResponseObservation observation,
-                                  long startedAt) {
+                                  long startedAt,
+                                  long operationSequence) {
         int count = observation.effectiveSpanCount();
         try {
             lastExportDurationNanos.set(System.nanoTime() - startedAt);
 
             if (result.isSuccess()) {
+                long failures = recordRecoverySuccess(operationSequence);
+                if (failures > 0L) {
+                    tryPublishRecovery(failures);
+                }
                 recordAcceptedSpans(observation, count);
-                log.tryLogRecoveryOnce();
             } else {
-                recordFailureMetrics(count, ExporterLogEvent.SAFE_EXPORT_RETURNED_FAILURE);
+                recordFailureMetrics(count, operationSequence, ExporterLogEvent.SAFE_EXPORT_RETURNED_FAILURE);
             }
         } catch (Throwable ex) {
             PlatformThrowables.propagateIfFatal(ex);
@@ -230,27 +269,89 @@ public final class SafeSpanExporter implements SpanExporter {
     }
 
     @SuppressWarnings("SameParameterValue")
-    private void recordSyncFailure(int count, long startedAt, AgentLogEventType eventType) {
-        recordSyncFailure(count, startedAt, eventType, null);
+    private void recordSyncFailure(int count,
+                                   long startedAt,
+                                   long operationSequence,
+                                   AgentLogEventType eventType) {
+        recordSyncFailure(count, startedAt, operationSequence, eventType, null);
     }
 
     private void recordSyncFailure(int count,
                                    long startedAt,
+                                   long operationSequence,
                                    AgentLogEventType eventType,
                                    Throwable error) {
         lastExportDurationNanos.set(System.nanoTime() - startedAt);
-        recordFailureMetrics(count, eventType, error);
+        recordFailureMetrics(count, operationSequence, eventType, error);
     }
 
     @SuppressWarnings("SameParameterValue")
-    private void recordFailureMetrics(int count, AgentLogEventType eventType) {
-        recordFailureMetrics(count, eventType, null);
+    private void recordFailureMetrics(int count,
+                                      long operationSequence,
+                                      AgentLogEventType eventType) {
+        recordFailureMetrics(count, operationSequence, eventType, null);
     }
 
-    private void recordFailureMetrics(int count, AgentLogEventType eventType, Throwable error) {
+    private void recordFailureMetrics(int count,
+                                      long operationSequence,
+                                      AgentLogEventType eventType,
+                                      Throwable error) {
+        recordRecoveryFailure(operationSequence);
         exportFailures.increment();
         droppedSpans.add(count);
         logExportFailure(eventType, error);
+    }
+
+    private long nextOperationSequence() {
+        synchronized (recoveryLock) {
+            return ++operationSeq;
+        }
+    }
+
+    private void recordRecoveryFailure(long operationSequence) {
+        synchronized (recoveryLock) {
+            if (!isAfter(operationSequence, lastSuccessSeq)) {
+                return;
+            }
+
+            if (episodeFailures < Long.MAX_VALUE) {
+                episodeFailures++;
+            }
+
+            if (isAfter(operationSequence, lastFailureSeq)) {
+                lastFailureSeq = operationSequence;
+            }
+        }
+    }
+
+    private long recordRecoverySuccess(long operationSequence) {
+        synchronized (recoveryLock) {
+            if (isAfter(operationSequence, lastSuccessSeq)) {
+                lastSuccessSeq = operationSequence;
+            }
+
+            if (episodeFailures == 0L || !isAfter(operationSequence, lastFailureSeq)) {
+                return 0L;
+            }
+
+            long failures = episodeFailures;
+            episodeFailures = 0L;
+            return failures;
+        }
+    }
+
+    private void tryPublishRecovery(long failures) {
+        if (!recoveryPublication.tryAcquire()) {
+            return;
+        }
+
+        LIFECYCLE_LOG.log(ExporterLogEvent.SAFE_EXPORT_SUCCEEDED_AFTER_FAILURES, fields -> fields
+                .putString(AgentLogField.EXPORTER_TYPE, exporterType)
+                .putLong(AgentLogField.FAILURES, failures));
+    }
+
+    private static boolean isAfter(long candidate, long fence) {
+        return Long.compareUnsigned(candidate, fence) > 0;
     }
 
     private void logExportFailure(AgentLogEventType eventType, Throwable error) {

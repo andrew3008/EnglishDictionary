@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.logging.event;
 
 import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.noCause;
 import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.requiresCause;
+import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.INFO;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.WARN;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
@@ -22,6 +23,14 @@ public enum ExporterLogEvent implements AgentLogEventType {
                     AgentEventCode.EXPORT_SAFE_EXPORTER, WARN,
                     "OTLP response did not yield a usable accepted span count",
                     AgentLogField.EXPORTER_TYPE
+            )
+    ),
+
+    SAFE_EXPORT_SUCCEEDED_AFTER_FAILURES(
+            noCause(
+                    AgentEventCode.EXPORT_SAFE_EXPORTER, INFO,
+                    "Span export delegate succeeded after terminal export failures",
+                    AgentLogField.EXPORTER_TYPE, AgentLogField.FAILURES
             )
     ),
 

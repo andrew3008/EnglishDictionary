@@ -57,7 +57,8 @@ class AgentLoggingSchemaConformanceTest {
                 AgentLogLevel.ERROR,
                 AgentEventCode.BOOT_INSTALLED,
                 "EXTENSION_INSTALLED",
-                FallbackReason.BYTE_BUDGET
+                FallbackReason.BYTE_BUDGET,
+                0L
         );
 
         // when
@@ -69,7 +70,8 @@ class AgentLoggingSchemaConformanceTest {
                 .contains("\"event_name\":\"ENCODE_FALLBACK\"")
                 .contains("\"original_event_name\":\"EXTENSION_INSTALLED\"")
                 .contains("\"original_event_code\":\"PTA-BOOT-001\"")
-                .contains("\"fallback_reason\":\"byte_budget\"");
+                .contains("\"fallback_reason\":\"byte_budget\"")
+                .doesNotContain("suppressed_count");
     }
 
     @Test

@@ -3,19 +3,29 @@ package space.br1440.platform.tracing.otel.javaagent.exporter;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.AbstractCollection;
 import java.util.AbstractList;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.LongSupplier;
 import jakarta.annotation.Nonnull;
 
 import org.junit.jupiter.api.DisplayName;
@@ -30,8 +40,12 @@ import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResp
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseScope;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingTestSupport;
+import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
@@ -64,6 +78,16 @@ class SafeSpanExporterTest {
                                                  TracingSettingsSource acceptedPolicy,
                                                  ScrubbingRuntime runtime) {
         return new SafeSpanExporter(delegate, acceptedPolicy, runtime);
+    }
+
+    private static SafeSpanExporter safeExporter(SpanExporter delegate, LongSupplier nanoClock) {
+        return new SafeSpanExporter(
+                delegate,
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
+                ScrubbingRuntimeTestFixtures.disabled(),
+                new RateLimitedLogger(SafeSpanExporterTest.class),
+                nanoClock
+        );
     }
 
     @Test
@@ -127,7 +151,8 @@ class SafeSpanExporterTest {
                 sequencedDelegate,
                 TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled(),
-                recoveryLog);
+                recoveryLog,
+                System::nanoTime);
              AgentLogCapture capture = AgentLogCapture.installed()) {
             // when
             safe.export(spansOfSize(1));
@@ -136,11 +161,16 @@ class SafeSpanExporterTest {
 
             // then
             assertThat(capture.events())
-                    .filteredOn(event -> event.eventCode() == AgentEventCode.RATE_RECOVERY)
+                    .filteredOn(event -> "SAFE_EXPORT_SUCCEEDED_AFTER_FAILURES".equals(event.eventName()))
                     .singleElement()
-                    .satisfies(event -> assertThat(event.message()).isEqualTo(
-                            "SafeSpanExporter: export recovered after a series of failures"
-                    ));
+                    .satisfies(event -> {
+                        assertThat(event.eventCode()).isEqualTo(AgentEventCode.EXPORT_SAFE_EXPORTER);
+                        assertThat(event.level()).isEqualTo(AgentLogLevel.INFO);
+                        assertThat(event.message()).isEqualTo(
+                                "Span export delegate succeeded after terminal export failures"
+                        );
+                        assertThat(event.fields()).containsEntry("failures", "1");
+                    });
         }
     }
 
@@ -159,8 +189,487 @@ class SafeSpanExporterTest {
 
             // then
             assertThat(capture.events())
-                    .filteredOn(event -> event.eventCode() == AgentEventCode.RATE_RECOVERY)
+                    .filteredOn(event -> "SAFE_EXPORT_SUCCEEDED_AFTER_FAILURES".equals(event.eventName()))
                     .hasSize(1);
+        }
+    }
+
+    @Test
+    void lateSuccessStartedBeforeFailureDoesNotCloseRecoveryEpisode() {
+        // given
+        CompletableResultCode first = new CompletableResultCode();
+        CompletableResultCode failure = new CompletableResultCode();
+        CompletableResultCode recovery = new CompletableResultCode();
+        SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
+                step(first), step(failure), step(recovery)
+        ));
+
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+
+            // when
+            failure.fail();
+            first.succeed();
+
+            // then
+            assertThat(recoveryEvents(capture)).isEmpty();
+
+            // when
+            safe.export(spansOfSize(1));
+            recovery.succeed();
+
+            // then
+            assertThat(recoveryEvents(capture))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.fields()).containsEntry("failures", "1"));
+        }
+    }
+
+    @Test
+    void successStartedBeforeNewestFailureDoesNotCloseRecoveryEpisode() {
+        // given
+        CompletableResultCode firstFailure = new CompletableResultCode();
+        CompletableResultCode candidate = new CompletableResultCode();
+        CompletableResultCode newestFailure = new CompletableResultCode();
+        CompletableResultCode recovery = new CompletableResultCode();
+        SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
+                step(firstFailure), step(candidate), step(newestFailure), step(recovery)
+        ));
+
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
+            safe.export(spansOfSize(1));
+            firstFailure.fail();
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+
+            // when
+            newestFailure.fail();
+            candidate.succeed();
+
+            // then
+            assertThat(recoveryEvents(capture)).isEmpty();
+
+            // when
+            safe.export(spansOfSize(1));
+            recovery.succeed();
+
+            // then
+            assertThat(recoveryEvents(capture))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.fields()).containsEntry("failures", "2"));
+        }
+    }
+
+    @Test
+    void lateFailureStartedBeforeCloseDoesNotOpenNewRecoveryEpisode() {
+        // given
+        CompletableResultCode lateFailure = new CompletableResultCode();
+        CompletableResultCode failure = new CompletableResultCode();
+        CompletableResultCode recovery = new CompletableResultCode();
+        CompletableResultCode laterSuccess = new CompletableResultCode();
+        SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
+                step(lateFailure), step(failure), step(recovery), step(laterSuccess)
+        ));
+
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+            failure.fail();
+            safe.export(spansOfSize(1));
+            recovery.succeed();
+
+            // when
+            lateFailure.fail();
+            safe.export(spansOfSize(1));
+            laterSuccess.succeed();
+
+            // then
+            assertThat(recoveryEvents(capture))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.fields()).containsEntry("failures", "1"));
+            assertThat(safe.getExportFailures()).isEqualTo(2L);
+            assertThat(safe.getDroppedSpans()).isEqualTo(2L);
+        }
+    }
+
+    @Test
+    void lateFailureStartedBeforeOrdinarySuccessDoesNotOpenRecoveryEpisode() {
+        // given
+        CompletableResultCode lateFailure = new CompletableResultCode();
+        CompletableResultCode success = new CompletableResultCode();
+        CompletableResultCode laterSuccess = new CompletableResultCode();
+        SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
+                step(lateFailure), step(success), step(laterSuccess)
+        ));
+
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+
+            // when
+            success.succeed();
+            lateFailure.fail();
+            safe.export(spansOfSize(1));
+            laterSuccess.succeed();
+
+            // then
+            assertThat(recoveryEvents(capture)).isEmpty();
+            assertThat(safe.getExportFailures()).isEqualTo(1L);
+            assertThat(safe.getDroppedSpans()).isEqualTo(1L);
+        }
+    }
+
+    @Test
+    void recoveryEventReportsAllFailuresInClosedEpisodeOnlyOnce() {
+        // given
+        CompletableResultCode firstFailure = new CompletableResultCode();
+        CompletableResultCode secondFailure = new CompletableResultCode();
+        CompletableResultCode thirdFailure = new CompletableResultCode();
+        CompletableResultCode recovery = new CompletableResultCode();
+        CompletableResultCode laterSuccess = new CompletableResultCode();
+        SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
+                step(firstFailure), step(secondFailure), step(thirdFailure), step(recovery), step(laterSuccess)
+        ));
+
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
+            // when
+            safe.export(spansOfSize(1));
+            firstFailure.fail();
+            safe.export(spansOfSize(1));
+            secondFailure.fail();
+            safe.export(spansOfSize(1));
+            thirdFailure.fail();
+            safe.export(spansOfSize(1));
+            recovery.succeed();
+            safe.export(spansOfSize(1));
+            laterSuccess.succeed();
+
+            // then
+            assertThat(recoveryEvents(capture))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.fields()).containsEntry("failures", "3"));
+        }
+    }
+
+    @Test
+    void synchronousExportExceptionOpensRecoveryEpisode() {
+        // given
+        AtomicInteger calls = new AtomicInteger();
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
+            @Override
+            public CompletableResultCode export(Collection<SpanData> spans) {
+                if (calls.getAndIncrement() == 0) {
+                    throw new IllegalStateException("simulated synchronous export failure");
+                }
+                return CompletableResultCode.ofSuccess();
+            }
+
+            @Override
+            public CompletableResultCode flush() {
+                return CompletableResultCode.ofSuccess();
+            }
+
+            @Override
+            public CompletableResultCode shutdown() {
+                return CompletableResultCode.ofSuccess();
+            }
+        });
+
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
+            // when
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+
+            // then
+            assertThat(recoveryEvents(capture))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.fields()).containsEntry("failures", "1"));
+        }
+    }
+
+    @Test
+    void nullExportResultOpensRecoveryEpisode() {
+        // given
+        SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
+                step(null), step(CompletableResultCode.ofSuccess())
+        ));
+
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
+            // when
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+
+            // then
+            assertThat(recoveryEvents(capture))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.fields()).containsEntry("failures", "1"));
+        }
+    }
+
+    @Test
+    void partialSuccessClosesRecoveryEpisode() {
+        // given
+        SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
+                step(CompletableResultCode.ofFailure()),
+                step(CompletableResultCode.ofSuccess(), observation -> observation.recordRejected(1))
+        ));
+
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
+            // when
+            safe.export(spansOfSize(3));
+            safe.export(spansOfSize(3));
+
+            // then
+            assertThat(recoveryEvents(capture)).hasSize(1);
+            assertThat(safe.getPartialSuccessBatches()).isEqualTo(1L);
+            assertThat(safe.getExportedSpans()).isEqualTo(2L);
+            assertThat(safe.getRejectedSpans()).isEqualTo(1L);
+        }
+    }
+
+    @Test
+    void undeterminedSuccessClosesRecoveryEpisode() {
+        // given
+        SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
+                step(CompletableResultCode.ofFailure()),
+                step(CompletableResultCode.ofSuccess(), ExportResponseObservation::recordNotDetermined)
+        ));
+
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
+            // when
+            safe.export(spansOfSize(3));
+            safe.export(spansOfSize(3));
+
+            // then
+            assertThat(recoveryEvents(capture)).hasSize(1);
+            assertThat(safe.getAcceptedUnknownBatches()).isEqualTo(1L);
+            assertThat(safe.getExportedSpans()).isZero();
+        }
+    }
+
+    @Test
+    void recoveryPublicationIsLimitedPerExporterInstance() {
+        // given
+        AtomicLong clock = new AtomicLong();
+        SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
+                step(CompletableResultCode.ofFailure()), step(CompletableResultCode.ofSuccess()),
+                step(CompletableResultCode.ofFailure()), step(CompletableResultCode.ofSuccess()),
+                step(CompletableResultCode.ofFailure()), step(CompletableResultCode.ofSuccess())
+        ), clock::get);
+
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
+            // when
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+            clock.addAndGet(Duration.ofMinutes(1L).toNanos());
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+
+            // then
+            assertThat(recoveryEvents(capture))
+                    .hasSize(2)
+                    .allSatisfy(event -> assertThat(event.fields()).containsEntry("failures", "1"));
+        }
+    }
+
+    @Test
+    void filteredRecoveryConsumesPublicationPermitWithoutKeepingEpisodeOpen() {
+        // given
+        AtomicLong clock = new AtomicLong();
+        SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
+                step(CompletableResultCode.ofFailure()), step(CompletableResultCode.ofSuccess()),
+                step(CompletableResultCode.ofSuccess()),
+                step(CompletableResultCode.ofFailure()), step(CompletableResultCode.ofSuccess()),
+                step(CompletableResultCode.ofFailure()), step(CompletableResultCode.ofSuccess())
+        ), clock::get);
+
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
+            capture.applyLevel(AgentLogLevel.WARN);
+
+            // when
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+            capture.applyLevel(AgentLogLevel.INFO);
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+
+            // then
+            assertThat(recoveryEvents(capture)).isEmpty();
+
+            // when
+            clock.addAndGet(Duration.ofMinutes(1L).toNanos());
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+
+            // then
+            assertThat(recoveryEvents(capture))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.fields()).containsEntry("failures", "1"));
+        }
+    }
+
+    @Test
+    void exportGateSuccessDoesNotCloseRecoveryEpisode() {
+        // given
+        TracingSettingsSource policy = TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random());
+        SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
+                step(CompletableResultCode.ofFailure()), step(CompletableResultCode.ofSuccess())
+        ), policy);
+
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
+            safe.export(spansOfSize(1));
+            AcceptedPolicyMutationAccess.applyExporter(policy, false);
+
+            // when
+            safe.export(spansOfSize(1));
+
+            // then
+            assertThat(recoveryEvents(capture)).isEmpty();
+
+            // when
+            AcceptedPolicyMutationAccess.applyExporter(policy, true);
+            safe.export(spansOfSize(1));
+
+            // then
+            assertThat(recoveryEvents(capture)).hasSize(1);
+        }
+    }
+
+    @Test
+    void boundaryDroppedEmptyBatchDoesNotCloseRecoveryEpisode() {
+        // given
+        ScrubbingRuntime runtime = enabledRuntime("email");
+        SafeSpanExporter safe = safeExporter(
+                new QueuedSpanExporter(
+                        step(CompletableResultCode.ofFailure()), step(CompletableResultCode.ofSuccess())
+                ),
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
+                runtime
+        );
+        SpanData normal = ExporterBoundaryTestSupport.baseSpan("normal").build();
+        SpanData poisoned = new DelegatingSpanData(ExporterBoundaryTestSupport.baseSpan("poisoned").build()) {
+            @Override
+            public Attributes getAttributes() {
+                throw new IllegalStateException("simulated corruption");
+            }
+        };
+
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
+            safe.export(List.of(normal));
+
+            // when
+            CompletableResultCode dropped = safe.export(List.of(poisoned));
+
+            // then
+            assertThat(dropped.isSuccess()).isTrue();
+            assertThat(recoveryEvents(capture)).isEmpty();
+
+            // when
+            safe.export(List.of(normal));
+
+            // then
+            assertThat(recoveryEvents(capture)).hasSize(1);
+        }
+    }
+
+    @Test
+    void acceptedCountDeliveryFailureLeavesRecoveryEpisodeClosed() throws Exception {
+        // given
+        SelectiveFailureOutputStream output = new SelectiveFailureOutputStream(
+                "\"event_name\":\"EXPORT_ACCEPTED_SPAN_COUNT_UNAVAILABLE\""
+        );
+        AtomicLong clock = new AtomicLong();
+        SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
+                step(CompletableResultCode.ofFailure()),
+                step(CompletableResultCode.ofSuccess(), ExportResponseObservation::recordNotDetermined),
+                step(CompletableResultCode.ofFailure()),
+                step(CompletableResultCode.ofSuccess())
+        ), clock::get);
+
+        try (AutoCloseable ignored = AgentLoggingTestSupport.install(output)) {
+            AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.TRACE);
+
+            // when
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+            clock.addAndGet(Duration.ofMinutes(1L).toNanos());
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+        }
+
+        // then
+        assertThat(output.failures()).isEqualTo(1);
+        assertThat(output.contents())
+                .contains("\"event_name\":\"SAFE_EXPORT_SUCCEEDED_AFTER_FAILURES\"")
+                .doesNotContain("\"event_name\":\"EXPORT_COMPLETION_CALLBACK_FAILED\"");
+        assertThat(output.contents().lines()
+                .filter(line -> line.contains("\"event_name\":\"SAFE_EXPORT_SUCCEEDED_AFTER_FAILURES\"")))
+                .hasSize(2)
+                .allMatch(line -> line.contains("\"failures\":\"1\""));
+        assertThat(safe.getAcceptedUnknownBatches()).isEqualTo(1L);
+    }
+
+    @Test
+    void fatalAcceptedCountLoggingFailureCannotUndoRecoveryClosure() throws Exception {
+        // given
+        SelectiveFailureOutputStream output = new SelectiveFailureOutputStream(
+                "\"event_name\":\"EXPORT_ACCEPTED_SPAN_COUNT_UNAVAILABLE\"",
+                true
+        );
+        AtomicLong clock = new AtomicLong();
+        SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
+                step(CompletableResultCode.ofFailure()),
+                step(CompletableResultCode.ofSuccess(), ExportResponseObservation::recordNotDetermined),
+                step(CompletableResultCode.ofFailure()),
+                step(CompletableResultCode.ofSuccess())
+        ), clock::get);
+
+        try (AutoCloseable ignored = AgentLoggingTestSupport.install(output)) {
+            AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.TRACE);
+
+            // when
+            safe.export(spansOfSize(1));
+            assertThatThrownBy(() -> safe.export(spansOfSize(1)))
+                    .isInstanceOf(LinkageError.class)
+                    .hasMessage("simulated fatal log delivery failure");
+            clock.addAndGet(Duration.ofMinutes(1L).toNanos());
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+        }
+
+        // then
+        assertThat(output.failures()).isEqualTo(1);
+        assertThat(output.contents().lines()
+                .filter(line -> line.contains("\"event_name\":\"SAFE_EXPORT_SUCCEEDED_AFTER_FAILURES\"")))
+                .hasSize(2)
+                .allMatch(line -> line.contains("\"failures\":\"1\""));
+        assertThat(safe.getAcceptedUnknownBatches()).isEqualTo(1L);
+        assertThat(safe.getExportFailures()).isEqualTo(2L);
+    }
+
+    @Test
+    void sequenceFencingSurvivesSignedLongRollover() throws Exception {
+        // given
+        SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
+                step(CompletableResultCode.ofFailure()), step(CompletableResultCode.ofSuccess())
+        ));
+        Field operationSeq = SafeSpanExporter.class.getDeclaredField("operationSeq");
+        operationSeq.setAccessible(true);
+        operationSeq.setLong(safe, Long.MAX_VALUE - 1L);
+
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
+            // when
+            safe.export(spansOfSize(1));
+            safe.export(spansOfSize(1));
+
+            // then
+            assertThat(recoveryEvents(capture))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.fields()).containsEntry("failures", "1"));
         }
     }
 
@@ -331,7 +840,8 @@ class SafeSpanExporterTest {
                 delegate,
                 TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled(),
-                new RateLimitedLogger(SafeSpanExporterTest.class));
+                new RateLimitedLogger(SafeSpanExporterTest.class),
+                System::nanoTime);
              AgentLogCapture logs = AgentLogCapture.installed()) {
             // when
             CompletableResultCode result = safe.flush();
@@ -360,7 +870,8 @@ class SafeSpanExporterTest {
                 delegate,
                 TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled(),
-                new RateLimitedLogger(SafeSpanExporterTest.class));
+                new RateLimitedLogger(SafeSpanExporterTest.class),
+                System::nanoTime);
              AgentLogCapture logs = AgentLogCapture.installed()) {
             CompletableResultCode result = safe.shutdown();
 
@@ -698,7 +1209,7 @@ class SafeSpanExporterTest {
     }
 
     private static SpanExporter respondingDelegate(CompletableResultCode exportResult,
-                                                   Consumer<ExportResponseObservation> response) {
+                                                    Consumer<ExportResponseObservation> response) {
         return new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
@@ -717,6 +1228,22 @@ class SafeSpanExporterTest {
                 return CompletableResultCode.ofSuccess();
             }
         };
+    }
+
+    private static List<CapturedLogEvent> recoveryEvents(AgentLogCapture capture) {
+        return capture.events().stream()
+                .filter(event -> "SAFE_EXPORT_SUCCEEDED_AFTER_FAILURES".equals(event.eventName()))
+                .toList();
+    }
+
+    private static ExportStep step(CompletableResultCode result) {
+        return step(result, observation -> {
+        });
+    }
+
+    private static ExportStep step(CompletableResultCode result,
+                                   Consumer<ExportResponseObservation> response) {
+        return new ExportStep(result, response);
     }
 
     @Test
@@ -1267,6 +1794,89 @@ class SafeSpanExporterTest {
             assertThat(Modifier.isPublic(constructor.getModifiers()))
                     .as("only the production constructor may be public: %s", constructor)
                     .isEqualTo(productionSignature);
+        }
+    }
+
+    private record ExportStep(CompletableResultCode result,
+                              Consumer<ExportResponseObservation> response) {
+
+        private ExportStep {
+            Objects.requireNonNull(response, "response");
+        }
+    }
+
+    private static final class QueuedSpanExporter implements SpanExporter {
+
+        private final Deque<ExportStep> steps = new ArrayDeque<>();
+
+        private QueuedSpanExporter(ExportStep... steps) {
+            Collections.addAll(this.steps, steps);
+        }
+
+        @Override
+        public synchronized CompletableResultCode export(Collection<SpanData> spans) {
+            ExportStep step = steps.removeFirst();
+            ExportResponseObservation observation = Objects.requireNonNull(
+                    ExportResponseScope.current(),
+                    "export operation must be observable"
+            );
+            step.response().accept(observation);
+            return step.result();
+        }
+
+        @Override
+        public CompletableResultCode flush() {
+            return CompletableResultCode.ofSuccess();
+        }
+
+        @Override
+        public CompletableResultCode shutdown() {
+            return CompletableResultCode.ofSuccess();
+        }
+    }
+
+    private static final class SelectiveFailureOutputStream extends OutputStream {
+
+        private final ByteArrayOutputStream delivered = new ByteArrayOutputStream();
+        private final String rejectedFragment;
+        private final boolean fatal;
+        private int failures;
+
+        private SelectiveFailureOutputStream(String rejectedFragment) {
+            this(rejectedFragment, false);
+        }
+
+        private SelectiveFailureOutputStream(String rejectedFragment, boolean fatal) {
+            this.rejectedFragment = Objects.requireNonNull(rejectedFragment, "rejectedFragment");
+            this.fatal = fatal;
+        }
+
+        @Override
+        public synchronized void write(int value) {
+            delivered.write(value);
+        }
+
+        @Override
+        public synchronized void write(byte[] bytes, int offset, int length) throws IOException {
+            String payload = new String(bytes, offset, length, StandardCharsets.UTF_8);
+            if (payload.contains(rejectedFragment)) {
+                failures++;
+                if (fatal) {
+                    throw new LinkageError("simulated fatal log delivery failure");
+                }
+
+                throw new IOException("simulated log delivery failure");
+            }
+
+            delivered.write(bytes, offset, length);
+        }
+
+        private synchronized int failures() {
+            return failures;
+        }
+
+        private synchronized String contents() {
+            return delivered.toString(StandardCharsets.UTF_8);
         }
     }
 

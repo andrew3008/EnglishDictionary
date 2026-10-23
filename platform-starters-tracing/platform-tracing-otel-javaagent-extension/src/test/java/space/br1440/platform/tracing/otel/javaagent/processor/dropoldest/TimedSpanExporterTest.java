@@ -6,16 +6,21 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.data.SpanData;
@@ -141,6 +146,49 @@ class TimedSpanExporterTest {
         assertThat(events.get(3).fields()).isEmpty();
     }
 
+    @Test
+    void processorTimeoutWithoutDelegateCompletionDoesNotOpenRecoveryEpisode() {
+        // given
+        CompletableResultCode pending = new CompletableResultCode();
+        AtomicInteger calls = new AtomicInteger();
+        SpanExporter transport = new SpanExporter() {
+            @Override
+            public CompletableResultCode export(Collection<SpanData> spans) {
+                return calls.getAndIncrement() == 0 ? pending : CompletableResultCode.ofSuccess();
+            }
+
+            @Override
+            public CompletableResultCode flush() {
+                return CompletableResultCode.ofSuccess();
+            }
+
+            @Override
+            public CompletableResultCode shutdown() {
+                return CompletableResultCode.ofSuccess();
+            }
+        };
+
+        SafeSpanExporter safe = new SafeSpanExporter(
+                transport,
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
+                ScrubbingRuntimeTestFixtures.disabled()
+        );
+        DropOldestExportMetrics metrics = new DropOldestExportMetrics();
+        TimedSpanExporter timed = new TimedSpanExporter(safe, TIMEOUT_NANOS, TIMEOUT_NANOS, metrics);
+
+        // when
+        boolean completed = timed.export(List.of());
+        safe.export(List.of());
+
+        // then
+        assertThat(completed).isFalse();
+        assertThat(pending.isDone()).isFalse();
+        assertThat(metrics.timeoutsTotal()).isEqualTo(1L);
+        assertThat(safe.getExportFailures()).isZero();
+        assertThat(capture.events())
+                .noneMatch(event -> "SAFE_EXPORT_SUCCEEDED_AFTER_FAILURES".equals(event.eventName()));
+    }
+
     private static TimedSpanExporter exporter(Supplier<CompletableResultCode> exportResult,
                                               Supplier<CompletableResultCode> shutdownResult,
                                               DropOldestExportMetrics metrics) {
@@ -160,6 +208,7 @@ class TimedSpanExporterTest {
                 return shutdownResult.get();
             }
         };
+
         return new TimedSpanExporter(
                 delegate,
                 TIMEOUT_NANOS,

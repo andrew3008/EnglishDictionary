@@ -47,7 +47,8 @@ class AgentLoggingRuntimeTest {
                 "scrub failed",
                 fields,
                 null,
-                null
+                null,
+                17L
         );
 
         // when
@@ -61,6 +62,7 @@ class AgentLoggingRuntimeTest {
         assertThat(json).contains("\"original_event_code\":\"PTA-SCRUB-013\"");
         assertThat(json).contains("\"original_event_name\":\"SCRUB_BOUNDARY_FAILED\"");
         assertThat(json).contains("\"fallback_reason\":\"byte_budget\"");
+        assertThat(json).contains("\"suppressed_count\":\"17\"");
         assertThat(json).doesNotContain("x".repeat(AgentLogRecord.MAX_ARGUMENT_CHARS));
     }
 

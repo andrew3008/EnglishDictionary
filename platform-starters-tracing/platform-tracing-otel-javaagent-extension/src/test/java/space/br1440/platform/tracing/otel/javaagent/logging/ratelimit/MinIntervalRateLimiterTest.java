@@ -137,40 +137,20 @@ class MinIntervalRateLimiterTest {
     }
 
     @Test
-    void doesNotAccumulatePermitsDuringIdleUnlikeTokenBucket() {
+    void doesNotAccumulatePermitsDuringIdle() {
         // given
         long intervalNanos = TimeUnit.MINUTES.toNanos(1L);
         AtomicLong clock = new AtomicLong();
-        TokenBucketRateLimiter tokenBucket = TokenBucketRateLimiter.perInterval(
-                5.0d,
-                1L,
-                TimeUnit.MINUTES,
-                clock::get
-        );
         MinIntervalRateLimiter minInterval = new MinIntervalRateLimiter(intervalNanos, clock::get);
 
         // when
-        long initialTokenPermits = countTokenPermits(tokenBucket);
         long initialMinIntervalPermits = countMinIntervalPermits(minInterval);
         clock.addAndGet(intervalNanos * 10L);
-        long refilledTokenPermits = countTokenPermits(tokenBucket);
         long resumedMinIntervalPermits = countMinIntervalPermits(minInterval);
 
         // then
-        assertThat(initialTokenPermits).isEqualTo(5L);
         assertThat(initialMinIntervalPermits).isEqualTo(1L);
-        assertThat(refilledTokenPermits).isEqualTo(5L);
         assertThat(resumedMinIntervalPermits).isEqualTo(1L);
-    }
-
-    private static long countTokenPermits(TokenBucketRateLimiter limiter) {
-        long permits = 0L;
-        for (int i = 0; i < 6; i++) {
-            if (limiter.trySpend(1.0d)) {
-                permits++;
-            }
-        }
-        return permits;
     }
 
     private static long countMinIntervalPermits(MinIntervalRateLimiter limiter) {
@@ -180,6 +160,7 @@ class MinIntervalRateLimiterTest {
                 permits++;
             }
         }
+
         return permits;
     }
 }

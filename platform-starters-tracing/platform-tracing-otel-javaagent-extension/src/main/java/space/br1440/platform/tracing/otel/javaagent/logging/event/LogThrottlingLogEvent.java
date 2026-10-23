@@ -1,7 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.logging.event;
 
 import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.noCause;
-import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.INFO;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.WARN;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.ERROR;
 
@@ -9,13 +8,6 @@ import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCod
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
 public enum LogThrottlingLogEvent implements AgentLogEventType {
-
-    RATE_RECOVERY(
-            noCause(
-                    AgentEventCode.RATE_RECOVERY, INFO,
-                    "SafeSpanExporter: export recovered after a series of failures"
-            )
-    ),
 
     RATE_WARNINGS_THROTTLED(
             noCause(

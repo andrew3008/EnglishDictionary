@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.logging;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -215,10 +215,8 @@ class TypedAgentLoggingPipelineTest {
         AtomicInteger deniedCallbackCalls = new AtomicInteger();
         RateLimitedLogger rateLimited = new RateLimitedLogger(
                 logger,
-                1.0d,
-                1.0d,
-                1L,
-                TimeUnit.MINUTES,
+                1,
+                Duration.ofMinutes(1L),
                 clock::get
         );
         EmitResult fast = rateLimited.logWithResult(

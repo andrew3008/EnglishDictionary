@@ -13,12 +13,12 @@ import space.br1440.platform.tracing.otel.javaagent.logging.ratelimit.SeverityTh
 
 @AnalyzeClasses(
         packages = "space.br1440.platform.tracing.otel.javaagent",
-        importOptions = ImportOption.DoNotIncludeTests.class)
+        importOptions = ImportOption.DoNotIncludeTests.class
+)
 class LoggingPackageStructureArchTest {
 
     private static final String LOGGING = "space.br1440.platform.tracing.otel.javaagent.logging";
 
-    // given/when/then
     @ArchTest
     @SuppressWarnings("unused")
     static final ArchRule logging_layers = layeredArchitecture()
@@ -32,14 +32,12 @@ class LoggingPackageStructureArchTest {
             .whereLayer("RateLimit").mayOnlyBeAccessedByLayers("Facade")
             .whereLayer("Schema").mayOnlyBeAccessedByLayers("Facade", "Event");
 
-    // given/when/then
     @ArchTest
     @SuppressWarnings("unused")
     static final ArchRule ratelimit_is_a_pure_primitive = classes()
             .that().resideInAPackage(LOGGING + ".ratelimit..")
             .should().onlyDependOnClassesThat().resideInAnyPackage(LOGGING + ".ratelimit..", "java..");
 
-    // given/when/then
     @ArchTest
     @SuppressWarnings("unused")
     static final ArchRule severity_throttle_is_owned_by_rate_limited_logger = classes()
