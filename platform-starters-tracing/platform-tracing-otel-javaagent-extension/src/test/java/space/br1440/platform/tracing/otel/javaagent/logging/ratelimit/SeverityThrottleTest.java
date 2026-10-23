@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 class SeverityThrottleTest {
 
     private static final int DEFAULT_BURST = 5;
+    private static final int CONCURRENT_ATTEMPTS = 16;
     private static final Duration INTERVAL = Duration.ofMinutes(1L);
     private static final long INTERVAL_NANOS = INTERVAL.toNanos();
 
@@ -317,10 +318,10 @@ class SeverityThrottleTest {
         SeverityThrottle throttle = throttle(DEFAULT_BURST, clock);
 
         // when
-        List<SeverityThrottle.Acquisition> acquisitions = acquireConcurrently(throttle, 16);
+        List<SeverityThrottle.Acquisition> acquisitions = acquireConcurrently(throttle);
 
         // then
-        assertCardinality(acquisitions, DEFAULT_BURST, 1, 10);
+        assertCardinality(acquisitions);
     }
 
     @Test
@@ -334,10 +335,10 @@ class SeverityThrottleTest {
         clock.set(INTERVAL_NANOS);
 
         // when
-        List<SeverityThrottle.Acquisition> acquisitions = acquireConcurrently(throttle, 16);
+        List<SeverityThrottle.Acquisition> acquisitions = acquireConcurrently(throttle);
 
         // then
-        assertCardinality(acquisitions, DEFAULT_BURST, 1, 10);
+        assertCardinality(acquisitions);
         assertThat(acquisitions)
                 .filteredOn(acquisition -> acquisition.suppressedCount() > 0L)
                 .singleElement()
@@ -421,19 +422,18 @@ class SeverityThrottleTest {
         return acquisitions;
     }
 
-    private static List<SeverityThrottle.Acquisition> acquireConcurrently(SeverityThrottle throttle,
-                                                                          int threadCount) throws Exception {
-        CyclicBarrier start = new CyclicBarrier(threadCount);
-        List<Callable<SeverityThrottle.Acquisition>> attempts = new ArrayList<>(threadCount);
-        for (int index = 0; index < threadCount; index++) {
+    private static List<SeverityThrottle.Acquisition> acquireConcurrently(SeverityThrottle throttle) throws Exception {
+        CyclicBarrier start = new CyclicBarrier(CONCURRENT_ATTEMPTS);
+        List<Callable<SeverityThrottle.Acquisition>> attempts = new ArrayList<>(CONCURRENT_ATTEMPTS);
+        for (int index = 0; index < CONCURRENT_ATTEMPTS; index++) {
             attempts.add(() -> {
                 start.await();
                 return throttle.tryAcquire();
             });
         }
 
-        List<SeverityThrottle.Acquisition> acquisitions = new ArrayList<>(threadCount);
-        try (ExecutorService executor = Executors.newFixedThreadPool(threadCount)) {
+        List<SeverityThrottle.Acquisition> acquisitions = new ArrayList<>(CONCURRENT_ATTEMPTS);
+        try (ExecutorService executor = Executors.newFixedThreadPool(CONCURRENT_ATTEMPTS)) {
             List<Future<SeverityThrottle.Acquisition>> completed = executor.invokeAll(attempts);
             for (Future<SeverityThrottle.Acquisition> attempt : completed) {
                 acquisitions.add(attempt.get());
@@ -442,18 +442,17 @@ class SeverityThrottleTest {
         return acquisitions;
     }
 
-    private static void assertCardinality(List<SeverityThrottle.Acquisition> acquisitions,
-                                          int admitted,
-                                          int marked,
-                                          int denied) {
+    private static void assertCardinality(List<SeverityThrottle.Acquisition> acquisitions) {
         assertThat(acquisitions)
                 .filteredOn(acquisition -> acquisition.decision() == SeverityThrottle.Decision.ADMIT)
-                .hasSize(admitted);
+                .hasSize(DEFAULT_BURST);
+
         assertThat(acquisitions)
                 .filteredOn(acquisition -> acquisition.decision() == SeverityThrottle.Decision.ADMIT_WITH_MARKER)
-                .hasSize(marked);
+                .hasSize(1);
+
         assertThat(acquisitions)
                 .filteredOn(acquisition -> acquisition.decision() == SeverityThrottle.Decision.DENY)
-                .hasSize(denied);
+                .hasSize(CONCURRENT_ATTEMPTS - DEFAULT_BURST - 1);
     }
 }

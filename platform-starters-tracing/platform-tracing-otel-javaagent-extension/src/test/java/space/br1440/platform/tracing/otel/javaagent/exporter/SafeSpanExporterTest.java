@@ -1857,7 +1857,7 @@ class SafeSpanExporterTest {
         }
 
         @Override
-        public synchronized void write(byte[] bytes, int offset, int length) throws IOException {
+        public synchronized void write(@Nonnull byte[] bytes, int offset, int length) throws IOException {
             String payload = new String(bytes, offset, length, StandardCharsets.UTF_8);
             if (payload.contains(rejectedFragment)) {
                 failures++;
