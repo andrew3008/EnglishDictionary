@@ -61,6 +61,7 @@ public final class ValidationObservationSource {
 
         static ValidationSnapshot capture(OwnerRegistrationState<ValidatingSpanProcessor> state,
                                           TracingSettingsRevision policy) {
+            //noinspection resource — процессор принадлежит OwnerRegistrationSlot и здесь не закрывается
             long violationsTotal =
                     state instanceof OwnerRegistrationState.Present<ValidatingSpanProcessor> present
                             ? present.owner().getValidationViolationsTotal()
