@@ -11,7 +11,6 @@ import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvide
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.internal.ExtendedSpanProcessor;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
-
 import lombok.experimental.UtilityClass;
 
 @UtilityClass

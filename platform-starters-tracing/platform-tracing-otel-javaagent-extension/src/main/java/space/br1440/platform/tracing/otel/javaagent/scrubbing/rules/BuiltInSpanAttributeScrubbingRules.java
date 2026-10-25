@@ -16,7 +16,6 @@ public enum BuiltInSpanAttributeScrubbingRules {
     JWT("jwt", 20, true),
     WEBHOOK_TOKEN("webhook-token", 25, true),
     PASSWORD_KEY("password", 50, true),
-    INFRA_CREDENTIAL("infra-credential", 55, true),
     SSH_CREDENTIAL("ssh-credential", 60, true),
     LOCATION("location", 100, false),
     HARDWARE_IDENTITY("hardware-identity", 110, false),
@@ -47,7 +46,6 @@ public enum BuiltInSpanAttributeScrubbingRules {
             case JWT -> new JwtRule();
             case WEBHOOK_TOKEN -> new WebhookTokenRule();
             case PASSWORD_KEY -> new PasswordKeyRule();
-            case INFRA_CREDENTIAL -> new InfraCredentialRule();
             case SSH_CREDENTIAL -> new SshCredentialRule();
             case LOCATION -> new LocationRule();
             case HARDWARE_IDENTITY -> new HardwareIdentityRule();
@@ -84,7 +82,6 @@ public enum BuiltInSpanAttributeScrubbingRules {
                 EMAIL.configName(),
                 OAUTH_HEADER.configName(),
                 X_AUTH_HEADER.configName(),
-                INFRA_CREDENTIAL.configName(),
                 WEBHOOK_TOKEN.configName(),
                 SSH_CREDENTIAL.configName(),
                 USER_IDENTITY.configName(),

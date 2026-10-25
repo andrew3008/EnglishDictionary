@@ -9,11 +9,6 @@ import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicySnapsh
 
 public final class ProductionSamplingPolicyChain {
 
-    private static final String[] FOUNDATION_RULE_NAMES = {
-            SamplingPolicyRuleNames.KILL_SWITCH,
-            SamplingPolicyRuleNames.HARD_DROP
-    };
-
     private static final String[] PRODUCTION_RULE_NAMES = {
             SamplingPolicyRuleNames.KILL_SWITCH,
             SamplingPolicyRuleNames.HARD_DROP,
@@ -32,19 +27,13 @@ public final class ProductionSamplingPolicyChain {
     private final RouteRatioPolicyRule routeRatioRule = new RouteRatioPolicyRule();
     private final DefaultRatioPolicyRule defaultRatioRule = new DefaultRatioPolicyRule();
     private final String[] ruleNames;
-    private final boolean production;
 
-    private ProductionSamplingPolicyChain(String[] ruleNames, boolean production) {
-        this.ruleNames = ruleNames.clone();
-        this.production = production;
+    private ProductionSamplingPolicyChain() {
+        this.ruleNames = PRODUCTION_RULE_NAMES.clone();
     }
 
     public static ProductionSamplingPolicyChain production() {
-        return new ProductionSamplingPolicyChain(PRODUCTION_RULE_NAMES, true);
-    }
-
-    public static ProductionSamplingPolicyChain foundation() {
-        return new ProductionSamplingPolicyChain(FOUNDATION_RULE_NAMES, false);
+        return new ProductionSamplingPolicyChain();
     }
 
     public SamplingPolicyDecision evaluate(SamplingPolicyRequest request, SamplingPolicySnapshot snapshot) {
@@ -75,10 +64,6 @@ public final class ProductionSamplingPolicyChain {
         decision = hardDropRule.evaluate(request, startupRules.getDroppedRoutes());
         if (decision != null) {
             return decision;
-        }
-
-        if (!production) {
-            return SamplingPolicyDecision.abstain();
         }
 
         decision = forceHeaderRule.evaluate(request, startupRules.getForceRecordValues());

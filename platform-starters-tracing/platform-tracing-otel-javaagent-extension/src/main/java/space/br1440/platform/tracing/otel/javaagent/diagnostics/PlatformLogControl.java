@@ -13,8 +13,6 @@ public final class PlatformLogControl {
     private static final PlatformLogControl SHARED = new PlatformLogControl();
     private static final TracingSettings UNBOUND_POLICY = TracingSettingsSource.defaultPolicy();
 
-    private final AtomicLong bindCount = new AtomicLong();
-    private TracingSettingsSource active;
     private final AtomicLong generation = new AtomicLong();
     private final Object bindLock = new Object();
     private long activeGeneration;
@@ -29,7 +27,6 @@ public final class PlatformLogControl {
 
     private void releaseActive() {
         synchronized (bindLock) {
-            active = null;
             activeGeneration = 0L;
             applyUnboundDiagnosticsLevel();
         }
@@ -52,13 +49,10 @@ public final class PlatformLogControl {
                         "PlatformLogControl already has an active accepted-policy registration");
             }
 
-            TracingSettingsSource previous = active;
             long token = generation.incrementAndGet();
-            active = policy;
             activeGeneration = token;
-            bindCount.incrementAndGet();
             policy.projectDiagnosticsLevel();
-            return new AcceptedPolicyRegistration(token, previous);
+            return new AcceptedPolicyRegistration(token);
         }
     }
 
@@ -69,12 +63,10 @@ public final class PlatformLogControl {
     private final class AcceptedPolicyRegistration implements AutoCloseable {
 
         private final long token;
-        private final TracingSettingsSource previous;
         private boolean closed;
 
-        private AcceptedPolicyRegistration(long token, TracingSettingsSource previous) {
+        private AcceptedPolicyRegistration(long token) {
             this.token = token;
-            this.previous = previous;
         }
 
         @Override
@@ -89,13 +81,8 @@ public final class PlatformLogControl {
                     return;
                 }
 
-                active = previous;
                 activeGeneration = 0L;
-                if (previous == null) {
-                    applyUnboundDiagnosticsLevel();
-                } else {
-                    previous.projectDiagnosticsLevel();
-                }
+                applyUnboundDiagnosticsLevel();
             }
         }
     }

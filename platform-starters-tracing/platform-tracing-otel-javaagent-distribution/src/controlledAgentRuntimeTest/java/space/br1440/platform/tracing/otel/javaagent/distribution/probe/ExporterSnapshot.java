@@ -12,20 +12,18 @@ import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpe
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 record ExporterSnapshot(String agentInstanceId,
-                        long captureSequence,
                         long ownerGeneration,
                         long partialSuccessBatches,
                         long rejectedSpans,
                         long exportedSpans) {
 
-    private static final String PARTIAL_SUCCESS_BATCHES = "partial_success_batches";
-    private static final String REJECTED_SPANS = "rejected_spans";
-    private static final String EXPORTED_SPANS = "exported_spans";
+    private static final String PARTIAL_SUCCESS_BATCHES = JmxWireContract.KEY_SAFE_EXPORTER_METRICS_PARTIAL_SUCCESS_BATCHES;
+    private static final String REJECTED_SPANS = JmxWireContract.KEY_SAFE_EXPORTER_METRICS_REJECTED_SPANS;
+    private static final String EXPORTED_SPANS = JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS;
     private static final Set<String> REQUIRED_METRICS = Set.of(PARTIAL_SUCCESS_BATCHES, REJECTED_SPANS, EXPORTED_SPANS);
 
     ExporterSnapshot {
         requireCanonicalUuid(agentInstanceId);
-        requirePositive("captureSequence", captureSequence);
         requirePositive("ownerGeneration", ownerGeneration);
         requireNonNegative("partialSuccessBatches", partialSuccessBatches);
         requireNonNegative("rejectedSpans", rejectedSpans);
@@ -54,11 +52,11 @@ record ExporterSnapshot(String agentInstanceId,
 
         return new ExporterSnapshot(
                 JmxValues.nonBlankString(observation, JmxWireContract.FIELD_EXPORT_OBSERVATION_AGENT_INSTANCE_ID),
-                JmxValues.longValue(observation, JmxWireContract.FIELD_EXPORT_OBSERVATION_CAPTURE_SEQUENCE),
                 JmxValues.longValue(exporter, JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_GENERATION),
                 metrics.get(PARTIAL_SUCCESS_BATCHES),
                 metrics.get(REJECTED_SPANS),
-                metrics.get(EXPORTED_SPANS));
+                metrics.get(EXPORTED_SPANS)
+        );
     }
 
     MetricsDelta deltaFrom(ExporterSnapshot baseline) {
@@ -100,10 +98,6 @@ record ExporterSnapshot(String agentInstanceId,
                     "Safe exporter owner changed while observing OTLP partial success: baseline=%d, current=%d"
                             .formatted(baseline.ownerGeneration, ownerGeneration));
         }
-        if (captureSequence < baseline.captureSequence) {
-            throw new IllegalStateException("Export observation sequence decreased: baseline=%d, current=%d"
-                    .formatted(baseline.captureSequence, captureSequence));
-        }
     }
 
     private static long counterDelta(String name, long current, long baseline) {
@@ -128,6 +122,7 @@ record ExporterSnapshot(String agentInstanceId,
         }
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static void requirePositive(String name, long value) {
         if (value <= 0L) {
             throw new IllegalStateException("%s must be positive: %d".formatted(name, value));

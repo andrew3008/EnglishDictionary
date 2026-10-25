@@ -1,7 +1,13 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime;
 
-import java.util.List;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.List;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
@@ -19,9 +25,6 @@ import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ScrubbingRuntimeTest {
 
@@ -67,10 +70,43 @@ class ScrubbingRuntimeTest {
                         runtimeRule(new MatchEverythingRule(), RuleOrigin.BUILT_IN),
                         runtimeRule(new MatchEverythingRule(), RuleOrigin.BUNDLED_SPI),
                         runtimeRule(new MatchEverythingRule(), RuleOrigin.EXTERNAL_EXTENSION)),
-                1L, null, false);
+                1L,
+                null,
+                false
+        );
 
         // then
         assertThat(runtime.attributeExecutableRules()).hasSize(3);
+    }
+
+    @Test
+    void classloader_close_failure_is_replayed_to_lifecycle_owner() {
+        // given
+        IOException closeFailure = new IOException("Simulated classloader close failure");
+        URLClassLoader classLoader = new URLClassLoader(new URL[0]) {
+            @Override
+            public void close() throws IOException {
+                throw closeFailure;
+            }
+        };
+        ScrubbingRuntime runtime = ScrubbingRuntime.create(
+                List.of(runtimeRule(new MatchEverythingRule(), RuleOrigin.BUILT_IN)),
+                1L,
+                null,
+                false,
+                classLoader
+        );
+
+        // when
+        // then
+        assertThatThrownBy(runtime::close)
+                .isInstanceOf(UncheckedIOException.class)
+                .hasMessage("Failed to close scrubbing extension classloader")
+                .hasCause(closeFailure);
+        assertThatThrownBy(runtime::close)
+                .isInstanceOf(UncheckedIOException.class)
+                .hasMessage("Failed to close scrubbing extension classloader")
+                .hasCause(closeFailure);
     }
 
     @Test
@@ -78,7 +114,11 @@ class ScrubbingRuntimeTest {
     void installationBarrierRequiresAllFourAcknowledgements() {
         // given
         ScrubbingRuntime runtime = ScrubbingRuntime.create(
-                List.of(runtimeRule(new MatchEverythingRule(), RuleOrigin.BUILT_IN)), 1L, null, false);
+                List.of(runtimeRule(new MatchEverythingRule(), RuleOrigin.BUILT_IN)),
+                1L,
+                null,
+                false
+        );
 
         // then
         assertThatThrownBy(runtime::requireInstallationComplete)
@@ -209,6 +249,7 @@ class ScrubbingRuntimeTest {
                     .as("open breaker skip must not keep incrementing the failure counter")
                     .isEqualTo(1L);
             assertThat(runtime.totalBreakerFailures()).isEqualTo(1L);
+            assertThat(runtime.skippedCircuitOpen()).isEqualTo(1L);
         }
     }
 }

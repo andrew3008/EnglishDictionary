@@ -4,7 +4,5 @@ import java.util.Map;
 
 public record DiagnosticsObservation(String agentInstanceId,
                                      long invalidConfigCount,
-                                     Map<String, Long> safeWrapperMetrics,
-                                     String platformLogLevel,
-                                     boolean propagationEnabled) {
+                                     Map<String, Long> safeWrapperMetrics) {
 }

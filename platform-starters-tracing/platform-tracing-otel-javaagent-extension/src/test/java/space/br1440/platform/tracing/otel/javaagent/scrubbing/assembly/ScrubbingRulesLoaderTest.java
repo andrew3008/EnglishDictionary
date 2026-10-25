@@ -1,10 +1,13 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
 
 class ScrubbingRulesLoaderTest {
 
@@ -21,10 +24,6 @@ class ScrubbingRulesLoaderTest {
 
     @Test
     void preservesOrderAndDeduplicatesEntries() {
-        // Дедупликация и сохранение порядка проверяется через комбинацию built-in + additional
-        // на уровне PlatformAutoConfigurationCustomizer; здесь проверяем сам loader на
-        // нормализацию whitespace и устойчивость к неизвестным именам (loader сам их не валидирует —
-        // resolution делает BuiltInSpanAttributeScrubbingRules.resolve, неизвестные станут warning'ом выше).
         // when
         List<String> rules = ScrubbingRulesLoader.load("classpath:tracing/scrubbing-rules-with-unknown.properties", cl);
 
@@ -42,18 +41,20 @@ class ScrubbingRulesLoaderTest {
     }
 
     @Test
-    void missingClasspathResourceReturnsEmptyListWithoutThrowing() {
-        // Файл отсутствует — loader возвращает пустой список и пишет WARN в лог, но не бросает.
+    void missingClasspathResourceFailsClosed() {
         // when
-        List<String> rules = ScrubbingRulesLoader.load("classpath:tracing/no-such-file.properties", cl);
-
         // then
-        assertThat(rules).isEmpty();
+        assertThatThrownBy(() -> ScrubbingRulesLoader.load("classpath:tracing/no-such-file.properties", cl))
+                .isInstanceOfSatisfying(SanitizerBootstrapException.class, failure -> {
+                    assertThat(failure.code()).isEqualTo(SanitizerBootstrapException.RULE_LOADING_FAILED);
+                    assertThat(failure)
+                            .hasMessageContaining("platform.tracing.scrubbing.rules-config")
+                            .hasMessageContaining("classpath:tracing/no-such-file.properties");
+                });
     }
 
     @Test
     void blankPathConfigReturnsEmptyList() {
-        // Эмулируем отсутствие свойства через пустой путь без префикса.
         // when
         List<String> rules = ScrubbingRulesLoader.load("", cl);
         // then
@@ -62,8 +63,6 @@ class ScrubbingRulesLoaderTest {
 
     @Test
     void nullPathReturnsEmptyList() {
-        // ScrubbingExtensionConfig.rulesConfig() returns null when property is absent.
-        // load(String, ClassLoader) must handle null without NPE.
         // when
         List<String> rules = ScrubbingRulesLoader.load(null, cl);
         // then

@@ -282,10 +282,10 @@ class PackagedTracingCertificationTest {
                 "EXTENSION_MISSING", "PLATFORM_EXTENSION_MISSING", null);
 
         assertFailure("spi-metadata-removed", spiMetadataRemoved,
-                "EXTENSION_MISSING", "PLATFORM_EXTENSION_MISSING", null);
+                "EXTENSION_FAILED", "PLATFORM_ACP_NOT_EXECUTED", "FAILED");
 
         assertFailure("build-metadata-removed", buildMetadataRemoved,
-                "EXTENSION_FAILED", "DEVELOPMENT_VERSION_FORBIDDEN", null);
+                "EXTENSION_FAILED", "DISTRIBUTION_EVIDENCE_MISSING", "FAILED");
 
         assertFailure("build-version-mismatch", mismatchedBuildVersion,
                 "EXTENSION_FAILED", "DISTRIBUTION_MISMATCH", "FAILED");
@@ -308,7 +308,8 @@ class PackagedTracingCertificationTest {
         // given
         String fixtureVersion = requiredProperty("platformTracing.buildInfoFixtureVersion");
         Map<String, String> properties = controlledProperties(
-                ControlledAgentArtifactMutator.sha256(controlledAgent));
+                ControlledAgentArtifactMutator.sha256(controlledAgent)
+        );
         properties.remove("platform.tracing.service.version");
 
         // when

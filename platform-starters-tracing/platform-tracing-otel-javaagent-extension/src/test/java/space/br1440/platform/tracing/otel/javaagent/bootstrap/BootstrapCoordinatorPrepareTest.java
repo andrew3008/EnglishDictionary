@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorAssert.assertThatCoordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_INITIALIZING;
@@ -19,20 +21,23 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.recordingReadinessRegistration;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.satisfyReadinessBarrier;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.CONFIGURATION_INITIALIZATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.DIAGNOSTIC_MBEAN_REGISTRATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
@@ -51,6 +56,8 @@ import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
@@ -132,13 +139,10 @@ class BootstrapCoordinatorPrepareTest {
         }
     }
 
-    @ParameterizedTest
-    @EnumSource(
-            value = VerificationFailureCode.class,
-            names = {"DISTRIBUTION_MISMATCH", "DEVELOPMENT_VERSION_FORBIDDEN"}
-    )
-    void verification_failure_during_prepare_publishes_failed_diagnostic_mbean(VerificationFailureCode failureCode) {
+    @Test
+    void verificationFailureDuringPreparePublishesFailedDiagnosticMBean() {
         // given
+        VerificationFailureCode failureCode = VerificationFailureCode.DISTRIBUTION_MISMATCH;
         MBeanServer server = MBeanServerFactory.newMBeanServer();
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
         VerificationException verifierFailure = VerificationTestFixtures.failure(failureCode);
@@ -485,5 +489,118 @@ class BootstrapCoordinatorPrepareTest {
         }
 
         assertThatDiagnosticMBean(server).isNotRegistered();
+    }
+
+    @Test
+    void close_during_prepare_waits_for_session_ownership_and_closes_runtime() throws Exception {
+        // given
+        CountDownLatch runtimeCreated = new CountDownLatch(1);
+        CountDownLatch closeStarted = new CountDownLatch(1);
+        CountDownLatch continuePrepare = new CountDownLatch(1);
+        PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
+        ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
+
+        doAnswer(invocation -> {
+            runtimeCreated.countDown();
+            if (!continuePrepare.await(5, TimeUnit.SECONDS)) {
+                throw new AssertionError("Prepare continuation was not released");
+            }
+
+            return scrubbingRuntime;
+        }).when(scrubberFactory).buildRuntime(any());
+
+        BootstrapCoordinator coordinator = coordinator()
+                .scrubberFactory(scrubberFactory)
+                .build();
+
+        FutureTask<Throwable> prepare = new FutureTask<>(
+                () -> catchThrowable(() -> coordinator.prepare(config()))
+        );
+
+        Thread prepareThread = Thread.ofPlatform()
+                .daemon()
+                .name("bootstrap-prepare-close-race")
+                .unstarted(prepare);
+
+        FutureTask<Throwable> close = new FutureTask<>(() -> {
+            closeStarted.countDown();
+            return catchThrowable(coordinator::close);
+        });
+
+        Thread closeThread = Thread.ofPlatform()
+                .daemon()
+                .name("bootstrap-close-prepare-race")
+                .unstarted(close);
+
+        try (coordinator) {
+            prepareThread.start();
+            assertThat(runtimeCreated.await(5, TimeUnit.SECONDS)).isTrue();
+
+            // when
+            closeThread.start();
+            assertThat(closeStarted.await(5, TimeUnit.SECONDS)).isTrue();
+            long waitingDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (closeThread.getState() != Thread.State.WAITING && System.nanoTime() < waitingDeadline) {
+                Thread.sleep(1L);
+            }
+            assertThat(closeThread.getState()).isEqualTo(Thread.State.WAITING);
+            continuePrepare.countDown();
+            prepareThread.join(TimeUnit.SECONDS.toMillis(5));
+            closeThread.join(TimeUnit.SECONDS.toMillis(5));
+
+            // then
+            assertThat(prepareThread.isAlive()).isFalse();
+            assertThat(closeThread.isAlive()).isFalse();
+            assertThat(prepare.get(5, TimeUnit.SECONDS)).isNull();
+            assertThat(close.get(5, TimeUnit.SECONDS)).isNull();
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.CLOSED);
+            verify(scrubbingRuntime).close();
+        } finally {
+            continuePrepare.countDown();
+        }
+    }
+
+    @Test
+    void fatal_preparation_cleanup_failure_is_settled_before_propagation() {
+        // given
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
+        PlatformTracingMBeanRegistrar registrar = spy(new PlatformTracingMBeanRegistrar(
+                MBeanServerFactory.newMBeanServer(),
+                agentInstanceId
+        ));
+
+        IllegalStateException registrationFailure = new IllegalStateException(
+                "Simulated diagnostic registration failure"
+        );
+
+        doThrow(registrationFailure).when(registrar).registerDiagnosticReadiness(any());
+
+        PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
+        ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
+        when(scrubberFactory.buildRuntime(any())).thenReturn(scrubbingRuntime);
+        NoClassDefFoundError cleanupFailure = new NoClassDefFoundError(
+                "Fatal scrubbing runtime cleanup failure"
+        );
+        doThrow(cleanupFailure).when(scrubbingRuntime).close();
+
+        try (BootstrapCoordinator coordinator = coordinator()
+                .agentInstanceId(agentInstanceId)
+                .registrar(registrar)
+                .scrubberFactory(scrubberFactory)
+                .build()) {
+            // when
+            assertThatThrownBy(() -> coordinator.prepare(config())).isSameAs(cleanupFailure);
+
+            // then
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+            assertThat(coordinator.currentWire().primaryFailureCode())
+                    .isEqualTo(DIAGNOSTIC_MBEAN_REGISTRATION_FAILED);
+            assertThat(coordinator.currentWire().failureCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
+            assertThat(cleanupFailure.getSuppressed())
+                    .anySatisfy(suppressed -> assertThat(suppressed)
+                            .isInstanceOf(BootstrapException.class)
+                            .hasCause(registrationFailure));
+            verify(scrubbingRuntime).close();
+        }
     }
 }

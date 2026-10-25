@@ -25,9 +25,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingAction;
+import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
@@ -37,6 +39,7 @@ class PlatformScrubberFactoryExtensionClassLoaderTest {
 
     private static final String PROBE_CLASS_NAME = "extensionprobe.ProbeRule";
     private static final String PROBE_CLASS_RESOURCE = "extensionprobe/ProbeRule.class";
+    private static final String PROBE_HELPER_CLASS_RESOURCE = "extensionprobe/LazyDecision.class";
     private static final String SERVICE_ENTRY = "META-INF/services/space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule";
     private static final String PROBE_SOURCE = """
             package extensionprobe;
@@ -57,19 +60,43 @@ class PlatformScrubberFactoryExtensionClassLoaderTest {
 
                 @Override
                 public ScrubbingDecision evaluate(String key, Object value) {
+                    try {
+                        Class<?> helper = Class.forName(
+                                "extensionprobe.LazyDecision",
+                                true,
+                                getClass().getClassLoader()
+                        );
+                        return (ScrubbingDecision) helper.getMethod("decision").invoke(null);
+                    } catch (ReflectiveOperationException failure) {
+                        throw new IllegalStateException("Failed to load the lazy scrubbing helper", failure);
+                    }
+                }
+            }
+            """;
+    private static final String PROBE_HELPER_SOURCE = """
+            package extensionprobe;
+
+            import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
+
+            public final class LazyDecision {
+                private LazyDecision() {
+                }
+
+                public static ScrubbingDecision decision() {
                     return ScrubbingDecision.mask("probe");
                 }
             }
             """;
 
     @Test
-    void closesExtensionClassLoaderAfterCapturingRule(@TempDir Path directory) throws IOException {
+    void keepsExtensionClassLoaderAvailableForLazyRuleDependencies(@TempDir Path directory) throws IOException {
         // given
         Path classes = directory.resolve("classes");
         compileProbe(directory.resolve("src"), classes);
         Path jar = directory.resolve("rules.jar");
         writeJar(jar, Map.of(
                 PROBE_CLASS_RESOURCE, Files.readAllBytes(classes.resolve(PROBE_CLASS_RESOURCE)),
+                PROBE_HELPER_CLASS_RESOURCE, Files.readAllBytes(classes.resolve(PROBE_HELPER_CLASS_RESOURCE)),
                 SERVICE_ENTRY, (PROBE_CLASS_NAME + "\n").getBytes(StandardCharsets.UTF_8)
         ));
 
@@ -82,14 +109,22 @@ class PlatformScrubberFactoryExtensionClassLoaderTest {
                 .filter(rule -> PROBE_CLASS_NAME.equals(rule.getRuleClass().getName()))
                 .findFirst()
                 .orElseThrow();
-        assertThat(probe.execute("subject", "value").action()).isEqualTo(ScrubbingAction.MASK);
-        assertThat(probe.execute("subject", "value").reason()).isEqualTo("probe");
+        ScrubbingDecision decision =
+                MergeEngine.evaluateDetailed(List.of(probe), "subject", "value").decision();
+        assertThat(decision.action()).isEqualTo(ScrubbingAction.MASK);
+        assertThat(decision.reason()).isEqualTo("probe");
 
         ClassLoader extensionLoader = probe.getRuleClass().getClassLoader();
         assertThat(extensionLoader)
                 .isInstanceOf(URLClassLoader.class)
                 .isNotSameAs(PlatformScrubberFactory.class.getClassLoader());
-        assertThat(extensionLoader.getResource(PROBE_CLASS_RESOURCE)).isNull();
+        assertThat(extensionLoader.getResource(PROBE_HELPER_CLASS_RESOURCE)).isNotNull();
+
+        // when
+        runtime.close();
+
+        // then
+        assertThat(extensionLoader.getResource(PROBE_HELPER_CLASS_RESOURCE)).isNull();
         assertJarReleased(jar);
     }
 
@@ -122,10 +157,13 @@ class PlatformScrubberFactoryExtensionClassLoaderTest {
         Files.createDirectories(packageDirectory);
         Files.createDirectories(classesDirectory);
         Path source = packageDirectory.resolve("ProbeRule.java");
+        Path helperSource = packageDirectory.resolve("LazyDecision.java");
         Files.writeString(source, PROBE_SOURCE);
+        Files.writeString(helperSource, PROBE_HELPER_SOURCE);
 
         try (StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null)) {
-            Iterable<? extends JavaFileObject> units = fileManager.getJavaFileObjectsFromPaths(List.of(source));
+            Iterable<? extends JavaFileObject> units =
+                    fileManager.getJavaFileObjectsFromPaths(List.of(source, helperSource));
             StringWriter diagnostics = new StringWriter();
             Boolean compiled = compiler.getTask(
                     diagnostics,

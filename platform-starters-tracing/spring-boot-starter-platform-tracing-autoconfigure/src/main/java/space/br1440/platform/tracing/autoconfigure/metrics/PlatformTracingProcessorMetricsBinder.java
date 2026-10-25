@@ -4,15 +4,14 @@ import java.util.EnumMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-
 import jakarta.annotation.Nonnull;
 
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorCompositeValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorMetricsObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorMetricsValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorSpanTimeoutValues;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
 
 import io.micrometer.core.instrument.FunctionCounter;
 import io.micrometer.core.instrument.Gauge;
@@ -36,8 +35,7 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
     private static final String COMPOSITE_OWNER = "composite";
     private static final String METRICS_OWNER = "metrics";
 
-    private final PlatformTracingJmxClient client;
-    private final CoalescingJmxObservationSource<ProcessorMetricsObservation> spanTimeoutObservationSource;
+    private final CoalescingJmxObservationSource<ProcessorMetricsObservation> processorMetricsObservationSource;
     private final MonotonicJmxCounterGroupBridge<ProcessorSpanTimeoutMetricKey> spanTimeoutBridge;
     private final MonotonicJmxCounterGroupBridge<ProcessorCompositeErrorKey> compositeBridge;
     private final MonotonicJmxCounterGroupBridge<ProcessorMetricsMetricKey> metricsBridge;
@@ -47,22 +45,29 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
     }
 
     PlatformTracingProcessorMetricsBinder(PlatformTracingJmxClient client, MonotonicJmxCounterGroupBridge.Ticker ticker) {
-        this.client = client;
-        this.spanTimeoutObservationSource = new CoalescingJmxObservationSource<>(
-                () -> client.processorMetrics().observation(), ticker);
+        this.processorMetricsObservationSource = new CoalescingJmxObservationSource<>(
+                () -> client.processorMetrics().observation(),
+                ticker
+        );
 
         this.spanTimeoutBridge = new MonotonicJmxCounterGroupBridge<>(
-                ProcessorSpanTimeoutMetricKey.class, this::spanTimeoutCounts, this::processorMetricsAgentInstanceId, ticker,
+                ProcessorSpanTimeoutMetricKey.class,
+                this::spanTimeoutSnapshot,
+                ticker,
                 MonotonicJmxCounterGroupBridge.DEFAULT_COALESCING_WINDOW_NANOS
         );
 
         this.compositeBridge = new MonotonicJmxCounterGroupBridge<>(
-                ProcessorCompositeErrorKey.class, this::compositeCounts, this::processorMetricsAgentInstanceId, ticker,
+                ProcessorCompositeErrorKey.class,
+                this::compositeSnapshot,
+                ticker,
                 MonotonicJmxCounterGroupBridge.DEFAULT_COALESCING_WINDOW_NANOS
         );
 
         this.metricsBridge = new MonotonicJmxCounterGroupBridge<>(
-                ProcessorMetricsMetricKey.class, this::metricsCounts, this::processorMetricsAgentInstanceId, ticker,
+                ProcessorMetricsMetricKey.class,
+                this::metricsSnapshot,
+                ticker,
                 MonotonicJmxCounterGroupBridge.DEFAULT_COALESCING_WINDOW_NANOS
         );
     }
@@ -80,40 +85,46 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
                     .description("Backward-moving cumulative JMX values observed for a single owner generation")
                     .register(registry);
         }
+
         bindResets(registry, spanTimeoutBridge, SPAN_TIMEOUT_OWNER);
 
         Gauge.builder(SPAN_TIMEOUT_ACTIVE_METRIC_NAME, this, binder -> binder.activeCount(SpanTimeoutActiveScope.SPANS))
                 .tags("scope", "spans")
                 .description("Spans currently tracked by the span timeout processor")
                 .register(registry);
+
         Gauge.builder(SPAN_TIMEOUT_ACTIVE_METRIC_NAME, this, binder -> binder.activeCount(SpanTimeoutActiveScope.TRACES))
                 .tags("scope", "traces")
                 .description("Traces currently holding at least one live span in the span timeout index")
                 .register(registry);
+
         Gauge.builder(SPAN_TIMEOUT_TRACKED_METRIC_NAME, this, PlatformTracingProcessorMetricsBinder::trackedTraceCount)
                 .tags("scope", "traces")
                 .description("Trace records currently retained by the span timeout index, including epoch tombstones")
                 .register(registry);
+
         Gauge.builder(SPAN_TIMEOUT_CAPACITY_METRIC_NAME, this, binder -> binder.capacity(SpanTimeoutCapacityScope.TRACES))
                 .tags("scope", "traces")
                 .description("Configured maximum number of trace records retained by the span timeout index")
                 .register(registry);
+
         Gauge.builder(SPAN_TIMEOUT_CAPACITY_METRIC_NAME, this, binder -> binder.capacity(SpanTimeoutCapacityScope.SPANS))
                 .tags("scope", "spans")
                 .description("Configured global hard bound on tracked spans across all traces")
                 .register(registry);
+
         Gauge.builder(SPAN_TIMEOUT_CAPACITY_METRIC_NAME, this, binder -> binder.capacity(SpanTimeoutCapacityScope.SPANS_PER_TRACE))
                 .tags("scope", "spans_per_trace")
                 .description("Configured per-trace fairness guard on tracked spans within a single trace")
                 .register(registry);
-        // Состояние сканера кодируется как набор gauge 0/1 по одному на состояние: числовой ранг enum
-        // не переносится через wire-контракт, а строка scannerState не выражается gauge напрямую.
+
         for (SpanTimeoutScannerStateTag state : SpanTimeoutScannerStateTag.values()) {
             Gauge.builder(SPAN_TIMEOUT_SCANNER_METRIC_NAME, this, binder -> binder.scannerState(state))
                     .tags("state", state.tag())
                     .description("1 when the span timeout background scanner is in the tagged state, otherwise 0")
                     .register(registry);
         }
+
         Gauge.builder(SPAN_TIMEOUT_SCANNER_LAST_SUCCESS_METRIC_NAME, this,
                         PlatformTracingProcessorMetricsBinder::lastSuccessfulBackgroundScanEpochMillis)
                 .description("Wall-clock epoch millis of the last successful span timeout background scan; 0 until the first success")
@@ -152,6 +163,7 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
                     .description("Backward-moving cumulative JMX values observed for a single owner generation")
                     .register(registry);
         }
+
         bindResets(registry, metricsBridge, METRICS_OWNER);
     }
 
@@ -166,28 +178,28 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
         }
     }
 
-    private Optional<JmxOwnerState<Map<ProcessorSpanTimeoutMetricKey, Long>>> spanTimeoutCounts() {
-        return client.processorMetrics().observation()
-                .map(ProcessorMetricsObservation::spanTimeout)
-                .map(PlatformTracingProcessorMetricsBinder::toSpanTimeoutKeyedState);
+    private Optional<MonotonicJmxCounterGroupBridge.SourceSnapshot<ProcessorSpanTimeoutMetricKey>> spanTimeoutSnapshot() {
+        return processorMetricsObservationSource.get()
+                .map(observation -> new MonotonicJmxCounterGroupBridge.SourceSnapshot<>(
+                        toSpanTimeoutKeyedState(observation.spanTimeout()),
+                        observation.capture().agentInstanceId()
+                ));
     }
 
-    private Optional<JmxOwnerState<Map<ProcessorCompositeErrorKey, Long>>> compositeCounts() {
-        return client.processorMetrics().observation()
-                .map(ProcessorMetricsObservation::composite)
-                .map(PlatformTracingProcessorMetricsBinder::toCompositeKeyedState);
+    private Optional<MonotonicJmxCounterGroupBridge.SourceSnapshot<ProcessorCompositeErrorKey>> compositeSnapshot() {
+        return processorMetricsObservationSource.get()
+                .map(observation -> new MonotonicJmxCounterGroupBridge.SourceSnapshot<>(
+                        toCompositeKeyedState(observation.composite()),
+                        observation.capture().agentInstanceId()
+                ));
     }
 
-    private Optional<JmxOwnerState<Map<ProcessorMetricsMetricKey, Long>>> metricsCounts() {
-        return client.processorMetrics().observation()
-                .map(ProcessorMetricsObservation::metrics)
-                .map(PlatformTracingProcessorMetricsBinder::toMetricsKeyedState);
-    }
-
-    private String processorMetricsAgentInstanceId() {
-        return client.processorMetrics().observation()
-                .map(observation -> observation.capture().agentInstanceId())
-                .orElseGet(MonotonicJmxCounterGroupBridge.LOCAL_PROCESS_IDENTITY);
+    private Optional<MonotonicJmxCounterGroupBridge.SourceSnapshot<ProcessorMetricsMetricKey>> metricsSnapshot() {
+        return processorMetricsObservationSource.get()
+                .map(observation -> new MonotonicJmxCounterGroupBridge.SourceSnapshot<>(
+                        toMetricsKeyedState(observation.metrics()),
+                        observation.capture().agentInstanceId()
+                ));
     }
 
     static JmxOwnerState<Map<ProcessorSpanTimeoutMetricKey, Long>> toSpanTimeoutKeyedState(JmxOwnerState<ProcessorSpanTimeoutValues> state) {
@@ -270,7 +282,7 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
     }
 
     private Optional<ProcessorSpanTimeoutValues> presentSpanTimeoutValues() {
-        return spanTimeoutObservationSource.get()
+        return processorMetricsObservationSource.get()
                 .map(ProcessorMetricsObservation::spanTimeout)
                 .flatMap(state -> (state instanceof JmxOwnerState.Present<ProcessorSpanTimeoutValues> present)
                         ? Optional.of(present.values())

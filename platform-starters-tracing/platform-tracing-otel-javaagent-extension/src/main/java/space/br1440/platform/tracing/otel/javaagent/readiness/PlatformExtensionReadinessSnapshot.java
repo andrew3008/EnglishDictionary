@@ -17,7 +17,7 @@ public abstract sealed class PlatformExtensionReadinessSnapshot
 
     private PlatformExtensionReadinessSnapshot(String extensionVersion,
                                                Set<PlatformExtensionCapability> installedCapabilities) {
-        this.extensionVersion = requireVersion(extensionVersion);
+        this.extensionVersion = Objects.requireNonNull(extensionVersion, "extensionVersion");
         this.installedCapabilities = Collections.unmodifiableSet(copyOf(installedCapabilities));
     }
 
@@ -70,9 +70,11 @@ public abstract sealed class PlatformExtensionReadinessSnapshot
                 : EnumSet.copyOf(capabilities);
     }
 
-    private static String requireVersion(String extensionVersion) {
+    private static String requireResolvedVersion(String extensionVersion) {
         if (extensionVersion == null || extensionVersion.isBlank()) {
-            throw new IllegalArgumentException("extensionVersion must not be blank");
+            throw new IllegalStateException(
+                    "Platform extension readiness is not READY: extensionVersion is missing"
+            );
         }
 
         return extensionVersion;
@@ -111,7 +113,7 @@ public abstract sealed class PlatformExtensionReadinessSnapshot
     public static final class Ready extends PlatformExtensionReadinessSnapshot {
 
         private Ready(String extensionVersion) {
-            super(extensionVersion, EnumSet.allOf(PlatformExtensionCapability.class));
+            super(requireResolvedVersion(extensionVersion), EnumSet.allOf(PlatformExtensionCapability.class));
         }
 
         @Override

@@ -188,7 +188,7 @@ final class BootstrapLifecycleState {
 
             BootstrapResources owned = resources;
             resources = null;
-            CloseContext context = new CloseContext(failure, owned);
+            CloseContext context = new CloseContext(failure, owned, session);
             closeFlight = new CloseFlight(Thread.currentThread(), context);
             return CloseAcquisition.owner(closeFlight);
         }
@@ -414,7 +414,9 @@ final class BootstrapLifecycleState {
         });
     }
 
-    record CloseContext(BootstrapFailure failureBeforeClose, BootstrapResources resources) {
+    record CloseContext(BootstrapFailure failureBeforeClose,
+                        BootstrapResources resources,
+                        AutoconfigureSession session) {
     }
 
     record CloseAcquisition(boolean owner, boolean reentrant, CloseFlight flight) {

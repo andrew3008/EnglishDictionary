@@ -11,7 +11,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
@@ -26,7 +25,6 @@ class MonotonicJmxCounterGroupBridgeTest {
     private static final String AGENT_INSTANCE_ID = "123e4567-e89b-12d3-a456-426614174000";
     private static final String NEXT_AGENT_INSTANCE_ID = "123e4567-e89b-12d3-a456-426614174001";
     private static final long WINDOW_NANOS = 100_000_000L;
-    private static final Supplier<String> FIXED_AGENT_INSTANCE_ID = () -> AGENT_INSTANCE_ID;
 
     @Test
     void firstObservationPopulatesAccumulatedWithoutResetEvent() {
@@ -72,6 +70,48 @@ class MonotonicJmxCounterGroupBridgeTest {
         assertThat(bridge.count(Key.B)).isEqualTo(41.0);
         assertThat(bridge.resetCount(MonotonicJmxCounterGroupBridge.ResetCause.OWNER_REPLACED)).isEqualTo(1);
         assertThat(bridge.resetCount(MonotonicJmxCounterGroupBridge.ResetCause.AGENT_INSTANCE_CHANGED)).isZero();
+        assertThat(source.reads.get()).isEqualTo(2L);
+    }
+
+    @Test
+    void ownerReplacementSaturatesAccumulatedCounterAtLongMaximum() {
+        // given
+        AtomicLong nanoTime = new AtomicLong(0);
+        FakeSource source = new FakeSource();
+        source.publish(Map.of(Key.A, Long.MAX_VALUE), 1);
+        MonotonicJmxCounterGroupBridge<Key> bridge = newBridge(source, nanoTime);
+        bridge.count(Key.A);
+        nanoTime.addAndGet(WINDOW_NANOS + 1);
+        source.publish(Map.of(Key.A, 1L), 2);
+
+        // when
+        double observed = bridge.count(Key.A);
+
+        // then
+        assertThat(observed).isEqualTo((double) Long.MAX_VALUE);
+        assertThat(observed).isPositive();
+    }
+
+    @Test
+    void positiveDeltaSaturatesAccumulatedCounterAtLongMaximum() {
+        // given
+        AtomicLong nanoTime = new AtomicLong(0);
+        FakeSource source = new FakeSource();
+        source.publish(Map.of(Key.A, Long.MAX_VALUE - 2L), 1);
+        MonotonicJmxCounterGroupBridge<Key> bridge = newBridge(source, nanoTime);
+        bridge.count(Key.A);
+        nanoTime.addAndGet(WINDOW_NANOS + 1);
+        source.publish(Map.of(Key.A, 1L), 2);
+        bridge.count(Key.A);
+        nanoTime.addAndGet(WINDOW_NANOS + 1);
+        source.publish(Map.of(Key.A, 3L), 2);
+
+        // when
+        double observed = bridge.count(Key.A);
+
+        // then
+        assertThat(observed).isEqualTo((double) Long.MAX_VALUE);
+        assertThat(observed).isPositive();
     }
 
     @Test
@@ -79,20 +119,17 @@ class MonotonicJmxCounterGroupBridgeTest {
         AtomicLong nanoTime = new AtomicLong(0);
         FakeSource source = new FakeSource();
         source.publish(Map.of(Key.A, 100L, Key.B, 40L), 1);
-        AtomicReference<String> agentInstanceId = new AtomicReference<>(AGENT_INSTANCE_ID);
-        MonotonicJmxCounterGroupBridge<Key> bridge = new MonotonicJmxCounterGroupBridge<>(
-                Key.class, source, agentInstanceId::get, nanoTime::get, WINDOW_NANOS);
+        MonotonicJmxCounterGroupBridge<Key> bridge = newBridge(source, nanoTime);
         bridge.count(Key.A);
 
         nanoTime.addAndGet(WINDOW_NANOS + 1);
-        agentInstanceId.set(NEXT_AGENT_INSTANCE_ID);
-        // Тот же generation, что и раньше: без различения identity это выглядело бы как отсутствие смены.
-        source.publish(Map.of(Key.A, 3L, Key.B, 1L), 1);
+        source.publish(Map.of(Key.A, 3L, Key.B, 1L), 1, NEXT_AGENT_INSTANCE_ID);
 
         assertThat(bridge.count(Key.A)).isEqualTo(103.0);
         assertThat(bridge.count(Key.B)).isEqualTo(41.0);
         assertThat(bridge.resetCount(MonotonicJmxCounterGroupBridge.ResetCause.AGENT_INSTANCE_CHANGED)).isEqualTo(1);
         assertThat(bridge.resetCount(MonotonicJmxCounterGroupBridge.ResetCause.OWNER_REPLACED)).isZero();
+        assertThat(source.reads.get()).isEqualTo(2L);
     }
 
     @Test
@@ -111,6 +148,7 @@ class MonotonicJmxCounterGroupBridgeTest {
         assertThat(bridge.anomalyCount(Key.A)).isEqualTo(1);
         assertThat(bridge.anomalyCount(Key.B)).isZero();
         assertThat(bridge.resetCount(MonotonicJmxCounterGroupBridge.ResetCause.OWNER_REPLACED)).isZero();
+        assertThat(source.reads.get()).isEqualTo(2L);
     }
 
     @Test
@@ -126,6 +164,7 @@ class MonotonicJmxCounterGroupBridgeTest {
 
         assertThat(bridge.count(Key.A)).isEqualTo(7.0);
         assertThat(bridge.count(Key.B)).isEqualTo(1.0);
+        assertThat(source.reads.get()).isEqualTo(2L);
     }
 
     @Test
@@ -195,7 +234,7 @@ class MonotonicJmxCounterGroupBridgeTest {
     }
 
     private static MonotonicJmxCounterGroupBridge<Key> newBridge(FakeSource source, AtomicLong nanoTime) {
-        return new MonotonicJmxCounterGroupBridge<>(Key.class, source, FIXED_AGENT_INSTANCE_ID, nanoTime::get, WINDOW_NANOS);
+        return new MonotonicJmxCounterGroupBridge<>(Key.class, source, nanoTime::get, WINDOW_NANOS);
     }
 
     private static void awaitQuietly(CountDownLatch latch) {
@@ -210,15 +249,23 @@ class MonotonicJmxCounterGroupBridgeTest {
     }
 
     /** Управляемый источник, считающий число фактических JMX-чтений для проверки coalescing. */
-    private static final class FakeSource implements Supplier<Optional<JmxOwnerState<Map<Key, Long>>>> {
+    private static final class FakeSource implements
+            Supplier<Optional<MonotonicJmxCounterGroupBridge.SourceSnapshot<Key>>> {
 
         private final AtomicLong reads = new AtomicLong();
-        private volatile JmxOwnerState<Map<Key, Long>> current;
+        private volatile MonotonicJmxCounterGroupBridge.SourceSnapshot<Key> current;
         private volatile AgentReadinessCoherenceException failure;
 
         void publish(Map<Key, Long> values, long generation) {
+            publish(values, generation, AGENT_INSTANCE_ID);
+        }
+
+        void publish(Map<Key, Long> values, long generation, String agentInstanceId) {
             EnumMap<Key, Long> copy = new EnumMap<>(values);
-            current = new JmxOwnerState.Present<>(copy, generation);
+            current = new MonotonicJmxCounterGroupBridge.SourceSnapshot<>(
+                    new JmxOwnerState.Present<>(copy, generation),
+                    agentInstanceId
+            );
         }
 
         void publishUnavailable() {
@@ -230,7 +277,7 @@ class MonotonicJmxCounterGroupBridgeTest {
         }
 
         @Override
-        public Optional<JmxOwnerState<Map<Key, Long>>> get() {
+        public Optional<MonotonicJmxCounterGroupBridge.SourceSnapshot<Key>> get() {
             reads.incrementAndGet();
             if (failure != null) {
                 throw failure;

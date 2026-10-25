@@ -25,6 +25,22 @@ import space.br1440.platform.tracing.otel.span.DefaultSpanFactory;
 class FromSpecPolicyGovernanceTest {
 
     @Test
+    void fromSpecRejectsMissingReason() {
+        // given
+        RecordingTracingRuntime runtime = new RecordingTracingRuntime();
+        DefaultSpanFactory factory = new DefaultSpanFactory(runtime, new SpanAttributeValidator());
+        SpanSpec spec = SpanSpec.builder("characterization.missing-reason")
+                .category(SpanCategory.INTERNAL)
+                .build();
+
+        // when
+        // then
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> factory.fromSpec(spec))
+                .withMessage("fromSpec requires reason(...)");
+    }
+
+    @Test
     void fromSpecRejectsAttributesRejectedByErrorPolicy() {
         SpanAttributeValidator errorPolicy = new SpanAttributeValidator(
                 SpanAttributeValidationLevel.ERROR,

@@ -16,7 +16,6 @@ class ScrubbingPackageStructureArchTest {
 
     private static final String SCRUBBING = "space.br1440.platform.tracing.otel.javaagent.scrubbing";
 
-    // given/when/then
     @ArchTest
     @SuppressWarnings("unused")
     static final ArchRule subpackagesAreFreeOfCycles =
@@ -24,16 +23,13 @@ class ScrubbingPackageStructureArchTest {
                     .should().beFreeOfCycles()
                     .because("подпакеты scrubbing не должны зависеть друг от друга по кругу");
 
-    // given/when/then
     @ArchTest
     @SuppressWarnings("unused")
     static final ArchRule rootPackageIsEmpty =
             noClasses()
                     .should().resideInAPackage(SCRUBBING)
-                    .because("корень scrubbing расселён по подпакетам: runtime, assembly, engine, loader, "
-                            + "policy, rules, circuitbreaker");
+                    .because("корень scrubbing расселён по подпакетам: runtime, assembly, engine, loader, rules, circuitbreaker");
 
-    // given/when/then
     @ArchTest
     @SuppressWarnings("unused")
     static final ArchRule runtimeDoesNotDependOnAssembly =
@@ -42,7 +38,6 @@ class ScrubbingPackageStructureArchTest {
                     .should().dependOnClassesThat().resideInAPackage(SCRUBBING + ".assembly..")
                     .because("любое обратное ребро ловит и beFreeOfCycles; отдельное правило нужно ради сообщения об ошибке");
 
-    // given/when/then
     @ArchTest
     @SuppressWarnings("unused")
     static final ArchRule engineIsASharedKernel =

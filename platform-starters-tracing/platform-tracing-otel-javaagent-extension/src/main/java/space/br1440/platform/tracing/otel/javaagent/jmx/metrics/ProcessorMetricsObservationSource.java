@@ -1,9 +1,11 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.metrics;
 
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
@@ -14,7 +16,6 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWi
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationCaptureEnvelope;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationSnapshotStore;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerCapture;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerValuesLayout;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerValuesLayout.Field;
@@ -30,8 +31,7 @@ public final class ProcessorMetricsObservationSource {
 
             new OwnerHeader(
                     JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_OWNER_PRESENT,
-                    JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_OWNER_GENERATION,
-                    JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_OWNER_CAPTURED_OFFSET_NANOS
+                    JmxWireContract.FIELD_PROCESSOR_SPAN_TIMEOUT_VALUES_OWNER_GENERATION
             ),
 
             List.of(
@@ -64,8 +64,7 @@ public final class ProcessorMetricsObservationSource {
 
             new OwnerHeader(
                     JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_PRESENT,
-                    JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_GENERATION,
-                    JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_CAPTURED_OFFSET_NANOS
+                    JmxWireContract.FIELD_PROCESSOR_COMPOSITE_VALUES_OWNER_GENERATION
             ),
 
             List.of(
@@ -81,8 +80,7 @@ public final class ProcessorMetricsObservationSource {
             JmxOpenTypes.PROCESSOR_METRICS_VALUES,
             new OwnerHeader(
                     JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_PRESENT,
-                    JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_GENERATION,
-                    JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_CAPTURED_OFFSET_NANOS
+                    JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_GENERATION
             ),
 
             List.of(
@@ -96,6 +94,7 @@ public final class ProcessorMetricsObservationSource {
     private final OwnerRegistrationSlot<PlatformCompositeSpanProcessor> compositeSlot;
     private final OwnerRegistrationSlot<SpanLimitsMetricsProcessor> metricsSlot;
     private final ObservationCaptureEnvelope envelope;
+    private final AtomicLong captureSequence = new AtomicLong();
     private final ObservationSnapshotStore snapshotStore = new ObservationSnapshotStore(JmxOpenTypes.PROCESSOR_METRICS_OBSERVATION);
 
     public ProcessorMetricsObservationSource(OwnerRegistrationSlot<SpanTimeoutProcessor> spanTimeoutSlot,
@@ -114,24 +113,24 @@ public final class ProcessorMetricsObservationSource {
     }
 
     public synchronized void publishObservationSnapshot() {
-        ObservationCaptureEnvelope.OpenCapture openCapture = envelope.open();
+        long sequence = captureSequence.incrementAndGet();
+        long startedAtEpochMilli = Instant.now().toEpochMilli();
 
-        OwnerCapture<SpanTimeoutProcessor> spanTimeoutCapture = OwnerCapture.of(spanTimeoutSlot);
-        OwnerCapture<PlatformCompositeSpanProcessor> compositeCapture = OwnerCapture.of(compositeSlot);
-        OwnerCapture<SpanLimitsMetricsProcessor> metricsCapture = OwnerCapture.of(metricsSlot);
-
-        CompositeData spanTimeoutValues = SPAN_TIMEOUT_LAYOUT.encode(
-                spanTimeoutCapture.state(), spanTimeoutCapture.offsetNanos(), Function.identity());
+        CompositeData spanTimeoutValues = SPAN_TIMEOUT_LAYOUT.encode(spanTimeoutSlot.capture(), Function.identity());
         CompositeData compositeValues = COMPOSITE_LAYOUT.encode(
-                compositeCapture.state(), compositeCapture.offsetNanos(), PlatformCompositeSpanProcessor::getProcessorErrorCounts);
-        CompositeData metricsValues = METRICS_LAYOUT.encode(
-                metricsCapture.state(), metricsCapture.offsetNanos(), Function.identity());
+                compositeSlot.capture(),
+                PlatformCompositeSpanProcessor::getProcessorErrorCounts
+        );
+        CompositeData metricsValues = METRICS_LAYOUT.encode(metricsSlot.capture(), Function.identity());
 
         Map<String, Object> values = new LinkedHashMap<>();
-        openCapture.sealInto(values);
+        envelope.putInto(values);
+        values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_CAPTURE_SEQUENCE, sequence);
+        values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_CAPTURE_STARTED_AT, startedAtEpochMilli);
         values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_SPAN_TIMEOUT, spanTimeoutValues);
         values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_COMPOSITE, compositeValues);
         values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_METRICS, metricsValues);
+        values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_CAPTURE_COMPLETED_AT, Instant.now().toEpochMilli());
         snapshotStore.publish(values);
     }
 

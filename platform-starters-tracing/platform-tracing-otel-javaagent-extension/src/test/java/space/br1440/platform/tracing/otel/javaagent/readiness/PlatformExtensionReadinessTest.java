@@ -101,13 +101,6 @@ class PlatformExtensionReadinessTest {
     }
 
     @Test
-    void snapshotRejectsBlankExtensionVersion() {
-        assertThatThrownBy(() -> new PlatformExtensionReadinessSnapshot.Initializing("  ", Set.of()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("extensionVersion");
-    }
-
-    @Test
     void readinessFailureRejectsMalformedCodes() {
         assertThatThrownBy(() -> new ReadinessFailure("", "EFFECTIVE_FAILURE"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -216,6 +209,21 @@ class PlatformExtensionReadinessTest {
 
         installAllCapabilities(readiness);
         assertThatCode(readiness::completeInitialization).doesNotThrowAnyException();
+    }
+
+    @Test
+    void unresolvedVersionCannotBecomeReady() {
+        // given
+        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness("");
+        installAllCapabilities(readiness);
+
+        // when
+        Throwable failure = catchThrowable(readiness::completeInitialization);
+
+        // then
+        assertThat(failure)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Platform extension readiness is not READY: extensionVersion is missing");
     }
 
     @Test

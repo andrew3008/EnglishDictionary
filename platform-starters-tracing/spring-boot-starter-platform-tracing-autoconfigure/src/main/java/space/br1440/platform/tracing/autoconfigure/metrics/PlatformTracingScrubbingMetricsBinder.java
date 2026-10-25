@@ -3,14 +3,13 @@ package space.br1440.platform.tracing.autoconfigure.metrics;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import jakarta.annotation.Nonnull;
 
-import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.scrubbing.ScrubbingObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.scrubbing.ScrubbingValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 import io.micrometer.core.instrument.FunctionCounter;
 import io.micrometer.core.instrument.Gauge;
@@ -25,28 +24,26 @@ final class PlatformTracingScrubbingMetricsBinder implements MeterBinder {
 
     private static final String RUNTIME_STATE_METRIC_NAME = "platform.tracing.scrubbing.runtime.state";
     private static final String ATTRIBUTES_VERIFIED_METRIC_NAME = "platform.tracing.scrubbing.attributes.verified";
-    private static final String ATTRIBUTES_VERIFIED_WIRE_KEY = "attributes_verified";
 
-    private final PlatformTracingJmxClient client;
+    private final CoalescingJmxObservationSource<ScrubbingObservation> observationSource;
     private final MonotonicJmxCounterGroupBridge<ScrubbingMetricKey> bridge;
-    private final MonotonicJmxCounterGroupBridge.Ticker ticker;
-
-    private final AtomicReference<AttributesVerifiedSample> attributesVerified = new AtomicReference<>();
 
     PlatformTracingScrubbingMetricsBinder(PlatformTracingJmxClient client) {
         this(client, System::nanoTime);
     }
 
     PlatformTracingScrubbingMetricsBinder(PlatformTracingJmxClient client, MonotonicJmxCounterGroupBridge.Ticker ticker) {
-        this.client = client;
-        this.ticker = ticker;
+        this.observationSource = new CoalescingJmxObservationSource<>(
+                () -> client.scrubbing().observation(),
+                ticker
+        );
+
         this.bridge = new MonotonicJmxCounterGroupBridge<>(
-                ScrubbingMetricKey.class, this::counts, this::scrubbingAgentInstanceId, ticker,
+                ScrubbingMetricKey.class,
+                this::counterSnapshot,
+                ticker,
                 MonotonicJmxCounterGroupBridge.DEFAULT_COALESCING_WINDOW_NANOS
         );
-    }
-
-    private record AttributesVerifiedSample(long readAtNanos, double value) {
     }
 
     @Override
@@ -82,10 +79,12 @@ final class PlatformTracingScrubbingMetricsBinder implements MeterBinder {
         }
     }
 
-    private Optional<JmxOwnerState<Map<ScrubbingMetricKey, Long>>> counts() {
-        return client.scrubbing().observation()
-                .map(ScrubbingObservation::owner)
-                .map(PlatformTracingScrubbingMetricsBinder::toEnumKeyedState);
+    private Optional<MonotonicJmxCounterGroupBridge.SourceSnapshot<ScrubbingMetricKey>> counterSnapshot() {
+        return observationSource.get()
+                .map(observation -> new MonotonicJmxCounterGroupBridge.SourceSnapshot<>(
+                        toEnumKeyedState(observation.owner()),
+                        observation.agentInstanceId()
+                ));
     }
 
     private double runtimeStateValue(ScrubbingRuntimeState state) {
@@ -103,42 +102,18 @@ final class PlatformTracingScrubbingMetricsBinder implements MeterBinder {
     }
 
     private double attributesVerifiedValue() {
-        long now = ticker.nanoTime();
-
-        AttributesVerifiedSample cached = attributesVerified.get();
-        if (cached != null
-                && (now - cached.readAtNanos()) < MonotonicJmxCounterGroupBridge.DEFAULT_COALESCING_WINDOW_NANOS) {
-            return cached.value();
-        }
-
-        double observed = readAttributesVerified();
-        attributesVerified.set(new AttributesVerifiedSample(now, observed));
-        return observed;
-    }
-
-    private double readAttributesVerified() {
         return currentValues()
-                .map(values -> values.metrics().get(ATTRIBUTES_VERIFIED_WIRE_KEY))
+                .map(values -> values.metrics().get(JmxWireContract.KEY_SCRUBBING_METRICS_ATTRIBUTES_VERIFIED))
                 .map(Long::doubleValue)
                 .orElse(Double.NaN);
     }
 
     private Optional<ScrubbingValues> currentValues() {
-        try {
-            return client.scrubbing().observation()
-                    .map(ScrubbingObservation::owner)
-                    .flatMap(state -> (state instanceof JmxOwnerState.Present<ScrubbingValues> present)
-                            ? Optional.of(present.values())
-                            : Optional.empty());
-        } catch (AgentReadinessCoherenceException ignored) {
-            return Optional.empty();
-        }
-    }
-
-    private String scrubbingAgentInstanceId() {
-        return client.scrubbing().observation()
-                .map(ScrubbingObservation::agentInstanceId)
-                .orElseGet(MonotonicJmxCounterGroupBridge.LOCAL_PROCESS_IDENTITY);
+        return observationSource.get()
+                .map(ScrubbingObservation::owner)
+                .flatMap(state -> (state instanceof JmxOwnerState.Present<ScrubbingValues> present)
+                        ? Optional.of(present.values())
+                        : Optional.empty());
     }
 
     static JmxOwnerState<Map<ScrubbingMetricKey, Long>> toEnumKeyedState(JmxOwnerState<ScrubbingValues> state) {

@@ -61,9 +61,6 @@ public enum JmxDiagnosticKind {
     /** {@code RuntimeOperationsException} с cause, отличным от {@code IllegalArgumentException}. */
     OPERATIONS_EXCEPTION_UNCLASSIFIED,
 
-    /** Проверка {@code isRegistered} завершилась отказом transport (не самим MBean). */
-    REGISTRATION_CHECK_FAILED,
-
     /** Получение {@code MBeanInfo} завершилось ошибкой introspection на стороне provider. */
     METADATA_RETRIEVAL_FAILURE
 

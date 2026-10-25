@@ -25,7 +25,7 @@ public final class ScrubbingExtensionConfig {
     private final boolean enabled;
     private final List<String> builtInRules;
     private final MaskedSecret hmacKey;
-    private final String missingKeyPolicy;
+    private final ScrubbingMissingKeyPolicy missingKeyPolicy;
     private final String rulesConfig;
     private final String rulesExtensions;
     private final ExtensionRuleLoader.ValidationMode rulesValidationMode;
@@ -34,7 +34,11 @@ public final class ScrubbingExtensionConfig {
         this.enabled = reader.booleanValue(SCRUBBING_ENABLED, DEFAULT_ENABLED);
         this.builtInRules = reader.listValue(SCRUBBING_BUILT_IN_RULES, DEFAULT_BUILT_IN_RULES);
         this.hmacKey = MaskedSecret.of(reader.nullableString(SCRUBBING_HMAC_KEY));
-        this.missingKeyPolicy = reader.stringValue(SCRUBBING_MISSING_KEY_POLICY, DEFAULT_SCRUBBING_MISSING_KEY_POLICY);
+        this.missingKeyPolicy = reader.enumValue(
+                SCRUBBING_MISSING_KEY_POLICY,
+                ScrubbingMissingKeyPolicy.class,
+                DEFAULT_SCRUBBING_MISSING_KEY_POLICY
+        );
         this.rulesConfig = reader.nullableString(SCRUBBING_RULES_CONFIG);
         this.rulesExtensions = reader.nullableString(SCRUBBING_RULES_EXTENSIONS);
         this.rulesValidationMode = ExtensionRuleLoader.ValidationMode.parse(

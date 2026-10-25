@@ -4,17 +4,16 @@ import java.util.Objects;
 import java.util.function.Function;
 import javax.management.openmbean.OpenType;
 
-public record JmxAttribute<T>(
-        String name,
-        JmxContractPoint point,
-        OpenType<?> openType,
-        JmxValueDecoder<T> decoder,
-        Function<T, String> agentInstanceIdExtractor) {
+public record JmxAttribute<T>(String name,
+                              JmxContractPoint point,
+                              OpenType<?> openType,
+                              JmxValueDecoder<T> decoder,
+                              Function<T, String> agentInstanceIdExtractor) {
 
-    public JmxAttribute(String name,
-                        JmxContractPoint point,
-                        OpenType<?> openType,
-                        JmxValueDecoder<T> decoder) {
+    JmxAttribute(String name,
+                 JmxContractPoint point,
+                 OpenType<?> openType,
+                 JmxValueDecoder<T> decoder) {
         this(name, point, openType, decoder, ignored -> null);
     }
 

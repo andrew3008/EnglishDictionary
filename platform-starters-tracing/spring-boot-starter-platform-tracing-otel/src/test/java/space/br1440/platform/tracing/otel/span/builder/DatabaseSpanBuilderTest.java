@@ -13,7 +13,6 @@ import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanFactory;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidationMetrics;
 import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 import space.br1440.platform.tracing.otel.runtime.RecordingTracingRuntime;
@@ -44,7 +43,7 @@ class DatabaseSpanBuilderTest {
         assertThat(recording.receivedSpecs()).hasSize(1);
         SpanSpec spec = recording.receivedSpecs().getFirst();
         assertThat(spec.category()).isEqualTo(SpanCategory.DATABASE);
-        assertThat(spec.reason()).isEqualTo(SpanSpecReason.PLATFORM_EDGE_CASE);
+        assertThat(spec.reason()).isEmpty();
         assertThat(spec.name()).isEqualTo("SELECT orders");
         assertThat(spec.attributes()).containsKey("db.operation.name");
         assertThat(spec.attributes()).containsKey("db.system.name");

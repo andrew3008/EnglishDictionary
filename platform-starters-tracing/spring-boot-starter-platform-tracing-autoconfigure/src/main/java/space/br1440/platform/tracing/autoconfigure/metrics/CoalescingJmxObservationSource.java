@@ -38,8 +38,13 @@ final class CoalescingJmxObservationSource<T> {
 
         if (refreshLock.tryLock()) {
             try {
-                current = new Snapshot<>(readSource(), now);
-                snapshot = current;
+                current = snapshot;
+
+                if (!isFresh(current, ticker.nanoTime())) {
+                    Optional<T> observed = readSource();
+                    current = new Snapshot<>(observed, ticker.nanoTime());
+                    snapshot = current;
+                }
             } finally {
                 refreshLock.unlock();
             }
@@ -57,7 +62,8 @@ final class CoalescingJmxObservationSource<T> {
     }
 
     private boolean isFresh(Snapshot<T> current, long now) {
-        return (current.refreshedAtNanos() != Long.MIN_VALUE) && (now - current.refreshedAtNanos()) < coalescingWindowNanos;
+        return (current.refreshedAtNanos() != Long.MIN_VALUE) &&
+                (now - current.refreshedAtNanos()) < coalescingWindowNanos;
     }
 
     private record Snapshot<T>(Optional<T> value, long refreshedAtNanos) {

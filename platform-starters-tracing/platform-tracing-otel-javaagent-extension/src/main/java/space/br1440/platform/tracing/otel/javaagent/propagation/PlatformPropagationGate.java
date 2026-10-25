@@ -53,24 +53,20 @@ public final class PlatformPropagationGate {
                 throw new IllegalStateException(message);
             }
 
-            TracingSettingsSource previous = acceptedPolicy.get();
-
             long token = generation.incrementAndGet();
             acceptedPolicy.set(policy);
             activeGeneration = token;
-            return new AcceptedPolicyRegistration(token, previous);
+            return new AcceptedPolicyRegistration(token);
         }
     }
 
     private final class AcceptedPolicyRegistration implements AutoCloseable {
 
         private final long token;
-        private final TracingSettingsSource previous;
         private boolean closed;
 
-        private AcceptedPolicyRegistration(long token, TracingSettingsSource previous) {
+        private AcceptedPolicyRegistration(long token) {
             this.token = token;
-            this.previous = previous;
         }
 
         @Override
@@ -86,7 +82,7 @@ public final class PlatformPropagationGate {
                     return;
                 }
 
-                acceptedPolicy.set(previous);
+                acceptedPolicy.set(null);
                 activeGeneration = 0L;
             }
         }

@@ -14,7 +14,7 @@ import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionR
 import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
-public final class AutoconfigureSession {
+public final class AutoconfigureSession implements AutoCloseable {
 
     private final AgentInstanceId agentInstanceId;
     private final ExtensionConfig extensionConfig;
@@ -93,6 +93,11 @@ public final class AutoconfigureSession {
 
     public RemoteJmxMutationRegistrationAssessor remoteJmxMutationRegistrationAssessor() {
         return remoteJmxMutationRegistrationAssessor;
+    }
+
+    @Override
+    public void close() {
+        scrubbingRuntime.close();
     }
 
     private static void requireSharedAgentInstanceId(AgentInstanceId expected,

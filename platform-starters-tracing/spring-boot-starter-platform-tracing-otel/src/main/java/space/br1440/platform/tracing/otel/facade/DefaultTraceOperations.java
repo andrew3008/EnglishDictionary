@@ -8,47 +8,35 @@ import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.span.SpanFactory;
 import space.br1440.platform.tracing.api.util.ThrowingSupplier;
-import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
-import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 import space.br1440.platform.tracing.otel.span.DefaultSpanFactory;
 
 public class DefaultTraceOperations implements TraceOperations {
 
-    private record RuntimeHolder(@Nonnull TracingRuntime runtime,
-                                 @Nonnull SpanFactory spans) {}
-
-    private volatile RuntimeHolder active;
-    private final RuntimeHolder original;
+    private final TracingRuntime runtime;
+    private final SpanFactory spans;
 
     public DefaultTraceOperations(@Nonnull TracingRuntime runtime) {
-        Objects.requireNonNull(runtime, "runtime");
-
-        RuntimeHolder holder = buildHolder(runtime);
-        this.original = holder;
-        this.active = holder;
-    }
-
-    private static RuntimeHolder buildHolder(@Nonnull TracingRuntime runtime) {
-        return new RuntimeHolder(runtime, new DefaultSpanFactory(runtime, runtime.spanAttributeValidator()));
+        this.runtime = Objects.requireNonNull(runtime, "runtime");
+        this.spans = new DefaultSpanFactory(runtime, runtime.spanAttributeValidator());
     }
 
     @Override
     @Nonnull
     public ActiveTraceContextView traceContext() {
-        return original.runtime().currentTraceContext();
+        return runtime.currentTraceContext();
     }
 
     @Override
     @Nonnull
     public SpanFactory spans() {
-        return active.spans();
+        return spans;
     }
 
     @Override
     @Nonnull
     public CorrelationScope openCorrelationScope(@Nonnull String correlationId) {
-        return original.runtime().openCorrelationScope(correlationId);
+        return runtime.openCorrelationScope(correlationId);
     }
 
     @Override
@@ -70,18 +58,8 @@ public class DefaultTraceOperations implements TraceOperations {
         }
     }
 
-    public boolean isFacadeEnabled() {
-        return (active.runtime().state().mode() == TracingRuntimeMode.ENABLED);
-    }
-
-    public void setFacadeEnabled(boolean enabled) {
-        this.active = enabled
-                ? original
-                : buildHolder(NoOpTracingRuntime.disabledByConfiguration("setFacadeEnabled(false)"));
-    }
-
     @Nonnull
     public TracingRuntime tracingRuntime() {
-        return active.runtime();
+        return runtime;
     }
 }

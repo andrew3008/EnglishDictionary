@@ -157,21 +157,15 @@ class PlatformTracingSamplerMetricsBinderFunctionalTest {
             private CompositeData buildComposite() {
                 try {
                     TabularType stringLongMapType = stringLongMapType();
-                    TabularType stringDoubleMapType = stringDoubleMapType();
-
                     Map<String, OpenType<?>> itemTypes = new LinkedHashMap<>();
-                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE, SimpleType.LONG);
                     itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID, SimpleType.STRING);
-                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_STARTED_AT, SimpleType.LONG);
-                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_COMPLETED_AT, SimpleType.LONG);
                     itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_ENABLED, SimpleType.BOOLEAN);
                     itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO, SimpleType.DOUBLE);
-                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIOS, stringDoubleMapType);
+                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIO_COUNT, SimpleType.LONG);
                     itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_DECISION_COUNTS, stringLongMapType);
                     itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_CONFIG_LAST_UPDATED_SOURCE, SimpleType.STRING);
                     itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_PRESENT, SimpleType.BOOLEAN);
                     itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_GENERATION, SimpleType.LONG);
-                    itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_CAPTURED_OFFSET_NANOS, SimpleType.LONG);
 
                     CompositeType type = new CompositeType(
                             JmxWireContract.OPEN_TYPE_SAMPLING_OBSERVATION_TYPE_NAME,
@@ -182,18 +176,14 @@ class PlatformTracingSamplerMetricsBinderFunctionalTest {
                     );
 
                     Map<String, Object> values = new LinkedHashMap<>();
-                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE, 1L);
                     values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID, AGENT_INSTANCE_ID);
-                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_STARTED_AT, 0L);
-                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_COMPLETED_AT, 0L);
                     values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_ENABLED, true);
                     values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO, 1.0);
-                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIOS, stringDoubleMap(stringDoubleMapType, Map.of()));
+                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIO_COUNT, 0L);
                     values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_DECISION_COUNTS, stringLongMap(stringLongMapType, decisionCounts));
                     values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_CONFIG_LAST_UPDATED_SOURCE, "test");
                     values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_PRESENT, ownerPresent);
                     values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_GENERATION, generation);
-                    values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_CAPTURED_OFFSET_NANOS, 0L);
 
                     return new CompositeDataSupport(type, values);
                 } catch (OpenDataException e) {
@@ -209,26 +199,9 @@ class PlatformTracingSamplerMetricsBinderFunctionalTest {
                         "space.br1440.platform.tracing.SamplerDecisionCounts", "table", rowType, new String[]{"key"});
             }
 
-            private static TabularType stringDoubleMapType() throws OpenDataException {
-                CompositeType rowType = new CompositeType("SamplingRouteRatioEntry", "row",
-                        new String[]{"key", "value"}, new String[]{"key", "value"},
-                        new OpenType<?>[]{SimpleType.STRING, SimpleType.DOUBLE});
-                return new TabularType(
-                        "space.br1440.platform.tracing.SamplingRouteRatios", "table", rowType, new String[]{"key"});
-            }
-
             private static TabularData stringLongMap(TabularType type, Map<String, Long> values) throws OpenDataException {
                 TabularDataSupport table = new TabularDataSupport(type);
                 for (Map.Entry<String, Long> entry : values.entrySet()) {
-                    table.put(new CompositeDataSupport(type.getRowType(),
-                            new String[]{"key", "value"}, new Object[]{entry.getKey(), entry.getValue()}));
-                }
-                return table;
-            }
-
-            private static TabularData stringDoubleMap(TabularType type, Map<String, Double> values) throws OpenDataException {
-                TabularDataSupport table = new TabularDataSupport(type);
-                for (Map.Entry<String, Double> entry : values.entrySet()) {
                     table.put(new CompositeDataSupport(type.getRowType(),
                             new String[]{"key", "value"}, new Object[]{entry.getKey(), entry.getValue()}));
                 }

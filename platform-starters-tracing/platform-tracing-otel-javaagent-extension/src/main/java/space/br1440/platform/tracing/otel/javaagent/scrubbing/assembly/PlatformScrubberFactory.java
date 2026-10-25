@@ -1,5 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly;
 
+import static space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames.SCRUBBING_BUILT_IN_RULES;
+import static space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames.SCRUBBING_RULES_CONFIG;
+
+import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -13,7 +17,7 @@ import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ScrubbingExtensionConfig;
-import space.br1440.platform.tracing.otel.javaagent.factory.ScrubbingMissingKeyPolicy;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ScrubbingMissingKeyPolicy;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventType;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
@@ -51,23 +55,14 @@ public final class PlatformScrubberFactory {
             return ScrubbingRuntime.disabled();
         }
 
-        List<RuntimeRule> rules = collectClassified(extConfig.scrubbing());
-        if (rules.isEmpty()) {
-            throw new SanitizerBootstrapException(
-                    SanitizerBootstrapException.RULE_SET_EMPTY,
-                    "Scrubbing is enabled, but no effective sanitizing rules were loaded"
-            );
-        }
-
-        boolean failFast = ScrubbingMissingKeyPolicy.FAIL_FAST.value()
-                .equalsIgnoreCase(extConfig.scrubbing().missingKeyPolicy());
-
-        return ScrubbingRuntime.create(rules, 1L, extConfig.scrubbing().hmacKey(), failFast);
+        ScrubbingExtensionConfig scrubbing = extConfig.scrubbing();
+        boolean failFast = scrubbing.missingKeyPolicy() == ScrubbingMissingKeyPolicy.FAIL_FAST;
+        return buildClassified(scrubbing, failFast);
     }
 
-    private List<RuntimeRule> collectClassified(ScrubbingExtensionConfig scrubbing) {
+    private ScrubbingRuntime buildClassified(ScrubbingExtensionConfig scrubbing, boolean failFast) {
         try {
-            return collectScrubbingRules(scrubbing);
+            return buildEnabledRuntime(scrubbing, failFast);
         } catch (SanitizerBootstrapException e) {
             throw e;
         } catch (RuntimeException e) {
@@ -93,26 +88,17 @@ public final class PlatformScrubberFactory {
         );
     }
 
-    private List<RuntimeRule> collectScrubbingRules(ScrubbingExtensionConfig scrubbing) {
+    private ScrubbingRuntime buildEnabledRuntime(ScrubbingExtensionConfig scrubbing, boolean failFast) {
         List<String> primaryNames = scrubbing.builtInRules();
         List<String> additionalNames = ScrubbingRulesLoader.load(
                 scrubbing.rulesConfig(),
                 ScrubbingRulesLoader.class.getClassLoader()
         );
 
-        Set<String> dedupNames = new LinkedHashSet<>(primaryNames);
-        dedupNames.addAll(additionalNames);
-
         List<SpanAttributeScrubbingRule> builtIn = new ArrayList<>();
-        for (String name : dedupNames) {
-            SpanAttributeScrubbingRule rule = BuiltInSpanAttributeScrubbingRules.resolve(name);
-            if (rule != null) {
-                builtIn.add(rule);
-            } else {
-                log.log(ScrubbingLogEvent.UNKNOWN_BUILT_IN_SCRUBBING_RULE,
-                        fields -> fields.putString(AgentLogField.NAME, name));
-            }
-        }
+        Set<String> seenBuiltInNames = new LinkedHashSet<>();
+        addBuiltInRules(builtIn, seenBuiltInNames, primaryNames, SCRUBBING_BUILT_IN_RULES);
+        addBuiltInRules(builtIn, seenBuiltInNames, additionalNames, SCRUBBING_RULES_CONFIG);
 
         List<SpanAttributeScrubbingRule> bundledSpi = stabilizeBundledRules(spiScrubbingRuleSource.get());
 
@@ -120,8 +106,51 @@ public final class PlatformScrubberFactory {
         String extensionsProperty = scrubbing.rulesExtensions();
         try (ExtensionRuleLoader extensionRuleLoader = new ExtensionRuleLoader(validationMode)) {
             List<SpanAttributeScrubbingRule> custom = extensionRuleLoader.load(extensionsProperty);
-            emitStartupDiagnostics(builtIn, bundledSpi, custom, extensionsProperty, extensionRuleLoader);
-            return mergeRules(builtIn, bundledSpi, custom);
+            List<RuntimeRule> merged = mergeRules(builtIn, bundledSpi, custom);
+            if (merged.isEmpty()) {
+                throw new SanitizerBootstrapException(
+                        SanitizerBootstrapException.RULE_SET_EMPTY,
+                        "Scrubbing is enabled, but no effective sanitizing rules were loaded"
+                );
+            }
+
+            emitStartupDiagnostics(
+                    builtIn,
+                    bundledSpi,
+                    custom,
+                    merged,
+                    extensionsProperty,
+                    extensionRuleLoader
+            );
+            URLClassLoader extensionClassLoader = extensionRuleLoader.releaseClassLoader();
+            return ScrubbingRuntime.create(
+                    merged,
+                    1L,
+                    scrubbing.hmacKey(),
+                    failFast,
+                    extensionClassLoader
+            );
+        }
+    }
+
+    private static void addBuiltInRules(List<SpanAttributeScrubbingRule> target,
+                                        Set<String> seenNames,
+                                        List<String> configuredNames,
+                                        String propertyName) {
+        for (String configuredName : configuredNames) {
+            BuiltInSpanAttributeScrubbingRules descriptor = BuiltInSpanAttributeScrubbingRules.lookup(configuredName);
+            if (descriptor == null) {
+                throw new SanitizerBootstrapException(
+                        SanitizerBootstrapException.RULE_LOADING_FAILED,
+                        propertyName,
+                        "Unknown built-in scrubbing rule '" + configuredName
+                                + "' in property '" + propertyName + "'"
+                );
+            }
+
+            if (seenNames.add(descriptor.configName())) {
+                target.add(descriptor.create());
+            }
         }
     }
 
@@ -168,17 +197,19 @@ public final class PlatformScrubberFactory {
     private static void emitStartupDiagnostics(List<SpanAttributeScrubbingRule> builtInRules,
                                                List<SpanAttributeScrubbingRule> bundledSpiRules,
                                                List<SpanAttributeScrubbingRule> customRules,
+                                               List<RuntimeRule> mergedRules,
                                                String rulesExtensionsProperty,
                                                ExtensionRuleLoader extensionRuleLoader) {
-        int clamped = Math.toIntExact(customRules.stream()
-                .filter(r -> !r.critical() && r.priority() < PriorityHardening.CUSTOM_PRIORITY_FLOOR)
+        int clamped = Math.toIntExact(mergedRules.stream()
+                .filter(rule -> rule.executable().getEffectivePriority()
+                        != rule.executable().getRule().priority())
                 .count());
 
         String loadingMode = StringUtils.hasText(rulesExtensionsProperty) ? "PLATFORM_RULES_EXTENSIONS" : "NONE";
         StartupDiagnostics.emit(
                 builtInRules.size(), bundledSpiRules.size(), customRules.size(),
                 loadingMode, extensionRuleLoader.getFailedProviders(),
-                clamped, 0, extensionRuleLoader.getFailedEntries()
+                clamped, extensionRuleLoader.getFailedEntries()
         );
     }
 

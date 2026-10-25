@@ -10,6 +10,7 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.DiagnosticsObservation;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
@@ -36,9 +37,10 @@ class PlatformTracingSafeWrapperMetricsBinderTest {
     @Test
     void presentObservationReadsComponentFailureCountersByTag() {
         DiagnosticsObservation observation = observationWithSafeWrapperMetrics(Map.of(
-                "sampler.failures", 4L,
-                "propagator.failures", 1L,
-                "resource.failures", 0L));
+                JmxWireContract.KEY_SAFE_WRAPPER_METRICS_SAMPLER_FAILURES, 4L,
+                JmxWireContract.KEY_SAFE_WRAPPER_METRICS_PROPAGATOR_FAILURES, 1L,
+                JmxWireContract.KEY_SAFE_WRAPPER_METRICS_RESOURCE_FAILURES, 0L
+        ));
         SimpleMeterRegistry registry = bindWith(() -> Optional.of(observation));
 
         assertThat(failureCounter(registry, "sampler")).isEqualTo(4.0);
@@ -48,8 +50,9 @@ class PlatformTracingSafeWrapperMetricsBinderTest {
 
     @Test
     void presentObservationDegradedModeGaugeIsHonestZeroNotNaNWhenDisabled() {
-        // Домен доступен и явно сообщает "не деградирует" (0) — это не то же самое, что "нет данных".
-        DiagnosticsObservation observation = observationWithSafeWrapperMetrics(Map.of("degraded_mode.enabled", 0L));
+        DiagnosticsObservation observation = observationWithSafeWrapperMetrics(
+                Map.of(JmxWireContract.KEY_SAFE_WRAPPER_METRICS_DEGRADED_MODE_ENABLED, 0L)
+        );
         SimpleMeterRegistry registry = bindWith(() -> Optional.of(observation));
 
         assertThat(registry.get(DEGRADED_MODE_METRIC).gauge().value()).isZero();
@@ -58,7 +61,11 @@ class PlatformTracingSafeWrapperMetricsBinderTest {
     @Test
     void presentObservationDegradedModeGaugeReflectsEnabledFlagAndLastFailureTimestamp() {
         DiagnosticsObservation observation = observationWithSafeWrapperMetrics(
-                Map.of("degraded_mode.enabled", 1L, "last_failure.epoch_ms", 1_700_000_000_000L));
+                Map.of(
+                        JmxWireContract.KEY_SAFE_WRAPPER_METRICS_DEGRADED_MODE_ENABLED, 1L,
+                        JmxWireContract.KEY_SAFE_WRAPPER_METRICS_LAST_FAILURE_EPOCH_MS, 1_700_000_000_000L
+                )
+        );
         SimpleMeterRegistry registry = bindWith(() -> Optional.of(observation));
 
         assertThat(registry.get(DEGRADED_MODE_METRIC).gauge().value()).isEqualTo(1.0);
@@ -75,7 +82,7 @@ class PlatformTracingSafeWrapperMetricsBinderTest {
     }
 
     private static DiagnosticsObservation observationWithSafeWrapperMetrics(Map<String, Long> safeWrapperMetrics) {
-        return new DiagnosticsObservation(AGENT_INSTANCE_ID, 0L, safeWrapperMetrics, "INFO", true);
+        return new DiagnosticsObservation(AGENT_INSTANCE_ID, 0L, safeWrapperMetrics);
     }
 
     private SimpleMeterRegistry bindWith(Supplier<Optional<DiagnosticsObservation>> supplier) {

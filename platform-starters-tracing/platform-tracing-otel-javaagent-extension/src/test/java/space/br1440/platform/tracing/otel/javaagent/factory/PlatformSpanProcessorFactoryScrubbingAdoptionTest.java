@@ -21,6 +21,7 @@ import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ScrubbingMissingKeyPolicy;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
@@ -300,7 +301,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
                     "platform.tracing.scrubbing.missing-key-policy", "fail_fast");
             assertThat(cfg.scrubbing().missingKeyPolicy())
                     .as("missingKeyPolicy override = 'fail_fast'")
-                    .isEqualTo("fail_fast");
+                    .isEqualTo(ScrubbingMissingKeyPolicy.FAIL_FAST);
         }
 
         @Test

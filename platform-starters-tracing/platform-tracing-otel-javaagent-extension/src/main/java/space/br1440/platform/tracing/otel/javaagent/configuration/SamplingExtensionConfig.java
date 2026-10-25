@@ -14,7 +14,6 @@ import static space.br1440.platform.tracing.otel.javaagent.configuration.Extensi
 import java.util.List;
 import java.util.Map;
 
-import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 
@@ -27,10 +26,6 @@ public final class SamplingExtensionConfig {
     private final List<String> forceRecordValues;
     private final List<String> dropPaths;
     private final Map<String, String> routeRatios;
-
-    public static SamplingExtensionConfig from(ConfigProperties config) {
-        return new SamplingExtensionConfig(new ExtensionConfigReader(config));
-    }
 
     SamplingExtensionConfig(ExtensionConfigReader reader) {
         this.enabled = reader.booleanValue(SAMPLING_ENABLED, DEFAULT_ENABLED);

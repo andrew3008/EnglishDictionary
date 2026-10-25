@@ -14,8 +14,8 @@ import org.springframework.core.Ordered;
 import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.api.span.enrich.SpanEnricher;
-import space.br1440.platform.tracing.autoconfigure.identity.RequestIdBoundarySupport;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
+import space.br1440.platform.tracing.runtime.propagation.RequestIdSupport;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -85,7 +85,7 @@ public final class KafkaRequestIdentityAspect implements Ordered {
                 ? null
                 : new String(header.value(), StandardCharsets.UTF_8);
 
-        String requestId = RequestIdBoundarySupport.resolve(incoming);
+        String requestId = RequestIdSupport.resolve(incoming);
         if (!requestId.equals(incoming)) {
             record.headers()
                     .remove(PlatformHeaders.X_REQUEST_ID)

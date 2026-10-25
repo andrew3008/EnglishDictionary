@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.otel.span;
 
 import java.util.Objects;
 import java.util.Optional;
-
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
@@ -11,17 +10,18 @@ import space.br1440.platform.tracing.api.span.builder.OperationSpanBuilder;
 import space.br1440.platform.tracing.api.span.builder.TransportTracing;
 import space.br1440.platform.tracing.api.span.spec.SpanExecution;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 import space.br1440.platform.tracing.otel.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.otel.propagation.OtelTraceparentReaderImpl;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
-import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
-import space.br1440.platform.tracing.otel.span.builder.DefaultSpanBuilderFactory;
+import space.br1440.platform.tracing.otel.span.builder.DefaultTransportTracing;
+import space.br1440.platform.tracing.otel.span.builder.OperationSpanBuilderImpl;
 import space.br1440.platform.tracing.otel.span.spec.DefaultSpanSpecFactory;
 
 public final class DefaultSpanFactory implements SpanFactory {
 
     private final DefaultSpanSpecFactory specFactory;
-    private final DefaultSpanBuilderFactory builderFactory;
+    private final OtelTraceparentReader traceparentReader;
 
     public DefaultSpanFactory(@Nonnull TracingRuntime runtime,
                               @Nonnull SpanAttributeValidator policy) {
@@ -29,19 +29,20 @@ public final class DefaultSpanFactory implements SpanFactory {
         Objects.requireNonNull(policy, "policy");
 
         this.specFactory = new DefaultSpanSpecFactory(runtime, policy);
-        this.builderFactory = new DefaultSpanBuilderFactory(specFactory, readerFor(runtime));
+        this.traceparentReader = readerFor(runtime);
     }
 
     @Override
     @Nonnull
     public OperationSpanBuilder operation(@Nonnull String name) {
-        return builderFactory.operation(name);
+        Objects.requireNonNull(name, "name");
+        return new OperationSpanBuilderImpl(specFactory, traceparentReader, name);
     }
 
     @Override
     @Nonnull
     public TransportTracing transport() {
-        return builderFactory.transport();
+        return new DefaultTransportTracing(specFactory, traceparentReader);
     }
 
     @Override
@@ -52,8 +53,8 @@ public final class DefaultSpanFactory implements SpanFactory {
 
     static OtelTraceparentReader readerFor(@Nonnull TracingRuntime runtime) {
         return switch (runtime.state().mode()) {
-            case ENABLED, TEST -> OtelTraceparentReaderImpl.INSTANCE;
-            case DISABLED_BY_CONFIGURATION, UNAVAILABLE, NOOP -> DisabledTraceparentReader.INSTANCE;
+            case ENABLED -> OtelTraceparentReaderImpl.INSTANCE;
+            case DISABLED_BY_CONFIGURATION, NOOP -> DisabledTraceparentReader.INSTANCE;
         };
     }
 

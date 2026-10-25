@@ -19,15 +19,15 @@ class ExporterSnapshotTest {
 
     private static final String AGENT_INSTANCE_ID = "790530db-65b9-4fd3-9df3-89fc0ab3c711";
     private static final String REPLACEMENT_AGENT_INSTANCE_ID = "75e147f8-525e-4867-b453-f90835ab9736";
-    private static final String PARTIAL_SUCCESS_BATCHES = "partial_success_batches";
-    private static final String REJECTED_SPANS = "rejected_spans";
-    private static final String EXPORTED_SPANS = "exported_spans";
+    private static final String PARTIAL_SUCCESS_BATCHES = JmxWireContract.KEY_SAFE_EXPORTER_METRICS_PARTIAL_SUCCESS_BATCHES;
+    private static final String REJECTED_SPANS = JmxWireContract.KEY_SAFE_EXPORTER_METRICS_REJECTED_SPANS;
+    private static final String EXPORTED_SPANS = JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS;
 
     @Test
     void computes_deltas_from_nonzero_baseline() {
         // given
-        ExporterSnapshot baseline = snapshot(AGENT_INSTANCE_ID, 5L, 2L, 7L, 11L, 13L);
-        ExporterSnapshot current = snapshot(AGENT_INSTANCE_ID, 6L, 2L, 8L, 12L, 14L);
+        ExporterSnapshot baseline = snapshot(AGENT_INSTANCE_ID, 2L, 7L, 11L, 13L);
+        ExporterSnapshot current = snapshot(AGENT_INSTANCE_ID, 2L, 8L, 12L, 14L);
 
         // when
         ExporterSnapshot.MetricsDelta delta = current.deltaFrom(baseline);
@@ -64,8 +64,8 @@ class ExporterSnapshotTest {
     @Test
     void rejects_counter_reset() {
         // given
-        ExporterSnapshot baseline = snapshot(AGENT_INSTANCE_ID, 5L, 2L, 7L, 11L, 13L);
-        ExporterSnapshot current = snapshot(AGENT_INSTANCE_ID, 6L, 2L, 6L, 12L, 14L);
+        ExporterSnapshot baseline = snapshot(AGENT_INSTANCE_ID, 2L, 7L, 11L, 13L);
+        ExporterSnapshot current = snapshot(AGENT_INSTANCE_ID, 2L, 6L, 12L, 14L);
 
         // when
         Throwable thrown = catchThrowable(() -> current.deltaFrom(baseline));
@@ -79,8 +79,8 @@ class ExporterSnapshotTest {
     @Test
     void rejects_agent_replacement() {
         // given
-        ExporterSnapshot baseline = snapshot(AGENT_INSTANCE_ID, 5L, 2L, 7L, 11L, 13L);
-        ExporterSnapshot current = snapshot(REPLACEMENT_AGENT_INSTANCE_ID, 6L, 2L, 8L, 12L, 14L);
+        ExporterSnapshot baseline = snapshot(AGENT_INSTANCE_ID, 2L, 7L, 11L, 13L);
+        ExporterSnapshot current = snapshot(REPLACEMENT_AGENT_INSTANCE_ID, 2L, 8L, 12L, 14L);
 
         // when
         Throwable thrown = catchThrowable(() -> current.deltaFrom(baseline));
@@ -98,8 +98,8 @@ class ExporterSnapshotTest {
     @Test
     void rejects_exporter_replacement() {
         // given
-        ExporterSnapshot baseline = snapshot(AGENT_INSTANCE_ID, 5L, 2L, 7L, 11L, 13L);
-        ExporterSnapshot current = snapshot(AGENT_INSTANCE_ID, 6L, 3L, 8L, 12L, 14L);
+        ExporterSnapshot baseline = snapshot(AGENT_INSTANCE_ID, 2L, 7L, 11L, 13L);
+        ExporterSnapshot current = snapshot(AGENT_INSTANCE_ID, 3L, 8L, 12L, 14L);
 
         // when
         Throwable thrown = catchThrowable(() -> current.deltaFrom(baseline));
@@ -111,24 +111,9 @@ class ExporterSnapshotTest {
     }
 
     @Test
-    void rejects_observation_sequence_regression() {
-        // given
-        ExporterSnapshot baseline = snapshot(AGENT_INSTANCE_ID, 5L, 2L, 7L, 11L, 13L);
-        ExporterSnapshot current = snapshot(AGENT_INSTANCE_ID, 4L, 2L, 8L, 12L, 14L);
-
-        // when
-        Throwable thrown = catchThrowable(() -> current.deltaFrom(baseline));
-
-        // then
-        assertThat(thrown)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Export observation sequence decreased: baseline=5, current=4");
-    }
-
-    @Test
     void rejects_negative_counter_on_construction() {
         // when
-        Throwable thrown = catchThrowable(() -> snapshot(AGENT_INSTANCE_ID, 1L, 1L, 0L, 0L, -1L));
+        Throwable thrown = catchThrowable(() -> snapshot(AGENT_INSTANCE_ID, 1L, 0L, 0L, -1L));
 
         // then
         assertThat(thrown)
@@ -141,7 +126,6 @@ class ExporterSnapshotTest {
         // given
         CompositeData observation = exportObservation(
                 AGENT_INSTANCE_ID,
-                7L,
                 true,
                 3L,
                 List.of(
@@ -156,13 +140,13 @@ class ExporterSnapshotTest {
         ExporterSnapshot snapshot = ExporterSnapshot.decode(observation);
 
         // then
-        assertThat(snapshot).isEqualTo(snapshot(AGENT_INSTANCE_ID, 7L, 3L, 11L, 13L, 17L));
+        assertThat(snapshot).isEqualTo(snapshot(AGENT_INSTANCE_ID, 3L, 11L, 13L, 17L));
     }
 
     @Test
     void rejects_foreign_open_type() throws OpenDataException {
         // given
-        CompositeData exporter = (CompositeData) exportObservation(AGENT_INSTANCE_ID, 1L, true, 1L, requiredMetrics())
+        CompositeData exporter = (CompositeData) exportObservation(AGENT_INSTANCE_ID, true, 1L, requiredMetrics())
                 .get(JmxWireContract.FIELD_EXPORT_OBSERVATION_EXPORTER);
 
         // when
@@ -179,7 +163,6 @@ class ExporterSnapshotTest {
         // given
         CompositeData observation = exportObservation(
                 AGENT_INSTANCE_ID,
-                1L,
                 true,
                 1L,
                 List.of(metric(PARTIAL_SUCCESS_BATCHES, 1L), metric(REJECTED_SPANS, 1L))
@@ -199,7 +182,6 @@ class ExporterSnapshotTest {
         // given
         CompositeData observation = exportObservation(
                 AGENT_INSTANCE_ID,
-                1L,
                 true,
                 1L,
                 List.of(metric(PARTIAL_SUCCESS_BATCHES, 1L), metric(REJECTED_SPANS, -1L), metric(EXPORTED_SPANS, 1L))
@@ -217,7 +199,7 @@ class ExporterSnapshotTest {
     @Test
     void rejects_absent_exporter_owner() throws OpenDataException {
         // given
-        CompositeData observation = exportObservation(AGENT_INSTANCE_ID, 1L, false, 0L, requiredMetrics());
+        CompositeData observation = exportObservation(AGENT_INSTANCE_ID, false, 0L, requiredMetrics());
 
         // when
         Throwable thrown = catchThrowable(() -> ExporterSnapshot.decode(observation));
@@ -232,7 +214,7 @@ class ExporterSnapshotTest {
     void rejects_noncanonical_agent_instance_id() throws OpenDataException {
         // given
         String noncanonicalId = "790530DB-65B9-4FD3-9DF3-89FC0AB3C711";
-        CompositeData observation = exportObservation(noncanonicalId, 1L, true, 1L, requiredMetrics());
+        CompositeData observation = exportObservation(noncanonicalId, true, 1L, requiredMetrics());
 
         // when
         Throwable thrown = catchThrowable(() -> ExporterSnapshot.decode(observation));
@@ -244,23 +226,9 @@ class ExporterSnapshotTest {
     }
 
     @Test
-    void rejects_nonpositive_capture_sequence() throws OpenDataException {
-        // given
-        CompositeData observation = exportObservation(AGENT_INSTANCE_ID, 0L, true, 1L, requiredMetrics());
-
-        // when
-        Throwable thrown = catchThrowable(() -> ExporterSnapshot.decode(observation));
-
-        // then
-        assertThat(thrown)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("captureSequence must be positive: 0");
-    }
-
-    @Test
     void rejects_nonpositive_present_owner_generation() throws OpenDataException {
         // given
-        CompositeData observation = exportObservation(AGENT_INSTANCE_ID, 1L, true, 0L, requiredMetrics());
+        CompositeData observation = exportObservation(AGENT_INSTANCE_ID, true, 0L, requiredMetrics());
 
         // when
         Throwable thrown = catchThrowable(() -> ExporterSnapshot.decode(observation));
@@ -285,21 +253,15 @@ class ExporterSnapshotTest {
         );
     }
 
-    private static CompositeData exportObservation(
-            String agentInstanceId,
-            long captureSequence,
-            boolean ownerPresent,
-            long ownerGeneration,
-            List<CompositeData> metrics
-    ) throws OpenDataException {
+    private static CompositeData exportObservation(String agentInstanceId,
+                                                   boolean ownerPresent,
+                                                   long ownerGeneration,
+                                                   List<CompositeData> metrics) throws OpenDataException {
         CompositeData exporter = new CompositeDataSupport(
                 JmxOpenTypes.SAFE_EXPORTER_VALUES,
                 Map.of(
                         JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_PRESENT, ownerPresent,
                         JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_GENERATION, ownerGeneration,
-                        JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_CAPTURED_OFFSET_NANOS, 0L,
-                        JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_EXPORT_ENABLED, true,
-                        JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_LAST_EXPORT_DURATION_NANOS, 0L,
                         JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_SAFE_EXPORTER_METRICS,
                         safeExporterMetrics(metrics)
                 )
@@ -308,10 +270,7 @@ class ExporterSnapshotTest {
         return new CompositeDataSupport(
                 JmxOpenTypes.EXPORT_OBSERVATION,
                 Map.of(
-                        JmxWireContract.FIELD_EXPORT_OBSERVATION_CAPTURE_SEQUENCE, captureSequence,
                         JmxWireContract.FIELD_EXPORT_OBSERVATION_AGENT_INSTANCE_ID, agentInstanceId,
-                        JmxWireContract.FIELD_EXPORT_OBSERVATION_CAPTURE_STARTED_AT, 1L,
-                        JmxWireContract.FIELD_EXPORT_OBSERVATION_CAPTURE_COMPLETED_AT, 2L,
                         JmxWireContract.FIELD_EXPORT_OBSERVATION_PROCESSOR, exportProcessorValues(),
                         JmxWireContract.FIELD_EXPORT_OBSERVATION_EXPORTER, exporter
                 )
@@ -330,7 +289,6 @@ class ExporterSnapshotTest {
                 Map.ofEntries(
                         Map.entry(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_OWNER_PRESENT, false),
                         Map.entry(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_OWNER_GENERATION, 0L),
-                        Map.entry(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_OWNER_CAPTURED_OFFSET_NANOS, 0L),
                         Map.entry(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_QUEUE_CAPACITY, 0),
                         Map.entry(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_QUEUE_SIZE, 0),
                         Map.entry(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_DROPPED_OVERFLOW_TOTAL, 0L),
@@ -346,14 +304,12 @@ class ExporterSnapshotTest {
     }
 
     private static ExporterSnapshot snapshot(String agentInstanceId,
-                                             long captureSequence,
                                              long ownerGeneration,
                                              long partialSuccessBatches,
                                              long rejectedSpans,
                                              long exportedSpans) {
         return new ExporterSnapshot(
                 agentInstanceId,
-                captureSequence,
                 ownerGeneration,
                 partialSuccessBatches,
                 rejectedSpans,

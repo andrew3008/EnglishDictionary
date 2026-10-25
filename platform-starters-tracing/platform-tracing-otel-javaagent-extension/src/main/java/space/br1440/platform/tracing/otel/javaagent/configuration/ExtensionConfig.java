@@ -17,7 +17,6 @@ public final class ExtensionConfig {
     private final ValidationExtensionConfig validation;
     private final ClassificationExtensionConfig classification;
     private final SpanTimeoutExtensionConfig spanTimeout;
-    private final QueueExtensionConfig queue;
     private final BaggageExtensionConfig baggage;
     private final ResourceExtensionConfig resource;
 
@@ -32,7 +31,6 @@ public final class ExtensionConfig {
         this.validation = new ValidationExtensionConfig(reader);
         this.classification = new ClassificationExtensionConfig(reader);
         this.spanTimeout = new SpanTimeoutExtensionConfig(reader);
-        this.queue = new QueueExtensionConfig(reader);
         this.baggage = new BaggageExtensionConfig(reader);
         this.resource = new ResourceExtensionConfig(reader);
     }

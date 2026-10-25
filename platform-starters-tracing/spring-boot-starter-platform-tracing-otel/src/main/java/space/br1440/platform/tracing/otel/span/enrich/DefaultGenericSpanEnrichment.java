@@ -26,13 +26,6 @@ final class DefaultGenericSpanEnrichment implements GenericSpanEnrichment {
 
     @Override
     @Nonnull
-    public GenericSpanEnrichment userHash(@Nonnull String hash) {
-        span.setAttribute(SemconvKeys.PLATFORM_USER_HASH, Objects.requireNonNull(hash, "hash"));
-        return this;
-    }
-
-    @Override
-    @Nonnull
     public GenericSpanEnrichment result(@Nonnull SpanResult result) {
         span.setAttribute(SemconvKeys.PLATFORM_RESULT, Objects.requireNonNull(result, "result").value());
         return this;

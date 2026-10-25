@@ -71,6 +71,23 @@ def extensionSchema = extensionSchemaFile.map { file ->
     JavaAgentDistribution.ExtensionSchema.readFromProperties(file.asFile.toPath())
 }
 
+def extensionArtifactMetadataOutputDir = layout.buildDirectory.dir('generated/extension-artifact-metadata')
+def extensionArtifactMetadataPath = 'space/br1440/platform/tracing/otel/javaagent/readiness/platform-extension-build.properties'
+
+def writeExtensionArtifactMetadata = tasks.register('writeExtensionArtifactMetadata', WriteProperties) {
+    group = 'build'
+    description = 'Writes classloader-local identity and version metadata for the javaagent extension'
+
+    destinationFile = extensionArtifactMetadataOutputDir.map { it.file(extensionArtifactMetadataPath) }
+    property('format.version', '1')
+    property('artifact', extensionArtifactId)
+    property('version', project.provider { project.version.toString() })
+}
+
+tasks.named('processResources', ProcessResources) {
+    from(files(extensionArtifactMetadataOutputDir).builtBy(writeExtensionArtifactMetadata))
+}
+
 def relocationRules = [
         'com.google.protobuf': 'space.br1440.platform.tracing.otel.javaagent.shaded.com.google.protobuf',
         'io.opentelemetry.proto': 'space.br1440.platform.tracing.otel.javaagent.shaded.io.opentelemetry.proto'

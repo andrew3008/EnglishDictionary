@@ -37,7 +37,6 @@ class ValidationRuntimeFoundationTest {
         long initialSequence = processor.getPolicyVersion();
         // then
         assertThat(initialSequence).isZero();
-        assertThat(processor.getPolicySource()).isEqualTo("accepted-state");
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
             Tracer tracer = h.tracer("t");
@@ -51,7 +50,6 @@ class ValidationRuntimeFoundationTest {
         assertThat(AcceptedPolicyMutationAccess.applyValidation(access, SpanAttributeValidationLevel.DISABLED))
                 .isEqualTo(SettingsUpdateStatus.APPLIED);
         assertThat(processor.getPolicyVersion()).isEqualTo(initialSequence + 1);
-        assertThat(processor.getPolicySource()).isEqualTo("accepted-state");
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
             Tracer tracer = h.tracer("t");

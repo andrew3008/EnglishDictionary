@@ -53,6 +53,17 @@ public final class ReadinessJmxTestFixtures {
     public static CompositeData readySnapshot(String agentInstanceId,
                                               long evidenceGeneration,
                                               String batchId) {
+        return readySnapshot(agentInstanceId, evidenceGeneration, batchId, "1.2.3");
+    }
+
+    public static CompositeData readySnapshotForExtensionVersion(String extensionVersion) {
+        return readySnapshot(AGENT_INSTANCE_ID, EVIDENCE_GENERATION, BATCH_ID, extensionVersion);
+    }
+
+    private static CompositeData readySnapshot(String agentInstanceId,
+                                               long evidenceGeneration,
+                                               String batchId,
+                                               String extensionVersion) {
         return composite(
                 JmxWireContract.SCHEMA_ID,
                 JmxWireContract.SCHEMA_DIGEST_SHA256,
@@ -66,7 +77,7 @@ public final class ReadinessJmxTestFixtures {
                 "",
                 SHA256,
                 "2.30.0",
-                "1.2.3",
+                extensionVersion,
                 "agent-loader@7e57",
                 "sdk-loader@7e58");
     }
@@ -118,18 +129,14 @@ public final class ReadinessJmxTestFixtures {
             fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_EVIDENCE_GENERATION, evidenceGeneration);
             fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_BATCH_ID, batchId);
             fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE, lifecycle);
-            fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES,
-                    capabilities.toArray(String[]::new));
-            fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_MISSING_REQUIRED,
-                    missingRequired.toArray(String[]::new));
+            fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_CAPABILITIES, capabilities.toArray(String[]::new));
+            fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_MISSING_REQUIRED, missingRequired.toArray(String[]::new));
             fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE, failureCode);
             fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_PRIMARY_FAILURE_CODE, primaryFailureCode);
-            fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_DISTRIBUTION_SHA256,
-                    agentDistributionSha256);
+            fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_AGENT_DISTRIBUTION_SHA256, agentDistributionSha256);
             fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_UPSTREAM_AGENT_VERSION, upstreamAgentVersion);
             fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_VERSION, extensionVersion);
-            fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_DEFINING_LOADER,
-                    extensionDefiningLoader);
+            fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_DEFINING_LOADER, extensionDefiningLoader);
             fields.put(JmxWireContract.FIELD_READINESS_SNAPSHOT_SDK_DEFINING_LOADER, sdkDefiningLoader);
             return new CompositeDataSupport(JmxOpenTypes.READINESS_SNAPSHOT, fields);
         } catch (Exception exception) {

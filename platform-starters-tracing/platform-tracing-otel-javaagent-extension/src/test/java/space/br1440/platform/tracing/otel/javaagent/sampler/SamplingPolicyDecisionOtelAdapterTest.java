@@ -1,9 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
-import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.stream.Stream;
@@ -16,6 +12,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyDecision;
 import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyReason;
 import space.br1440.platform.tracing.test.harness.SamplerHarness;
@@ -69,7 +68,6 @@ class SamplingPolicyDecisionOtelAdapterTest {
         SamplingResult result = SamplingPolicyOtelAdapter.toSamplingResult(decision);
 
         // then
-        assertThat(result).isInstanceOf(ForwardingSamplingResult.class);
         assertThat(result.getDecision()).isEqualTo(SamplingDecision.RECORD_AND_SAMPLE);
         assertThat(result.getAttributes().get(REASON)).isEqualTo(PlatformSamplingReasons.ROUTE_RATIO);
     }
@@ -102,37 +100,59 @@ class SamplingPolicyDecisionOtelAdapterTest {
         return Stream.of(
                 Arguments.of(
                         SamplingPolicyDecision.recordAndSample(SamplingPolicyReason.FORCE_HEADER, "force_header_rule"),
-                        "RECORD_AND_SAMPLE:" + PlatformSamplingReasons.FORCE_HEADER),
+                        "RECORD_AND_SAMPLE:" + PlatformSamplingReasons.FORCE_HEADER
+                ),
+
                 Arguments.of(
                         SamplingPolicyDecision.recordAndSample(SamplingPolicyReason.QA_TRACE, "qa_trace_rule"),
-                        "RECORD_AND_SAMPLE:" + PlatformSamplingReasons.QA_TRACE),
+                        "RECORD_AND_SAMPLE:" + PlatformSamplingReasons.QA_TRACE
+                ),
+
                 Arguments.of(
                         SamplingPolicyDecision.recordAndSample(SamplingPolicyReason.PARENT_DECISION, "parent_decision"),
-                        "RECORD_AND_SAMPLE:" + PlatformSamplingReasons.PARENT_SAMPLED),
+                        "RECORD_AND_SAMPLE:" + PlatformSamplingReasons.PARENT_SAMPLED
+                ),
+
                 Arguments.of(
                         SamplingPolicyDecision.recordAndSample(SamplingPolicyReason.ROUTE_RATIO, "route_ratio"),
-                        "RECORD_AND_SAMPLE:" + PlatformSamplingReasons.ROUTE_RATIO),
+                        "RECORD_AND_SAMPLE:" + PlatformSamplingReasons.ROUTE_RATIO
+                ),
+
                 Arguments.of(
                         SamplingPolicyDecision.recordAndSample(SamplingPolicyReason.DEFAULT_RATIO, "default_ratio"),
-                        "RECORD_AND_SAMPLE:" + PlatformSamplingReasons.GLOBAL_RATIO),
+                        "RECORD_AND_SAMPLE:" + PlatformSamplingReasons.GLOBAL_RATIO
+                ),
+
                 Arguments.of(
                         SamplingPolicyDecision.drop(SamplingPolicyReason.KILL_SWITCH, "kill_switch"),
-                        "DROP:" + PlatformSamplingReasons.KILL_SWITCH),
+                        "DROP:" + PlatformSamplingReasons.KILL_SWITCH
+                ),
+
                 Arguments.of(
                         SamplingPolicyDecision.drop(SamplingPolicyReason.HARD_DROP, "hard_drop"),
-                        "DROP:" + PlatformSamplingReasons.DROP_PATH),
+                        "DROP:" + PlatformSamplingReasons.DROP_PATH
+                ),
+
                 Arguments.of(
                         SamplingPolicyDecision.drop(SamplingPolicyReason.PARENT_DROP, "parent_decision"),
-                        "DROP:" + PlatformSamplingReasons.PARENT_DROP),
+                        "DROP:" + PlatformSamplingReasons.PARENT_DROP
+                ),
+
                 Arguments.of(
                         SamplingPolicyDecision.drop(SamplingPolicyReason.ROUTE_RATIO_DROP, "route_ratio"),
-                        "DROP:" + PlatformSamplingReasons.ROUTE_RATIO_DROP),
+                        "DROP:" + PlatformSamplingReasons.ROUTE_RATIO_DROP
+                ),
+
                 Arguments.of(
                         SamplingPolicyDecision.drop(SamplingPolicyReason.DEFAULT_RATIO_DROP, "default_ratio"),
-                        "DROP:" + PlatformSamplingReasons.GLOBAL_RATIO_DROP),
+                        "DROP:" + PlatformSamplingReasons.GLOBAL_RATIO_DROP
+                ),
+
                 Arguments.of(
                         SamplingPolicyDecision.abstain(),
-                        "DROP:" + PlatformSamplingReasons.FALLBACK_DROP));
+                        "DROP:" + PlatformSamplingReasons.FALLBACK_DROP
+                )
+        );
     }
 
     @ParameterizedTest(name = "{0}")
@@ -177,6 +197,7 @@ class SamplingPolicyDecisionOtelAdapterTest {
         if (c.urlPath() != null) {
             harness.putStringAttribute("url.path", c.urlPath());
         }
+
         return harness.sample();
     }
 

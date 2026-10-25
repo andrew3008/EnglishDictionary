@@ -9,7 +9,6 @@ import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder;
-import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 
 import lombok.experimental.UtilityClass;
 
@@ -30,21 +29,7 @@ final class OperationSpanSpecs {
         Objects.requireNonNull(relationship, "relationship");
         Objects.requireNonNull(links, "links");
 
-        SpanSpecBuilder builder = SpanSpec.builder(name)
-                .category(category)
-                .reason(SpanSpecReason.PLATFORM_EDGE_CASE);
-
-        switch (relationship) {
-            case CHILD -> builder.child();
-            case ROOT -> {
-                builder.root();
-                if (!links.isEmpty()) {
-                    builder.linkedTo(links.toArray(RemoteSpanLink[]::new));
-                }
-            }
-            case DETACHED -> builder.detached();
-        }
-
-        return builder.build();
+        SpanSpecBuilder builder = SpanSpec.builder(name).category(category);
+        return SpanSpecBuilderSupport.applyRelationship(builder, relationship, links).build();
     }
 }

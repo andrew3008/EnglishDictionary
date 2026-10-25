@@ -68,6 +68,25 @@ public final class ContractValues {
         return result;
     }
 
+    public static String javaConstantName(String value) {
+        StringBuilder result = new StringBuilder();
+        for (int index = 0; index < value.length(); index++) {
+            char character = value.charAt(index);
+            if (Character.isUpperCase(character) && index > 0
+                    && result.charAt(result.length() - 1) != '_') {
+                result.append('_');
+            }
+
+            result.append(
+                    Character.isLetterOrDigit(character)
+                    ? Character.toUpperCase(character)
+                    : '_'
+            );
+        }
+
+        return result.toString();
+    }
+
     public static void requireValue(Map<String, Object> values, String key, String expected, String path) {
         String actual = string(values.get(key), path + '.' + key);
         if (!expected.equals(actual)) {

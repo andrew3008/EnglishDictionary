@@ -57,9 +57,10 @@ final class BootstrapActivation {
         synchronized (lifecycle.monitor()) {
             AutoconfigureSession session = lifecycle.beginActivation();
             try {
-                installLifecycleShutdownHook.run();
                 resources = new BootstrapResources();
+                resources.push(session, "autoconfigure-session");
                 lifecycle.attachResources(resources);
+                installLifecycleShutdownHook.run();
                 attempt = new ActivationAttempt(session, resources, tracerProvider);
             } catch (RuntimeException | Error cause) {
                 failure = recordPrologueFailure(cause, fallbackEvidence);

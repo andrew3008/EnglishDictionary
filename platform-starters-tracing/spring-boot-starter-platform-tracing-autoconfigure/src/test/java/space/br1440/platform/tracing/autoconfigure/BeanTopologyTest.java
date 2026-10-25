@@ -20,11 +20,11 @@ import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
 import space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.NoOpSpanHandle;
@@ -35,7 +35,6 @@ import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 import space.br1440.platform.tracing.otel.runtime.state.TracingState;
-import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -53,8 +52,7 @@ class BeanTopologyTest {
             );
 
     private final ApplicationContextRunner controlledAgentRunner = contextRunner
-            .withInitializer(ControlledAgentTestRuntime::initialize)
-            .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier);
+            .withInitializer(ControlledAgentTestRuntime::initialize);
 
     @Test
     void exactlyOneTraceOperationsAndTracingRuntime() {
@@ -138,7 +136,7 @@ class BeanTopologyTest {
         private final TracingRuntime identityDelegate = NoOpTracingRuntime.noop();
 
         private static final TracingState STATE = ImmutableTracingState.of(
-                TracingRuntimeMode.TEST, "test-primary", Map.of()
+                TracingRuntimeMode.NOOP, "test-primary", Map.of()
         );
 
         @Override

@@ -1,32 +1,20 @@
 package space.br1440.platform.tracing.otel.runtime;
 
-import io.opentelemetry.sdk.OpenTelemetrySdk;
-import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
-import io.opentelemetry.sdk.trace.SdkTracerProvider;
-import io.opentelemetry.sdk.trace.data.LinkData;
-import io.opentelemetry.sdk.trace.data.SpanData;
-import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.span.SpanCategory;
+
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
-import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
-import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
 
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * Slice 2 hard gate: all manual span paths route through {@link TracingRuntime#startSpan(SpanSpec)}.
- */
 class TracingRuntimeRoutingTest {
 
     private RecordingTracingRuntime recording;
@@ -111,7 +99,7 @@ class TracingRuntimeRoutingTest {
         assertThat(received.category()).isEqualTo(SpanCategory.DATABASE);
         assertThat(received.attributes()).containsEntry("db.system",
                 SpanSpecAttributeValue.of("postgresql"));
-        assertThat(received.reason()).isEqualTo(SpanSpecReason.LEGACY_INTEGRATION);
+        assertThat(received.reason()).contains(SpanSpecReason.LEGACY_INTEGRATION);
         assertThat(received.reference()).contains("ticket-42");
     }
 
@@ -122,20 +110,6 @@ class TracingRuntimeRoutingTest {
         noop.spans().operation("noop-op").run(() -> {
         });
         assertThat(noop.traceContext().traceId()).isEmpty();
-    }
-
-    @Test
-    void killSwitchDisabled_routesThroughBoundaryWithNoRealSpan() {
-        InMemorySpanExporter exporter = InMemorySpanExporter.create();
-        SdkTracerProvider provider = SdkTracerProvider.builder()
-                .addSpanProcessor(SimpleSpanProcessor.create(exporter))
-                .build();
-        DefaultTraceOperations realTracing = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(provider).build()));
-        realTracing.setFacadeEnabled(false);
-        realTracing.spans().operation("disabled").start().close();
-        assertThat(exporter.getFinishedSpanItems()).isEmpty();
-        assertThat(realTracing.tracingRuntime().state().mode())
-                .isEqualTo(TracingRuntimeMode.DISABLED_BY_CONFIGURATION);
     }
 
     private void assertSingleSpecNamed(String name, SpanRelationship relationship) {

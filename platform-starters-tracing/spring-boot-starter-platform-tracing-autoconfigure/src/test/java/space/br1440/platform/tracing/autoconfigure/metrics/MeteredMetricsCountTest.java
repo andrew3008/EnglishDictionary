@@ -15,7 +15,6 @@ import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 
@@ -34,7 +33,6 @@ class MeteredMetricsCountTest {
             )
             .withPropertyValues("platform.tracing.control.channel=NONE")
             .withInitializer(ControlledAgentTestRuntime::initializeWithExporter)
-            .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withUserConfiguration(MeterRegistryConfiguration.class);
 
     @Test

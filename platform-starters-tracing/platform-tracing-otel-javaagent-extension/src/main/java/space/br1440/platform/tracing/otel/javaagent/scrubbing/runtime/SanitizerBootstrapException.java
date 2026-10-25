@@ -10,18 +10,31 @@ public final class SanitizerBootstrapException extends IllegalStateException {
     public static final String TRACE_PIPELINE_ATTESTATION_FAILED = "TRACE_PIPELINE_ATTESTATION_FAILED";
 
     private final String code;
+    private final String propertyName;
 
     public SanitizerBootstrapException(String code, String message) {
-        super(message);
-        this.code = code;
+        this(code, null, message, null);
     }
 
     public SanitizerBootstrapException(String code, String message, Throwable cause) {
+        this(code, null, message, cause);
+    }
+
+    public SanitizerBootstrapException(String code, String propertyName, String message) {
+        this(code, propertyName, message, null);
+    }
+
+    public SanitizerBootstrapException(String code, String propertyName, String message, Throwable cause) {
         super(message, cause);
         this.code = code;
+        this.propertyName = propertyName;
     }
 
     public String code() {
         return code;
+    }
+
+    public String propertyName() {
+        return propertyName;
     }
 }

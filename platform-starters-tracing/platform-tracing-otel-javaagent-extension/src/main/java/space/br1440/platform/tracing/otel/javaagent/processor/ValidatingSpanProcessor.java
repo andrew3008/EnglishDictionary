@@ -12,10 +12,11 @@ import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
-import space.br1440.platform.tracing.otel.javaagent.logging.ratelimit.MinIntervalRateLimiter;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ValidationLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.ratelimit.MinIntervalRateLimiter;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.context.Context;
@@ -37,7 +38,7 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(ValidatingSpanProcessor.class);
 
-    private static final String DIAGNOSTIC_ID = "validation";
+    private static final String DIAGNOSTIC_ID = JmxWireContract.KEY_PROCESSOR_ERRORS_BY_NAME_VALIDATION;
 
     @Override
     public String diagnosticId() {
@@ -139,10 +140,6 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
 
     public long getPolicyVersion() {
         return acceptedPolicy.current().acceptedSequence();
-    }
-
-    public String getPolicySource() {
-        return "accepted-state";
     }
 
     public long getValidationViolationsTotal() {

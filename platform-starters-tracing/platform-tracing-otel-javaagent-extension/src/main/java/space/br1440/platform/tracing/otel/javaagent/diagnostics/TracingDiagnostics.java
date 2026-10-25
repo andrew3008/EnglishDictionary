@@ -6,6 +6,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
+
 public final class TracingDiagnostics {
 
     private static final TracingDiagnostics SHARED = new TracingDiagnostics();
@@ -72,12 +74,12 @@ public final class TracingDiagnostics {
 
     public Map<String, Long> snapshot() {
         Map<String, Long> snapshot = new LinkedHashMap<>();
-        snapshot.put("sampler.failures", getSamplerFailures());
-        snapshot.put("propagator.failures", getPropagatorFailures());
-        snapshot.put("resource.failures", getResourceFailures());
-        snapshot.put("safe_wrapper.suppressed_errors", getSuppressedErrors());
-        snapshot.put("degraded_mode.enabled", degradedModeEnabled.get() ? 1L : 0L);
-        snapshot.put("last_failure.epoch_ms", getLastFailureEpochMs());
+        snapshot.put(JmxWireContract.KEY_SAFE_WRAPPER_METRICS_SAMPLER_FAILURES, getSamplerFailures());
+        snapshot.put(JmxWireContract.KEY_SAFE_WRAPPER_METRICS_PROPAGATOR_FAILURES, getPropagatorFailures());
+        snapshot.put(JmxWireContract.KEY_SAFE_WRAPPER_METRICS_RESOURCE_FAILURES, getResourceFailures());
+        snapshot.put(JmxWireContract.KEY_SAFE_WRAPPER_METRICS_SAFE_WRAPPER_SUPPRESSED_ERRORS, getSuppressedErrors());
+        snapshot.put(JmxWireContract.KEY_SAFE_WRAPPER_METRICS_DEGRADED_MODE_ENABLED, degradedModeEnabled.get() ? 1L : 0L);
+        snapshot.put(JmxWireContract.KEY_SAFE_WRAPPER_METRICS_LAST_FAILURE_EPOCH_MS, getLastFailureEpochMs());
         return snapshot;
     }
 }

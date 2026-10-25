@@ -40,8 +40,7 @@ class PlatformExtensionReadinessIntegrationTest {
                             "otel.traces.exporter", "logging",
                             "otel.metrics.exporter", "none",
                             "otel.logs.exporter", "none",
-                            "otel.propagators", "tracecontext,baggage,platform-trace-control",
-                            "platform.tracing.queue.overflow-policy", "UPSTREAM"))
+                            "otel.propagators", "tracecontext,baggage,platform-trace-control"))
                     .build())
                     .hasStackTraceContaining("DISTRIBUTION_EVIDENCE_MISSING")
                     .rootCause()

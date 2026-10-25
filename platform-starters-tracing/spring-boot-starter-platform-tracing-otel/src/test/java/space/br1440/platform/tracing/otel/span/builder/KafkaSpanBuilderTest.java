@@ -19,7 +19,6 @@ import space.br1440.platform.tracing.api.span.builder.KafkaTracing;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidationMetrics;
 import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 import space.br1440.platform.tracing.otel.runtime.RecordingTracingRuntime;
@@ -80,7 +79,7 @@ class KafkaSpanBuilderTest {
         assertThat(recording.receivedSpecs()).hasSize(1);
         SpanSpec spec = recording.receivedSpecs().getFirst();
         assertThat(spec.category()).isEqualTo(SpanCategory.KAFKA_PRODUCER);
-        assertThat(spec.reason()).isEqualTo(SpanSpecReason.PLATFORM_EDGE_CASE);
+        assertThat(spec.reason()).isEmpty();
         assertThat(spec.name()).isEqualTo("orders publish");
         assertThat(spec.attributes()).containsKey("messaging.system");
         assertThat(spec.attributes()).containsKey("messaging.destination.name");

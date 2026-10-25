@@ -14,16 +14,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
-import space.br1440.platform.tracing.otel.javaagent.artifact.PlatformExtensionArtifact;
-
 class AgentContractFailureMessagesTest {
-
-    @Test
-    void expectedExtensionImplementationTitleMatchesTheExtensionRuntimeConstant() {
-        // then
-        assertThat(AgentContractFailureMessages.EXPECTED_EXTENSION_IMPLEMENTATION_TITLE)
-                .isEqualTo(PlatformExtensionArtifact.IMPLEMENTATION_TITLE);
-    }
 
     @ParameterizedTest
     @CsvSource({
@@ -469,37 +460,6 @@ class AgentContractFailureMessagesTest {
                         + AgentContractFailureMessages.UNSPECIFIED_CONTRACT_FAILURE_TEMPLATE.formatted(
                                 AgentRuntimeState.DISABLED,
                                 false)
-        );
-    }
-
-    @Test
-    void versionMismatchExplanationDescribesMissingManifestTitleWhenExtensionVersionIsDevelopment() {
-        // given
-        TracingDeploymentDiagnostics diagnostics = diagnostics(
-                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
-                "EXTENSION_VERSION_MISMATCH",
-                "READY",
-                "contract",
-                "digest",
-                "5a3f3fe4-e8ea-4dc4-b040-5d355e906f3a",
-                1L,
-                "batch",
-                "development"
-        );
-
-        // when
-        String message = AgentContractFailureMessages.reject(true, diagnostics, () -> "1.2.0");
-
-        // then
-        String expectedDevelopmentDetail = AgentContractFailureMessages.VERSION_MISMATCH_DEVELOPMENT_DETAIL_TEMPLATE
-                .formatted(AgentContractFailureMessages.EXPECTED_EXTENSION_IMPLEMENTATION_TITLE);
-
-        assertThat(message).isEqualTo(
-                AgentContractFailureMessages.SUMMARY_TEMPLATE.formatted(
-                        AgentRuntimeState.EXTENSION_INCOMPATIBLE,
-                        "EXTENSION_VERSION_MISMATCH")
-                        + ", applicationVersion=1.2.0, extensionVersion=development. "
-                        + expectedDevelopmentDetail
         );
     }
 

@@ -1,10 +1,10 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.emptyBuiltInRulesConfig;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
 
 import java.util.List;
 import java.util.Map;
@@ -45,7 +45,7 @@ class BootstrapCoordinatorSanitizerPreparationTest {
             assertBootstrapFailure(
                     () -> coordinator.prepare(config(Map.of(
                             ExtensionPropertyNames.SCRUBBING_MISSING_KEY_POLICY,
-                            "fail-fast"
+                            "fail_fast"
                     ))),
                     SanitizerBootstrapException.HMAC_INITIALIZATION_FAILED
             );

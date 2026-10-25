@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.Optional;
 import jakarta.annotation.Nonnull;
 
-import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.ExportObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.ExportProcessorValues;
@@ -27,7 +26,7 @@ final class PlatformTracingExportMetricsBinder implements MeterBinder {
     private static final String PROCESSOR_OWNER = "processor";
     private static final String EXPORTER_OWNER = "exporter";
 
-    private final PlatformTracingJmxClient client;
+    private final CoalescingJmxObservationSource<ExportObservation> observationSource;
     private final MonotonicJmxCounterGroupBridge<ExportProcessorMetricKey> processorBridge;
     private final MonotonicJmxCounterGroupBridge<ExportExporterMetricKey> exporterBridge;
 
@@ -36,12 +35,15 @@ final class PlatformTracingExportMetricsBinder implements MeterBinder {
     }
 
     PlatformTracingExportMetricsBinder(PlatformTracingJmxClient client, MonotonicJmxCounterGroupBridge.Ticker ticker) {
-        this.client = client;
+        this.observationSource = new CoalescingJmxObservationSource<>(
+                () -> client.export().observation(),
+                ticker
+        );
         this.processorBridge = new MonotonicJmxCounterGroupBridge<>(
-                ExportProcessorMetricKey.class, this::processorCounts, this::exportAgentInstanceId, ticker,
+                ExportProcessorMetricKey.class, this::processorSnapshot, ticker,
                 MonotonicJmxCounterGroupBridge.DEFAULT_COALESCING_WINDOW_NANOS);
         this.exporterBridge = new MonotonicJmxCounterGroupBridge<>(
-                ExportExporterMetricKey.class, this::exporterCounts, this::exportAgentInstanceId, ticker,
+                ExportExporterMetricKey.class, this::exporterSnapshot, ticker,
                 MonotonicJmxCounterGroupBridge.DEFAULT_COALESCING_WINDOW_NANOS);
     }
 
@@ -63,7 +65,7 @@ final class PlatformTracingExportMetricsBinder implements MeterBinder {
         for (ExportProcessorValues.LifecycleState state : ExportProcessorValues.LifecycleState.values()) {
             Gauge.builder(LIFECYCLE_METRIC_NAME, this, binder -> binder.lifecycleOneHot(state))
                     .tags("state", state.name().toLowerCase(Locale.ROOT))
-                    .description("Bounded one-hot gauge of the export processor lifecycle state (0|1)")
+                    .description("Bounded one-hot gauge of the export processor lifecycle state (0|1|NaN)")
                     .register(registry);
         }
 
@@ -90,30 +92,29 @@ final class PlatformTracingExportMetricsBinder implements MeterBinder {
         }
     }
 
-    private Optional<JmxOwnerState<Map<ExportProcessorMetricKey, Long>>> processorCounts() {
-        return client.export().observation()
-                .map(ExportObservation::processor)
-                .map(PlatformTracingExportMetricsBinder::toProcessorKeyedState);
+    private Optional<MonotonicJmxCounterGroupBridge.SourceSnapshot<ExportProcessorMetricKey>> processorSnapshot() {
+        return observationSource.get()
+                .map(observation -> new MonotonicJmxCounterGroupBridge.SourceSnapshot<>(
+                        toProcessorKeyedState(observation.processor()),
+                        observation.agentInstanceId()
+                ));
     }
 
-    private Optional<JmxOwnerState<Map<ExportExporterMetricKey, Long>>> exporterCounts() {
-        return client.export().observation()
-                .map(ExportObservation::exporter)
-                .map(PlatformTracingExportMetricsBinder::toExporterKeyedState);
+    private Optional<MonotonicJmxCounterGroupBridge.SourceSnapshot<ExportExporterMetricKey>> exporterSnapshot() {
+        return observationSource.get()
+                .map(observation -> new MonotonicJmxCounterGroupBridge.SourceSnapshot<>(
+                        toExporterKeyedState(observation.exporter()),
+                        observation.agentInstanceId()
+                ));
     }
 
     private double lifecycleOneHot(ExportProcessorValues.LifecycleState state) {
-        try {
-            return client.export().observation()
-                    .map(ExportObservation::processor)
-                    .flatMap(PlatformTracingExportMetricsBinder::presentProcessorValues)
-                    .map(ExportProcessorValues::lifecycleState)
-                    .filter(state::equals)
-                    .map(ignored -> 1.0)
-                    .orElse(0.0);
-        } catch (AgentReadinessCoherenceException ignored) {
-            return 0.0;
-        }
+        return observationSource.get()
+                .map(ExportObservation::processor)
+                .flatMap(PlatformTracingExportMetricsBinder::presentProcessorValues)
+                .map(ExportProcessorValues::lifecycleState)
+                .map(current -> state.equals(current) ? 1.0 : 0.0)
+                .orElse(Double.NaN);
     }
 
     private static Optional<ExportProcessorValues> presentProcessorValues(JmxOwnerState<ExportProcessorValues> state) {
@@ -121,12 +122,6 @@ final class PlatformTracingExportMetricsBinder implements MeterBinder {
             return Optional.of(present.values());
         }
         return Optional.empty();
-    }
-
-    private String exportAgentInstanceId() {
-        return client.export().observation()
-                .map(ExportObservation::agentInstanceId)
-                .orElseGet(MonotonicJmxCounterGroupBridge.LOCAL_PROCESS_IDENTITY);
     }
 
     static JmxOwnerState<Map<ExportProcessorMetricKey, Long>> toProcessorKeyedState(JmxOwnerState<ExportProcessorValues> state) {

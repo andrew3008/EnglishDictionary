@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import jakarta.annotation.Nonnull;
 
 import org.junit.jupiter.api.Test;
@@ -19,6 +18,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import space.br1440.platform.tracing.otel.javaagent.configuration.ConfigurationPropertyException;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
@@ -124,10 +124,11 @@ class TracingSettingsSourceStartupTest {
         Throwable failure = catchThrowable(() -> config(values));
 
         // then
-        assertThat(failure)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Invalid property 'platform.tracing.diagnostics.log-level'='VERBOSE'. "
-                        + "Accepted values: [OFF, ERROR, WARN, INFO, DEBUG, TRACE]");
+        assertThat(failure).isInstanceOf(ConfigurationPropertyException.class);
+        ConfigurationPropertyException propertyFailure = (ConfigurationPropertyException) failure;
+        assertThat(propertyFailure.propertyName()).isEqualTo(ExtensionPropertyNames.DIAGNOSTICS_LOG_LEVEL);
+        assertThat(propertyFailure.failure())
+                .hasMessage("platform.tracing.diagnostics.log-level must be one of: OFF, ERROR, WARN, INFO, DEBUG, TRACE");
     }
 
     @Test

@@ -1,6 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.processor.composite;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -109,15 +108,6 @@ public final class PlatformCompositeSpanProcessor implements PlatformEndingSpanP
         }
 
         return Collections.unmodifiableMap(snapshot);
-    }
-
-    public List<String> getOnEndingDelegateOrder() {
-        List<String> order = new ArrayList<>(onEndingDelegates.length);
-        for (NamedEndingDelegate namedEndingDelegate : onEndingDelegates) {
-            order.add(namedEndingDelegate.namedDelegate().name());
-        }
-
-        return Collections.unmodifiableList(order);
     }
 
     private void recordCallbackFailure(NamedDelegate namedDelegate, Throwable failure, String phase) {

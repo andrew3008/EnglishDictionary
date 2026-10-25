@@ -51,16 +51,4 @@ class AgentLogLevelTest {
 
         assertThat(AgentLogLevel.TRACE.permits(AgentLogLevel.OFF)).isFalse();
     }
-
-    @Test
-    void parses_configured_level_case_insensitively() {
-        // given
-        // when
-        // then
-        assertThat(AgentLogLevel.parseOrDefault(" debug ", AgentLogLevel.WARN))
-                .isEqualTo(AgentLogLevel.DEBUG);
-
-        assertThat(AgentLogLevel.parseOrDefault("verbose", AgentLogLevel.WARN))
-                .isEqualTo(AgentLogLevel.WARN);
-    }
 }

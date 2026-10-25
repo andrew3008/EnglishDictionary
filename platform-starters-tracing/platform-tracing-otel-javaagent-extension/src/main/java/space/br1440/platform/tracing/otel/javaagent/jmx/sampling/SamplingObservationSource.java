@@ -13,20 +13,16 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWi
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationCaptureEnvelope;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationSnapshotStore;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerCapture;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
 public final class SamplingObservationSource {
 
-    private static final String CONFIG_LAST_UPDATED_SOURCE = "accepted-state";
-
     private final TracingSettingsSource acceptedPolicy;
     private final OwnerRegistrationSlot<CompositeSampler> compositeSamplerSlot;
     private final ObservationCaptureEnvelope envelope;
-    private final ObservationSnapshotStore snapshotStore =
-            new ObservationSnapshotStore(JmxOpenTypes.SAMPLING_OBSERVATION);
+    private final ObservationSnapshotStore snapshotStore = new ObservationSnapshotStore(JmxOpenTypes.SAMPLING_OBSERVATION);
 
     public SamplingObservationSource(TracingSettingsSource acceptedPolicy,
                                      OwnerRegistrationSlot<CompositeSampler> compositeSamplerSlot,
@@ -42,13 +38,9 @@ public final class SamplingObservationSource {
     }
 
     public synchronized void publishObservationSnapshot() {
-        ObservationCaptureEnvelope.OpenCapture openCapture = envelope.open();
-
         AcceptedSamplingPolicySnapshot policySnapshot = AcceptedSamplingPolicySnapshot.capture(acceptedPolicy);
 
-        OwnerCapture<CompositeSampler> capture = OwnerCapture.of(compositeSamplerSlot);
-        OwnerRegistrationState<CompositeSampler> samplerState = capture.state();
-        long offsetNanos = capture.offsetNanos();
+        OwnerRegistrationState<CompositeSampler> samplerState = compositeSamplerSlot.capture();
 
         SamplerOwnerSnapshot samplerSnapshot;
         if (samplerState instanceof OwnerRegistrationState.Present<CompositeSampler> present) {
@@ -58,17 +50,10 @@ public final class SamplingObservationSource {
         }
 
         Map<String, Object> values = new LinkedHashMap<>();
-        openCapture.sealInto(values);
+        envelope.putInto(values);
         values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_ENABLED, policySnapshot.samplerEnabled());
         values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO, policySnapshot.samplingRatio());
-        values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIOS,
-                JmxOpenTypeSupport.stringDoubleMap(
-                        JmxOpenTypes.SAMPLING_ROUTE_RATIOS,
-                        JmxWireContract.FIELD_SAMPLING_ROUTE_RATIOS_KEY,
-                        JmxWireContract.FIELD_SAMPLING_ROUTE_RATIOS_VALUE,
-                        policySnapshot.routeRatios()
-                )
-        );
+        values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIO_COUNT, policySnapshot.routeRatioCount());
         values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_DECISION_COUNTS,
                 JmxOpenTypeSupport.stringLongMap(
                         JmxOpenTypes.SAMPLER_DECISION_COUNTS,
@@ -77,23 +62,24 @@ public final class SamplingObservationSource {
                         samplerSnapshot.decisionCounts()
                 )
         );
-        values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_CONFIG_LAST_UPDATED_SOURCE, CONFIG_LAST_UPDATED_SOURCE);
+        values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_CONFIG_LAST_UPDATED_SOURCE, policySnapshot.configSource());
         values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_PRESENT, samplerSnapshot.present());
         values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_GENERATION, samplerState.generation());
-        values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_OWNER_CAPTURED_OFFSET_NANOS, offsetNanos);
         snapshotStore.publish(values);
     }
 
     private record AcceptedSamplingPolicySnapshot(boolean samplerEnabled,
                                                   double samplingRatio,
-                                                  Map<String, Double> routeRatios) {
+                                                  long routeRatioCount,
+                                                  String configSource) {
 
         static AcceptedSamplingPolicySnapshot capture(TracingSettingsSource acceptedPolicy) {
             TracingSettingsRevision policy = acceptedPolicy.current();
             return new AcceptedSamplingPolicySnapshot(
                     policy.samplingEnabled(),
                     policy.samplingRatio(),
-                    policy.samplingRouteRatios()
+                    policy.samplingRouteRatios().size(),
+                    policy.sourceAuthority().name()
             );
         }
     }

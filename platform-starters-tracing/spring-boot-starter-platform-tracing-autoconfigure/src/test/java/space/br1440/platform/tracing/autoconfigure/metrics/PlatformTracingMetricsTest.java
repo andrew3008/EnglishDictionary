@@ -1,13 +1,32 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.span.SpanCategory;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.span.SpanCategory;
+
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+
 class PlatformTracingMetricsTest {
+
+    @Test
+    void constructorPreRegistersAllCounters() {
+        // given
+        MeterRegistry registry = new SimpleMeterRegistry();
+
+        // when
+        new PlatformTracingMetrics(registry);
+
+        // then
+        assertThat(registry.find(PlatformTracingMetrics.SPANS_STARTED).counters())
+                .hasSize(SpanCategory.values().length)
+                .allSatisfy(counter -> assertThat(counter.count()).isZero());
+        assertThat(registry.find(PlatformTracingMetrics.EXCEPTIONS_RECORDED).counter()).isNotNull();
+        assertThat(registry.find(PlatformTracingMetrics.SCOPE_CLOSED_TOTAL).counter()).isNotNull();
+        assertThat(registry.find(PlatformTracingMetrics.SCOPE_DOUBLE_CLOSE_TOTAL).counter()).isNotNull();
+    }
 
     @Test
     void incrementsSpansStartedCounterWithCategoryTag() {

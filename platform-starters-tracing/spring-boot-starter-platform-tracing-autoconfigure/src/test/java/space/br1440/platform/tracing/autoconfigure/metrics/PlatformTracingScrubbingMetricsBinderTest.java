@@ -1,15 +1,15 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
-import org.junit.jupiter.api.Test;
-
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.scrubbing.ScrubbingValues;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
-/** Адаптер {@link PlatformTracingScrubbingMetricsBinder#toEnumKeyedState}: сужение динамического wire key-space до {@link ScrubbingMetricKey}. */
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.scrubbing.ScrubbingValues;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
+
 class PlatformTracingScrubbingMetricsBinderTest {
 
     @Test
@@ -24,8 +24,12 @@ class PlatformTracingScrubbingMetricsBinderTest {
 
     @Test
     void presentOwnerMapsKnownWireKeysAndDefaultsMissingKeysToZero() {
-        // "failures" намеренно отсутствует в wire-карте — проверяет sparse-семантику: 0, не absent.
-        ScrubbingValues values = new ScrubbingValues(true, 3L, 12L, 0L, Map.of("drop", 5L, "hash", 2L));
+        ScrubbingValues values = new ScrubbingValues(true, 3L, 12L,
+                Map.of(
+                        JmxWireContract.KEY_SCRUBBING_METRICS_DROP, 5L,
+                        JmxWireContract.KEY_SCRUBBING_METRICS_HASH, 2L
+                )
+        );
         JmxOwnerState<ScrubbingValues> present = new JmxOwnerState.Present<>(values, 1L);
 
         JmxOwnerState<Map<ScrubbingMetricKey, Long>> mapped = PlatformTracingScrubbingMetricsBinder.toEnumKeyedState(present);
@@ -38,9 +42,26 @@ class PlatformTracingScrubbingMetricsBinderTest {
     }
 
     @Test
+    void skippedCircuitOpenCounterReachesMicrometerKeySpace() {
+        // given
+        ScrubbingValues values = new ScrubbingValues(true, 3L, 12L, Map.of(
+                JmxWireContract.KEY_SCRUBBING_METRICS_SKIPPED_CIRCUIT_OPEN, 4L));
+        JmxOwnerState<ScrubbingValues> present = new JmxOwnerState.Present<>(values, 1L);
+
+        // when
+        Map<ScrubbingMetricKey, Long> keyed = ((JmxOwnerState.Present<Map<ScrubbingMetricKey, Long>>)
+                PlatformTracingScrubbingMetricsBinder.toEnumKeyedState(present)).values();
+
+        // then
+        assertThat(keyed.get(ScrubbingMetricKey.SKIPPED_CIRCUIT_OPEN)).isEqualTo(4L);
+    }
+
+    @Test
     void collapseCountersReachMicrometerAsCumulativeKeys() {
-        ScrubbingValues values = new ScrubbingValues(true, 3L, 12L, 0L,
-                Map.of("collapse_mode_activations", 1L, "collapsed_spans", 7L));
+        ScrubbingValues values = new ScrubbingValues(true, 3L, 12L,
+                Map.of(
+                        JmxWireContract.KEY_SCRUBBING_METRICS_COLLAPSE_MODE_ACTIVATIONS, 1L,
+                        JmxWireContract.KEY_SCRUBBING_METRICS_COLLAPSED_SPANS, 7L));
         JmxOwnerState<ScrubbingValues> present = new JmxOwnerState.Present<>(values, 1L);
 
         Map<ScrubbingMetricKey, Long> keyed = ((JmxOwnerState.Present<Map<ScrubbingMetricKey, Long>>)

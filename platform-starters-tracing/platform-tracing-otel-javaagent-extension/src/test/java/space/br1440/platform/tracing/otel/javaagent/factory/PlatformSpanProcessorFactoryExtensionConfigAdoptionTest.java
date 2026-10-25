@@ -292,20 +292,19 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         PlatformCompositeSpanProcessor composite = getComposite(registrar);
         // then
         try {
-            List<String> onEndingOrder = composite.getOnEndingDelegateOrder();
-            assertThat(onEndingOrder).contains("validation", "enrichment", "scrubbing");
-            assertThat(onEndingOrder.getLast())
+            List<String> order = List.copyOf(composite.getProcessorErrorCounts().keySet());
+            assertThat(order).contains("validation", "enrichment", "scrubbing");
+            assertThat(order.getLast())
                     .as("scrubbing must be the last onEnding delegate in factory composition")
                     .isEqualTo("scrubbing");
-            assertThat(onEndingOrder.indexOf("validation"))
+            assertThat(order.indexOf("validation"))
                     .as("validation must observe the span before enrichment normalizes it")
-                    .isLessThan(onEndingOrder.indexOf("enrichment"));
-            assertThat(onEndingOrder.indexOf("enrichment"))
-                    .isLessThan(onEndingOrder.indexOf("scrubbing"));
-            assertThat(onEndingOrder.indexOf("validation"))
-                    .isLessThan(onEndingOrder.indexOf("scrubbing"));
+                    .isLessThan(order.indexOf("enrichment"));
+            assertThat(order.indexOf("enrichment"))
+                    .isLessThan(order.indexOf("scrubbing"));
+            assertThat(order.indexOf("validation"))
+                    .isLessThan(order.indexOf("scrubbing"));
 
-            List<String> order = List.copyOf(composite.getProcessorErrorCounts().keySet());
             assertThat(order.indexOf("classification"))
                     .isLessThan(order.indexOf("span_timeout"));
             assertThat(order.indexOf("span_timeout"))

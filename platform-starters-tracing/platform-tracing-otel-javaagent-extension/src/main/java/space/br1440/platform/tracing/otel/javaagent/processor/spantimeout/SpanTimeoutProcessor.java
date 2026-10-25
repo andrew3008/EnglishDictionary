@@ -8,6 +8,7 @@ import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.SpanTimeoutLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
@@ -44,7 +45,7 @@ public final class SpanTimeoutProcessor implements SpanProcessor, ProcessorDiagn
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(SpanTimeoutProcessor.class);
 
-    private static final String DIAGNOSTIC_ID = "span_timeout";
+    private static final String DIAGNOSTIC_ID = JmxWireContract.KEY_PROCESSOR_ERRORS_BY_NAME_SPAN_TIMEOUT;
 
     private final LongSupplier nanoTime;
     private final InFlightTraceIndex index;

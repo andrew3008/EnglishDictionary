@@ -1,11 +1,10 @@
 package space.br1440.platform.tracing.api.span.spec;
 
+import java.util.Map;
+import java.util.Optional;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.span.SpanCategory;
-
-import java.util.Map;
-import java.util.Optional;
 
 /**
  * Спецификация span'а для {@code spans().fromSpec(spec)}.
@@ -30,7 +29,7 @@ public interface SpanSpec {
     Map<String, SpanSpecAttributeValue> attributes();
 
     @Nonnull
-    SpanSpecReason reason();
+    Optional<SpanSpecReason> reason();
 
     @Nonnull
     Optional<String> reference();

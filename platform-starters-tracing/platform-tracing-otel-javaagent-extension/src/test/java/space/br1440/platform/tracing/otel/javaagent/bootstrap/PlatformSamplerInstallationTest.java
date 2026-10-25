@@ -360,7 +360,6 @@ class PlatformSamplerInstallationTest {
         properties.put("otel.logs.exporter", "none");
         properties.put("otel.traces.exporter", "logging");
         properties.put("otel.propagators", "tracecontext,baggage,platform-trace-control");
-        properties.put("platform.tracing.queue.overflow-policy", "UPSTREAM");
         properties.put("platform.tracing.sampling.ratio", "1.0");
         properties.putAll(additionalProperties);
         return Map.copyOf(properties);

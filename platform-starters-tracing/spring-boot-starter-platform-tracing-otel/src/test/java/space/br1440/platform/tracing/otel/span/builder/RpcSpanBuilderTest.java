@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.fail;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.attributes.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.api.semconv.annotation.RpcSemconvVersion;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
@@ -18,7 +19,6 @@ import space.br1440.platform.tracing.api.span.builder.RpcTracing;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidationMetrics;
 import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 import space.br1440.platform.tracing.otel.runtime.RecordingTracingRuntime;
@@ -74,11 +74,11 @@ class RpcSpanBuilderTest {
         assertThat(recording.receivedSpecs()).hasSize(1);
         SpanSpec spec = recording.receivedSpecs().getFirst();
         assertThat(spec.category()).isEqualTo(SpanCategory.RPC_SERVER);
-        assertThat(spec.reason()).isEqualTo(SpanSpecReason.PLATFORM_EDGE_CASE);
+        assertThat(spec.reason()).isEmpty();
         assertThat(spec.name()).isEqualTo("OrderService/CreateOrder");
-        assertThat(spec.attributes()).containsKey("rpc.system");
-        assertThat(spec.attributes()).containsKey("rpc.service");
-        assertThat(spec.attributes()).containsKey("rpc.method");
+        assertThat(spec.attributes()).containsKey(PlatformAttributes.RPC_SYSTEM_NAME);
+        assertThat(spec.attributes()).containsKey(PlatformAttributes.RPC_SERVICE);
+        assertThat(spec.attributes()).containsKey(PlatformAttributes.RPC_METHOD);
     }
 
     @Test
@@ -104,7 +104,7 @@ class RpcSpanBuilderTest {
                     .service("OrderService")
                     .method("CreateOrder")
                     .start()) {
-                fail("missing rpc.system must fail at start(), got " + handle);
+                fail("missing RPC system must fail at start(), got " + handle);
             }
         })
                 .isInstanceOf(IllegalArgumentException.class)

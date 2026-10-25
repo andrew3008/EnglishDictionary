@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.processor;
 import java.util.Objects;
 import jakarta.annotation.Nonnull;
 
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.context.Context;
@@ -19,7 +20,7 @@ import io.opentelemetry.sdk.trace.ReadableSpan;
  */
 public final class ScrubbingSpanProcessor implements PlatformEndingSpanProcessor, ProcessorDiagnosticIdentity {
 
-    private static final String DIAGNOSTIC_ID = "scrubbing";
+    private static final String DIAGNOSTIC_ID = JmxWireContract.KEY_PROCESSOR_ERRORS_BY_NAME_SCRUBBING;
 
     private final ScrubbingRuntime runtime;
 

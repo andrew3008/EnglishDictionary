@@ -1,17 +1,17 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
+import java.time.Duration;
+import jakarta.annotation.Nonnull;
+
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
+
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 import io.opentelemetry.sdk.trace.ReadableSpan;
 import io.opentelemetry.sdk.trace.data.StatusData;
-
-import jakarta.annotation.Nonnull;
-
-import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-
-import java.time.Duration;
 
 /**
  * Классифицирует завершающийся span по длительности ({@code fast}/{@code normal}/{@code slow})
@@ -24,8 +24,7 @@ import java.time.Duration;
  */
 public final class ClassificationSpanProcessor implements PlatformEndingSpanProcessor, ProcessorDiagnosticIdentity {
 
-    private static final String DIAGNOSTIC_ID = "classification";
-
+    private static final String DIAGNOSTIC_ID = JmxWireContract.KEY_PROCESSOR_ERRORS_BY_NAME_CLASSIFICATION;
     private static final AttributeKey<String> PRIORITY_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_TRACE_PRIORITY);
     private static final AttributeKey<String> DURATION_CLASS_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_TRACE_DURATION_CLASS);
 

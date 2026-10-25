@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.scrubbing.loader;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
@@ -269,14 +270,23 @@ public final class ExtensionRuleLoader implements AutoCloseable {
         return Collections.unmodifiableList(failedEntries);
     }
 
+    public URLClassLoader releaseClassLoader() {
+        URLClassLoader released = urlClassLoader;
+        urlClassLoader = null;
+        return released;
+    }
+
     @Override
     public void close() {
-        if (urlClassLoader != null) {
+        URLClassLoader ownedClassLoader = urlClassLoader;
+        urlClassLoader = null;
+        if (ownedClassLoader != null) {
             try {
-                urlClassLoader.close();
+                ownedClassLoader.close();
             } catch (IOException failure) {
                 log.log(ScrubbingLogEvent.EXTENSION_CLASSLOADER_CLOSE_FAILED,
                         fields -> fields.cause(failure));
+                throw new UncheckedIOException("Failed to close scrubbing extension classloader", failure);
             }
         }
     }

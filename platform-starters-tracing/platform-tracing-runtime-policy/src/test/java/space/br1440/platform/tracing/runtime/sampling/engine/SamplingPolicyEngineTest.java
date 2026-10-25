@@ -19,14 +19,6 @@ import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicySnapsh
 class SamplingPolicyEngineTest {
 
     @Test
-    void foundationEngine_preservesKillSwitchBeforeHardDrop() {
-        SamplingPolicyEngine engine = SamplingPolicyEngine.foundationEngine();
-        assertThat(engine.ruleNameAt(0)).isEqualTo("kill_switch");
-        assertThat(engine.ruleNameAt(1)).isEqualTo("hard_drop");
-        assertThat(engine.ruleCount()).isEqualTo(2);
-    }
-
-    @Test
     void productionEngine_matchesCompositeSamplerRuleOrder() {
         SamplingPolicyEngine engine = SamplingPolicyEngine.productionEngine();
         assertThat(engine.ruleCount()).isEqualTo(7);
@@ -41,12 +33,16 @@ class SamplingPolicyEngineTest {
 
     @Test
     void killSwitchWinsOverMatchingHardDrop() {
-        SamplingPolicyEngine engine = SamplingPolicyEngine.foundationEngine();
+        SamplingPolicyEngine engine = SamplingPolicyEngine.productionEngine();
         SamplingPolicySnapshot snapshot = SamplingPolicySnapshotFixtures.snapshot(
-                false, List.of("/actuator/health"));
+                false,
+                List.of("/actuator/health")
+        );
 
         SamplingPolicyDecision decision = engine.evaluate(
-                new SamplingPolicyRequest("/actuator/health"), snapshot);
+                new SamplingPolicyRequest("/actuator/health"),
+                snapshot
+        );
 
         assertThat(decision.reason()).isEqualTo(SamplingPolicyReason.KILL_SWITCH);
     }

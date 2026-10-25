@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly;
 
+import static space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames.SCRUBBING_RULES_CONFIG;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,9 +15,10 @@ import java.util.Properties;
 import java.util.Set;
 
 import space.br1440.platform.common.util.StringUtils;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
 
 import lombok.experimental.UtilityClass;
 
@@ -39,7 +42,7 @@ import lombok.experimental.UtilityClass;
  * <h3>Поддерживаемые ключи</h3>
  * <ul>
  *   <li>{@code additional-built-in-rules=name1,name2,...} — список дополнительных встроенных
- *       правил неизвестные имена логируются как WARN и пропускаются.</li>
+ *       правил; неизвестное имя приводит к отказу запуска.</li>
  * </ul>
  * <p>
  */
@@ -60,18 +63,15 @@ public final class ScrubbingRulesLoader {
         Properties properties;
         try (InputStream in = openStream(path, classLoader)) {
             if (in == null) {
-                log.log(ScrubbingLogEvent.SCRUBBING_RULES_UNREADABLE,
-                        fields -> fields.putString(AgentLogField.PATH, path));
-                return Collections.emptyList();
+                throw unreadable(path, null);
             }
 
             properties = new Properties();
             properties.load(in);
-        } catch (IOException e) {
-            log.log(ScrubbingLogEvent.SCRUBBING_RULES_UNREADABLE, fields -> fields
-                    .putString(AgentLogField.PATH, path)
-                    .cause(e));
-            return Collections.emptyList();
+        } catch (SanitizerBootstrapException e) {
+            throw e;
+        } catch (IOException | RuntimeException e) {
+            throw unreadable(path, e);
         }
 
         String raw = properties.getProperty(KEY_ADDITIONAL_RULES);
@@ -85,6 +85,25 @@ public final class ScrubbingRulesLoader {
                 .filter(StringUtils::hasText)
                 .forEach(ordered::add);
         return List.copyOf(ordered);
+    }
+
+    private static SanitizerBootstrapException unreadable(String path, Throwable failure) {
+        if (failure == null) {
+            log.log(ScrubbingLogEvent.SCRUBBING_RULES_UNREADABLE,fields -> fields
+                    .putString(AgentLogField.PATH, path));
+        } else {
+            log.log(ScrubbingLogEvent.SCRUBBING_RULES_UNREADABLE,fields -> fields
+                    .putString(AgentLogField.PATH, path)
+                    .cause(failure));
+        }
+
+        String message = "Property '" + SCRUBBING_RULES_CONFIG + "' points to an unreadable scrubbing rules resource: " + path;
+        return new SanitizerBootstrapException(
+                SanitizerBootstrapException.RULE_LOADING_FAILED,
+                SCRUBBING_RULES_CONFIG,
+                message,
+                failure
+        );
     }
 
     private static InputStream openStream(String path, ClassLoader classLoader) throws IOException {

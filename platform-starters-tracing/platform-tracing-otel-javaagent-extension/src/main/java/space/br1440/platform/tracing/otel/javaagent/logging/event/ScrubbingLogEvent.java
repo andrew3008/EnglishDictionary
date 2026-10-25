@@ -41,14 +41,6 @@ public enum ScrubbingLogEvent implements AgentLogEventType {
             )
     ),
 
-    UNKNOWN_BUILT_IN_SCRUBBING_RULE(
-            noCause(
-                    AgentEventCode.SCRUB_UNKNOWN_BUILTIN, WARN,
-                    "Unknown built-in scrubbing rule",
-                    AgentLogField.NAME
-            )
-    ),
-
     DUPLICATE_SCRUBBING_RULE_IGNORED(
             noCause(
                     AgentEventCode.SCRUB_INITIALIZED, DEBUG,
@@ -70,8 +62,7 @@ public enum ScrubbingLogEvent implements AgentLogEventType {
                     AgentEventCode.SCRUB_INITIALIZED, INFO,
                     "Scrubbing rule initialized",
                     AgentLogField.BUILT_IN_RULES, AgentLogField.BUNDLED_SPI_RULES, AgentLogField.CUSTOM_RULES,
-                    AgentLogField.KIND, AgentLogField.FAILED_PROVIDERS, AgentLogField.CLAMPED_PRIORITIES,
-                    AgentLogField.OPEN_BREAKERS
+                    AgentLogField.KIND, AgentLogField.FAILED_PROVIDERS, AgentLogField.CLAMPED_PRIORITIES
             )
     ),
 

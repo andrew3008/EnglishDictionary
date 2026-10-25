@@ -13,7 +13,8 @@ import org.junit.jupiter.api.Test;
 
 class PublishedAgentCompositionTest {
 
-    private static final String THIRD_PARTY_NOTICES_ENTRY = "META-INF/platform-tracing/THIRD-PARTY-NOTICES.txt";
+    private static final String PLATFORM_NAMESPACE = "space/br1440/";
+    private static final String AGENT_INNER_PREFIX = "inst/";
 
     @Test
     void published_agent_is_otel_payload_plus_one_extension_and_identity() throws IOException {
@@ -29,7 +30,6 @@ class PublishedAgentCompositionTest {
         assertOtelPayloadIsUnmodified(published, otelEntries);
         assertThat(published.get(AgentArchive.EXTENSION_ENTRY)).isEqualTo(Files.readAllBytes(paths.extension()));
         assertThat(published.get(AgentArchive.IDENTITY_ENTRY)).isEqualTo(expectedIdentity(paths));
-        assertThat(published).doesNotContainKey(THIRD_PARTY_NOTICES_ENTRY);
     }
 
     @Test
@@ -49,6 +49,20 @@ class PublishedAgentCompositionTest {
                         embeddedExtensionSha256,
                         standaloneExtensionSha256)
                 .isEqualTo(standaloneExtensionSha256);
+    }
+
+    @Test
+    void upstream_payload_does_not_shadow_platform_extension_resources() throws IOException {
+        // given
+        ArtifactPaths paths = ArtifactPaths.resolve();
+
+        // when
+        Set<String> otelEntryNames = AgentArchive.readEntries(paths.otel()).keySet();
+
+        // then
+        assertThat(otelEntryNames)
+                .noneMatch(name -> name.startsWith(PLATFORM_NAMESPACE)
+                        || name.startsWith(AGENT_INNER_PREFIX + PLATFORM_NAMESPACE));
     }
 
     private static void assertOnlyDirectoriesAreExtraEntries(Map<String, byte[]> published,

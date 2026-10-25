@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -143,6 +143,22 @@ class AttributesScrubberTest {
         // then
         assertThat(result.changed()).isTrue();
         assertThat(result.attributes().asMap()).doesNotContainKey(AttributeKey.longKey("db.password"));
+    }
+
+    @Test
+    @DisplayName("DROP on a string-array attribute removes the key entirely")
+    void dropOnStringArrayAttributeRemovesKey() {
+        // given
+        AttributeKey<List<String>> key = AttributeKey.stringArrayKey("db.password");
+        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
+        Attributes input = Attributes.of(key, List.of("secret-one", "secret-two"));
+
+        // when
+        AttributesScrubber.Result result = AttributesScrubber.scrub(input, runtime);
+
+        // then
+        assertThat(result.changed()).isTrue();
+        assertThat(result.attributes().asMap()).doesNotContainKey(key);
     }
 
     @Test

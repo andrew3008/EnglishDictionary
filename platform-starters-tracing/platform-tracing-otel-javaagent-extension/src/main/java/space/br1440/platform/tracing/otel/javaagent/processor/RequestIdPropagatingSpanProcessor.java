@@ -4,6 +4,7 @@ import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
@@ -14,7 +15,7 @@ import io.opentelemetry.sdk.trace.SpanProcessor;
 
 public final class RequestIdPropagatingSpanProcessor implements SpanProcessor, ProcessorDiagnosticIdentity {
 
-    static final String DIAGNOSTIC_ID = "request_id_propagation";
+    static final String DIAGNOSTIC_ID = JmxWireContract.KEY_PROCESSOR_ERRORS_BY_NAME_REQUEST_ID_PROPAGATION;
 
     private static final AttributeKey<String> REQUEST_ID = AttributeKey.stringKey(PlatformAttributes.PLATFORM_REQUEST_ID);
 

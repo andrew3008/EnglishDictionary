@@ -1,13 +1,12 @@
 package space.br1440.platform.tracing.api.span.spec;
 
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
 import space.br1440.platform.tracing.api.span.SpanCategory;
-
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
 
 final class SpanSpecImpl implements SpanSpec {
 
@@ -22,13 +21,13 @@ final class SpanSpecImpl implements SpanSpec {
                  @Nonnull SpanCategory category,
                  @Nonnull SpanRelationshipSpec relationship,
                  @Nonnull Map<String, SpanSpecAttributeValue> attributes,
-                 @Nonnull SpanSpecReason reason,
+                 @Nullable SpanSpecReason reason,
                  @Nullable String reference) {
         this.name = Objects.requireNonNull(name, "name");
         this.category = Objects.requireNonNull(category, "category");
         this.relationship = Objects.requireNonNull(relationship, "relationship");
         this.attributes = Map.copyOf(attributes);
-        this.reason = Objects.requireNonNull(reason, "reason");
+        this.reason = reason;
         this.reference = reference;
     }
 
@@ -58,8 +57,8 @@ final class SpanSpecImpl implements SpanSpec {
 
     @Override
     @Nonnull
-    public SpanSpecReason reason() {
-        return reason;
+    public Optional<SpanSpecReason> reason() {
+        return Optional.ofNullable(reason);
     }
 
     @Override

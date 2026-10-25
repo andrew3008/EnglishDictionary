@@ -22,11 +22,6 @@ public enum VerificationFailureCode {
     DISTRIBUTION_MISMATCH,
 
     /**
-     * В production-профиле обнаружена development-версия расширения.
-     */
-    DEVELOPMENT_VERSION_FORBIDDEN,
-
-    /**
      * При активации расширения перехвачен {@link LinkageError}:
      * бинарный интерфейс агента и расширения несовместим.
      */

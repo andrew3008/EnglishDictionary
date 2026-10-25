@@ -1,7 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap.verification;
 
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.VerificationFailures.failure;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,7 +38,7 @@ final class ControlledAgentArtifactLocator {
             }
 
             if (match != null) {
-                throw failure(
+                throw new VerificationException(
                         VerificationFailureCode.DISTRIBUTION_MISMATCH,
                         "More than one -javaagent artifact contains the controlled agent identity resource"
                 );
@@ -50,7 +48,7 @@ final class ControlledAgentArtifactLocator {
         }
 
         if (match == null) {
-            throw failure(
+            throw new VerificationException(
                     VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
                     "No -javaagent artifact contains the controlled agent identity resource"
             );
@@ -69,7 +67,7 @@ final class ControlledAgentArtifactLocator {
         try {
             return Path.of(pathText).toRealPath();
         } catch (IOException | InvalidPathException exception) {
-            throw failure(
+            throw new VerificationException(
                     VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
                     "Unable to resolve a -javaagent artifact path",
                     exception
@@ -86,7 +84,7 @@ final class ControlledAgentArtifactLocator {
         path = path.trim();
         path = removeSurroundingQuotes(path);
         if (path.isEmpty()) {
-            throw failure(
+            throw new VerificationException(
                     VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
                     "A -javaagent argument contains an empty artifact path"
             );
@@ -99,7 +97,7 @@ final class ControlledAgentArtifactLocator {
         boolean startsWithQuote = value.startsWith("\"");
         boolean endsWithQuote = value.endsWith("\"");
         if (startsWithQuote != endsWithQuote) {
-            throw failure(
+            throw new VerificationException(
                     VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
                     "A -javaagent artifact path contains an unmatched quote"
             );
@@ -122,7 +120,7 @@ final class ControlledAgentArtifactLocator {
             byte[] content = readBounded(archive, identityEntry);
             return loadProperties(content);
         } catch (IOException | IllegalArgumentException exception) {
-            throw failure(
+            throw new VerificationException(
                     VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
                     "Unable to inspect a -javaagent artifact",
                     exception

@@ -5,6 +5,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.DiagnosticsObservation;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.autoconfigure.metrics.utils.CoalescingObservationMetricReader;
 
 import io.micrometer.core.instrument.FunctionCounter;
@@ -22,9 +23,20 @@ final class PlatformTracingSafeWrapperMetricsBinder implements MeterBinder {
 
     @Override
     public void bindTo(@Nonnull MeterRegistry registry) {
-        registerCounter(registry, "failures", "sampler", "sampler.failures");
-        registerCounter(registry, "failures", "propagator", "propagator.failures");
-        registerCounter(registry, "failures", "resource", "resource.failures");
+        registerCounter(
+                registry, "failures", "sampler",
+                JmxWireContract.KEY_SAFE_WRAPPER_METRICS_SAMPLER_FAILURES
+        );
+
+        registerCounter(
+                registry, "failures", "propagator",
+                JmxWireContract.KEY_SAFE_WRAPPER_METRICS_PROPAGATOR_FAILURES
+        );
+
+        registerCounter(
+                registry, "failures", "resource",
+                JmxWireContract.KEY_SAFE_WRAPPER_METRICS_RESOURCE_FAILURES
+        );
 
         FunctionCounter.builder(PREFIX + "suppressed_errors", diagnosticsSource, PlatformTracingSafeWrapperMetricsBinder::suppressedErrors)
                 .description("Total number of errors suppressed by tracing safe wrappers")
@@ -50,17 +62,26 @@ final class PlatformTracingSafeWrapperMetricsBinder implements MeterBinder {
 
     private static double suppressedErrors(CoalescingJmxObservationSource<DiagnosticsObservation> source) {
         Map<String, Long> metrics = safeWrapperMetrics(source);
-        return CoalescingObservationMetricReader.readMetric(metrics, "safe_wrapper.suppressed_errors");
+        return CoalescingObservationMetricReader.readMetric(
+                metrics,
+                JmxWireContract.KEY_SAFE_WRAPPER_METRICS_SAFE_WRAPPER_SUPPRESSED_ERRORS
+        );
     }
 
     private static double degradedMode(CoalescingJmxObservationSource<DiagnosticsObservation> source) {
         Map<String, Long> metrics = safeWrapperMetricsOrAbsent(source);
-        return CoalescingObservationMetricReader.readTriStateMetric(metrics, "degraded_mode.enabled");
+        return CoalescingObservationMetricReader.readTriStateMetric(
+                metrics,
+                JmxWireContract.KEY_SAFE_WRAPPER_METRICS_DEGRADED_MODE_ENABLED
+        );
     }
 
     private static double lastFailureEpochMs(CoalescingJmxObservationSource<DiagnosticsObservation> source) {
         Map<String, Long> metrics = safeWrapperMetricsOrAbsent(source);
-        return CoalescingObservationMetricReader.readTriStateMetric(metrics, "last_failure.epoch_ms");
+        return CoalescingObservationMetricReader.readTriStateMetric(
+                metrics,
+                JmxWireContract.KEY_SAFE_WRAPPER_METRICS_LAST_FAILURE_EPOCH_MS
+        );
     }
 
     private static Map<String, Long> safeWrapperMetrics(CoalescingJmxObservationSource<DiagnosticsObservation> source) {

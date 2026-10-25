@@ -126,16 +126,17 @@ final class OpenTypeSectionValidator {
     }
 
     private static void validateMap(Map<String, Object> descriptor, String path, Set<String> typeNames) {
-        Set<String> keys = Set.of(
+        Set<String> requiredKeys = Set.of(
                 "kind", "typeName", "rowTypeName", "keyField", "keyType",
                 "valueField", "valueType", "indexFields"
         );
-        ContractValues.assertKeys(descriptor, path, keys, keys);
+        Set<String> allowedKeys = new HashSet<>(requiredKeys);
+        allowedKeys.add("keys");
+        ContractValues.assertKeys(descriptor, path, allowedKeys, requiredKeys);
         addTypeName(descriptor, path, typeNames);
 
         if (!typeNames.add(ContractValues.string(descriptor.get("rowTypeName"), path + ".rowTypeName"))) {
-            throw new ContractValidationException(
-                    "JMX_SCHEMA_OPEN_TYPE_NAME_COLLISION", "Open Type names must be unique");
+            throw new ContractValidationException("JMX_SCHEMA_OPEN_TYPE_NAME_COLLISION", "Open Type names must be unique");
         }
 
         String keyField = ContractValues.string(descriptor.get("keyField"), path + ".keyField");
@@ -154,6 +155,31 @@ final class OpenTypeSectionValidator {
                     "JMX_SCHEMA_TABULAR_INDEX_INVALID",
                     path + " must index the key field exactly"
             );
+        }
+
+        if (descriptor.containsKey("keys")) {
+            validateMapKeys(descriptor.get("keys"), path + ".keys");
+        }
+    }
+
+    private static void validateMapKeys(Object value, String path) {
+        Set<String> wireKeys = new HashSet<>();
+        Set<String> constantNames = new HashSet<>();
+        for (String wireKey : ContractValues.strings(value, path)) {
+            if (!wireKeys.add(wireKey)) {
+                throw new ContractValidationException(
+                        "JMX_SCHEMA_DUPLICATE_MAP_KEY",
+                        path + " contains duplicate map key: " + wireKey
+                );
+            }
+
+            String constantName = ContractValues.javaConstantName(wireKey);
+            if (!constantNames.add(constantName)) {
+                throw new ContractValidationException(
+                        "JMX_SCHEMA_MAP_KEY_CONSTANT_COLLISION",
+                        path + " contains keys with the same generated constant name: " + constantName
+                );
+            }
         }
     }
 

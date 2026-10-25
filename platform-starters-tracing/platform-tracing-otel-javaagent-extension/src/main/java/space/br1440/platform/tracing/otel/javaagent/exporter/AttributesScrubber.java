@@ -287,7 +287,7 @@ final class AttributesScrubber {
 
         return switch (decision.action()) {
             case MASK -> MASK;
-            case DROP -> null;
+            case DROP -> "";
             case HASH -> runtime.hasHmacKey() ? runtime.hmacHex(value) : MASK;
             case TRUNCATE -> transformTruncate(value, decision);
             default -> value;

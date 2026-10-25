@@ -7,7 +7,7 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwner
 public record SamplingObservation(String agentInstanceId,
                                   boolean samplerEnabled,
                                   double samplingRatio,
-                                  int liveRouteRatioCount,
+                                  long routeRatioCount,
                                   String configLastUpdatedSource,
                                   JmxOwnerState<Map<String, Long>> decisionCounts) {
 }

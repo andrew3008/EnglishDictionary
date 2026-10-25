@@ -1,16 +1,42 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
-import org.junit.jupiter.api.Test;
-
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.ExportProcessorValues;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.SafeExporterValues;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.ExportProcessorValues;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.SafeExporterValues;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
+
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 class PlatformTracingExportMetricsBinderTest {
+
+    @Test
+    void lifecycleGaugeReturnsNaNWhenObservationReadFails() {
+        // given
+        PlatformTracingJmxClient client = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
+        when(client.export().observation()).thenThrow(mock(AgentReadinessCoherenceException.class));
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        new PlatformTracingExportMetricsBinder(client, () -> 0L).bindTo(registry);
+
+        // when
+        double value = registry.get("platform.tracing.export.processor.lifecycle")
+                .tag("state", "active")
+                .gauge()
+                .value();
+
+        // then
+        assertThat(value).isNaN();
+    }
 
     @Test
     void absentProcessorOwnerPreservesGenerationWithoutMapping() {
@@ -69,7 +95,12 @@ class PlatformTracingExportMetricsBinderTest {
     @Test
     void presentExporterOwnerMapsKnownWireKeysAndDefaultsMissingKeysToZero() {
         // given
-        SafeExporterValues values = new SafeExporterValues(true, 42L, Map.of("export_batches", 9L, "exported_spans", 100L));
+        SafeExporterValues values = new SafeExporterValues(
+                Map.of(
+                        JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCHES, 9L,
+                        JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 100L
+                )
+        );
         JmxOwnerState<SafeExporterValues> present = new JmxOwnerState.Present<>(values, 1L);
 
         // when
@@ -87,11 +118,13 @@ class PlatformTracingExportMetricsBinderTest {
     @Test
     void presentExporterOwnerMapsRejectionCountersFromTheWireMap() {
         // given
-        SafeExporterValues values = new SafeExporterValues(true, 42L, Map.of(
-                "exported_spans", 7L,
-                "partial_success_batches", 2L,
-                "rejected_spans", 5L,
-                "accepted_unknown_batches", 1L)
+        SafeExporterValues values = new SafeExporterValues(
+                Map.of(
+                        JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 7L,
+                        JmxWireContract.KEY_SAFE_EXPORTER_METRICS_PARTIAL_SUCCESS_BATCHES, 2L,
+                        JmxWireContract.KEY_SAFE_EXPORTER_METRICS_REJECTED_SPANS, 5L,
+                        JmxWireContract.KEY_SAFE_EXPORTER_METRICS_ACCEPTED_UNKNOWN_BATCHES, 1L
+                )
         );
         JmxOwnerState<SafeExporterValues> present = new JmxOwnerState.Present<>(values, 3L);
 

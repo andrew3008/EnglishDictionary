@@ -8,8 +8,7 @@ import javax.management.MBeanServer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.event.ContextClosedEvent;
 
-import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
+import space.br1440.platform.tracing.autoconfigure.agent.StarterModuleVersionTestSupport;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
@@ -35,7 +34,7 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
     }
 
     public static ControlledAgentTestRuntime start() {
-        return start(null, ReadinessJmxTestFixtures.endpoint(ReadinessJmxTestFixtures::readySnapshot));
+        return start(null, readyEndpoint());
     }
 
     private static ControlledAgentTestRuntime start(InMemorySpanExporter spanExporter,
@@ -74,7 +73,7 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
         ControlledAgentTestRuntime runtime = start(
                 exporter,
-                ReadinessJmxTestFixtures.endpoint(ReadinessJmxTestFixtures::readySnapshot));
+                readyEndpoint());
         context.getBeanFactory().registerSingleton("controlledAgentSpanExporter", exporter);
         closeWithContext(context, runtime);
     }
@@ -92,10 +91,11 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
         );
     }
 
-    public static AgentStartupVerifier verifier() {
-        return new AgentStartupVerifier(
-                new AgentReadinessCoherenceGuard(ManagementFactory.getPlatformMBeanServer()),
-                () -> "1.2.3"
+    private static DynamicMBean readyEndpoint() {
+        return ReadinessJmxTestFixtures.endpoint(
+                () -> ReadinessJmxTestFixtures.readySnapshotForExtensionVersion(
+                        StarterModuleVersionTestSupport.current()
+                )
         );
     }
 

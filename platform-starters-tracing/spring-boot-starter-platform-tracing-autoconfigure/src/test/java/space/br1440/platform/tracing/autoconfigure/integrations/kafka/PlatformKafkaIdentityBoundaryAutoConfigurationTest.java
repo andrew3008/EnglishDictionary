@@ -10,7 +10,6 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.enrich.SpanEnricher;
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestContextSupplierAutoConfiguration;
@@ -28,9 +27,7 @@ class PlatformKafkaIdentityBoundaryAutoConfigurationTest {
             .withBean(RequestIdentityBoundarySupport.class,
                     () -> new RequestIdentityBoundarySupport(NoOpTracingRuntime.noop()))
             .withBean(SpanEnricher.class, DefaultSpanEnricher::new)
-            .withPropertyValues(
-                    "platform.tracing.kafka.propagate-platform-headers=true",
-                    "platform.tracing.kafka.batch-links-enabled=true");
+            .withPropertyValues("platform.tracing.kafka.propagate-platform-headers=true");
 
     private final ApplicationContextRunner runnerWithoutEnricher = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(PlatformKafkaAutoConfiguration.class))
@@ -46,7 +43,6 @@ class PlatformKafkaIdentityBoundaryAutoConfigurationTest {
             // then
             assertThat(context).hasNotFailed();
             assertThat(context).hasSingleBean(KafkaRequestIdentityAspect.class);
-            assertThat(context).hasSingleBean(KafkaBatchLinksAspect.class);
         });
     }
 
@@ -57,7 +53,6 @@ class PlatformKafkaIdentityBoundaryAutoConfigurationTest {
             // then
             assertThat(context).hasNotFailed();
             assertThat(context).doesNotHaveBean(KafkaRequestIdentityAspect.class);
-            assertThat(context).doesNotHaveBean(KafkaBatchLinksAspect.class);
         });
     }
 
@@ -96,8 +91,7 @@ class PlatformKafkaIdentityBoundaryAutoConfigurationTest {
                         SpanEnrichmentAutoConfiguration.class,
                         RequestContextSupplierAutoConfiguration.class))
                 .withPropertyValues("platform.tracing.control.channel=NONE")
-                .withInitializer(ControlledAgentTestRuntime::initialize)
-                .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier);
+                .withInitializer(ControlledAgentTestRuntime::initialize);
 
         // when
         runtimeRunner.run(context -> {

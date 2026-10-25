@@ -526,6 +526,15 @@ final class JavaContractRenderer {
                         .append(quoted((String) descriptor.get("keyField"))).append(";\n")
                         .append("    public static final String FIELD_").append(typeConstant).append("_VALUE = ")
                         .append(quoted((String) descriptor.get("valueField"))).append(";\n");
+
+                if (descriptor.containsKey("keys")) {
+                    for (String wireKey : ContractValues.strings(
+                            descriptor.get("keys"), "openTypes." + typeEntry.getKey() + ".keys")) {
+                        source.append("    public static final String KEY_").append(typeConstant).append('_')
+                                .append(upperSnake(wireKey)).append(" = ")
+                                .append(quoted(wireKey)).append(";\n");
+                    }
+                }
             }
         }
         source.append('\n');
@@ -758,22 +767,7 @@ final class JavaContractRenderer {
     }
 
     private static String upperSnake(String value) {
-        StringBuilder result = new StringBuilder();
-        for (int index = 0; index < value.length(); index++) {
-            char character = value.charAt(index);
-            if (Character.isUpperCase(character) && index > 0
-                    && result.charAt(result.length() - 1) != '_') {
-                result.append('_');
-            }
-
-            result.append(
-                    Character.isLetterOrDigit(character)
-                    ? Character.toUpperCase(character)
-                    : '_'
-            );
-        }
-
-        return result.toString();
+        return ContractValues.javaConstantName(value);
     }
 
     private static String lowerCamel(String value) {

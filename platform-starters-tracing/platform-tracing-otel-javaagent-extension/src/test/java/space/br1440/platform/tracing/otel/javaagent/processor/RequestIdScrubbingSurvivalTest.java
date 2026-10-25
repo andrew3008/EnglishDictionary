@@ -71,7 +71,7 @@ class RequestIdScrubbingSurvivalTest {
     }
 
     private static int platformSpanAttributeValueLengthLimit() {
-        String published = new PlatformTracingDefaultsProvider(name -> null)
+        String published = new PlatformTracingDefaultsProvider()
                 .supply()
                 .get(SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT);
         assertThat(published).isNotBlank();

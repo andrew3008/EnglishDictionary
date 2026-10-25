@@ -20,7 +20,7 @@ final class PlatformTracingSamplerMetricsBinder implements MeterBinder {
     private static final String DOMAIN = "sampling";
     private static final String OWNER = "sampler";
 
-    private final PlatformTracingJmxClient client;
+    private final CoalescingJmxObservationSource<SamplingObservation> samplingObservationSource;
     private final CoalescingJmxObservationSource<DiagnosticsObservation> diagnosticsSource;
     private final MonotonicJmxCounterGroupBridge<SamplerDecisionKey> decisionBridge;
 
@@ -32,10 +32,15 @@ final class PlatformTracingSamplerMetricsBinder implements MeterBinder {
     PlatformTracingSamplerMetricsBinder(PlatformTracingJmxClient client,
                                         CoalescingJmxObservationSource<DiagnosticsObservation> diagnosticsSource,
                                         MonotonicJmxCounterGroupBridge.Ticker ticker) {
-        this.client = client;
+        this.samplingObservationSource = new CoalescingJmxObservationSource<>(
+                () -> client.sampling().observation(),
+                ticker
+        );
         this.diagnosticsSource = diagnosticsSource;
         this.decisionBridge = new MonotonicJmxCounterGroupBridge<>(
-                SamplerDecisionKey.class, this::decisionCounts, this::samplingAgentInstanceId, ticker,
+                SamplerDecisionKey.class,
+                this::decisionSnapshot,
+                ticker,
                 MonotonicJmxCounterGroupBridge.DEFAULT_COALESCING_WINDOW_NANOS
         );
     }
@@ -68,16 +73,12 @@ final class PlatformTracingSamplerMetricsBinder implements MeterBinder {
                 .register(registry);
     }
 
-    private Optional<JmxOwnerState<Map<SamplerDecisionKey, Long>>> decisionCounts() {
-        return client.sampling().observation()
-                .map(SamplingObservation::decisionCounts)
-                .map(PlatformTracingSamplerMetricsBinder::toEnumKeyedState);
-    }
-
-    private String samplingAgentInstanceId() {
-        return client.sampling().observation()
-                .map(SamplingObservation::agentInstanceId)
-                .orElseGet(MonotonicJmxCounterGroupBridge.LOCAL_PROCESS_IDENTITY);
+    private Optional<MonotonicJmxCounterGroupBridge.SourceSnapshot<SamplerDecisionKey>> decisionSnapshot() {
+        return samplingObservationSource.get()
+                .map(observation -> new MonotonicJmxCounterGroupBridge.SourceSnapshot<>(
+                        toEnumKeyedState(observation.decisionCounts()),
+                        observation.agentInstanceId()
+                ));
     }
 
     private static JmxOwnerState<Map<SamplerDecisionKey, Long>> toEnumKeyedState(JmxOwnerState<Map<String, Long>> state) {

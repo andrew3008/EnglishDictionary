@@ -11,6 +11,8 @@ import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.api.propagation.PlatformBaggageKeys;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 
 import io.opentelemetry.api.baggage.Baggage;
 import io.opentelemetry.api.baggage.BaggageEntry;
@@ -25,7 +27,7 @@ import io.opentelemetry.sdk.trace.SpanProcessor;
 /**
  * Копирует разрешённые baggage-ключи в span attributes при {@code onStart}.
  * <p>
- * Allowlist и deny-паттерны фиксируются на старте (Category B, immutable) — runtime mutation
+ * Allowlist и deny-паттерны фиксируются на старте — runtime mutation
  * отсутствует. Ключ {@code platform.correlation.id} обрабатывается отдельно: маппится на
  * {@link PlatformAttributes#PLATFORM_CORRELATION_ID} только если значение проходит canonical-id
  * валидацию ({@link #isCanonicalCorrelationId}), защищая от записи произвольных строк под
@@ -33,9 +35,8 @@ import io.opentelemetry.sdk.trace.SpanProcessor;
  */
 public final class BaggageSpanProcessor implements SpanProcessor, ProcessorDiagnosticIdentity {
 
-    private static final String DIAGNOSTIC_ID = "baggage";
+    private static final String DIAGNOSTIC_ID = JmxWireContract.KEY_PROCESSOR_ERRORS_BY_NAME_BAGGAGE;
     private static final String ATTRIBUTE_PREFIX = "baggage.";
-    private static final String CORRELATION_BAGGAGE_KEY = "platform.correlation.id";
     private static final int CORRELATION_ID_MAX_LENGTH = 128;
     private static final AttributeKey<String> CORRELATION_ATTRIBUTE_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_CORRELATION_ID);
 
@@ -92,7 +93,7 @@ public final class BaggageSpanProcessor implements SpanProcessor, ProcessorDiagn
             return;
         }
 
-        if (CORRELATION_BAGGAGE_KEY.equals(normalizedKey)) {
+        if (PlatformBaggageKeys.CORRELATION_ID.equals(normalizedKey)) {
             if (isCanonicalCorrelationId(value)) {
                 attributes.put(CORRELATION_ATTRIBUTE_KEY, value);
             }

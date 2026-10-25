@@ -39,6 +39,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseObservation;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseScope;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingTestSupport;
@@ -903,8 +904,7 @@ class SafeSpanExporterTest {
         // then
         assertThat(snapshot).containsKeys(
                 "export_batches", "export_batch_failures", "exported_spans", "transport_dropped_spans",
-                "flush_failures", "shutdown_failures", "last_export_duration_nanos",
-                "suppressed_spans_export_disabled", "export_enabled");
+                "flush_failures", "shutdown_failures", "suppressed_spans_export_disabled");
         assertThat(snapshot.get("exported_spans")).isEqualTo(1L);
     }
 
@@ -1153,13 +1153,13 @@ class SafeSpanExporterTest {
         Map<String, Long> snapshot = safe.metricsSnapshot();
 
         // then
-        assertThat(snapshot.get(SpanExporterMetrics.EXPORT_BATCH_FAILURES))
+        assertThat(snapshot.get(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES))
                 .as("export exception → export_batch_failures=1").isEqualTo(1L);
-        assertThat(snapshot.get(SpanExporterMetrics.TRANSPORT_DROPPED_SPANS))
+        assertThat(snapshot.get(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS))
                 .as("3 spans dropped on export failure").isEqualTo(3L);
-        assertThat(snapshot.get(SpanExporterMetrics.FLUSH_FAILURES))
+        assertThat(snapshot.get(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_FLUSH_FAILURES))
                 .as("flush exception → flush_failures=1").isEqualTo(1L);
-        assertThat(snapshot.get(SpanExporterMetrics.SHUTDOWN_FAILURES))
+        assertThat(snapshot.get(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SHUTDOWN_FAILURES))
                 .as("shutdown exception → shutdown_failures=1").isEqualTo(1L);
     }
 
@@ -1345,10 +1345,10 @@ class SafeSpanExporterTest {
 
         // then
         assertThat(snapshot)
-                .containsEntry(SpanExporterMetrics.EXPORTED_SPANS, 3L)
-                .containsEntry(SpanExporterMetrics.REJECTED_SPANS, 2L)
-                .containsEntry(SpanExporterMetrics.PARTIAL_SUCCESS_BATCHES, 1L)
-                .containsEntry(SpanExporterMetrics.ACCEPTED_UNKNOWN_BATCHES, 0L);
+                .containsEntry(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 3L)
+                .containsEntry(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_REJECTED_SPANS, 2L)
+                .containsEntry(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_PARTIAL_SUCCESS_BATCHES, 1L)
+                .containsEntry(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_ACCEPTED_UNKNOWN_BATCHES, 0L);
     }
 
     @Test
@@ -1768,13 +1768,16 @@ class SafeSpanExporterTest {
 
         // given
         ScrubbingRuntime enabled = enabledRuntime("email");
+        enabled.recordBoundaryValueAttributesRemoved(2L);
         try (SafeSpanExporter withEnabledRuntime = new SafeSpanExporter(
                 delegate(CompletableResultCode.ofSuccess()), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), enabled)) {
             // when
             withEnabledRuntime.export(List.of(ExporterBoundaryTestSupport.baseSpan("op").build()));
 
             // then
-            assertThat(withEnabledRuntime.metricsSnapshot()).containsKey("boundary.input_spans");
+            assertThat(withEnabledRuntime.metricsSnapshot())
+                    .containsEntry("boundary.value_attributes_removed", 2L)
+                    .containsKey("boundary.input_spans");
         }
     }
 

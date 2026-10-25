@@ -14,8 +14,6 @@ final class AgentContractFailureMessages {
     private static final String MISSING = "<missing>";
     private static final String UNEXPECTED = "<unexpected>";
 
-    static final String EXPECTED_EXTENSION_IMPLEMENTATION_TITLE = "platform-tracing-otel-javaagent-extension";
-
     static final String SUMMARY_TEMPLATE = "Platform tracing startup rejected: runtimeState=%s, reason=%s";
 
     static final String CONTROLLED_AGENT_MISSING_EXPLANATION = """
@@ -66,9 +64,6 @@ final class AgentContractFailureMessages {
             (for example, an invalid exporter endpoint); check the agent startup log \
             for a ConfigurationException.""";
 
-    static final String DEVELOPMENT_VERSION_FORBIDDEN_EXPLANATION =
-            "A development extension version is forbidden by the production readiness contract.";
-
     static final String READINESS_SCHEMA_MISMATCH_EXPLANATION =
             "The readiness schema identity does not equal the generated application contract.";
 
@@ -118,11 +113,6 @@ final class AgentContractFailureMessages {
     static final String VERSION_MISMATCH_RELEASE_DETAIL =
             "Use the tracing starter and controlled Java agent distribution from the same platform release.";
 
-    static final String VERSION_MISMATCH_DEVELOPMENT_DETAIL_TEMPLATE = """
-        extensionVersion=development means the extension classloader could not read valid \
-        class-local build metadata for artifact=%s; rebuild and deploy the controlled \
-        Java agent distribution from one platform release.""";
-
     static String reject(boolean tracingEnabled,
                          TracingDeploymentDiagnostics diagnostics,
                          Supplier<String> applicationVersion) {
@@ -154,8 +144,7 @@ final class AgentContractFailureMessages {
                                   TracingDeploymentDiagnostics.Observed observed,
                                   Supplier<String> applicationVersion) {
         return switch (reason) {
-            case AgentNotReadyReasonCodes.EXTENSION_VERSION_MISMATCH,
-                 AgentNotReadyReasonCodes.DEVELOPMENT_VERSION_FORBIDDEN -> versionContext(applicationVersion.get(), observed);
+            case AgentNotReadyReasonCodes.EXTENSION_VERSION_MISMATCH -> versionContext(applicationVersion.get(), observed);
 
             case AgentNotReadyReasonCodes.READINESS_SCHEMA_ID_MISMATCH -> schemaIdContext(observed);
 
@@ -304,10 +293,7 @@ final class AgentContractFailureMessages {
 
             case "EXTENSION_READINESS_TIMEOUT" -> EXTENSION_READINESS_TIMEOUT_EXPLANATION;
 
-            case AgentNotReadyReasonCodes.EXTENSION_VERSION_MISMATCH ->
-                    versionMismatchExplanation(observedExtensionVersion(readiness));
-
-            case AgentNotReadyReasonCodes.DEVELOPMENT_VERSION_FORBIDDEN -> DEVELOPMENT_VERSION_FORBIDDEN_EXPLANATION;
+            case AgentNotReadyReasonCodes.EXTENSION_VERSION_MISMATCH -> VERSION_MISMATCH_RELEASE_DETAIL;
 
             case AgentNotReadyReasonCodes.READINESS_SCHEMA_ID_MISMATCH,
                  AgentNotReadyReasonCodes.READINESS_SCHEMA_DIGEST_MISMATCH -> READINESS_SCHEMA_MISMATCH_EXPLANATION;
@@ -348,12 +334,6 @@ final class AgentContractFailureMessages {
         };
     }
 
-    private static String observedExtensionVersion(TracingDeploymentDiagnostics.AgentReadiness readiness) {
-        return readiness instanceof TracingDeploymentDiagnostics.Observed observed
-                ? observed.snapshot().distributionIdentity().extensionVersion()
-                : "";
-    }
-
     private static String observedLifecycle(TracingDeploymentDiagnostics.AgentReadiness readiness) {
         return readiness instanceof TracingDeploymentDiagnostics.Observed observed
                 ? observed.snapshot().lifecycleState().lifecycle()
@@ -364,17 +344,6 @@ final class AgentContractFailureMessages {
         return readiness instanceof TracingDeploymentDiagnostics.Observed observed
                 ? observed.snapshot().lifecycleState().missingRequired()
                 : Set.of();
-    }
-
-    private static String versionMismatchExplanation(String extensionVersion) {
-        return "development".equals(extensionVersion)
-                ? developmentVersionDetail()
-                : VERSION_MISMATCH_RELEASE_DETAIL;
-    }
-
-    private static String developmentVersionDetail() {
-        return VERSION_MISMATCH_DEVELOPMENT_DETAIL_TEMPLATE
-                .formatted(EXPECTED_EXTENSION_IMPLEMENTATION_TITLE);
     }
 
     private static String requiredField(String name, String value) {

@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationObservationSource;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
@@ -36,6 +37,7 @@ class ObservationSnapshotPublisherTest {
         CountDownLatch releaseRefresh = new CountDownLatch(1);
         AtomicInteger captures = new AtomicInteger();
         OwnerRegistrationState.Absent<ValidatingSpanProcessor> absent = new OwnerRegistrationState.Absent<>(0L);
+
         @SuppressWarnings("unchecked")
         OwnerRegistrationSlot<ValidatingSpanProcessor> slot = mock(OwnerRegistrationSlot.class);
         when(slot.capture()).thenAnswer(invocation -> {
@@ -46,7 +48,13 @@ class ObservationSnapshotPublisherTest {
             releaseRefresh.await();
             return absent;
         });
-        ValidationObservationSource source = new ValidationObservationSource(slot, AgentInstanceId.random());
+
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
+        ValidationObservationSource source = new ValidationObservationSource(
+                slot,
+                TracingSettingsSourceTestFixtures.boundDefaults(agentInstanceId),
+                agentInstanceId
+        );
         CompositeData stable = source.getValidationObservation();
 
         try (ObservationSnapshotPublisher publisher = new ObservationSnapshotPublisher(

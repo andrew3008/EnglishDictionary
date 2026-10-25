@@ -113,7 +113,6 @@ class TracingPropertyAdmissionTest {
         // given
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("platform.tracing.propagation.outbound.trusted-host-patterns[0]", "api.internal");
-        values.put("platform.tracing.kafka.batch-links-enabled", "true");
         values.put("platform.tracing.request-id-header.enabled", "false");
         MockEnvironment environment = sourced(APPLICATION_SOURCE, values);
 

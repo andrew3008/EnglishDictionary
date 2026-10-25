@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.configuration;
+package space.br1440.platform.tracing.otel.javaagent.bootstrap.session;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -10,6 +10,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 

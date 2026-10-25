@@ -26,16 +26,16 @@ public final class OwnerValuesLayout<S> {
         return new OwnerValuesLayout<>(type, header, fields);
     }
 
-    public <O> CompositeData encode(OwnerRegistrationState<O> state, long offsetNanos, Function<O, S> source) {
+    public <O> CompositeData encode(OwnerRegistrationState<O> state, Function<O, S> source) {
         Map<String, Object> values = new LinkedHashMap<>();
         if (state instanceof OwnerRegistrationState.Present<O>(O owner, long generation)) {
             S captured = Objects.requireNonNull(source.apply(owner), "source");
-            header.putInto(values, true, generation, offsetNanos);
+            header.putInto(values, true, generation);
             for (Field<S, ?> field : fields) {
                 values.put(field.name(), field.read(captured));
             }
         } else {
-            header.putInto(values, false, state.generation(), offsetNanos);
+            header.putInto(values, false, state.generation());
             for (Field<S, ?> field : fields) {
                 values.put(field.name(), field.absentValue());
             }
@@ -44,18 +44,16 @@ public final class OwnerValuesLayout<S> {
         return JmxOpenTypeSupport.compositeData(type, values);
     }
 
-    public record OwnerHeader(String presentField, String generationField, String capturedOffsetNanosField) {
+    public record OwnerHeader(String presentField, String generationField) {
 
         public OwnerHeader {
             Objects.requireNonNull(presentField, "presentField");
             Objects.requireNonNull(generationField, "generationField");
-            Objects.requireNonNull(capturedOffsetNanosField, "capturedOffsetNanosField");
         }
 
-        private void putInto(Map<String, Object> values, boolean present, long generation, long offsetNanos) {
+        private void putInto(Map<String, Object> values, boolean present, long generation) {
             values.put(presentField, present);
             values.put(generationField, generation);
-            values.put(capturedOffsetNanosField, offsetNanos);
         }
     }
 

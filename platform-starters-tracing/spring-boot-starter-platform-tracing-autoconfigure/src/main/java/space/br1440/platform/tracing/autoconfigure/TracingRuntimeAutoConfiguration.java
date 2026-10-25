@@ -1,13 +1,12 @@
 package space.br1440.platform.tracing.autoconfigure;
 
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
@@ -22,6 +21,7 @@ import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSet
 import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
+import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
@@ -29,7 +29,6 @@ import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
-import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
@@ -42,6 +41,11 @@ import io.opentelemetry.api.OpenTelemetry;
 public class TracingRuntimeAutoConfiguration {
 
     private static final String DISABLED_REASON = "platform.tracing.enabled=false";
+    private static final String DUAL_SDK_REJECTION = """
+            Platform tracing startup rejected: runtimeState=%s, reason=DUAL_SDK_COLLISION. \
+            Root cause: the application declares an OpenTelemetry bean, but the Controlled Platform Agent \
+            already owns the OpenTelemetry runtime\
+            """.formatted(AgentRuntimeState.DUAL_SDK_DETECTED);
 
     @Bean
     public static BeanFactoryPostProcessor rejectCompetingTracingRuntimeBeans() {
@@ -49,33 +53,68 @@ public class TracingRuntimeAutoConfiguration {
             rejectCompetingBeans(beanFactory, TracingRuntime.class, "tracingImplementation");
             rejectCompetingBeans(beanFactory, TraceOperations.class, "traceOperations");
             rejectCompetingBeans(beanFactory, OpenTelemetry.class, null);
+            rejectCompetingBeans(
+                    beanFactory,
+                    AgentReadinessCoherenceGuard.class,
+                    "agentReadinessCoherenceGuard"
+            );
+            rejectCompetingBeans(beanFactory, AgentStartupVerifier.class, "agentStartupVerifier");
         };
     }
 
     private static void rejectCompetingBeans(ConfigurableListableBeanFactory beanFactory,
                                              Class<?> type,
                                              String platformBeanName) {
+        for (String singletonName : beanFactory.getSingletonNames()) {
+            if (type.isInstance(beanFactory.getSingleton(singletonName))) {
+                rejectCompetingBean(type, singletonName);
+            }
+        }
+
         for (String beanName : beanFactory.getBeanNamesForType(type, false, false)) {
-            if ((platformBeanName == null || !platformBeanName.equals(beanName))
-                    && beanFactory instanceof BeanDefinitionRegistry registry
-                    && registry.containsBeanDefinition(beanName)) {
-
-                String message = "Application-owned %s bean is not supported with Controlled Agent ownership: %s"
-                        .formatted(type.getSimpleName(), beanName);
-
-                throw new IllegalStateException(message);
+            if (!isPlatformOwnedDefinition(beanFactory, beanName, platformBeanName)) {
+                rejectCompetingBean(type, beanName);
             }
         }
     }
 
+    private static void rejectCompetingBean(Class<?> type, String beanName) {
+        if (OpenTelemetry.class.equals(type)) {
+            String detail = "Conflicting bean: type=%s, name=%s".formatted(type.getName(), beanName);
+            String message = DUAL_SDK_REJECTION + ". " + detail
+                    + ". Remove the application-owned OpenTelemetry bean or its SDK auto-configuration";
+
+            throw new IllegalStateException(message);
+        }
+
+        String message = "Application-owned %s bean is not supported with Controlled Agent ownership: %s"
+                .formatted(type.getSimpleName(), beanName);
+        throw new IllegalStateException(message);
+    }
+
+    private static boolean isPlatformOwnedDefinition(ConfigurableListableBeanFactory beanFactory,
+                                                      String beanName,
+                                                      String platformBeanName) {
+        if (platformBeanName == null
+                || !platformBeanName.equals(beanName)
+                || beanFactory.containsSingleton(beanName)
+                || !beanFactory.containsBeanDefinition(beanName)) {
+            return false;
+        }
+
+        BeanDefinition definition = beanFactory.getBeanDefinition(beanName);
+        String factoryBeanName = definition.getFactoryBeanName();
+        return platformBeanName.equals(definition.getFactoryMethodName())
+                && factoryBeanName != null
+                && TracingRuntimeAutoConfiguration.class.equals(beanFactory.getType(factoryBeanName, false));
+    }
+
     @Bean
-    @ConditionalOnMissingBean
     public AgentReadinessCoherenceGuard agentReadinessCoherenceGuard() {
         return new AgentReadinessCoherenceGuard();
     }
 
     @Bean
-    @ConditionalOnMissingBean
     public AgentStartupVerifier agentStartupVerifier(AgentReadinessCoherenceGuard coherenceGuard) {
         return new AgentStartupVerifier(coherenceGuard);
     }

@@ -28,7 +28,6 @@ outcome:
 messageCode:
   values:
     - NONE
-    - UNKNOWN_FIELD
     - MISSING_REQUIRED_FIELD
     - TYPE_MISMATCH
     - INVALID_VALUE
@@ -277,18 +276,14 @@ openTypes:
     kind: composite
     typeName: space.br1440.platform.tracing.SamplingObservation
     fields:
-      - { name: captureSequence, type: long, required: true, nullable: false }
       - { name: agentInstanceId, type: string, required: true, nullable: false }
-      - { name: captureStartedAt, type: long, required: true, nullable: false }
-      - { name: captureCompletedAt, type: long, required: true, nullable: false }
       - { name: samplerEnabled, type: boolean, required: true, nullable: false }
       - { name: samplingRatio, type: double, required: true, nullable: false }
-      - { name: routeRatios, type: "tabular:samplingRouteRatios", required: true, nullable: false }
+      - { name: routeRatioCount, type: long, required: true, nullable: false }
       - { name: samplerDecisionCounts, type: "tabular:samplerDecisionCounts", required: true, nullable: false }
       - { name: samplingConfigLastUpdatedSource, type: string, required: true, nullable: false }
       - { name: samplerOwnerPresent, type: boolean, required: true, nullable: false }
       - { name: samplerOwnerGeneration, type: long, required: true, nullable: false }
-      - { name: samplerOwnerCapturedOffsetNanos, type: long, required: true, nullable: false }
   scrubbingMetrics:
     kind: map
     typeName: space.br1440.platform.tracing.ScrubbingMetrics
@@ -298,33 +293,37 @@ openTypes:
     valueField: value
     valueType: long
     indexFields: [key]
+    keys:
+      - drop
+      - hash
+      - mask
+      - truncate
+      - failures
+      - hash_missing_key
+      - circuit_breakers.failures.total
+      - skipped_circuit_open
+      - attributes_verified
+      - runtime_state
+      - collapse_mode_activations
+      - collapsed_spans
   scrubbingObservation:
     kind: composite
     typeName: space.br1440.platform.tracing.ScrubbingObservation
     fields:
-      - { name: captureSequence, type: long, required: true, nullable: false }
       - { name: agentInstanceId, type: string, required: true, nullable: false }
-      - { name: captureStartedAt, type: long, required: true, nullable: false }
-      - { name: captureCompletedAt, type: long, required: true, nullable: false }
       - { name: ownerPresent, type: boolean, required: true, nullable: false }
       - { name: ownerGeneration, type: long, required: true, nullable: false }
-      - { name: ownerCapturedOffsetNanos, type: long, required: true, nullable: false }
       - { name: scrubbingEnabled, type: boolean, required: true, nullable: false }
       - { name: policyVersion, type: long, required: true, nullable: false }
       - { name: rulesLoaded, type: long, required: true, nullable: false }
-      - { name: circuitBreakersOpen, type: long, required: true, nullable: false }
       - { name: scrubbingMetrics, type: "tabular:scrubbingMetrics", required: true, nullable: false }
   validationObservation:
     kind: composite
     typeName: space.br1440.platform.tracing.ValidationObservation
     fields:
-      - { name: captureSequence, type: long, required: true, nullable: false }
       - { name: agentInstanceId, type: string, required: true, nullable: false }
-      - { name: captureStartedAt, type: long, required: true, nullable: false }
-      - { name: captureCompletedAt, type: long, required: true, nullable: false }
       - { name: ownerPresent, type: boolean, required: true, nullable: false }
       - { name: ownerGeneration, type: long, required: true, nullable: false }
-      - { name: ownerCapturedOffsetNanos, type: long, required: true, nullable: false }
       - { name: validationLevel, type: string, required: true, nullable: false }
       - { name: validationViolationsTotal, type: long, required: true, nullable: false }
       - { name: validationConfigVersion, type: long, required: true, nullable: false }
@@ -338,13 +337,23 @@ openTypes:
     valueField: value
     valueType: long
     indexFields: [key]
+    keys:
+      - export_batches
+      - export_batch_failures
+      - exported_spans
+      - transport_dropped_spans
+      - partial_success_batches
+      - rejected_spans
+      - accepted_unknown_batches
+      - flush_failures
+      - shutdown_failures
+      - suppressed_spans_export_disabled
   exportProcessorValues:
     kind: composite
     typeName: space.br1440.platform.tracing.ExportProcessorValues
     fields:
       - { name: ownerPresent, type: boolean, required: true, nullable: false }
       - { name: ownerGeneration, type: long, required: true, nullable: false }
-      - { name: ownerCapturedOffsetNanos, type: long, required: true, nullable: false }
       - { name: queueCapacity, type: int, required: true, nullable: false }
       - { name: queueSize, type: int, required: true, nullable: false }
       - { name: droppedOverflowTotal, type: long, required: true, nullable: false }
@@ -361,18 +370,12 @@ openTypes:
     fields:
       - { name: ownerPresent, type: boolean, required: true, nullable: false }
       - { name: ownerGeneration, type: long, required: true, nullable: false }
-      - { name: ownerCapturedOffsetNanos, type: long, required: true, nullable: false }
-      - { name: exportEnabled, type: boolean, required: true, nullable: false }
-      - { name: lastExportDurationNanos, type: long, required: true, nullable: false }
       - { name: safeExporterMetrics, type: "tabular:safeExporterMetrics", required: true, nullable: false }
   exportObservation:
     kind: composite
     typeName: space.br1440.platform.tracing.ExportObservation
     fields:
-      - { name: captureSequence, type: long, required: true, nullable: false }
       - { name: agentInstanceId, type: string, required: true, nullable: false }
-      - { name: captureStartedAt, type: long, required: true, nullable: false }
-      - { name: captureCompletedAt, type: long, required: true, nullable: false }
       - { name: processor, type: "composite:exportProcessorValues", required: true, nullable: false }
       - { name: exporter, type: "composite:safeExporterValues", required: true, nullable: false }
   processorErrorsByName:
@@ -384,13 +387,21 @@ openTypes:
     valueField: value
     valueType: long
     indexFields: [key]
+    keys:
+      - baggage
+      - enrichment
+      - request_id_propagation
+      - scrubbing
+      - validation
+      - classification
+      - span_timeout
+      - span_limits_metrics
   processorSpanTimeoutValues:
     kind: composite
     typeName: space.br1440.platform.tracing.ProcessorSpanTimeoutValues
     fields:
       - { name: ownerPresent, type: boolean, required: true, nullable: false }
       - { name: ownerGeneration, type: long, required: true, nullable: false }
-      - { name: ownerCapturedOffsetNanos, type: long, required: true, nullable: false }
       - { name: forcedSpanEndAttemptsTotal, type: long, required: true, nullable: false }
       - { name: forcedTraceEndAttemptsTotal, type: long, required: true, nullable: false }
       - { name: activeSpanCount, type: int, required: true, nullable: false }
@@ -414,7 +425,6 @@ openTypes:
     fields:
       - { name: ownerPresent, type: boolean, required: true, nullable: false }
       - { name: ownerGeneration, type: long, required: true, nullable: false }
-      - { name: ownerCapturedOffsetNanos, type: long, required: true, nullable: false }
       - { name: processorErrorsTotal, type: long, required: true, nullable: false }
       - { name: processorErrorsByName, type: "tabular:processorErrorsByName", required: true, nullable: false }
   processorMetricsValues:
@@ -423,7 +433,6 @@ openTypes:
     fields:
       - { name: ownerPresent, type: boolean, required: true, nullable: false }
       - { name: ownerGeneration, type: long, required: true, nullable: false }
-      - { name: ownerCapturedOffsetNanos, type: long, required: true, nullable: false }
       - { name: droppedAttributesTotal, type: long, required: true, nullable: false }
       - { name: droppedEventsTotal, type: long, required: true, nullable: false }
       - { name: droppedLinksTotal, type: long, required: true, nullable: false }
@@ -447,18 +456,20 @@ openTypes:
     valueField: value
     valueType: long
     indexFields: [key]
+    keys:
+      - sampler.failures
+      - propagator.failures
+      - resource.failures
+      - safe_wrapper.suppressed_errors
+      - degraded_mode.enabled
+      - last_failure.epoch_ms
   diagnosticsObservation:
     kind: composite
     typeName: space.br1440.platform.tracing.DiagnosticsObservation
     fields:
-      - { name: captureSequence, type: long, required: true, nullable: false }
       - { name: agentInstanceId, type: string, required: true, nullable: false }
-      - { name: captureStartedAt, type: long, required: true, nullable: false }
-      - { name: captureCompletedAt, type: long, required: true, nullable: false }
       - { name: invalidConfigCount, type: long, required: true, nullable: false }
       - { name: safeWrapperMetrics, type: "tabular:safeWrapperMetrics", required: true, nullable: false }
-      - { name: platformLogLevel, type: string, required: true, nullable: false }
-      - { name: propagationEnabled, type: boolean, required: true, nullable: false }
 
 capabilities:
   required:

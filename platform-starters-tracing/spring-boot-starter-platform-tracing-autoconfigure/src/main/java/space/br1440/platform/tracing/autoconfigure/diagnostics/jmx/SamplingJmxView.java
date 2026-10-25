@@ -56,7 +56,10 @@ public final class SamplingJmxView {
 
         boolean samplerEnabled = JmxObservationCodec.getBoolean(composite, JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLER_ENABLED);
         double samplingRatio = JmxObservationCodec.getDouble(composite, JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_RATIO);
-        int liveRouteRatioCount = JmxObservationCodec.getTabularSize(composite, JmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIOS);
+        long routeRatioCount = JmxObservationCodec.getLong(
+                composite,
+                JmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIO_COUNT
+        );
         String configLastUpdatedSource = JmxObservationCodec.getString(composite, JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_CONFIG_LAST_UPDATED_SOURCE);
 
         JmxOwnerState<Map<String, Long>> samplerOwnerState = JmxObservationCodec.ownerState(
@@ -71,6 +74,13 @@ public final class SamplingJmxView {
                 )
         );
 
-        return new SamplingObservation(agentInstanceId, samplerEnabled, samplingRatio, liveRouteRatioCount, configLastUpdatedSource, samplerOwnerState);
+        return new SamplingObservation(
+                agentInstanceId,
+                samplerEnabled,
+                samplingRatio,
+                routeRatioCount,
+                configLastUpdatedSource,
+                samplerOwnerState
+        );
     }
 }

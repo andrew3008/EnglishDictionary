@@ -35,6 +35,7 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.Jmx
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxDiagnosticKind;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxDiagnosticSnapshot;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxReadExecutor;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxReadExecutorTestFactory;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
@@ -56,7 +57,7 @@ class JmxViewTypeNameMismatchWiringTest {
     @Test
     void samplingTopLevelMismatchIsContractViolation() throws Exception {
         registerFakeMBean("SamplingObservation", name -> wrongTypeComposite());
-        JmxReadExecutor executor = new JmxReadExecutor(server);
+        JmxReadExecutor executor = JmxReadExecutorTestFactory.withoutAgentInstanceVerification(server);
         SamplingJmxView view = new SamplingJmxView(executor, registeredName);
 
         assertThat(view.observation()).isEmpty();
@@ -66,7 +67,7 @@ class JmxViewTypeNameMismatchWiringTest {
     @Test
     void scrubbingTopLevelMismatchIsContractViolation() throws Exception {
         registerFakeMBean("ScrubbingObservation", name -> wrongTypeComposite());
-        JmxReadExecutor executor = new JmxReadExecutor(server);
+        JmxReadExecutor executor = JmxReadExecutorTestFactory.withoutAgentInstanceVerification(server);
         ScrubbingJmxView view = new ScrubbingJmxView(executor, registeredName);
 
         assertThat(view.observation()).isEmpty();
@@ -76,7 +77,7 @@ class JmxViewTypeNameMismatchWiringTest {
     @Test
     void validationTopLevelMismatchIsContractViolation() throws Exception {
         registerFakeMBean("ValidationObservation", name -> wrongTypeComposite());
-        JmxReadExecutor executor = new JmxReadExecutor(server);
+        JmxReadExecutor executor = JmxReadExecutorTestFactory.withoutAgentInstanceVerification(server);
         ValidationJmxView view = new ValidationJmxView(executor, registeredName);
 
         assertThat(view.observation()).isEmpty();
@@ -86,7 +87,7 @@ class JmxViewTypeNameMismatchWiringTest {
     @Test
     void diagnosticsTopLevelMismatchIsContractViolation() throws Exception {
         registerFakeMBean("DiagnosticsObservation", name -> wrongTypeComposite());
-        JmxReadExecutor executor = new JmxReadExecutor(server);
+        JmxReadExecutor executor = JmxReadExecutorTestFactory.withoutAgentInstanceVerification(server);
         DiagnosticsJmxView view = new DiagnosticsJmxView(executor, registeredName);
 
         assertThat(view.observation()).isEmpty();
@@ -96,7 +97,7 @@ class JmxViewTypeNameMismatchWiringTest {
     @Test
     void exportTopLevelMismatchIsContractViolation() throws Exception {
         registerFakeMBean("ExportObservation", name -> wrongTypeComposite());
-        JmxReadExecutor executor = new JmxReadExecutor(server);
+        JmxReadExecutor executor = JmxReadExecutorTestFactory.withoutAgentInstanceVerification(server);
         ExportJmxView view = new ExportJmxView(executor, registeredName);
 
         assertThat(view.observation()).isEmpty();
@@ -108,7 +109,7 @@ class JmxViewTypeNameMismatchWiringTest {
         CompositeData processor = compositeNamed("space.br1440.platform.tracing.NotExportProcessorValues");
         CompositeData exporter = compositeNamed(JmxWireContract.OPEN_TYPE_SAFE_EXPORTER_VALUES_TYPE_NAME);
         registerFakeMBean("ExportObservation", name -> exportFrame(processor, exporter));
-        JmxReadExecutor executor = new JmxReadExecutor(server);
+        JmxReadExecutor executor = JmxReadExecutorTestFactory.withoutAgentInstanceVerification(server);
         ExportJmxView view = new ExportJmxView(executor, registeredName);
 
         assertThat(view.observation()).isEmpty();
@@ -120,7 +121,7 @@ class JmxViewTypeNameMismatchWiringTest {
         CompositeData processor = compositeNamed(JmxWireContract.OPEN_TYPE_EXPORT_PROCESSOR_VALUES_TYPE_NAME);
         CompositeData exporter = compositeNamed("space.br1440.platform.tracing.NotSafeExporterValues");
         registerFakeMBean("ExportObservation", name -> exportFrame(processor, exporter));
-        JmxReadExecutor executor = new JmxReadExecutor(server);
+        JmxReadExecutor executor = JmxReadExecutorTestFactory.withoutAgentInstanceVerification(server);
         ExportJmxView view = new ExportJmxView(executor, registeredName);
 
         assertThat(view.observation()).isEmpty();
@@ -130,7 +131,7 @@ class JmxViewTypeNameMismatchWiringTest {
     @Test
     void processorMetricsTopLevelMismatchIsContractViolation() throws Exception {
         registerFakeMBean("ProcessorMetricsObservation", name -> wrongTypeComposite());
-        JmxReadExecutor executor = new JmxReadExecutor(server);
+        JmxReadExecutor executor = JmxReadExecutorTestFactory.withoutAgentInstanceVerification(server);
         ProcessorMetricsJmxView view = new ProcessorMetricsJmxView(executor, registeredName);
 
         assertThat(view.observation()).isEmpty();
@@ -143,7 +144,7 @@ class JmxViewTypeNameMismatchWiringTest {
         CompositeData compositeValues = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_COMPOSITE_VALUES_TYPE_NAME);
         CompositeData metrics = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_VALUES_TYPE_NAME);
         registerFakeMBean("ProcessorMetricsObservation", name -> processorMetricsFrame(spanTimeout, compositeValues, metrics));
-        JmxReadExecutor executor = new JmxReadExecutor(server);
+        JmxReadExecutor executor = JmxReadExecutorTestFactory.withoutAgentInstanceVerification(server);
         ProcessorMetricsJmxView view = new ProcessorMetricsJmxView(executor, registeredName);
 
         assertThat(view.observation()).isEmpty();
@@ -156,7 +157,7 @@ class JmxViewTypeNameMismatchWiringTest {
         CompositeData compositeValues = compositeNamed("space.br1440.platform.tracing.NotProcessorCompositeValues");
         CompositeData metrics = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_VALUES_TYPE_NAME);
         registerFakeMBean("ProcessorMetricsObservation", name -> processorMetricsFrame(spanTimeout, compositeValues, metrics));
-        JmxReadExecutor executor = new JmxReadExecutor(server);
+        JmxReadExecutor executor = JmxReadExecutorTestFactory.withoutAgentInstanceVerification(server);
         ProcessorMetricsJmxView view = new ProcessorMetricsJmxView(executor, registeredName);
 
         assertThat(view.observation()).isEmpty();
@@ -169,7 +170,7 @@ class JmxViewTypeNameMismatchWiringTest {
         CompositeData compositeValues = compositeNamed(JmxWireContract.OPEN_TYPE_PROCESSOR_COMPOSITE_VALUES_TYPE_NAME);
         CompositeData metrics = compositeNamed("space.br1440.platform.tracing.NotProcessorMetricsValues");
         registerFakeMBean("ProcessorMetricsObservation", name -> processorMetricsFrame(spanTimeout, compositeValues, metrics));
-        JmxReadExecutor executor = new JmxReadExecutor(server);
+        JmxReadExecutor executor = JmxReadExecutorTestFactory.withoutAgentInstanceVerification(server);
         ProcessorMetricsJmxView view = new ProcessorMetricsJmxView(executor, registeredName);
 
         assertThat(view.observation()).isEmpty();
@@ -219,9 +220,11 @@ class JmxViewTypeNameMismatchWiringTest {
         try {
             Map<String, OpenType<?>> itemTypes = new LinkedHashMap<>();
             itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID, SimpleType.STRING);
-            itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE, SimpleType.LONG);
-            itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_STARTED_AT, SimpleType.LONG);
-            itemTypes.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_COMPLETED_AT, SimpleType.LONG);
+            if (JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_OBSERVATION_TYPE_NAME.equals(typeName)) {
+                itemTypes.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_CAPTURE_SEQUENCE, SimpleType.LONG);
+                itemTypes.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_CAPTURE_STARTED_AT, SimpleType.LONG);
+                itemTypes.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_CAPTURE_COMPLETED_AT, SimpleType.LONG);
+            }
             for (Map.Entry<String, CompositeData> entry : nestedItems.entrySet()) {
                 itemTypes.put(entry.getKey(), entry.getValue().getCompositeType());
             }
@@ -235,9 +238,11 @@ class JmxViewTypeNameMismatchWiringTest {
 
             Map<String, Object> values = new LinkedHashMap<>();
             values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_AGENT_INSTANCE_ID, AGENT_INSTANCE_ID);
-            values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE, 1L);
-            values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_STARTED_AT, 1_700_000_000_000L);
-            values.put(JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_COMPLETED_AT, 1_700_000_000_001L);
+            if (JmxWireContract.OPEN_TYPE_PROCESSOR_METRICS_OBSERVATION_TYPE_NAME.equals(typeName)) {
+                values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_CAPTURE_SEQUENCE, 1L);
+                values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_CAPTURE_STARTED_AT, 1_700_000_000_000L);
+                values.put(JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_CAPTURE_COMPLETED_AT, 1_700_000_000_001L);
+            }
             values.putAll(nestedItems);
 
             return new CompositeDataSupport(type, values);

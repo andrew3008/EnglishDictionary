@@ -22,7 +22,6 @@ import javax.management.ObjectName;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
@@ -67,26 +66,18 @@ class DomainMBeanJmxComplianceTest {
 
         // when
         JmxManagementContractSnapshot.Snapshot snapshot = JmxManagementContractSnapshot.capture(server, OBJECT_NAMES);
-        String baseline = readBaseline();
-        Metadata metadata = metadata(baseline);
-        String actual = JmxManagementContractSnapshot.toJson(
-                snapshot,
-                metadata.generatedFromCommit(),
-                metadata.javaVersion());
+        String actual = JmxManagementContractSnapshot.toJson(snapshot);
+        String baselineOutput = System.getProperty("jmx.contract.baseline.path");
 
-        if (Boolean.getBoolean("jmx.contract.baseline.update")) {
-            Path output = Path.of(requiredProperty("jmx.contract.baseline.path"));
+        if (baselineOutput != null) {
+            Path output = Path.of(baselineOutput);
             Files.createDirectories(output.getParent());
-            String updated = JmxManagementContractSnapshot.toJson(
-                    snapshot,
-                    requiredProperty("jmx.contract.baseline.commit"),
-                    System.getProperty("java.version")
-            );
-            Files.writeString(output, updated, StandardCharsets.UTF_8);
+            Files.writeString(output, actual, StandardCharsets.UTF_8);
             return;
         }
 
         // then
+        String baseline = readBaseline();
         assertThat(normalizeLineEndings(actual))
                 .withFailMessage(() -> actionableDiff(normalizeLineEndings(baseline), normalizeLineEndings(actual)))
                 .isEqualTo(normalizeLineEndings(baseline));
@@ -100,17 +91,20 @@ class DomainMBeanJmxComplianceTest {
         wireRequiredComponents(registrar, samplingPolicy(agentInstanceId));
 
         // when/then
-        for (ObjectName name : List.of(
+        List<ObjectName> objectNames = List.of(
                 DomainObjectNames.SAMPLING,
                 DomainObjectNames.SCRUBBING,
                 DomainObjectNames.VALIDATION,
                 DomainObjectNames.EXPORT,
                 DomainObjectNames.PROCESSOR_METRICS,
-                DomainObjectNames.DIAGNOSTICS)) {
+                DomainObjectNames.DIAGNOSTICS);
+        for (ObjectName name : objectNames) {
             MBeanInfo info = server.getMBeanInfo(name);
+
             assertThat(info.getOperations())
                     .allMatch(operation -> operation.getImpact() != MBeanOperationInfo.ACTION
                             && operation.getImpact() != MBeanOperationInfo.ACTION_INFO);
+
             assertThat(info.getAttributes())
                     .allMatch(attribute -> !attribute.isWritable());
         }
@@ -123,7 +117,8 @@ class DomainMBeanJmxComplianceTest {
         ValidatingSpanProcessor validating = new ValidatingSpanProcessor(acceptedPolicy);
 
         trackRegistration(registrar.registerDiagnosticReadiness(
-                initializingReadinessProjection(registrar.agentInstanceId())));
+                initializingReadinessProjection(registrar.agentInstanceId()))
+        );
         registrar.setCompositeSampler(sampler);
         registrar.setValidating(validating);
         trackRegistration(registrar.registerRuntimeControls(acceptedPolicy));
@@ -136,45 +131,11 @@ class DomainMBeanJmxComplianceTest {
     private static String readBaseline() throws IOException {
         try (InputStream stream = DomainMBeanJmxComplianceTest.class.getResourceAsStream(BASELINE_RESOURCE)) {
             if (stream == null) {
-                if (Boolean.getBoolean("jmx.contract.baseline.update")) {
-                    return """
-                            {
-                              "generatedFromCommit": "UPDATE",
-                              "javaVersion": "UPDATE"
-                            }
-                            """;
-                }
                 throw new AssertionError("Missing baseline " + BASELINE_RESOURCE
-                        + ". Run ./gradlew jmxManagementContractVerify "
-                        + "-PupdateJmxContractBaseline.");
+                        + ". Run the module test task with -PupdateJmxContractBaseline.");
             }
             return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
         }
-    }
-
-    private static Metadata metadata(String baseline) {
-        return new Metadata(
-                jsonString(baseline, "generatedFromCommit"),
-                jsonString(baseline, "javaVersion"));
-    }
-
-    private static String jsonString(String json, String property) {
-        String marker = "\"" + property + "\": \"";
-        int start = json.indexOf(marker);
-        if (start < 0) {
-            return "UNKNOWN";
-        }
-        int valueStart = start + marker.length();
-        int end = json.indexOf('"', valueStart);
-        return end < 0 ? "UNKNOWN" : json.substring(valueStart, end);
-    }
-
-    private static String requiredProperty(String name) {
-        String value = System.getProperty(name);
-        if (StringUtils.isNullOrBlank(value)) {
-            throw new IllegalStateException("Required system property is not set: " + name);
-        }
-        return value;
     }
 
     private static String normalizeLineEndings(String text) {
@@ -192,8 +153,8 @@ class DomainMBeanJmxComplianceTest {
                 return "JMX management contract changed on line " + (index + 1)
                         + "\nexpected: " + expectedLine
                         + "\nactual:   " + actualLine
-                        + "\nTo update the baseline intentionally, run "
-                        + "./gradlew jmxManagementContractVerify -PupdateJmxContractBaseline";
+                        + "\nTo update the baseline intentionally, run the module test task "
+                        + "with -PupdateJmxContractBaseline";
             }
         }
         return "JMX management contract differs.";
@@ -201,8 +162,5 @@ class DomainMBeanJmxComplianceTest {
 
     private static TracingSettingsSource samplingPolicy(AgentInstanceId agentInstanceId) {
         return boundSampling(agentInstanceId, true, Map.of(), 0.5);
-    }
-
-    private record Metadata(String generatedFromCommit, String javaVersion) {
     }
 }

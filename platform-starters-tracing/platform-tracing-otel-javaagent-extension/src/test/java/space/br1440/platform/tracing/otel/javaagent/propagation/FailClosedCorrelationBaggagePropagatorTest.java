@@ -7,6 +7,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.api.propagation.PlatformBaggageKeys;
+
 import io.opentelemetry.api.baggage.Baggage;
 import io.opentelemetry.api.baggage.propagation.W3CBaggagePropagator;
 import io.opentelemetry.context.Context;
@@ -40,7 +42,7 @@ class FailClosedCorrelationBaggagePropagatorTest {
 
         // then
         Baggage baggage = Baggage.fromContext(extracted);
-        assertThat(baggage.getEntryValue(FailClosedCorrelationBaggagePropagator.CORRELATION_BAGGAGE_KEY))
+        assertThat(baggage.getEntryValue(PlatformBaggageKeys.CORRELATION_ID))
                 .isNull();
         assertThat(baggage.getEntryValue("tenant_class")).isEqualTo("internal");
     }
@@ -49,7 +51,7 @@ class FailClosedCorrelationBaggagePropagatorTest {
     void stripsCanonicalCorrelationOnInjectAndPreservesUnrelatedBaggage() {
         // given
         Context context = Baggage.builder()
-                .put(FailClosedCorrelationBaggagePropagator.CORRELATION_BAGGAGE_KEY, "workflow-42")
+                .put(PlatformBaggageKeys.CORRELATION_ID, "workflow-42")
                 .put("tenant_class", "internal")
                 .build()
                 .storeInContext(Context.root());
@@ -61,7 +63,7 @@ class FailClosedCorrelationBaggagePropagatorTest {
         // then
         assertThat(carrier.get("baggage"))
                 .contains("tenant_class=internal")
-                .doesNotContain(FailClosedCorrelationBaggagePropagator.CORRELATION_BAGGAGE_KEY);
+                .doesNotContain(PlatformBaggageKeys.CORRELATION_ID);
     }
 
     @Test
@@ -103,7 +105,7 @@ class FailClosedCorrelationBaggagePropagatorTest {
     void removesCanonicalCorrelationAlreadyPresentInInputContext() {
         // given
         Context input = Baggage.builder()
-                .put(FailClosedCorrelationBaggagePropagator.CORRELATION_BAGGAGE_KEY, "preexisting")
+                .put(PlatformBaggageKeys.CORRELATION_ID, "preexisting")
                 .put("tenant_class", "internal")
                 .build()
                 .storeInContext(Context.root());
@@ -113,7 +115,7 @@ class FailClosedCorrelationBaggagePropagatorTest {
 
         // then
         Baggage baggage = Baggage.fromContext(extracted);
-        assertThat(baggage.getEntryValue(FailClosedCorrelationBaggagePropagator.CORRELATION_BAGGAGE_KEY))
+        assertThat(baggage.getEntryValue(PlatformBaggageKeys.CORRELATION_ID))
                 .isNull();
         assertThat(baggage.getEntryValue("tenant_class")).isEqualTo("internal");
     }

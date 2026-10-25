@@ -427,25 +427,6 @@ class AgentReadinessClassifierTest {
     }
 
     @Test
-    void rejectsDevelopmentExtensionVersionAsMismatchWithTheStarterVersion() {
-        // given
-        AgentReadinessSnapshot snapshot = builder()
-                .distributionIdentity(new AgentReadinessSnapshot.DistributionIdentity(
-                        ReadinessTestFixtures.SHA256, "2.30.0", "development"))
-                .build();
-
-        // when
-        AgentReadinessClassifier.Decision decision =
-                AgentReadinessClassifier.decide(snapshot, ReadinessTestFixtures.APPLICATION_VERSION);
-
-        // then
-        assertDecision(
-                decision,
-                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
-                "EXTENSION_VERSION_MISMATCH");
-    }
-
-    @Test
     void rejectsBlankDistributionVersions() {
         // given
         AgentReadinessSnapshot blankUpstream = builder()

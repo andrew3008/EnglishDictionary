@@ -87,12 +87,10 @@ final class JmxManagementContractSnapshot {
                 contracts);
     }
 
-    static String toJson(Snapshot snapshot, String generatedFromCommit, String javaVersion) {
+    static String toJson(Snapshot snapshot) {
         Json json = new Json();
         json.line("{");
         json.property(1, "schemaVersion", "1", true);
-        json.property(1, "generatedFromCommit", quote(generatedFromCommit), true);
-        json.property(1, "javaVersion", quote(javaVersion), true);
         json.property(1, "objectNameCount", Integer.toString(snapshot.objectNameCount()), true);
         json.property(1, "memberCount", Integer.toString(snapshot.memberCount()), true);
         json.property(1, "readOnlyMemberCount", Integer.toString(snapshot.readOnlyMemberCount()), true);

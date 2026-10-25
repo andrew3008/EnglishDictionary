@@ -117,7 +117,7 @@ class PlatformTracingJmxClientTest {
         assertThat(observation).isPresent();
         assertThat(observation.get().samplerEnabled()).isTrue();
         assertThat(observation.get().samplingRatio()).isEqualTo(0.42d);
-        assertThat(observation.get().liveRouteRatioCount()).isZero();
+        assertThat(observation.get().routeRatioCount()).isZero();
     }
 
     @Test

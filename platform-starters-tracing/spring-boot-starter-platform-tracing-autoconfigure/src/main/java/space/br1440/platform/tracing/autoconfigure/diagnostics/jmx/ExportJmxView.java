@@ -92,14 +92,14 @@ public final class ExportJmxView {
                 JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_PRESENT,
                 JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_GENERATION,
                 () -> new SafeExporterValues(
-                        JmxObservationCodec.getBoolean(exporterComposite,
-                                JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_EXPORT_ENABLED),
-                        JmxObservationCodec.getLong(exporterComposite,
-                                JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_LAST_EXPORT_DURATION_NANOS),
-                        JmxObservationCodec.getStringLongMap(exporterComposite,
+                        JmxObservationCodec.getStringLongMap(
+                                exporterComposite,
                                 JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_SAFE_EXPORTER_METRICS,
                                 JmxWireContract.FIELD_SAFE_EXPORTER_METRICS_KEY,
-                                JmxWireContract.FIELD_SAFE_EXPORTER_METRICS_VALUE)));
+                                JmxWireContract.FIELD_SAFE_EXPORTER_METRICS_VALUE
+                        )
+                )
+        );
 
         return new ExportObservation(agentInstanceId, processorState, exporterState);
     }

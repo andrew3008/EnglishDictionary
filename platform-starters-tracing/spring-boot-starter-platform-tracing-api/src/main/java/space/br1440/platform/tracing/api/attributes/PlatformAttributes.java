@@ -124,6 +124,9 @@ public final class PlatformAttributes {
      */
     public static final String HTTP_REQUEST_METHOD_ORIGINAL = "http.request.method_original";
 
+    /** Нормализованный шаблон HTTP-маршрута (OTel semconv {@code http.route}). */
+    public static final String HTTP_ROUTE = "http.route";
+
     /**
      * HTTP response status code, integer (OTel semconv {@code http.response.status_code};
      * legacy: {@code http.status_code}, тип string → integer).
@@ -136,6 +139,9 @@ public final class PlatformAttributes {
      * @see <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/url/">OTel: url attributes</a>
      */
     public static final String URL_FULL = "url.full";
+
+    /** Схема URL (OTel semconv {@code url.scheme}). */
+    public static final String URL_SCHEME = "url.scheme";
 
     /**
      * Hostname или IP-адрес сервера (OTel semconv {@code server.address}; legacy: {@code net.peer.name}).
@@ -155,6 +161,9 @@ public final class PlatformAttributes {
      */
     public static final String NETWORK_PROTOCOL_NAME = "network.protocol.name";
 
+    /** Версия сетевого протокола (OTel semconv {@code network.protocol.version}). */
+    public static final String NETWORK_PROTOCOL_VERSION = "network.protocol.version";
+
     /**
      * Класс ошибки, с которой завершилась операция span'а (OTel semconv {@code error.type}).
      * @see <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/error/">OTel: error attributes</a>
@@ -166,6 +175,12 @@ public final class PlatformAttributes {
      * @see <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/db/">OTel: db attributes</a>
      */
     public static final String DB_SYSTEM_NAME = "db.system.name";
+
+    /** Имя коллекции или таблицы БД (OTel semconv {@code db.collection.name}). */
+    public static final String DB_COLLECTION_NAME = "db.collection.name";
+
+    /** Пространство имён БД (OTel semconv {@code db.namespace}). */
+    public static final String DB_NAMESPACE = "db.namespace";
 
     /**
      * Имя операции или команды базы данных (OTel semconv {@code db.operation.name}; legacy: {@code db.operation}).
@@ -186,11 +201,26 @@ public final class PlatformAttributes {
      */
     public static final String RPC_SYSTEM_NAME = "rpc.system.name";
 
+    /** Имя RPC-сервиса (OTel semconv {@code rpc.service}). */
+    public static final String RPC_SERVICE = "rpc.service";
+
+    /** Имя RPC-метода (OTel semconv {@code rpc.method}). */
+    public static final String RPC_METHOD = "rpc.method";
+
     /**
      * Код ответа RPC, возвращённый server'ом (OTel semconv {@code rpc.response.status_code}).
      * @see <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/rpc/">OTel: rpc attributes</a>
      */
     public static final String RPC_RESPONSE_STATUS_CODE = "rpc.response.status_code";
+
+    /** Идентификатор messaging-системы (OTel semconv {@code messaging.system}). */
+    public static final String MESSAGING_SYSTEM = "messaging.system";
+
+    /** Имя назначения сообщения (OTel semconv {@code messaging.destination.name}). */
+    public static final String MESSAGING_DESTINATION_NAME = "messaging.destination.name";
+
+    /** Операция над сообщением (OTel semconv {@code messaging.operation}). */
+    public static final String MESSAGING_OPERATION = "messaging.operation";
 
     /**
      * Exception message (OTel semconv {@code exception.message}).
@@ -203,5 +233,8 @@ public final class PlatformAttributes {
      * @see <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/exception/">OTel: exception attributes</a>
      */
     public static final String EXCEPTION_TYPE = "exception.type";
+
+    /** Стек вызовов исключения (OTel semconv {@code exception.stacktrace}). */
+    public static final String EXCEPTION_STACKTRACE = "exception.stacktrace";
 
 }

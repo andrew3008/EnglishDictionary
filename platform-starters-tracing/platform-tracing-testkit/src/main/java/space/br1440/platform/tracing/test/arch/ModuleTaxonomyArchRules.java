@@ -164,14 +164,6 @@ public final class ModuleTaxonomyArchRules {
                     "..runtime.sampling.engine..")
             .because("the production policy chain is an internal engine integration type");
 
-    public static final ArchRule VERSIONED_STATE_PRIMITIVE_ONLY_IN_RUNTIME_POLICY = classes()
-            .that().haveSimpleName("VersionedState")
-            .or().haveSimpleName("VersionedStateHolder")
-            .and().resideOutsideOfPackage("..test..")
-            .should().resideInAPackage("..runtime.versioned..")
-            .allowEmptyShould(true)
-            .because("the versioned-state primitive belongs to the shared runtime-policy module");
-
     public static final ArchRule CONTROL_IMPLS_ONLY_IN_RUNTIME_POLICY = classes()
             .that().implement("space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy")
             .or().implement("space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher")

@@ -31,6 +31,7 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
 
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
@@ -229,26 +230,39 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     }
 
     @Test
-    void unknown_scrubbing_rule_name_does_not_crash_configuration() {
+    void unknown_primary_scrubbing_rule_name_fails_configuration() {
         // given
         BootstrapCoordinator coordinator = coordinator();
         Recorder recorder = new Recorder();
         newProvider(coordinator).customize(recorder.proxy());
 
-        SdkTracerProviderBuilder builder = SdkTracerProvider.builder();
-        ConfigProperties config = recorder.primeWithConfig(Map.of(
+        // when
+        // then
+        assertThatThrownBy(() -> recorder.primeWithConfig(Map.of(
                 "platform.tracing.javaagent.scrubbing.built-in-rules",
                 "unknown-rule-x,email"
-        ));
+        )))
+                .isInstanceOf(BootstrapException.class)
+                .hasRootCauseInstanceOf(SanitizerBootstrapException.class)
+                .hasStackTraceContaining("platform.tracing.javaagent.scrubbing.built-in-rules");
+    }
+
+    @Test
+    void unknown_additional_scrubbing_rule_name_fails_configuration() {
+        // given
+        BootstrapCoordinator coordinator = coordinator();
+        Recorder recorder = new Recorder();
+        newProvider(coordinator).customize(recorder.proxy());
 
         // when
-        SdkTracerProviderBuilder result = recorder.tracerProviderCustomizer.apply(builder, config);
-
         // then
-        assertThat(result).isSameAs(builder);
-        try (SdkTracerProvider provider = builder.build()) {
-            assertThat(provider.getSampler()).isSameAs(coordinator.session().sampler());
-        }
+        assertThatThrownBy(() -> recorder.primeWithConfig(Map.of(
+                "platform.tracing.scrubbing.rules-config",
+                "classpath:tracing/scrubbing-rules-with-unknown.properties"
+        )))
+                .isInstanceOf(BootstrapException.class)
+                .hasRootCauseInstanceOf(SanitizerBootstrapException.class)
+                .hasStackTraceContaining("platform.tracing.scrubbing.rules-config");
     }
 
     @Test

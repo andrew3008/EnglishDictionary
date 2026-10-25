@@ -4,6 +4,7 @@ import java.time.Duration;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.DiagnosticsObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.ExportObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorMetricsObservation;
@@ -25,91 +26,132 @@ final class PlatformTracingJmxDomainHealthMetricsBinder implements MeterBinder {
     private static final String OWNER_PRESENT_METRIC = "platform.tracing.jmx.owner.present";
 
     private final PlatformTracingJmxClient client;
+    private final CoalescingJmxObservationSource<SamplingObservation> samplingObservationSource;
+    private final CoalescingJmxObservationSource<ScrubbingObservation> scrubbingObservationSource;
+    private final CoalescingJmxObservationSource<ValidationObservation> validationObservationSource;
+    private final CoalescingJmxObservationSource<ExportObservation> exportObservationSource;
+    private final CoalescingJmxObservationSource<ProcessorMetricsObservation> processorMetricsObservationSource;
+    private final CoalescingJmxObservationSource<DiagnosticsObservation> diagnosticsObservationSource;
 
     PlatformTracingJmxDomainHealthMetricsBinder(PlatformTracingJmxClient client) {
+        this(client, System::nanoTime);
+    }
+
+    PlatformTracingJmxDomainHealthMetricsBinder(PlatformTracingJmxClient client,
+                                                MonotonicJmxCounterGroupBridge.Ticker ticker) {
         this.client = client;
+
+        this.samplingObservationSource = new CoalescingJmxObservationSource<>(
+                () -> client.sampling().observation(),
+                ticker
+        );
+
+        this.scrubbingObservationSource = new CoalescingJmxObservationSource<>(
+                () -> client.scrubbing().observation(),
+                ticker
+        );
+
+        this.validationObservationSource = new CoalescingJmxObservationSource<>(
+                () -> client.validation().observation(),
+                ticker
+        );
+
+        this.exportObservationSource = new CoalescingJmxObservationSource<>(
+                () -> client.export().observation(),
+                ticker
+        );
+
+        this.processorMetricsObservationSource = new CoalescingJmxObservationSource<>(
+                () -> client.processorMetrics().observation(),
+                ticker
+        );
+
+        this.diagnosticsObservationSource = new CoalescingJmxObservationSource<>(
+                () -> client.diagnostics().observation(),
+                ticker
+        );
     }
 
     @Override
     public void bindTo(@Nonnull MeterRegistry registry) {
         bindDomain(registry, "sampling",
                 c -> registeredValue(c.sampling().registration()),
-                c -> c.sampling().observation().isPresent() ? 1.0 : 0.0,
+                c -> samplingObservationSource.get().isPresent() ? 1.0 : 0.0,
                 c -> c.sampling().lastSuccessAge()
                         .map(PlatformTracingJmxDomainHealthMetricsBinder::freshnessValue)
                         .orElse(Double.NaN));
         bindOwner(registry, "sampling", "sampler",
-                c -> c.sampling().observation()
+                c -> samplingObservationSource.get()
                         .map(SamplingObservation::decisionCounts)
                         .map(PlatformTracingJmxDomainHealthMetricsBinder::ownerPresentValue)
                         .orElse(Double.NaN));
 
         bindDomain(registry, "scrubbing",
                 c -> registeredValue(c.scrubbing().registration()),
-                c -> c.scrubbing().observation().isPresent() ? 1.0 : 0.0,
+                c -> scrubbingObservationSource.get().isPresent() ? 1.0 : 0.0,
                 c -> c.scrubbing().lastSuccessAge()
                         .map(PlatformTracingJmxDomainHealthMetricsBinder::freshnessValue)
                         .orElse(Double.NaN));
         bindOwner(registry, "scrubbing", "scrubbing",
-                c -> c.scrubbing().observation()
+                c -> scrubbingObservationSource.get()
                         .map(ScrubbingObservation::owner)
                         .map(PlatformTracingJmxDomainHealthMetricsBinder::ownerPresentValue)
                         .orElse(Double.NaN));
 
         bindDomain(registry, "validation",
                 c -> registeredValue(c.validation().registration()),
-                c -> c.validation().observation().isPresent() ? 1.0 : 0.0,
+                c -> validationObservationSource.get().isPresent() ? 1.0 : 0.0,
                 c -> c.validation().lastSuccessAge()
                         .map(PlatformTracingJmxDomainHealthMetricsBinder::freshnessValue)
                         .orElse(Double.NaN));
         bindOwner(registry, "validation", "validation",
-                c -> c.validation().observation()
+                c -> validationObservationSource.get()
                         .map(ValidationObservation::owner)
                         .map(PlatformTracingJmxDomainHealthMetricsBinder::ownerPresentValue)
                         .orElse(Double.NaN));
 
         bindDomain(registry, "export",
                 c -> registeredValue(c.export().registration()),
-                c -> c.export().observation().isPresent() ? 1.0 : 0.0,
+                c -> exportObservationSource.get().isPresent() ? 1.0 : 0.0,
                 c -> c.export().lastSuccessAge()
                         .map(PlatformTracingJmxDomainHealthMetricsBinder::freshnessValue)
                         .orElse(Double.NaN));
         bindOwner(registry, "export", "processor",
-                c -> c.export().observation()
+                c -> exportObservationSource.get()
                         .map(ExportObservation::processor)
                         .map(PlatformTracingJmxDomainHealthMetricsBinder::ownerPresentValue)
                         .orElse(Double.NaN));
         bindOwner(registry, "export", "exporter",
-                c -> c.export().observation()
+                c -> exportObservationSource.get()
                         .map(ExportObservation::exporter)
                         .map(PlatformTracingJmxDomainHealthMetricsBinder::ownerPresentValue)
                         .orElse(Double.NaN));
 
         bindDomain(registry, "processor_metrics",
                 c -> registeredValue(c.processorMetrics().registration()),
-                c -> c.processorMetrics().observation().isPresent() ? 1.0 : 0.0,
+                c -> processorMetricsObservationSource.get().isPresent() ? 1.0 : 0.0,
                 c -> c.processorMetrics().lastSuccessAge()
                         .map(PlatformTracingJmxDomainHealthMetricsBinder::freshnessValue)
                         .orElse(Double.NaN));
         bindOwner(registry, "processor_metrics", "span_timeout",
-                c -> c.processorMetrics().observation()
+                c -> processorMetricsObservationSource.get()
                         .map(ProcessorMetricsObservation::spanTimeout)
                         .map(PlatformTracingJmxDomainHealthMetricsBinder::ownerPresentValue)
                         .orElse(Double.NaN));
         bindOwner(registry, "processor_metrics", "composite",
-                c -> c.processorMetrics().observation()
+                c -> processorMetricsObservationSource.get()
                         .map(ProcessorMetricsObservation::composite)
                         .map(PlatformTracingJmxDomainHealthMetricsBinder::ownerPresentValue)
                         .orElse(Double.NaN));
         bindOwner(registry, "processor_metrics", "metrics",
-                c -> c.processorMetrics().observation()
+                c -> processorMetricsObservationSource.get()
                         .map(ProcessorMetricsObservation::metrics)
                         .map(PlatformTracingJmxDomainHealthMetricsBinder::ownerPresentValue)
                         .orElse(Double.NaN));
 
         bindDomain(registry, "diagnostics",
                 c -> registeredValue(c.diagnostics().registration()),
-                c -> c.diagnostics().observation().isPresent() ? 1.0 : 0.0,
+                c -> diagnosticsObservationSource.get().isPresent() ? 1.0 : 0.0,
                 c -> c.diagnostics().lastSuccessAge()
                         .map(PlatformTracingJmxDomainHealthMetricsBinder::freshnessValue)
                         .orElse(Double.NaN));

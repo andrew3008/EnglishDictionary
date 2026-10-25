@@ -59,8 +59,7 @@ public final class DiagnosticsJmxView {
                         JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_SAFE_WRAPPER_METRICS,
                         JmxWireContract.FIELD_SAFE_WRAPPER_METRICS_KEY,
                         JmxWireContract.FIELD_SAFE_WRAPPER_METRICS_VALUE
-                ),
-                JmxObservationCodec.getString(composite, JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_PLATFORM_LOG_LEVEL),
-                JmxObservationCodec.getBoolean(composite, JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_PROPAGATION_ENABLED));
+                )
+        );
     }
 }

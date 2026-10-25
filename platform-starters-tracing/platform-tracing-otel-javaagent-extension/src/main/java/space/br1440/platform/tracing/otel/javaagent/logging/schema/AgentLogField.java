@@ -37,7 +37,6 @@ public enum AgentLogField {
     MISSING_KEYS("missingKeys", Kind.STRING),
     NAME("name", Kind.STRING),
     OFFENDING_ARGUMENTS("offendingArguments", Kind.STRING, true),
-    OPEN_BREAKERS("openBreakers", Kind.LONG),
     OPERATION("operation", Kind.STRING),
     OUTCOME("outcome", Kind.ENUM),
     PATH("path", Kind.STRING),
@@ -103,7 +102,6 @@ public enum AgentLogField {
     public enum Kind {
         STRING,
         LONG,
-        BOOLEAN,
         ENUM
     }
 }

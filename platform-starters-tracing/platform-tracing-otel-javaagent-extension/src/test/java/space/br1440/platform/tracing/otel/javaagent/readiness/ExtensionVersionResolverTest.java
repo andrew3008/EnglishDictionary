@@ -12,8 +12,6 @@ import java.util.Properties;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import space.br1440.platform.tracing.otel.javaagent.artifact.PlatformExtensionArtifact;
-
 class ExtensionVersionResolverTest {
 
     private static final String EXPECTED_VERSION_PROPERTY = "platformTracing.expectedExtensionVersion";
@@ -27,70 +25,70 @@ class ExtensionVersionResolverTest {
 
         assertThat(expectedVersion).isNotBlank();
         assertThat(ExtensionVersionResolver.resolve(PlatformExtensionReadiness.class))
-                .isEqualTo(expectedVersion);
+                .contains(expectedVersion);
     }
 
     @Test
     void resolvesValidatedAndTrimmedVersion() {
         Properties metadata = validMetadata(" 3.4.5 ");
 
-        assertThat(ExtensionVersionResolver.resolve(metadata)).isEqualTo("3.4.5");
+        assertThat(ExtensionVersionResolver.resolve(metadata)).contains("3.4.5");
     }
 
     @Test
-    void unsupportedOrMissingFormatFallsBackToDevelopment() {
+    void unsupportedOrMissingFormatHasNoVersion() {
         for (String format : new String[]{null, "", "0", "2"}) {
             Properties metadata = validMetadata("3.4.5");
             putOrRemove(metadata, "format.version", format);
 
             assertThat(ExtensionVersionResolver.resolve(metadata))
-                    .isEqualTo(ExtensionVersionResolver.DEVELOPMENT_VERSION);
+                    .isEmpty();
         }
     }
 
     @Test
-    void unexpectedOrMissingArtifactFallsBackToDevelopment() {
+    void unexpectedOrMissingArtifactHasNoVersion() {
         for (String artifact : new String[]{null, "", "another-artifact"}) {
             Properties metadata = validMetadata("3.4.5");
             putOrRemove(metadata, "artifact", artifact);
 
             assertThat(ExtensionVersionResolver.resolve(metadata))
-                    .isEqualTo(ExtensionVersionResolver.DEVELOPMENT_VERSION);
+                    .isEmpty();
         }
     }
 
     @Test
-    void missingOrBlankVersionFallsBackToDevelopment() {
+    void missingOrBlankVersionHasNoVersion() {
         for (String version : new String[]{null, "", " ", "\t", "\r\n"}) {
             Properties metadata = validMetadata("3.4.5");
             putOrRemove(metadata, "version", version);
 
             assertThat(ExtensionVersionResolver.resolve(metadata))
-                    .isEqualTo(ExtensionVersionResolver.DEVELOPMENT_VERSION);
+                    .isEmpty();
         }
     }
 
     @Test
-    void missingResourceFallsBackToDevelopment() throws IOException {
+    void missingResourceHasNoVersion() throws IOException {
         URL missing = temporaryDirectory.resolve("missing.properties").toUri().toURL();
 
         assertThat(ExtensionVersionResolver.resolve(missing))
-                .isEqualTo(ExtensionVersionResolver.DEVELOPMENT_VERSION);
+                .isEmpty();
     }
 
     @Test
-    void malformedPropertiesFallBackToDevelopment() throws IOException {
+    void malformedPropertiesHaveNoVersion() throws IOException {
         Path malformed = temporaryDirectory.resolve("malformed.properties");
         Files.writeString(malformed, "version=\\uZZZZ", StandardCharsets.ISO_8859_1);
 
         assertThat(ExtensionVersionResolver.resolve(malformed.toUri().toURL()))
-                .isEqualTo(ExtensionVersionResolver.DEVELOPMENT_VERSION);
+                .isEmpty();
     }
 
     private static Properties validMetadata(String version) {
         Properties metadata = new Properties();
         metadata.setProperty("format.version", "1");
-        metadata.setProperty("artifact", PlatformExtensionArtifact.IMPLEMENTATION_TITLE);
+        metadata.setProperty("artifact", ExtensionVersionResolver.EXPECTED_ARTIFACT);
         metadata.setProperty("version", version);
         return metadata;
     }

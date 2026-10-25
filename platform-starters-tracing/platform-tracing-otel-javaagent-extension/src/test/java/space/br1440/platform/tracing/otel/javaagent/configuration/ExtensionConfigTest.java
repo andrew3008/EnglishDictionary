@@ -100,15 +100,6 @@ class ExtensionConfigTest {
         }
 
         @Test
-        void queue_returns_same_instance() {
-            // given
-            ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
-
-            // when/then
-            assertThat(cfg.queue()).isSameAs(cfg.queue());
-        }
-
-        @Test
         void baggage_returns_same_instance() {
             // given
             ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
@@ -149,10 +140,30 @@ class ExtensionConfigTest {
         // then
         assertThat(config.scrubbing().enabled()).isTrue();
         assertThat(config.scrubbing().hmacKey().isPresent()).isFalse();
-        assertThat(config.scrubbing().missingKeyPolicy()).isEqualTo("mask");
+        assertThat(config.scrubbing().missingKeyPolicy()).isEqualTo(ScrubbingMissingKeyPolicy.MASK);
         assertThat(config.scrubbing().rulesConfig()).isNull();
         assertThat(config.scrubbing().rulesExtensions()).isNull();
         assertThat(config.scrubbing().rulesValidationMode()).isEqualTo(ExtensionRuleLoader.ValidationMode.WARNING);
+    }
+
+    @Test
+    void scrubbing_rejects_unknown_missing_key_policy() {
+        // given
+        ConfigProperties properties = stringConfig(
+                ExtensionPropertyNames.SCRUBBING_MISSING_KEY_POLICY,
+                "fail_fats"
+        );
+
+        // when
+        Throwable failure = catchThrowable(() -> new ExtensionConfig(properties));
+
+        // then
+        assertThat(failure).isInstanceOf(ConfigurationPropertyException.class);
+        ConfigurationPropertyException propertyFailure = (ConfigurationPropertyException) failure;
+        assertThat(propertyFailure.propertyName())
+                .isEqualTo(ExtensionPropertyNames.SCRUBBING_MISSING_KEY_POLICY);
+        assertThat(propertyFailure.failure())
+                .hasMessage("platform.tracing.scrubbing.missing-key-policy must be one of: MASK, FAIL_FAST");
     }
 
     @Test
@@ -281,15 +292,6 @@ class ExtensionConfigTest {
 
         // then
         assertThat(config.spanTimeout().enabled()).isFalse();
-    }
-
-    @Test
-    void queue_returns_default_overflow_policy_when_config_is_empty() {
-        // given
-        ExtensionConfig config = new ExtensionConfig(emptyConfig());
-
-        // then
-        assertThat(config.queue().overflowPolicy()).isEqualTo(QueueOverflowPolicy.DROP_OLDEST);
     }
 
     @Test
@@ -473,35 +475,6 @@ class ExtensionConfigTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("platform.tracing.classification.slow-threshold must be greater than or equal to "
                         + "platform.tracing.classification.normal-threshold");
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"UPSTREAM", " upstream "})
-    void queue_reads_explicit_upstream_policy(String rawPolicy) {
-        // given
-        ExtensionConfig config = new ExtensionConfig(
-                stringConfig(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY, rawPolicy));
-
-        // then
-        assertThat(config.queue().overflowPolicy()).isEqualTo(QueueOverflowPolicy.UPSTREAM);
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"BOGUS", "   "})
-    void queue_rejects_unknown_or_blank_overflow_policy(String rawPolicy) {
-        // given
-        ConfigProperties properties = stringConfig(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY, rawPolicy);
-
-        // when
-        Throwable failure = catchThrowable(() -> new ExtensionConfig(properties));
-
-        // then
-        assertThat(failure).isInstanceOf(ConfigurationPropertyException.class);
-        ConfigurationPropertyException propertyFailure = (ConfigurationPropertyException) failure;
-        assertThat(propertyFailure.propertyName()).isEqualTo(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY);
-        assertThat(propertyFailure.failure())
-                .hasMessage("platform.tracing.queue.overflow-policy must be one of: UPSTREAM, DROP_OLDEST");
-        assertThat(propertyFailure.getMessage()).doesNotContain("BOGUS");
     }
 
     @Test

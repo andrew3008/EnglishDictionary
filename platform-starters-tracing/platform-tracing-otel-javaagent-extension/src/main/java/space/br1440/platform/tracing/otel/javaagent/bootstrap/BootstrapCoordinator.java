@@ -45,8 +45,10 @@ final class BootstrapCoordinator implements AutoCloseable {
     private final AutoconfigureSessionFactory sessionFactory;
     private final ExtensionRuntimeVerifier runtimeVerifier;
     private final BootstrapActivation activation;
+    private final Object preparationOwnershipMonitor = new Object();
 
     private boolean lifecycleShutdownHookInstalled;
+    private Thread preparationOwner;
 
     static BootstrapCoordinator createDefault() {
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
@@ -86,7 +88,15 @@ final class BootstrapCoordinator implements AutoCloseable {
     AutoconfigureSession prepare(ConfigProperties config) {
         Objects.requireNonNull(config, "config");
 
-        lifecycle.beginPrepare();
+        acquirePreparationOwnership();
+        try {
+            return prepareAsOwner(config);
+        } finally {
+            releasePreparationOwnership();
+        }
+    }
+
+    private AutoconfigureSession prepareAsOwner(ConfigProperties config) {
         try {
             journal.publishInitializing();
         } catch (RuntimeException | Error publicationFailure) {
@@ -114,24 +124,43 @@ final class BootstrapCoordinator implements AutoCloseable {
         }
 
         AutoconfigureSession prepared = createPreparedSession(config);
-
+        boolean ownershipTransferred = false;
         try {
-            registerDiagnosticReadiness();
-        } catch (RuntimeException | Error registrationFailure) {
-            BootstrapException classified = terminalTransitions.terminalizePreparationFailure(
-                    DIAGNOSTIC_MBEAN_REGISTRATION_FAILED,
-                    "diagnostic-registration",
-                    null,
-                    registrationFailure,
-                    prepared.evidence()
-            );
-            registerDiagnosticAfterFailure(classified);
-            PlatformThrowables.propagateIfFatal(registrationFailure);
-            throw classified;
-        }
+            try {
+                registerDiagnosticReadiness();
+            } catch (RuntimeException | Error registrationFailure) {
+                BootstrapException classified = terminalTransitions.terminalizePreparationFailure(
+                        DIAGNOSTIC_MBEAN_REGISTRATION_FAILED,
+                        "diagnostic-registration",
+                        null,
+                        registrationFailure,
+                        prepared.evidence()
+                );
+                registerDiagnosticAfterFailure(classified);
+                PlatformThrowables.propagateIfFatal(registrationFailure);
+                throw classified;
+            }
 
-        lifecycle.completePrepare(prepared);
-        return prepared;
+            lifecycle.completePrepare(prepared);
+            ownershipTransferred = true;
+            return prepared;
+        } catch (RuntimeException | Error failure) {
+            if (!ownershipTransferred) {
+                Throwable cleanupFailure = closePreparedSession(prepared);
+                if (cleanupFailure != null) {
+                    Throwable settledFailure = terminalTransitions.completePreparationCleanupFailure(
+                            failure,
+                            cleanupFailure,
+                            prepared.evidence()
+                    );
+                    if (settledFailure instanceof Error error) {
+                        throw error;
+                    }
+                    throw (RuntimeException) settledFailure;
+                }
+            }
+            throw failure;
+        }
     }
 
     private AutoconfigureSession createPreparedSession(ConfigProperties config) {
@@ -151,7 +180,15 @@ final class BootstrapCoordinator implements AutoCloseable {
             failPreparation(VerificationFailureCode.EXTENSION_LINKAGE_ERROR.name(), e);
             throw e;
         } catch (SanitizerBootstrapException e) {
-            throw failPreparation(e.code(), e);
+            if (e.propertyName() == null) {
+                throw failPreparation(e.code(), e);
+            }
+            throw failPreparation(
+                    e.code(),
+                    "configuration-validation",
+                    e.propertyName(),
+                    e
+            );
         } catch (ConfigurationPropertyException e) {
             throw failPreparation(
                     CONFIGURATION_INITIALIZATION_FAILED,
@@ -205,7 +242,7 @@ final class BootstrapCoordinator implements AutoCloseable {
 
     @Override
     public void close() {
-        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+        BootstrapLifecycleState.CloseAcquisition acquisition = acquireCloseAfterPreparation();
         if (acquisition.reentrant()) {
             return;
         }
@@ -227,11 +264,57 @@ final class BootstrapCoordinator implements AutoCloseable {
         rethrowIfPresent(outcome);
     }
 
+    private void acquirePreparationOwnership() {
+        synchronized (preparationOwnershipMonitor) {
+            lifecycle.beginPrepare();
+            preparationOwner = Thread.currentThread();
+        }
+    }
+
+    private void releasePreparationOwnership() {
+        synchronized (preparationOwnershipMonitor) {
+            if (preparationOwner != Thread.currentThread()) {
+                throw new IllegalMonitorStateException(
+                        "Bootstrap preparation ownership can only be released by its owner"
+                );
+            }
+
+            preparationOwner = null;
+            preparationOwnershipMonitor.notifyAll();
+        }
+    }
+
+    private BootstrapLifecycleState.CloseAcquisition acquireCloseAfterPreparation() {
+        boolean interrupted = false;
+        try {
+            synchronized (preparationOwnershipMonitor) {
+                if (preparationOwner == Thread.currentThread()) {
+                    throw new IllegalStateException(
+                            "Bootstrap close cannot run reentrantly during preparation"
+                    );
+                }
+
+                while (preparationOwner != null) {
+                    try {
+                        preparationOwnershipMonitor.wait();
+                    } catch (InterruptedException ignored) {
+                        interrupted = true;
+                    }
+                }
+
+                return lifecycle.acquireClose();
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
     private Throwable closeAsOwner(BootstrapLifecycleState.CloseContext context) {
         Throwable cleanupFailure = null;
         Throwable priorPublicationFailure = null;
         boolean failureSnapshotPublished = false;
-        boolean runtimeCleanupAllowed = true;
 
         try {
             diagnosticHandle.close();
@@ -245,15 +328,14 @@ final class BootstrapCoordinator implements AutoCloseable {
                 failureSnapshotPublished = true;
             } catch (RuntimeException | Error publicationFailure) {
                 priorPublicationFailure = publicationFailure;
-                runtimeCleanupAllowed = false;
             }
         }
 
-        if (runtimeCleanupAllowed) {
-            Throwable runtimeCleanupFailure = closeActivationResources(context.resources());
-            if (runtimeCleanupFailure != null) {
-                cleanupFailure = BootstrapCleanupFailures.aggregate(cleanupFailure, runtimeCleanupFailure);
-            }
+        Throwable runtimeCleanupFailure = (context.resources() == null)
+                ? closePreparedSession(context.session())
+                : closeActivationResources(context.resources());
+        if (runtimeCleanupFailure != null) {
+            cleanupFailure = BootstrapCleanupFailures.aggregate(cleanupFailure, runtimeCleanupFailure);
         }
 
         if (cleanupFailure == null) {
@@ -360,6 +442,19 @@ final class BootstrapCoordinator implements AutoCloseable {
 
         try {
             resources.close();
+            return null;
+        } catch (RuntimeException | Error failure) {
+            return failure;
+        }
+    }
+
+    private static Throwable closePreparedSession(AutoconfigureSession session) {
+        if (session == null) {
+            return null;
+        }
+
+        try {
+            session.close();
             return null;
         } catch (RuntimeException | Error failure) {
             return failure;

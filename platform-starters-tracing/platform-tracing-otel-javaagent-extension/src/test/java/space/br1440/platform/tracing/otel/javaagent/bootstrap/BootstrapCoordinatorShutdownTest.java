@@ -8,7 +8,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.CLOSE_FAILURE_EVIDENCE_GENERATION;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_READY;
@@ -57,6 +59,8 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTra
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrarTestSupport;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
@@ -94,6 +98,28 @@ class BootstrapCoordinatorShutdownTest {
             assertThatDiagnosticMBean(server).isNotRegistered();
             assertThat(hooks.registrationCount()).isEqualTo(1);
             assertNoCloseFailureLogs();
+        }
+    }
+
+    @Test
+    void graceful_shutdown_closes_scrubbing_runtime() {
+        // given
+        CapturingShutdownHookRegistry hooks = new CapturingShutdownHookRegistry();
+        PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
+        ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
+        doReturn(scrubbingRuntime).when(scrubberFactory).buildRuntime(any());
+
+        try (BootstrapCoordinator coordinator = coordinator()
+                .hooks(hooks)
+                .scrubberFactory(scrubberFactory)
+                .build()) {
+            activate(coordinator);
+
+            // when
+            hooks.runHook();
+
+            // then
+            verify(scrubbingRuntime).close();
         }
     }
 
@@ -179,7 +205,7 @@ class BootstrapCoordinatorShutdownTest {
     }
 
     @Test
-    void withdrawal_and_failure_publication_failure_keeps_runtime_intact() {
+    void withdrawal_and_failure_publication_failure_still_releases_runtime() {
         // given
         MBeanServer delegate = MBeanServerFactory.newMBeanServer();
         IllegalStateException withdrawalFailure = new IllegalStateException("Readiness withdrawal failed");
@@ -221,7 +247,7 @@ class BootstrapCoordinatorShutdownTest {
         assertThat(BootstrapCleanupFailures.contains(firstOutcome, withdrawalFailure)).isTrue();
         assertThat(BootstrapCleanupFailures.contains(firstOutcome, publicationFailure)).isTrue();
         assertThat(publicationAttempts).hasValue(2);
-        assertThat(runtimeUnregisterCalls).hasValue(0);
+        assertThat(runtimeUnregisterCalls).hasPositiveValue();
         assertThatDiagnosticMBean(server)
                 .isRegistered()
                 .hasSnapshotEntry(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE, WIRE_READY);
@@ -229,10 +255,11 @@ class BootstrapCoordinatorShutdownTest {
         assertSingleCloseFailureLog("diagnostic-readiness");
 
         int logCount = closeFailureLogCount();
+        int runtimeUnregisterCount = runtimeUnregisterCalls.get();
         assertThat(catchThrowable(coordinator::close)).isSameAs(firstOutcome);
         assertThatCode(hooks::runHook).doesNotThrowAnyException();
         assertThat(publicationAttempts).hasValue(2);
-        assertThat(runtimeUnregisterCalls).hasValue(0);
+        assertThat(runtimeUnregisterCalls).hasValue(runtimeUnregisterCount);
         assertThat(closeFailureLogCount()).isEqualTo(logCount);
     }
 

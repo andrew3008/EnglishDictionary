@@ -36,7 +36,7 @@ class MergeEngineTest {
         ExecutableRule keep = wrap(rule(false, 900, ScrubbingDecision.keep()));
 
         // when
-        ScrubbingDecision result = MergeEngine.evaluate(List.of(mask, keep), "authorization", "Bearer x");
+        ScrubbingDecision result = MergeEngine.evaluateDetailed(List.of(mask, keep), "authorization", "Bearer x").decision();
         // then
         assertThat(result.action()).isEqualTo(ScrubbingAction.MASK);
     }
@@ -48,7 +48,7 @@ class MergeEngineTest {
         ExecutableRule hash = wrap(rule(false, 130, ScrubbingDecision.hash("email")));
 
         // when
-        ScrubbingDecision result = MergeEngine.evaluate(List.of(drop, hash), "x-authorization", "token");
+        ScrubbingDecision result = MergeEngine.evaluateDetailed(List.of(drop, hash), "x-authorization", "token").decision();
         // then
         assertThat(result.action()).isEqualTo(ScrubbingAction.DROP);
         assertThat(result.terminal()).isTrue();
@@ -56,14 +56,12 @@ class MergeEngineTest {
 
     @Test
     void terminal_custom_rule_decision_does_not_block_subsequent_rule() {
-        // Custom-правило вернуло maskTerminal — если бы terminal учитывался, был бы early-exit и
-        // MASK заблокировал бы последующее. Но для custom terminal игнорируется → DROP перекрывает.
         // given
         ExecutableRule customTerminalMask = wrap(rule(false, 900, ScrubbingDecision.maskTerminal("custom")));
         ExecutableRule laterDrop = wrap(rule(false, 950, ScrubbingDecision.drop("later")));
 
         // when
-        ScrubbingDecision result = MergeEngine.evaluate(List.of(customTerminalMask, laterDrop), "some.key", "v");
+        ScrubbingDecision result = MergeEngine.evaluateDetailed(List.of(customTerminalMask, laterDrop), "some.key", "v").decision();
         // then
         assertThat(result.action()).isEqualTo(ScrubbingAction.DROP);
     }
@@ -75,7 +73,7 @@ class MergeEngineTest {
         ExecutableRule criticalMask = wrap(rule(true, 20, ScrubbingDecision.mask("other")));
 
         // when
-        ScrubbingDecision result = MergeEngine.evaluate(List.of(criticalDrop, criticalMask), "authorization", "s");
+        ScrubbingDecision result = MergeEngine.evaluateDetailed(List.of(criticalDrop, criticalMask), "authorization", "s").decision();
         // then
         assertThat(result.action()).isEqualTo(ScrubbingAction.DROP);
     }
@@ -86,6 +84,7 @@ class MergeEngineTest {
         ExecutableRule a = wrap(rule(false, 900, ScrubbingDecision.keep()));
         ExecutableRule b = wrap(rule(true, 10, ScrubbingDecision.keep()));
         // when/then
-        assertThat(MergeEngine.evaluate(List.of(a, b), "k", "v").action()).isEqualTo(ScrubbingAction.KEEP);
+        assertThat(MergeEngine.evaluateDetailed(List.of(a, b), "k", "v").decision().action())
+                .isEqualTo(ScrubbingAction.KEEP);
     }
 }

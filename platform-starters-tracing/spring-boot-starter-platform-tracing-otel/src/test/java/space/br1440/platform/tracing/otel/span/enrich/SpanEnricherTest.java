@@ -47,15 +47,13 @@ class SpanEnricherTest {
         try (Scope ignored = span.makeCurrent()) {
             enricher.enrichCurrentSpan(scope -> scope
                     .requestId("req-1")
-                    .userHash("u-hash")
                     .result(SpanResult.SUCCESS));
         } finally {
             span.end();
         }
 
-        SpanData data = exporter.getFinishedSpanItems().get(0);
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(SemconvKeys.PLATFORM_REQUEST_ID)).isEqualTo("req-1");
-        assertThat(data.getAttributes().get(SemconvKeys.PLATFORM_USER_HASH)).isEqualTo("u-hash");
         assertThat(data.getAttributes().get(SemconvKeys.PLATFORM_RESULT)).isEqualTo("success");
     }
 

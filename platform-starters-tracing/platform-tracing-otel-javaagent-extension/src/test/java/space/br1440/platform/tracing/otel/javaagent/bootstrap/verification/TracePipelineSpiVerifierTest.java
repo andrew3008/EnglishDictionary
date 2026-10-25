@@ -12,7 +12,6 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
@@ -27,22 +26,6 @@ import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvide
 class TracePipelineSpiVerifierTest {
 
     private static final int PLATFORM_ORDER = 100;
-
-    @Test
-    void allowlisted_names_reject_attacker_prefix_and_keep_reviewed_names() {
-        // given
-        Set<String> names = UpstreamCustomizerProviderAllowlist.load().providerClassNames();
-
-        // when
-        boolean attackerAllowed = TracePipelineSpiVerifier.isAllowlistedOtelJavaAgentProviderName(
-                "attacker.io.opentelemetry.javaagent.tooling.AgentTracerProviderConfigurer");
-
-        // then
-        assertThat(names).isNotEmpty();
-        assertThat(names).doesNotContain(
-                "attacker.io.opentelemetry.javaagent.tooling.AgentTracerProviderConfigurer");
-        assertThat(attackerAllowed).isFalse();
-    }
 
     @Test
     void platformProviderAlonePasses() {

@@ -2,8 +2,6 @@ package space.br1440.platform.tracing.autoconfigure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.sdk.OpenTelemetrySdk;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -12,9 +10,12 @@ import org.springframework.context.annotation.Configuration;
 
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
-import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
+
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
 
 class TracingEnabledAutoConfigurationTest {
 
@@ -59,7 +60,11 @@ class TracingEnabledAutoConfigurationTest {
 
     @Test
     void applicationSdkBeanIsRejectedEvenWhenDisabled() {
-        String message = "Application-owned OpenTelemetry bean is not supported with Controlled Agent ownership: openTelemetry";
+        String message = "Platform tracing startup rejected: runtimeState=DUAL_SDK_DETECTED, "
+                + "reason=DUAL_SDK_COLLISION. Root cause: the application declares an OpenTelemetry bean, "
+                + "but the Controlled Platform Agent already owns the OpenTelemetry runtime. "
+                + "Conflicting bean: type=io.opentelemetry.api.OpenTelemetry, name=openTelemetry. "
+                + "Remove the application-owned OpenTelemetry bean or its SDK auto-configuration";
 
         contextRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class)

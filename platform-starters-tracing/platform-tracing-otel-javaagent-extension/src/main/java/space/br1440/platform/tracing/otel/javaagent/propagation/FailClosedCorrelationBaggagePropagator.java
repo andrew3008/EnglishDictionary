@@ -4,6 +4,8 @@ import java.util.Collection;
 import java.util.Objects;
 import jakarta.annotation.Nonnull;
 
+import space.br1440.platform.tracing.api.propagation.PlatformBaggageKeys;
+
 import io.opentelemetry.api.baggage.Baggage;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
@@ -11,8 +13,6 @@ import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.context.propagation.TextMapSetter;
 
 final class FailClosedCorrelationBaggagePropagator implements TextMapPropagator {
-
-    static final String CORRELATION_BAGGAGE_KEY = "platform.correlation.id";
 
     private final TextMapPropagator delegate;
 
@@ -39,12 +39,12 @@ final class FailClosedCorrelationBaggagePropagator implements TextMapPropagator 
         Context required = Objects.requireNonNull(context, "context");
 
         Baggage baggage = Baggage.fromContext(required);
-        if (baggage.getEntryValue(CORRELATION_BAGGAGE_KEY) == null) {
+        if (baggage.getEntryValue(PlatformBaggageKeys.CORRELATION_ID) == null) {
             return required;
         }
 
         return baggage.toBuilder()
-                .remove(CORRELATION_BAGGAGE_KEY)
+                .remove(PlatformBaggageKeys.CORRELATION_ID)
                 .build()
                 .storeInContext(required);
     }

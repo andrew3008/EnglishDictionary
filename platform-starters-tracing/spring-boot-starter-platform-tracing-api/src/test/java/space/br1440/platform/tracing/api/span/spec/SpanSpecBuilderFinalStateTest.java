@@ -1,13 +1,14 @@
 package space.br1440.platform.tracing.api.span.spec;
 
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import space.br1440.platform.tracing.api.span.SpanCategory;
 
 class SpanSpecBuilderFinalStateTest {
 
@@ -136,7 +137,7 @@ class SpanSpecBuilderFinalStateTest {
                 .reference("JIRA-123")
                 .build();
 
-        assertThat(spec.reason()).isEqualTo(SpanSpecReason.TEMPORARY_WORKAROUND);
+        assertThat(spec.reason()).contains(SpanSpecReason.TEMPORARY_WORKAROUND);
         assertThat(spec.reference()).contains("JIRA-123");
     }
 
@@ -158,12 +159,17 @@ class SpanSpecBuilderFinalStateTest {
     }
 
     @Test
-    void reasonIsRequired() {
-        assertThatThrownBy(() -> SpanSpec.builder("x")
+    void reasonIsOptional() {
+        // given
+        SpanSpecBuilder builder = SpanSpec.builder("x")
                 .category(SpanCategory.INTERNAL)
-                .build())
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("reason");
+                .child();
+
+        // when
+        SpanSpec spec = builder.build();
+
+        // then
+        assertThat(spec.reason()).isEmpty();
     }
 
     @Test

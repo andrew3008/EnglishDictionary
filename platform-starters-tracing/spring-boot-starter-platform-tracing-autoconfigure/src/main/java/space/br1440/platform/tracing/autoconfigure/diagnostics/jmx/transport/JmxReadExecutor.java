@@ -37,7 +37,7 @@ public final class JmxReadExecutor {
     private final EnumMap<JmxDomain, ReentrantLock> transportLocks = new EnumMap<>(JmxDomain.class);
     private final AtomicLong observationSequence = new AtomicLong();
 
-    public JmxReadExecutor(MBeanServerConnection connection) {
+    JmxReadExecutor(MBeanServerConnection connection) {
         this(connection, NOOP_AGENT_INSTANCE_ID_VERIFIER);
     }
 
@@ -46,7 +46,7 @@ public final class JmxReadExecutor {
         this(connection, Clock.systemUTC(), DEFAULT_WARN_RATE_LIMIT, agentInstanceIdVerifier);
     }
 
-    public JmxReadExecutor(MBeanServerConnection connection, Clock clock, Duration warnRateLimit) {
+    JmxReadExecutor(MBeanServerConnection connection, Clock clock, Duration warnRateLimit) {
         this(connection, clock, warnRateLimit, NOOP_AGENT_INSTANCE_ID_VERIFIER);
     }
 

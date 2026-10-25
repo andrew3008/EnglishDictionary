@@ -1,6 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.rules;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+
+import java.time.Duration;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -9,9 +12,6 @@ import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 
-/**
- * Unit-тесты встроенных правил scrubbing'а на API {@code evaluate(String key, Object value)}.
- */
 class BuiltInRulesTest {
 
     @Nested
@@ -24,7 +24,6 @@ class BuiltInRulesTest {
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve("password")).isInstanceOf(PasswordKeyRule.class);
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")).isInstanceOf(OAuthHeaderRule.class);
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve("x-auth-header")).isInstanceOf(XAuthHeaderRule.class);
-            assertThat(BuiltInSpanAttributeScrubbingRules.resolve("infra-credential")).isInstanceOf(InfraCredentialRule.class);
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve("webhook-token")).isInstanceOf(WebhookTokenRule.class);
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve("ssh-credential")).isInstanceOf(SshCredentialRule.class);
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve("user-identity")).isInstanceOf(UserIdentityRule.class);
@@ -90,7 +89,44 @@ class BuiltInRulesTest {
         SpanAttributeScrubbingRule rule = new EmailRule();
         // when/then
         assertThat(rule.evaluate("c", "ivan@example.com").action()).isEqualTo(ScrubbingAction.HASH);
+        assertThat(rule.evaluate("c", "contact ivan@example.co.uk").action()).isEqualTo(ScrubbingAction.HASH);
         assertThat(rule.evaluate("c", "no email here").action()).isEqualTo(ScrubbingAction.KEEP);
+        assertThat(rule.evaluate("c", "ivan@example..com").action()).isEqualTo(ScrubbingAction.KEEP);
+        assertThat(rule.evaluate("c", "ivan@" + "a".repeat(64) + ".com").action())
+                .isEqualTo(ScrubbingAction.KEEP);
+    }
+
+    @Test
+    void email_rule_hashes_over_limit_value_without_regex_scan() {
+        // given
+        SpanAttributeScrubbingRule rule = new EmailRule();
+        String value = "a".repeat(EmailRule.MAX_SCAN_LENGTH + 1);
+
+        // when
+        ScrubbingDecision decision = assertTimeoutPreemptively(
+                Duration.ofSeconds(1),
+                () -> rule.evaluate("c", value)
+        );
+
+        // then
+        assertThat(decision.action()).isEqualTo(ScrubbingAction.HASH);
+        assertThat(decision.reason()).isEqualTo("email");
+    }
+
+    @Test
+    void email_rule_handles_worst_case_bounded_input_within_timeout() {
+        // given
+        SpanAttributeScrubbingRule rule = new EmailRule();
+        String value = "a".repeat(EmailRule.MAX_SCAN_LENGTH - 2) + "@x";
+
+        // when
+        ScrubbingDecision decision = assertTimeoutPreemptively(
+                Duration.ofSeconds(1),
+                () -> rule.evaluate("c", value)
+        );
+
+        // then
+        assertThat(decision.action()).isEqualTo(ScrubbingAction.KEEP);
     }
 
     @Test

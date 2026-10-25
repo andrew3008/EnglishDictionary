@@ -5,10 +5,8 @@ import java.time.Instant;
 public record JmxPointReadState(long lastAppliedSequence,
                                 long lastSuccessSequence,
                                 Instant lastAttemptAt,
-                                Instant lastSuccessAt,
-                                JmxLastReadOutcome lastOutcome) {
+                                Instant lastSuccessAt) {
 
-    public static final JmxPointReadState NEVER_READ =
-            new JmxPointReadState(-1L, -1L, null, null, JmxLastReadOutcome.NEVER_READ);
+    public static final JmxPointReadState NEVER_READ = new JmxPointReadState(-1L, -1L, null, null);
 
 }

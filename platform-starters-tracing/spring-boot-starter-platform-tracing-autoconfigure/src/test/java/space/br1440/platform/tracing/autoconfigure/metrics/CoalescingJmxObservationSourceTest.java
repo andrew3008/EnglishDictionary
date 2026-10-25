@@ -4,6 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
@@ -17,6 +22,60 @@ import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherence
 class CoalescingJmxObservationSourceTest {
 
     private static final long WINDOW_NANOS = 150_000_000L;
+    private static final String FIRST_READER = "first-stale-reader";
+    private static final String SECOND_READER = "second-stale-reader";
+
+    @Test
+    void staleReaderRechecksSnapshotAfterAcquiringRefreshLock() throws Exception {
+        // given
+        CountDownLatch firstReaderAtTicker = new CountDownLatch(1);
+        CountDownLatch secondReaderAtTicker = new CountDownLatch(1);
+        CountDownLatch firstReadCompleted = new CountDownLatch(1);
+        AtomicLong captures = new AtomicLong();
+        MonotonicJmxCounterGroupBridge.Ticker ticker = () -> {
+            if (FIRST_READER.equals(Thread.currentThread().getName())) {
+                firstReaderAtTicker.countDown();
+                await(secondReaderAtTicker);
+            } else if (SECOND_READER.equals(Thread.currentThread().getName())) {
+                secondReaderAtTicker.countDown();
+                await(firstReadCompleted);
+            }
+
+            return 0L;
+        };
+        CoalescingJmxObservationSource<String> source = new CoalescingJmxObservationSource<>(
+                () -> Optional.of("snapshot-" + captures.incrementAndGet()),
+                ticker,
+                WINDOW_NANOS
+        );
+
+        // when
+        Optional<String> firstObserved;
+        Optional<String> secondObserved;
+        try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
+            Future<Optional<String>> first = pool.submit(() -> {
+                Thread.currentThread().setName(FIRST_READER);
+                try {
+                    return source.get();
+                } finally {
+                    firstReadCompleted.countDown();
+                }
+            });
+            assertThat(firstReaderAtTicker.await(5, TimeUnit.SECONDS)).isTrue();
+
+            Future<Optional<String>> second = pool.submit(() -> {
+                Thread.currentThread().setName(SECOND_READER);
+                return source.get();
+            });
+            firstObserved = first.get(5, TimeUnit.SECONDS);
+            secondObserved = second.get(5, TimeUnit.SECONDS);
+        }
+
+        // then
+        assertThat(firstObserved).contains("snapshot-1");
+        assertThat(secondObserved).contains("snapshot-1");
+        assertThat(captures.get()).isEqualTo(1L);
+    }
 
     @Test
     void coherenceFailureIsObservedAsEmptySnapshot() {
@@ -94,5 +153,16 @@ class CoalescingJmxObservationSourceTest {
         assertThat(source.get()).isEmpty();
 
         assertThat(captures.get()).isEqualTo(1L);
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            if (!latch.await(5, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("latch was not released before the deadline");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted while waiting for the latch", e);
+        }
     }
 }

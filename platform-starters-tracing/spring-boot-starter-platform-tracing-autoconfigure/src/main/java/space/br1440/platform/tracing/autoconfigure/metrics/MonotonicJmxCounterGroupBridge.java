@@ -1,8 +1,8 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
-import java.lang.management.ManagementFactory;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.ReentrantLock;
@@ -22,10 +22,9 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwner
  */
 final class MonotonicJmxCounterGroupBridge<K extends Enum<K>> {
 
-    static final Supplier<String> LOCAL_PROCESS_IDENTITY = ManagementFactory.getRuntimeMXBean()::getName;
-
     static final long DEFAULT_COALESCING_WINDOW_NANOS = 150_000_000L;
     private static final long NEVER_OBSERVED_GENERATION = -1L;
+    private static final long NEVER_REFRESHED_AT_NANOS = Long.MIN_VALUE;
 
     static final String RESET_METRIC_NAME = "platform.tracing.jmx.source_resets_total";
     static final String ANOMALY_METRIC_NAME = "platform.tracing.jmx.backward_value_anomalies_total";
@@ -50,9 +49,17 @@ final class MonotonicJmxCounterGroupBridge<K extends Enum<K>> {
         long nanoTime();
     }
 
+    record SourceSnapshot<K extends Enum<K>>(JmxOwnerState<Map<K, Long>> ownerState,
+                                              String agentInstanceId) {
+
+        SourceSnapshot {
+            Objects.requireNonNull(ownerState, "ownerState");
+            Objects.requireNonNull(agentInstanceId, "agentInstanceId");
+        }
+    }
+
     private final Class<K> keyType;
-    private final Supplier<Optional<JmxOwnerState<Map<K, Long>>>> source;
-    private final Supplier<String> agentInstanceId;
+    private final Supplier<Optional<SourceSnapshot<K>>> source;
     private final Ticker ticker;
     private final long coalescingWindowNanos;
     private final ReentrantLock refreshLock = new ReentrantLock();
@@ -62,14 +69,12 @@ final class MonotonicJmxCounterGroupBridge<K extends Enum<K>> {
     private volatile BridgeSnapshot<K> snapshot;
 
     MonotonicJmxCounterGroupBridge(Class<K> keyType,
-                                   Supplier<Optional<JmxOwnerState<Map<K, Long>>>> source,
-                                   Supplier<String> agentInstanceId,
+                                   Supplier<Optional<SourceSnapshot<K>>> source,
                                    Ticker ticker,
                                    long coalescingWindowNanos) {
-        this.keyType = keyType;
-        this.source = source;
-        this.agentInstanceId = agentInstanceId;
-        this.ticker = ticker;
+        this.keyType = Objects.requireNonNull(keyType, "keyType");
+        this.source = Objects.requireNonNull(source, "source");
+        this.ticker = Objects.requireNonNull(ticker, "ticker");
         this.coalescingWindowNanos = coalescingWindowNanos;
 
         this.anomalyCounts = new EnumMap<>(keyType);
@@ -82,7 +87,7 @@ final class MonotonicJmxCounterGroupBridge<K extends Enum<K>> {
             resetCounts.put(cause, new LongAdder());
         }
 
-        this.snapshot = BridgeSnapshot.initial(keyType, ticker.nanoTime());
+        this.snapshot = BridgeSnapshot.initial(keyType);
     }
 
     double count(K key) {
@@ -121,14 +126,14 @@ final class MonotonicJmxCounterGroupBridge<K extends Enum<K>> {
     }
 
     private boolean isFresh(BridgeSnapshot<K> current) {
-        return (current.lastGeneration() != NEVER_OBSERVED_GENERATION)
+        return (current.refreshedAtNanos() != NEVER_REFRESHED_AT_NANOS)
                 && ((ticker.nanoTime() - current.refreshedAtNanos()) < coalescingWindowNanos);
     }
 
     private BridgeSnapshot<K> doRefresh(BridgeSnapshot<K> previous) {
         long now = ticker.nanoTime();
 
-        Optional<JmxOwnerState<Map<K, Long>>> observed;
+        Optional<SourceSnapshot<K>> observed;
         try {
             observed = source.get();
         } catch (AgentReadinessCoherenceException ignored) {
@@ -136,18 +141,13 @@ final class MonotonicJmxCounterGroupBridge<K extends Enum<K>> {
         }
 
         if (observed.isEmpty() ||
-                !(observed.get() instanceof JmxOwnerState.Present<Map<K, Long>>(
+                !(observed.get().ownerState() instanceof JmxOwnerState.Present<Map<K, Long>>(
                         Map<K, Long> values, long generation
                 ))) {
             return previous.withRefreshedAt(now);
         }
 
-        String currentAgentInstanceId;
-        try {
-            currentAgentInstanceId = agentInstanceId.get();
-        } catch (AgentReadinessCoherenceException ignored) {
-            return previous.withRefreshedAt(now);
-        }
+        String currentAgentInstanceId = observed.get().agentInstanceId();
 
         boolean neverObserved = previous.lastGeneration() == NEVER_OBSERVED_GENERATION;
         boolean agentInstanceChanged = !neverObserved && !currentAgentInstanceId.equals(previous.lastAgentInstanceId());
@@ -166,7 +166,7 @@ final class MonotonicJmxCounterGroupBridge<K extends Enum<K>> {
             long currentRaw = values.getOrDefault(key, 0L);
             lastRaw.put(key, currentRaw);
             if (needIdentityReset) {
-                accumulated.merge(key, currentRaw, Long::sum);
+                accumulateSaturated(accumulated, key, currentRaw);
                 continue;
             }
 
@@ -175,11 +175,27 @@ final class MonotonicJmxCounterGroupBridge<K extends Enum<K>> {
             if (delta < 0) {
                 anomalyCounts.get(key).increment();
             } else if (delta > 0) {
-                accumulated.merge(key, delta, Long::sum);
+                accumulateSaturated(accumulated, key, delta);
             }
         }
 
         return new BridgeSnapshot<>(accumulated, lastRaw, currentAgentInstanceId, generation, now);
+    }
+
+    private static <K extends Enum<K>> void accumulateSaturated(EnumMap<K, Long> accumulated,
+                                                                 K key,
+                                                                 long increment) {
+        accumulated.compute(key, (ignored, current) -> saturatingAdd(current == null ? 0L : current, increment));
+    }
+
+    private static long saturatingAdd(long current, long increment) {
+        if (increment <= 0L) {
+            return current;
+        }
+        if (current >= Long.MAX_VALUE - increment) {
+            return Long.MAX_VALUE;
+        }
+        return current + increment;
     }
 
     private record BridgeSnapshot<K extends Enum<K>>(EnumMap<K, Long> accumulated,
@@ -188,8 +204,14 @@ final class MonotonicJmxCounterGroupBridge<K extends Enum<K>> {
                                                      long lastGeneration,
                                                      long refreshedAtNanos) {
 
-        static <K extends Enum<K>> BridgeSnapshot<K> initial(Class<K> keyType, long now) {
-            return new BridgeSnapshot<>(new EnumMap<>(keyType), new EnumMap<>(keyType), null, NEVER_OBSERVED_GENERATION, now);
+        static <K extends Enum<K>> BridgeSnapshot<K> initial(Class<K> keyType) {
+            return new BridgeSnapshot<>(
+                    new EnumMap<>(keyType),
+                    new EnumMap<>(keyType),
+                    null,
+                    NEVER_OBSERVED_GENERATION,
+                    NEVER_REFRESHED_AT_NANOS
+            );
         }
 
         BridgeSnapshot<K> withRefreshedAt(long now) {

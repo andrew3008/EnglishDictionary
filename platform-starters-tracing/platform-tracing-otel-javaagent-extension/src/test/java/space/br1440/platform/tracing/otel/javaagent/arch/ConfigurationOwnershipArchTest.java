@@ -52,7 +52,7 @@ class ConfigurationOwnershipArchTest {
     @Test
     void supply_without_env_does_not_write_extension_property_names_platform_keys() throws Exception {
         // given
-        Map<String, String> supplied = new PlatformTracingDefaultsProvider(name -> null).supply();
+        Map<String, String> supplied = new PlatformTracingDefaultsProvider().supply();
 
         // when/then
         for (Field field : ExtensionPropertyNames.class.getFields()) {
@@ -70,7 +70,7 @@ class ConfigurationOwnershipArchTest {
 
             assertThat(supplied)
                     .as("platform key %s is owned by ExtensionDefaults / domain facade; "
-                            + "supply() may write it only via env fallback (S7 G-S7-2)", key)
+                            + "supply() does not write it", key)
                     .doesNotContainKey(key);
         }
     }

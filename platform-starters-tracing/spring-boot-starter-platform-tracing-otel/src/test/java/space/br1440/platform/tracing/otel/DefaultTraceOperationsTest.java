@@ -1,6 +1,19 @@
 package space.br1440.platform.tracing.otel;
-import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.api.span.spec.SpanSpec;
+import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
 
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
@@ -9,17 +22,6 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.LinkData;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.RemoteSpanLink;
-import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class DefaultTraceOperationsTest {
 
@@ -57,24 +59,6 @@ class DefaultTraceOperationsTest {
         SpanData childSpan = findSpan(spans, "child");
         assertThat(childSpan.getTraceId()).isEqualTo(parentSpan.getTraceId());
         assertThat(childSpan.getParentSpanId()).isEqualTo(parentSpan.getSpanId());
-    }
-
-    @Test
-    void facadeDisabled_does_not_create_span() {
-        tracing.setFacadeEnabled(false);
-        assertThat(tracing.isFacadeEnabled()).isFalse();
-
-        try (var scope = tracing.spans().operation("disabled").start()) {
-            assertThat(tracing.traceContext().traceId()).as("no active span — facade is disabled").isEmpty();
-        }
-
-        assertThat(exporter.getFinishedSpanItems()).as("span is not created when the facade is disabled").isEmpty();
-
-        tracing.setFacadeEnabled(true);
-        try (var scope = tracing.spans().operation("enabled").start()) {
-            assertThat(tracing.traceContext().traceId()).isPresent();
-        }
-        assertThat(exporter.getFinishedSpanItems()).hasSize(1);
     }
 
     @Test

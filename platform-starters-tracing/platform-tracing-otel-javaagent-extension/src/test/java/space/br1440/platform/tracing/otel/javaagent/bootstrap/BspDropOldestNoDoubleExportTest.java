@@ -30,8 +30,8 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 class BspDropOldestNoDoubleExportTest {
 
     @Test
-    @DisplayName("opt-in DROP_OLDEST: каждый span экспортируется ровно один раз")
-    void everySpanExportedExactlyOnceUnderOptIn() {
+    @DisplayName("каждый span экспортируется ровно один раз")
+    void everySpanExportedExactlyOnce() {
         // given
         CountingExporter counting = new CountingExporter();
 
@@ -46,7 +46,6 @@ class BspDropOldestNoDoubleExportTest {
                         "otel.exporter.otlp.endpoint", "http://127.0.0.1:1",
                         "otel.bsp.schedule.delay", "100",
                         "otel.bsp.export.timeout", "1000",
-                        "platform.tracing.queue.overflow-policy", "DROP_OLDEST",
                         "platform.tracing.sampling.ratio", "1.0"
                 ))
                 .addSpanExporterCustomizer((existing, cfg) -> counting);

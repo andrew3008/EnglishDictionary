@@ -1,112 +1,136 @@
 package space.br1440.platform.tracing.runtime.sampling.config;
 
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.runtime.sampling.properties.SamplingPolicyProperties;
-import space.br1440.platform.tracing.runtime.sampling.properties.SamplingPolicyPropertiesValidator;
-
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * Доменная fail-fast матрица {@link SamplingPolicyPropertiesValidator}.
- * <p>
- * Дополняет lenient-семантику фабрики: одни и те же невалидные данные фабрика молча пропускает,
- * а валидатор отклоняет. Сообщения совпадают с доменной валидацией accepted policy,
- * чтобы переподключение в P2 не меняло наблюдаемые ошибки.
- */
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.IntStream;
+
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.runtime.sampling.properties.SamplingPolicyPropertiesValidator;
+
 class SamplingPolicyPropertiesValidatorTest {
 
-    private static SamplingPolicyProperties valid() {
-        return new SamplingPolicyProperties(true, 0.5, List.of("/m"), Set.of("on"), Map.of("/api", 0.5));
-    }
-
-    private static SamplingPolicyProperties with(double defaultRatio, List<String> drops,
-                                                 Set<String> force, Map<String, Double> routes) {
-        return new SamplingPolicyProperties(true, defaultRatio, drops, force, routes);
-    }
-
     @Test
-    void acceptsValidConfig() {
-        assertThatCode(() -> SamplingPolicyPropertiesValidator.validate(valid())).doesNotThrowAnyException();
-    }
+    void acceptsValidProductionInput() {
+        // given
+        List<String> droppedRoutes = List.of(" /metrics ", "/health");
+        List<String> forceRecordValues = List.of(" on ", "custom");
 
-    @Test
-    void acceptsBoundaryRatios() {
-        assertThatCode(() -> SamplingPolicyPropertiesValidator.validate(
-                with(0.0, List.of(), Set.of(), Map.of("/api", 1.0)))).doesNotThrowAnyException();
-        assertThatCode(() -> SamplingPolicyPropertiesValidator.validate(
-                with(1.0, List.of(), Set.of(), Map.of("/api", 0.0)))).doesNotThrowAnyException();
-    }
-
-    @Test
-    void validateDefaultRatio_acceptsBoundaryValues() {
-        assertThatCode(() -> SamplingPolicyPropertiesValidator.validateDefaultRatio(0.0))
-                .doesNotThrowAnyException();
-        assertThatCode(() -> SamplingPolicyPropertiesValidator.validateDefaultRatio(1.0))
+        // when
+        // then
+        assertThatCode(() -> SamplingPolicyPropertiesValidator.validate(droppedRoutes, forceRecordValues))
                 .doesNotThrowAnyException();
     }
 
     @Test
-    void validateDefaultRatio_rejectsBelowZero() {
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validateDefaultRatio(-0.1))
+    void rejectsNullCollections() {
+        // given
+        List<String> droppedRoutes = List.of();
+        List<String> forceRecordValues = List.of();
+
+        // when
+        // then
+        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(null, forceRecordValues))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("droppedRoutes");
+
+        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(droppedRoutes, null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("forceRecordValues");
+    }
+
+    @Test
+    void rejectsNullOrBlankDropPath() {
+        // given
+        List<String> nullPath = new ArrayList<>();
+        nullPath.add(null);
+
+        // when
+        // then
+        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(nullPath, List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("defaultRatio must be in [0.0, 1.0]");
-    }
+                .hasMessage("Drop path must not be null or blank");
 
-    @Test
-    void validateDefaultRatio_rejectsAboveOne() {
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validateDefaultRatio(1.1))
+        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(List.of("   "), List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("defaultRatio must be in [0.0, 1.0]");
+                .hasMessage("Drop path must not be null or blank");
     }
 
     @Test
-    void rejectsOutOfRangeDefaultRatio() {
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(
-                with(1.5, List.of(), Set.of(), Map.of())))
+    void rejectsRelativeDropPath() {
+        // given
+        List<String> droppedRoutes = List.of("health");
+
+        // when
+        // then
+        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(droppedRoutes, List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("defaultRatio");
+                .hasMessage("Drop path must start with /");
     }
 
     @Test
-    void rejectsNullDropPath() {
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(
-                with(0.5, java.util.Collections.singletonList(null), Set.of(), Map.of())))
-                .hasMessageContaining("Drop path");
+    void rejectsTooManyDropPaths() {
+        // given
+        List<String> droppedRoutes = IntStream.rangeClosed(
+                        0,
+                        SamplingPolicyPropertiesValidator.MAX_DROP_PATHS
+                )
+                .mapToObj(index -> "/path-" + index)
+                .toList();
+
+        // when
+        // then
+        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(droppedRoutes, List.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Too many drop paths configured");
     }
 
     @Test
-    void rejectsBadDropPathFormat() {
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(
-                with(0.5, List.of("noslash"), Set.of(), Map.of())))
-                .hasMessageContaining("Drop path must start with");
+    void rejectsNullOrBlankForceRecordValue() {
+        // given
+        List<String> nullValue = new ArrayList<>();
+        nullValue.add(null);
+
+        // when
+        // then
+        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(List.of(), nullValue))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Force record value must not be null or blank");
+
+        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(List.of(), List.of("   ")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Force record value must not be null or blank");
     }
 
     @Test
-    void rejectsNullForceValue() {
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(
-                with(0.5, List.of(), java.util.Collections.singleton(null), Map.of())))
-                .hasMessageContaining("Force record value");
+    void rejectsTooLongForceRecordValue() {
+        // given
+        String value = "x".repeat(SamplingPolicyPropertiesValidator.MAX_FORCE_VALUE_LENGTH + 1);
+
+        // when
+        // then
+        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(List.of(), List.of(value)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Force record value too long");
     }
 
     @Test
-    void rejectsBlankRoutePrefix() {
-        Map<String, Double> routes = new LinkedHashMap<>();
-        routes.put("   ", 0.5);
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(
-                with(0.5, List.of(), Set.of(), routes)))
-                .hasMessageContaining("Route ratio prefix");
-    }
+    void rejectsTooManyForceRecordValues() {
+        // given
+        List<String> forceRecordValues = IntStream.rangeClosed(
+                        0,
+                        SamplingPolicyPropertiesValidator.MAX_FORCE_VALUES
+                )
+                .mapToObj(index -> "value-" + index)
+                .toList();
 
-    @Test
-    void rejectsOutOfRangeRouteRatio() {
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(
-                with(0.5, List.of(), Set.of(), Map.of("/api", 1.5))))
-                .hasMessageContaining("Route ratio");
+        // when
+        // then
+        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(List.of(), forceRecordValues))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Too many force record values");
     }
 }

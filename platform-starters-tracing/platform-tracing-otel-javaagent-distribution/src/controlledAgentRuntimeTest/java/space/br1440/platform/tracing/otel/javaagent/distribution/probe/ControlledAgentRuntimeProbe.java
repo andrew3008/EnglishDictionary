@@ -41,7 +41,6 @@ public final class ControlledAgentRuntimeProbe {
     private static final String EXPECTED_AGENT_SHA256_PROPERTY = "platform.tracing.controlled-agent.expected-sha256";
     public static final String EXPECTED_API_CLASSPATH_PROPERTY = "platform.tracing.controlled-agent.expected-api-classpath";
 
-    private static final String DEVELOPMENT_VERSION_MARKER = "development";
     private static final String LIFECYCLE_READY = "READY";
     private static final String LIFECYCLE_FAILED = "FAILED";
     private static final String BOOTSTRAP_LOADER_LABEL = "bootstrap";
@@ -434,8 +433,7 @@ public final class ControlledAgentRuntimeProbe {
                                        String expectedExtensionVersion,
                                        String expectedUpstreamVersion) {
         String extensionVersion = JmxValues.string(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_EXTENSION_VERSION);
-        if (!expectedExtensionVersion.equals(extensionVersion)
-                || DEVELOPMENT_VERSION_MARKER.equalsIgnoreCase(extensionVersion)) {
+        if (!expectedExtensionVersion.equals(extensionVersion)) {
             throw new IllegalStateException(
                     "Unexpected extension version: expected=%s, actual=%s"
                             .formatted(expectedExtensionVersion, extensionVersion)

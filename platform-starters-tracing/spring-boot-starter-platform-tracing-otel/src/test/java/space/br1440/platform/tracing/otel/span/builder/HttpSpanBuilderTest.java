@@ -3,6 +3,8 @@ package space.br1440.platform.tracing.otel.span.builder;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -16,7 +18,6 @@ import space.br1440.platform.tracing.api.span.builder.HttpServerSpanBuilder;
 import space.br1440.platform.tracing.api.span.builder.HttpTracing;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidationMetrics;
 import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 import space.br1440.platform.tracing.otel.runtime.RecordingTracingRuntime;
@@ -72,7 +73,7 @@ class HttpSpanBuilderTest {
         assertThat(recording.receivedSpecs()).hasSize(1);
         SpanSpec spec = recording.receivedSpecs().getFirst();
         assertThat(spec.category()).isEqualTo(SpanCategory.HTTP_SERVER);
-        assertThat(spec.reason()).isEqualTo(SpanSpecReason.PLATFORM_EDGE_CASE);
+        assertThat(spec.reason()).isEmpty();
         assertThat(spec.name()).isEqualTo("GET /api/items");
         assertThat(spec.attributes()).containsKey("http.request.method");
         assertThat(spec.attributes()).containsKey("http.route");
@@ -92,6 +93,25 @@ class HttpSpanBuilderTest {
         assertThat(spec.name()).isEqualTo("POST");
         assertThat(spec.attributes()).containsKey("http.request.method");
         assertThat(spec.attributes()).containsKey("url.full");
+    }
+
+    @Test
+    void semanticBuilder_validatesExactlyOnce() {
+        // given
+        AtomicInteger violations = new AtomicInteger();
+        SpanFactory warningFactory = new DefaultSpanFactory(
+                recording,
+                new SpanAttributeValidator(
+                        SpanAttributeValidationLevel.WARNING,
+                        (ruleId, builderName) -> violations.incrementAndGet()
+                )
+        );
+
+        // when
+        warningFactory.transport().http().server().start().close();
+
+        // then
+        assertThat(violations).hasValue(1);
     }
 
     @Test

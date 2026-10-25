@@ -1,21 +1,18 @@
 package space.br1440.platform.tracing.otel.span.builder;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.RemoteSpanLink;
-import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
-import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
-import space.br1440.platform.tracing.otel.runtime.RecordingTracingRuntime;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * Hard gate: {@code spans().operation(...)} builder behavior.
- */
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
+import space.br1440.platform.tracing.api.span.spec.SpanSpec;
+import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.runtime.RecordingTracingRuntime;
+
 class OperationSpanBuilderTest {
 
     private RecordingTracingRuntime recording;
@@ -79,11 +76,11 @@ class OperationSpanBuilderTest {
     }
 
     @Test
-    void category_isInternalWithReason() {
+    void category_isInternalWithoutReason() {
         tracing.spans().operation("internal-op").start().close();
         SpanSpec spec = recording.receivedSpecs().getFirst();
         assertThat(spec.category()).isEqualTo(SpanCategory.INTERNAL);
-        assertThat(spec.reason()).isEqualTo(SpanSpecReason.PLATFORM_EDGE_CASE);
+        assertThat(spec.reason()).isEmpty();
     }
 
     @Test
@@ -108,7 +105,9 @@ class OperationSpanBuilderTest {
     void rootWithLinks_preserved() {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10",
-                "0102030405060708");
+                "0102030405060708"
+        );
+
         tracing.spans().operation("linked-root").root().linkedTo(link).start().close();
 
         SpanSpec spec = recording.receivedSpecs().getFirst();
@@ -120,7 +119,9 @@ class OperationSpanBuilderTest {
     void detachedWithLinks_rejected() {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10",
-                "0102030405060708");
+                "0102030405060708"
+        );
+
         assertThatThrownBy(() ->
                 tracing.spans().operation("bad-detached").detached().linkedTo(link).start())
                 .isInstanceOf(IllegalStateException.class)
@@ -131,7 +132,9 @@ class OperationSpanBuilderTest {
     void childWithLinks_rejected() {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10",
-                "0102030405060708");
+                "0102030405060708"
+        );
+
         assertThatThrownBy(() ->
                 tracing.spans().operation("bad-child").child().linkedTo(link).start())
                 .isInstanceOf(IllegalStateException.class)

@@ -1,5 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.URLClassLoader;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -15,7 +18,7 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuntimeRule
 
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 
-public final class ScrubbingRuntime {
+public final class ScrubbingRuntime implements AutoCloseable {
 
     private static final RateLimitedLogger log = new RateLimitedLogger(ScrubbingRuntime.class);
     private static final PlatformAgentLogger lifecycleLog = PlatformAgentLogger.get(ScrubbingRuntime.class);
@@ -27,20 +30,26 @@ public final class ScrubbingRuntime {
     private final ScrubbingCollapseState collapseState = new ScrubbingCollapseState(lifecycleLog);
     private final ScrubbingBoundaryCounters boundaryCounters = new ScrubbingBoundaryCounters();
     private final ScrubbingInstallationBarrier installation = new ScrubbingInstallationBarrier();
+    private final URLClassLoader extensionClassLoader;
+    private final Object extensionClassLoaderCloseMonitor = new Object();
+    private boolean extensionClassLoaderClosed;
+    private RuntimeException extensionClassLoaderCloseFailure;
     private final SpanAttributeInPlaceScrubber attributeScrubber;
 
     ScrubbingRuntime(boolean enabled,
                      List<RuntimeRule> rules,
                      long policyVersion,
                      MaskedSecret hmacSecret,
-                     boolean failFast) {
+                     boolean failFast,
+                     URLClassLoader extensionClassLoader) {
         this.enabled = enabled;
         this.policy = ScrubbingPolicy.create(rules, policyVersion);
+        this.extensionClassLoader = extensionClassLoader;
 
         this.hasHmacKey = hmacSecret != null && hmacSecret.isPresent();
         if (!hasHmacKey && failFast) {
             String message = """
-                    Scrubbing HMAC key is not set and missing-key-policy=fail-fast: \
+                    Scrubbing HMAC key is not set and missing-key-policy=fail_fast: \
                     set platform.tracing.scrubbing.hmac-key""";
 
             throw new SanitizerBootstrapException(
@@ -73,7 +82,7 @@ public final class ScrubbingRuntime {
     }
 
     public static ScrubbingRuntime disabled() {
-        return new ScrubbingRuntime(false, List.of(), 0L, null, false);
+        return new ScrubbingRuntime(false, List.of(), 0L, null, false, null);
     }
 
     public boolean enabled() {
@@ -146,6 +155,10 @@ public final class ScrubbingRuntime {
 
     public long hashMissingKey() {
         return attributeScrubber.hashMissingKey();
+    }
+
+    public long skippedCircuitOpen() {
+        return attributeScrubber.skippedCircuitOpen();
     }
 
     public boolean attributesVerified() {
@@ -268,10 +281,72 @@ public final class ScrubbingRuntime {
         installation.requireComplete();
     }
 
-    public static ScrubbingRuntime create(List<RuntimeRule> rules, long policyVersion,
-                                          MaskedSecret hmacSecret, boolean failFast) {
+    static ScrubbingRuntime create(List<RuntimeRule> rules, long policyVersion,
+                                   MaskedSecret hmacSecret, boolean failFast) {
+        return create(rules, policyVersion, hmacSecret, failFast, null);
+    }
+
+    public static ScrubbingRuntime create(List<RuntimeRule> rules,
+                                          long policyVersion,
+                                          MaskedSecret hmacSecret,
+                                          boolean failFast,
+                                          URLClassLoader extensionClassLoader) {
         Objects.requireNonNull(rules, "rules");
-        return new ScrubbingRuntime(true, rules, policyVersion, hmacSecret, failFast);
+        try {
+            return new ScrubbingRuntime(
+                    true,
+                    rules,
+                    policyVersion,
+                    hmacSecret,
+                    failFast,
+                    extensionClassLoader
+            );
+        } catch (RuntimeException | Error failure) {
+            closeAfterConstructionFailure(extensionClassLoader, failure);
+            throw failure;
+        }
+    }
+
+    @Override
+    public void close() {
+        if (extensionClassLoader == null) {
+            return;
+        }
+
+        synchronized (extensionClassLoaderCloseMonitor) {
+            if (extensionClassLoaderClosed) {
+                if (extensionClassLoaderCloseFailure != null) {
+                    throw extensionClassLoaderCloseFailure;
+                }
+
+                return;
+            }
+
+            extensionClassLoaderClosed = true;
+            try {
+                extensionClassLoader.close();
+            } catch (IOException failure) {
+                lifecycleLog.log(ScrubbingLogEvent.EXTENSION_CLASSLOADER_CLOSE_FAILED,
+                        fields -> fields.cause(failure));
+                extensionClassLoaderCloseFailure = new UncheckedIOException("Failed to close scrubbing extension classloader", failure);
+                throw extensionClassLoaderCloseFailure;
+            }
+        }
+    }
+
+    private static void closeAfterConstructionFailure(URLClassLoader classLoader,
+                                                      Throwable constructionFailure) {
+        if (classLoader == null) {
+            return;
+        }
+
+        try {
+            classLoader.close();
+        } catch (IOException closeFailure) {
+            constructionFailure.addSuppressed(closeFailure);
+            lifecycleLog.log(ScrubbingLogEvent.EXTENSION_CLASSLOADER_CLOSE_FAILED,
+                    fields -> fields.cause(closeFailure));
+        }
     }
 
     private static final class ScrubbingBoundaryCounters {

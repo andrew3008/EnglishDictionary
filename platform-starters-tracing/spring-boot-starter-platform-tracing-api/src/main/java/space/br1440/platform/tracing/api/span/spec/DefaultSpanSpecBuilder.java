@@ -1,15 +1,14 @@
 package space.br1440.platform.tracing.api.span.spec;
 
-import jakarta.annotation.Nonnull;
-
-import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.RemoteSpanLink;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import jakarta.annotation.Nonnull;
+
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import space.br1440.platform.tracing.api.span.SpanCategory;
 
 final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
 
@@ -154,10 +153,6 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
     public SpanSpec build() {
         if (category == null) {
             throw new IllegalStateException("category(...) is required");
-        }
-
-        if (reason == null) {
-            throw new IllegalStateException("reason(...) is required");
         }
 
         if (reason == SpanSpecReason.TEMPORARY_WORKAROUND && reference == null) {

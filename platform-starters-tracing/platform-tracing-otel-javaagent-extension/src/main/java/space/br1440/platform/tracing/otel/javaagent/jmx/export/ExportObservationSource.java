@@ -12,7 +12,6 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWi
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationCaptureEnvelope;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationSnapshotStore;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerCapture;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
@@ -38,22 +37,17 @@ public final class ExportObservationSource {
     }
 
     public synchronized void publishObservationSnapshot() {
-        ObservationCaptureEnvelope.OpenCapture openCapture = envelope.open();
-
-        OwnerCapture<PlatformDropOldestExportSpanProcessor> processorCapture = OwnerCapture.of(processorSlot);
-        OwnerCapture<SafeSpanExporter> exporterCapture = OwnerCapture.of(exporterSlot);
-
-        CompositeData processorValues = buildProcessorValues(processorCapture.state(), processorCapture.offsetNanos());
-        CompositeData exporterValues = buildExporterValues(exporterCapture.state(), exporterCapture.offsetNanos());
+        CompositeData processorValues = buildProcessorValues(processorSlot.capture());
+        CompositeData exporterValues = buildExporterValues(exporterSlot.capture());
 
         Map<String, Object> values = new LinkedHashMap<>();
-        openCapture.sealInto(values);
+        envelope.putInto(values);
         values.put(JmxWireContract.FIELD_EXPORT_OBSERVATION_PROCESSOR, processorValues);
         values.put(JmxWireContract.FIELD_EXPORT_OBSERVATION_EXPORTER, exporterValues);
         snapshotStore.publish(values);
     }
 
-    private static CompositeData buildProcessorValues(OwnerRegistrationState<PlatformDropOldestExportSpanProcessor> state, long offsetNanos) {
+    private static CompositeData buildProcessorValues(OwnerRegistrationState<PlatformDropOldestExportSpanProcessor> state) {
         if (state instanceof OwnerRegistrationState.Present<PlatformDropOldestExportSpanProcessor>(
                 PlatformDropOldestExportSpanProcessor owner, long generation
         )) {
@@ -61,7 +55,6 @@ public final class ExportObservationSource {
             return processorValues(
                     true,
                     generation,
-                    offsetNanos,
                     snapshot.queueCapacity(),
                     snapshot.queueSize(),
                     snapshot.droppedOverflowTotal(),
@@ -75,27 +68,23 @@ public final class ExportObservationSource {
             );
         }
 
-        return processorValues(false, state.generation(), offsetNanos, 0, 0, 0L, 0L, 0L, 0L,
+        return processorValues(false, state.generation(), 0, 0, 0L, 0L, 0L, 0L,
                 "", 0L, 0L, 0L);
     }
 
-    private static CompositeData buildExporterValues(OwnerRegistrationState<SafeSpanExporter> state, long offsetNanos) {
+    private static CompositeData buildExporterValues(OwnerRegistrationState<SafeSpanExporter> state) {
         if (state instanceof OwnerRegistrationState.Present<SafeSpanExporter>(
                 SafeSpanExporter owner, long generation
         )) {
             Map<String, Long> metrics = owner.metricsSnapshot();
-            return exporterValues(
-                    true, generation, offsetNanos, owner.isExportEnabled(),
-                    owner.getLastExportDurationNanos(), metrics
-            );
+            return exporterValues(true, generation, metrics);
         }
 
-        return exporterValues(false, state.generation(), offsetNanos, false, 0L, Map.of());
+        return exporterValues(false, state.generation(), Map.of());
     }
 
     private static CompositeData processorValues(boolean present,
                                                  long generation,
-                                                 long offsetNanos,
                                                  int queueCapacity,
                                                  int queueSize,
                                                  long droppedOverflowTotal,
@@ -109,7 +98,6 @@ public final class ExportObservationSource {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_OWNER_PRESENT, present);
         values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_OWNER_GENERATION, generation);
-        values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_OWNER_CAPTURED_OFFSET_NANOS, offsetNanos);
         values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_QUEUE_CAPACITY, queueCapacity);
         values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_QUEUE_SIZE, queueSize);
         values.put(JmxWireContract.FIELD_EXPORT_PROCESSOR_VALUES_DROPPED_OVERFLOW_TOTAL, droppedOverflowTotal);
@@ -125,16 +113,10 @@ public final class ExportObservationSource {
 
     private static CompositeData exporterValues(boolean present,
                                                 long generation,
-                                                long offsetNanos,
-                                                boolean exportEnabled,
-                                                long lastExportDurationNanos,
                                                 Map<String, Long> metrics) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put(JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_PRESENT, present);
         values.put(JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_GENERATION, generation);
-        values.put(JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_CAPTURED_OFFSET_NANOS, offsetNanos);
-        values.put(JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_EXPORT_ENABLED, exportEnabled);
-        values.put(JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_LAST_EXPORT_DURATION_NANOS, lastExportDurationNanos);
         values.put(JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_SAFE_EXPORTER_METRICS,
                 JmxOpenTypeSupport.stringLongMap(
                         JmxOpenTypes.SAFE_EXPORTER_METRICS,

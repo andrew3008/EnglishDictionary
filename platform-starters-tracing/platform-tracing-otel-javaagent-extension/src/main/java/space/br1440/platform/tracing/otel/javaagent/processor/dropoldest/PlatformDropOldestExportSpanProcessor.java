@@ -6,6 +6,7 @@ import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
 import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
+import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ExportPipelineLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
@@ -174,22 +175,22 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
         public Builder readBspConfigFrom(ConfigProperties config) {
             Objects.requireNonNull(config, "config");
 
-            Integer mqs = config.getInt("otel.bsp.max.queue.size");
+            Integer mqs = config.getInt(OtelSdkPropertyNames.BSP_MAX_QUEUE_SIZE);
             if (mqs != null) {
                 this.maxQueueSize = mqs;
             }
 
-            Integer mebs = config.getInt("otel.bsp.max.export.batch.size");
+            Integer mebs = config.getInt(OtelSdkPropertyNames.BSP_MAX_EXPORT_BATCH_SIZE);
             if (mebs != null) {
                 this.maxExportBatchSize = mebs;
             }
 
-            Duration sd = config.getDuration("otel.bsp.schedule.delay");
+            Duration sd = config.getDuration(OtelSdkPropertyNames.BSP_SCHEDULE_DELAY);
             if (sd != null) {
                 this.scheduleDelay = sd;
             }
 
-            Duration et = config.getDuration("otel.bsp.export.timeout");
+            Duration et = config.getDuration(OtelSdkPropertyNames.BSP_EXPORT_TIMEOUT);
             if (et != null) {
                 this.exportTimeout = et;
             }

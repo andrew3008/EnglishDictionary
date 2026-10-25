@@ -43,13 +43,6 @@ final class AgentLogFieldsBuilder implements AgentLogFields {
     }
 
     @Override
-    public AgentLogFields putBoolean(AgentLogField field, boolean value) {
-        AgentLogField requiredField = requireField(field, AgentLogField.Kind.BOOLEAN);
-        put(requiredField, Boolean.toString(value));
-        return this;
-    }
-
-    @Override
     public AgentLogFields putEnum(AgentLogField field, Enum<?> value) {
         AgentLogField requiredField = requireField(field, AgentLogField.Kind.ENUM);
         Enum<?> requiredValue = Objects.requireNonNull(value, "value");

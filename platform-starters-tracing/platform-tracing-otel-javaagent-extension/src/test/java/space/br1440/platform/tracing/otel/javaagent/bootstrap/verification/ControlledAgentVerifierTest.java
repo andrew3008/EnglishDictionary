@@ -186,20 +186,6 @@ class ControlledAgentVerifierTest {
     }
 
     @Test
-    void developmentVersionIsForbiddenBeforeReadyEvidenceCanBeBuilt() throws IOException {
-        // given
-        Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8));
-        ControlledAgentVerifier attestor = new ControlledAgentVerifier(environment(
-                sha256(agent), agent, isolatedLoader(), isolatedLoader()));
-
-        // when
-        VerificationException failure = attestFailure(attestor, "development");
-
-        // then
-        assertThat(failure.code()).isEqualTo(VerificationFailureCode.DEVELOPMENT_VERSION_FORBIDDEN);
-    }
-
-    @Test
     void blank_extension_version_is_missing_evidence() throws IOException {
         // given
         Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8));

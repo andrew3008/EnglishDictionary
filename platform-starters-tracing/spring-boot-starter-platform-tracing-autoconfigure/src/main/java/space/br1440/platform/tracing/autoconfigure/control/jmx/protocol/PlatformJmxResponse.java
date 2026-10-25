@@ -39,7 +39,6 @@ public record PlatformJmxResponse(long acceptedSequence,
 
     public enum MessageCode {
         NONE,
-        UNKNOWN_FIELD,
         MISSING_REQUIRED_FIELD,
         TYPE_MISMATCH,
         INVALID_VALUE,

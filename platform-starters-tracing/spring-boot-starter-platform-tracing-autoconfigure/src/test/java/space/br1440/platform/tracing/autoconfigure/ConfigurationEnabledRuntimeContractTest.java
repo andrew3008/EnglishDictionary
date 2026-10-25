@@ -11,7 +11,6 @@ import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.TracingRuntimeDiagnosticsAutoConfiguration;
@@ -31,7 +30,6 @@ class ConfigurationEnabledRuntimeContractTest {
             .withConfiguration(AutoConfigurations.of(
                     TracingControlChannelAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class))
-            .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withPropertyValues("platform.tracing.control.channel=NONE");
 
     private final ApplicationContextRunner observableRuntimeRunner = new ApplicationContextRunner()
@@ -40,8 +38,8 @@ class ConfigurationEnabledRuntimeContractTest {
                     TracingRuntimeAutoConfiguration.class,
                     TracingRuntimeDiagnosticsAutoConfiguration.class,
                     TracingStartupContractHealthAutoConfiguration.class,
-                    TracingStatusAutoConfiguration.class))
-            .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
+                    TracingStatusAutoConfiguration.class)
+            )
             .withPropertyValues("platform.tracing.control.channel=NONE");
 
     @Test

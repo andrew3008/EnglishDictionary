@@ -66,9 +66,14 @@ final class SpanAttributeInPlaceScrubber {
 
                 String normalizedKey = ScrubbingKeyNormalizer.normalize(key.getKey());
                 MergeOutcome outcome = MergeEngine.evaluateDetailed(rules, normalizedKey, value);
+                if (outcome.skippedCircuitOpen() > 0L) {
+                    actions.addSkippedCircuitOpen(outcome.skippedCircuitOpen());
+                }
+
                 if (outcome.nonCriticalFailures() > 0L) {
                     actions.addFailures(outcome.nonCriticalFailures());
                 }
+
                 ScrubbingDecision decision = outcome.decision();
                 if (decision.action() == ScrubbingAction.KEEP) {
                     return;
@@ -112,6 +117,10 @@ final class SpanAttributeInPlaceScrubber {
         return actions.hashMissingKey.sum();
     }
 
+    long skippedCircuitOpen() {
+        return actions.skippedCircuitOpen.sum();
+    }
+
     private static boolean boundaryOwned(ReadWriteSpan span, AttributeKey<?> snapshotKey) {
         if (snapshotKey.getType() == AttributeType.VALUE) {
             return true;
@@ -142,6 +151,7 @@ final class SpanAttributeInPlaceScrubber {
 
         boolean failClosed = (decision.action() == ScrubbingAction.MASK)
                 && ScrubbingDecision.SCRUBBING_FAILED_REASON.equals(decision.reason());
+
         if (failClosed) {
             actions.recordFailure();
             log.log(ScrubbingLogEvent.SCRUBBING_FAIL_CLOSED_MASK_APPLIED,
@@ -184,9 +194,16 @@ final class SpanAttributeInPlaceScrubber {
     @SuppressWarnings("unchecked")
     private boolean writeFailClosedSentinel(ReadWriteSpan span, AttributeKey<?> key, AttributeType type) {
         switch (type) {
-            case STRING -> span.setAttribute((AttributeKey<String>) key, ScrubbingDecision.SCRUBBING_FAILED_REASON);
-            case STRING_ARRAY -> span.setAttribute((AttributeKey<List<String>>) key,
-                    List.of(ScrubbingDecision.SCRUBBING_FAILED_REASON));
+            case STRING -> span.setAttribute(
+                    (AttributeKey<String>) key,
+                    ScrubbingDecision.SCRUBBING_FAILED_REASON
+            );
+
+            case STRING_ARRAY -> span.setAttribute(
+                    (AttributeKey<List<String>>) key,
+                    List.of(ScrubbingDecision.SCRUBBING_FAILED_REASON)
+            );
+
             case LONG -> span.setAttribute((AttributeKey<Long>) key, SENTINEL_LONG);
             case DOUBLE -> span.setAttribute((AttributeKey<Double>) key, SENTINEL_DOUBLE);
             case BOOLEAN -> span.setAttribute((AttributeKey<Boolean>) key, SENTINEL_BOOLEAN);
@@ -286,21 +303,28 @@ final class SpanAttributeInPlaceScrubber {
             case LONG -> span.setAttribute((AttributeKey<Long>) key, SENTINEL_LONG);
             case DOUBLE -> span.setAttribute((AttributeKey<Double>) key, SENTINEL_DOUBLE);
             case BOOLEAN -> span.setAttribute((AttributeKey<Boolean>) key, SENTINEL_BOOLEAN);
-            case LONG_ARRAY -> span.setAttribute((AttributeKey<List<Long>>) key,
-                    Collections.nCopies(((List<?>) value).size(), SENTINEL_LONG));
-            case DOUBLE_ARRAY -> span.setAttribute((AttributeKey<List<Double>>) key,
-                    Collections.nCopies(((List<?>) value).size(), SENTINEL_DOUBLE));
-            case BOOLEAN_ARRAY -> span.setAttribute((AttributeKey<List<Boolean>>) key,
-                    Collections.nCopies(((List<?>) value).size(), SENTINEL_BOOLEAN));
+
+            case LONG_ARRAY -> span.setAttribute(
+                    (AttributeKey<List<Long>>) key,
+                    Collections.nCopies(((List<?>) value).size(), SENTINEL_LONG)
+            );
+
+            case DOUBLE_ARRAY -> span.setAttribute(
+                    (AttributeKey<List<Double>>) key,
+                    Collections.nCopies(((List<?>) value).size(), SENTINEL_DOUBLE)
+            );
+
+            case BOOLEAN_ARRAY -> span.setAttribute(
+                    (AttributeKey<List<Boolean>>) key,
+                    Collections.nCopies(((List<?>) value).size(), SENTINEL_BOOLEAN)
+            );
+
             default -> {
                 // строковые типы здесь не обрабатываются
             }
         }
     }
 
-    /**
-     * Инкременты доступны только этому классу. Фасад читает суммы.
-     */
     private static final class ScrubbingActionCounters {
 
         private final LongAdder dropped = new LongAdder();
@@ -309,6 +333,7 @@ final class SpanAttributeInPlaceScrubber {
         private final LongAdder truncated = new LongAdder();
         private final LongAdder failures = new LongAdder();
         private final LongAdder hashMissingKey = new LongAdder();
+        private final LongAdder skippedCircuitOpen = new LongAdder();
 
         private void recordDropped() {
             dropped.increment();
@@ -336,6 +361,10 @@ final class SpanAttributeInPlaceScrubber {
 
         private void recordHashMissingKey() {
             hashMissingKey.increment();
+        }
+
+        private void addSkippedCircuitOpen(long count) {
+            skippedCircuitOpen.add(count);
         }
     }
 }

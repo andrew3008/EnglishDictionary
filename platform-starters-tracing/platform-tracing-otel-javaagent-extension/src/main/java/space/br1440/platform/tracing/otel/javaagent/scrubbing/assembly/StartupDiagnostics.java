@@ -2,9 +2,9 @@ package space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly;
 
 import java.util.List;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.loader.ExtensionRuleLoader;
 
 import lombok.experimental.UtilityClass;
@@ -20,7 +20,6 @@ final class StartupDiagnostics {
                             String loadingMode,
                             int failedProviders,
                             int clampedPriorities,
-                            int openBreakers,
                             List<ExtensionRuleLoader.FailedEntry> failedEntries) {
         log.log(ScrubbingLogEvent.SCRUBBING_RULES_INITIALIZED, fields -> fields
                 .putLong(AgentLogField.BUILT_IN_RULES, builtInRules)
@@ -28,8 +27,7 @@ final class StartupDiagnostics {
                 .putLong(AgentLogField.CUSTOM_RULES, customRules)
                 .putString(AgentLogField.KIND, loadingMode)
                 .putLong(AgentLogField.FAILED_PROVIDERS, failedProviders)
-                .putLong(AgentLogField.CLAMPED_PRIORITIES, clampedPriorities)
-                .putLong(AgentLogField.OPEN_BREAKERS, openBreakers));
+                .putLong(AgentLogField.CLAMPED_PRIORITIES, clampedPriorities));
 
         for (ExtensionRuleLoader.FailedEntry entry : failedEntries) {
             log.log(ScrubbingLogEvent.SCRUBBING_PROVIDER_FAILED, fields -> fields

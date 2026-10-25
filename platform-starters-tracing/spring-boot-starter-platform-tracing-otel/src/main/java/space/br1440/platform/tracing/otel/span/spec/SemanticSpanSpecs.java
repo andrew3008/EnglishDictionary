@@ -12,8 +12,6 @@ import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
-import space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder;
-import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 import space.br1440.platform.tracing.otel.attributes.validation.ValidatedAttributes;
 import space.br1440.platform.tracing.otel.runtime.otel.SpanSpecAttributeValueConverter;
@@ -46,11 +44,10 @@ final class SemanticSpanSpecs {
         String spanName = PlatformSpanNameBuilder.forCategory(category, validated.attributes(), explicitName);
         Map<String, SpanSpecAttributeValue> normalized = SpanSpecAttributeValueConverter.fromAttributes(validated.attributes());
 
-        return applyAttributes(
-                applyRelationship(
+        return SpanSpecBuilderSupport.applyAttributes(
+                SpanSpecBuilderSupport.applyRelationship(
                         SpanSpec.builder(spanName)
-                                .category(category)
-                                .reason(SpanSpecReason.PLATFORM_EDGE_CASE),
+                                .category(category),
                         relationship,
                         links
                 ),
@@ -68,35 +65,5 @@ final class SemanticSpanSpecs {
         Map<String, SpanSpecAttributeValue> enriched = new LinkedHashMap<>(attributes);
         enriched.put(platformTypeKey, SpanSpecAttributeValue.of(category.value()));
         return enriched;
-    }
-
-    private static SpanSpecBuilder applyRelationship(SpanSpecBuilder builder,
-                                                     SpanRelationship relationship,
-                                                     List<RemoteSpanLink> links) {
-        return switch (relationship) {
-            case CHILD -> builder.child();
-            case DETACHED -> builder.detached();
-            case ROOT -> links.isEmpty()
-                    ? builder.root()
-                    : builder.root().linkedTo(links.toArray(RemoteSpanLink[]::new));
-        };
-    }
-
-    private static SpanSpecBuilder applyAttributes(SpanSpecBuilder builder,
-                                                   Map<String, SpanSpecAttributeValue> attributes) {
-        for (Map.Entry<String, SpanSpecAttributeValue> entry : attributes.entrySet()) {
-            builder = switch (entry.getValue()) {
-                case SpanSpecAttributeValue.StringValue sv -> builder.attribute(entry.getKey(), sv.value());
-                case SpanSpecAttributeValue.LongValue lv -> builder.attribute(entry.getKey(), lv.value());
-                case SpanSpecAttributeValue.DoubleValue dv -> builder.attribute(entry.getKey(), dv.value());
-                case SpanSpecAttributeValue.BooleanValue bv -> builder.attribute(entry.getKey(), bv.value());
-                case SpanSpecAttributeValue.StringListValue slv -> builder.stringListAttribute(entry.getKey(), slv.values());
-                case SpanSpecAttributeValue.LongListValue llv -> builder.longListAttribute(entry.getKey(), llv.values());
-                case SpanSpecAttributeValue.DoubleListValue dlv -> builder.doubleListAttribute(entry.getKey(), dlv.values());
-                case SpanSpecAttributeValue.BooleanListValue blv -> builder.booleanListAttribute(entry.getKey(), blv.values());
-            };
-        }
-
-        return builder;
     }
 }

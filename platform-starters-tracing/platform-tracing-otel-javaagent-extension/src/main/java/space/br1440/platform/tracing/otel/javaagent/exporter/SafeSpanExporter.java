@@ -7,7 +7,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.LongSupplier;
 import jakarta.annotation.Nullable;
@@ -15,6 +14,7 @@ import jakarta.annotation.Nullable;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseObservation;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseScope;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventType;
@@ -58,8 +58,6 @@ public final class SafeSpanExporter implements SpanExporter {
     private final LongAdder acceptedUnknownBatches = new LongAdder();
     private final LongAdder flushFailures = new LongAdder();
     private final LongAdder shutdownFailures = new LongAdder();
-    private final AtomicLong lastExportDurationNanos = new AtomicLong();
-
     private final LongAdder gatedSpans = new LongAdder();
 
     public SafeSpanExporter(SpanExporter delegate,
@@ -118,7 +116,6 @@ public final class SafeSpanExporter implements SpanExporter {
         }
 
         exportBatches.increment();
-        long startedAt = System.nanoTime();
         ExportResponseObservation observation = new ExportResponseObservation(effectiveCount);
         try (ExportResponseScope.Handle ignored = ExportResponseScope.open(observation)) {
             long operationSequence = nextOperationSequence();
@@ -127,20 +124,18 @@ public final class SafeSpanExporter implements SpanExporter {
                 if (result == null) {
                     recordSyncFailure(
                             effectiveCount,
-                            startedAt,
                             operationSequence,
                             ExporterLogEvent.SAFE_EXPORT_RETURNED_NULL
                     );
                     return CompletableResultCode.ofFailure();
                 }
 
-                result.whenComplete(() -> onExportComplete(result, observation, startedAt, operationSequence));
+                result.whenComplete(() -> onExportComplete(result, observation, operationSequence));
                 return result;
             } catch (Throwable ex) {
                 PlatformThrowables.propagateIfFatal(ex);
                 recordSyncFailure(
                         effectiveCount,
-                        startedAt,
                         operationSequence,
                         ExporterLogEvent.SAFE_EXPORT_THROWN,
                         ex
@@ -194,12 +189,9 @@ public final class SafeSpanExporter implements SpanExporter {
 
     private void onExportComplete(CompletableResultCode result,
                                   ExportResponseObservation observation,
-                                  long startedAt,
                                   long operationSequence) {
         int count = observation.effectiveSpanCount();
         try {
-            lastExportDurationNanos.set(System.nanoTime() - startedAt);
-
             if (result.isSuccess()) {
                 long failures = recordRecoverySuccess(operationSequence);
                 if (failures > 0L) {
@@ -270,18 +262,15 @@ public final class SafeSpanExporter implements SpanExporter {
 
     @SuppressWarnings("SameParameterValue")
     private void recordSyncFailure(int count,
-                                   long startedAt,
                                    long operationSequence,
                                    AgentLogEventType eventType) {
-        recordSyncFailure(count, startedAt, operationSequence, eventType, null);
+        recordSyncFailure(count, operationSequence, eventType, null);
     }
 
     private void recordSyncFailure(int count,
-                                   long startedAt,
                                    long operationSequence,
                                    AgentLogEventType eventType,
                                    Throwable error) {
-        lastExportDurationNanos.set(System.nanoTime() - startedAt);
         recordFailureMetrics(count, operationSequence, eventType, error);
     }
 
@@ -448,32 +437,22 @@ public final class SafeSpanExporter implements SpanExporter {
         return shutdownFailures.sum();
     }
 
-    public long getLastExportDurationNanos() {
-        return lastExportDurationNanos.get();
-    }
-
-    public boolean isExportEnabled() {
-        return acceptedPolicy.current().exporterEnabled();
-    }
-
     public long getGatedSpans() {
         return gatedSpans.sum();
     }
 
     public Map<String, Long> metricsSnapshot() {
         Map<String, Long> snapshot = new LinkedHashMap<>();
-        snapshot.put(SpanExporterMetrics.EXPORT_BATCHES, getExportBatches());
-        snapshot.put(SpanExporterMetrics.EXPORT_BATCH_FAILURES, getExportFailures());
-        snapshot.put(SpanExporterMetrics.EXPORTED_SPANS, getExportedSpans());
-        snapshot.put(SpanExporterMetrics.TRANSPORT_DROPPED_SPANS, getDroppedSpans());
-        snapshot.put(SpanExporterMetrics.PARTIAL_SUCCESS_BATCHES, getPartialSuccessBatches());
-        snapshot.put(SpanExporterMetrics.REJECTED_SPANS, getRejectedSpans());
-        snapshot.put(SpanExporterMetrics.ACCEPTED_UNKNOWN_BATCHES, getAcceptedUnknownBatches());
-        snapshot.put(SpanExporterMetrics.FLUSH_FAILURES, getFlushFailures());
-        snapshot.put(SpanExporterMetrics.SHUTDOWN_FAILURES, getShutdownFailures());
-        snapshot.put(SpanExporterMetrics.LAST_EXPORT_DURATION_NANOS, getLastExportDurationNanos());
-        snapshot.put(SpanExporterMetrics.SUPPRESSED_SPANS_EXPORT_DISABLED, getGatedSpans());
-        snapshot.put(SpanExporterMetrics.EXPORT_ENABLED, isExportEnabled() ? 1L : 0L);
+        snapshot.put(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCHES, getExportBatches());
+        snapshot.put(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, getExportFailures());
+        snapshot.put(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, getExportedSpans());
+        snapshot.put(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, getDroppedSpans());
+        snapshot.put(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_PARTIAL_SUCCESS_BATCHES, getPartialSuccessBatches());
+        snapshot.put(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_REJECTED_SPANS, getRejectedSpans());
+        snapshot.put(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_ACCEPTED_UNKNOWN_BATCHES, getAcceptedUnknownBatches());
+        snapshot.put(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_FLUSH_FAILURES, getFlushFailures());
+        snapshot.put(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SHUTDOWN_FAILURES, getShutdownFailures());
+        snapshot.put(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SUPPRESSED_SPANS_EXPORT_DISABLED, getGatedSpans());
 
         if (scrubbingRuntime.enabled()) {
             ScrubbingBoundaryMetrics boundaryMetrics = scrubbingRuntime.boundaryMetrics();
@@ -494,6 +473,7 @@ public final class SafeSpanExporter implements SpanExporter {
             snapshot.put("boundary.non_critical_failures", boundaryMetrics.nonCriticalFailures());
             snapshot.put("boundary.skipped_circuit_open", boundaryMetrics.skippedCircuitOpen());
             snapshot.put("boundary.surfaces_collapsed_fail_closed", boundaryMetrics.surfacesCollapsedFailClosed());
+            snapshot.put("boundary.value_attributes_removed", boundaryMetrics.valueAttributesRemoved());
             snapshot.put("attributes_verified", scrubbingRuntime.attributesVerified() ? 1L : 0L);
             snapshot.put("collapse_mode_activations", scrubbingRuntime.collapseModeActivations());
             snapshot.put("collapsed_spans", scrubbingRuntime.collapsedSpans());

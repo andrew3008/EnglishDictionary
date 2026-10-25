@@ -89,7 +89,7 @@ class TraceControlPropagatorProviderTest {
     @DisplayName("defaults supplier не задаёт имена платформенных заголовков")
     void defaultsProviderDoesNotSupplyPlatformHeaderNames() {
         // given
-        Map<String, String> supplied = new PlatformTracingDefaultsProvider(name -> null).supply();
+        Map<String, String> supplied = new PlatformTracingDefaultsProvider().supply();
 
         // when
         // then

@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,18 +22,23 @@ import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.identity.RequestIdBoundarySupport;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.runtime.propagation.CorrelationIdSupport;
+import space.br1440.platform.tracing.runtime.propagation.RequestIdSupport;
 
 import io.opentelemetry.api.trace.Span;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
 
     private final TraceOperations traceOperations;
     private final TracingProperties properties;
     private final RequestIdentityBoundarySupport identityBoundary;
     private final InboundTraceControlExtractor traceControlExtractor;
+    private final AtomicBoolean traceContextFailureLogged = new AtomicBoolean();
+    private final AtomicBoolean requestAttributeFailureLogged = new AtomicBoolean();
+    private final AtomicBoolean resultAttributeFailureLogged = new AtomicBoolean();
 
     public TraceResponseHeaderServletFilter(TraceOperations traceOperations,
                                             TracingProperties properties,
@@ -51,7 +57,7 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
         final Optional<String> capturedTraceId = safeCurrentTraceId();
 
         final String incomingRequestId = request.getHeader(PlatformHeaders.X_REQUEST_ID);
-        final String requestId = RequestIdBoundarySupport.resolve(incomingRequestId);
+        final String requestId = RequestIdSupport.resolve(incomingRequestId);
         final String rawForceTrace = request.getHeader(PlatformHeaders.X_TRACE_ON);
         final String rawQaTrace = request.getHeader(PlatformHeaders.X_QA_TRACE);
 
@@ -71,7 +77,12 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
                 if (span.getSpanContext().isValid()) {
                     span.setAttribute(PlatformAttributes.PLATFORM_REQUEST_ID, requestId);
                 }
-            } catch (RuntimeException ignoredFailure) {
+            } catch (RuntimeException attributeFailure) {
+                warnOnce(
+                        requestAttributeFailureLogged,
+                        "Failed to set the request id span attribute: {}",
+                        attributeFailure
+                );
             }
 
             if (!response.isCommitted()) {
@@ -89,7 +100,7 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
         }
     }
 
-    private static void applyHttpServerResult(HttpServletResponse response, Throwable failure) {
+    private void applyHttpServerResult(HttpServletResponse response, Throwable failure) {
         try {
             Span span = Span.current();
             if (!span.getSpanContext().isValid()) {
@@ -100,7 +111,12 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
                     ? SpanResult.FAILURE
                     : SpanResult.SUCCESS;
             span.setAttribute(PlatformAttributes.PLATFORM_RESULT, result.value());
-        } catch (RuntimeException ignored) {
+        } catch (RuntimeException resultFailure) {
+            warnOnce(
+                    resultAttributeFailureLogged,
+                    "Failed to set the HTTP server result span attribute: {}",
+                    resultFailure
+            );
         }
     }
 
@@ -126,8 +142,15 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
     private Optional<String> safeCurrentTraceId() {
         try {
             return traceOperations.traceContext().traceId();
-        } catch (RuntimeException ignored) {
+        } catch (RuntimeException failure) {
+            warnOnce(traceContextFailureLogged, "Failed to read the current trace id: {}", failure);
             return Optional.empty();
+        }
+    }
+
+    private static void warnOnce(AtomicBoolean logged, String message, RuntimeException failure) {
+        if (logged.compareAndSet(false, true)) {
+            log.warn(message, failure.getClass().getName());
         }
     }
 }

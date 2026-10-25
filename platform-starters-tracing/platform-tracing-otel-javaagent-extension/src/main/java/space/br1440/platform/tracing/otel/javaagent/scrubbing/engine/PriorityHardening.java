@@ -3,9 +3,9 @@ package space.br1440.platform.tracing.otel.javaagent.scrubbing.engine;
 import java.util.Comparator;
 import java.util.List;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
 import lombok.experimental.UtilityClass;
 
@@ -37,19 +37,25 @@ public final class PriorityHardening {
 
     public static List<RuntimeRule> sortAndClampRuntimeRules(List<RuntimeRule> rules) {
         return rules.stream()
-                .map(r -> new RuntimeRule(clampIfNeeded(r.executable()), r.origin()))
+                .map(PriorityHardening::clampIfNeeded)
                 .sorted(Comparator.comparing(RuntimeRule::executable, BY_PRIORITY_THEN_CLASS_NAME))
                 .toList();
     }
 
-    private static ExecutableRule clampIfNeeded(ExecutableRule wrapper) {
-        if (!wrapper.isCritical() && wrapper.getEffectivePriority() < CUSTOM_PRIORITY_FLOOR) {
-            log.log(ScrubbingLogEvent.SCRUBBING_PRIORITY_FLOOR_APPLIED,
-                    fields -> fields.putString(AgentLogField.NAME, wrapper.getRuleClass().getName()));
+    private static RuntimeRule clampIfNeeded(RuntimeRule runtimeRule) {
+        ExecutableRule wrapper = runtimeRule.executable();
+        if (runtimeRule.origin() != RuleOrigin.BUILT_IN
+                && wrapper.getEffectivePriority() < CUSTOM_PRIORITY_FLOOR) {
+            log.log(ScrubbingLogEvent.SCRUBBING_PRIORITY_FLOOR_APPLIED,fields -> fields
+                    .putString(AgentLogField.NAME, wrapper.getRuleClass().getName())
+            );
 
-            return wrapper.withEffectivePriority(CUSTOM_PRIORITY_FLOOR);
+            return new RuntimeRule(
+                    wrapper.withEffectivePriority(CUSTOM_PRIORITY_FLOOR),
+                    runtimeRule.origin()
+            );
         }
 
-        return wrapper;
+        return runtimeRule;
     }
 }

@@ -107,7 +107,7 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
                 bootstrap.execute("EXPORT_PROCESSOR_INITIALIZATION_FAILED", () -> {
                     AutoconfigureSession session = bootstrap.session();
                     return session.exportProcessorFactory().maybeReplaceExportProcessor(
-                            processor, session.extensionConfig().queue(), config
+                            processor, config
                     );
                 }));
     }

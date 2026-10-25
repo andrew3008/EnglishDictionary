@@ -14,9 +14,9 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
 
@@ -139,11 +139,6 @@ public final class TracePipelineSpiVerifier {
         }
 
         return providers;
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    static boolean isAllowlistedOtelJavaAgentProviderName(String providerName) {
-        return allowedProviderNames().contains(providerName);
     }
 
     private static Set<String> allowedProviderNames() {

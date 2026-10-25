@@ -17,7 +17,9 @@ public final class PlatformExtensionReadiness {
     }
 
     public static PlatformExtensionReadiness forCurrentExtension() {
-        return new PlatformExtensionReadiness(ExtensionVersionResolver.resolve(PlatformExtensionReadiness.class));
+        return new PlatformExtensionReadiness(
+                ExtensionVersionResolver.resolve(PlatformExtensionReadiness.class).orElse("")
+        );
     }
 
     public PlatformExtensionReadinessSnapshot markInstalled(PlatformExtensionCapability capability) {

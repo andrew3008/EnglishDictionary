@@ -1,17 +1,19 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
+import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
+
 enum ExportExporterMetricKey {
 
-    EXPORT_BATCHES("export_batches"),
-    EXPORT_BATCH_FAILURES("export_batch_failures"),
-    EXPORTED_SPANS("exported_spans"),
-    TRANSPORT_DROPPED_SPANS("transport_dropped_spans"),
-    PARTIAL_SUCCESS_BATCHES("partial_success_batches"),
-    REJECTED_SPANS("rejected_spans"),
-    ACCEPTED_UNKNOWN_BATCHES("accepted_unknown_batches"),
-    FLUSH_FAILURES("flush_failures"),
-    SHUTDOWN_FAILURES("shutdown_failures"),
-    SUPPRESSED_SPANS_EXPORT_DISABLED("suppressed_spans_export_disabled");
+    EXPORT_BATCHES(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCHES),
+    EXPORT_BATCH_FAILURES(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES),
+    EXPORTED_SPANS(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS),
+    TRANSPORT_DROPPED_SPANS(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS),
+    PARTIAL_SUCCESS_BATCHES(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_PARTIAL_SUCCESS_BATCHES),
+    REJECTED_SPANS(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_REJECTED_SPANS),
+    ACCEPTED_UNKNOWN_BATCHES(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_ACCEPTED_UNKNOWN_BATCHES),
+    FLUSH_FAILURES(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_FLUSH_FAILURES),
+    SHUTDOWN_FAILURES(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SHUTDOWN_FAILURES),
+    SUPPRESSED_SPANS_EXPORT_DISABLED(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SUPPRESSED_SPANS_EXPORT_DISABLED);
 
     private final String wireKey;
 

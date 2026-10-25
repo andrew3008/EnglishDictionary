@@ -1,5 +1,9 @@
 package space.br1440.platform.tracing.autoconfigure.attributes;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -12,16 +16,11 @@ import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 
 import io.opentelemetry.api.common.Attributes;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.fail;
 
 class SpanAttributeValidationAutoConfigurationTest {
 
@@ -83,7 +82,6 @@ class SpanAttributeValidationAutoConfigurationTest {
                         "platform.tracing.span-attributes.validation.level=ERROR"
                 )
                 .withInitializer(ControlledAgentTestRuntime::initializeWithExporter)
-                .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
                 .run(context -> {
                     // given
                     TraceOperations tracing = context.getBean(TraceOperations.class);

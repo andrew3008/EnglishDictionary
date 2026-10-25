@@ -9,8 +9,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import jakarta.annotation.Nonnull;
 
-import space.br1440.platform.tracing.otel.javaagent.configuration.QueueExtensionConfig;
-import space.br1440.platform.tracing.otel.javaagent.configuration.QueueOverflowPolicy;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
@@ -80,21 +78,15 @@ public final class PlatformExportProcessorFactory {
     }
 
     public SpanProcessor maybeReplaceExportProcessor(SpanProcessor processor,
-                                                     QueueExtensionConfig queueConfig,
                                                      ConfigProperties config) {
         scrubbingRuntime.acknowledgeExportModeResolved();
-        SpanProcessor exportProcessor = selectExportProcessor(processor, queueConfig, config);
+        SpanProcessor exportProcessor = selectExportProcessor(processor, config);
         markExportPathProtected();
         return exportProcessor;
     }
 
     private SpanProcessor selectExportProcessor(SpanProcessor processor,
-                                                QueueExtensionConfig queueConfig,
                                                 ConfigProperties config) {
-        if (queueConfig.overflowPolicy() == QueueOverflowPolicy.UPSTREAM) {
-            return processor;
-        }
-
         if (capturedExporters.size() > 1) {
             log.log(ExportPipelineLogEvent.MULTIPLE_SPAN_EXPORTERS_FALLBACK,
                     fields -> fields.putLong(AgentLogField.COUNT, capturedExporters.size()));

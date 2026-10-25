@@ -8,10 +8,8 @@ public interface AgentLogFields {
 
     AgentLogFields putLong(AgentLogField field, long value);
 
-    @SuppressWarnings("UnusedReturnValue")
-    AgentLogFields putBoolean(AgentLogField field, boolean value);
-
     AgentLogFields putEnum(AgentLogField field, Enum<?> value);
 
     AgentLogFields cause(Throwable cause);
+
 }

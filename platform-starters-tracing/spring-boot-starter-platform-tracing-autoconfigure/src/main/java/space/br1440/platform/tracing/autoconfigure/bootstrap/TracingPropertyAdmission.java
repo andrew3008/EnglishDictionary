@@ -37,7 +37,6 @@ public final class TracingPropertyAdmission {
     private static final List<ConfigurationPropertyName> EXPLICIT_SPRING_NAMES = List.of(
             ConfigurationPropertyName.of(TracingBootstrapPropertyNames.ENABLED),
             CONTROL_CHANNEL,
-            ConfigurationPropertyName.of(TracingBootstrapPropertyNames.KAFKA_BATCH_LINKS_ENABLED),
             ConfigurationPropertyName.of(TracingBootstrapPropertyNames.KAFKA_PROPAGATE_PLATFORM_HEADERS),
             ConfigurationPropertyName.of(TracingBootstrapPropertyNames.SUPPRESS_MICROMETER_HTTP_OBSERVATIONS)
     );

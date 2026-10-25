@@ -33,21 +33,21 @@ final class JmxReadStateRegistry {
     }
 
     void recordPresent(JmxContractPoint point, long sequence, Instant observedAt) {
-        applyPointState(point, sequence, observedAt, JmxLastReadOutcome.PRESENT, true);
+        applyPointState(point, sequence, observedAt, true);
     }
 
     void recordAbsent(JmxContractPoint point, long sequence, Instant observedAt) {
-        applyPointState(point, sequence, observedAt, JmxLastReadOutcome.ABSENT, false);
+        applyPointState(point, sequence, observedAt, false);
     }
 
     void recordContractViolation(JmxContractPoint point, JmxDiagnosticKind kind, long sequence, Instant observedAt) {
         recordDiagnostic(point, JmxDiagnosticCategory.CONTRACT_VIOLATION, kind, sequence, observedAt);
-        applyPointState(point, sequence, observedAt, JmxLastReadOutcome.CONTRACT_VIOLATION, false);
+        applyPointState(point, sequence, observedAt, false);
     }
 
     void recordExecutionFailure(JmxContractPoint point, JmxDiagnosticKind kind, long sequence, Instant observedAt) {
         recordDiagnostic(point, JmxDiagnosticCategory.EXECUTION_FAILURE, kind, sequence, observedAt);
-        applyPointState(point, sequence, observedAt, JmxLastReadOutcome.EXECUTION_FAILURE, false);
+        applyPointState(point, sequence, observedAt, false);
     }
 
     JmxPointReadState pointState(JmxContractPoint point) {
@@ -88,7 +88,7 @@ final class JmxReadStateRegistry {
 
     private static final LongAdder EMPTY_ADDER = new LongAdder();
 
-    private void applyPointState(JmxContractPoint point, long sequence, Instant observedAt, JmxLastReadOutcome outcome, boolean success) {
+    private void applyPointState(JmxContractPoint point, long sequence, Instant observedAt, boolean success) {
         pointStates.compute(point, (ignoredPoint, previous) -> {
             if (previous != null && sequence < previous.lastAppliedSequence()) {
                 return previous;
@@ -96,7 +96,7 @@ final class JmxReadStateRegistry {
 
             Instant lastSuccessAt = success ? observedAt : (previous == null ? null : previous.lastSuccessAt());
             long lastSuccessSequence = success ? sequence : (previous == null ? -1L : previous.lastSuccessSequence());
-            return new JmxPointReadState(sequence, lastSuccessSequence, observedAt, lastSuccessAt, outcome);
+            return new JmxPointReadState(sequence, lastSuccessSequence, observedAt, lastSuccessAt);
         });
     }
 
@@ -124,7 +124,7 @@ final class JmxReadStateRegistry {
         AtomicLong lastWarn = lastWarnEpochMillis.computeIfAbsent(key, ignored -> new AtomicLong(Long.MIN_VALUE));
         long now = observedAt.toEpochMilli();
         long previousWarn = lastWarn.get();
-        if ((now - previousWarn) < warnRateLimitMillis) {
+        if (previousWarn != Long.MIN_VALUE && (now - previousWarn) < warnRateLimitMillis) {
             suppressedWarnCounts.computeIfAbsent(key, ignored -> new LongAdder()).increment();
             return;
         }

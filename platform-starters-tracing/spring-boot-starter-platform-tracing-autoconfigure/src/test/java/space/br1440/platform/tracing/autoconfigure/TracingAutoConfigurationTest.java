@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure;
 
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.actuate.autoconfigure.endpoint.EndpointAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.health.HealthEndpointAutoConfiguration;
@@ -9,20 +9,21 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
-import space.br1440.platform.tracing.autoconfigure.integrations.aop.TracedAspect;
 import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.integrations.observation.TracingObservationAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup.TracingStartupContractHealthAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.integrations.aop.TracedAspect;
+import space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.integrations.observation.TracingObservationAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
 import space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 class TracingAutoConfigurationTest {
 
@@ -38,8 +39,7 @@ class TracingAutoConfigurationTest {
             .withPropertyValues("platform.tracing.control.channel=NONE");
 
     private final ApplicationContextRunner controlledAgentRunner = contextRunner
-            .withInitializer(ControlledAgentTestRuntime::initialize)
-            .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier);
+            .withInitializer(ControlledAgentTestRuntime::initialize);
 
     @Test
     void registersTraceOperationsWhenOpenTelemetryIsAbsent() {

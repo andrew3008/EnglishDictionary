@@ -2,16 +2,19 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorAssert.assertThatCoordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_READY;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.acknowledgeScrubbingExcept;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.failingRuntimeBatchRegistration;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.markCapabilitiesExcept;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
@@ -49,6 +52,8 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTra
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
@@ -98,8 +103,15 @@ class BootstrapCoordinatorActivationTest {
             throw registrationFailure;
         };
         MBeanServer server = MBeanServerFactory.newMBeanServer();
+        PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
+        ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
+        doReturn(scrubbingRuntime).when(scrubberFactory).buildRuntime(any());
 
-        try (BootstrapCoordinator coordinator = coordinator().server(server).hooks(hooks).build()) {
+        try (BootstrapCoordinator coordinator = coordinator()
+                .server(server)
+                .hooks(hooks)
+                .scrubberFactory(scrubberFactory)
+                .build()) {
             AutoconfigureSession session = coordinator.prepare(config());
             satisfyReadinessBarrier(session);
 
@@ -116,6 +128,7 @@ class BootstrapCoordinatorActivationTest {
                 assertThat(coordinator.currentWire().failureCode()).isEqualTo(ACTIVATION_FAILED);
                 assertThat(failureOf(session.readiness().snapshot()).effectiveCode()).isEqualTo(ACTIVATION_FAILED);
                 assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isFalse();
+                verify(scrubbingRuntime).close();
             }
         }
     }

@@ -22,9 +22,8 @@ public final class ExtensionReadinessWireSnapshot {
 
     private static final String NO_AGENT_INSTANCE_ID = "";
     private static final String NO_BATCH_ID = "";
+    private static final String NO_EXTENSION_VERSION = "";
     private static final long NO_EVIDENCE_GENERATION = 0L;
-    private static final String DEVELOPMENT_EXTENSION_VERSION = "development";
-
     private final String agentInstanceId;
     private final long evidenceGeneration;
     private final String batchId;
@@ -67,7 +66,7 @@ public final class ExtensionReadinessWireSnapshot {
                 PlatformExtensionLifecycle.INITIALIZING,
                 Capabilities.noneInstalled(),
                 FailureCodes.NONE,
-                ExtensionRuntimeEvidence.unavailable(DEVELOPMENT_EXTENSION_VERSION)
+                ExtensionRuntimeEvidence.unavailable(NO_EXTENSION_VERSION)
         );
     }
 

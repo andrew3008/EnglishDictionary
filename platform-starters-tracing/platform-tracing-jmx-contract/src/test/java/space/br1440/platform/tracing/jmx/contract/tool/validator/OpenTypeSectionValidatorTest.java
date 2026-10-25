@@ -1,14 +1,17 @@
 package space.br1440.platform.tracing.jmx.contract.tool.validator;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.jmx.contract.tool.ContractValidationException;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OpenTypeSectionValidatorTest {
 
@@ -19,7 +22,8 @@ class OpenTypeSectionValidatorTest {
     @Test
     void rejectsUnsupportedKind() {
         Map<String, Object> openTypes = Map.of(
-                "example", Map.of("kind", "unsupported", "typeName", "Example")
+                "example",
+                Map.of("kind", "unsupported", "typeName", "Example")
         );
 
         assertThatThrownBy(() -> OpenTypeSectionValidator.validate(context(openTypes)))
@@ -107,5 +111,69 @@ class OpenTypeSectionValidatorTest {
                 .satisfies(exception ->
                         assertThat(((ContractValidationException) exception).code())
                                 .isEqualTo("JMX_SCHEMA_TABULAR_INDEX_INVALID"));
+    }
+
+    @Test
+    void acceptsOptionalUniqueMapKeys() {
+        // given
+        Map<String, Object> descriptor = mapDescriptor();
+        descriptor.put("keys", List.of("export_batches", "boundary.input_spans"));
+
+        // when
+        ThrowingCallable validation =
+                () -> OpenTypeSectionValidator.validate(context(Map.of("metrics", descriptor)));
+
+        // then
+        assertThatCode(validation)
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void rejectsDuplicateMapKeys() {
+        // given
+        Map<String, Object> descriptor = mapDescriptor();
+        descriptor.put("keys", List.of("export_batches", "export_batches"));
+
+        // when
+        ThrowingCallable validation =
+                () -> OpenTypeSectionValidator.validate(context(Map.of("metrics", descriptor)));
+
+        // then
+        assertThatThrownBy(validation)
+                .isInstanceOf(ContractValidationException.class)
+                .satisfies(exception ->
+                        assertThat(((ContractValidationException) exception).code())
+                                .isEqualTo("JMX_SCHEMA_DUPLICATE_MAP_KEY"));
+    }
+
+    @Test
+    void rejectsMapKeysWithSameGeneratedConstantName() {
+        // given
+        Map<String, Object> descriptor = mapDescriptor();
+        descriptor.put("keys", List.of("boundary.input", "boundary_input"));
+
+        // when
+        ThrowingCallable validation =
+                () -> OpenTypeSectionValidator.validate(context(Map.of("metrics", descriptor)));
+
+        // then
+        assertThatThrownBy(validation)
+                .isInstanceOf(ContractValidationException.class)
+                .satisfies(exception ->
+                        assertThat(((ContractValidationException) exception).code())
+                                .isEqualTo("JMX_SCHEMA_MAP_KEY_CONSTANT_COLLISION"));
+    }
+
+    private static Map<String, Object> mapDescriptor() {
+        return new HashMap<>(Map.of(
+                "kind", "map",
+                "typeName", "Metrics",
+                "rowTypeName", "MetricsEntry",
+                "keyField", "key",
+                "keyType", "string",
+                "valueField", "value",
+                "valueType", "long",
+                "indexFields", List.of("key")
+        ));
     }
 }

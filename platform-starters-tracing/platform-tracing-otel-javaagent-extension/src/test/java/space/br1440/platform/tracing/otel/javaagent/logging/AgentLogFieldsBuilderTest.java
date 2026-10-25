@@ -108,9 +108,6 @@ class AgentLogFieldsBuilderTest {
         assertThatThrownBy(() -> fields.putLong(AgentLogField.PROFILE, 7L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Field PROFILE requires STRING values");
-        assertThatThrownBy(() -> fields.putBoolean(AgentLogField.PROFILE, true))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Field PROFILE requires STRING values");
         assertThatThrownBy(() -> fields.putEnum(AgentLogField.PROFILE, Lifecycle.ACTIVE))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Field PROFILE requires STRING values");

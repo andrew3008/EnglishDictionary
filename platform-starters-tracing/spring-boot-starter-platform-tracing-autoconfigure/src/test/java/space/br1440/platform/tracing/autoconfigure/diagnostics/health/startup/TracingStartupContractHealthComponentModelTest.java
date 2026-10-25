@@ -18,7 +18,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 
@@ -34,7 +33,6 @@ class TracingStartupContractHealthComponentModelTest {
                             HealthContributorAutoConfiguration.class
                     )
             )
-            .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withPropertyValues(
                     "platform.tracing.control.channel=NONE",
                     "management.endpoint.health.enabled=true",

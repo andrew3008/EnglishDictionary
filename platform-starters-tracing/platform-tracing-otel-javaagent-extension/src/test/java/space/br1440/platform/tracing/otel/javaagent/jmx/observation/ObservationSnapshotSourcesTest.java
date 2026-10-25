@@ -32,47 +32,66 @@ class ObservationSnapshotSourcesTest {
         SamplingObservationSource sampling = new SamplingObservationSource(
                 TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 1.0d),
                 new OwnerRegistrationSlot<>(),
-                AGENT_INSTANCE_ID);
+                AGENT_INSTANCE_ID
+        );
+
         ScrubbingObservationSource scrubbing = new ScrubbingObservationSource(
                 new OwnerRegistrationSlot<>(),
-                AGENT_INSTANCE_ID);
+                AGENT_INSTANCE_ID
+        );
+
         ValidationObservationSource validation = new ValidationObservationSource(
                 new OwnerRegistrationSlot<>(),
-                AGENT_INSTANCE_ID);
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
+                AGENT_INSTANCE_ID
+        );
+
         ExportObservationSource export = new ExportObservationSource(
                 new OwnerRegistrationSlot<>(),
                 new OwnerRegistrationSlot<>(),
-                AGENT_INSTANCE_ID);
+                AGENT_INSTANCE_ID
+        );
+
         ProcessorMetricsObservationSource processorMetrics = new ProcessorMetricsObservationSource(
                 new OwnerRegistrationSlot<>(),
                 new OwnerRegistrationSlot<>(),
                 new OwnerRegistrationSlot<>(),
-                AGENT_INSTANCE_ID);
+                AGENT_INSTANCE_ID
+        );
+
         DiagnosticsObservationSource diagnostics = new DiagnosticsObservationSource(new LongAdder(), AGENT_INSTANCE_ID);
         List<Probe> probes = List.of(
                 new Probe(
-                        sampling::publishObservationSnapshot,
-                        sampling::getSamplingObservation,
-                        JmxOpenTypes.SAMPLING_OBSERVATION,
-                        JmxWireContract.FIELD_SAMPLING_OBSERVATION_CAPTURE_SEQUENCE),
-                new Probe(scrubbing::publishObservationSnapshot, scrubbing::getScrubbingObservation,
-                        JmxOpenTypes.SCRUBBING_OBSERVATION,
-                        JmxWireContract.FIELD_SCRUBBING_OBSERVATION_CAPTURE_SEQUENCE),
-                new Probe(validation::publishObservationSnapshot, validation::getValidationObservation,
-                        JmxOpenTypes.VALIDATION_OBSERVATION,
-                        JmxWireContract.FIELD_VALIDATION_OBSERVATION_CAPTURE_SEQUENCE),
+                        sampling::publishObservationSnapshot, sampling::getSamplingObservation,
+                        JmxOpenTypes.SAMPLING_OBSERVATION
+                ),
+
                 new Probe(
-                        export::publishObservationSnapshot,
-                        export::getExportObservation,
-                        JmxOpenTypes.EXPORT_OBSERVATION,
-                        JmxWireContract.FIELD_EXPORT_OBSERVATION_CAPTURE_SEQUENCE),
-                new Probe(processorMetrics::publishObservationSnapshot,
+                        scrubbing::publishObservationSnapshot, scrubbing::getScrubbingObservation,
+                        JmxOpenTypes.SCRUBBING_OBSERVATION
+                ),
+
+                new Probe(
+                        validation::publishObservationSnapshot, validation::getValidationObservation,
+                        JmxOpenTypes.VALIDATION_OBSERVATION
+                ),
+
+                new Probe(
+                        export::publishObservationSnapshot, export::getExportObservation,
+                        JmxOpenTypes.EXPORT_OBSERVATION
+                ),
+
+                new Probe(
+                        processorMetrics::publishObservationSnapshot,
                         processorMetrics::getProcessorMetricsObservation,
-                        JmxOpenTypes.PROCESSOR_METRICS_OBSERVATION,
-                        JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_CAPTURE_SEQUENCE),
-                new Probe(diagnostics::publishObservationSnapshot, diagnostics::getDiagnosticsObservation,
-                        JmxOpenTypes.DIAGNOSTICS_OBSERVATION,
-                        JmxWireContract.FIELD_DIAGNOSTICS_OBSERVATION_CAPTURE_SEQUENCE));
+                        JmxOpenTypes.PROCESSOR_METRICS_OBSERVATION
+                ),
+
+                new Probe(
+                        diagnostics::publishObservationSnapshot, diagnostics::getDiagnosticsObservation,
+                        JmxOpenTypes.DIAGNOSTICS_OBSERVATION
+                )
+        );
 
         // when
         for (Probe probe : probes) {
@@ -85,14 +104,11 @@ class ObservationSnapshotSourcesTest {
             assertThat(repeated).isSameAs(first);
             assertThat(first.getCompositeType()).isEqualTo(probe.expectedType());
             assertThat(refreshed).isNotSameAs(first);
-            assertThat((Long) refreshed.get(probe.captureSequenceField()))
-                    .isEqualTo((Long) first.get(probe.captureSequenceField()) + 1L);
         }
     }
 
     private record Probe(Runnable publish,
                          Supplier<CompositeData> getter,
-                         CompositeType expectedType,
-                         String captureSequenceField) {
+                         CompositeType expectedType) {
     }
 }

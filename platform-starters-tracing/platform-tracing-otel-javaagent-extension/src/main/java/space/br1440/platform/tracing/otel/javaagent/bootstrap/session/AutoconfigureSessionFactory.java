@@ -1,10 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap.session;
 
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ConfigurationPropertyException;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
@@ -20,7 +19,6 @@ import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicySnapshot;
-import space.br1440.platform.tracing.runtime.sampling.properties.SamplingPolicyProperties;
 import space.br1440.platform.tracing.runtime.sampling.properties.SamplingPolicySnapshotFactory;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
@@ -65,34 +63,43 @@ public final class AutoconfigureSessionFactory {
         CompositeSampler core = new CompositeSampler(policy, categoryBOverrides(extensionConfig.sampling()));
         SafeSampler sampler = SafeSampler.protect(core);
         ScrubbingRuntime scrubbingRuntime = scrubberFactory.buildRuntime(extensionConfig);
-        RemoteJmxMutationRegistrationAssessor remoteJmxMutationRegistrationAssessor = Objects.requireNonNull(
-                remoteJmxAssessorFactory.apply(config),
-                "Remote JMX assessor factory must not return null"
-        );
+        try {
+            RemoteJmxMutationRegistrationAssessor remoteJmxMutationRegistrationAssessor = Objects.requireNonNull(
+                    remoteJmxAssessorFactory.apply(config),
+                    "Remote JMX assessor factory must not return null"
+            );
 
-        AutoconfigureSession prepared = new AutoconfigureSession(
-                agentInstanceId,
-                extensionConfig,
-                policy,
-                sampler,
-                evidence,
-                jmxRegistrar,
-                scrubbingRuntime,
-                remoteJmxMutationRegistrationAssessor
-        );
+            AutoconfigureSession prepared = new AutoconfigureSession(
+                    agentInstanceId,
+                    extensionConfig,
+                    policy,
+                    sampler,
+                    evidence,
+                    jmxRegistrar,
+                    scrubbingRuntime,
+                    remoteJmxMutationRegistrationAssessor
+            );
 
-        jmxRegistrar.setCompositeSampler(core);
-        prepared.readiness().markInstalled(PlatformExtensionCapability.CONFIGURATION_LOADED);
-        return prepared;
+            jmxRegistrar.setCompositeSampler(core);
+            prepared.readiness().markInstalled(PlatformExtensionCapability.CONFIGURATION_LOADED);
+            return prepared;
+        } catch (RuntimeException | Error failure) {
+            Throwable outcome = failure;
+            try {
+                scrubbingRuntime.close();
+            } catch (RuntimeException | Error closeFailure) {
+                outcome = BootstrapCleanupFailures.aggregate(outcome, closeFailure);
+            }
+
+            BootstrapCleanupFailures.rethrow(outcome);
+            throw failure;
+        }
     }
 
     private static SamplingPolicySnapshot categoryBOverrides(SamplingExtensionConfig sampling) {
-        return SamplingPolicySnapshotFactory.create(new SamplingPolicyProperties(
-                true,
-                1.0d,
+        return SamplingPolicySnapshotFactory.create(
                 sampling.dropPaths(),
-                new HashSet<>(sampling.forceRecordValues()),
-                Map.of()
-        ));
+                sampling.forceRecordValues()
+        );
     }
 }

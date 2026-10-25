@@ -46,7 +46,7 @@ class ExportObservationSourceTest {
     }
 
     @Test
-    void getterReturnsPublishedSnapshotAndExplicitPublishAdvancesSequence() {
+    void getterReturnsPublishedSnapshotUntilExplicitPublication() {
         // given
         ExportObservationSource source = new ExportObservationSource(
                 new OwnerRegistrationSlot<>(),
@@ -62,8 +62,5 @@ class ExportObservationSourceTest {
         // then
         assertThat(repeated).isSameAs(first);
         assertThat(refreshed).isNotSameAs(first);
-        assertThat((Long) refreshed.get(JmxWireContract.FIELD_EXPORT_OBSERVATION_CAPTURE_SEQUENCE))
-                .isEqualTo((Long) first.get(
-                        JmxWireContract.FIELD_EXPORT_OBSERVATION_CAPTURE_SEQUENCE) + 1L);
     }
 }

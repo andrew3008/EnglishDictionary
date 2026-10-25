@@ -50,21 +50,6 @@ class CompositeSamplerEdgeCasesTest {
     }
 
     @Test
-    void empty_prefix_in_config_does_not_drop_all_paths() {
-        // given
-        TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, java.util.Map.of(), 1.0);
-        CompositeSampler sampler = new CompositeSampler(
-                holder, CategoryBSamplingAccess.snapshot(List.of("", "   ", "/actuator/health"), List.of("on")));
-
-        // when/then
-        SamplerDecisionAssert.assertThat(SamplerHarness.of(sampler)
-                        .spanKind(SpanKind.SERVER)
-                        .putStringAttribute("url.path", "/api/v1/orders")
-                        .sample())
-                .isRecordAndSample();
-    }
-
-    @Test
     void null_url_path_does_not_cause_npe() {
         // given
         TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, java.util.Map.of(), 1.0);
@@ -74,7 +59,6 @@ class CompositeSamplerEdgeCasesTest {
         // when/then
         SamplerDecisionAssert.assertThat(SamplerHarness.of(sampler)
                         .spanKind(SpanKind.SERVER)
-                        // без url.path атрибута
                         .sample())
                 .isRecordAndSample();
     }

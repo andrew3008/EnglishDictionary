@@ -1,32 +1,35 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly;
 
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.Tracer;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
-import space.br1440.platform.tracing.test.assertions.ScrubbingAssertions;
-import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
-/**
- * Characterization loader + immutable startup Category B scrubbing policy.
- */
+import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
+import space.br1440.platform.tracing.test.assertions.ScrubbingAssertions;
+import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
+
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.Tracer;
+
 class ScrubbingLoaderCharacterizationTest {
 
     @Test
-    void loader_missing_resource_returns_empty_without_throw() {
+    void loader_missing_resource_fails_closed() {
         // when
-        List<String> rules = ScrubbingRulesLoader.load(
-                "classpath:tracing/no-such-scrubbing-rules.properties",
-                ScrubbingLoaderCharacterizationTest.class.getClassLoader());
         // then
-        assertThat(rules).isEmpty();
+        assertThatThrownBy(() -> ScrubbingRulesLoader.load(
+                "classpath:tracing/no-such-scrubbing-rules.properties",
+                ScrubbingLoaderCharacterizationTest.class.getClassLoader()
+        ))
+                .isInstanceOf(SanitizerBootstrapException.class)
+                .hasMessageContaining("platform.tracing.scrubbing.rules-config");
     }
 
     @Test
@@ -34,7 +37,9 @@ class ScrubbingLoaderCharacterizationTest {
         // when
         List<String> rules = ScrubbingRulesLoader.load(
                 "classpath:tracing/scrubbing-rules-test.properties",
-                ScrubbingLoaderCharacterizationTest.class.getClassLoader());
+                ScrubbingLoaderCharacterizationTest.class.getClassLoader()
+        );
+
         // then
         assertThat(rules).containsExactly("iban", "inn", "snils");
     }

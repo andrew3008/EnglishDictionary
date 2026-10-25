@@ -1,13 +1,7 @@
 package space.br1440.platform.tracing.runtime.sampling.properties;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import space.br1440.platform.common.util.ListUtils;
-import space.br1440.platform.common.util.MapUtils;
-import space.br1440.platform.common.util.SetUtils;
-import space.br1440.platform.common.util.StringUtils;
+import java.util.Objects;
 
 import lombok.experimental.UtilityClass;
 
@@ -18,73 +12,39 @@ public final class SamplingPolicyPropertiesValidator {
     public static final int MAX_FORCE_VALUES = 50;
     public static final int MAX_FORCE_VALUE_LENGTH = 255;
 
-    public static void validate(SamplingPolicyProperties properties) {
-        validateDefaultRatio(properties.defaultRatio());
-        validateDropPaths(properties.droppedRoutes());
-        validateForceValues(properties.forceRecordValues());
-        validateRouteRatios(properties.routeRatios());
-    }
-
-    public static void validateDefaultRatio(double defaultRatio) {
-        if (defaultRatio < 0.0 || defaultRatio > 1.0) {
-            throw new IllegalArgumentException("defaultRatio must be in [0.0, 1.0]");
-        }
+    public static void validate(List<String> droppedRoutes, List<String> forceRecordValues) {
+        validateDropPaths(Objects.requireNonNull(droppedRoutes, "droppedRoutes"));
+        validateForceValues(Objects.requireNonNull(forceRecordValues, "forceRecordValues"));
     }
 
     private static void validateDropPaths(List<String> droppedRoutes) {
-        if (ListUtils.isNullOrEmpty(droppedRoutes)) {
-            return;
-        }
-
         if (droppedRoutes.size() > MAX_DROP_PATHS) {
             throw new IllegalArgumentException("Too many drop paths configured");
         }
 
         for (String path : droppedRoutes) {
-            if (path == null) {
-                throw new IllegalArgumentException("Drop path must not be null");
+            if (path == null || path.isBlank()) {
+                throw new IllegalArgumentException("Drop path must not be null or blank");
             }
 
-            if (!path.isEmpty() && !path.startsWith("/")) {
-                throw new IllegalArgumentException("Drop path must start with / or be empty");
+            if (!path.trim().startsWith("/")) {
+                throw new IllegalArgumentException("Drop path must start with /");
             }
         }
     }
 
-    private static void validateForceValues(Set<String> forceRecordValues) {
-        if (SetUtils.isNullOrEmpty(forceRecordValues)) {
-            return;
-        }
-
+    private static void validateForceValues(List<String> forceRecordValues) {
         if (forceRecordValues.size() > MAX_FORCE_VALUES) {
             throw new IllegalArgumentException("Too many force record values");
         }
 
         for (String value : forceRecordValues) {
-            if (value == null) {
-                throw new IllegalArgumentException("Force record value must not be null");
+            if (value == null || value.isBlank()) {
+                throw new IllegalArgumentException("Force record value must not be null or blank");
             }
 
-            if (value.length() > MAX_FORCE_VALUE_LENGTH) {
+            if (value.trim().length() > MAX_FORCE_VALUE_LENGTH) {
                 throw new IllegalArgumentException("Force record value too long");
-            }
-        }
-    }
-
-    private static void validateRouteRatios(Map<String, Double> routeRatios) {
-        if (MapUtils.isNullOrEmpty(routeRatios)) {
-            return;
-        }
-
-        for (Map.Entry<String, Double> entry : routeRatios.entrySet()) {
-            String prefix = entry.getKey();
-            if (StringUtils.isNullOrBlank(prefix)) {
-                throw new IllegalArgumentException("Route ratio prefix must not be null or blank");
-            }
-
-            Double ratio = entry.getValue();
-            if (ratio == null || ratio < 0.0 || ratio > 1.0) {
-                throw new IllegalArgumentException("Route ratio must be in [0.0, 1.0]");
             }
         }
     }

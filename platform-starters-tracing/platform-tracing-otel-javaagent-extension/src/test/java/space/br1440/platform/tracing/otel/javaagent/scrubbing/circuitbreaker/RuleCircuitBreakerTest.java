@@ -10,13 +10,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 
-/**
- * Тесты автомата circuit breaker (PR-4): открытие по порогу, конкурентность HALF_OPEN
- * (ровно один probe), закрытие после успешного probe.
- */
 @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class RuleCircuitBreakerTest {
 
@@ -29,9 +25,13 @@ class RuleCircuitBreakerTest {
     void null_failure_is_rejected_without_state_change_or_log_emission() {
         // given
         RuleCircuitBreaker breaker = new RuleCircuitBreaker("safe-rule", 1, 60_000L, 0L);
+        RuleCircuitBreaker.Admission admission = breaker.acquireExecution();
 
         // when
-        NullPointerException failure = assertThrows(NullPointerException.class, () -> breaker.recordFailure(null));
+        NullPointerException failure = assertThrows(
+                NullPointerException.class,
+                () -> breaker.recordFailure(admission, null)
+        );
 
         // then
         assertThat(failure).hasMessage("throwable");
@@ -45,12 +45,12 @@ class RuleCircuitBreakerTest {
         // given
         RuleCircuitBreaker breaker = new RuleCircuitBreaker("r", 3, 60_000L, 60_000L);
         // when
-        breaker.recordFailure(new RuntimeException());
-        breaker.recordFailure(new RuntimeException());
+        breaker.recordFailure(breaker.acquireExecution(), new RuntimeException());
+        breaker.recordFailure(breaker.acquireExecution(), new RuntimeException());
         // then
         assertThat(breaker.isOpen()).isFalse();
         // when
-        breaker.recordFailure(new RuntimeException());
+        breaker.recordFailure(breaker.acquireExecution(), new RuntimeException());
         // then
         assertThat(breaker.isOpen()).isTrue();
         assertThat(breaker.getTotalFailures()).isEqualTo(3);
@@ -58,14 +58,13 @@ class RuleCircuitBreakerTest {
 
     @Test
     void half_open_issues_probe_to_only_one_thread() {
-        // cooldown=0 → сразу после OPEN первый вызов получает HALF_OPEN, второй — OPEN.
         // given
         RuleCircuitBreaker breaker = new RuleCircuitBreaker("r", 1, 0L, 0L);
         // when
-        breaker.recordFailure(new RuntimeException());
+        breaker.recordFailure(breaker.acquireExecution(), new RuntimeException());
         // then
-        assertThat(breaker.acquireExecutionState()).isEqualTo(RuleCircuitBreaker.State.HALF_OPEN);
-        assertThat(breaker.acquireExecutionState()).isEqualTo(RuleCircuitBreaker.State.OPEN);
+        assertThat(breaker.acquireExecution().state()).isEqualTo(RuleCircuitBreaker.State.HALF_OPEN);
+        assertThat(breaker.acquireExecution().state()).isEqualTo(RuleCircuitBreaker.State.OPEN);
     }
 
     @Test
@@ -73,9 +72,10 @@ class RuleCircuitBreakerTest {
         // given
         RuleCircuitBreaker breaker = new RuleCircuitBreaker("r", 1, 0L, 0L);
         // when
-        breaker.recordFailure(new RuntimeException());
-        assertThat(breaker.acquireExecutionState()).isEqualTo(RuleCircuitBreaker.State.HALF_OPEN);
-        breaker.recordSuccess();
+        breaker.recordFailure(breaker.acquireExecution(), new RuntimeException());
+        RuleCircuitBreaker.Admission probe = breaker.acquireExecution();
+        assertThat(probe.state()).isEqualTo(RuleCircuitBreaker.State.HALF_OPEN);
+        breaker.recordSuccess(probe);
         // then
         assertThat(breaker.getState()).isEqualTo(RuleCircuitBreaker.State.CLOSED);
     }
@@ -85,11 +85,56 @@ class RuleCircuitBreakerTest {
         // given
         RuleCircuitBreaker breaker = new RuleCircuitBreaker("r", 1, 0L, 0L);
         // when
-        breaker.recordFailure(new RuntimeException());
-        assertThat(breaker.acquireExecutionState()).isEqualTo(RuleCircuitBreaker.State.HALF_OPEN);
-        breaker.recordFailure(new RuntimeException());
+        breaker.recordFailure(breaker.acquireExecution(), new RuntimeException());
+        RuleCircuitBreaker.Admission probe = breaker.acquireExecution();
+        assertThat(probe.state()).isEqualTo(RuleCircuitBreaker.State.HALF_OPEN);
+        breaker.recordFailure(probe, new RuntimeException());
         // then
         assertThat(breaker.getState()).isEqualTo(RuleCircuitBreaker.State.OPEN);
+    }
+
+    @Test
+    void cooldown_uses_injected_monotonic_clock_across_overflow() {
+        // given
+        long cooldownNanos = TimeUnit.MILLISECONDS.toNanos(10L);
+        AtomicLong nanoTime = new AtomicLong(Long.MAX_VALUE - 5L);
+        RuleCircuitBreaker breaker = new RuleCircuitBreaker("r", 1, 10L, 0L, nanoTime::get);
+        breaker.recordFailure(breaker.acquireExecution(), new RuntimeException());
+
+        // when
+        nanoTime.addAndGet(cooldownNanos - 1L);
+        RuleCircuitBreaker.Admission beforeCooldown = breaker.acquireExecution();
+        nanoTime.incrementAndGet();
+        RuleCircuitBreaker.Admission afterCooldown = breaker.acquireExecution();
+
+        // then
+        assertThat(beforeCooldown.state()).isEqualTo(RuleCircuitBreaker.State.OPEN);
+        assertThat(afterCooldown.state()).isEqualTo(RuleCircuitBreaker.State.HALF_OPEN);
+    }
+
+    @Test
+    void stale_outcomes_from_previous_generations_do_not_complete_current_probe() {
+        // given
+        long cooldownNanos = TimeUnit.MILLISECONDS.toNanos(1L);
+        AtomicLong nanoTime = new AtomicLong();
+        RuleCircuitBreaker breaker = new RuleCircuitBreaker("r", 1, 1L, 0L, nanoTime::get);
+        RuleCircuitBreaker.Admission staleClosed = breaker.acquireExecution();
+        breaker.recordFailure(breaker.acquireExecution(), new RuntimeException());
+        nanoTime.addAndGet(cooldownNanos);
+        RuleCircuitBreaker.Admission previousProbe = breaker.acquireExecution();
+        breaker.recordFailure(previousProbe, new RuntimeException());
+        nanoTime.addAndGet(cooldownNanos);
+        RuleCircuitBreaker.Admission currentProbe = breaker.acquireExecution();
+
+        // when
+        breaker.recordFailure(staleClosed, new RuntimeException());
+        breaker.recordFailure(previousProbe, new RuntimeException());
+        breaker.recordSuccess(previousProbe);
+
+        // then
+        assertThat(breaker.getState()).isEqualTo(RuleCircuitBreaker.State.HALF_OPEN);
+        breaker.recordSuccess(currentProbe);
+        assertThat(breaker.getState()).isEqualTo(RuleCircuitBreaker.State.CLOSED);
     }
 
     @Test
@@ -99,7 +144,7 @@ class RuleCircuitBreakerTest {
         IllegalStateException failure = new IllegalStateException(SECRET_MARKER);
 
         // when
-        breaker.recordFailure(failure);
+        breaker.recordFailure(breaker.acquireExecution(), failure);
 
         // then
         assertThat(logs.events())
@@ -128,11 +173,11 @@ class RuleCircuitBreakerTest {
         IllegalStateException failure = new IllegalStateException(SECRET_MARKER);
 
         // when
-        breaker.recordFailure(failure);
+        breaker.recordFailure(breaker.acquireExecution(), failure);
         nanoTime.set(intervalNanos - 1L);
-        breaker.recordFailure(failure);
+        breaker.recordFailure(breaker.acquireExecution(), failure);
         nanoTime.set(intervalNanos);
-        breaker.recordFailure(failure);
+        breaker.recordFailure(breaker.acquireExecution(), failure);
 
         // then
         assertThat(logs.events())

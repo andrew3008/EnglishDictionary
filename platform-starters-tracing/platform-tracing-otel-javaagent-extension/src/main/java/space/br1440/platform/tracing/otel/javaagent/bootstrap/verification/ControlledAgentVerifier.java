@@ -1,7 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap.verification;
 
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.VerificationFailures.failure;
-
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
@@ -21,7 +19,7 @@ import io.opentelemetry.sdk.OpenTelemetrySdk;
  *
  * <p>Порядок проверки:
  * <ol>
- *   <li>версия расширения — релизная, а не {@code development};</li>
+ *   <li>версия расширения присутствует в class-local build metadata;</li>
  *   <li>SHA-256 JAR из {@code -javaagent} совпадает с ожидаемой, переданной через
  *       system property (по аналогии с {@code distributionSha256Sum} в Gradle/Maven Wrapper);</li>
  *   <li>upstream-сборка OpenTelemetry Java agent, записанная в JAR, совпадает с той,
@@ -30,7 +28,6 @@ import io.opentelemetry.sdk.OpenTelemetrySdk;
  */
 final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
 
-    private static final String DEVELOPMENT_VERSION = "development";
     private static final String DISTRIBUTION_VERSION_KEY = "distribution.version";
     private static final String UPSTREAM_SHA256_KEY = "upstream.sha256";
     private static final String UPSTREAM_COORDINATE_KEY = "upstream.coordinate";
@@ -49,7 +46,7 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
 
     @Override
     public ExtensionRuntimeEvidence verify(String extensionVersion) {
-        String releaseVersion = requireReleaseVersion(extensionVersion);
+        String releaseVersion = requireExtensionVersion(extensionVersion);
         AgentDistributionDigest expectedDigest = readExpectedDistributionDigest();
 
         ControlledAgentArtifact artifact = ControlledAgentArtifactLocator.locate(environment.inputArguments());
@@ -66,35 +63,28 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
         );
     }
 
-    private static String requireReleaseVersion(String extensionVersion) {
+    private static String requireExtensionVersion(String extensionVersion) {
         if (StringUtils.isNullOrBlank(extensionVersion)) {
-            throw failure(
+            throw new VerificationException(
                     VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
                     "Extension version is not set"
             );
         }
 
-        String version = extensionVersion.trim();
-        if (DEVELOPMENT_VERSION.equalsIgnoreCase(version)) {
-            throw failure(
-                    VerificationFailureCode.DEVELOPMENT_VERSION_FORBIDDEN,
-                    "Extension version 'development' is forbidden in the production readiness profile"
-            );
-        }
-        return version;
+        return extensionVersion.trim();
     }
 
     private AgentDistributionDigest readExpectedDistributionDigest() {
         String property = ExtensionPropertyNames.CONTROLLED_AGENT_EXPECTED_SHA256;
         String value = environment.systemProperty(property);
         if (StringUtils.isNullOrBlank(value)) {
-            throw failure(
+            throw new VerificationException(
                     VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
                     "Expected controlled agent SHA-256 is not set: " + property
             );
         }
 
-        return AgentDistributionDigest.parse(value.trim()).orElseThrow(() -> failure(
+        return AgentDistributionDigest.parse(value.trim()).orElseThrow(() -> new VerificationException(
                 VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
                 "Expected controlled agent SHA-256 is not a 64-character hex value: " + property
         ));
@@ -105,7 +95,7 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
         try {
             actual = AgentDistributionDigest.of(artifactPath);
         } catch (IOException exception) {
-            throw failure(
+            throw new VerificationException(
                     VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
                     "Unable to read controlled agent JAR to calculate SHA-256",
                     exception
@@ -113,7 +103,7 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
         }
 
         if (!expected.equals(actual)) {
-            throw failure(
+            throw new VerificationException(
                     VerificationFailureCode.DISTRIBUTION_MISMATCH,
                     "Controlled agent SHA-256 does not match the expected value"
             );
@@ -127,7 +117,7 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
         try {
             pin = UpstreamCustomizerProviderAllowlist.load();
         } catch (IllegalStateException exception) {
-            throw failure(
+            throw new VerificationException(
                     VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
                     exception.getMessage(),
                     exception
@@ -135,12 +125,12 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
         }
 
         AgentDistributionDigest recordedUpstream = AgentDistributionDigest.parse(identity.get(UPSTREAM_SHA256_KEY))
-                .orElseThrow(() -> failure(
+                .orElseThrow(() -> new VerificationException(
                         VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
                         "Controlled agent identity has no valid " + UPSTREAM_SHA256_KEY
                 ));
         if (!pin.otelJavaAgentSha256().equals(recordedUpstream.hex())) {
-            throw failure(
+            throw new VerificationException(
                     VerificationFailureCode.DISTRIBUTION_MISMATCH,
                     "Upstream OpenTelemetry Java agent does not match the customizer provider allowlist"
             );
@@ -151,14 +141,14 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
                                                            String extensionVersion) {
         String distributionVersion = identity.get(DISTRIBUTION_VERSION_KEY);
         if (StringUtils.isNullOrBlank(distributionVersion)) {
-            throw failure(
+            throw new VerificationException(
                     VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
                     "Controlled agent identity has no " + DISTRIBUTION_VERSION_KEY
             );
         }
 
         if (!extensionVersion.equals(distributionVersion.trim())) {
-            throw failure(
+            throw new VerificationException(
                     VerificationFailureCode.DISTRIBUTION_MISMATCH,
                     "Extension build version does not match the controlled agent distribution"
             );
@@ -170,7 +160,7 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
         if (coordinate == null
                 || !coordinate.startsWith(UPSTREAM_COORDINATE_PREFIX)
                 || coordinate.length() == UPSTREAM_COORDINATE_PREFIX.length()) {
-            throw failure(
+            throw new VerificationException(
                     VerificationFailureCode.DISTRIBUTION_MISMATCH,
                     "Controlled agent identity has an invalid " + UPSTREAM_COORDINATE_KEY
             );

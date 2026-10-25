@@ -17,10 +17,6 @@ public interface GenericSpanEnrichment {
     @Nonnull
     GenericSpanEnrichment requestId(@Nonnull String requestId);
 
-    /** {@code platform.user_hash} — псевдонимизированный идентификатор пользователя (не raw id/PII). */
-    @Nonnull
-    GenericSpanEnrichment userHash(@Nonnull String hash);
-
     /** {@code platform.trace.result} — финальный статус операции. */
     @Nonnull
     GenericSpanEnrichment result(@Nonnull SpanResult result);

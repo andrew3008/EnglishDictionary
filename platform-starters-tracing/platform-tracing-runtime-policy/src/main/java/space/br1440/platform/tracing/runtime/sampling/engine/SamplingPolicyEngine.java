@@ -15,10 +15,6 @@ public final class SamplingPolicyEngine {
         this.policyChain = policyChain;
     }
 
-    static SamplingPolicyEngine foundationEngine() {
-        return new SamplingPolicyEngine(ProductionSamplingPolicyChain.foundation());
-    }
-
     public static SamplingPolicyEngine productionEngine() {
         return new SamplingPolicyEngine(ProductionSamplingPolicyChain.production());
     }

@@ -6,7 +6,9 @@ import javax.management.openmbean.CompositeData;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
@@ -23,8 +25,15 @@ class ValidationObservationSourceTest {
     @Test
     void ownerAbsentGivesPlaceholderValuesNotSentinel() {
         // given
+        TracingSettingsSource acceptedPolicy = TracingSettingsSourceTestFixtures.boundValidation(
+                AgentInstanceId.random(),
+                SpanAttributeValidationLevel.ERROR
+        );
+
         ValidationObservationSource source = new ValidationObservationSource(
-                new OwnerRegistrationSlot<>(), AGENT_INSTANCE_ID
+                new OwnerRegistrationSlot<>(),
+                acceptedPolicy,
+                AGENT_INSTANCE_ID
         );
 
         // when
@@ -32,28 +41,39 @@ class ValidationObservationSourceTest {
 
         // then
         assertThat((Boolean) observation.get(
-                JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT)).isFalse();
+                        JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT
+                )
+        ).isFalse();
 
         assertThat((Long) observation.get(
-                JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_GENERATION)).isEqualTo(0L);
+                        JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_GENERATION
+                )
+        ).isEqualTo(0L);
 
         assertThat((String) observation.get(
-                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_LEVEL)).isEmpty();
+                        JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_LEVEL
+                )
+        ).isEqualTo(SpanAttributeValidationLevel.ERROR.name());
 
         assertThat((Long) observation.get(
-                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_VERSION)).isEqualTo(0L);
+                        JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_VERSION
+                )
+        ).isEqualTo(0L);
 
         assertThat((String) observation.get(
-                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_LAST_UPDATED_SOURCE))
-                .isEmpty();
+                        JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_CONFIG_LAST_UPDATED_SOURCE
+                )
+        ).isEqualTo(SettingsSourceAuthority.BOOTSTRAP.name());
     }
 
     @Test
     void ownerPresentReflectsProcessorStateAndPositiveGeneration() {
         // given
-        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(
-                TracingSettingsSourceTestFixtures.boundValidation(AgentInstanceId.random(), SpanAttributeValidationLevel.ERROR)
+        TracingSettingsSource acceptedPolicy = TracingSettingsSourceTestFixtures.boundValidation(
+                AgentInstanceId.random(),
+                SpanAttributeValidationLevel.ERROR
         );
+        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(acceptedPolicy);
 
         try (SpanProcessorHarness harness = SpanProcessorHarness.of(processor, Resource.empty())) {
             harness.tracer("test").spanBuilder("missing-attributes").startSpan().end();
@@ -62,23 +82,26 @@ class ValidationObservationSourceTest {
         OwnerRegistrationSlot<ValidatingSpanProcessor> slot = new OwnerRegistrationSlot<>();
         slot.replace(processor);
 
-        ValidationObservationSource source = new ValidationObservationSource(slot, AGENT_INSTANCE_ID);
+        ValidationObservationSource source = new ValidationObservationSource(slot, acceptedPolicy, AGENT_INSTANCE_ID);
 
         // when
         CompositeData observation = source.getValidationObservation();
 
         // then
         assertThat((Boolean) observation.get(
-                JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT)).isTrue();
+                JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_PRESENT)
+        ).isTrue();
 
         assertThat((Long) observation.get(
-                JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_GENERATION)).isPositive();
+                JmxWireContract.FIELD_VALIDATION_OBSERVATION_OWNER_GENERATION)
+        ).isPositive();
 
         assertThat((String) observation.get(
-                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_LEVEL))
-                .isEqualTo(SpanAttributeValidationLevel.ERROR.name());
+                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_LEVEL)
+        ).isEqualTo(SpanAttributeValidationLevel.ERROR.name());
 
         assertThat((Long) observation.get(
-                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_VIOLATIONS_TOTAL)).isEqualTo(1L);
+                JmxWireContract.FIELD_VALIDATION_OBSERVATION_VALIDATION_VIOLATIONS_TOTAL)
+        ).isEqualTo(1L);
     }
 }

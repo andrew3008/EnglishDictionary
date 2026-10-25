@@ -77,31 +77,6 @@ class PlatformTracingDefaultsProviderTest {
     }
 
     @Test
-    void supply_without_env_var_does_not_override_overflow_policy() {
-        // when
-        Map<String, String> defaults = new PlatformTracingDefaultsProvider().supply();
-
-        // then
-        assertThat(defaults).doesNotContainKey(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY);
-        assertThat(ExtensionDefaults.DEFAULT_QUEUE_OVERFLOW_POLICY).isEqualTo(QueueOverflowPolicy.DROP_OLDEST);
-    }
-
-    @Test
-    void supply_env_var_overrides_default_overflow_policy() {
-        // given
-        PlatformTracingDefaultsProvider provider =
-                new PlatformTracingDefaultsProvider(name ->
-                        ExtensionEnvironmentVariables.QUEUE_OVERFLOW_POLICY.equals(name) ? "UPSTREAM" : null);
-
-        // when
-        Map<String, String> defaults = provider.supply();
-
-        // then
-        assertThat(defaults)
-                .containsEntry(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY, "UPSTREAM");
-    }
-
-    @Test
     void supply_returns_independent_copy_on_each_call() {
         // given
         PlatformTracingDefaultsProvider provider = new PlatformTracingDefaultsProvider();
@@ -116,16 +91,9 @@ class PlatformTracingDefaultsProviderTest {
     }
 
     @Test
-    void supply_ignores_service_identity_environment_variables() {
+    void supply_does_not_publish_service_identity_keys() {
         // given
-        PlatformTracingDefaultsProvider provider = new PlatformTracingDefaultsProvider(name -> switch (name) {
-            case "PLATFORM_TRACING_SERVICE_NAME" -> "via-env";
-            case "PLATFORM_TRACING_SERVICE_VERSION" -> "1.2.3";
-            case "PLATFORM_TRACING_SERVICE_ENVIRONMENT" -> "production";
-            case "PLATFORM_TRACING_SERVICE_HOST" -> "host";
-            case "PLATFORM_TRACING_SERVICE_CONTAINER_ID" -> "container";
-            default -> null;
-        });
+        PlatformTracingDefaultsProvider provider = new PlatformTracingDefaultsProvider();
 
         // when
         Map<String, String> defaults = provider.supply();

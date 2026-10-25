@@ -5,6 +5,7 @@ import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker.Admission;
 
 import lombok.Getter;
 
@@ -25,42 +26,38 @@ public final class ExecutableRule {
         this.effectivePriority = effectivePriority;
     }
 
-    public ScrubbingDecision execute(String key, Object value) {
-        return executeDetailed(key, value).decision();
-    }
-
     RuleOutcome executeDetailed(String key, Object value) {
-        RuleCircuitBreaker.State state = breaker.acquireExecutionState();
-        return switch (state) {
+        Admission admission = breaker.acquireExecution();
+        return switch (admission.state()) {
             case OPEN -> rule.critical()
                     ? RuleOutcome.criticalFailure(ScrubbingDecision.scrubbingFailed())
                     : RuleOutcome.skippedCircuitOpen();
-            case HALF_OPEN -> executeProbeDetailed(key, value);
-            case CLOSED -> executeNormalDetailed(key, value);
+            case HALF_OPEN -> executeProbeDetailed(admission, key, value);
+            case CLOSED -> executeNormalDetailed(admission, key, value);
         };
     }
 
-    private RuleOutcome executeProbeDetailed(String key, Object value) {
+    private RuleOutcome executeProbeDetailed(Admission admission, String key, Object value) {
         try {
             if (rule.isExcluded(key)) {
-                breaker.recordSuccess();
+                breaker.recordSuccess(admission);
                 return RuleOutcome.keep();
             }
 
             ScrubbingDecision result = rule.evaluate(key, value);
             requireNonNull(result);
-            breaker.recordSuccess();
+            breaker.recordSuccess(admission);
             return classify(result);
         } catch (Throwable t) {
             PlatformThrowables.propagateIfFatal(t);
-            breaker.recordFailure(t);
+            breaker.recordFailure(admission, t);
             return rule.critical()
                     ? RuleOutcome.criticalFailure(ScrubbingDecision.scrubbingFailed())
                     : RuleOutcome.nonCriticalFailure();
         }
     }
 
-    private RuleOutcome executeNormalDetailed(String key, Object value) {
+    private RuleOutcome executeNormalDetailed(Admission admission, String key, Object value) {
         try {
             if (rule.isExcluded(key)) {
                 return RuleOutcome.keep();
@@ -71,7 +68,7 @@ public final class ExecutableRule {
             return classify(result);
         } catch (Throwable t) {
             PlatformThrowables.propagateIfFatal(t);
-            breaker.recordFailure(t);
+            breaker.recordFailure(admission, t);
             return rule.critical()
                     ? RuleOutcome.criticalFailure(ScrubbingDecision.scrubbingFailed())
                     : RuleOutcome.nonCriticalFailure();

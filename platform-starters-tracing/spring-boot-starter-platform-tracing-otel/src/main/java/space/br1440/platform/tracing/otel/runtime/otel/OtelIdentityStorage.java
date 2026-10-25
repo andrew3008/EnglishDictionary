@@ -4,6 +4,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import space.br1440.platform.tracing.api.context.CorrelationScope;
+import space.br1440.platform.tracing.api.propagation.PlatformBaggageKeys;
 import space.br1440.platform.tracing.otel.mdc.IdentityMdcProjection;
 import space.br1440.platform.tracing.otel.runtime.TraceControlBoundaryState;
 import space.br1440.platform.tracing.runtime.propagation.CorrelationIdSupport;
@@ -13,8 +14,6 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 
 final class OtelIdentityStorage {
-
-    private static final String CORRELATION_BAGGAGE_KEY = "platform.correlation.id";
 
     private final ThreadLocal<TraceControlBoundaryState> traceControlBoundary = new ThreadLocal<>();
 
@@ -28,7 +27,7 @@ final class OtelIdentityStorage {
 
     TraceControlBoundaryState traceControlBoundary() {
         TraceControlBoundaryState state = traceControlBoundary.get();
-        return state == null ? TraceControlBoundaryState.EMPTY : state;
+        return (state == null) ? TraceControlBoundaryState.EMPTY : state;
     }
 
     String requireCanonicalCorrelationId(String correlationId) {
@@ -67,7 +66,7 @@ final class OtelIdentityStorage {
         Context context = IdentityMdcProjection.withIdentity(Context.current(), state.requestId(), state.correlationId());
         if (state.correlationId() != null) {
             Baggage baggage = Baggage.fromContext(context).toBuilder()
-                    .put(CORRELATION_BAGGAGE_KEY, state.correlationId())
+                    .put(PlatformBaggageKeys.CORRELATION_ID, state.correlationId())
                     .build();
             context = baggage.storeInContext(context);
         }

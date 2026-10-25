@@ -11,7 +11,6 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWi
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationCaptureEnvelope;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.ObservationSnapshotStore;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerCapture;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
@@ -37,11 +36,7 @@ public final class ScrubbingObservationSource {
     }
 
     public synchronized void publishObservationSnapshot() {
-        ObservationCaptureEnvelope.OpenCapture openCapture = envelope.open();
-
-        OwnerCapture<ScrubbingRuntime> capture = OwnerCapture.of(scrubbingSlot);
-        OwnerRegistrationState<ScrubbingRuntime> state = capture.state();
-        long offsetNanos = capture.offsetNanos();
+        OwnerRegistrationState<ScrubbingRuntime> state = scrubbingSlot.capture();
 
         ScrubbingSnapshot snapshot;
         if (state instanceof OwnerRegistrationState.Present<ScrubbingRuntime> present) {
@@ -51,14 +46,12 @@ public final class ScrubbingObservationSource {
         }
 
         Map<String, Object> values = new LinkedHashMap<>();
-        openCapture.sealInto(values);
+        envelope.putInto(values);
         values.put(JmxWireContract.FIELD_SCRUBBING_OBSERVATION_OWNER_PRESENT, snapshot.ownerPresent());
         values.put(JmxWireContract.FIELD_SCRUBBING_OBSERVATION_OWNER_GENERATION, state.generation());
-        values.put(JmxWireContract.FIELD_SCRUBBING_OBSERVATION_OWNER_CAPTURED_OFFSET_NANOS, offsetNanos);
         values.put(JmxWireContract.FIELD_SCRUBBING_OBSERVATION_SCRUBBING_ENABLED, snapshot.enabled());
         values.put(JmxWireContract.FIELD_SCRUBBING_OBSERVATION_POLICY_VERSION, snapshot.policyVersion());
         values.put(JmxWireContract.FIELD_SCRUBBING_OBSERVATION_RULES_LOADED, snapshot.rulesLoaded());
-        values.put(JmxWireContract.FIELD_SCRUBBING_OBSERVATION_CIRCUIT_BREAKERS_OPEN, snapshot.circuitBreakersOpen());
         values.put(JmxWireContract.FIELD_SCRUBBING_OBSERVATION_SCRUBBING_METRICS,
                 JmxOpenTypeSupport.stringLongMap(
                         JmxOpenTypes.SCRUBBING_METRICS,
@@ -74,11 +67,9 @@ public final class ScrubbingObservationSource {
                                      boolean enabled,
                                      long policyVersion,
                                      long rulesLoaded,
-                                     long circuitBreakersOpen,
                                      Map<String, Long> metrics) {
 
-        private static final ScrubbingSnapshot ABSENT =
-                new ScrubbingSnapshot(false, false, 0L, 0L, 0L, Map.of());
+        private static final ScrubbingSnapshot ABSENT = new ScrubbingSnapshot(false, false, 0L, 0L, Map.of());
 
         static ScrubbingSnapshot absent() {
             return ABSENT;
@@ -90,7 +81,6 @@ public final class ScrubbingObservationSource {
                     runtime.enabled(),
                     runtime.policyVersion(),
                     runtime.ruleCount(),
-                    runtime.openBreakerCount(),
                     snapshotMetrics(runtime)
             );
         }
@@ -100,21 +90,19 @@ public final class ScrubbingObservationSource {
         boolean attributesVerified = runtime.attributesVerified();
 
         Map<String, Long> snapshot = new LinkedHashMap<>();
-        snapshot.put("drop", runtime.droppedActions());
-        snapshot.put("hash", runtime.hashedActions());
-        snapshot.put("mask", runtime.maskedActions());
-        snapshot.put("truncate", runtime.truncatedActions());
-        snapshot.put("failures", runtime.failures());
-        snapshot.put("hash_missing_key", runtime.hashMissingKey());
-        snapshot.put("rules.loaded", runtime.ruleCount());
-        snapshot.put("circuit_breakers.open", runtime.openBreakerCount());
-        snapshot.put("circuit_breakers.failures.total", runtime.totalBreakerFailures());
-        snapshot.put("enabled", runtime.enabled() ? 1L : 0L);
-        snapshot.put("policy.version", runtime.policyVersion());
-        snapshot.put("attributes_verified", attributesVerified ? 1L : 0L);
-        snapshot.put("runtime_state", attributesVerified ? RUNTIME_STATE_ACTIVE : RUNTIME_STATE_DEGRADED_FAIL_CLOSED);
-        snapshot.put("collapse_mode_activations", runtime.collapseModeActivations());
-        snapshot.put("collapsed_spans", runtime.collapsedSpans());
+        snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_DROP, runtime.droppedActions());
+        snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_HASH, runtime.hashedActions());
+        snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_MASK, runtime.maskedActions());
+        snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_TRUNCATE, runtime.truncatedActions());
+        snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_FAILURES, runtime.failures());
+        snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_HASH_MISSING_KEY, runtime.hashMissingKey());
+        snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_CIRCUIT_BREAKERS_FAILURES_TOTAL, runtime.totalBreakerFailures());
+        snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_SKIPPED_CIRCUIT_OPEN, runtime.skippedCircuitOpen());
+        snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_ATTRIBUTES_VERIFIED, attributesVerified ? 1L : 0L);
+        snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_RUNTIME_STATE,
+                attributesVerified ? RUNTIME_STATE_ACTIVE : RUNTIME_STATE_DEGRADED_FAIL_CLOSED);
+        snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_COLLAPSE_MODE_ACTIVATIONS, runtime.collapseModeActivations());
+        snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_COLLAPSED_SPANS, runtime.collapsedSpans());
         return snapshot;
     }
 }

@@ -105,6 +105,32 @@ final class BootstrapTerminalTransitions {
         );
     }
 
+    Throwable completePreparationCleanupFailure(Throwable preparationFailure,
+                                                Throwable cleanupFailure,
+                                                ExtensionRuntimeEvidence evidence) {
+        Objects.requireNonNull(preparationFailure, "preparationFailure");
+        Objects.requireNonNull(cleanupFailure, "cleanupFailure");
+        Objects.requireNonNull(evidence, "evidence");
+
+        Throwable preparationOutcome = BootstrapCleanupFailures.aggregate(preparationFailure, cleanupFailure);
+        try {
+            synchronized (lifecycle.monitor()) {
+                lifecycle.escalateRollbackIncomplete("prepare", cleanupFailure);
+                journal.publishFailed(lifecycle.failure(), "", evidence);
+                if (preparationFailure instanceof BootstrapException) {
+                    return new BootstrapException(lifecycle.failure());
+                }
+            }
+
+            return preparationOutcome;
+        } catch (RuntimeException | Error settlementFailure) {
+            preparationOutcome = BootstrapCleanupFailures.aggregate(preparationOutcome, settlementFailure);
+            throw settlementFailure;
+        } finally {
+            PlatformThrowables.propagateIfFatal(preparationOutcome);
+        }
+    }
+
     BootstrapException terminalizeCustomizationFailure(String failureCode,
                                                        String phase,
                                                        Throwable cause,

@@ -61,13 +61,13 @@ final class SamplingPolicyOtelAdapter {
             Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.PARENT_SAMPLED)
     );
 
-    private static final SamplingResult ROUTE_RATIO_SAMPLE = new ForwardingSamplingResult(
-            SamplingResult.create(SamplingDecision.RECORD_AND_SAMPLE),
+    private static final SamplingResult ROUTE_RATIO_SAMPLE = SamplingResult.create(
+            SamplingDecision.RECORD_AND_SAMPLE,
             Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.ROUTE_RATIO)
     );
 
-    private static final SamplingResult DEFAULT_RATIO_SAMPLE = new ForwardingSamplingResult(
-            SamplingResult.create(SamplingDecision.RECORD_AND_SAMPLE),
+    private static final SamplingResult DEFAULT_RATIO_SAMPLE = SamplingResult.create(
+            SamplingDecision.RECORD_AND_SAMPLE,
             Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.GLOBAL_RATIO)
     );
 

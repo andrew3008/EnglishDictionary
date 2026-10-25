@@ -65,8 +65,8 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
     }
 
     @Test
-    @DisplayName("Default (overflow-policy не задан): платформенный DROP_OLDEST processor")
-    void defaultIsPlatformDropOldestWhenOverflowPolicyNotSet() {
+    @DisplayName("Single OTLP exporter: платформенный DROP_OLDEST processor")
+    void singleOtlpExporterInstallsPlatformDropOldestProcessor() {
         // given
         AtomicReference<SpanProcessor> observedFinalProcessor = new AtomicReference<>();
         AutoConfiguredOpenTelemetrySdkBuilder builder = baseBuilder();
@@ -81,41 +81,10 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
         try {
             // then
             assertThat(observedFinalProcessor.get())
-                    .as("default v1.x: финальный processor — платформенный DROP_OLDEST")
+                    .as("финальный processor — платформенный DROP_OLDEST")
                     .isInstanceOf(PlatformDropOldestExportSpanProcessor.class);
             assertThat(observedFinalProcessor.get())
-                    .as("default v1.x: НЕ stock BatchSpanProcessor")
-                    .isNotInstanceOf(BatchSpanProcessor.class);
-        } finally {
-            sdk.getOpenTelemetrySdk().getSdkTracerProvider().shutdown().join(2, TimeUnit.SECONDS);
-            sdk.getOpenTelemetrySdk().close();
-        }
-    }
-
-    @Test
-    @DisplayName("Явный DROP_OLDEST + single OTLP exporter → замена на платформенный processor")
-    void explicitDropOldestReplacesBspWithPlatformProcessor() {
-        // given
-        AtomicReference<SpanProcessor> observedFinalProcessor = new AtomicReference<>();
-        AutoConfiguredOpenTelemetrySdkBuilder builder = baseBuilder()
-                .addPropertiesSupplier(() -> Map.of(
-                        "platform.tracing.queue.overflow-policy", "DROP_OLDEST"
-                ));
-        newProvider().customize(builder);
-        builder.addSpanProcessorCustomizer((processor, cfg) -> {
-            observedFinalProcessor.set(processor);
-            return processor;
-        });
-
-        // when
-        AutoConfiguredOpenTelemetrySdk sdk = builder.build();
-        try {
-            // then
-            assertThat(observedFinalProcessor.get())
-                    .as("opt-in: финальный processor — платформенный DROP_OLDEST")
-                    .isInstanceOf(PlatformDropOldestExportSpanProcessor.class);
-            assertThat(observedFinalProcessor.get())
-                    .as("opt-in: НЕ stock BatchSpanProcessor")
+                    .as("финальный processor — не stock BatchSpanProcessor")
                     .isNotInstanceOf(BatchSpanProcessor.class);
         } finally {
             sdk.getOpenTelemetrySdk().getSdkTracerProvider().shutdown().join(2, TimeUnit.SECONDS);
@@ -125,8 +94,8 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
 
     @Test
     @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
-    @DisplayName("DROP_OLDEST with multiple exporters keeps the stock OTLP BatchSpanProcessor")
-    void dropOldestFallsBackToStockOnMultiExporter() {
+    @DisplayName("Multiple exporters keep the stock OTLP BatchSpanProcessor")
+    void multipleExportersKeepStockBatchSpanProcessor() {
         try (AgentLogCapture logs = AgentLogCapture.installed()) {
             // given
             List<SpanProcessor> observedProcessors = new ArrayList<>();
@@ -140,8 +109,7 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
                             "otel.traces.exporter", "otlp,logging",
                             "otel.exporter.otlp.endpoint", "http://127.0.0.1:1",
                             "otel.bsp.schedule.delay", "600000",
-                            "otel.bsp.export.timeout", "1000",
-                            "platform.tracing.queue.overflow-policy", "DROP_OLDEST"
+                            "otel.bsp.export.timeout", "1000"
                     ));
             newProvider().customize(builder);
             builder.addSpanProcessorCustomizer((processor, config) -> {
@@ -170,88 +138,6 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
         }
     }
 
-
-    @Test
-    @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
-    @DisplayName("Unknown overflow policy fails during prepare without exposing its value")
-    void unknownPolicyValueFailsPreparation() {
-        // given
-        String rawPolicy = "BOGUS";
-        MBeanServer server = MBeanServerFactory.newMBeanServer();
-        AutoConfiguredOpenTelemetrySdkBuilder builder = baseBuilder()
-                .addPropertiesSupplier(() -> Map.of(
-                        "platform.tracing.queue.overflow-policy", rawPolicy
-                ));
-
-        try (AgentLogCapture logs = AgentLogCapture.installed();
-             BootstrapCoordinator bootstrap = coordinator(server)) {
-            new BootstrapAutoConfigurationCustomizerProvider(bootstrap).customize(builder);
-
-            // when
-            Throwable failure = catchThrowable(builder::build);
-
-            // then
-            assertThat(failure).isInstanceOfSatisfying(
-                    BootstrapException.class,
-                    bootstrapFailure -> {
-                        assertThat(bootstrapFailure.failure().effectiveCode())
-                                .isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
-                        assertThat(bootstrapFailure.getCause()).isInstanceOf(ConfigurationException.class);
-                    }
-            );
-
-            for (Throwable current = failure; current != null; current = current.getCause()) {
-                assertThat(String.valueOf(current.getMessage())).doesNotContain(rawPolicy);
-            }
-
-            assertThat(bootstrap.currentWire().failureCode())
-                    .isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
-            assertThat(logs.events())
-                    .filteredOn(event -> "BOOTSTRAP_PHASE_FAILED".equals(event.eventName()))
-                    .singleElement()
-                    .satisfies(event -> assertThat(event.fields())
-                            .containsEntry("phase", "prepare")
-                            .containsEntry("subphase", "configuration-validation")
-                            .containsEntry("propertyName", "platform.tracing.queue.overflow-policy")
-                            .doesNotContainValue(rawPolicy));
-            assertThat(logs.rendered()).doesNotContain(rawPolicy);
-        }
-    }
-
-    @Test
-    @DisplayName("UPSTREAM явно — оператор отключил DROP_OLDEST, stock BSP сохраняется")
-    void explicitUpstreamLeavesStockBspIntact() {
-        // given
-        String propKey = "platform.tracing.queue.overflow-policy";
-        String prev = System.getProperty(propKey);
-        System.setProperty(propKey, "UPSTREAM");
-        try {
-            AtomicReference<SpanProcessor> observedFinalProcessor = new AtomicReference<>();
-            AutoConfiguredOpenTelemetrySdkBuilder builder = baseBuilder();
-            newProvider().customize(builder);
-            builder.addSpanProcessorCustomizer((processor, cfg) -> {
-                observedFinalProcessor.set(processor);
-                return processor;
-            });
-
-            // when
-            AutoConfiguredOpenTelemetrySdk sdk = builder.build();
-            try {
-                // then
-                assertThat(observedFinalProcessor.get())
-                        .as("UPSTREAM явный (System property) — stock BatchSpanProcessor сохраняется")
-                        .isInstanceOf(BatchSpanProcessor.class);
-                assertThat(observedFinalProcessor.get())
-                        .isNotInstanceOf(PlatformDropOldestExportSpanProcessor.class);
-            } finally {
-                sdk.getOpenTelemetrySdk().getSdkTracerProvider().shutdown().join(2, TimeUnit.SECONDS);
-                sdk.getOpenTelemetrySdk().close();
-            }
-        } finally {
-            if (prev == null) System.clearProperty(propKey);
-            else System.setProperty(propKey, prev);
-        }
-    }
 
     @Test
     @DisplayName("Foreign SafeSpanExporter fails the real customizer chain before readiness")

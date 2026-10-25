@@ -12,12 +12,6 @@
       "description": "Единственный разрешённый канал управления runtime-политикой трассировки. При включённой трассировке обязателен; допустимые значения NONE, CONFIG_SERVER, ACTUATOR. При выключенной трассировке отсутствие ключа эквивалентно NONE. Библиотечного default для включённой трассировки нет. NONE подключает только чтение принятой политики для статуса."
     },
     {
-      "name": "platform.tracing.kafka.batch-links-enabled",
-      "type": "java.lang.Boolean",
-      "description": "Включает создание links для пакетной обработки Kafka-сообщений.",
-      "defaultValue": false
-    },
-    {
       "name": "platform.tracing.kafka.propagate-platform-headers",
       "type": "java.lang.Boolean",
       "description": "Разрешает исходящую передачу платформенных управляющих заголовков для доверенных Kafka topics.",

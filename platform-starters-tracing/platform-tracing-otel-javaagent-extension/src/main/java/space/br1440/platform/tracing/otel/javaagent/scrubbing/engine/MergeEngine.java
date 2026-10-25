@@ -10,25 +10,6 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public final class MergeEngine {
 
-    public static ScrubbingDecision evaluate(List<ExecutableRule> wrappers, String key, Object value) {
-        ScrubbingDecision accumulated = ScrubbingDecision.keep();
-
-        for (ExecutableRule wrapper : wrappers) {
-            ScrubbingDecision candidate = wrapper.execute(key, value);
-            if (candidate == null) {
-                continue;
-            }
-
-            boolean terminal = wrapper.isCritical() && (candidate.action() != ScrubbingAction.KEEP);
-            accumulated = merge(accumulated, candidate, terminal);
-            if (terminal) {
-                break;
-            }
-        }
-
-        return accumulated;
-    }
-
     public static MergeOutcome evaluateDetailed(List<ExecutableRule> wrappers, String key, Object value) {
         ScrubbingDecision accumulated = ScrubbingDecision.keep();
         long skippedCircuitOpen = 0L;

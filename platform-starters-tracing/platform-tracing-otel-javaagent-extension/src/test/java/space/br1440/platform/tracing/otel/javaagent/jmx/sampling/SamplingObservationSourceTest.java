@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
@@ -55,7 +56,7 @@ class SamplingObservationSourceTest {
     }
 
     @Test
-    void routeRatiosReflectAcceptedPolicy() {
+    void routeRatioCountReflectsAcceptedPolicy() {
         // given
         TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(),
                 true, Map.of("/api", 0.2d), 0.5d);
@@ -63,12 +64,11 @@ class SamplingObservationSourceTest {
                 holder, new OwnerRegistrationSlot<>(), AGENT_INSTANCE_ID);
 
         // when
-        TabularData routeRatios = (TabularData) source.getSamplingObservation()
-                .get(JmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIOS);
-        CompositeData row = routeRatios.get(new Object[]{"/api"});
+        long routeRatioCount = (Long) source.getSamplingObservation()
+                .get(JmxWireContract.FIELD_SAMPLING_OBSERVATION_ROUTE_RATIO_COUNT);
 
         // then
-        assertThat((Double) row.get("value")).isEqualTo(0.2d);
+        assertThat(routeRatioCount).isEqualTo(1L);
     }
 
     @Test
@@ -113,7 +113,7 @@ class SamplingObservationSourceTest {
     }
 
     @Test
-    void configLastUpdatedSourceIsAcceptedState() {
+    void configLastUpdatedSourceReflectsAcceptedPolicyAuthority() {
         // given
         TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 0.5d);
         SamplingObservationSource source = new SamplingObservationSource(
@@ -122,7 +122,7 @@ class SamplingObservationSourceTest {
         // when/then
         assertThat((String) source.getSamplingObservation()
                 .get(JmxWireContract.FIELD_SAMPLING_OBSERVATION_SAMPLING_CONFIG_LAST_UPDATED_SOURCE))
-                .isEqualTo("accepted-state");
+                .isEqualTo(SettingsSourceAuthority.BOOTSTRAP.name());
     }
 
     @Test

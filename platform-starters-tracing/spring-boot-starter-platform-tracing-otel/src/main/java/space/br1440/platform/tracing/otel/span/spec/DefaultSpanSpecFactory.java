@@ -27,18 +27,23 @@ public final class DefaultSpanSpecFactory {
 
     @Nonnull
     public SpanExecution fromSpec(@Nonnull SpanSpec spec) {
-        return new SpanExecutionImpl(
+        SpanSpec requiredSpec = Objects.requireNonNull(spec, "spec");
+        if (requiredSpec.reason().isEmpty()) {
+            throw new IllegalArgumentException("fromSpec requires reason(...)");
+        }
+
+        return SpanExecutionImpl.withValidationAtStart(
                 runtime,
-                Objects.requireNonNull(spec, "spec"),
+                requiredSpec,
                 policy,
                 "DefaultSpanSpecFactory.fromSpec"
         );
     }
 
     @Nonnull
-    public SpanExecution fromBuilderRawSpec(@Nonnull SpanSpec rawSpec,
-                                            @Nonnull String builderName) {
-        return new SpanExecutionImpl(
+    private SpanExecution fromBuilderRawSpec(@Nonnull SpanSpec rawSpec,
+                                             @Nonnull String builderName) {
+        return SpanExecutionImpl.withValidationAtStart(
                 runtime,
                 Objects.requireNonNull(rawSpec, "rawSpec"),
                 policy,
@@ -72,6 +77,7 @@ public final class DefaultSpanSpecFactory {
                 policy,
                 builderName
         );
-        return new SpanExecutionImpl(runtime, spec, policy, builderName);
+
+        return SpanExecutionImpl.prevalidated(runtime, spec);
     }
 }

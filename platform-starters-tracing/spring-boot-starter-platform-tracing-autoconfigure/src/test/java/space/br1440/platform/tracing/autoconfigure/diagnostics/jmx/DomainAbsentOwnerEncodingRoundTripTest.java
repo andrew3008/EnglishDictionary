@@ -119,15 +119,15 @@ class DomainAbsentOwnerEncodingRoundTripTest {
     @Test
     void validationViolationCounterRoundTripsFromAgentOwner() throws Exception {
         OwnerRegistrationSlot<ValidatingSpanProcessor> slot = new OwnerRegistrationSlot<>();
-        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(
-                BoundTracingSettingsSources.validation(SpanAttributeValidationLevel.WARNING)
-        );
+        TracingSettingsSource acceptedPolicy = BoundTracingSettingsSources.validation(SpanAttributeValidationLevel.WARNING);
+        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(acceptedPolicy);
         slot.replace(processor);
         processor.onEnding(mock(ReadWriteSpan.class));
-        ValidationObservationSource validation = new ValidationObservationSource(slot, agentInstanceId);
+        ValidationObservationSource validation = new ValidationObservationSource(slot, acceptedPolicy, agentInstanceId);
         server.registerMBean(
                 DomainSnapshotEndpoints.validation(validation::getValidationObservation),
-                DomainObjectNames.VALIDATION);
+                DomainObjectNames.VALIDATION
+        );
 
         ValidationObservation observation = client.validation().observation().orElseThrow();
         assertThat(observation.owner()).isInstanceOf(JmxOwnerState.Present.class);
@@ -146,7 +146,7 @@ class DomainAbsentOwnerEncodingRoundTripTest {
         );
         ScrubbingObservationSource scrubbing = new ScrubbingObservationSource(new OwnerRegistrationSlot<>(), agentInstanceId);
         ValidationObservationSource validation = new ValidationObservationSource(
-                new OwnerRegistrationSlot<>(), agentInstanceId
+                new OwnerRegistrationSlot<>(), acceptedPolicy, agentInstanceId
         );
         ExportObservationSource export = new ExportObservationSource(
                 new OwnerRegistrationSlot<>(),
@@ -165,22 +165,27 @@ class DomainAbsentOwnerEncodingRoundTripTest {
                 DomainSnapshotEndpoints.sampling(sampling::getSamplingObservation),
                 DomainObjectNames.SAMPLING
         );
+
         server.registerMBean(
                 DomainSnapshotEndpoints.scrubbing(scrubbing::getScrubbingObservation),
                 DomainObjectNames.SCRUBBING
         );
+
         server.registerMBean(
                 DomainSnapshotEndpoints.validation(validation::getValidationObservation),
                 DomainObjectNames.VALIDATION
         );
+
         server.registerMBean(
                 DomainSnapshotEndpoints.export(export::getExportObservation),
                 DomainObjectNames.EXPORT
         );
+
         server.registerMBean(
                 DomainSnapshotEndpoints.processorMetrics(processorMetrics::getProcessorMetricsObservation),
                 DomainObjectNames.PROCESSOR_METRICS
         );
+
         server.registerMBean(
                 DomainSnapshotEndpoints.diagnostics(diagnostics::getDiagnosticsObservation),
                 DomainObjectNames.DIAGNOSTICS

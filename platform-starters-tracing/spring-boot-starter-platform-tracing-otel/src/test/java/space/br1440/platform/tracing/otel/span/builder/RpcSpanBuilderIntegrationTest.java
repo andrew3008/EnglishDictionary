@@ -1,20 +1,23 @@
 package space.br1440.platform.tracing.otel.span.builder;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
+
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class RpcSpanBuilderIntegrationTest {
 
@@ -56,9 +59,9 @@ class RpcSpanBuilderIntegrationTest {
             assertThat(child.getTraceId()).isEqualTo(parentTraceId);
             assertThat(child.getParentSpanId()).isEqualTo(parentSpanId);
             assertThat(child.getKind()).isEqualTo(SpanKind.SERVER);
-            assertThat(child.getAttributes().get(key("rpc.system"))).isEqualTo("grpc");
-            assertThat(child.getAttributes().get(key("rpc.service"))).isEqualTo("OrderService");
-            assertThat(child.getAttributes().get(key("rpc.method"))).isEqualTo("CreateOrder");
+            assertThat(child.getAttributes().get(key(PlatformAttributes.RPC_SYSTEM_NAME))).isEqualTo("grpc");
+            assertThat(child.getAttributes().get(key(PlatformAttributes.RPC_SERVICE))).isEqualTo("OrderService");
+            assertThat(child.getAttributes().get(key(PlatformAttributes.RPC_METHOD))).isEqualTo("CreateOrder");
         }
     }
 
@@ -76,9 +79,9 @@ class RpcSpanBuilderIntegrationTest {
         SpanData span = findSpan("OrderService/CreateOrder");
         assertThat(span.getParentSpanId()).isIn("", INVALID_SPAN_ID);
         assertThat(span.getKind()).isEqualTo(SpanKind.CLIENT);
-        assertThat(span.getAttributes().get(key("rpc.system"))).isEqualTo("grpc");
-        assertThat(span.getAttributes().get(key("rpc.service"))).isEqualTo("OrderService");
-        assertThat(span.getAttributes().get(key("rpc.method"))).isEqualTo("CreateOrder");
+        assertThat(span.getAttributes().get(key(PlatformAttributes.RPC_SYSTEM_NAME))).isEqualTo("grpc");
+        assertThat(span.getAttributes().get(key(PlatformAttributes.RPC_SERVICE))).isEqualTo("OrderService");
+        assertThat(span.getAttributes().get(key(PlatformAttributes.RPC_METHOD))).isEqualTo("CreateOrder");
         assertThat(span.getAttributes().get(key("server.address"))).isEqualTo("orders.example.com");
     }
 

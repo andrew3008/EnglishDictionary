@@ -46,8 +46,6 @@ public final class ExtensionPropertyNames {
     public static final String BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS = "platform.tracing.baggage.span-attributes.allowed-keys";
     public static final String BAGGAGE_SPAN_ATTRIBUTES_DENY_PATTERNS = "platform.tracing.baggage.span-attributes.deny-patterns";
 
-    public static final String QUEUE_OVERFLOW_POLICY = "platform.tracing.queue.overflow-policy";
-
     public static final String SPAN_TIMEOUT_ENABLED = "platform.tracing.span-timeout.enabled";
     public static final String SPAN_TIMEOUT_MAX_SPAN_AGE = "platform.tracing.span-timeout.max-span-age";
     public static final String SPAN_TIMEOUT_MAX_TRACE_AGE = "platform.tracing.span-timeout.max-trace-age";

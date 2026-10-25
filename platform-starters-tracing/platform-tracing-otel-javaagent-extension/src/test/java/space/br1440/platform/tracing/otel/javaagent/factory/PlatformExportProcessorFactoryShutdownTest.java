@@ -18,9 +18,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
-import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
-import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
-import space.br1440.platform.tracing.otel.javaagent.configuration.QueueExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
@@ -58,7 +55,7 @@ class PlatformExportProcessorFactoryShutdownTest {
         try (stock) {
             // when
             SpanProcessor replacement =
-                    factory.maybeReplaceExportProcessor(stock, dropOldestQueue(), config(Map.of()));
+                    factory.maybeReplaceExportProcessor(stock, config(Map.of()));
 
             try (replacement) {
                 // then
@@ -90,7 +87,7 @@ class PlatformExportProcessorFactoryShutdownTest {
 
         // when
         Throwable failure = catchThrowable(
-                () -> factory.maybeReplaceExportProcessor(stock, dropOldestQueue(), invalid)
+                () -> factory.maybeReplaceExportProcessor(stock, invalid)
         );
 
         // then
@@ -120,7 +117,7 @@ class PlatformExportProcessorFactoryShutdownTest {
         try {
             // when
             Throwable failure = catchThrowable(
-                    () -> factory.maybeReplaceExportProcessor(stock, dropOldestQueue(), config(Map.of()))
+                    () -> factory.maybeReplaceExportProcessor(stock, config(Map.of()))
             );
 
             // then
@@ -154,7 +151,7 @@ class PlatformExportProcessorFactoryShutdownTest {
 
         // when
         Throwable failure = catchThrowable(
-                () -> factory.maybeReplaceExportProcessor(stock, dropOldestQueue(), config(Map.of()))
+                () -> factory.maybeReplaceExportProcessor(stock, config(Map.of()))
         );
 
         // then
@@ -177,7 +174,7 @@ class PlatformExportProcessorFactoryShutdownTest {
 
         // when
         SpanProcessor replacement =
-                factory.maybeReplaceExportProcessor(stock, dropOldestQueue(), config(Map.of()));
+                factory.maybeReplaceExportProcessor(stock, config(Map.of()));
 
         try {
             // then
@@ -200,13 +197,6 @@ class PlatformExportProcessorFactoryShutdownTest {
 
     private static PlatformExportProcessorFactory factory(PlatformTracingMBeanRegistrar registrar) {
         return new PlatformExportProcessorFactory(registrar, ScrubbingRuntimeTestFixtures.disabled());
-    }
-
-    private static QueueExtensionConfig dropOldestQueue() {
-        return new ExtensionConfig(config(Map.of(
-                ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY,
-                "DROP_OLDEST"
-        ))).queue();
     }
 
     private static ConfigProperties config(Map<String, String> values) {

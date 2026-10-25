@@ -72,7 +72,7 @@ public enum BootstrapLogEvent implements AgentLogEventType {
     EXTENSION_BUILD_METADATA_MISSING(
             noCause(
                     AgentEventCode.BOOT_ARTIFACT_VERSION, WARN,
-                    "Extension build metadata is missing; using development",
+                    "Extension build metadata is missing",
                     AgentLogField.REASON
             )
     ),
@@ -80,7 +80,7 @@ public enum BootstrapLogEvent implements AgentLogEventType {
     EXTENSION_BUILD_METADATA_UNREADABLE(
             noCause(
                     AgentEventCode.BOOT_ARTIFACT_VERSION, WARN,
-                    "Extension build metadata is unreadable; using development",
+                    "Extension build metadata is unreadable",
                     AgentLogField.RESOURCE
             )
     ),
@@ -88,7 +88,7 @@ public enum BootstrapLogEvent implements AgentLogEventType {
     EXTENSION_BUILD_METADATA_INVALID(
             noCause(
                     AgentEventCode.BOOT_ARTIFACT_VERSION, WARN,
-                    "Extension build metadata is invalid; using development",
+                    "Extension build metadata is invalid",
                     AgentLogField.RESOURCE
             )
     );

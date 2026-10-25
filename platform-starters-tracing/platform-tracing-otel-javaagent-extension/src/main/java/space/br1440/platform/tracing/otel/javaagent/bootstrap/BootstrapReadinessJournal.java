@@ -13,7 +13,6 @@ final class BootstrapReadinessJournal {
 
     private static final String FAILED_LIFECYCLE = PlatformExtensionLifecycle.FAILED.name();
     private static final long NO_EVIDENCE_GENERATION = 0L;
-    private static final long FIRST_EVIDENCE_GENERATION = 1L;
 
     private final Object monitor;
     private final PlatformExtensionReadiness readiness;
@@ -107,10 +106,6 @@ final class BootstrapReadinessJournal {
             return NO_EVIDENCE_GENERATION;
         }
 
-        if (isOwnSnapshot(current)) {
-            return current.evidenceGeneration() + 1L;
-        } else {
-            return FIRST_EVIDENCE_GENERATION;
-        }
+        return current.evidenceGeneration() + 1L;
     }
 }

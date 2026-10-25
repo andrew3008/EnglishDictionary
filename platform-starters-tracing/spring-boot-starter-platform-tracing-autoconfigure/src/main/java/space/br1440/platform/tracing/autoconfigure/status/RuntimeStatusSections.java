@@ -69,7 +69,7 @@ final class RuntimeStatusSections {
         return StatusSection.from(sampling)
                 .field("enabled", SamplingObservation::samplerEnabled)
                 .field("ratio", SamplingObservation::samplingRatio)
-                .field("routeRatioCount", SamplingObservation::liveRouteRatioCount)
+                .field("routeRatioCount", SamplingObservation::routeRatioCount)
                 .field("configSource", SamplingObservation::configLastUpdatedSource)
                 .value("invalidConfigCount", diagnostics == null ? null : diagnostics.invalidConfigCount())
                 .value("decisions", decisions == null ? Map.of() : decisions)

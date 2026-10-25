@@ -30,7 +30,7 @@ final class DomainMBeanFactory {
                               AgentInstanceId agentInstanceId) {
         SamplingObservationSource sampling = new SamplingObservationSource(acceptedPolicy, slots.compositeSampler(), agentInstanceId);
         ScrubbingObservationSource scrubbing = new ScrubbingObservationSource(slots.scrubbing(), agentInstanceId);
-        ValidationObservationSource validation = new ValidationObservationSource(slots.validating(), agentInstanceId);
+        ValidationObservationSource validation = new ValidationObservationSource(slots.validating(), acceptedPolicy, agentInstanceId);
         ExportObservationSource export = new ExportObservationSource(slots.exportProcessor(), slots.safeExporter(), agentInstanceId);
         ProcessorMetricsObservationSource processorMetrics = new ProcessorMetricsObservationSource(
                 slots.spanTimeout(), slots.composite(), slots.metrics(), agentInstanceId
