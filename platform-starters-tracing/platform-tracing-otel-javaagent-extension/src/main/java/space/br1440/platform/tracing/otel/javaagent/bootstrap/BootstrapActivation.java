@@ -138,6 +138,7 @@ final class BootstrapActivation {
     private static void requireSessionSampler(ActivationAttempt attempt) {
         attempt.enter(ActivationPhase.SAMPLER_POSTCONDITION);
 
+        //noinspection resource -- сессия принадлежит попытке активации, закрывает её BootstrapResources
         AutoconfigureSession session = attempt.session();
         //noinspection resource -- SdkTracerProvider принадлежит autoconfigure SDK и закрывается им, а не активацией
         if (attempt.tracerProvider().getSampler() != session.sampler()) {
@@ -149,7 +150,9 @@ final class BootstrapActivation {
     private static void assessRemoteJmx(ActivationAttempt attempt) {
         attempt.enter(ActivationPhase.REMOTE_JMX_ASSESSMENT);
 
-        RemoteJmxRegistrationAssessment assessment = attempt.session().remoteJmxMutationRegistrationAssessor().assess();
+        //noinspection resource -- сессия принадлежит попытке активации, закрывает её BootstrapResources
+        AutoconfigureSession session = attempt.session();
+        RemoteJmxRegistrationAssessment assessment = session.remoteJmxMutationRegistrationAssessor().assess();
         if (assessment.allowsLocalMutationRegistration()) {
             return;
         }
@@ -164,6 +167,7 @@ final class BootstrapActivation {
     private void bindRuntime(ActivationAttempt attempt) {
         attempt.enter(ActivationPhase.RUNTIME_BINDING);
 
+        //noinspection resource -- сессия принадлежит попытке активации, закрывает её BootstrapResources
         AutoconfigureSession session = attempt.session();
         //noinspection resource -- runtime-регистрации принадлежат BootstrapResources, lifecycle hook — BootstrapCoordinator
         BootstrapResources resources = attempt.resources();

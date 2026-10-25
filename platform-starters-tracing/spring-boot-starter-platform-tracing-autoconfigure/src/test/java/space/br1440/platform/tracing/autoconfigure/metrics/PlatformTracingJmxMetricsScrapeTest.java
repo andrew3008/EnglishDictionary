@@ -33,6 +33,7 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.SamplingObserva
 import space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.ScrubbingObservationSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationObservationSource;
 
+import io.micrometer.core.instrument.Measurement;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
@@ -83,7 +84,7 @@ class PlatformTracingJmxMetricsScrapeTest {
 
         // when
         for (Meter meter : registry.getMeters()) {
-            meter.measure().forEach(measurement -> measurement.getValue());
+            meter.measure().forEach(Measurement::getValue);
         }
 
         // then

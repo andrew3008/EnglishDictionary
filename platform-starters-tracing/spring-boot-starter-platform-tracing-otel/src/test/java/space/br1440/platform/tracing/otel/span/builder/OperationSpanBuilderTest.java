@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
@@ -45,7 +46,7 @@ class OperationSpanBuilderTest {
     }
 
     @Test
-    void callChecked_propagatesCheckedExceptionAndClosesSpan() throws Exception {
+    void callChecked_propagatesCheckedExceptionAndClosesSpan() {
         assertThatThrownBy(() ->
                 tracing.spans().operation("checked-op").callChecked(() -> {
                     throw new Exception("checked");
@@ -56,6 +57,7 @@ class OperationSpanBuilderTest {
     }
 
     @Test
+    @SuppressWarnings({"ConstantConditions", "DataFlowIssue", "NullableProblems"})
     void nullName_rejected() {
         assertThatThrownBy(() -> tracing.spans().operation(null))
                 .isInstanceOf(NullPointerException.class)
@@ -122,8 +124,11 @@ class OperationSpanBuilderTest {
                 "0102030405060708"
         );
 
-        assertThatThrownBy(() ->
-                tracing.spans().operation("bad-detached").detached().linkedTo(link).start())
+        assertThatThrownBy(() -> {
+            try (SpanHandle handle = tracing.spans().operation("bad-detached").detached().linkedTo(link).start()) {
+                assertThat(handle).isNotNull();
+            }
+        })
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("DETACHED");
     }
@@ -135,8 +140,11 @@ class OperationSpanBuilderTest {
                 "0102030405060708"
         );
 
-        assertThatThrownBy(() ->
-                tracing.spans().operation("bad-child").child().linkedTo(link).start())
+        assertThatThrownBy(() -> {
+            try (SpanHandle handle = tracing.spans().operation("bad-child").child().linkedTo(link).start()) {
+                assertThat(handle).isNotNull();
+            }
+        })
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("CHILD");
     }

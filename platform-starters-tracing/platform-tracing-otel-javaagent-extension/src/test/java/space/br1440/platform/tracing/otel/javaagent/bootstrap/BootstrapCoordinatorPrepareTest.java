@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -25,6 +26,7 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFa
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -417,7 +419,10 @@ class BootstrapCoordinatorPrepareTest {
         MBeanServer server = MBeanServerFactory.newMBeanServer();
         ExtensionRuntimeVerifier verifier = extensionVersion -> {
             BootstrapException rejection = catchBootstrapFailure(
-                    () -> coordinatorReference.get().prepare(configuration),
+                    () -> {
+                        //noinspection resource — повторный prepare отказывает до выдачи сессии; владение остаётся у координатора
+                        coordinatorReference.get().prepare(configuration);
+                    },
                     REENTRANT_OR_OUT_OF_ORDER
             );
             nestedRejection.set(rejection);
@@ -500,6 +505,7 @@ class BootstrapCoordinatorPrepareTest {
         PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
         ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
 
+        //noinspection resource — buildRuntime в when() только регистрирует стаб и не создаёт runtime
         doAnswer(invocation -> {
             runtimeCreated.countDown();
             if (!continuePrepare.await(5, TimeUnit.SECONDS)) {
@@ -539,11 +545,10 @@ class BootstrapCoordinatorPrepareTest {
             // when
             closeThread.start();
             assertThat(closeStarted.await(5, TimeUnit.SECONDS)).isTrue();
-            long waitingDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-            while (closeThread.getState() != Thread.State.WAITING && System.nanoTime() < waitingDeadline) {
-                Thread.sleep(1L);
-            }
-            assertThat(closeThread.getState()).isEqualTo(Thread.State.WAITING);
+            await().pollDelay(Duration.ZERO)
+                    .pollInterval(Duration.ofMillis(5))
+                    .atMost(Duration.ofSeconds(5))
+                    .until(() -> closeThread.getState() == Thread.State.WAITING);
             continuePrepare.countDown();
             prepareThread.join(TimeUnit.SECONDS.toMillis(5));
             closeThread.join(TimeUnit.SECONDS.toMillis(5));
@@ -573,6 +578,7 @@ class BootstrapCoordinatorPrepareTest {
                 "Simulated diagnostic registration failure"
         );
 
+        //noinspection resource — registerDiagnosticReadiness в when() только регистрирует стаб и не создаёт регистрацию
         doThrow(registrationFailure).when(registrar).registerDiagnosticReadiness(any());
 
         PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);

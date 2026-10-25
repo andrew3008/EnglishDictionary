@@ -41,12 +41,16 @@ class AutoconfigureSessionFactoryCleanupTest {
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
 
         // when
-        Throwable thrown = catchThrowable(() -> factory.create(
-                DefaultConfigProperties.createFromMap(Map.of("otel.traces.sampler", "always_off")),
-                new PlatformTracingMBeanRegistrar(agentInstanceId),
-                agentInstanceId,
-                evidence()
-        ));
+        Throwable thrown = catchThrowable(() -> {
+            try (AutoconfigureSession session = factory.create(
+                    DefaultConfigProperties.createFromMap(Map.of("otel.traces.sampler", "always_off")),
+                    new PlatformTracingMBeanRegistrar(agentInstanceId),
+                    agentInstanceId,
+                    evidence()
+            )) {
+                throw new AssertionError("create returned a session: " + session);
+            }
+        });
 
         // then
         assertThat(thrown).isSameAs(cleanupFailure);
@@ -71,12 +75,16 @@ class AutoconfigureSessionFactoryCleanupTest {
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
 
         // when
-        Throwable thrown = catchThrowable(() -> factory.create(
-                DefaultConfigProperties.createFromMap(Map.of("otel.traces.sampler", "always_off")),
-                new PlatformTracingMBeanRegistrar(agentInstanceId),
-                agentInstanceId,
-                evidence()
-        ));
+        Throwable thrown = catchThrowable(() -> {
+            try (AutoconfigureSession session = factory.create(
+                    DefaultConfigProperties.createFromMap(Map.of("otel.traces.sampler", "always_off")),
+                    new PlatformTracingMBeanRegistrar(agentInstanceId),
+                    agentInstanceId,
+                    evidence()
+            )) {
+                throw new AssertionError("create returned a session: " + session);
+            }
+        });
 
         // then
         assertThat(thrown).isSameAs(sharedFailure);

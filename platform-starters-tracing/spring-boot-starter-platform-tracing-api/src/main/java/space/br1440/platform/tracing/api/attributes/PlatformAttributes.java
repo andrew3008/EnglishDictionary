@@ -122,6 +122,7 @@ public final class PlatformAttributes {
      * когда фактический method отличается от {@link #HTTP_REQUEST_METHOD}.
      * @see <a href="https://opentelemetry.io/docs/specs/semconv/http/http-spans/">OTel: HTTP spans</a>
      */
+    @SuppressWarnings("unused")
     public static final String HTTP_REQUEST_METHOD_ORIGINAL = "http.request.method_original";
 
     /** Нормализованный шаблон HTTP-маршрута (OTel semconv {@code http.route}). */
@@ -159,6 +160,7 @@ public final class PlatformAttributes {
      * Имя протокола OSI application layer (OTel semconv {@code network.protocol.name}; legacy: {@code net.app.protocol.name}).
      * @see <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/network/">OTel: network attributes</a>
      */
+    @SuppressWarnings("unused")
     public static final String NETWORK_PROTOCOL_NAME = "network.protocol.name";
 
     /** Версия сетевого протокола (OTel semconv {@code network.protocol.version}). */
@@ -193,6 +195,7 @@ public final class PlatformAttributes {
      * legacy: {@code db.status_code}, тип string → integer).
      * @see <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/db/">OTel: db attributes</a>
      */
+    @SuppressWarnings("unused")
     public static final String DB_RESPONSE_STATUS_CODE = "db.response.status_code";
 
     /**
@@ -211,6 +214,7 @@ public final class PlatformAttributes {
      * Код ответа RPC, возвращённый server'ом (OTel semconv {@code rpc.response.status_code}).
      * @see <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/rpc/">OTel: rpc attributes</a>
      */
+    @SuppressWarnings("unused")
     public static final String RPC_RESPONSE_STATUS_CODE = "rpc.response.status_code";
 
     /** Идентификатор messaging-системы (OTel semconv {@code messaging.system}). */

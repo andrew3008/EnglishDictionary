@@ -180,7 +180,11 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
             PlatformScrubberFactory factory = ScrubberFactoryTestFixtures.factory(List::of);
 
             // when/then
-            assertThatThrownBy(() -> factory.buildRuntime(extensionConfig))
+            assertThatThrownBy(() -> {
+                try (ScrubbingRuntime runtime = factory.buildRuntime(extensionConfig)) {
+                    assertThat(runtime).isNotNull();
+                }
+            })
                     .isInstanceOf(SanitizerBootstrapException.class)
                     .hasMessage("Scrubbing is enabled, but no effective sanitizing rules were loaded")
                     .extracting(failure -> ((SanitizerBootstrapException) failure).code())
@@ -196,7 +200,11 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
             ExtensionConfig extensionConfig = scrubbingEnabledDefaultsExtConfig();
 
             // when/then
-            assertThatThrownBy(() -> factory.buildRuntime(extensionConfig))
+            assertThatThrownBy(() -> {
+                try (ScrubbingRuntime runtime = factory.buildRuntime(extensionConfig)) {
+                    assertThat(runtime).isNotNull();
+                }
+            })
                     .isInstanceOf(SanitizerBootstrapException.class)
                     .hasMessage("Bundled scrubbing rule metadata validation failed (java.lang.IllegalStateException)")
                     .hasCause(metadataFailure)

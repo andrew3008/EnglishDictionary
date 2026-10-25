@@ -2,6 +2,8 @@ package space.br1440.platform.tracing.autoconfigure.metrics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Objects;
+
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.span.SpanCategory;
@@ -37,13 +39,13 @@ class PlatformTracingMetricsTest {
         metrics.incrementSpansStarted(SpanCategory.HTTP_SERVER);
         metrics.incrementSpansStarted(SpanCategory.DATABASE);
 
-        assertThat(registry.find(PlatformTracingMetrics.SPANS_STARTED)
+        assertThat(Objects.requireNonNull(registry.find(PlatformTracingMetrics.SPANS_STARTED)
                 .tag("category", SpanCategory.HTTP_SERVER.value())
-                .counter()
+                .counter())
                 .count()).isEqualTo(2.0);
-        assertThat(registry.find(PlatformTracingMetrics.SPANS_STARTED)
+        assertThat(Objects.requireNonNull(registry.find(PlatformTracingMetrics.SPANS_STARTED)
                 .tag("category", SpanCategory.DATABASE.value())
-                .counter()
+                .counter())
                 .count()).isEqualTo(1.0);
     }
 
@@ -55,8 +57,8 @@ class PlatformTracingMetricsTest {
         metrics.incrementExceptionsRecorded();
         metrics.incrementExceptionsRecorded();
 
-        assertThat(registry.find(PlatformTracingMetrics.EXCEPTIONS_RECORDED)
-                .counter()
+        assertThat(Objects.requireNonNull(registry.find(PlatformTracingMetrics.EXCEPTIONS_RECORDED)
+                .counter())
                 .count()).isEqualTo(2.0);
     }
 
@@ -69,8 +71,8 @@ class PlatformTracingMetricsTest {
         metrics.incrementScopeClosed();
         metrics.incrementScopeClosed();
 
-        assertThat(registry.find(PlatformTracingMetrics.SCOPE_CLOSED_TOTAL)
-                .counter()
+        assertThat(Objects.requireNonNull(registry.find(PlatformTracingMetrics.SCOPE_CLOSED_TOTAL)
+                .counter())
                 .count()).isEqualTo(3.0);
     }
 
@@ -81,8 +83,8 @@ class PlatformTracingMetricsTest {
 
         metrics.incrementScopeDoubleClose();
 
-        assertThat(registry.find(PlatformTracingMetrics.SCOPE_DOUBLE_CLOSE_TOTAL)
-                .counter()
+        assertThat(Objects.requireNonNull(registry.find(PlatformTracingMetrics.SCOPE_DOUBLE_CLOSE_TOTAL)
+                .counter())
                 .count()).isEqualTo(1.0);
     }
 }

@@ -19,6 +19,8 @@ import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadinessSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
@@ -96,7 +98,12 @@ class PlatformExportProcessorFactoryBoundaryTest {
             assertThat(result).isSameAs(stock);
             assertThat(logs.events())
                     .filteredOn(event -> "CAPTURED_SPAN_EXPORTER_NULL_FALLBACK".equals(event.eventName()))
-                    .singleElement();
+                    .singleElement()
+                    .satisfies(event -> {
+                        assertThat(event.level()).isEqualTo(AgentLogLevel.WARN);
+                        assertThat(event.eventCode()).isEqualTo(AgentEventCode.EXPORT_FACTORY);
+                        assertThat(event.fields()).isEmpty();
+                    });
             assertThat(registrar.extensionReadiness().snapshot().has(
                     PlatformExtensionCapability.EXPORT_PATH_PROTECTED)).isFalse();
         }

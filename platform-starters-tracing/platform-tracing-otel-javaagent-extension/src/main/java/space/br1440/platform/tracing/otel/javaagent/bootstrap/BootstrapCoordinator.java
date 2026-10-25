@@ -124,7 +124,6 @@ final class BootstrapCoordinator implements AutoCloseable {
         }
 
         AutoconfigureSession prepared = createPreparedSession(config);
-        boolean ownershipTransferred = false;
         try {
             try {
                 registerDiagnosticReadiness();
@@ -142,23 +141,23 @@ final class BootstrapCoordinator implements AutoCloseable {
             }
 
             lifecycle.completePrepare(prepared);
-            ownershipTransferred = true;
             return prepared;
         } catch (RuntimeException | Error failure) {
-            if (!ownershipTransferred) {
-                Throwable cleanupFailure = closePreparedSession(prepared);
-                if (cleanupFailure != null) {
-                    Throwable settledFailure = terminalTransitions.completePreparationCleanupFailure(
-                            failure,
-                            cleanupFailure,
-                            prepared.evidence()
-                    );
-                    if (settledFailure instanceof Error error) {
-                        throw error;
-                    }
-                    throw (RuntimeException) settledFailure;
+            Throwable cleanupFailure = closePreparedSession(prepared);
+            if (cleanupFailure != null) {
+                Throwable settledFailure = terminalTransitions.completePreparationCleanupFailure(
+                        failure,
+                        cleanupFailure,
+                        prepared.evidence()
+                );
+
+                if (settledFailure instanceof Error error) {
+                    throw error;
                 }
+
+                throw (RuntimeException) settledFailure;
             }
+
             throw failure;
         }
     }
@@ -331,9 +330,10 @@ final class BootstrapCoordinator implements AutoCloseable {
             }
         }
 
-        Throwable runtimeCleanupFailure = (context.resources() == null)
+        BootstrapResources resources = context.resources();
+        Throwable runtimeCleanupFailure = resources == null
                 ? closePreparedSession(context.session())
-                : closeActivationResources(context.resources());
+                : closeActivationResources(resources);
         if (runtimeCleanupFailure != null) {
             cleanupFailure = BootstrapCleanupFailures.aggregate(cleanupFailure, runtimeCleanupFailure);
         }
@@ -427,6 +427,7 @@ final class BootstrapCoordinator implements AutoCloseable {
     }
 
     private ExtensionRuntimeEvidence currentEvidence() {
+        //noinspection resource — сессия принадлежит lifecycle; метод только читает evidence
         AutoconfigureSession currentSession = lifecycle.currentSession();
         return currentSession == null ? unavailableEvidence() : currentSession.evidence();
     }

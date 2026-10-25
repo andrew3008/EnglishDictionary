@@ -93,6 +93,7 @@ class PlatformOutboundHttpInterceptorFailureLogTest {
         assertThat(firstResult).isSameAs(response);
         assertThat(repeatedResult).isSameAs(response);
         assertThat(secondResult).isSameAs(response);
+        //noinspection resource — verify() фиксирует вызов execute, возвращаемое значение не является ресурсом
         verify(execution, times(3)).execute(request, body);
         assertThat(appender.list).hasSize(2).allSatisfy(event -> {
             assertThat(event.getLevel()).isEqualTo(Level.WARN);

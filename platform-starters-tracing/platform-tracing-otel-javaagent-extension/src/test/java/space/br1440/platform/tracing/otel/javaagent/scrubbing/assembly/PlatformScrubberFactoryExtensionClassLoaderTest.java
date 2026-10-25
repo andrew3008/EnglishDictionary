@@ -137,13 +137,17 @@ class PlatformScrubberFactoryExtensionClassLoaderTest {
         ));
 
         // when/then
-        assertThatThrownBy(() -> new PlatformScrubberFactory().buildRuntime(extensionConfig(jar, "ERROR")))
-                .isInstanceOfSatisfying(SanitizerBootstrapException.class, failure -> {
-                    assertThat(failure.code()).isEqualTo(SanitizerBootstrapException.RULE_LOADING_FAILED);
-                    assertThat(failure.getCause())
-                            .isInstanceOf(IllegalStateException.class)
-                            .hasMessageContaining("SERVICE_CONFIGURATION_ERROR");
-                });
+        assertThatThrownBy(() -> {
+            try (ScrubbingRuntime runtime = new PlatformScrubberFactory()
+                    .buildRuntime(extensionConfig(jar, "ERROR"))) {
+                throw new AssertionError("buildRuntime returned a runtime: " + runtime.enabled());
+            }
+        }).isInstanceOfSatisfying(SanitizerBootstrapException.class, failure -> {
+            assertThat(failure.code()).isEqualTo(SanitizerBootstrapException.RULE_LOADING_FAILED);
+            assertThat(failure.getCause())
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("SERVICE_CONFIGURATION_ERROR");
+        });
         assertJarReleased(jar);
     }
 

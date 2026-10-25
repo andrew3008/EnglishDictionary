@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.propagation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -13,19 +14,36 @@ import io.opentelemetry.api.baggage.Baggage;
 import io.opentelemetry.api.baggage.propagation.W3CBaggagePropagator;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
+import io.opentelemetry.context.propagation.TextMapSetter;
 
 class FailClosedCorrelationBaggagePropagatorTest {
 
     private static final TextMapGetter<Map<String, String>> GETTER = new TextMapGetter<>() {
         @Override
         public Iterable<String> keys(Map<String, String> carrier) {
+            if (carrier == null) {
+                return List.of();
+            }
+
             return carrier.keySet();
         }
 
         @Override
         public String get(Map<String, String> carrier, String key) {
+            if (carrier == null) {
+                return null;
+            }
+
             return carrier.get(key);
         }
+    };
+
+    private static final TextMapSetter<Map<String, String>> SETTER = (carrier, key, value) -> {
+        if (carrier == null || key == null || value == null) {
+            return;
+        }
+
+        carrier.put(key, value);
     };
 
     private final FailClosedCorrelationBaggagePropagator propagator =
@@ -58,7 +76,7 @@ class FailClosedCorrelationBaggagePropagatorTest {
         Map<String, String> carrier = new ConcurrentHashMap<>();
 
         // when
-        propagator.inject(context, carrier, Map::put);
+        propagator.inject(context, carrier, SETTER);
 
         // then
         assertThat(carrier.get("baggage"))
@@ -67,12 +85,13 @@ class FailClosedCorrelationBaggagePropagatorTest {
     }
 
     @Test
+    @SuppressWarnings({"ConstantConditions", "DataFlowIssue", "NullableProblems"})
     // given
     void injectWithNullContextPropagatesExceptionBeforeDelegateIsInvoked() {
         Map<String, String> carrier = new ConcurrentHashMap<>();
 
         org.junit.jupiter.api.Assertions.assertThrows(NullPointerException.class,
-                () -> propagator.inject(null, carrier, Map::put));
+                () -> propagator.inject(null, carrier, SETTER));
 
         assertThat(carrier).isEmpty();
     }

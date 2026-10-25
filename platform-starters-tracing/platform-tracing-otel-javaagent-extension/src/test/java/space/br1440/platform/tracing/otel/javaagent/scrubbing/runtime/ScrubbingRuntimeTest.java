@@ -52,20 +52,21 @@ class ScrubbingRuntimeTest {
         // given
         SpanAttributeScrubbingRule builtIn = new MatchEverythingRule();
         SpanAttributeScrubbingRule external = new MatchEverythingRule();
-        ScrubbingRuntime runtime = ScrubbingRuntime.create(
+        try (ScrubbingRuntime runtime = ScrubbingRuntime.create(
                 List.of(runtimeRule(builtIn, RuleOrigin.BUILT_IN), runtimeRule(external, RuleOrigin.EXTERNAL_EXTENSION)),
-                1L, null, false);
+                1L, null, false)) {
 
-        // then
-        assertThat(runtime.attributeExecutableRules()).hasSize(2);
-        assertThat(runtime.builtInTextRules()).hasSize(1);
+            // then
+            assertThat(runtime.attributeExecutableRules()).hasSize(2);
+            assertThat(runtime.builtInTextRules()).hasSize(1);
+        }
     }
 
     @Test
     @DisplayName("Attribute plane sees BUILT_IN + BUNDLED_SPI + EXTERNAL_EXTENSION rules")
     void attributeExecutableRulesIncludeEveryOrigin() {
         // given
-        ScrubbingRuntime runtime = ScrubbingRuntime.create(
+        try (ScrubbingRuntime runtime = ScrubbingRuntime.create(
                 List.of(
                         runtimeRule(new MatchEverythingRule(), RuleOrigin.BUILT_IN),
                         runtimeRule(new MatchEverythingRule(), RuleOrigin.BUNDLED_SPI),
@@ -73,10 +74,11 @@ class ScrubbingRuntimeTest {
                 1L,
                 null,
                 false
-        );
+        )) {
 
-        // then
-        assertThat(runtime.attributeExecutableRules()).hasSize(3);
+            // then
+            assertThat(runtime.attributeExecutableRules()).hasSize(3);
+        }
     }
 
     @Test
@@ -89,6 +91,7 @@ class ScrubbingRuntimeTest {
                 throw closeFailure;
             }
         };
+        //noinspection resource — close() вызывается явно и обязан повторно бросить тот же отказ
         ScrubbingRuntime runtime = ScrubbingRuntime.create(
                 List.of(runtimeRule(new MatchEverythingRule(), RuleOrigin.BUILT_IN)),
                 1L,
@@ -113,91 +116,95 @@ class ScrubbingRuntimeTest {
     @DisplayName("Installation barrier: requireComplete() throws until every acknowledgement is present")
     void installationBarrierRequiresAllFourAcknowledgements() {
         // given
-        ScrubbingRuntime runtime = ScrubbingRuntime.create(
+        try (ScrubbingRuntime runtime = ScrubbingRuntime.create(
                 List.of(runtimeRule(new MatchEverythingRule(), RuleOrigin.BUILT_IN)),
                 1L,
                 null,
                 false
-        );
+        )) {
 
-        // then
-        assertThatThrownBy(runtime::requireInstallationComplete)
-                .isInstanceOf(IllegalStateException.class);
+            // then
+            assertThatThrownBy(runtime::requireInstallationComplete)
+                    .isInstanceOf(IllegalStateException.class);
 
-        // when
-        runtime.acknowledgeProcessorInstalled();
+            // when
+            runtime.acknowledgeProcessorInstalled();
 
-        // then
-        assertThatThrownBy(runtime::requireInstallationComplete).isInstanceOf(IllegalStateException.class);
+            // then
+            assertThatThrownBy(runtime::requireInstallationComplete).isInstanceOf(IllegalStateException.class);
 
-        // when
-        runtime.acknowledgeExportModeResolved();
+            // when
+            runtime.acknowledgeExportModeResolved();
 
-        // then
-        assertThatThrownBy(runtime::requireInstallationComplete).isInstanceOf(IllegalStateException.class);
+            // then
+            assertThatThrownBy(runtime::requireInstallationComplete).isInstanceOf(IllegalStateException.class);
 
-        // when
-        runtime.acknowledgeExporterWrapped();
+            // when
+            runtime.acknowledgeExporterWrapped();
 
-        // then
-        assertThatThrownBy(runtime::requireInstallationComplete).isInstanceOf(IllegalStateException.class);
+            // then
+            assertThatThrownBy(runtime::requireInstallationComplete).isInstanceOf(IllegalStateException.class);
 
-        // when
-        runtime.acknowledgeExportPathProtected();
+            // when
+            runtime.acknowledgeExportPathProtected();
 
-        // then
-        runtime.requireInstallationComplete();
+            // then
+            runtime.requireInstallationComplete();
+        }
     }
 
     @Test
     @DisplayName("Disabled runtime is inert: no rules, no HMAC, boundary calls are no-ops")
     void disabledRuntimeIsInert() {
         // given
-        ScrubbingRuntime runtime = ScrubbingRuntime.disabled();
+        try (ScrubbingRuntime runtime = ScrubbingRuntime.disabled()) {
 
-        // then
-        assertThat(runtime.enabled()).isFalse();
-        assertThat(runtime.attributeExecutableRules()).isEmpty();
-        assertThat(runtime.builtInTextRules()).isEmpty();
-        assertThat(runtime.hasHmacKey()).isFalse();
+            // then
+            assertThat(runtime.enabled()).isFalse();
+            assertThat(runtime.attributeExecutableRules()).isEmpty();
+            assertThat(runtime.builtInTextRules()).isEmpty();
+            assertThat(runtime.hasHmacKey()).isFalse();
+        }
     }
 
     @Test
     void boundary_count_recording_is_monotonic() {
         // given
-        ScrubbingRuntime runtime = ScrubbingRuntime.disabled();
+        try (ScrubbingRuntime runtime = ScrubbingRuntime.disabled()) {
 
-        // when
-        runtime.recordBoundaryCriticalFailures(0L);
-        runtime.recordBoundaryCriticalFailures(3L);
+            // when
+            runtime.recordBoundaryCriticalFailures(0L);
+            runtime.recordBoundaryCriticalFailures(3L);
 
-        // then
-        assertThat(runtime.boundaryMetrics().criticalFailures()).isEqualTo(3L);
-        assertThatThrownBy(() -> runtime.recordBoundaryCriticalFailures(-1L))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThat(runtime.boundaryMetrics().criticalFailures()).isEqualTo(3L);
+            // then
+            assertThat(runtime.boundaryMetrics().criticalFailures()).isEqualTo(3L);
+            assertThatThrownBy(() -> runtime.recordBoundaryCriticalFailures(-1L))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThat(runtime.boundaryMetrics().criticalFailures()).isEqualTo(3L);
+        }
     }
 
     @Test
     @DisplayName("attributesVerified is monotonic: cannot be set back to true once cleared")
     void attributesVerifiedIsMonotonicallyOneWay() {
         // given
-        ScrubbingRuntime runtime = ScrubbingRuntime.create(List.of(), 1L, null, false);
+        try (ScrubbingRuntime runtime = ScrubbingRuntime.create(List.of(), 1L, null, false)) {
 
-        // then
-        assertThat(runtime.attributesVerified()).isTrue();
+            // then
+            assertThat(runtime.attributesVerified()).isTrue();
 
-        // when
-        runtime.markAttributesUnverified();
+            // when
+            runtime.markAttributesUnverified();
 
-        // then
-        assertThat(runtime.attributesVerified()).isFalse();
+            // then
+            assertThat(runtime.attributesVerified()).isFalse();
 
-        // when
-        runtime.markAttributesUnverified();
+            // when
+            runtime.markAttributesUnverified();
 
-        // then
-        assertThat(runtime.attributesVerified()).as("still false, and only counted once as an activation event").isFalse();
+            // then
+            assertThat(runtime.attributesVerified()).as("still false, and only counted once as an activation event").isFalse();
+        }
     }
 
     @Test
@@ -222,34 +229,35 @@ class ScrubbingRuntimeTest {
                 throw new IllegalStateException("simulated non-critical rule failure");
             }
         };
-        ScrubbingRuntime runtime = ScrubbingRuntime.create(
+        try (ScrubbingRuntime runtime = ScrubbingRuntime.create(
                 List.of(new RuntimeRule(
                         new ExecutableRule(throwing, new RuleCircuitBreaker(throwing.name(), 1, 60_000L, 0L)),
                         RuleOrigin.BUILT_IN)),
-                1L, null, false);
-
-        // when
-        try (SpanProcessorHarness harness = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {
-            Tracer tracer = harness.tracer("t");
-            Span first = tracer.spanBuilder("op-1").startSpan();
-            first.setAttribute("any.key", "value");
-            first.end();
-
-            // then
-            assertThat(runtime.failures()).isEqualTo(1L);
-            assertThat(runtime.totalBreakerFailures()).isEqualTo(1L);
+                1L, null, false)) {
 
             // when
-            Span second = tracer.spanBuilder("op-2").startSpan();
-            second.setAttribute("any.key", "value");
-            second.end();
+            try (SpanProcessorHarness harness = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {
+                Tracer tracer = harness.tracer("t");
+                Span first = tracer.spanBuilder("op-1").startSpan();
+                first.setAttribute("any.key", "value");
+                first.end();
 
-            // then
-            assertThat(runtime.failures())
-                    .as("open breaker skip must not keep incrementing the failure counter")
-                    .isEqualTo(1L);
-            assertThat(runtime.totalBreakerFailures()).isEqualTo(1L);
-            assertThat(runtime.skippedCircuitOpen()).isEqualTo(1L);
+                // then
+                assertThat(runtime.failures()).isEqualTo(1L);
+                assertThat(runtime.totalBreakerFailures()).isEqualTo(1L);
+
+                // when
+                Span second = tracer.spanBuilder("op-2").startSpan();
+                second.setAttribute("any.key", "value");
+                second.end();
+
+                // then
+                assertThat(runtime.failures())
+                        .as("open breaker skip must not keep incrementing the failure counter")
+                        .isEqualTo(1L);
+                assertThat(runtime.totalBreakerFailures()).isEqualTo(1L);
+                assertThat(runtime.skippedCircuitOpen()).isEqualTo(1L);
+            }
         }
     }
 }

@@ -13,7 +13,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.api.span.enrich.SpanEnricher;
-import space.br1440.platform.tracing.otel.span.enrich.DefaultSpanEnricher;
 import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
 
 import static org.assertj.core.api.Assertions.assertThat;

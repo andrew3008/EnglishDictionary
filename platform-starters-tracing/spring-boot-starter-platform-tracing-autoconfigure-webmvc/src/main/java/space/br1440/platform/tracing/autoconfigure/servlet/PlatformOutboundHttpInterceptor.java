@@ -8,6 +8,7 @@ import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.lang.NonNull;
 
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
@@ -36,7 +37,10 @@ public final class PlatformOutboundHttpInterceptor implements ClientHttpRequestI
     }
 
     @Override
-    public ClientHttpResponse intercept(HttpRequest request, byte[] body, ClientHttpRequestExecution execution) throws IOException {
+    @NonNull
+    public ClientHttpResponse intercept(@NonNull HttpRequest request,
+                                        @NonNull byte[] body,
+                                        @NonNull ClientHttpRequestExecution execution) throws IOException {
         try {
             request.getHeaders().remove(PlatformHeaders.X_CORRELATION_ID);
 

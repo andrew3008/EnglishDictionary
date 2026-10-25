@@ -107,6 +107,7 @@ class BootstrapCoordinatorShutdownTest {
         CapturingShutdownHookRegistry hooks = new CapturingShutdownHookRegistry();
         PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
         ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
+        //noinspection resource — stubbing buildRuntime не получает ресурс; close() выполняет координатор
         doReturn(scrubbingRuntime).when(scrubberFactory).buildRuntime(any());
 
         try (BootstrapCoordinator coordinator = coordinator()

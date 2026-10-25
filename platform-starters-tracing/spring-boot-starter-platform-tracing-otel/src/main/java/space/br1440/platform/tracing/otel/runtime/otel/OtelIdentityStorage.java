@@ -47,6 +47,7 @@ final class OtelIdentityStorage {
         TraceControlBoundaryState previousBoundary = traceControlBoundary();
         traceControlBoundary.set(new TraceControlBoundaryState(forceTrace, qaTrace));
         Thread owner = Thread.currentThread();
+        //noinspection resource — закрытие выполняет возвращаемый CorrelationScope
         CorrelationScope identityScope = open(new IdentityState(requestId, currentCorrelationId));
 
         return () -> {

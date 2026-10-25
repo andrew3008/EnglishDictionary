@@ -22,6 +22,7 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 class RpcSpanBuilderIntegrationTest {
 
     private static final String INVALID_SPAN_ID = "0000000000000000";
+    private static final String RPC_SPAN_NAME = "OrderService/CreateOrder";
 
     private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;
@@ -45,7 +46,7 @@ class RpcSpanBuilderIntegrationTest {
 
     @Test
     void rpcServerChild_insideActiveParent_isChildWithSemconvAttributes() {
-        try (var parent = tracing.spans().operation("parent").start()) {
+        try (@SuppressWarnings("unused") var parent = tracing.spans().operation("parent").start()) {
             String parentTraceId = tracing.traceContext().traceId().orElseThrow();
             String parentSpanId = tracing.traceContext().spanId().orElseThrow();
             tracing.spans().transport().rpc().server()
@@ -55,7 +56,7 @@ class RpcSpanBuilderIntegrationTest {
                     .start()
                     .close();
 
-            SpanData child = findSpan("OrderService/CreateOrder");
+            SpanData child = finishedRpcSpan();
             assertThat(child.getTraceId()).isEqualTo(parentTraceId);
             assertThat(child.getParentSpanId()).isEqualTo(parentSpanId);
             assertThat(child.getKind()).isEqualTo(SpanKind.SERVER);
@@ -76,7 +77,7 @@ class RpcSpanBuilderIntegrationTest {
                 .start()
                 .close();
 
-        SpanData span = findSpan("OrderService/CreateOrder");
+        SpanData span = finishedRpcSpan();
         assertThat(span.getParentSpanId()).isIn("", INVALID_SPAN_ID);
         assertThat(span.getKind()).isEqualTo(SpanKind.CLIENT);
         assertThat(span.getAttributes().get(key(PlatformAttributes.RPC_SYSTEM_NAME))).isEqualTo("grpc");
@@ -89,11 +90,11 @@ class RpcSpanBuilderIntegrationTest {
         return io.opentelemetry.api.common.AttributeKey.stringKey(name);
     }
 
-    private SpanData findSpan(String name) {
+    private SpanData finishedRpcSpan() {
         List<SpanData> spans = exporter.getFinishedSpanItems();
         return spans.stream()
-                .filter(span -> name.equals(span.getName()))
+                .filter(span -> RPC_SPAN_NAME.equals(span.getName()))
                 .findFirst()
-                .orElseThrow(() -> new AssertionError("Span not found: " + name));
+                .orElseThrow(() -> new AssertionError("Span not found: " + RPC_SPAN_NAME));
     }
 }

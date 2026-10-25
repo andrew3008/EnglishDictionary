@@ -9,7 +9,6 @@ import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSn
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
