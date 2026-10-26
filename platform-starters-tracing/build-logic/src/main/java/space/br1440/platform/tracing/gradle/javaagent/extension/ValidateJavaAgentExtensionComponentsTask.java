@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.gradle.javaagent;
+package space.br1440.platform.tracing.gradle.javaagent.extension;
 
 import static java.util.stream.Collectors.joining;
 
@@ -17,6 +17,8 @@ import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.work.DisableCachingByDefault;
+
+import space.br1440.platform.tracing.gradle.javaagent.ComponentIdentity;
 
 @DisableCachingByDefault(because = "The task validates a small resolved component identity set")
 public abstract class ValidateJavaAgentExtensionComponentsTask extends DefaultTask {

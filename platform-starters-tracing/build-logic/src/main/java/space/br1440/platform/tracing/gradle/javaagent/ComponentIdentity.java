@@ -45,7 +45,7 @@ public record ComponentIdentity(String value) implements Comparable<ComponentIde
         return new ComponentIdentity(value);
     }
 
-    static String parseModule(String value) {
+    public static String parseModule(String value) {
         if (value == null) {
             throw new IllegalArgumentException("Module coordinate must not be null");
         }

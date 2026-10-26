@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.gradle.javaagent;
+package space.br1440.platform.tracing.gradle.javaagent.extension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;

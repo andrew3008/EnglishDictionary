@@ -24,6 +24,7 @@ dependencies {
     testImplementation platform("org.junit:junit-bom:${libs.versions.junit.jupiter.get()}")
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation "org.assertj:assertj-core:${libs.versions.assertj.get()}"
+    testImplementation "com.tngtech.archunit:archunit-junit5:${libs.versions.archunit.get()}"
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
@@ -39,12 +40,12 @@ gradlePlugin {
     plugins {
         create('javaagentExtensionPackaging') { PluginDeclaration declaration ->
             declaration.setId('platform.javaagent-extension-packaging')
-            declaration.setImplementationClass('space.br1440.platform.tracing.gradle.javaagent.JavaAgentExtensionPackagingPlugin')
+            declaration.setImplementationClass('space.br1440.platform.tracing.gradle.javaagent.extension.JavaAgentExtensionPackagingPlugin')
         }
 
         create('javaagentDistribution') { PluginDeclaration declaration ->
             declaration.setId('platform.javaagent-distribution')
-            declaration.setImplementationClass('space.br1440.platform.tracing.gradle.javaagent.JavaAgentDistributionPlugin')
+            declaration.setImplementationClass('space.br1440.platform.tracing.gradle.javaagent.distribution.JavaAgentDistributionPlugin')
         }
     }
 }

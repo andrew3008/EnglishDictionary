@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.gradle.javaagent;
+package space.br1440.platform.tracing.gradle.javaagent.extension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.gradle.javaagent.ComponentIdentity;
 
 class ValidateJavaAgentExtensionComponentsTaskTest {
 

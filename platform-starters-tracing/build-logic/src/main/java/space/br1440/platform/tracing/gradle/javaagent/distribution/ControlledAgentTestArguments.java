@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.gradle.javaagent;
+package space.br1440.platform.tracing.gradle.javaagent.distribution;
 
 import java.util.ArrayList;
 import java.util.List;

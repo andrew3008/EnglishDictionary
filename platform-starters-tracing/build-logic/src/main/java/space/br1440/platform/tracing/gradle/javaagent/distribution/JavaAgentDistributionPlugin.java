@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.gradle.javaagent;
+package space.br1440.platform.tracing.gradle.javaagent.distribution;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -40,6 +40,10 @@ import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.api.tasks.testing.Test;
+
+import space.br1440.platform.tracing.gradle.javaagent.ComponentIdentity;
+import space.br1440.platform.tracing.gradle.javaagent.PackagedExtensionAttributes;
+import space.br1440.platform.tracing.gradle.javaagent.VersionCatalogs;
 
 @SuppressWarnings("unused")
 public final class JavaAgentDistributionPlugin implements Plugin<Project> {
@@ -100,7 +104,7 @@ public final class JavaAgentDistributionPlugin implements Plugin<Project> {
                     configuration.setCanBeConsumed(false);
                     configuration.setCanBeResolved(true);
                     configuration.setTransitive(false);
-                    JavaAgentExtensionPackagingPlugin.packagedExtensionAttributes(
+                    PackagedExtensionAttributes.configure(
                             project.getObjects(),
                             configuration.getAttributes()
                     );
