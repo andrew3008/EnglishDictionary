@@ -120,6 +120,6 @@ class ExtensionSurfaceTest {
         assertThat(manifest.getMainAttributes().getValue("Platform-Log-Schema-SHA256"))
                 .isEqualTo(schema.getProperty("schema.sha256"));
         assertThat(manifest.getMainAttributes().getValue("Platform-Log-Schema-Version"))
-                .isEqualTo(schema.getProperty("schema.semanticVersion"));
+                .isEqualTo(schema.getProperty("schema.version"));
     }
 }

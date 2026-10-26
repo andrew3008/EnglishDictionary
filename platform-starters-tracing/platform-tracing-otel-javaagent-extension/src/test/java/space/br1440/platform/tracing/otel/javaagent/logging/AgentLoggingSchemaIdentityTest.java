@@ -8,7 +8,12 @@ import java.util.Properties;
 
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 class AgentLoggingSchemaIdentityTest {
+
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     @Test
     void reviewed_identity_matches_sha256_of_the_schema_file() throws IOException {
@@ -19,11 +24,26 @@ class AgentLoggingSchemaIdentityTest {
         String schemaHash = PlatformLogSchemaHash.sha256OfNormalizedSchema(getClass());
 
         // then
-        assertThat(identity.getProperty("schema.hashAlgorithm"))
-                .isEqualTo(PlatformLogSchemaHash.ALGORITHM_ID);
+        assertThat(identity.getProperty("schema.hashAlgorithm")).isEqualTo(PlatformLogSchemaHash.ALGORITHM_ID);
         assertThat(identity.getProperty("schema.name")).isEqualTo("platform-log-event-v1");
-        assertThat(identity.getProperty("schema.semanticVersion")).isEqualTo("1");
+        assertThat(identity.getProperty("schema.version")).isEqualTo("1");
         assertThat(identity.getProperty("schema.sha256")).isEqualTo(schemaHash);
+    }
+
+    @Test
+    void schema_name_matches_json_title_and_declared_version() throws IOException {
+        // given
+        Properties identity = loadProperties("/META-INF/platform-tracing/agent-logging-schema.properties");
+        JsonNode schema = loadJson("/platform-log-event.schema.json");
+
+        // when
+        String schemaName = identity.getProperty("schema.name");
+        String schemaVersion = identity.getProperty("schema.version");
+
+        // then
+        assertThat(schemaName)
+                .isEqualTo(schema.required("title").textValue())
+                .endsWith("-v" + schemaVersion);
     }
 
     @Test
@@ -52,5 +72,12 @@ class AgentLoggingSchemaIdentityTest {
             properties.load(input);
         }
         return properties;
+    }
+
+    private static JsonNode loadJson(String resource) throws IOException {
+        try (InputStream input = AgentLoggingSchemaIdentityTest.class.getResourceAsStream(resource)) {
+            assertThat(input).as(resource).isNotNull();
+            return JSON.readTree(input);
+        }
     }
 }

@@ -17,6 +17,12 @@ dependencyResolutionManagement {
             url = 'https://n.1440.space/repository/plugins.gradle.org-proxy/'
         }
     }
+
+    versionCatalogs {
+        libs {
+            from(files(settingsDir.toPath().resolve('../../gradle/libs.versions.toml')))
+        }
+    }
 }
 
 rootProject.name = 'platform-tracing-build-logic'

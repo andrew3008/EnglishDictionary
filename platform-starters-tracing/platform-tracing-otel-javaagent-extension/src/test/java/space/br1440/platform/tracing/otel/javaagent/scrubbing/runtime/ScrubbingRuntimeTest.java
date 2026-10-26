@@ -91,7 +91,6 @@ class ScrubbingRuntimeTest {
                 throw closeFailure;
             }
         };
-        //noinspection resource — close() вызывается явно и обязан повторно бросить тот же отказ
         ScrubbingRuntime runtime = ScrubbingRuntime.create(
                 List.of(runtimeRule(new MatchEverythingRule(), RuleOrigin.BUILT_IN)),
                 1L,

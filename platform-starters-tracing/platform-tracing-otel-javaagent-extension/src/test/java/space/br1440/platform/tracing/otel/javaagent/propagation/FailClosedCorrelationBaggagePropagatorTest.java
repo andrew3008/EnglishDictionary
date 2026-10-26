@@ -1,7 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.propagation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,6 +16,7 @@ import io.opentelemetry.api.baggage.Baggage;
 import io.opentelemetry.api.baggage.propagation.W3CBaggagePropagator;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
+import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.context.propagation.TextMapSetter;
 
 class FailClosedCorrelationBaggagePropagatorTest {
@@ -85,12 +88,12 @@ class FailClosedCorrelationBaggagePropagatorTest {
     }
 
     @Test
-    @SuppressWarnings({"ConstantConditions", "DataFlowIssue", "NullableProblems"})
+    @SuppressWarnings({"ConstantConditions", "DataFlowIssue"})
     // given
     void injectWithNullContextPropagatesExceptionBeforeDelegateIsInvoked() {
         Map<String, String> carrier = new ConcurrentHashMap<>();
 
-        org.junit.jupiter.api.Assertions.assertThrows(NullPointerException.class,
+        assertThrows(NullPointerException.class,
                 () -> propagator.inject(null, carrier, SETTER));
 
         assertThat(carrier).isEmpty();
@@ -100,14 +103,14 @@ class FailClosedCorrelationBaggagePropagatorTest {
     // given
     void extractWithDelegateReturningNullPropagatesException() {
         FailClosedCorrelationBaggagePropagator propagatorOverNullDelegate =
-                new FailClosedCorrelationBaggagePropagator(new io.opentelemetry.context.propagation.TextMapPropagator() {
+                new FailClosedCorrelationBaggagePropagator(new TextMapPropagator() {
                     @Override
-                    public java.util.Collection<String> fields() {
-                        return java.util.List.of();
+                    public Collection<String> fields() {
+                        return List.of();
                     }
 
                     @Override
-                    public <C> void inject(Context context, C carrier, io.opentelemetry.context.propagation.TextMapSetter<C> setter) {
+                    public <C> void inject(Context context, C carrier, TextMapSetter<C> setter) {
                     }
 
                     @Override
@@ -116,7 +119,7 @@ class FailClosedCorrelationBaggagePropagatorTest {
                     }
                 });
 
-        org.junit.jupiter.api.Assertions.assertThrows(NullPointerException.class,
+        assertThrows(NullPointerException.class,
                 () -> propagatorOverNullDelegate.extract(Context.root(), Map.of(), GETTER));
     }
 

@@ -57,7 +57,7 @@ class OperationSpanBuilderTest {
     }
 
     @Test
-    @SuppressWarnings({"ConstantConditions", "DataFlowIssue", "NullableProblems"})
+    @SuppressWarnings({"ConstantConditions", "DataFlowIssue"})
     void nullName_rejected() {
         assertThatThrownBy(() -> tracing.spans().operation(null))
                 .isInstanceOf(NullPointerException.class)

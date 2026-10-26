@@ -1,14 +1,11 @@
 package space.br1440.platform.tracing.gradle.javaagent;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
@@ -21,10 +18,13 @@ import org.gradle.api.GradleException;
 public final class JavaAgentDistribution {
 
     static final String MAVEN_ARTIFACT_ID = "platform-tracing-javaagent";
+    static final String EXTENSIONS_DIRECTORY = "extensions";
+    static final String IDENTITY_DIRECTORY = "META-INF/platform-tracing";
+    static final String IDENTITY_FILE_NAME = "javaagent-distribution.properties";
+    static final String IDENTITY_ENTRY_PATH = IDENTITY_DIRECTORY + "/" + IDENTITY_FILE_NAME;
 
     private static final String UPSTREAM_PIN_ENTRY = "META-INF/platform-tracing/otel-javaagent-acp-pin.properties";
     private static final String UPSTREAM_PIN_KEY = "otel.javaagent.sha256";
-    private static final String EXTENSIONS_DIRECTORY = "extensions";
     private static final Pattern LOWERCASE_SHA256 = Pattern.compile("[0-9a-f]{64}");
 
     private JavaAgentDistribution() {
@@ -86,45 +86,6 @@ public final class JavaAgentDistribution {
         );
     }
 
-    @SuppressWarnings("unused")
-    public record ExtensionSchema(String semanticVersion, String sha256) {
-
-        public ExtensionSchema {
-            requireValue("schema.semanticVersion", semanticVersion);
-            requireSha256("schema.sha256", sha256);
-        }
-
-        public static ExtensionSchema readFromProperties(Path schemaFile) {
-            Properties properties = new Properties();
-            try (BufferedReader reader = Files.newBufferedReader(schemaFile, StandardCharsets.UTF_8)) {
-                properties.load(reader);
-            } catch (IOException exception) {
-                throw new GradleException("Cannot read extension schema " + schemaFile, exception);
-            }
-
-            return fromProperties(properties, schemaFile.toString());
-        }
-
-        private static ExtensionSchema fromProperties(Properties properties, String source) {
-            String version = properties.getProperty("schema.semanticVersion");
-            String sha256 = properties.getProperty("schema.sha256");
-            if (version == null || sha256 == null) {
-                throw new GradleException("Extension schema is incomplete in " + source);
-            }
-
-            try {
-                return new ExtensionSchema(version.strip(), sha256.strip());
-            } catch (GradleException exception) {
-                String message = "Extension schema is invalid in " + source;
-                throw new GradleException(message, exception);
-            }
-        }
-    }
-
-    /**
-     * Содержимое META-INF/platform-tracing/javaagent-distribution.properties.
-     * Порядок ключей и перевод строки входят в побайтовый контракт артефакта.
-     */
     public record DistributionIdentity(String distributionVersion,
                                        String upstreamCoordinate,
                                        String upstreamSha256,
@@ -144,7 +105,6 @@ public final class JavaAgentDistribution {
         }
 
         private String toPropertiesText() {
-            // Properties.store добавляет дату и нарушает воспроизводимость байтов.
             Map<String, String> values = new TreeMap<>(Map.of(
                     "format.version", "1",
                     "distribution.group", "space.br1440.platform.starters.tracing",

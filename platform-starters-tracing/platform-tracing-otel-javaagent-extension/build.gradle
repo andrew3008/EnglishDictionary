@@ -72,6 +72,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'org.mockito:mockito-core'
+    testImplementation "org.awaitility:awaitility:${libs.versions.awaitility.get()}"
     testImplementation "org.openjdk.jol:jol-core:${libs.versions.jol.get()}"
     testImplementation "com.networknt:json-schema-validator:${libs.versions.json.schema.validator.get()}"
 

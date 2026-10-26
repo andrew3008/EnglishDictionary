@@ -1,5 +1,5 @@
 plugins {
-    id 'groovy-gradle-plugin'
+    id 'java-gradle-plugin'
 }
 
 group = 'space.br1440.platform.tracing.gradle'
@@ -11,7 +11,7 @@ java {
 }
 
 dependencies {
-    implementation 'com.gradleup.shadow:shadow-gradle-plugin:9.2.2'
+    implementation "com.gradleup.shadow:shadow-gradle-plugin:${libs.versions.shadow.gradle.plugin.get()}"
 
     // Apache Ant используется плагином Shadow только во время сборки и не попадает в javaagent.
     // Ограничение фиксирует исправленную версию транзитивной зависимости для CVE-2026-78254.
@@ -21,9 +21,10 @@ dependencies {
         }
     }
 
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
-    testImplementation 'org.assertj:assertj-core:3.27.7'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.13.4'
+    testImplementation platform("org.junit:junit-bom:${libs.versions.junit.jupiter.get()}")
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation "org.assertj:assertj-core:${libs.versions.assertj.get()}"
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -32,4 +33,18 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.named('test', Test) {
     useJUnitPlatform()
+}
+
+gradlePlugin {
+    plugins {
+        create('javaagentExtensionPackaging') { PluginDeclaration declaration ->
+            declaration.setId('platform.javaagent-extension-packaging')
+            declaration.setImplementationClass('space.br1440.platform.tracing.gradle.javaagent.JavaAgentExtensionPackagingPlugin')
+        }
+
+        create('javaagentDistribution') { PluginDeclaration declaration ->
+            declaration.setId('platform.javaagent-distribution')
+            declaration.setImplementationClass('space.br1440.platform.tracing.gradle.javaagent.JavaAgentDistributionPlugin')
+        }
+    }
 }
