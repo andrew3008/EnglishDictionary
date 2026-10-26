@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 
 import org.gradle.api.GradleException;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
 class ComponentIdentityTest {
@@ -135,6 +136,7 @@ class ComponentIdentityTest {
         // given
         ComponentIdentifier component = new ComponentIdentifier() {
             @Override
+            @NotNull
             public String getDisplayName() {
                 return "opaque-component";
             }

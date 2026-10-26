@@ -74,6 +74,7 @@ class AgentLoggingSchemaIdentityTest {
         return properties;
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static JsonNode loadJson(String resource) throws IOException {
         try (InputStream input = AgentLoggingSchemaIdentityTest.class.getResourceAsStream(resource)) {
             assertThat(input).as(resource).isNotNull();
