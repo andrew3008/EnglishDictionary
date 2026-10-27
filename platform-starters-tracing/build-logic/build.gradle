@@ -10,6 +10,13 @@ java {
     }
 }
 
+configurations {
+    controlledAgentFixtureJunit {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+}
+
 dependencies {
     implementation "com.gradleup.shadow:shadow-gradle-plugin:${libs.versions.shadow.gradle.plugin.get()}"
 
@@ -25,7 +32,12 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation "org.assertj:assertj-core:${libs.versions.assertj.get()}"
     testImplementation "com.tngtech.archunit:archunit-junit5:${libs.versions.archunit.get()}"
+    testImplementation gradleTestKit()
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    controlledAgentFixtureJunit platform("org.junit:junit-bom:${libs.versions.junit.jupiter.get()}")
+    controlledAgentFixtureJunit 'org.junit.jupiter:junit-jupiter'
+    controlledAgentFixtureJunit 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -34,6 +46,9 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.named('test', Test) {
     useJUnitPlatform()
+    def fixtureJunit = configurations.controlledAgentFixtureJunit
+    inputs.files(fixtureJunit).withPropertyName('controlledAgentFixtureJunit')
+    systemProperty 'fixture.junitJars', fixtureJunit.asPath
 }
 
 gradlePlugin {

@@ -3,9 +3,11 @@ package space.br1440.platform.tracing.gradle.javaagent.distribution;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.Internal;
@@ -40,6 +42,9 @@ public abstract class ControlledAgentTestArguments implements CommandLineArgumen
     @Internal
     public abstract DirectoryProperty getTestRepositoryRoot();
 
+    @Classpath
+    public abstract ConfigurableFileCollection getOtlpProbeClasspath();
+
     @Override
     public Iterable<String> asArguments() {
         List<String> arguments = new ArrayList<>();
@@ -53,6 +58,10 @@ public abstract class ControlledAgentTestArguments implements CommandLineArgumen
 
         if (getTestRepositoryRoot().isPresent()) {
             arguments.add("-DplatformTracing.testRepository=" + getTestRepositoryRoot().get().getAsFile().getAbsolutePath());
+        }
+
+        if (!getOtlpProbeClasspath().isEmpty()) {
+            arguments.add("-DplatformTracing.otlpProbeApiClasspath=" + getOtlpProbeClasspath().getAsPath());
         }
 
         return List.copyOf(arguments);

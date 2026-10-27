@@ -5,7 +5,6 @@ import java.nio.file.Path;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
-import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.OutputFile;
@@ -32,12 +31,6 @@ public abstract class PrepareControlledAgentIdentityTask extends DefaultTask {
     @Input
     public abstract Property<String> getUpstreamCoordinate();
 
-    @Input
-    public abstract Property<String> getExtensionPath();
-
-    @Input
-    public abstract SetProperty<String> getReservedEntries();
-
     @OutputFile
     public abstract RegularFileProperty getIdentityFile();
 
@@ -49,13 +42,12 @@ public abstract class PrepareControlledAgentIdentityTask extends DefaultTask {
                 upstreamAgentJar,
                 packagedExtensionJar
         );
-        JavaAgentDistribution.requireNoPlatformEntries(upstreamAgentJar, getReservedEntries().get());
+        JavaAgentDistribution.requireNoPlatformEntries(upstreamAgentJar);
 
         JavaAgentDistribution.createIdentity(
                         getDistributionVersion().get(),
                         getUpstreamCoordinate().get(),
                         upstreamSha256,
-                        getExtensionPath().get(),
                         packagedExtensionJar
                 )
                 .writeTo(getIdentityFile().get().getAsFile().toPath());

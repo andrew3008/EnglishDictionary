@@ -9,16 +9,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import org.gradle.api.GradleException;
 
-public final class JavaAgentDistribution {
+final class JavaAgentDistribution {
 
     static final String MAVEN_ARTIFACT_ID = "platform-tracing-javaagent";
+    static final String MANIFEST_ENTRY_PATH = "META-INF/MANIFEST.MF";
     static final String EXTENSIONS_DIRECTORY = "extensions";
+    static final String EMBEDDED_EXTENSION_NAME = "platform-tracing-otel-javaagent-extension.jar";
+    static final String EXTENSION_ENTRY_PATH = EXTENSIONS_DIRECTORY + "/" + EMBEDDED_EXTENSION_NAME;
     static final String IDENTITY_DIRECTORY = "META-INF/platform-tracing";
     static final String IDENTITY_FILE_NAME = "javaagent-distribution.properties";
     static final String IDENTITY_ENTRY_PATH = IDENTITY_DIRECTORY + "/" + IDENTITY_FILE_NAME;
@@ -26,11 +28,12 @@ public final class JavaAgentDistribution {
     private static final String UPSTREAM_PIN_ENTRY = "META-INF/platform-tracing/otel-javaagent-acp-pin.properties";
     private static final String UPSTREAM_PIN_KEY = "otel.javaagent.sha256";
     private static final Pattern LOWERCASE_SHA256 = Pattern.compile("[0-9a-f]{64}");
+    private static final Set<String> RESERVED_ENTRIES = Set.of(IDENTITY_ENTRY_PATH.toLowerCase(Locale.ROOT));
 
     private JavaAgentDistribution() {
     }
 
-    public static String requireReviewedUpstreamSha256(Path upstreamAgentJar, Path packagedExtensionJar) {
+    static String requireReviewedUpstreamSha256(Path upstreamAgentJar, Path packagedExtensionJar) {
         String raw = DistributionFiles.readJarProperties(packagedExtensionJar, UPSTREAM_PIN_ENTRY)
                 .getProperty(UPSTREAM_PIN_KEY);
 
@@ -49,16 +52,12 @@ public final class JavaAgentDistribution {
         return actual;
     }
 
-    public static void requireNoPlatformEntries(Path upstreamAgentJar, Set<String> reservedEntries) {
-        Set<String> reserved = reservedEntries.stream()
-                .map(entry -> entry.toLowerCase(Locale.ROOT))
-                .collect(Collectors.toUnmodifiableSet());
-
+    static void requireNoPlatformEntries(Path upstreamAgentJar) {
         List<String> conflicts;
         try (ZipFile zip = new ZipFile(upstreamAgentJar.toFile(), StandardCharsets.UTF_8)) {
             conflicts = zip.stream()
                     .map(ZipEntry::getName)
-                    .filter(name -> isPlatformOwned(name.toLowerCase(Locale.ROOT), reserved))
+                    .filter(name -> isPlatformOwned(name.toLowerCase(Locale.ROOT)))
                     .sorted()
                     .toList();
         } catch (IOException exception) {
@@ -72,35 +71,31 @@ public final class JavaAgentDistribution {
         }
     }
 
-    public static DistributionIdentity createIdentity(String distributionVersion,
-                                                      String upstreamCoordinate,
-                                                      String upstreamSha256,
-                                                      String extensionPath,
-                                                      Path packagedExtensionJar) {
+    static DistributionIdentity createIdentity(String distributionVersion,
+                                               String upstreamCoordinate,
+                                               String upstreamSha256,
+                                               Path packagedExtensionJar) {
         return new DistributionIdentity(
                 distributionVersion,
                 upstreamCoordinate,
                 upstreamSha256,
-                extensionPath,
                 DistributionFiles.sha256Hex(packagedExtensionJar)
         );
     }
 
-    public record DistributionIdentity(String distributionVersion,
-                                       String upstreamCoordinate,
-                                       String upstreamSha256,
-                                       String extensionPath,
-                                       String extensionSha256) {
+    record DistributionIdentity(String distributionVersion,
+                                String upstreamCoordinate,
+                                String upstreamSha256,
+                                String extensionSha256) {
 
-        public DistributionIdentity {
+        DistributionIdentity {
             requireValue("distribution.version", distributionVersion);
             requireValue("upstream.coordinate", upstreamCoordinate);
             requireSha256("upstream.sha256", upstreamSha256);
-            requireValue("extension.path", extensionPath);
             requireSha256("extension.sha256", extensionSha256);
         }
 
-        public void writeTo(Path file) {
+        void writeTo(Path file) {
             DistributionFiles.writeUtf8(file, toPropertiesText(), "distribution identity");
         }
 
@@ -112,7 +107,7 @@ public final class JavaAgentDistribution {
                     "distribution.version", distributionVersion,
                     "upstream.coordinate", upstreamCoordinate,
                     "upstream.sha256", upstreamSha256,
-                    "extension.path", extensionPath,
+                    "extension.path", EXTENSION_ENTRY_PATH,
                     "extension.sha256", extensionSha256,
                     "minimum.java", "21")
             );
@@ -123,10 +118,10 @@ public final class JavaAgentDistribution {
         }
     }
 
-    private static boolean isPlatformOwned(String lowerCaseName, Set<String> reservedEntries) {
+    private static boolean isPlatformOwned(String lowerCaseName) {
         return EXTENSIONS_DIRECTORY.equals(lowerCaseName)
                 || lowerCaseName.startsWith(EXTENSIONS_DIRECTORY + "/")
-                || reservedEntries.contains(lowerCaseName);
+                || RESERVED_ENTRIES.contains(lowerCaseName);
     }
 
     private static String requireSha256(String what, String value) {

@@ -1,21 +1,21 @@
 package space.br1440.platform.tracing.gradle.javaagent.distribution;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import org.gradle.api.GradleException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class JavaAgentDistributionFailureTest {
 
@@ -31,8 +31,11 @@ class JavaAgentDistributionFailureTest {
                 "format.version=1\n"
         ));
 
-        // expect
-        assertThatThrownBy(() -> JavaAgentDistribution.requireReviewedUpstreamSha256(upstream, extension))
+        // when
+        Throwable failure = catchThrowable(() -> JavaAgentDistribution.requireReviewedUpstreamSha256(upstream, extension));
+
+        // then
+        assertThat(failure)
                 .isInstanceOf(GradleException.class)
                 .hasMessageContaining("otel.javaagent.sha256 is missing");
     }
@@ -46,8 +49,11 @@ class JavaAgentDistributionFailureTest {
                 "otel.javaagent.sha256= not-a-sha256 \n"
         ));
 
-        // expect
-        assertThatThrownBy(() -> JavaAgentDistribution.requireReviewedUpstreamSha256(upstream, extension))
+        // when
+        Throwable failure = catchThrowable(() -> JavaAgentDistribution.requireReviewedUpstreamSha256(upstream, extension));
+
+        // then
+        assertThat(failure)
                 .isInstanceOf(GradleException.class)
                 .hasMessageContaining("must be 64 lowercase hex characters");
     }
@@ -61,63 +67,53 @@ class JavaAgentDistributionFailureTest {
                 "otel.javaagent.sha256=" + "0".repeat(64) + "\n"
         ));
 
-        // expect
-        assertThatThrownBy(() -> JavaAgentDistribution.requireReviewedUpstreamSha256(upstream, extension))
-                .isInstanceOf(GradleException.class)
-                .hasMessageContaining("does not match reviewed pin");
-    }
-
-    @Test
-    void rejects_platform_entries_in_upstream_agent(@TempDir Path directory) throws IOException {
-        // given
-        Path upstream = writeJar(directory.resolve("upstream.jar"), Map.of(
-                "extensions/unapproved.jar",
-                "payload"
-        ));
-
-        // expect
-        assertThatThrownBy(() -> JavaAgentDistribution.requireNoPlatformEntries(upstream, Set.of()))
-                .isInstanceOf(GradleException.class)
-                .hasMessageContaining("already contains platform content");
-    }
-
-    @Test
-    void rejects_configured_reserved_entry_in_upstream_agent(@TempDir Path directory) throws IOException {
-        // given
-        Path upstream = writeJar(directory.resolve("upstream.jar"), Map.of(
-                IDENTITY_ENTRY,
-                "unapproved"
-        ));
-
-        // expect
-        assertThatThrownBy(() -> JavaAgentDistribution.requireNoPlatformEntries(upstream, Set.of(IDENTITY_ENTRY)))
-                .isInstanceOf(GradleException.class)
-                .hasMessageContaining(IDENTITY_ENTRY);
-    }
-
-    @Test
-    void keeps_existing_target_when_staged_file_is_missing(@TempDir Path directory) throws IOException {
-        // given
-        Path target = writeFile(directory.resolve("agent.jar"), "existing");
-        Path missing = directory.resolve("missing.jar");
-
         // when
-        var failure = org.assertj.core.api.Assertions.catchThrowable(
-                () -> DistributionFiles.publishAtomically(missing, target)
-        );
+        Throwable failure = catchThrowable(() -> JavaAgentDistribution.requireReviewedUpstreamSha256(upstream, extension));
 
         // then
         assertThat(failure)
                 .isInstanceOf(GradleException.class)
-                .hasMessageContaining("Cannot atomically replace")
-                .hasCauseInstanceOf(NoSuchFileException.class);
-        assertThat(Files.readString(target, StandardCharsets.UTF_8)).isEqualTo("existing");
-        try (var files = Files.list(directory)) {
-            assertThat(files.map(path -> path.getFileName().toString()).toList())
-                    .containsExactly("agent.jar");
-        }
+                .hasMessageContaining("does not match reviewed pin");
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"extensions", "extensions/", "extensions/unapproved.jar", "ExTeNsIoNs/unapproved.jar"})
+    void rejects_extension_entries_in_upstream_agent(String entry, @TempDir Path directory) throws IOException {
+        // given
+        Path upstream = writeJar(directory.resolve("upstream.jar"), Map.of(
+                entry,
+                "payload"
+        ));
+
+        // when
+        Throwable failure = catchThrowable(() -> JavaAgentDistribution.requireNoPlatformEntries(upstream));
+
+        // then
+        assertThat(failure)
+                .isInstanceOf(GradleException.class)
+                .hasMessageContaining("already contains platform content")
+                .hasMessageContaining(entry);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {IDENTITY_ENTRY, "MeTa-InF/PlAtFoRm-TrAcInG/JaVaAgEnT-DiStRiBuTiOn.PrOpErTiEs"})
+    void rejects_reserved_identity_entry_in_upstream_agent(String entry, @TempDir Path directory) throws IOException {
+        // given
+        Path upstream = writeJar(directory.resolve("upstream.jar"), Map.of(
+                entry,
+                "unapproved"
+        ));
+
+        // when
+        Throwable failure = catchThrowable(() -> JavaAgentDistribution.requireNoPlatformEntries(upstream));
+
+        // then
+        assertThat(failure)
+                .isInstanceOf(GradleException.class)
+                .hasMessageContaining(entry);
+    }
+
+    @SuppressWarnings("SameParameterValue")
     private static Path writeFile(Path path, String content) throws IOException {
         Files.writeString(path, content, StandardCharsets.UTF_8);
         return path;

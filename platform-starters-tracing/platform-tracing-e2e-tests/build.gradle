@@ -20,20 +20,6 @@ configurations {
     controlledAgentUnderTest {
         canBeConsumed = false
         canBeResolved = true
-
-        AttributeContainer attrs = attributes
-
-        Usage javaRuntimeUsage = objects.<Usage>named(Usage, Usage.JAVA_RUNTIME)
-        attrs.attribute(Usage.USAGE_ATTRIBUTE as Attribute<Object>, javaRuntimeUsage)
-
-        Category libraryCategory = objects.<Category>named(Category, Category.LIBRARY)
-        attrs.attribute(Category.CATEGORY_ATTRIBUTE as Attribute<Object>, libraryCategory)
-
-        LibraryElements jarLibraryElements = objects.<LibraryElements>named(LibraryElements, LibraryElements.JAR)
-        attrs.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE as Attribute<Object>, jarLibraryElements)
-
-        Bundling shadowedBundling = objects.<Bundling>named(Bundling, Bundling.SHADOWED)
-        attrs.attribute(Bundling.BUNDLING_ATTRIBUTE as Attribute<Object>, shadowedBundling)
     }
 }
 

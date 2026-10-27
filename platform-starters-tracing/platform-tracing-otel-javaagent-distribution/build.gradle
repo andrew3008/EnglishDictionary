@@ -1,17 +1,42 @@
+import java.time.Duration
+
 plugins {
     id 'platform.publishing-repositories'
-    id 'platform.java-library'
-    id 'platform.testing'
     id 'platform.javaagent-distribution'
 }
 
 group = 'space.br1440.platform.starters.tracing'
 
-def platformBomProjectPath = ':spring-boot-starter-platform-bom'
-
-platformJavaLibrary {
-    bomProjectPath = platformBomProjectPath
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.add('-parameters')
+}
+
+tasks.withType(Test).configureEach {
+    minHeapSize = '512m'
+    maxHeapSize = '2048m'
+    timeout.set(Duration.ofMinutes(10))
+    jvmArgs(
+            '-XX:+EnableDynamicAgentLoading',
+            '-XX:+UseParallelGC',
+            '-Dfile.encoding=UTF-8',
+            '-Duser.timezone=UTC'
+    )
+    testLogging {
+        events 'failed'
+        exceptionFormat 'full'
+        showStackTraces = true
+        showStandardStreams = false
+    }
+}
+
+def platformBomProjectPath = ':spring-boot-starter-platform-bom'
 
 def extensionProjectPath = ':platform-starters-tracing:platform-tracing-otel-javaagent-extension'
 def tracingApiProjectPath = ':platform-starters-tracing:spring-boot-starter-platform-tracing-api'
@@ -22,6 +47,10 @@ def otelApi = "io.opentelemetry:opentelemetry-api:${libs.versions.bom.openteleme
 def otelProto = "io.opentelemetry.proto:opentelemetry-proto:${libs.versions.bom.otelproto.get()}"
 def protobufJava = "com.google.protobuf:protobuf-java:${libs.versions.bom.protobuf.get()}"
 def awaitility = "org.awaitility:awaitility:${libs.versions.awaitility.get()}"
+def junit = 'org.junit.jupiter:junit-jupiter'
+def assertj = 'org.assertj:assertj-core'
+def launcher = 'org.junit.platform:junit-platform-launcher'
+def commonUtil = project(':platform-starters-common:platform-starters-common-util')
 
 dependencies {
     otelJavaAgent upstreamJavaAgent
@@ -30,16 +59,22 @@ dependencies {
 
     jmxApplicationContractSources project(jmxContractProjectPath)
 
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testImplementation 'org.assertj:assertj-core'
-    testImplementation project(':platform-starters-common:platform-starters-common-util')
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    controlledAgentArtifactTestImplementation platform(project(platformBomProjectPath))
+    controlledAgentArtifactTestImplementation junit
+    controlledAgentArtifactTestImplementation assertj
+    controlledAgentArtifactTestImplementation commonUtil
+    controlledAgentArtifactTestRuntimeOnly launcher
 
+    controlledAgentRuntimeTestImplementation platform(project(platformBomProjectPath))
+    controlledAgentRuntimeTestImplementation junit
+    controlledAgentRuntimeTestImplementation assertj
+    controlledAgentRuntimeTestImplementation commonUtil
     controlledAgentRuntimeTestImplementation awaitility
     controlledAgentRuntimeTestImplementation otelProto
     controlledAgentRuntimeTestImplementation protobufJava
     controlledAgentRuntimeTestImplementation project(tracingApiProjectPath)
     controlledAgentRuntimeTestImplementation otelApi
+    controlledAgentRuntimeTestRuntimeOnly launcher
 
     otlpProbeApiRuntimeClasspath otelApi
 }
