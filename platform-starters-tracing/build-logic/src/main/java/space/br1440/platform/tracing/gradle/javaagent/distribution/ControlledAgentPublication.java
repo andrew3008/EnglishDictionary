@@ -90,6 +90,7 @@ final class ControlledAgentPublication {
         return project.getConfigurations().create(name, configuration -> {
             configuration.setCanBeConsumed(true);
             configuration.setCanBeResolved(false);
+            //noinspection UnstableApiUsage — Gradle 8.14: setCanBeDeclared ещё @Incubating; вариант не принимает объявления зависимостей
             configuration.setCanBeDeclared(false);
             configuration.setVisible(false);
             configuration.getAttributes().attribute(

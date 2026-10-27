@@ -2,6 +2,8 @@ package space.br1440.platform.tracing.gradle.javaagent.distribution;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Objects;
+
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
@@ -40,6 +42,7 @@ class JavaAgentDistributionPluginTest {
     private static void assertControlled(Configuration configuration) {
         assertThat(configuration.isCanBeConsumed()).isTrue();
         assertThat(configuration.isCanBeResolved()).isFalse();
+        //noinspection UnstableApiUsage — Gradle 8.14: isCanBeDeclared ещё @Incubating; вариант не принимает объявления зависимостей
         assertThat(configuration.isCanBeDeclared()).isFalse();
         assertThat(configuration.isVisible()).isFalse();
         assertThat(configuration.getAttributes().getAttribute(Category.CATEGORY_ATTRIBUTE))
@@ -48,7 +51,10 @@ class JavaAgentDistributionPluginTest {
     }
 
     private static String libraryElements(Configuration configuration) {
-        return configuration.getAttributes().getAttribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE).getName();
+        return Objects.requireNonNull(
+                configuration.getAttributes().getAttribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE),
+                "controlled agent variant must declare library elements"
+        ).getName();
     }
 
     private static void assertNotConsumable(Configuration configuration) {

@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
@@ -55,8 +56,8 @@ class ControlledAgentDistributionContractTest {
         BuildResult result = gradle("check");
 
         // then
-        assertThat(result.task(":distribution:controlledAgentArtifactTest").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
-        assertThat(result.task(":distribution:controlledAgentRuntimeTest").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(outcome(result, ":distribution:controlledAgentArtifactTest")).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(outcome(result, ":distribution:controlledAgentRuntimeTest")).isEqualTo(TaskOutcome.SUCCESS);
         assertCleanSuite(root.resolve("distribution/build/test-results/controlledAgentArtifactTest"));
         assertCleanSuite(root.resolve("distribution/build/test-results/controlledAgentRuntimeTest"));
     }
@@ -81,10 +82,10 @@ class ControlledAgentDistributionContractTest {
         // then
         assertThat(first.getOutput()).contains("Configuration cache entry stored");
         assertThat(second.getOutput()).contains("Reusing configuration cache");
-        assertThat(first.task(":distribution:controlledAgentArtifactTest").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
-        assertThat(first.task(":distribution:controlledAgentRuntimeTest").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
-        assertThat(second.task(":distribution:controlledAgentArtifactTest").getOutcome()).isEqualTo(TaskOutcome.UP_TO_DATE);
-        assertThat(second.task(":distribution:controlledAgentRuntimeTest").getOutcome()).isEqualTo(TaskOutcome.UP_TO_DATE);
+        assertThat(outcome(first, ":distribution:controlledAgentArtifactTest")).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(outcome(first, ":distribution:controlledAgentRuntimeTest")).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(outcome(second, ":distribution:controlledAgentArtifactTest")).isEqualTo(TaskOutcome.UP_TO_DATE);
+        assertThat(outcome(second, ":distribution:controlledAgentRuntimeTest")).isEqualTo(TaskOutcome.UP_TO_DATE);
     }
 
     @Test
@@ -107,7 +108,7 @@ class ControlledAgentDistributionContractTest {
         assertThat(changed.getOutput()).contains("Reusing configuration cache");
         for (String task : List.of("prepareControlledAgentIdentity", "assembleControlledJavaAgentJar",
                 "promoteControlledAgent", "writeControlledAgentPin", "controlledAgentArtifactTest", "controlledAgentRuntimeTest")) {
-            assertThat(changed.task(":distribution:" + task).getOutcome()).as(task).isEqualTo(TaskOutcome.SUCCESS);
+            assertThat(outcome(changed, ":distribution:" + task)).as(task).isEqualTo(TaskOutcome.SUCCESS);
         }
         assertThat(sha256(agent)).isNotEqualTo(firstAgentSha256);
         assertThat(distributionIdentity(agent).getProperty("extension.sha256")).isNotEqualTo(firstExtensionSha256);
@@ -128,7 +129,7 @@ class ControlledAgentDistributionContractTest {
 
         // then
         assertThat(result.getOutput()).contains("does not match reviewed pin", reviewedSha256, sha256(upstreamJar()));
-        assertThat(result.task(":distribution:prepareControlledAgentIdentity").getOutcome()).isEqualTo(TaskOutcome.FAILED);
+        assertThat(outcome(result, ":distribution:prepareControlledAgentIdentity")).isEqualTo(TaskOutcome.FAILED);
         assertThat(result.task(":distribution:assembleControlledJavaAgentJar")).isNull();
         assertThat(result.task(":distribution:promoteControlledAgent")).isNull();
         assertThat(result.task(":distribution:writeControlledAgentPin")).isNull();
@@ -147,8 +148,8 @@ class ControlledAgentDistributionContractTest {
         BuildResult independent = runner(independentRoot, "--no-build-cache", ":distribution:writeControlledAgentPin").build();
 
         // then
-        assertThat(first.task(":distribution:assembleControlledJavaAgentJar").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
-        assertThat(independent.task(":distribution:assembleControlledJavaAgentJar").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(outcome(first, ":distribution:assembleControlledJavaAgentJar")).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(outcome(independent, ":distribution:assembleControlledJavaAgentJar")).isEqualTo(TaskOutcome.SUCCESS);
         assertThat(localAgentJar(independentRoot)).hasSameBinaryContentAs(localAgentJar());
         assertThat(independentRoot.resolve("distribution/build/controlled-agent/controlled-agent-pin.properties"))
                 .hasSameBinaryContentAs(root.resolve("distribution/build/controlled-agent/controlled-agent-pin.properties"));
@@ -190,14 +191,14 @@ class ControlledAgentDistributionContractTest {
         // then
         assertThat(deleted.getOutput()).contains("Reusing configuration cache");
         assertThat(classes.resolve("AddedJmxContract.class")).doesNotExist();
-        assertThat(deleted.task(":jmx-producer:generateJmxContractSources").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
-        assertThat(deleted.task(":distribution:compileControlledAgentRuntimeTestJava").getOutcome())
+        assertThat(outcome(deleted, ":jmx-producer:generateJmxContractSources")).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(outcome(deleted, ":distribution:compileControlledAgentRuntimeTestJava"))
                 .isIn(TaskOutcome.SUCCESS, TaskOutcome.UP_TO_DATE);
-        assertThat(deleted.task(":distribution:controlledAgentRuntimeTest").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(outcome(deleted, ":distribution:controlledAgentRuntimeTest")).isEqualTo(TaskOutcome.SUCCESS);
         assertThat(unchanged.getOutput()).contains("Reusing configuration cache");
         for (String task : List.of(":jmx-producer:generateJmxContractSources",
                 ":distribution:compileControlledAgentRuntimeTestJava", ":distribution:controlledAgentRuntimeTest")) {
-            assertThat(unchanged.task(task).getOutcome()).as(task).isEqualTo(TaskOutcome.UP_TO_DATE);
+            assertThat(outcome(unchanged, task)).as(task).isEqualTo(TaskOutcome.UP_TO_DATE);
         }
         assertJmxProducerAndRuntimeExecuted(relocated);
         assertThat(relocatedRoot.resolve("distribution/build/classes/java/controlledAgentRuntimeTest/fixture/GeneratedJmxContract.class"))
@@ -250,7 +251,7 @@ class ControlledAgentDistributionContractTest {
         BuildResult result = gradle(":consumer:resolveControlledAgent", ":consumer:resolveControlledAgentPin");
 
         // then
-        assertThat(result.task(":distribution:promoteControlledAgent").getOutcome())
+        assertThat(outcome(result, ":distribution:promoteControlledAgent"))
                 .isIn(TaskOutcome.SUCCESS, TaskOutcome.UP_TO_DATE);
         Path agent = singleResolvedFile(root.resolve("consumer/build/resolved-agent.txt"));
         Path pin = singleResolvedFile(root.resolve("consumer/build/resolved-pin.txt"));
@@ -270,11 +271,11 @@ class ControlledAgentDistributionContractTest {
 
         // then
         assertThat(result.task(":consumer:resolveControlledAgent")).isNull();
-        assertThat(result.task(":distribution:assembleControlledJavaAgentJar").getOutcome())
+        assertThat(outcome(result, ":distribution:assembleControlledJavaAgentJar"))
                 .isIn(TaskOutcome.SUCCESS, TaskOutcome.UP_TO_DATE);
-        assertThat(result.task(":distribution:promoteControlledAgent").getOutcome())
+        assertThat(outcome(result, ":distribution:promoteControlledAgent"))
                 .isIn(TaskOutcome.SUCCESS, TaskOutcome.UP_TO_DATE);
-        assertThat(result.task(":distribution:writeControlledAgentPin").getOutcome())
+        assertThat(outcome(result, ":distribution:writeControlledAgentPin"))
                 .isIn(TaskOutcome.SUCCESS, TaskOutcome.UP_TO_DATE);
         Path agent = localAgentJar();
         Properties pin = new Properties();
@@ -308,7 +309,7 @@ class ControlledAgentDistributionContractTest {
         BuildResult result = gradleAndFail(":distribution:publishMavenJavaPublicationToReleaseRepository");
 
         // then
-        assertThat(result.task(":distribution:controlledAgentArtifactTest").getOutcome()).isEqualTo(TaskOutcome.FAILED);
+        assertThat(outcome(result, ":distribution:controlledAgentArtifactTest")).isEqualTo(TaskOutcome.FAILED);
         assertThat(result.task(":distribution:publishMavenJavaPublicationToReleaseRepository")).isNull();
         assertThat(publishedJars(root.resolve("distribution/build/release-repository"))).isEmpty();
     }
@@ -322,7 +323,7 @@ class ControlledAgentDistributionContractTest {
         BuildResult result = gradleAndFail(":distribution:publishMavenJavaPublicationToReleaseRepository");
 
         // then
-        assertThat(result.task(":distribution:controlledAgentRuntimeTest").getOutcome()).isEqualTo(TaskOutcome.FAILED);
+        assertThat(outcome(result, ":distribution:controlledAgentRuntimeTest")).isEqualTo(TaskOutcome.FAILED);
         assertThat(result.task(":distribution:publishMavenJavaPublicationToReleaseRepository")).isNull();
         assertThat(publishedJars(root.resolve("distribution/build/release-repository"))).isEmpty();
     }
@@ -659,8 +660,12 @@ class ControlledAgentDistributionContractTest {
     private static void assertJmxProducerAndRuntimeExecuted(BuildResult result) {
         for (String task : List.of(":jmx-producer:generateJmxContractSources",
                 ":distribution:compileControlledAgentRuntimeTestJava", ":distribution:controlledAgentRuntimeTest")) {
-            assertThat(result.task(task).getOutcome()).as(task).isEqualTo(TaskOutcome.SUCCESS);
+            assertThat(outcome(result, task)).as(task).isEqualTo(TaskOutcome.SUCCESS);
         }
+    }
+
+    private static TaskOutcome outcome(BuildResult result, String taskPath) {
+        return Objects.requireNonNull(result.task(taskPath), () -> "Gradle task is absent: " + taskPath).getOutcome();
     }
 
     private void copyFixtureTo(Path destination) throws IOException {
@@ -765,7 +770,7 @@ class ControlledAgentDistributionContractTest {
             List<Path> jars = files.filter(path -> path.getFileName().toString().startsWith("platform-tracing-javaagent-"))
                     .toList();
             assertThat(jars).hasSize(1);
-            return jars.get(0);
+            return jars.getFirst();
         }
     }
 
@@ -798,7 +803,7 @@ class ControlledAgentDistributionContractTest {
     private static Path publishedJar(Path repository) throws IOException {
         List<Path> jars = publishedJars(repository);
         assertThat(jars).hasSize(1);
-        return jars.get(0);
+        return jars.getFirst();
     }
 
     private static List<Path> publishedJars(Path repository) throws IOException {
