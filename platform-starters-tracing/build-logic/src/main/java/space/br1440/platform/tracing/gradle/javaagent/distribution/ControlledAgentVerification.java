@@ -74,7 +74,7 @@ final class ControlledAgentVerification {
 
             configuration.getAttributes().attribute(
                     Usage.USAGE_ATTRIBUTE,
-                    project.getObjects().named(Usage.class, "platform-jmx-application-contract-sources")
+                    project.getObjects().named(Usage.class, "platform-jmx-application-contract")
             );
 
             configuration.getAttributes().attribute(
@@ -88,8 +88,6 @@ final class ControlledAgentVerification {
             );
         });
 
-        // Каталог application/java уже является source root autoconfigure.
-        // IDEA запрещает один content root двум модулям, поэтому suite компилирует свою копию.
         TaskProvider<Sync> jmxContractSources = project.getTasks().register(
                 "syncControlledAgentRuntimeTestJmxContractSources",
                 Sync.class,

@@ -93,7 +93,6 @@ public final class JmxWireContractGenerator {
                             String key = relative.substring(relative.lastIndexOf('/') + 1);
                             String content = Files.readString(path, StandardCharsets.UTF_8)
                                     .replaceFirst("(?m)^package [^;]+;\n", "")
-                                    .replaceFirst("(?m)^plane=(extension|application)$", "plane=")
                                     .replaceAll(
                                             "space\\.br1440\\.platform\\.tracing\\.(otel\\.javaagent|autoconfigure)"
                                                     + "\\.jmx\\.contract\\.generated",

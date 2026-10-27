@@ -24,30 +24,6 @@ dependencies {
 def contractManifest = layout.projectDirectory.file('src/main/resources/jmx-wire-contract.yaml')
 def helmPolicyTemplate = layout.projectDirectory.file('../platform-tracing-helm/platform-tracing/templates/_policy.tpl')
 def generatedRoot = layout.buildDirectory.dir('generated/jmx-wire-contract')
-def generatedApplicationContractSources = generatedRoot.map { it.dir('application/java') }
-def jmxApplicationContractSourcesUsage = 'platform-jmx-application-contract-sources'
-
-def jmxApplicationContractSourcesElements = configurations.register('jmxApplicationContractSourcesElements') {
-    canBeConsumed = true
-    canBeResolved = false
-
-    attributes {
-        attribute(
-                Usage.USAGE_ATTRIBUTE as Attribute<Object>,
-                objects.named(Usage, jmxApplicationContractSourcesUsage)
-        )
-
-        attribute(
-                Category.CATEGORY_ATTRIBUTE as Attribute<Object>,
-                objects.named(Category, Category.DOCUMENTATION)
-        )
-
-        attribute(
-                DocsType.DOCS_TYPE_ATTRIBUTE as Attribute<Object>,
-                objects.named(DocsType, DocsType.SOURCES)
-        )
-    }
-}
 
 def guardedSourceRoots = files(
         project(':platform-starters-tracing:platform-tracing-otel-javaagent-extension')
@@ -93,12 +69,38 @@ def generateJmxWireContract = tasks.register('generateJmxWireContract', JavaExec
     outputs.dir(generatedRoot)
 }
 
-artifacts {
-    add(jmxApplicationContractSourcesElements.name, generatedApplicationContractSources) {
+def registerJmxContractSources = { String plane ->
+    def elements = configurations.register("jmx${plane.capitalize()}ContractSourcesElements") {
+        canBeConsumed = true
+        canBeResolved = false
+        canBeDeclared = false
+
+        attributes {
+            attribute(
+                    Usage.USAGE_ATTRIBUTE as Attribute<Object>,
+                    objects.named(Usage, "platform-jmx-${plane}-contract")
+            )
+
+            attribute(
+                    Category.CATEGORY_ATTRIBUTE as Attribute<Object>,
+                    objects.named(Category, Category.DOCUMENTATION)
+            )
+
+            attribute(
+                    DocsType.DOCS_TYPE_ATTRIBUTE as Attribute<Object>,
+                    objects.named(DocsType, DocsType.SOURCES)
+            )
+        }
+    }
+
+    artifacts.add(elements.name, generatedRoot.map { it.dir("${plane}/java") }) {
         builtBy generateJmxWireContract
         type = 'directory'
     }
 }
+
+registerJmxContractSources('application')
+registerJmxContractSources('extension')
 
 def verifyJmxWireContract = tasks.register('verifyJmxWireContract', JavaExec) {
     group = 'verification'

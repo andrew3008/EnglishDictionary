@@ -158,6 +158,44 @@ class ControlledAgentDistributionContractTest {
     }
 
     @Test
+    void runtime_suite_owns_its_jmx_source_directory() throws IOException {
+        // given
+        writeFixture(FixtureOptions.passing());
+        writeJmxSourceProducer();
+        Path distributionBuild = root.resolve("distribution/build.gradle");
+        Files.writeString(distributionBuild, Files.readString(distributionBuild, StandardCharsets.UTF_8) + """
+
+                def runtimeSourceDirectories = sourceSets.controlledAgentRuntimeTest.java.srcDirs
+                    .collect { directory -> directory.toPath().toAbsolutePath().normalize().toString() }
+                    .sort()
+                tasks.register('reportRuntimeSourceDirectories') {
+                    inputs.property('runtimeSourceDirectories', runtimeSourceDirectories)
+                    outputs.file(layout.buildDirectory.file('reports/runtime-source-directories.txt'))
+                    doLast { task ->
+                        def report = task.outputs.files.singleFile
+                        report.parentFile.mkdirs()
+                        report.setText(task.inputs.properties.runtimeSourceDirectories.join('\\n') + '\\n', 'UTF-8')
+                    }
+                }
+                """, StandardCharsets.UTF_8);
+
+        // when
+        cachedGradle(":distribution:reportRuntimeSourceDirectories");
+
+        // then
+        List<Path> sourceDirectories = Files.readAllLines(
+                        root.resolve("distribution/build/reports/runtime-source-directories.txt"), StandardCharsets.UTF_8)
+                .stream()
+                .map(Path::of)
+                .toList();
+        assertThat(sourceDirectories).isNotEmpty()
+                .contains(root.resolve("distribution/build/generated/controlled-agent-runtime-test/jmx-contract")
+                        .toAbsolutePath().normalize());
+        Path producerBuild = root.resolve("jmx-producer/build").toAbsolutePath().normalize();
+        assertThat(sourceDirectories).noneMatch(directory -> directory.startsWith(producerBuild));
+    }
+
+    @Test
     void generated_jmx_directory_tracks_creation_changes_deletion_and_relocation(@TempDir Path relocatedRoot) throws IOException {
         // given
         writeFixture(FixtureOptions.passing());
@@ -191,6 +229,9 @@ class ControlledAgentDistributionContractTest {
         // then
         assertThat(deleted.getOutput()).contains("Reusing configuration cache");
         assertThat(classes.resolve("AddedJmxContract.class")).doesNotExist();
+        Path syncedSources = root.resolve("distribution/build/generated/controlled-agent-runtime-test/jmx-contract/fixture");
+        assertThat(syncedSources.resolve("AddedJmxContract.java")).doesNotExist();
+        assertThat(syncedSources.resolve("GeneratedJmxContract.java")).isRegularFile();
         assertThat(outcome(deleted, ":jmx-producer:generateJmxContractSources")).isEqualTo(TaskOutcome.SUCCESS);
         assertThat(outcome(deleted, ":distribution:compileControlledAgentRuntimeTestJava"))
                 .isIn(TaskOutcome.SUCCESS, TaskOutcome.UP_TO_DATE);
@@ -575,7 +616,7 @@ class ControlledAgentDistributionContractTest {
         Files.createDirectories(root.resolve("jmx-producer"));
         Files.writeString(root.resolve("jmx-producer/build.gradle"), """
                 plugins {
-                    id 'base'
+                    id 'java-library'
                 }
 
                 def generatedDirectory = layout.buildDirectory.dir('generated/jmx-contract')
@@ -583,12 +624,12 @@ class ControlledAgentDistributionContractTest {
                     from(layout.projectDirectory.dir('contracts'))
                     into(generatedDirectory)
                 }
-                def sources = configurations.create('jmxApplicationContractSourceElements') {
+                def sources = configurations.create('jmxApplicationContractSourcesElements') {
                     canBeConsumed = true
                     canBeResolved = false
                     canBeDeclared = false
                     attributes {
-                        attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, 'platform-jmx-application-contract-sources'))
+                        attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, 'platform-jmx-application-contract'))
                         attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.DOCUMENTATION))
                         attribute(DocsType.DOCS_TYPE_ATTRIBUTE, objects.named(DocsType, DocsType.SOURCES))
                     }
@@ -604,7 +645,7 @@ class ControlledAgentDistributionContractTest {
         Files.writeString(distributionBuild, Files.readString(distributionBuild, StandardCharsets.UTF_8) + """
 
                 dependencies {
-                    jmxApplicationContractSources project(path: ':jmx-producer', configuration: 'jmxApplicationContractSourceElements')
+                    jmxApplicationContractSources project(':jmx-producer')
                 }
                 """, StandardCharsets.UTF_8);
         Files.writeString(root.resolve("distribution/src/controlledAgentRuntimeTest/java/fixture/JmxContractProbeTest.java"), """

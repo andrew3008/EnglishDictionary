@@ -10,20 +10,19 @@ platformJavaLibrary {
     bomProjectPath = ':spring-boot-starter-platform-bom'
 }
 
-def jmxContractProject = project(':platform-starters-tracing:platform-tracing-jmx-contract')
-def generateJmxWireContract = ':platform-starters-tracing:platform-tracing-jmx-contract:generateJmxWireContract'
-def generatedJmxContractSources = files(jmxContractProject.layout.buildDirectory.dir(
-        'generated/jmx-wire-contract/application/java'
-)).builtBy(generateJmxWireContract)
-def generatedJmxContractResources = files(jmxContractProject.layout.buildDirectory.dir(
-        'generated/jmx-wire-contract/application/resources'
-)).builtBy(generateJmxWireContract)
+configurations.create('jmxApplicationContractSources') {
+    canBeConsumed = false
+    canBeResolved = true
+    transitive = false
 
-sourceSets.main.java.srcDir(generatedJmxContractSources)
-
-tasks.named('compileJava') {
-    dependsOn generateJmxWireContract
+    attributes {
+        attribute(Usage.USAGE_ATTRIBUTE as Attribute<Object>, objects.named(Usage, 'platform-jmx-application-contract'))
+        attribute(Category.CATEGORY_ATTRIBUTE as Attribute<Object>, objects.named(Category, Category.DOCUMENTATION))
+        attribute(DocsType.DOCS_TYPE_ATTRIBUTE as Attribute<Object>, objects.named(DocsType, DocsType.SOURCES))
+    }
 }
+
+sourceSets.main.java.srcDir(configurations.jmxApplicationContractSources)
 
 def moduleVersionProvider = project.provider { project.version.toString() }
 def moduleVersionOutputDir = layout.buildDirectory.dir('generated/module-version')
@@ -41,8 +40,6 @@ def writeStarterModuleVersion = tasks.register('writeStarterModuleVersion', Writ
 def generatedModuleVersionResource = files(moduleVersionOutputDir).builtBy(writeStarterModuleVersion)
 
 tasks.named('processResources', ProcessResources) {
-    dependsOn generateJmxWireContract
-    from(generatedJmxContractResources)
     from(generatedModuleVersionResource)
 }
 
@@ -53,15 +50,9 @@ tasks.named('test', Test) {
     systemProperty('platformTracing.expectedModuleVersion', expectedVersion)
 }
 
-tasks.named('sourcesJar', Jar) {
-    dependsOn generateJmxWireContract
-}
-
-tasks.named('javadoc', Javadoc) {
-    dependsOn generateJmxWireContract
-}
-
 dependencies {
+    jmxApplicationContractSources project(':platform-starters-tracing:platform-tracing-jmx-contract')
+
     api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
     implementation project(':platform-starters-tracing:platform-tracing-runtime-policy')
     api 'io.opentelemetry:opentelemetry-api'

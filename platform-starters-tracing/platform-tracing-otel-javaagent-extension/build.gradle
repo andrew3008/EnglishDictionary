@@ -10,24 +10,22 @@ platformJavaLibrary {
     bomProjectPath = ':spring-boot-starter-platform-bom'
 }
 
-def jmxContractProjectPath = ':platform-starters-tracing:platform-tracing-jmx-contract'
-def generateJmxWireContract = "${jmxContractProjectPath}:generateJmxWireContract"
-def generatedJmxContractRoot = project(jmxContractProjectPath).layout.buildDirectory
-        .dir('generated/jmx-wire-contract/extension')
+configurations.create('jmxExtensionContractSources') {
+    canBeConsumed = false
+    canBeResolved = true
+    transitive = false
 
-def generatedJmxContractSources = files(generatedJmxContractRoot.map { it.dir('java') })
-        .builtBy(generateJmxWireContract)
-def generatedJmxContractResources = files(generatedJmxContractRoot.map { it.dir('resources') })
-        .builtBy(generateJmxWireContract)
+    attributes {
+        attribute(Usage.USAGE_ATTRIBUTE as Attribute<Object>, objects.named(Usage, 'platform-jmx-extension-contract'))
+        attribute(Category.CATEGORY_ATTRIBUTE as Attribute<Object>, objects.named(Category, Category.DOCUMENTATION))
+        attribute(DocsType.DOCS_TYPE_ATTRIBUTE as Attribute<Object>, objects.named(DocsType, DocsType.SOURCES))
+    }
+}
 
 def extensionVersionProvider = project.provider { project.version.toString() }
 
 sourceSets.named('main') {
-    java.srcDir(generatedJmxContractSources)
-}
-
-tasks.named('processResources', ProcessResources) {
-    from(generatedJmxContractResources)
+    java.srcDir(configurations.jmxExtensionContractSources)
 }
 
 abstract class JavaAgentArgumentProvider implements CommandLineArgumentProvider {
@@ -46,6 +44,8 @@ def mockitoAgentConfiguration = configurations.register('mockitoAgent') {
 }
 
 dependencies {
+    jmxExtensionContractSources project(':platform-starters-tracing:platform-tracing-jmx-contract')
+
     mockitoAgent platform(project(':spring-boot-starter-platform-bom'))
     mockitoAgent('org.mockito:mockito-core') {
         transitive = false

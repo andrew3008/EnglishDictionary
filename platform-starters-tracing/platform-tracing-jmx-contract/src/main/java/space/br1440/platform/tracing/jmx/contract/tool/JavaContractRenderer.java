@@ -15,17 +15,17 @@ final class JavaContractRenderer {
 
     private static final List<String> WIRE_GRAPH_INT_KEYS = List.of(
             "maxDepth", "maxElements", "maxLogicalBytes", "maxStringUtf8Bytes",
-            "maxRouteEntries", "maxRoutePrefixUtf8Bytes", "maxCapabilityEntries");
+            "maxRouteEntries", "maxRoutePrefixUtf8Bytes", "maxCapabilityEntries"
+    );
 
     static void render(ContractDocument contract,
                        Path outputRoot) throws IOException {
         Map<String, Object> planes = contract.section("planes");
-        renderPlane(contract, "extension", packageName(planes, "extension"), outputRoot.resolve("extension"));
-        renderPlane(contract, "application", packageName(planes, "application"), outputRoot.resolve("application"));
+        renderPlane(contract, packageName(planes, "extension"), outputRoot.resolve("extension"));
+        renderPlane(contract, packageName(planes, "application"), outputRoot.resolve("application"));
     }
 
     private static void renderPlane(ContractDocument contract,
-                                    String plane,
                                     String packageName,
                                     Path planeRoot) throws IOException {
         Path packageDirectory = planeRoot.resolve("java").resolve(packageName.replace('.', '/'));
@@ -49,8 +49,6 @@ final class JavaContractRenderer {
                 packageDirectory.resolve("JmxWireGraphMeter.java"),
                 renderWireGraphMeter(packageName)
         );
-
-        writeIdentity(contract, plane, planeRoot.resolve("resources"));
     }
 
     private static String renderUtf8Meter(String packageName) {
@@ -748,18 +746,6 @@ final class JavaContractRenderer {
         visiting.remove(type);
         complete.add(type);
         result.add(type);
-    }
-
-    private static void writeIdentity(ContractDocument contract, String plane, Path resourceRoot) throws IOException {
-        String content = "descriptors.sha256=" + contract.descriptorDigest() + '\n'
-                + "plane=" + plane + '\n'
-                + "schema.id=" + contract.schemaId() + '\n'
-                + "schema.sha256=" + contract.schemaDigest() + '\n';
-
-        JmxWireContractGenerator.writeUtf8(
-                resourceRoot.resolve("META-INF/platform-tracing/jmx-wire-contract.properties"),
-                content
-        );
     }
 
     private static String packageName(Map<String, Object> planes, String plane) {
