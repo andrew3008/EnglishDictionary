@@ -123,6 +123,43 @@ class ExceptionRecorderTest {
         assertThat(span.getEvents()).isEmpty();
     }
 
+    @Test
+    void record_withErrorTypeOverride_keepsExceptionClassOnEvent() {
+        // given
+        ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
+        Span span = tracer.spanBuilder("explicit").startSpan();
+        IllegalStateException failure = new IllegalStateException("SELECT * FROM users WHERE ssn='123'");
+
+        // when
+        recorder.record(span, failure, "23505");
+        span.end();
+
+        // then
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
+        assertThat(data.getAttributes().get(SemconvKeys.ERROR_TYPE)).isEqualTo("23505");
+        assertThat(data.getAttributes().get(SemconvKeys.ERROR_TYPE)).isNotEqualTo(failure.getMessage());
+        assertThat(data.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_TYPE))
+                .isEqualTo(IllegalStateException.class.getName());
+        assertThat(data.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isNull();
+        assertThat(data.getStatus().getDescription()).isEmpty();
+    }
+
+    @Test
+    void record_withBlankErrorType_usesExceptionClass() {
+        // given
+        ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
+        Span span = tracer.spanBuilder("explicit").startSpan();
+
+        // when
+        recorder.record(span, new IllegalStateException("boom"), "   ");
+        span.end();
+
+        // then
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
+        assertThat(data.getAttributes().get(SemconvKeys.ERROR_TYPE))
+                .isEqualTo(IllegalStateException.class.getName());
+    }
+
     private void runInSpan(Runnable body) {
         Span span = tracer.spanBuilder("op").startSpan();
         try (Scope ignored = span.makeCurrent()) {

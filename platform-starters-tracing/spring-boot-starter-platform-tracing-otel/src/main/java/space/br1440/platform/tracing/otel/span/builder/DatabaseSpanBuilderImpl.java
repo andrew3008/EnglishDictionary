@@ -4,6 +4,8 @@ import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder;
+import space.br1440.platform.tracing.api.span.spec.DatabaseSpanHandle;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
 import space.br1440.platform.tracing.otel.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
@@ -20,6 +22,17 @@ final class DatabaseSpanBuilderImpl extends AbstractSemanticSpanBuilder<Database
     @Override
     protected DatabaseSpanBuilder self() {
         return this;
+    }
+
+    @Override
+    @Nonnull
+    public DatabaseSpanHandle start() {
+        SpanHandle handle = super.start();
+        if (handle instanceof DatabaseSpanHandle databaseHandle) {
+            return databaseHandle;
+        }
+
+        throw new IllegalStateException("database span runtime did not return DatabaseSpanHandle");
     }
 
     @Override

@@ -27,7 +27,7 @@ public final class RecordingTracingRuntime implements TracingRuntime {
     @Nonnull
     public SpanHandle startSpan(@Nonnull SpanSpec spec) {
         receivedSpecs.add(spec);
-        return NoOpSpanHandle.INSTANCE;
+        return identityDelegate.startSpan(spec);
     }
 
     @Override

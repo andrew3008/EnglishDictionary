@@ -7,6 +7,7 @@ import jakarta.annotation.Nullable;
 
 import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.context.CorrelationScope;
+import space.br1440.platform.tracing.api.span.spec.DatabaseSpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.otel.runtime.DelegatingTracingRuntime;
@@ -28,7 +29,12 @@ public final class MeteredTracingRuntime implements DelegatingTracingRuntime {
     @Nonnull
     public SpanHandle startSpan(@Nonnull SpanSpec spec) {
         metrics.incrementSpansStarted(spec.category());
-        return new MeteredSpanHandle(delegate.startSpan(spec), metrics);
+        SpanHandle started = delegate.startSpan(spec);
+        if (started instanceof DatabaseSpanHandle databaseHandle) {
+            return new MeteredDatabaseSpanHandle(databaseHandle, metrics);
+        }
+
+        return new MeteredSpanHandle(started, metrics);
     }
 
     @Override

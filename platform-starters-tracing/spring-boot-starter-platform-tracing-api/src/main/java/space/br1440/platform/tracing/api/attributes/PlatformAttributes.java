@@ -168,6 +168,9 @@ public final class PlatformAttributes {
 
     /**
      * Класс ошибки, с которой завершилась операция span'а (OTel semconv {@code error.type}).
+     * <p>
+     * Для database span при принятом коде ответа БД значение совпадает с {@code db.response.status_code}.
+     * Имя класса исключения при этом остаётся в {@code exception.type}.
      * @see <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/error/">OTel: error attributes</a>
      */
     public static final String ERROR_TYPE = "error.type";
@@ -191,8 +194,9 @@ public final class PlatformAttributes {
     public static final String DB_OPERATION_NAME = "db.operation.name";
 
     /**
-     * Код ответа БД, integer (OTel semconv {@code db.response.status_code};
-     * legacy: {@code db.status_code}, тип string → integer).
+     * Код ответа БД, строка (OTel semconv {@code db.response.status_code}).
+     * <p>
+     * Примеры реестра semconv 1.28.0: {@code 102}, {@code ORA-17002}, {@code 08P01}, {@code 404}.
      * @see <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/db/">OTel: db attributes</a>
      */
     @SuppressWarnings("unused")

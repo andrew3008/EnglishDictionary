@@ -31,12 +31,16 @@ public final class ExceptionRecorder {
     }
 
     public void record(@Nullable Span span, @Nullable Throwable exception) {
+        record(span, exception, null);
+    }
+
+    public void record(@Nullable Span span, @Nullable Throwable exception, @Nullable String errorType) {
         if (span == null || exception == null || !span.getSpanContext().isValid()) {
             return;
         }
 
         String type = exception.getClass().getName();
-        span.setAttribute(SemconvKeys.ERROR_TYPE, type);
+        span.setAttribute(SemconvKeys.ERROR_TYPE, errorTypeOrExceptionClass(errorType, type));
         span.setAttribute(SemconvKeys.PLATFORM_RESULT, SpanResult.FAILURE.value());
 
         String safeMessage = recordingPolicy.sanitizeOrNull(exception);
@@ -76,5 +80,14 @@ public final class ExceptionRecorder {
         if (span.getSpanContext().isValid()) {
             span.setAttribute(SemconvKeys.PLATFORM_RESULT, result.value());
         }
+    }
+
+    @Nonnull
+    private static String errorTypeOrExceptionClass(@Nullable String errorType, @Nonnull String exceptionType) {
+        if (errorType == null || errorType.isBlank()) {
+            return exceptionType;
+        }
+
+        return errorType;
     }
 }

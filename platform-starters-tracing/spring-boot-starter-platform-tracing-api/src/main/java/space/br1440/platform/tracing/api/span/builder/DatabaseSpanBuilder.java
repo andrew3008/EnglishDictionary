@@ -1,7 +1,9 @@
 package space.br1440.platform.tracing.api.span.builder;
 
 import jakarta.annotation.Nonnull;
+
 import space.br1440.platform.tracing.api.semconv.annotation.DatabaseSemconvVersion;
+import space.br1440.platform.tracing.api.span.spec.DatabaseSpanHandle;
 
 /**
  * Семантический builder Database span {@link TransportTracing#database()}.
@@ -17,5 +19,9 @@ public interface DatabaseSpanBuilder extends ManualSpanBuilder<DatabaseSpanBuild
 
     @Nonnull
     DatabaseSpanBuilder collection(@Nonnull String collection);
+
+    @Override
+    @Nonnull
+    DatabaseSpanHandle start();
 
 }

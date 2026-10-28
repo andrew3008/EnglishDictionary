@@ -8,6 +8,7 @@ import jakarta.annotation.Nullable;
 
 import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.context.CorrelationScope;
+import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
@@ -53,6 +54,10 @@ public final class NoOpTracingRuntime implements TracingRuntime {
     @Nonnull
     public SpanHandle startSpan(@Nonnull SpanSpec spec) {
         Objects.requireNonNull(spec, "spec");
+        if (spec.category() == SpanCategory.DATABASE) {
+            return NoOpDatabaseSpanHandle.INSTANCE;
+        }
+
         return NoOpSpanHandle.INSTANCE;
     }
 

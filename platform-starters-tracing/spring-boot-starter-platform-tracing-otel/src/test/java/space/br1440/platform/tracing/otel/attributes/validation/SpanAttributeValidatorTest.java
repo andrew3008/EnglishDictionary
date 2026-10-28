@@ -135,4 +135,45 @@ class SpanAttributeValidatorTest {
 
         assertThat(new SpanAttributeValidator().level()).isEqualTo(SpanAttributeValidationLevel.WARNING);
     }
+
+    @Test
+    void databaseAllowlist_acceptsResponseStatusCode() {
+        // given
+        SpanAttributeValidator validator = new SpanAttributeValidator(
+                SpanAttributeValidationLevel.WARNING, SpanAttributeValidationMetrics.NOOP);
+        Attributes attributes = Attributes.builder()
+                .put(SemconvKeys.PLATFORM_TYPE, "database")
+                .put(SemconvKeys.DB_SYSTEM_NAME, "postgresql")
+                .put(SemconvKeys.DB_RESPONSE_STATUS_CODE, "23505")
+                .build();
+
+        // when
+        ValidatedAttributes result = validator.validateAndNormalize(
+                SpanCategory.DATABASE, attributes, "DatabaseSpanBuilder");
+
+        // then
+        assertThat(result.violations()).isEmpty();
+    }
+
+    @Test
+    void httpClientAllowlist_rejectsResponseStatusCode() {
+        // given
+        SpanAttributeValidator validator = new SpanAttributeValidator(
+                SpanAttributeValidationLevel.WARNING, SpanAttributeValidationMetrics.NOOP);
+        Attributes attributes = Attributes.builder()
+                .put(SemconvKeys.PLATFORM_TYPE, "http_client")
+                .put(SemconvKeys.HTTP_REQUEST_METHOD, "GET")
+                .put(SemconvKeys.DB_RESPONSE_STATUS_CODE, "23505")
+                .build();
+
+        // when
+        ValidatedAttributes result = validator.validateAndNormalize(
+                SpanCategory.HTTP_CLIENT, attributes, "HttpClientSpanBuilder");
+
+        // then
+        assertThat(result.violations())
+                .filteredOn(violation -> SemconvKeys.DB_RESPONSE_STATUS_CODE.getKey().equals(violation.attributeKey()))
+                .extracting(SpanAttributeViolation::ruleId)
+                .containsExactly("ATTR_NOT_ALLOWED");
+    }
 }

@@ -67,7 +67,8 @@ class CategoryContracts {
                         SemconvKeys.PLATFORM_REMOTE_SERVICE,
                         SemconvKeys.DB_SYSTEM_NAME, SemconvKeys.DB_SYSTEM_LEGACY,
                         SemconvKeys.DB_COLLECTION_NAME, SemconvKeys.DB_NAMESPACE,
-                        SemconvKeys.DB_OPERATION_NAME, SemconvKeys.ERROR_TYPE),
+                        SemconvKeys.DB_OPERATION_NAME, SemconvKeys.DB_RESPONSE_STATUS_CODE,
+                        SemconvKeys.ERROR_TYPE),
                 Set.of(SemconvKeys.PLATFORM_TYPE),
                 List.of(Set.of(SemconvKeys.DB_SYSTEM_NAME, SemconvKeys.DB_SYSTEM_LEGACY)),
                 Set.of(SemconvKeys.HTTP_REQUEST_METHOD)));

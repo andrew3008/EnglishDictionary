@@ -42,6 +42,7 @@ public final class SemconvKeys {
     public static final AttributeKey<String> DB_COLLECTION_NAME = stringKey(PlatformAttributes.DB_COLLECTION_NAME);
     public static final AttributeKey<String> DB_NAMESPACE = stringKey(PlatformAttributes.DB_NAMESPACE);
     public static final AttributeKey<String> DB_OPERATION_NAME = stringKey(PlatformAttributes.DB_OPERATION_NAME);
+    public static final AttributeKey<String> DB_RESPONSE_STATUS_CODE = stringKey(PlatformAttributes.DB_RESPONSE_STATUS_CODE);
 
     // RPC
     public static final AttributeKey<String> RPC_SYSTEM = stringKey(PlatformAttributes.RPC_SYSTEM_NAME);

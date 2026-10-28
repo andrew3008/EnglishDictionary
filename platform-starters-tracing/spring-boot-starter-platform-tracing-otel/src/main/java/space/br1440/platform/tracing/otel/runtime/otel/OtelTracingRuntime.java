@@ -10,6 +10,7 @@ import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec;
@@ -17,6 +18,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
 import space.br1440.platform.tracing.otel.context.DefaultActiveTraceContextView;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
+import space.br1440.platform.tracing.otel.runtime.DatabaseSpanHandleImpl;
 import space.br1440.platform.tracing.otel.runtime.SpanHandleImpl;
 import space.br1440.platform.tracing.otel.runtime.TraceControlBoundaryState;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
@@ -92,7 +94,12 @@ public final class OtelTracingRuntime implements TracingRuntime {
         }
 
         Span span = builder.startSpan();
-        return SpanHandleImpl.wrap(OwningSpanScope.activate(span, exceptionRecorder));
+        OwningSpanScope scope = OwningSpanScope.activate(span, exceptionRecorder);
+        if (spec.category() == SpanCategory.DATABASE) {
+            return DatabaseSpanHandleImpl.wrap(scope);
+        }
+
+        return SpanHandleImpl.wrap(scope);
     }
 
     @Override

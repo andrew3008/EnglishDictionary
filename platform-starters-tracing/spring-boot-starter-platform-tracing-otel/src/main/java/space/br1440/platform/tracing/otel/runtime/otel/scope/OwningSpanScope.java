@@ -11,6 +11,7 @@ import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.otel.mdc.SpanContextMdcProjection;
+import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -21,9 +22,12 @@ public final class OwningSpanScope implements AutoCloseable {
     private final Span span;
     private final Scope scope;
     private final ExceptionRecorder exceptionRecorder;
+    private static final int MAX_RESPONSE_STATUS_CODE_LENGTH = 64;
+
     private final AtomicBoolean closed = new AtomicBoolean(false);
     private final AtomicBoolean resultDeclared = new AtomicBoolean(false);
     private final AtomicBoolean failureLatched = new AtomicBoolean(false);
+    private String admittedResponseStatusCode;
 
     public OwningSpanScope(@Nonnull Span span, @Nonnull Scope scope,
                            @Nonnull ExceptionRecorder exceptionRecorder) {
@@ -95,15 +99,50 @@ public final class OwningSpanScope implements AutoCloseable {
         return this;
     }
 
+    public void responseStatusCode(@Nullable String code) {
+        if (closed.get() || !span.getSpanContext().isValid()) {
+            return;
+        }
+
+        String admitted = admitResponseStatusCode(code);
+        if (admitted == null) {
+            return;
+        }
+
+        admittedResponseStatusCode = admitted;
+        span.setAttribute(SemconvKeys.DB_RESPONSE_STATUS_CODE, admitted);
+        if (failureLatched.get()) {
+            span.setAttribute(SemconvKeys.ERROR_TYPE, admitted);
+        }
+    }
+
     @Nonnull
     public OwningSpanScope recordException(@Nullable Throwable throwable) {
-        exceptionRecorder.record(span, throwable);
+        exceptionRecorder.record(span, throwable, admittedResponseStatusCode);
         if (throwable != null) {
             failureLatched.set(true);
             resultDeclared.set(true);
         }
 
         return this;
+    }
+
+    @Nullable
+    private static String admitResponseStatusCode(@Nullable String code) {
+        if (code == null || code.isBlank() || code.length() > MAX_RESPONSE_STATUS_CODE_LENGTH) {
+            return null;
+        }
+
+        for (int index = 0; index < code.length(); index++) {
+            char character = code.charAt(index);
+            boolean letter = (character >= 'A' && character <= 'Z') || (character >= 'a' && character <= 'z');
+            boolean digit = character >= '0' && character <= '9';
+            if (!letter && !digit && character != '-' && character != '/') {
+                return null;
+            }
+        }
+
+        return code;
     }
 
     private void applyResult(@Nonnull SpanResult result) {
