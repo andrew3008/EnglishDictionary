@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.api.propagation;
 
+import java.util.List;
+
 import lombok.experimental.UtilityClass;
 
 /**
@@ -47,6 +49,12 @@ public final class PlatformHeaders {
      * заголовка фиксировано, чтобы не расходиться между модулями.
      */
     public static final String X_CORRELATION_ID = "X-Correlation-Id";
+
+    /**
+     * Имена, которыми владеет активный outbound-адаптер независимо от разрешённых policy слотов.
+     */
+    public static final List<String> OUTBOUND_CONTROL_HEADERS =
+            List.of(X_TRACE_ON, X_QA_TRACE, X_REQUEST_ID, X_CORRELATION_ID);
 
     /**
      * Platform-owned authoritative заголовок ответа с {@code traceId} текущего span'а.

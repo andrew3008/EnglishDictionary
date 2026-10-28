@@ -6,11 +6,12 @@ import java.util.Optional;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
-import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
+import space.br1440.platform.tracing.runtime.propagation.CorrelationIdSupport;
+import space.br1440.platform.tracing.runtime.propagation.RequestIdSupport;
 
 public final class DefaultTraceControlHeaderInjector implements PlatformOutboundPropagation {
 
@@ -27,41 +28,23 @@ public final class DefaultTraceControlHeaderInjector implements PlatformOutbound
             return OutboundPropagationHeaders.EMPTY;
         }
 
-        try {
-            Optional<OutboundPropagationHeaders.Header> forceTrace =
-                    decision.propagateForceTrace() && control != null && control.forceTrace()
-                            ? header(PlatformHeaders.X_TRACE_ON, "on")
-                            : Optional.empty();
+        Optional<String> forceTrace = decision.propagateForceTrace() && control != null && control.forceTrace()
+                ? Optional.of("on")
+                : Optional.empty();
 
-            Optional<OutboundPropagationHeaders.Header> qaTrace =
-                    decision.propagateQaTrace() && control != null && control.qaTrace()
-                            ? header(PlatformHeaders.X_QA_TRACE, "1")
-                            : Optional.empty();
+        Optional<String> qaTrace = decision.propagateQaTrace() && control != null && control.qaTrace()
+                ? Optional.of("1")
+                : Optional.empty();
 
-            String requestId = identitySource.currentRequestId();
-            Optional<OutboundPropagationHeaders.Header> requestIdHeaderValue =
-                    decision.propagateRequestId() && requestId != null
-                            ? header(PlatformHeaders.X_REQUEST_ID, requestId)
-                            : Optional.empty();
+        Optional<String> requestId = decision.propagateRequestId()
+                ? Optional.ofNullable(RequestIdSupport.sanitizeOrNull(identitySource.currentRequestId()))
+                : Optional.empty();
 
-            String correlationId = identitySource.currentCorrelationId();
-            Optional<OutboundPropagationHeaders.Header> correlationIdHeaderValue =
-                    decision.propagateCorrelationId() && correlationId != null
-                            ? header(PlatformHeaders.X_CORRELATION_ID, correlationId)
-                            : Optional.empty();
+        Optional<String> correlationId = decision.propagateCorrelationId()
+                ? Optional.ofNullable(CorrelationIdSupport.sanitizeOrNull(identitySource.currentCorrelationId()))
+                : Optional.empty();
 
-            if (forceTrace.isEmpty() && qaTrace.isEmpty() && requestIdHeaderValue.isEmpty() && correlationIdHeaderValue.isEmpty()) {
-                return OutboundPropagationHeaders.EMPTY;
-            }
-
-            return new OutboundPropagationHeaders(forceTrace, qaTrace, requestIdHeaderValue, correlationIdHeaderValue);
-        } catch (RuntimeException ignored) {
-            return OutboundPropagationHeaders.EMPTY;
-        }
-    }
-
-    private static Optional<OutboundPropagationHeaders.Header> header(String name, String value) {
-        return Optional.of(new OutboundPropagationHeaders.Header(name, value));
+        return new OutboundPropagationHeaders(forceTrace, qaTrace, requestId, correlationId);
     }
 
     private static boolean isDenied(OutboundPropagationDecision decision) {

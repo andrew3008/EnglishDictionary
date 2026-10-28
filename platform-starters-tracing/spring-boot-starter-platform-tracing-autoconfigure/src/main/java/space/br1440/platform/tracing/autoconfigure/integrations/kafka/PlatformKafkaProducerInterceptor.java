@@ -1,14 +1,18 @@
 package space.br1440.platform.tracing.autoconfigure.integrations.kafka;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Iterator;
 import java.util.Map;
-import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.producer.ProducerInterceptor;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 
+import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders;
@@ -16,6 +20,9 @@ import space.br1440.platform.tracing.api.propagation.control.OutboundPropagation
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public final class PlatformKafkaProducerInterceptor<K, V> implements ProducerInterceptor<K, V> {
 
     public static final String CONFIG_POLICY = "platform.tracing.kafka.outbound-policy";
@@ -25,22 +32,21 @@ public final class PlatformKafkaProducerInterceptor<K, V> implements ProducerInt
     private OutboundPropagationPolicy policy;
     private PlatformOutboundPropagation propagation;
     private RequestIdentityBoundarySupport identityBoundary;
+    private final AtomicBoolean propagationFailureLogged = new AtomicBoolean();
 
     @Override
     public ProducerRecord<K, V> onSend(ProducerRecord<K, V> record) {
         try {
-            if (policy != null && propagation != null && record != null) {
-                OutboundPropagationDecision decision = policy.decide(record.topic());
-                InboundTraceControl control = new InboundTraceControl(
-                        identityBoundary != null && identityBoundary.forceTrace(),
-                        identityBoundary != null && identityBoundary.qaTrace(),
-                        null, null, null
-                );
-                OutboundPropagationHeaders headers = propagation.resolve(decision, control);
-                apply(record.headers(), headers);
+            strip(record.headers());
+            OutboundPropagationDecision decision = policy.decide(record.topic());
+            InboundTraceControl control = new InboundTraceControl(
+                    identityBoundary.forceTrace(), identityBoundary.qaTrace(), null, null, null
+            );
+            apply(record.headers(), propagation.resolve(decision, control));
+        } catch (RuntimeException failure) {
+            if (propagationFailureLogged.compareAndSet(false, true)) {
+                log.warn("Failed to prepare platform propagation headers: {}", failure.getClass().getName());
             }
-        } catch (RuntimeException ignored) {
-            // сбой propagation не должен влиять на отправку сообщения
         }
 
         return record;
@@ -58,36 +64,42 @@ public final class PlatformKafkaProducerInterceptor<K, V> implements ProducerInt
 
     @Override
     public void configure(Map<String, ?> configs) {
-        Object policyObj = configs.get(CONFIG_POLICY);
-        if (policyObj instanceof OutboundPropagationPolicy propagationPolicy) {
-            this.policy = propagationPolicy;
+        if (!(configs.get(CONFIG_POLICY) instanceof OutboundPropagationPolicy configuredPolicy)) {
+            throw new ConfigException("Missing or invalid configuration: " + CONFIG_POLICY);
+        }
+        if (!(configs.get(CONFIG_PROPAGATION) instanceof PlatformOutboundPropagation configuredPropagation)) {
+            throw new ConfigException("Missing or invalid configuration: " + CONFIG_PROPAGATION);
+        }
+        if (!(configs.get(CONFIG_IDENTITY) instanceof RequestIdentityBoundarySupport configuredIdentity)) {
+            throw new ConfigException("Missing or invalid configuration: " + CONFIG_IDENTITY);
         }
 
-        Object propagationObj = configs.get(CONFIG_PROPAGATION);
-        if (propagationObj instanceof PlatformOutboundPropagation value) {
-            this.propagation = value;
-        }
+        policy = configuredPolicy;
+        propagation = configuredPropagation;
+        identityBoundary = configuredIdentity;
+    }
 
-        Object identityObj = configs.get(CONFIG_IDENTITY);
-        if (identityObj instanceof RequestIdentityBoundarySupport value) {
-            this.identityBoundary = value;
+    private static void strip(Headers carrier) {
+        Iterator<Header> iterator = carrier.iterator();
+        while (iterator.hasNext()) {
+            String name = iterator.next().key();
+            for (String reserved : PlatformHeaders.OUTBOUND_CONTROL_HEADERS) {
+                if (reserved.equalsIgnoreCase(name)) {
+                    iterator.remove();
+                    break;
+                }
+            }
         }
     }
 
-    private void apply(Headers carrier, OutboundPropagationHeaders headers) {
-        headers.forceTrace().ifPresent(header -> set(carrier, header));
-        headers.qaTrace().ifPresent(header -> set(carrier, header));
-
-        if (identityBoundary == null || !identityBoundary.tracingDisabledByConfiguration()) {
-            headers.requestId().ifPresent(header -> set(carrier, header));
-        }
-
-        headers.correlationId().ifPresent(header -> set(carrier, header));
+    private static void apply(Headers carrier, OutboundPropagationHeaders headers) {
+        headers.forceTrace().ifPresent(value -> set(carrier, PlatformHeaders.X_TRACE_ON, value));
+        headers.qaTrace().ifPresent(value -> set(carrier, PlatformHeaders.X_QA_TRACE, value));
+        headers.requestId().ifPresent(value -> set(carrier, PlatformHeaders.X_REQUEST_ID, value));
+        headers.correlationId().ifPresent(value -> set(carrier, PlatformHeaders.X_CORRELATION_ID, value));
     }
 
-    private static void set(Headers carrier, OutboundPropagationHeaders.Header header) {
-        String value = Objects.requireNonNull(header.value(), "value");
-        carrier.remove(header.name())
-                .add(header.name(), value.getBytes(StandardCharsets.UTF_8));
+    private static void set(Headers carrier, String name, String value) {
+        carrier.remove(name).add(name, value.getBytes(StandardCharsets.UTF_8));
     }
 }

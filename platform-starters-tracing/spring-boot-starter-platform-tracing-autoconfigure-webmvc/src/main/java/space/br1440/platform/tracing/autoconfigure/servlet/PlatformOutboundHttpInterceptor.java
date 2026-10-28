@@ -1,9 +1,9 @@
 package space.br1440.platform.tracing.autoconfigure.servlet;
 
 import java.io.IOException;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
@@ -42,14 +42,14 @@ public final class PlatformOutboundHttpInterceptor implements ClientHttpRequestI
                                         @NonNull byte[] body,
                                         @NonNull ClientHttpRequestExecution execution) throws IOException {
         try {
-            request.getHeaders().remove(PlatformHeaders.X_CORRELATION_ID);
+            PlatformHeaders.OUTBOUND_CONTROL_HEADERS.forEach(request.getHeaders()::remove);
 
             String host = request.getURI().getHost();
             OutboundPropagationDecision decision = policy.decide(host);
             InboundTraceControl control = new InboundTraceControl(
                     identityBoundary.forceTrace(), identityBoundary.qaTrace(), null, null, null
             );
-            apply(request, propagation.resolve(decision, control));
+            apply(request.getHeaders(), propagation.resolve(decision, control));
         } catch (RuntimeException failure) {
             if (propagationFailureLogged.compareAndSet(false, true)) {
                 log.warn("Failed to prepare platform propagation headers: {}", failure.getClass().getName());
@@ -59,15 +59,10 @@ public final class PlatformOutboundHttpInterceptor implements ClientHttpRequestI
         return execution.execute(request, body);
     }
 
-    private static void apply(HttpRequest request, OutboundPropagationHeaders headers) {
-        headers.forceTrace().ifPresent(header -> setHeader(request, header));
-        headers.qaTrace().ifPresent(header -> setHeader(request, header));
-        headers.requestId().ifPresent(header -> setHeader(request, header));
-        headers.correlationId().ifPresent(header -> setHeader(request, header));
-    }
-
-    private static void setHeader(HttpRequest request, OutboundPropagationHeaders.Header header) {
-        Objects.requireNonNull(header.value(), "value");
-        request.getHeaders().set(header.name(), header.value());
+    private static void apply(HttpHeaders carrier, OutboundPropagationHeaders headers) {
+        headers.forceTrace().ifPresent(value -> carrier.set(PlatformHeaders.X_TRACE_ON, value));
+        headers.qaTrace().ifPresent(value -> carrier.set(PlatformHeaders.X_QA_TRACE, value));
+        headers.requestId().ifPresent(value -> carrier.set(PlatformHeaders.X_REQUEST_ID, value));
+        headers.correlationId().ifPresent(value -> carrier.set(PlatformHeaders.X_CORRELATION_ID, value));
     }
 }

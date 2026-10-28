@@ -1,16 +1,16 @@
 package space.br1440.platform.tracing.runtime.propagation.control;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
+
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("Correlation trust-boundary regression (trusted vs untrusted destination)")
 class CorrelationTrustBoundaryRegressionTest {
@@ -39,8 +39,7 @@ class CorrelationTrustBoundaryRegressionTest {
         OutboundPropagationHeaders untrustedHeaders = injector.resolve(untrustedDecision, null);
 
         // then
-        assertThat(trustedHeaders.correlationId())
-                .contains(new OutboundPropagationHeaders.Header(PlatformHeaders.X_CORRELATION_ID, CORRELATION_ID));
+        assertThat(trustedHeaders.correlationId()).contains(CORRELATION_ID);
         assertThat(untrustedHeaders.correlationId()).isEmpty();
     }
 }

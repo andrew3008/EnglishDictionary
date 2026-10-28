@@ -14,22 +14,19 @@ import space.br1440.platform.tracing.api.propagation.control.OutboundPropagation
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
+import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
+import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 
 class PlatformKafkaProducerInterceptorTest {
 
     @Test
     void writesCorrelationIdHeaderWhenPropagationResolvesOne() {
         // given
-        OutboundPropagationHeaders.Header correlationHeader = new OutboundPropagationHeaders.Header(
-                PlatformHeaders.X_CORRELATION_ID,
-                "order-42"
-        );
-
         PlatformOutboundPropagation propagation = (decision, control) -> new OutboundPropagationHeaders(
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
-                Optional.of(correlationHeader)
+                Optional.of("order-42")
         );
 
         try (PlatformKafkaProducerInterceptor<String, String> interceptor = interceptorWith(
@@ -67,29 +64,9 @@ class PlatformKafkaProducerInterceptorTest {
     @Test
     void writesAllFourHeadersWhenPropagationResolvesThem() {
         // given
-        OutboundPropagationHeaders.Header forceTraceHeader = new OutboundPropagationHeaders.Header(
-                PlatformHeaders.X_TRACE_ON,
-                "on"
-        );
-
-        OutboundPropagationHeaders.Header qaTraceHeader = new OutboundPropagationHeaders.Header(
-                PlatformHeaders.X_QA_TRACE,
-                "on"
-        );
-
-        OutboundPropagationHeaders.Header requestIdHeader = new OutboundPropagationHeaders.Header(
-                PlatformHeaders.X_REQUEST_ID,
-                "req-1"
-        );
-
-        OutboundPropagationHeaders.Header correlationHeader = new OutboundPropagationHeaders.Header(
-                PlatformHeaders.X_CORRELATION_ID,
-                "order-42"
-        );
-
         PlatformOutboundPropagation propagation = (decision, control) -> new OutboundPropagationHeaders(
-                Optional.of(forceTraceHeader), Optional.of(qaTraceHeader),
-                Optional.of(requestIdHeader), Optional.of(correlationHeader)
+                Optional.of("on"), Optional.of("on"),
+                Optional.of("req-1"), Optional.of("order-42")
         );
 
         try (PlatformKafkaProducerInterceptor<String, String> interceptor = interceptorWith(
@@ -114,7 +91,9 @@ class PlatformKafkaProducerInterceptorTest {
         PlatformKafkaProducerInterceptor<String, String> interceptor = new PlatformKafkaProducerInterceptor<>();
         interceptor.configure(Map.of(
                 PlatformKafkaProducerInterceptor.CONFIG_POLICY, policy,
-                PlatformKafkaProducerInterceptor.CONFIG_PROPAGATION, propagation
+                PlatformKafkaProducerInterceptor.CONFIG_PROPAGATION, propagation,
+                PlatformKafkaProducerInterceptor.CONFIG_IDENTITY,
+                new RequestIdentityBoundarySupport(NoOpTracingRuntime.noop())
         ));
         return interceptor;
     }

@@ -1,9 +1,9 @@
 package space.br1440.platform.tracing.autoconfigure.reactive;
 
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import jakarta.annotation.Nonnull;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
@@ -36,6 +36,9 @@ public final class PlatformOutboundExchangeFilterFunction implements ExchangeFil
     @Nonnull
     public Mono<ClientResponse> filter(@Nonnull ClientRequest request, @Nonnull ExchangeFunction next) {
         return Mono.deferContextual(contextView -> {
+            ClientRequest.Builder builder = ClientRequest.from(request)
+                    .headers(PlatformOutboundExchangeFilterFunction::strip);
+
             try {
                 String host = request.url().getHost();
                 OutboundPropagationDecision decision = policy.decide(host);
@@ -43,32 +46,31 @@ public final class PlatformOutboundExchangeFilterFunction implements ExchangeFil
                 ReactiveIdentityContextPropagation.IdentityState identityState = contextView
                         .<ReactiveIdentityContextPropagation.IdentityState>getOrEmpty(ReactiveIdentityContextPropagation.KEY)
                         .orElse(ReactiveIdentityContextPropagation.EMPTY);
+
                 InboundTraceControl control = new InboundTraceControl(
                         identityState.forceTrace(), identityState.qaTrace(), null, null, null
                 );
 
-                ClientRequest.Builder builder = ClientRequest.from(request);
-                builder.headers(httpHeaders -> httpHeaders.remove(PlatformHeaders.X_CORRELATION_ID));
-                apply(builder, propagation.resolve(decision, control));
-                return next.exchange(builder.build());
+                OutboundPropagationHeaders headers = propagation.resolve(decision, control);
+                builder.headers(carrier -> apply(carrier, headers));
             } catch (RuntimeException failure) {
                 if (propagationFailureLogged.compareAndSet(false, true)) {
                     log.warn("Failed to prepare platform propagation headers: {}", failure.getClass().getName());
                 }
-                return next.exchange(request);
             }
+
+            return next.exchange(builder.build());
         });
     }
 
-    private static void apply(ClientRequest.Builder builder, OutboundPropagationHeaders headers) {
-        headers.forceTrace().ifPresent(header -> setHeader(builder, header));
-        headers.qaTrace().ifPresent(header -> setHeader(builder, header));
-        headers.requestId().ifPresent(header -> setHeader(builder, header));
-        headers.correlationId().ifPresent(header -> setHeader(builder, header));
+    private static void strip(HttpHeaders carrier) {
+        PlatformHeaders.OUTBOUND_CONTROL_HEADERS.forEach(carrier::remove);
     }
 
-    private static void setHeader(ClientRequest.Builder builder, OutboundPropagationHeaders.Header header) {
-        Objects.requireNonNull(header.value(), "value");
-        builder.header(header.name(), header.value());
+    private static void apply(HttpHeaders carrier, OutboundPropagationHeaders headers) {
+        headers.forceTrace().ifPresent(value -> carrier.set(PlatformHeaders.X_TRACE_ON, value));
+        headers.qaTrace().ifPresent(value -> carrier.set(PlatformHeaders.X_QA_TRACE, value));
+        headers.requestId().ifPresent(value -> carrier.set(PlatformHeaders.X_REQUEST_ID, value));
+        headers.correlationId().ifPresent(value -> carrier.set(PlatformHeaders.X_CORRELATION_ID, value));
     }
 }

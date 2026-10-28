@@ -5,7 +5,6 @@ import java.util.Optional;
 
 import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
-import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 
 public final class RequestIdentityBoundarySupport {
 
@@ -45,9 +44,5 @@ public final class RequestIdentityBoundarySupport {
 
     public Optional<String> requestId() {
         return tracingRuntime.currentRequestId();
-    }
-
-    public boolean tracingDisabledByConfiguration() {
-        return tracingRuntime.state().mode() == TracingRuntimeMode.DISABLED_BY_CONFIGURATION;
     }
 }

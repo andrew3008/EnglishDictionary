@@ -45,6 +45,33 @@ class PlatformKafkaOutboundAutoConfigurationTest {
     }
 
     @Test
+    void explicitlyEnabledPlatformRegistersDefaultPortAndCustomizer() {
+        // when
+        contextRunner.withPropertyValues("platform.tracing.enabled=true").run(context -> {
+            // then
+            assertThat(context).hasSingleBean(PlatformOutboundPropagation.class);
+            assertThat(context).hasSingleBean(PlatformKafkaProducerFactoryCustomizer.class);
+        });
+    }
+
+    @Test
+    void explicitlyEnabledPlatformRegistersCustomizerWithUserPort() {
+        // given
+        PlatformOutboundPropagation user = (decision, control) -> OutboundPropagationHeaders.EMPTY;
+
+        // when
+        contextRunner.withPropertyValues("platform.tracing.enabled=true")
+                .withBean(PlatformOutboundPropagation.class, () -> user)
+                .run(context -> {
+                    // then
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).hasSingleBean(PlatformOutboundPropagation.class);
+                    assertThat(context.getBean(PlatformOutboundPropagation.class)).isSameAs(user);
+                    assertThat(context).hasSingleBean(PlatformKafkaProducerFactoryCustomizer.class);
+                });
+    }
+
+    @Test
     void deleted_kafka_mode_is_ignored_when_propagate_enabled() {
         contextRunner
                 .withPropertyValues("platform.tracing.kafka.mode=disabled")
@@ -66,7 +93,7 @@ class PlatformKafkaOutboundAutoConfigurationTest {
     }
 
     @Test
-    void userPropagationKeepsCustomizerWhenTracingDisabled() {
+    void userPropagationDoesNotRegisterCustomizerWhenTracingDisabled() {
         // given
         PlatformOutboundPropagation user = (decision, control) -> OutboundPropagationHeaders.EMPTY;
 
@@ -89,7 +116,7 @@ class PlatformKafkaOutboundAutoConfigurationTest {
                     assertThat(context).hasSingleBean(RequestIdentityBoundarySupport.class);
                     assertThat(context).hasSingleBean(PlatformOutboundPropagation.class);
                     assertThat(context.getBean(PlatformOutboundPropagation.class)).isSameAs(user);
-                    assertThat(context).hasSingleBean(PlatformKafkaProducerFactoryCustomizer.class);
+                    assertThat(context).doesNotHaveBean(PlatformKafkaProducerFactoryCustomizer.class);
                 });
     }
 

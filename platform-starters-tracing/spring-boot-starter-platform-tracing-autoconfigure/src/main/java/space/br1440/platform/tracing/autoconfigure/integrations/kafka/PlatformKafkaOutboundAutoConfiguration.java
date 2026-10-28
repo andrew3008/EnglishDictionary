@@ -25,6 +25,7 @@ import space.br1440.platform.tracing.runtime.propagation.control.TrustedDestinat
         "org.apache.kafka.clients.producer.ProducerInterceptor"
 })
 @ConditionalOnProperty(name = TracingBootstrapPropertyNames.KAFKA_PROPAGATE_PLATFORM_HEADERS, havingValue = "true")
+@ConditionalOnProperty(name = TracingBootstrapPropertyNames.ENABLED, havingValue = "true", matchIfMissing = true)
 public class PlatformKafkaOutboundAutoConfiguration {
 
     @Bean

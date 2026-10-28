@@ -11,7 +11,8 @@ import java.net.URI;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpRequest;
@@ -19,6 +20,8 @@ import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.mock.http.client.MockClientHttpRequest;
 
+import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
+import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
@@ -51,24 +54,35 @@ class PlatformOutboundHttpInterceptorFailureLogTest {
         appender.stop();
     }
 
-    @Test
-    void propagationFailureWarnIsBoundedPerInstanceAndExecutionContinues() throws Exception {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void propagationFailureWarnIsBoundedPerInstanceAndExecutionContinues(boolean failPolicy) throws Exception {
         // given
-        OutboundPropagationPolicy failingPolicy = host -> {
+        OutboundPropagationPolicy policy = host -> {
+            if (failPolicy) {
+                throw new IllegalStateException(FAILURE_MESSAGE);
+            }
+
+            return OutboundPropagationDecision.ALLOW_ALL;
+        };
+
+        PlatformOutboundPropagation propagation = (decision, control) -> {
             throw new IllegalStateException(FAILURE_MESSAGE);
         };
-        PlatformOutboundPropagation propagation = mock(PlatformOutboundPropagation.class);
-        RequestIdentityBoundarySupport identityBoundary =
-                new RequestIdentityBoundarySupport(NoOpTracingRuntime.noop());
+
+        RequestIdentityBoundarySupport identityBoundary = new RequestIdentityBoundarySupport(NoOpTracingRuntime.noop());
         PlatformOutboundHttpInterceptor first = new PlatformOutboundHttpInterceptor(
-                failingPolicy,
+                policy,
                 propagation,
                 identityBoundary
         );
+
         MockClientHttpRequest request = new MockClientHttpRequest(
                 HttpMethod.GET,
                 URI.create("http://bounded-warning.local/next")
         );
+        PlatformHeaders.OUTBOUND_CONTROL_HEADERS.forEach(name -> request.getHeaders().add(name, "caller-value"));
+
         byte[] body = new byte[0];
         ClientHttpRequestExecution execution = mock(ClientHttpRequestExecution.class);
         ClientHttpResponse response = mock(ClientHttpResponse.class);
@@ -83,7 +97,7 @@ class PlatformOutboundHttpInterceptorFailureLogTest {
 
         // when
         PlatformOutboundHttpInterceptor second = new PlatformOutboundHttpInterceptor(
-                failingPolicy,
+                policy,
                 propagation,
                 identityBoundary
         );
@@ -93,6 +107,8 @@ class PlatformOutboundHttpInterceptorFailureLogTest {
         assertThat(firstResult).isSameAs(response);
         assertThat(repeatedResult).isSameAs(response);
         assertThat(secondResult).isSameAs(response);
+
+        PlatformHeaders.OUTBOUND_CONTROL_HEADERS.forEach(name -> assertThat(request.getHeaders().get(name)).isNull());
         //noinspection resource — verify() фиксирует вызов execute, возвращаемое значение не является ресурсом
         verify(execution, times(3)).execute(request, body);
         assertThat(appender.list).hasSize(2).allSatisfy(event -> {

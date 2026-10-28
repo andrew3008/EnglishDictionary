@@ -87,7 +87,7 @@ class AutoConfigurationImportsGraphTest {
     }
 
     @Test
-    void userPropagationIsTheSingleBeanWhenTracingDisabled() {
+    void userPropagationRemainsWithoutKafkaCustomizerWhenTracingDisabled() {
         // given
         PlatformOutboundPropagation user = (decision, control) -> OutboundPropagationHeaders.EMPTY;
 
@@ -100,7 +100,7 @@ class AutoConfigurationImportsGraphTest {
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasSingleBean(PlatformOutboundPropagation.class);
                     assertThat(context.getBean(PlatformOutboundPropagation.class)).isSameAs(user);
-                    assertThat(context).hasSingleBean(PlatformKafkaProducerFactoryCustomizer.class);
+                    assertThat(context).doesNotHaveBean(PlatformKafkaProducerFactoryCustomizer.class);
                 });
     }
 
