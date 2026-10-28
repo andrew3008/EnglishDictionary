@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_INITIALIZING;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
-import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSnapshotAssertions.failureOf;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +19,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
@@ -159,15 +157,11 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
             assertThat(failure.getCause()).isInstanceOfSatisfying(BootstrapException.class,
                     bootstrapFailure -> assertThat(bootstrapFailure.failure().effectiveCode())
                             .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER));
-            AutoconfigureSession session = bootstrap.session();
-            assertThat(session.readiness().snapshot().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
-            assertThat(failureOf(session.readiness().snapshot()).effectiveCode())
-                    .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER);
-            assertThat(session.readiness().snapshot().has(PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED))
-                    .isFalse();
             assertThat(bootstrap.currentWire().lifecycle()).isEqualTo("FAILED");
             assertThat(bootstrap.currentWire().failureCode())
                     .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER);
+            assertThat(bootstrap.currentWire().capabilities())
+                    .doesNotContain(PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED.name());
             assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isTrue();
         }
 

@@ -117,12 +117,12 @@ class BootstrapLifecycleAdmissionMatrixTest {
             case PREPARED -> prepare(lifecycle, session);
             case ACTIVATING -> {
                 prepare(lifecycle, session);
-                lifecycle.beginActivation();
+                assertThat(lifecycle.beginActivation()).isSameAs(session);
             }
             case ACTIVE -> {
                 prepare(lifecycle, session);
-                lifecycle.beginActivation();
-                lifecycle.commitActive(session);
+                assertThat(lifecycle.beginActivation()).isSameAs(session);
+                lifecycle.commitActive();
             }
             case FAILED -> {
                 IllegalStateException primaryCause = new IllegalStateException("Primary failure");

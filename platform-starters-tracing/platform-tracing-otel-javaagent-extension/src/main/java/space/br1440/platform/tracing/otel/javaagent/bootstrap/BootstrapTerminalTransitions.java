@@ -6,6 +6,7 @@ import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationException;
@@ -58,9 +59,20 @@ final class BootstrapTerminalTransitions {
         if (sectionFailure != null) {
             BootstrapCleanupFailures.suppressPreservingPrimary(cause, sectionFailure);
         }
+
         Throwable cleanupFailure = (resources == null)
                 ? null
                 : BootstrapCleanupFailures.rollback(resources, cause);
+
+        AutoconfigureSession detachedSession = lifecycle.detachFailedSession();
+        if (detachedSession != null) {
+            try {
+                detachedSession.close();
+            } catch (RuntimeException | Error sessionCleanupFailure) {
+                BootstrapCleanupFailures.suppressPreservingPrimary(cause, sessionCleanupFailure);
+                cleanupFailure = BootstrapCleanupFailures.aggregate(cleanupFailure, sessionCleanupFailure);
+            }
+        }
 
         Throwable activationOutcome = BootstrapCleanupFailures.aggregate(cause, sectionFailure);
         activationOutcome = BootstrapCleanupFailures.aggregate(activationOutcome, cleanupFailure);
@@ -105,29 +117,31 @@ final class BootstrapTerminalTransitions {
         );
     }
 
-    Throwable completePreparationCleanupFailure(Throwable preparationFailure,
-                                                Throwable cleanupFailure,
-                                                ExtensionRuntimeEvidence evidence) {
-        Objects.requireNonNull(preparationFailure, "preparationFailure");
+    Throwable completeCleanupFailure(String phase,
+                                     Throwable primaryFailure,
+                                     Throwable cleanupFailure,
+                                     ExtensionRuntimeEvidence evidence) {
+        Objects.requireNonNull(phase, "phase");
+        Objects.requireNonNull(primaryFailure, "primaryFailure");
         Objects.requireNonNull(cleanupFailure, "cleanupFailure");
         Objects.requireNonNull(evidence, "evidence");
 
-        Throwable preparationOutcome = BootstrapCleanupFailures.aggregate(preparationFailure, cleanupFailure);
+        Throwable outcome = BootstrapCleanupFailures.aggregate(primaryFailure, cleanupFailure);
         try {
             synchronized (lifecycle.monitor()) {
-                lifecycle.escalateRollbackIncomplete("prepare", cleanupFailure);
+                lifecycle.escalateRollbackIncomplete(phase, cleanupFailure);
                 journal.publishFailed(lifecycle.failure(), "", evidence);
-                if (preparationFailure instanceof BootstrapException) {
+                if (primaryFailure instanceof BootstrapException) {
                     return new BootstrapException(lifecycle.failure());
                 }
             }
 
-            return preparationOutcome;
+            return outcome;
         } catch (RuntimeException | Error settlementFailure) {
-            preparationOutcome = BootstrapCleanupFailures.aggregate(preparationOutcome, settlementFailure);
+            outcome = BootstrapCleanupFailures.aggregate(outcome, settlementFailure);
             throw settlementFailure;
         } finally {
-            PlatformThrowables.propagateIfFatal(preparationOutcome);
+            PlatformThrowables.propagateIfFatal(outcome);
         }
     }
 

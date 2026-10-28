@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
 
 import java.util.List;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
+import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 
@@ -321,7 +323,6 @@ class BootstrapLifecycleStateTest {
     void completePrepareAfterFailureReturnsStickyFailureWithoutBindingSession() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-        AutoconfigureSession session = mock(AutoconfigureSession.class);
         IllegalStateException primaryCause = new IllegalStateException("Preparation failure");
         BootstrapException initial = lifecycle.fail(
                 "PREPARATION_FAILED",
@@ -331,38 +332,41 @@ class BootstrapLifecycleStateTest {
                 primaryCause
         );
 
-        // when
-        Throwable thrown = catchThrowable(() -> lifecycle.completePrepare(session));
+        try (AutoconfigureSession session = mock(AutoconfigureSession.class)) {
+            // when
+            Throwable thrown = catchThrowable(() -> lifecycle.completePrepare(session));
 
-        // then
-        assertThat(thrown).isInstanceOf(BootstrapException.class);
-        BootstrapException rejection = (BootstrapException) thrown;
-        assertThat(rejection.failure().primaryCode()).isEqualTo("PREPARATION_FAILED");
-        assertThat(rejection.failure().effectiveCode()).isEqualTo("PREPARATION_FAILED");
-        assertThat(rejection.getCause()).isSameAs(initial.getCause()).isSameAs(primaryCause);
-        assertThat(lifecycle.currentSession()).isNull();
-        assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
+            // then
+            assertThat(thrown).isInstanceOf(BootstrapException.class);
+            BootstrapException rejection = (BootstrapException) thrown;
+            assertThat(rejection.failure().primaryCode()).isEqualTo("PREPARATION_FAILED");
+            assertThat(rejection.failure().effectiveCode()).isEqualTo("PREPARATION_FAILED");
+            assertThat(rejection.getCause()).isSameAs(initial.getCause()).isSameAs(primaryCause);
+            assertThat(catchThrowable(lifecycle::requireSession)).isInstanceOf(BootstrapException.class);
+            assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
+        }
     }
 
     @Test
     void completePrepareAfterCloseRejectsWithoutBindingSession() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-        AutoconfigureSession session = mock(AutoconfigureSession.class);
         BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
         lifecycle.markClosed();
         lifecycle.completeClose(acquisition.flight(), null);
 
-        // when
-        Throwable thrown = catchThrowable(() -> lifecycle.completePrepare(session));
+        try (AutoconfigureSession session = mock(AutoconfigureSession.class)) {
+            // when
+            Throwable thrown = catchThrowable(() -> lifecycle.completePrepare(session));
 
-        // then
-        assertThat(thrown).isInstanceOf(BootstrapException.class);
-        BootstrapException rejection = (BootstrapException) thrown;
-        assertThat(rejection.failure().primaryCode()).isEqualTo("REENTRANT_OR_OUT_OF_ORDER");
-        assertThat(rejection.failure().effectiveCode()).isEqualTo("REENTRANT_OR_OUT_OF_ORDER");
-        assertThat(lifecycle.currentSession()).isNull();
-        assertThat(lifecycle.state()).isEqualTo(BootstrapState.CLOSED);
+            // then
+            assertThat(thrown).isInstanceOf(BootstrapException.class);
+            BootstrapException rejection = (BootstrapException) thrown;
+            assertThat(rejection.failure().primaryCode()).isEqualTo("REENTRANT_OR_OUT_OF_ORDER");
+            assertThat(rejection.failure().effectiveCode()).isEqualTo("REENTRANT_OR_OUT_OF_ORDER");
+            assertThat(catchThrowable(lifecycle::requireSession)).isInstanceOf(BootstrapException.class);
+            assertThat(lifecycle.state()).isEqualTo(BootstrapState.CLOSED);
+        }
     }
 
     @Test
@@ -396,5 +400,122 @@ class BootstrapLifecycleStateTest {
         assertThat(rejection.failure().primaryCode()).isEqualTo("REENTRANT_OR_OUT_OF_ORDER");
         assertThat(rejection.failure().effectiveCode()).isEqualTo("REENTRANT_OR_OUT_OF_ORDER");
         assertThat(lifecycle.state()).isEqualTo(BootstrapState.NEW);
+    }
+
+    @Test
+    void failed_session_is_detached_once_and_keeps_its_evidence() {
+        // given
+        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
+        AutoconfigureSession session = mock(AutoconfigureSession.class);
+        ExtensionRuntimeEvidence evidence = ExtensionRuntimeEvidence.unavailable("prepared-version");
+        when(session.evidence()).thenReturn(evidence);
+        lifecycle.beginPrepare();
+        lifecycle.completePrepare(session);
+        IllegalStateException customizationFailure = new IllegalStateException("Customization failed");
+        assertThat(lifecycle.fail(
+                "CUSTOMIZATION_FAILED",
+                "customization",
+                "customization",
+                null,
+                customizationFailure
+        ).getCause()).isSameAs(customizationFailure);
+
+        // when
+        AutoconfigureSession detached = lifecycle.detachFailedSession();
+        AutoconfigureSession repeated = lifecycle.detachFailedSession();
+        BootstrapLifecycleState.CloseAcquisition close = lifecycle.acquireClose();
+        lifecycle.completeClose(close.flight(), null);
+
+        // then
+        assertThat(detached).isSameAs(session);
+        assertThat(repeated).isNull();
+        assertThat(close.context().session()).isNull();
+        assertThat(catchThrowable(lifecycle::requireSession)).isInstanceOf(BootstrapException.class);
+        assertThat(lifecycle.currentEvidence()).isSameAs(evidence);
+    }
+
+    @Test
+    void prepared_session_is_not_detached_before_failure() {
+        // given
+        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
+        AutoconfigureSession session = mock(AutoconfigureSession.class);
+        when(session.evidence()).thenReturn(ExtensionRuntimeEvidence.unavailable("prepared-version"));
+        lifecycle.beginPrepare();
+        lifecycle.completePrepare(session);
+
+        // when
+        AutoconfigureSession detached = lifecycle.detachFailedSession();
+
+        // then
+        assertThat(detached).isNull();
+        assertThat(lifecycle.requireSession()).isSameAs(session);
+        assertThat(lifecycle.state()).isEqualTo(BootstrapState.PREPARED);
+    }
+
+    @Test
+    void close_moves_session_and_failure_cleanup_cannot_take_it_back() {
+        // given
+        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
+        AutoconfigureSession session = mock(AutoconfigureSession.class);
+        ExtensionRuntimeEvidence evidence = ExtensionRuntimeEvidence.unavailable("prepared-version");
+        when(session.evidence()).thenReturn(evidence);
+        lifecycle.beginPrepare();
+        lifecycle.completePrepare(session);
+        IllegalStateException customizationFailure = new IllegalStateException("Customization failed");
+        assertThat(lifecycle.fail(
+                "CUSTOMIZATION_FAILED",
+                "customization",
+                "customization",
+                null,
+                customizationFailure
+        ).getCause()).isSameAs(customizationFailure);
+
+        // when
+        BootstrapLifecycleState.CloseAcquisition close = lifecycle.acquireClose();
+        AutoconfigureSession detached = lifecycle.detachFailedSession();
+        lifecycle.completeClose(close.flight(), null);
+
+        // then
+        assertThat(close.context().session()).isSameAs(session);
+        assertThat(detached).isNull();
+        assertThat(catchThrowable(lifecycle::requireSession)).isInstanceOf(BootstrapException.class);
+        assertThat(lifecycle.currentEvidence()).isSameAs(evidence);
+    }
+
+    @Test
+    void activation_moves_session_to_resources_and_active_commit_does_not_restore_it() {
+        // given
+        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
+        AutoconfigureSession session = mock(AutoconfigureSession.class);
+        ExtensionRuntimeEvidence evidence = ExtensionRuntimeEvidence.unavailable("prepared-version");
+        when(session.evidence()).thenReturn(evidence);
+        lifecycle.beginPrepare();
+        lifecycle.completePrepare(session);
+        assertThat(lifecycle.beginActivation()).isSameAs(session);
+        BootstrapResources resources = new BootstrapResources();
+        resources.push(session, "autoconfigure-session");
+
+        // when
+        lifecycle.attachResources(resources);
+        lifecycle.commitActive();
+        IllegalStateException activationFailure = new IllegalStateException("Activation failed");
+        assertThat(lifecycle.fail(
+                "ACTIVATION_FAILED",
+                "activate",
+                "activate",
+                null,
+                activationFailure
+        ).getCause()).isSameAs(activationFailure);
+        AutoconfigureSession detached = lifecycle.detachFailedSession();
+        BootstrapLifecycleState.CloseAcquisition close = lifecycle.acquireClose();
+        resources.close();
+        lifecycle.completeClose(close.flight(), null);
+
+        // then
+        assertThat(detached).isNull();
+        assertThat(close.context().resources()).isSameAs(resources);
+        assertThat(close.context().session()).isNull();
+        assertThat(catchThrowable(lifecycle::requireSession)).isInstanceOf(BootstrapException.class);
+        assertThat(lifecycle.currentEvidence()).isSameAs(evidence);
     }
 }

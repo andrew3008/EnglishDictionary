@@ -285,7 +285,7 @@ class PlatformSamplerInstallationTest {
             try {
                 Sampler installedSampler = sdk.getOpenTelemetrySdk().getSdkTracerProvider().getSampler();
                 new ActivationAgentListener(coordinator).afterAgent(sdk);
-                String agentInstanceId = coordinator.session().agentInstanceId().toString();
+                String agentInstanceId = coordinator.currentWire().agentInstanceId();
 
                 // when
                 CompositeData ratioZero = applySnapshot(server, settingsRequest(agentInstanceId, 0L, 0.0d));

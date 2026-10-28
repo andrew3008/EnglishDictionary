@@ -145,7 +145,8 @@ final class BootstrapCoordinator implements AutoCloseable {
         } catch (RuntimeException | Error failure) {
             Throwable cleanupFailure = closePreparedSession(prepared);
             if (cleanupFailure != null) {
-                Throwable settledFailure = terminalTransitions.completePreparationCleanupFailure(
+                Throwable settledFailure = terminalTransitions.completeCleanupFailure(
+                        "prepare",
                         failure,
                         cleanupFailure,
                         prepared.evidence()
@@ -220,7 +221,6 @@ final class BootstrapCoordinator implements AutoCloseable {
             failCustomization(VerificationFailureCode.EXTENSION_LINKAGE_ERROR.name(), failureCode, e);
             throw e;
         } catch (RuntimeException | Error e) {
-            PlatformThrowables.propagateIfFatal(e);
             throw failCustomization(failureCode, failureCode, e);
         }
     }
@@ -374,14 +374,36 @@ final class BootstrapCoordinator implements AutoCloseable {
     }
 
     private BootstrapException failCustomization(String code, String phase, Throwable cause) {
-        BootstrapException classified = terminalTransitions.terminalizeCustomizationFailure(
-                code,
-                phase,
-                cause,
-                currentEvidence()
-        );
-        registerDiagnosticAfterFailure(classified);
-        return classified;
+        ExtensionRuntimeEvidence evidence = currentEvidence();
+        BootstrapException classified = null;
+        Throwable outcome = cause;
+        try {
+            try {
+                classified = terminalTransitions.terminalizeCustomizationFailure(code, phase, cause, evidence);
+                registerDiagnosticAfterFailure(classified);
+                return classified;
+            } catch (RuntimeException | Error handlingFailure) {
+                BootstrapCleanupFailures.suppressPreservingPrimary(cause, handlingFailure);
+                outcome = BootstrapCleanupFailures.aggregate(cause, handlingFailure);
+                throw handlingFailure;
+            } finally {
+                Throwable cleanupFailure = closePreparedSession(lifecycle.detachFailedSession());
+                if (cleanupFailure != null) {
+                    BootstrapCleanupFailures.suppressPreservingPrimary(cause, cleanupFailure);
+                    outcome = BootstrapCleanupFailures.aggregate(outcome, cleanupFailure);
+
+                    Throwable settledFailure = terminalTransitions.completeCleanupFailure(
+                            "customization",
+                            classified == null ? outcome : classified,
+                            cleanupFailure,
+                            evidence
+                    );
+                    rethrowIfPresent(settledFailure);
+                }
+            }
+        } finally {
+            PlatformThrowables.propagateIfFatal(outcome);
+        }
     }
 
     private BootstrapException failPreparation(String code, Throwable cause) {
@@ -427,9 +449,8 @@ final class BootstrapCoordinator implements AutoCloseable {
     }
 
     private ExtensionRuntimeEvidence currentEvidence() {
-        //noinspection resource — сессия принадлежит lifecycle; метод только читает evidence
-        AutoconfigureSession currentSession = lifecycle.currentSession();
-        return currentSession == null ? unavailableEvidence() : currentSession.evidence();
+        ExtensionRuntimeEvidence evidence = lifecycle.currentEvidence();
+        return evidence == null ? unavailableEvidence() : evidence;
     }
 
     private ExtensionRuntimeEvidence unavailableEvidence() {

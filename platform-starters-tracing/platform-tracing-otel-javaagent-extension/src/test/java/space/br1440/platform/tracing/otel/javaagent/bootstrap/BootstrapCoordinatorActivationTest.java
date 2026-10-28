@@ -158,7 +158,6 @@ class BootstrapCoordinatorActivationTest {
         // given
         IllegalStateException prologueFailure = new IllegalStateException("Activation prologue failed");
         AutoconfigureSession session = mock(AutoconfigureSession.class);
-        when(session.evidence()).thenThrow(prologueFailure);
 
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
@@ -180,6 +179,7 @@ class BootstrapCoordinatorActivationTest {
         lifecycle.beginPrepare();
         journal.publishInitializing();
         lifecycle.completePrepare(session);
+        when(session.evidence()).thenThrow(prologueFailure);
 
         // when
         Throwable thrown = catchThrowable(() -> activation.activate(mock(SdkTracerProvider.class), () -> {

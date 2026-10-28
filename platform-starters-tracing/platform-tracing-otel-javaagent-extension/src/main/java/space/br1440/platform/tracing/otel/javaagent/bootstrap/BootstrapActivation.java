@@ -182,6 +182,7 @@ final class BootstrapActivation {
     private void publishReady(ActivationAttempt attempt) {
         attempt.enter(ActivationPhase.READINESS_PUBLICATION);
 
+        //noinspection resource -- сессия принадлежит попытке активации, закрывает её BootstrapResources
         AutoconfigureSession session = attempt.session();
         if (!attempt.evidence().complete()) {
             throw new IllegalStateException("Runtime attestation evidence is incomplete");
@@ -198,7 +199,7 @@ final class BootstrapActivation {
                 attempt.evidence()
         );
         journal.publishReady(ready);
-        lifecycle.commitActive(session);
+        lifecycle.commitActive();
         emitInstalled(ready);
     }
 

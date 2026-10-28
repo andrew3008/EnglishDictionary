@@ -169,8 +169,8 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
             // then
             assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
-            assertThat(coordinator.session().readiness().snapshot().installedCapabilities())
-                    .contains(PlatformExtensionCapability.PLATFORM_SAMPLER_INSTALLED);
+            assertThat(coordinator.currentWire().capabilities())
+                    .contains(PlatformExtensionCapability.PLATFORM_SAMPLER_INSTALLED.name());
         }
     }
 

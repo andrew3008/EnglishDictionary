@@ -50,8 +50,10 @@ class HostlessOtlpEndpointAbandonmentTest {
         // then
         result.assertCompletedSuccessfully();
         assertThat(result.stdout()).contains(HostlessOtlpEndpointProbe.MAIN_REACHED_MARKER);
-        assertThat(result.stdout())
-                .contains(HostlessOtlpEndpointProbe.RESULT_PREFIX + " lifecycle=INITIALIZING runtimeMBeans=absent");
+        assertThat(result.stdout().lines()
+                .filter(line -> line.startsWith(HostlessOtlpEndpointProbe.RESULT_PREFIX)))
+                .containsExactly(HostlessOtlpEndpointProbe.RESULT_PREFIX
+                        + " lifecycle=INITIALIZING runtimeMBeans=absent platformThreads=[]");
         assertThat(result.stderr()).contains("ConfigurationException");
     }
 }

@@ -13,6 +13,7 @@ import java.util.concurrent.CountDownLatch;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
+import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
@@ -28,6 +29,7 @@ final class BootstrapLifecycleState {
 
     private BootstrapState state = BootstrapState.NEW;
     private AutoconfigureSession session;
+    private ExtensionRuntimeEvidence evidence;
     private BootstrapFailure failure;
     private BootstrapResources resources;
     private CloseFlight closeFlight;
@@ -78,6 +80,7 @@ final class BootstrapLifecycleState {
                 );
             }
 
+            this.evidence = prepared.evidence();
             this.session = prepared;
             this.state = BootstrapState.PREPARED;
         }
@@ -133,9 +136,9 @@ final class BootstrapLifecycleState {
         }
     }
 
-    AutoconfigureSession currentSession() {
+    ExtensionRuntimeEvidence currentEvidence() {
         synchronized (monitor) {
-            return session;
+            return evidence;
         }
     }
 
@@ -155,11 +158,8 @@ final class BootstrapLifecycleState {
         }
     }
 
-    void commitActive(AutoconfigureSession activeSession) {
-        Objects.requireNonNull(activeSession, "activeSession");
-
+    void commitActive() {
         synchronized (monitor) {
-            this.session = activeSession;
             this.state = BootstrapState.ACTIVE;
         }
     }
@@ -169,6 +169,19 @@ final class BootstrapLifecycleState {
 
         synchronized (monitor) {
             this.resources = activationResources;
+            this.session = null;
+        }
+    }
+
+    AutoconfigureSession detachFailedSession() {
+        synchronized (monitor) {
+            if (state != BootstrapState.FAILED || closeFlight != null || resources != null) {
+                return null;
+            }
+
+            AutoconfigureSession owned = session;
+            session = null;
+            return owned;
         }
     }
 
@@ -189,6 +202,7 @@ final class BootstrapLifecycleState {
             BootstrapResources owned = resources;
             resources = null;
             CloseContext context = new CloseContext(failure, owned, session);
+            session = null;
             closeFlight = new CloseFlight(Thread.currentThread(), context);
             return CloseAcquisition.owner(closeFlight);
         }

@@ -135,6 +135,7 @@ class BootstrapTerminalTransitionsConcurrencyTest {
         PlatformTracingMBeanRegistrar registrar = registrarFor(runtimeRegistration);
         ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
         PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
+        //noinspection resource -- stubbing buildRuntime не открывает runtime; экземпляр закрывает AutoconfigureSession.close()
         doReturn(scrubbingRuntime).when(scrubberFactory).buildRuntime(any());
         BootstrapCoordinator bootstrapCoordinator = coordinator()
                 .hooks(hooks)
@@ -231,6 +232,7 @@ class BootstrapTerminalTransitionsConcurrencyTest {
             throw activationCause;
         }).when(scrubbingRuntime).requireInstallationComplete();
         PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
+        //noinspection resource -- stubbing buildRuntime не открывает runtime; экземпляр закрывает AutoconfigureSession.close()
         doReturn(scrubbingRuntime).when(scrubberFactory).buildRuntime(any());
         ExtensionRuntimeEvidence evidence = RuntimeEvidenceTestFixtures.evidence(
                 readiness.snapshot().extensionVersion()
@@ -364,6 +366,7 @@ class BootstrapTerminalTransitionsConcurrencyTest {
             throw activationCause;
         }).when(scrubbingRuntime).requireInstallationComplete();
         PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
+        //noinspection resource -- stubbing buildRuntime не открывает runtime; экземпляр закрывает AutoconfigureSession.close()
         doReturn(scrubbingRuntime).when(scrubberFactory).buildRuntime(any());
         BootstrapCoordinator bootstrapCoordinator = coordinator()
                 .registrar(registrar)
@@ -688,7 +691,7 @@ class BootstrapTerminalTransitionsConcurrencyTest {
                 AgentInstanceId.random()
         );
         BootstrapTerminalTransitions transitions = new BootstrapTerminalTransitions(lifecycle, journal);
-        lifecycle.commitActive(mock(AutoconfigureSession.class));
+        lifecycle.commitActive();
         return new TerminalFixture(lifecycle, journal, transitions, evidence);
     }
 

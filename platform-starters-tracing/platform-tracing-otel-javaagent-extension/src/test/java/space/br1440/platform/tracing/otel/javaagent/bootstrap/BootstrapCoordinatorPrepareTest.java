@@ -375,7 +375,7 @@ class BootstrapCoordinatorPrepareTest {
                 assertThatCoordinator(coordinator).isActiveAndReady();
                 assertThat(coordinator.currentWire().batchId()).isEqualTo(batchId);
                 assertThat(coordinator.currentWire().evidenceGeneration()).isEqualTo(evidenceGeneration);
-                assertThat(coordinator.session()).isSameAs(session);
+                assertThat(coordinator.currentWire().evidence()).isEqualTo(session.evidence());
             }
         }
     }

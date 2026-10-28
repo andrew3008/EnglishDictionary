@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.distribution.probe;
 
 import java.lang.management.ManagementFactory;
+import java.util.List;
 import java.util.Locale;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -39,13 +40,20 @@ public final class HostlessOtlpEndpointProbe {
         CompositeData snapshot = readinessSnapshot(server);
         String lifecycle = stringField(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE);
         String runtimeMBeans = runtimeMBeansAbsent(server) ? "absent" : "present";
+        List<String> platformThreads = Thread.getAllStackTraces().keySet().stream()
+                .filter(Thread::isAlive)
+                .map(Thread::getName)
+                .filter(name -> name.startsWith("platform-tracing-"))
+                .sorted()
+                .toList();
 
         System.out.printf(
                 Locale.ROOT,
-                "%s lifecycle=%s runtimeMBeans=%s%n",
+                "%s lifecycle=%s runtimeMBeans=%s platformThreads=%s%n",
                 RESULT_PREFIX,
                 lifecycle,
-                runtimeMBeans
+                runtimeMBeans,
+                platformThreads
         );
     }
 

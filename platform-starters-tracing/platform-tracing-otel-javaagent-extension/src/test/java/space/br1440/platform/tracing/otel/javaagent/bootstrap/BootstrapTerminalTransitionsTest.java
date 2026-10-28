@@ -29,7 +29,6 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
@@ -946,8 +945,7 @@ class BootstrapTerminalTransitionsTest {
                                          PlatformExtensionReadiness readiness,
                                          ExtensionRuntimeEvidence evidence) {
         BootstrapTerminalTransitions transitions = new BootstrapTerminalTransitions(lifecycle, journal);
-        AutoconfigureSession session = mock(AutoconfigureSession.class);
-        lifecycle.commitActive(session);
+        lifecycle.commitActive();
         return new Fixture(lifecycle, journal, transitions, readiness, evidence);
     }
 
