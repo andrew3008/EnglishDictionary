@@ -73,7 +73,7 @@ platform-tracing-helm:
 
 variables:
   GRADLE_IMAGE: r.1440.space/dockerhub/gradle:8.12.0-jdk21
-  GRADLE_BUILD_ARGS: "assemble :platform-starters-tracing:platform-tracing-otel-javaagent-distribution:check --info"
+  GRADLE_BUILD_ARGS: "assemble :platform-starters-tracing:platform-tracing-otel-javaagent-distribution:check :platform-starters-tracing:platform-tracing-otel-javaagent-extension:check -PrunTests --info"
   GRADLE_PUBLISH_ENABLED: true
   GRADLE_PUBLISH_ARGS: "publishAllToNexus --info"
   GRADLE_SBOM_VERSION: disabled
