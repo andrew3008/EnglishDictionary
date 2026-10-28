@@ -50,7 +50,7 @@ class TimedSpanExporterTest {
                 exporter(CompletableResultCode::ofFailure, CompletableResultCode::ofSuccess, metrics);
 
         // when
-        List<Boolean> results = List.of(
+        List<TimedExport> results = List.of(
                 throwingExporter.export(List.of()),
                 nullExporter.export(List.of()),
                 timedOutExporter.export(List.of()),
@@ -58,7 +58,12 @@ class TimedSpanExporterTest {
         );
 
         // then
-        assertThat(results).containsExactly(false, false, false, false);
+        assertThat(results).extracting(TimedExport::success).containsExactly(false, false, false, false);
+        assertThat(results.get(0).unfinished()).isNull();
+        assertThat(results.get(1).unfinished()).isNull();
+        assertThat(results.get(2).unfinished()).isNotNull();
+        assertThat(results.get(2).unfinished().isDone()).isFalse();
+        assertThat(results.get(3).unfinished()).isNull();
         assertThat(metrics.failuresTotal()).isEqualTo(4L);
         assertThat(metrics.timeoutsTotal()).isEqualTo(1L);
 
@@ -86,7 +91,7 @@ class TimedSpanExporterTest {
         assertThat(events.get(0).fields()).isEmpty();
         assertThat(events.get(1).fields()).isEmpty();
         assertThat(events.get(2).fields()).containsExactlyEntriesOf(Map.of(
-                "timeoutMs", Long.toString(TIMEOUT_MILLIS)
+                "timeoutMillis", Long.toString(TIMEOUT_MILLIS)
         ));
         assertThat(events.get(3).fields()).isEmpty();
     }
@@ -141,7 +146,7 @@ class TimedSpanExporterTest {
         assertThat(events.get(0).fields()).isEmpty();
         assertThat(events.get(1).fields()).isEmpty();
         assertThat(events.get(2).fields()).containsExactlyEntriesOf(Map.of(
-                "timeoutMs", Long.toString(TIMEOUT_MILLIS)
+                "timeoutMillis", Long.toString(TIMEOUT_MILLIS)
         ));
         assertThat(events.get(3).fields()).isEmpty();
     }
@@ -177,11 +182,12 @@ class TimedSpanExporterTest {
         TimedSpanExporter timed = new TimedSpanExporter(safe, TIMEOUT_NANOS, TIMEOUT_NANOS, metrics);
 
         // when
-        boolean completed = timed.export(List.of());
+        TimedExport outcome = timed.export(List.of());
         safe.export(List.of());
 
         // then
-        assertThat(completed).isFalse();
+        assertThat(outcome.success()).isFalse();
+        assertThat(outcome.unfinished()).isSameAs(pending);
         assertThat(pending.isDone()).isFalse();
         assertThat(metrics.timeoutsTotal()).isEqualTo(1L);
         assertThat(safe.getExportFailures()).isZero();

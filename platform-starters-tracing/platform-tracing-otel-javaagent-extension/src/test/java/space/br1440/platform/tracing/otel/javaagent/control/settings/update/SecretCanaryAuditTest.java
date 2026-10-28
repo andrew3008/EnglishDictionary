@@ -47,7 +47,7 @@ class SecretCanaryAuditTest {
         // then
         assertThat(result.outcome()).isEqualTo(SettingsUpdateStatus.APPLIED);
         assertThat(capture.events()).singleElement().satisfies(event -> {
-            assertThat(event.eventName()).isEqualTo("TRACING_SETTINGS_UPDATE_RESOLVED");
+            assertThat(event.eventName()).isEqualTo("TRACING_SETTINGS_UPDATE_APPLIED");
             assertThat(event.fields())
                     .containsEntry("attemptId", attemptId)
                     .containsEntry("changedLeaves", "SAMPLING_ROUTE_RATIOS");

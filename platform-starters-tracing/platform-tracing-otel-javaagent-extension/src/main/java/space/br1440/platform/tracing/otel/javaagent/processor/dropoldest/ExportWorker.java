@@ -75,19 +75,31 @@ final class ExportWorker implements Runnable {
         while (true) {
             WorkerAction action = buffer.awaitNextAction(scheduleDelayNanos, lastExportNanos);
             switch (action) {
-                case WorkerAction.ExportBatch exportBatch -> exportBatch(exportBatch.batch());
+                case WorkerAction.ExportBatch exportBatch -> {
+                    exportBatch(exportBatch.batch());
+                    lastExportNanos = buffer.currentTimeNanos();
+                }
+
+                case WorkerAction.DelegateHeld delegateHeld -> exporter.reportDelegateHeld(delegateHeld.heldNanos());
+
                 case WorkerAction.StopWorker stopWorker -> {
                     return stopWorker.reason();
                 }
             }
-
-            lastExportNanos = buffer.currentTimeNanos();
         }
     }
 
     private void exportBatch(SpanQueue.Batch batch) {
-        boolean success = exporter.export(batch.spans());
-        buffer.completeExport(batch, success);
+        TimedExport outcome = exporter.export(batch.spans());
+        buffer.completeExport(batch, outcome.success(), outcome.unfinished() != null);
+
+        CompletableResultCode unfinished = outcome.unfinished();
+        if (unfinished != null) {
+            unfinished.whenComplete(() -> {
+                long heldNanos = buffer.releaseDelegate();
+                exporter.reportDelegateReleased(heldNanos, unfinished.isSuccess());
+            });
+        }
     }
 
     private void failBuffer(FailureCollector failures) {

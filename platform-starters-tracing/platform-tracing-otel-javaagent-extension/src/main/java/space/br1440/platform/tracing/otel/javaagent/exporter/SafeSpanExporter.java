@@ -39,7 +39,8 @@ public final class SafeSpanExporter implements SpanExporter {
     private final TracingSettingsSource acceptedPolicy;
     private final ScrubbingRuntime scrubbingRuntime;
     private final SpanDataBoundaryScrubber boundaryScrubber;
-    private final RateLimitedLogger log;
+    private final RateLimitedLogger exportLog;
+    private final RateLimitedLogger diagnosticLog;
     private final String exporterType;
     private final MinIntervalRateLimiter recoveryPublication;
     private final Object recoveryLock = new Object();
@@ -68,6 +69,7 @@ public final class SafeSpanExporter implements SpanExporter {
                 acceptedPolicy,
                 scrubbingRuntime,
                 new RateLimitedLogger(SafeSpanExporter.class),
+                new RateLimitedLogger(SafeSpanExporter.class),
                 System::nanoTime
         );
     }
@@ -75,12 +77,14 @@ public final class SafeSpanExporter implements SpanExporter {
     SafeSpanExporter(SpanExporter delegate,
                      TracingSettingsSource acceptedPolicy,
                      ScrubbingRuntime scrubbingRuntime,
-                     RateLimitedLogger log,
+                     RateLimitedLogger exportLog,
+                     RateLimitedLogger diagnosticLog,
                      LongSupplier nanoClock) {
         this.delegate = Objects.requireNonNull(delegate, "delegate");
         this.acceptedPolicy = Objects.requireNonNull(acceptedPolicy, "acceptedPolicy");
         this.scrubbingRuntime = Objects.requireNonNull(scrubbingRuntime, "scrubbingRuntime");
-        this.log = Objects.requireNonNull(log, "log");
+        this.exportLog = Objects.requireNonNull(exportLog, "exportLog");
+        this.diagnosticLog = Objects.requireNonNull(diagnosticLog, "diagnosticLog");
         this.recoveryPublication = new MinIntervalRateLimiter(
                 RECOVERY_PUBLICATION_INTERVAL_NANOS,
                 Objects.requireNonNull(nanoClock, "nanoClock")
@@ -203,7 +207,7 @@ public final class SafeSpanExporter implements SpanExporter {
             }
         } catch (Throwable ex) {
             PlatformThrowables.propagateIfFatal(ex);
-            log.log(ExporterLogEvent.EXPORT_COMPLETION_CALLBACK_FAILED, fields -> fields
+            diagnosticLog.log(ExporterLogEvent.EXPORT_COMPLETION_CALLBACK_FAILED, fields -> fields
                     .putString(AgentLogField.EXPORTER_TYPE, exporterType)
                     .cause(ex));
         }
@@ -219,7 +223,7 @@ public final class SafeSpanExporter implements SpanExporter {
 
             case NOT_DETERMINED -> {
                 acceptedUnknownBatches.increment();
-                log.log(ExporterLogEvent.EXPORT_ACCEPTED_SPAN_COUNT_UNAVAILABLE, fields -> fields
+                diagnosticLog.log(ExporterLogEvent.EXPORT_ACCEPTED_SPAN_COUNT_UNAVAILABLE, fields -> fields
                         .putString(AgentLogField.EXPORTER_TYPE, exporterType));
             }
 
@@ -234,7 +238,7 @@ public final class SafeSpanExporter implements SpanExporter {
         } catch (Throwable ex) {
             PlatformThrowables.propagateIfFatal(ex);
             flushFailures.increment();
-            logExportFailure(ExporterLogEvent.SAFE_FLUSH_THROWN, ex);
+            logFlushFailure(ExporterLogEvent.SAFE_FLUSH_THROWN, ex);
             return CompletableResultCode.ofFailure();
         }
     }
@@ -257,7 +261,7 @@ public final class SafeSpanExporter implements SpanExporter {
             scrubbingRuntime.recordBoundarySpansDroppedFailClosed(originalCount);
         }
 
-        log.log(ScrubbingLogEvent.SCRUB_BOUNDARY_BATCH_PREPARATION_FAILED, fields -> fields.cause(failure));
+        exportLog.log(ScrubbingLogEvent.SCRUB_BOUNDARY_BATCH_PREPARATION_FAILED, fields -> fields.cause(failure));
     }
 
     @SuppressWarnings("SameParameterValue")
@@ -344,12 +348,20 @@ public final class SafeSpanExporter implements SpanExporter {
     }
 
     private void logExportFailure(AgentLogEventType eventType, Throwable error) {
+        logFailure(exportLog, eventType, error);
+    }
+
+    private void logFlushFailure(AgentLogEventType eventType, Throwable error) {
+        logFailure(diagnosticLog, eventType, error);
+    }
+
+    private void logFailure(RateLimitedLogger logger, AgentLogEventType eventType, Throwable error) {
         if (error != null) {
-            log.log(eventType, fields -> fields
+            logger.log(eventType, fields -> fields
                     .putString(AgentLogField.EXPORTER_TYPE, exporterType)
                     .cause(error));
         } else {
-            log.log(eventType, fields -> fields.putString(AgentLogField.EXPORTER_TYPE, exporterType));
+            logger.log(eventType, fields -> fields.putString(AgentLogField.EXPORTER_TYPE, exporterType));
         }
     }
 
@@ -367,14 +379,14 @@ public final class SafeSpanExporter implements SpanExporter {
                                                          LongAdder failures) {
         if (result == null) {
             failures.increment();
-            logExportFailure(ExporterLogEvent.SAFE_FLUSH_RETURNED_NULL, null);
+            logFlushFailure(ExporterLogEvent.SAFE_FLUSH_RETURNED_NULL, null);
             return CompletableResultCode.ofFailure();
         }
 
         result.whenComplete(() -> {
             if (!result.isSuccess()) {
                 failures.increment();
-                logExportFailure(ExporterLogEvent.SAFE_FLUSH_RETURNED_FAILURE, null);
+                logFlushFailure(ExporterLogEvent.SAFE_FLUSH_RETURNED_FAILURE, null);
             }
         });
         return result;

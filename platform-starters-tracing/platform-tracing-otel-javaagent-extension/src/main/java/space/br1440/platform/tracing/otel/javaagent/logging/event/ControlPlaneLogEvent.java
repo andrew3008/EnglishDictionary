@@ -2,12 +2,14 @@ package space.br1440.platform.tracing.otel.javaagent.logging.event;
 
 import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.noCause;
 import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.requiresCause;
+import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.DEBUG;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.ERROR;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.INFO;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.WARN;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 public enum ControlPlaneLogEvent implements AgentLogEventType {
 
@@ -53,18 +55,13 @@ public enum ControlPlaneLogEvent implements AgentLogEventType {
             )
     ),
 
-    TRACING_SETTINGS_UPDATE_RESOLVED(
-            noCause(
-                    AgentEventCode.CTRL_UPDATE, INFO,
-                    "Tracing settings update resolved",
-                    AgentLogField.ATTEMPT_ID,
-                    AgentLogField.WRITER,
-                    AgentLogField.OUTCOME,
-                    AgentLogField.MESSAGE_CODE,
-                    AgentLogField.ACCEPTED_SEQUENCE,
-                    AgentLogField.CHANGED_LEAVES
-            )
-    ),
+    TRACING_SETTINGS_UPDATE_APPLIED(settingsUpdate(INFO, "Tracing settings update applied")),
+
+    TRACING_SETTINGS_UPDATE_REJECTED(settingsUpdate(WARN, "Tracing settings update rejected")),
+
+    TRACING_SETTINGS_UPDATE_UNCHANGED(settingsUpdate(DEBUG, "Tracing settings update unchanged")),
+
+    TRACING_SETTINGS_UPDATE_COMMIT_FAILED(settingsUpdate(ERROR, "Tracing settings update commit failed")),
 
     JMX_OBSERVATION_SNAPSHOT_PUBLICATION_FAILED(
             requiresCause(
@@ -112,5 +109,18 @@ public enum ControlPlaneLogEvent implements AgentLogEventType {
     @Override
     public AgentLogEventDefinition definition() {
         return definition;
+    }
+
+    private static AgentLogEventDefinition settingsUpdate(AgentLogLevel level, String message) {
+        return noCause(
+                AgentEventCode.CTRL_UPDATE, level,
+                message,
+                AgentLogField.ATTEMPT_ID,
+                AgentLogField.WRITER,
+                AgentLogField.OUTCOME,
+                AgentLogField.MESSAGE_CODE,
+                AgentLogField.ACCEPTED_SEQUENCE,
+                AgentLogField.CHANGED_LEAVES
+        );
     }
 }

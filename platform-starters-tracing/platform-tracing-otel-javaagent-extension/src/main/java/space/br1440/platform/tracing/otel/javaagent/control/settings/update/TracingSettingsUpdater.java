@@ -125,7 +125,12 @@ public final class TracingSettingsUpdater {
 
         SettingsCommitResult commit = commit(expectedBase, candidate, writer.authority());
         if (commit.outcome() != SettingsCommitOutcome.APPLIED) {
-            throw new IllegalStateException("Store commit lost under updateMonitor: outcome=" + commit.outcome());
+            return new Decision(
+                    SettingsUpdateStatus.FAILED,
+                    witnessed,
+                    SettingsRejectionReason.INTERNAL_FAILURE,
+                    changed
+            );
         }
 
         return new Decision(SettingsUpdateStatus.APPLIED, commit.accepted(), SettingsRejectionReason.NONE, changed);
@@ -162,7 +167,7 @@ public final class TracingSettingsUpdater {
     }
 
     private static void logResolved(SettingsUpdateAttempt attempt, Decision decision) {
-        log.log(ControlPlaneLogEvent.TRACING_SETTINGS_UPDATE_RESOLVED, levelOf(decision.outcome()), fields -> {
+        log.log(resolvedEvent(decision.outcome()), fields -> {
             fields.putString(AgentLogField.ATTEMPT_ID, attempt.attemptId())
                     .putEnum(AgentLogField.WRITER, attempt.writer())
                     .putEnum(AgentLogField.OUTCOME, decision.outcome())
@@ -174,12 +179,12 @@ public final class TracingSettingsUpdater {
         });
     }
 
-    private static AgentLogLevel levelOf(SettingsUpdateStatus outcome) {
+    private static ControlPlaneLogEvent resolvedEvent(SettingsUpdateStatus outcome) {
         return switch (outcome) {
-            case APPLIED -> AgentLogLevel.INFO;
-            case REJECTED, STALE -> AgentLogLevel.WARN;
-            case UNCHANGED -> AgentLogLevel.DEBUG;
-            case FAILED -> AgentLogLevel.ERROR;
+            case APPLIED -> ControlPlaneLogEvent.TRACING_SETTINGS_UPDATE_APPLIED;
+            case REJECTED, STALE -> ControlPlaneLogEvent.TRACING_SETTINGS_UPDATE_REJECTED;
+            case UNCHANGED -> ControlPlaneLogEvent.TRACING_SETTINGS_UPDATE_UNCHANGED;
+            case FAILED -> ControlPlaneLogEvent.TRACING_SETTINGS_UPDATE_COMMIT_FAILED;
         };
     }
 

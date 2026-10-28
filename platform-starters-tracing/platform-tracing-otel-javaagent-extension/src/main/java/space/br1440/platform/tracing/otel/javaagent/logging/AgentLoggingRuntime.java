@@ -75,21 +75,13 @@ public final class AgentLoggingRuntime {
                             AgentLogEventType eventType,
                             AgentLogFieldsWriter fieldsWriter,
                             long suppressedCount) {
-        return emitAdmitted(logger, eventType, eventType.level(), fieldsWriter, suppressedCount);
-    }
-
-    EmitResult emitAdmitted(String logger,
-                            AgentLogEventType eventType,
-                            AgentLogLevel level,
-                            AgentLogFieldsWriter fieldsWriter,
-                            long suppressedCount) {
         Objects.requireNonNull(logger, "logger");
-        Objects.requireNonNull(eventType, "eventType");
-        AgentLogLevel requiredLevel = Objects.requireNonNull(level, "level").requireEventLevel();
+        AgentLogEventType requiredEventType = Objects.requireNonNull(eventType, "eventType");
+        AgentLogLevel requiredLevel = requiredEventType.level().requireEventLevel();
         Objects.requireNonNull(fieldsWriter, "fieldsWriter");
 
         return withinEmissionGuard(() ->
-                buildEncodeAndDeliver(logger, eventType, requiredLevel, fieldsWriter, suppressedCount));
+                buildEncodeAndDeliver(logger, requiredEventType, requiredLevel, fieldsWriter, suppressedCount));
     }
 
     EmitResult emitRateTransitionAdmitted(String logger,

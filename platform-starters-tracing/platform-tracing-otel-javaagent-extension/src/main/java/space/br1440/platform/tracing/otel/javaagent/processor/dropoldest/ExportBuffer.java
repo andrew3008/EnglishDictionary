@@ -24,6 +24,10 @@ final class ExportBuffer {
     private volatile LifecycleState lifecycleState = LifecycleState.ACTIVE;
 
     private SpanQueue.Batch inFlightBatch;
+
+    private boolean delegatePending;
+    private long delegatePendingSinceNanos;
+
     private ShutdownDrain shutdownDrain;
 
     ExportBuffer(int maxQueueSize, int maxExportBatchSize, DropOldestExportMetrics metrics) {
@@ -65,7 +69,7 @@ final class ExportBuffer {
                     overflowed = true;
                 }
 
-                if (spanQueue.hasBatchReady() || flushTracker.hasActive()) {
+                if (!delegatePending && (spanQueue.hasBatchReady() || flushTracker.hasActive())) {
                     workAvailable.signal();
                 }
             }
@@ -98,8 +102,11 @@ final class ExportBuffer {
         }
     }
 
-    void completeExport(SpanQueue.Batch batch, boolean success) {
+    void completeExport(SpanQueue.Batch batch, boolean success, boolean delegateStillPending) {
         Objects.requireNonNull(batch, "batch");
+        if (delegateStillPending && success) {
+            throw new IllegalArgumentException("A pending delegate export cannot be successful");
+        }
 
         LockedEffects effects = new LockedEffects();
         lock.lock();
@@ -112,16 +119,31 @@ final class ExportBuffer {
                 flushTracker.failGenerationsCovering(batch.firstSequence());
             }
 
+            long nowNanos = nanoTime.getAsLong();
             inFlightBatch = null;
-            if (isShutdownDeadlineExceededLocked(nanoTime.getAsLong())) {
+            delegatePending = delegateStillPending;
+            delegatePendingSinceNanos = nowNanos;
+            if (isShutdownDeadlineExceededLocked(nowNanos)) {
                 expireShutdownDrainLocked(effects);
             } else {
                 effects.addCompletions(collectTerminalFlushesLocked());
             }
+
             workAvailable.signal();
         } finally {
             lock.unlock();
             effects.publish(metrics);
+        }
+    }
+
+    long releaseDelegate() {
+        lock.lock();
+        try {
+            delegatePending = false;
+            workAvailable.signal();
+            return nanoTime.getAsLong() - delegatePendingSinceNanos;
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -135,7 +157,9 @@ final class ExportBuffer {
 
             CompletableResultCode result = flushTracker.requestOrExtend(spanQueue.lastAdmittedSequence());
             effects.addCompletions(collectTerminalFlushesLocked());
-            workAvailable.signal();
+            if (!delegatePending) {
+                workAvailable.signal();
+            }
             return result;
         } finally {
             lock.unlock();
@@ -214,10 +238,11 @@ final class ExportBuffer {
     record BufferSnapshot(int queueSize, LifecycleState lifecycleState) {
     }
 
-    @SuppressWarnings("ResultOfMethodCallIgnored")
     private WorkerAction awaitNextActionLocked(long scheduleDelayNanos,
                                                long lastExportNanos,
                                                LockedEffects effects) {
+        boolean waitElapsed = false;
+
         while (true) {
             effects.addCompletions(collectTerminalFlushesLocked());
             if (isWorkerDoneLocked()) {
@@ -240,8 +265,13 @@ final class ExportBuffer {
                 return new WorkerAction.ExportBatch(batch);
             }
 
+            if (waitElapsed && delegatePending) {
+                return new WorkerAction.DelegateHeld(nowNanos - delegatePendingSinceNanos);
+            }
+
             try {
-                workAvailable.awaitNanos(workerWaitNanosLocked(scheduleDelayNanos, elapsedSinceExportNanos, nowNanos));
+                long waitNanos = workerWaitNanosLocked(scheduleDelayNanos, elapsedSinceExportNanos, nowNanos);
+                waitElapsed = workAvailable.awaitNanos(waitNanos) <= 0;
             } catch (InterruptedException interrupted) {
                 Thread.currentThread().interrupt();
                 failTerminalLocked(effects);
@@ -251,7 +281,7 @@ final class ExportBuffer {
     }
 
     private boolean isExportReadyLocked(long scheduleDelayNanos, long elapsedSinceExportNanos) {
-        if (inFlightBatch != null || spanQueue.isEmpty()) {
+        if (inFlightBatch != null || delegatePending || spanQueue.isEmpty()) {
             return false;
         }
 
@@ -263,15 +293,23 @@ final class ExportBuffer {
     }
 
     private long workerWaitNanosLocked(long scheduleDelayNanos, long elapsedSinceExportNanos, long nowNanos) {
-        long waitNanos = spanQueue.isEmpty()
-                ? scheduleDelayNanos
-                : Math.max(MIN_WORKER_AWAIT_NANOS, scheduleDelayNanos - elapsedSinceExportNanos);
-
+        long waitNanos = idleWaitNanos(delegatePending, spanQueue.isEmpty(), scheduleDelayNanos, elapsedSinceExportNanos);
         if (lifecycleState == LifecycleState.SHUTTING_DOWN) {
             waitNanos = Math.min(waitNanos, requireShutdownDrainLocked().remainingNanos(nowNanos));
         }
 
         return waitNanos;
+    }
+
+    static long idleWaitNanos(boolean delegatePending,
+                              boolean queueEmpty,
+                              long scheduleDelayNanos,
+                              long elapsedSinceExportNanos) {
+        if (delegatePending || queueEmpty) {
+            return scheduleDelayNanos;
+        }
+
+        return Math.max(MIN_WORKER_AWAIT_NANOS, scheduleDelayNanos - elapsedSinceExportNanos);
     }
 
     private boolean isWorkerDoneLocked() {
@@ -304,6 +342,7 @@ final class ExportBuffer {
 
     private void releaseAllWorkLocked(LockedEffects effects) {
         inFlightBatch = null;
+        delegatePending = false;
         discardQueuedAndFailFlushesLocked(effects);
     }
 

@@ -100,7 +100,7 @@ class PlatformDropOldestExportSpanProcessorWatermarkTest {
         assertThat(action).isInstanceOf(WorkerAction.ExportBatch.class);
         SpanQueue.Batch batch = ((WorkerAction.ExportBatch) action).batch();
         assertThat(batch.spans()).hasSize(10);
-        buffer.completeExport(batch, false);
+        buffer.completeExport(batch, false, false);
 
         // then
         assertThat(flush.isDone()).isTrue();
@@ -128,7 +128,7 @@ class PlatformDropOldestExportSpanProcessorWatermarkTest {
         assertThat(flush.isDone()).isTrue();
         assertThat(flush.isSuccess()).isFalse();
         assertThat(metrics.droppedOverflowTotal()).isEqualTo(1);
-        buffer.completeExport(inFlight, true);
+        buffer.completeExport(inFlight, true, false);
         assertThat(flush.isSuccess()).isFalse();
     }
 

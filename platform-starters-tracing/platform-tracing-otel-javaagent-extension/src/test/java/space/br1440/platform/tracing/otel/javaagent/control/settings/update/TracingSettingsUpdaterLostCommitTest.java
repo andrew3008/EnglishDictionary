@@ -58,7 +58,13 @@ class TracingSettingsUpdaterLostCommitTest {
         assertThat(appliedLevels).hasValue(0);
         assertThat(capture.events())
                 .singleElement()
-                .satisfies(event -> assertThat(event.eventName()).isEqualTo("TRACING_SETTINGS_UPDATE_FAILED"));
+                .satisfies(event -> {
+                    assertThat(event.eventName()).isEqualTo("TRACING_SETTINGS_UPDATE_COMMIT_FAILED");
+                    assertThat(event.level()).isEqualTo(AgentLogLevel.ERROR);
+                    assertThat(event.fields())
+                            .containsEntry("outcome", "FAILED")
+                            .containsEntry("messageCode", "INTERNAL_FAILURE");
+                });
     }
 
     @Test
@@ -83,7 +89,7 @@ class TracingSettingsUpdaterLostCommitTest {
         assertThat(store.current().acceptedSequence()).isEqualTo(before.acceptedSequence() + 1L);
         assertThat(capture.events())
                 .extracting(CapturedLogEvent::eventName)
-                .containsExactly("DIAGNOSTICS_LOG_LEVEL_APPLY_FAILED", "TRACING_SETTINGS_UPDATE_RESOLVED");
+                .containsExactly("DIAGNOSTICS_LOG_LEVEL_APPLY_FAILED", "TRACING_SETTINGS_UPDATE_APPLIED");
     }
 
     private static TracingSettingsStore store() {

@@ -124,7 +124,7 @@ public enum ExporterLogEvent implements AgentLogEventType {
             noCause(
                     AgentEventCode.EXPORT_TIMED, WARN,
                     "exporter.export() timed out",
-                    AgentLogField.TIMEOUT_MS
+                    AgentLogField.TIMEOUT_MILLIS
             )
     ),
 
@@ -132,6 +132,22 @@ public enum ExporterLogEvent implements AgentLogEventType {
             noCause(
                     AgentEventCode.EXPORT_TIMED, WARN,
                     "exporter.export() returned failure"
+            )
+    ),
+
+    TIMED_DELEGATE_SLOT_HELD(
+            noCause(
+                    AgentEventCode.EXPORT_TIMED, WARN,
+                    "Timed-out export still holds the delegate slot",
+                    AgentLogField.HELD_MILLIS
+            )
+    ),
+
+    TIMED_DELEGATE_SLOT_RELEASED(
+            noCause(
+                    AgentEventCode.EXPORT_TIMED, INFO,
+                    "Timed-out export released the delegate slot",
+                    AgentLogField.HELD_MILLIS, AgentLogField.OUTCOME
             )
     ),
 
@@ -153,7 +169,7 @@ public enum ExporterLogEvent implements AgentLogEventType {
             noCause(
                     AgentEventCode.EXPORT_TIMED, WARN,
                     "exporter.shutdown() timed out",
-                    AgentLogField.TIMEOUT_MS
+                    AgentLogField.TIMEOUT_MILLIS
             )
     ),
 

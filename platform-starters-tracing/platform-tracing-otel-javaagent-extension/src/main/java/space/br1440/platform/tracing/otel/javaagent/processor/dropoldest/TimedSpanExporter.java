@@ -49,7 +49,7 @@ final class TimedSpanExporter {
         this.log = Objects.requireNonNull(log, "log");
     }
 
-    boolean export(List<SpanData> snapshots) {
+    TimedExport export(List<SpanData> snapshots) {
         CompletableResultCode resultCode;
         try {
             resultCode = delegate.export(snapshots);
@@ -57,13 +57,13 @@ final class TimedSpanExporter {
             PlatformThrowables.propagateIfFatal(failure);
             metrics.incrementFailures();
             log.log(ExporterLogEvent.TIMED_EXPORT_THROWN, fields -> fields.cause(failure));
-            return false;
+            return TimedExport.finished(false);
         }
 
         if (resultCode == null) {
             metrics.incrementFailures();
             log.log(ExporterLogEvent.TIMED_EXPORT_RETURNED_NULL);
-            return false;
+            return TimedExport.finished(false);
         }
 
         boolean completed = resultCode.join(exportTimeoutNanos, TimeUnit.NANOSECONDS).isDone();
@@ -71,19 +71,32 @@ final class TimedSpanExporter {
             metrics.incrementTimeouts();
             metrics.incrementFailures();
             log.log(ExporterLogEvent.TIMED_EXPORT_TIMED_OUT, fields -> fields.putLong(
-                    AgentLogField.TIMEOUT_MS,
+                    AgentLogField.TIMEOUT_MILLIS,
                     TimeUnit.NANOSECONDS.toMillis(exportTimeoutNanos)
             ));
-            return false;
+            return TimedExport.timedOut(resultCode);
         }
 
         if (!resultCode.isSuccess()) {
             metrics.incrementFailures();
             log.log(ExporterLogEvent.TIMED_EXPORT_RETURNED_FAILURE);
-            return false;
+            return TimedExport.finished(false);
         }
 
-        return true;
+        return TimedExport.finished(true);
+    }
+
+    void reportDelegateHeld(long heldNanos) {
+        log.log(ExporterLogEvent.TIMED_DELEGATE_SLOT_HELD, fields -> fields.putLong(
+                AgentLogField.HELD_MILLIS,
+                TimeUnit.NANOSECONDS.toMillis(heldNanos)
+        ));
+    }
+
+    void reportDelegateReleased(long heldNanos, boolean success) {
+        LIFECYCLE_LOG.log(ExporterLogEvent.TIMED_DELEGATE_SLOT_RELEASED, fields -> fields
+                .putLong(AgentLogField.HELD_MILLIS, TimeUnit.NANOSECONDS.toMillis(heldNanos))
+                .putEnum(AgentLogField.OUTCOME, success ? LateOutcome.SUCCESS : LateOutcome.FAILURE));
     }
 
     boolean shutdown() {
@@ -107,7 +120,7 @@ final class TimedSpanExporter {
         if (!completed) {
             metrics.incrementShutdownFailures();
             LIFECYCLE_LOG.log(ExporterLogEvent.TIMED_SHUTDOWN_TIMED_OUT, fields -> fields.putLong(
-                    AgentLogField.TIMEOUT_MS,
+                    AgentLogField.TIMEOUT_MILLIS,
                     TimeUnit.NANOSECONDS.toMillis(shutdownTimeoutNanos)
             ));
             return false;
@@ -120,5 +133,10 @@ final class TimedSpanExporter {
         }
 
         return success;
+    }
+
+    private enum LateOutcome {
+        SUCCESS,
+        FAILURE
     }
 }

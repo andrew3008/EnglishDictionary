@@ -81,9 +81,8 @@ class ExportBufferTest {
 
         // when
         nanoTime.set(10L);
-        buffer.completeExport(batch, true);
-        WorkerAction action =
-                buffer.awaitNextAction(SCHEDULE_DELAY_NANOS, nanoTime.get());
+        buffer.completeExport(batch, true, false);
+        WorkerAction action = buffer.awaitNextAction(SCHEDULE_DELAY_NANOS, nanoTime.get());
 
         // then
         assertThat(action).isEqualTo(
@@ -126,18 +125,18 @@ class ExportBufferTest {
         ExportBuffer buffer = new ExportBuffer(4, 1, new DropOldestExportMetrics());
         buffer.admit(spanData());
         SpanQueue.Batch firstBatch = awaitBatch(buffer);
-        buffer.completeExport(firstBatch, true);
+        buffer.completeExport(firstBatch, true, false);
         buffer.admit(spanData());
         SpanQueue.Batch secondBatch = awaitBatch(buffer);
         CompletableResultCode secondFlush = buffer.requestFlush();
 
         // when
-        assertThatThrownBy(() -> buffer.completeExport(firstBatch, false))
+        assertThatThrownBy(() -> buffer.completeExport(firstBatch, false, false))
                 .isInstanceOf(IllegalStateException.class);
 
         // then
         assertThat(secondFlush.isDone()).isFalse();
-        buffer.completeExport(secondBatch, true);
+        buffer.completeExport(secondBatch, true, false);
         assertThat(secondFlush.isSuccess()).isTrue();
     }
 
@@ -169,7 +168,7 @@ class ExportBufferTest {
         });
 
         // when
-        buffer.completeExport(batch, true);
+        buffer.completeExport(batch, true, false);
 
         // then
         probeThread.get().join(TimeUnit.SECONDS.toMillis(3L));
@@ -191,7 +190,7 @@ class ExportBufferTest {
         });
 
         // when
-        buffer.completeExport(batch, true);
+        buffer.completeExport(batch, true, false);
 
         // then
         assertThat(active.isSuccess()).isTrue();

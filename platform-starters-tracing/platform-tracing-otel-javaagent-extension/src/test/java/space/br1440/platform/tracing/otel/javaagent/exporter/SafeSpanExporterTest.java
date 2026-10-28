@@ -87,6 +87,7 @@ class SafeSpanExporterTest {
                 TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled(),
                 new RateLimitedLogger(SafeSpanExporterTest.class),
+                new RateLimitedLogger(SafeSpanExporterTest.class),
                 nanoClock
         );
     }
@@ -153,6 +154,7 @@ class SafeSpanExporterTest {
                 TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled(),
                 recoveryLog,
+                new RateLimitedLogger(SafeSpanExporterTest.class),
                 System::nanoTime);
              AgentLogCapture capture = AgentLogCapture.installed()) {
             // when
@@ -713,6 +715,100 @@ class SafeSpanExporterTest {
     }
 
     @Test
+    void diagnosticEventsSurviveExportFailureStorm() {
+        // given
+        AtomicInteger exports = new AtomicInteger();
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
+            @Override
+            public CompletableResultCode export(Collection<SpanData> spans) {
+                if (exports.incrementAndGet() <= 20) {
+                    return CompletableResultCode.ofFailure();
+                }
+
+                Objects.requireNonNull(ExportResponseScope.current(), "observation").recordNotDetermined();
+                return CompletableResultCode.ofSuccess();
+            }
+
+            @Override
+            public CompletableResultCode flush() {
+                return CompletableResultCode.ofFailure();
+            }
+
+            @Override
+            public CompletableResultCode shutdown() {
+                return CompletableResultCode.ofSuccess();
+            }
+        });
+
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
+            for (int attempt = 0; attempt < 20; attempt++) {
+                safe.export(spansOfSize(1));
+            }
+
+            // when
+            safe.flush();
+            safe.export(spansOfSize(1));
+
+            // then
+            assertThat(named(capture, "SAFE_EXPORT_RETURNED_FAILURE")).hasSizeLessThan(20);
+            assertThat(named(capture, "SAFE_FLUSH_RETURNED_FAILURE")).hasSize(1);
+            assertThat(named(capture, "EXPORT_ACCEPTED_SPAN_COUNT_UNAVAILABLE")).hasSize(1);
+            assertThat(safe.getAcceptedUnknownBatches()).isEqualTo(1L);
+        }
+    }
+
+    @Test
+    void lateCompletionCallbackFailureDoesNotBlockResultAndIsThrottled() {
+        // given
+        Deque<CompletableResultCode> results = new ArrayDeque<>();
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
+            @Override
+            public CompletableResultCode export(Collection<SpanData> spans) {
+                return results.removeFirst();
+            }
+
+            @Override
+            public CompletableResultCode flush() {
+                return CompletableResultCode.ofSuccess();
+            }
+
+            @Override
+            public CompletableResultCode shutdown() {
+                return CompletableResultCode.ofSuccess();
+            }
+        }, () -> {
+            throw new IllegalStateException("simulated completion defect");
+        });
+
+        AtomicInteger laterActions = new AtomicInteger();
+        AtomicInteger succeededResults = new AtomicInteger();
+
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
+            // when
+            for (int attempt = 0; attempt < 20; attempt++) {
+                results.addLast(CompletableResultCode.ofFailure());
+                safe.export(spansOfSize(1));
+
+                CompletableResultCode pending = new CompletableResultCode();
+                results.addLast(pending);
+                CompletableResultCode result = safe.export(spansOfSize(1));
+                result.whenComplete(laterActions::incrementAndGet);
+                pending.succeed();
+                if (result.isDone() && result.isSuccess()) {
+                    succeededResults.incrementAndGet();
+                }
+            }
+
+            // then
+            assertThat(succeededResults).hasValue(20);
+            assertThat(laterActions).hasValue(20);
+            assertThat(named(capture, "EXPORT_COMPLETION_CALLBACK_FAILED"))
+                    .isNotEmpty()
+                    .hasSizeLessThan(20);
+        }
+    }
+
+    @Test
     @DisplayName("Исключение делегата изолировано: наружу ofFailure(), исключение не пробрасывается")
     void delegateExceptionIsIsolated() {
         // given
@@ -842,6 +938,7 @@ class SafeSpanExporterTest {
                 TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled(),
                 new RateLimitedLogger(SafeSpanExporterTest.class),
+                new RateLimitedLogger(SafeSpanExporterTest.class),
                 System::nanoTime);
              AgentLogCapture logs = AgentLogCapture.installed()) {
             // when
@@ -871,6 +968,7 @@ class SafeSpanExporterTest {
                 delegate,
                 TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled(),
+                new RateLimitedLogger(SafeSpanExporterTest.class),
                 new RateLimitedLogger(SafeSpanExporterTest.class),
                 System::nanoTime);
              AgentLogCapture logs = AgentLogCapture.installed()) {
@@ -1228,6 +1326,12 @@ class SafeSpanExporterTest {
                 return CompletableResultCode.ofSuccess();
             }
         };
+    }
+
+    private static List<CapturedLogEvent> named(AgentLogCapture capture, String eventName) {
+        return capture.events().stream()
+                .filter(event -> eventName.equals(event.eventName()))
+                .toList();
     }
 
     private static List<CapturedLogEvent> recoveryEvents(AgentLogCapture capture) {
