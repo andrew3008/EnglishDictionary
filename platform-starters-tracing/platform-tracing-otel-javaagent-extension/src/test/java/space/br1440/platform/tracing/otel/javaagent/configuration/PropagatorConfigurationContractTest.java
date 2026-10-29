@@ -112,6 +112,7 @@ class PropagatorConfigurationContractTest {
         assertThat(failure).isInstanceOf(ConfigurationPropertyException.class);
         assertThat(((ConfigurationPropertyException) failure).failure()).hasMessage(
                 "otel.propagators contains unsupported propagators [jaeger, ottrace, xray]; "
+                        + "these propagators carry baggage outside the platform policy; "
                         + "supported: [b3, b3multi, baggage, none, platform-trace-control, tracecontext]"
         );
     }
