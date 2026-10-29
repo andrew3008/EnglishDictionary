@@ -21,7 +21,6 @@ public final class PropagatorConfigurationContract {
         Objects.requireNonNull(config, "config");
 
         List<String> configured = config.getList(OtelSdkPropertyNames.PROPAGATORS);
-
         Set<String> unsupported = new TreeSet<>(configured);
         unsupported.removeAll(SUPPORTED_PROPAGATORS);
         if (unsupported.isEmpty()) {
