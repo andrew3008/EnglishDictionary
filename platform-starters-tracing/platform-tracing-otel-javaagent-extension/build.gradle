@@ -81,10 +81,10 @@ dependencies {
     testImplementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
     testImplementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure'
     testImplementation 'io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api'
-    testImplementation 'io.opentelemetry:opentelemetry-extension-trace-propagators'
     testImplementation 'io.opentelemetry:opentelemetry-exporter-logging'
     testImplementation 'io.opentelemetry:opentelemetry-exporter-logging-otlp'
     testImplementation 'io.opentelemetry:opentelemetry-exporter-otlp'
+    testRuntimeOnly 'io.opentelemetry:opentelemetry-extension-trace-propagators'
 
     testCompileOnly "com.google.auto.service:auto-service-annotations:${libs.versions.auto.service.get()}"
     testAnnotationProcessor "com.google.auto.service:auto-service:${libs.versions.auto.service.get()}"

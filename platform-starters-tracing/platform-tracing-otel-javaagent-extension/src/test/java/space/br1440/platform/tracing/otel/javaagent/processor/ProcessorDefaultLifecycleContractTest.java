@@ -10,6 +10,7 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.configuration.BaggageKeyPolicy;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
@@ -20,7 +21,7 @@ import io.opentelemetry.sdk.trace.SpanProcessor;
 class ProcessorDefaultLifecycleContractTest {
 
     private static final List<SpanProcessor> STATELESS_LIFECYCLE_PROCESSORS = List.of(
-            new BaggageSpanProcessor(Set.of(), List.of()),
+            new BaggageSpanProcessor(new BaggageKeyPolicy(Set.of(), List.of())),
             new EnrichingSpanProcessor(),
             new RequestIdPropagatingSpanProcessor(),
             ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of()),

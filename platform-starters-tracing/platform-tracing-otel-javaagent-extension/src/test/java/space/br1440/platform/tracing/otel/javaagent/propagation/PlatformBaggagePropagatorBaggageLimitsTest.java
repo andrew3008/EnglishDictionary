@@ -7,35 +7,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.otel.javaagent.configuration.BaggageKeyPolicy;
+
 import io.opentelemetry.api.baggage.Baggage;
 import io.opentelemetry.api.baggage.propagation.W3CBaggagePropagator;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+class PlatformBaggagePropagatorBaggageLimitsTest {
 
-/**
- * Regression на security fix OTel SDK 1.62.0 (GHSA-rcgg-9c38-7xpx, PR #8378):
- * лимиты W3C baggage на входящем пути.
- *
- * <p><b>Контекст.</b> {@link FilteringBaggagePropagator} делегирует {@code extract()} штатному
- * {@link W3CBaggagePropagator} (фильтрация allowlist'ом применяется только на {@code inject()}).
- * Поэтому лимиты из fix #8378 — {@code MAX_BAGGAGE_ENTRIES = 64} и {@code MAX_BAGGAGE_BYTES = 8192} —
- * наследуются автоматически через делегирование. Этот тест фиксирует факт наследования, чтобы
- * будущий рефакторинг {@code extract()} не вырезал защиту от unbounded-парсинга недоверенного
- * заголовка.</p>
- */
-class FilteringBaggagePropagatorBaggageLimitsTest {
-
-    /** Лимиты из спецификации W3C baggage, применяемые штатным propagator'ом (см. fix #8378). */
     private static final int MAX_BAGGAGE_ENTRIES = 64;
     private static final int MAX_BAGGAGE_BYTES = 8192;
 
     private static final Set<String> ALLOWLIST = Set.of("traffic_source", "tenant_class");
-    private static final List<String> DENY = List.of("password", "secret", "token");
-
-    /** Getter поверх Map: возвращает заголовок {@code baggage} как единственное значение. */
     private static final TextMapGetter<Map<String, String>> MAP_GETTER =
             new TextMapGetter<>() {
                 @Override
@@ -49,9 +36,11 @@ class FilteringBaggagePropagatorBaggageLimitsTest {
                 }
             };
 
-    private static FilteringBaggagePropagator newPropagator() {
-        return new FilteringBaggagePropagator(
-                W3CBaggagePropagator.getInstance(), ALLOWLIST, DENY);
+    private static PlatformBaggagePropagator newPropagator() {
+        return new PlatformBaggagePropagator(
+                W3CBaggagePropagator.getInstance(),
+                new BaggageKeyPolicy(ALLOWLIST, List.of())
+        );
     }
 
     @Test
@@ -64,8 +53,10 @@ class FilteringBaggagePropagatorBaggageLimitsTest {
             if (i > 0) {
                 header.append(',');
             }
+
             header.append("k").append(i).append("=v").append(i);
         }
+
         Map<String, String> carrier = new HashMap<>();
         carrier.put("baggage", header.toString());
 

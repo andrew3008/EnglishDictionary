@@ -4,13 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.otel.javaagent.configuration.BaggageKeyPolicy;
 
 import io.opentelemetry.api.baggage.Baggage;
 import io.opentelemetry.api.baggage.BaggageBuilder;
@@ -20,23 +24,17 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapSetter;
 
-/**
- * Slice 1 (characterization, проходит на дорефакторинговом коде) и Slice 2 (RED/GREEN
- * conformance для исправления W3C outbound baggage encoding) для {@link FilteringBaggagePropagator}.
- *
- * <p>Таксономия обязательна: методы с суффиксом {@code Characterization} фиксируют поведение,
- * не зависящее от корректности wire-encoding, и обязаны проходить как до, так и после Slice 2.
- * Методы с суффиксом {@code Conformance} проверяют исправленный W3C-корректный encoding и до
- * Slice 2 production edit ожидаемо RED.
- */
-@DisplayName("FilteringBaggagePropagator: inject")
-class FilteringBaggagePropagatorInjectionTest {
+@DisplayName("PlatformBaggagePropagator: исходящая фильтрация и сериализация W3C")
+class PlatformBaggagePropagatorInjectionTest {
 
     private static final Set<String> ALLOWLIST = Set.of("traffic_source", "tenant_class");
-    private static final List<String> DENY = List.of("password", "secret", "token");
+    private static final List<Pattern> DENY = List.of("password", "secret", "token").stream()
+            .map(pattern -> Pattern.compile(pattern, Pattern.CASE_INSENSITIVE))
+            .toList();
 
-    private static FilteringBaggagePropagator newPropagator() {
-        return new FilteringBaggagePropagator(W3CBaggagePropagator.getInstance(), ALLOWLIST, DENY);
+    private static PlatformBaggagePropagator newPropagator() {
+        return new PlatformBaggagePropagator(
+                W3CBaggagePropagator.getInstance(), new BaggageKeyPolicy(ALLOWLIST, DENY));
     }
 
     @Test
@@ -79,16 +77,9 @@ class FilteringBaggagePropagatorInjectionTest {
         assertThat(carrier).isEmpty();
     }
 
-    // ------------------------------------------------------------------------------------------
-    // S2 (плана рефакторинга configuration): фиксирует деловое решение по одностороннести
-    // фильтрации — extract остаётся неотфильтрованным сквозным проходом намеренно, а не по
-    // недосмотру. См. Javadoc класса. Ключи allowlist/deny называются "outbound", потому что
-    // это поведение существует и задокументировано.
-    // ------------------------------------------------------------------------------------------
-
     @Test
-    @DisplayName("extract не фильтрует входящий baggage вообще — намеренная асимметрия с inject")
-    void extract_isUnfilteredPassthrough_byDesign() {
+    @DisplayName("extract не применяет исходящие allowlist и deny-паттерны")
+    void extract_doesNotApplyOutboundPolicy() {
         // given
         Map<String, String> carrier = new HashMap<>();
         Context outboundCtx = Context.root().with(Baggage.builder()
@@ -96,12 +87,12 @@ class FilteringBaggagePropagatorInjectionTest {
                 .put("not_allowlisted", "x")
                 .put("tenant_class", "gold")
                 .build());
-        // Собираем carrier напрямую через stock-делегат (минуя фильтр inject), чтобы carrier
-        // отражал именно то, что реально приходит по проводу от недоверенного отправителя.
         W3CBaggagePropagator.getInstance().inject(outboundCtx, carrier, (c, k, v) -> c.put(k, v));
 
+        // when
         Context extracted = newPropagator().extract(Context.root(), carrier, MAP_GETTER);
 
+        // then
         Baggage baggage = Baggage.fromContext(extracted);
         assertThat(baggage.getEntryValue("password"))
                 .as("extract не вычищает deny-ключи — фильтрация только на inject")
@@ -111,12 +102,6 @@ class FilteringBaggagePropagatorInjectionTest {
                 .isEqualTo("x");
         assertThat(baggage.getEntryValue("tenant_class")).isEqualTo("gold");
     }
-
-    // ------------------------------------------------------------------------------------------
-    // Slice 2 (conformance, §6.1 плана): исправление P1 — ручная сериализация заменена
-    // делегированием stock W3CBaggagePropagator. До production edit ожидается RED
-    // (текущая реализация кодирует пробел как '+', а не '%20').
-    // ------------------------------------------------------------------------------------------
 
     private static final TextMapGetter<Map<String, String>> MAP_GETTER = new TextMapGetter<>() {
         @Override
@@ -145,7 +130,6 @@ class FilteringBaggagePropagatorInjectionTest {
         assertThat(header).contains("tenant_class=DF%2028");
         assertThat(header).doesNotContain("DF+28");
 
-        // and: stock extraction возвращает исходное значение без изменения
         Context extracted = W3CBaggagePropagator.getInstance().extract(Context.root(), carrier, MAP_GETTER);
         assertThat(Baggage.fromContext(extracted).getEntryValue("tenant_class")).isEqualTo("DF 28");
     }
@@ -192,6 +176,7 @@ class FilteringBaggagePropagatorInjectionTest {
         // given
         Context ctx = Context.root().with(Baggage.builder()
                 .put("tenant_class", "gold", BaggageEntryMetadata.create("verified=true"))
+                .put("not_allowlisted", "removed")
                 .build());
         Map<String, String> carrier = new HashMap<>();
 
@@ -209,15 +194,15 @@ class FilteringBaggagePropagatorInjectionTest {
     @DisplayName("conformance: свыше 64 entries и заголовок свыше 8192 байт ограничены stock OTel contract")
     void overLimitEntries_boundedByStockContract_conformance() {
         // given
-        java.util.Set<String> allowedKeys = new java.util.HashSet<>();
+        Set<String> allowedKeys = new HashSet<>();
         BaggageBuilder builder = Baggage.builder();
         for (int i = 0; i < 100; i++) {
             String key = "k" + i;
             allowedKeys.add(key);
             builder.put(key, "v" + i);
         }
-        FilteringBaggagePropagator propagator =
-                new FilteringBaggagePropagator(W3CBaggagePropagator.getInstance(), allowedKeys, DENY);
+        PlatformBaggagePropagator propagator = new PlatformBaggagePropagator(
+                W3CBaggagePropagator.getInstance(), new BaggageKeyPolicy(allowedKeys, DENY));
         Context ctx = Context.root().with(builder.build());
         Map<String, String> carrier = new HashMap<>();
 

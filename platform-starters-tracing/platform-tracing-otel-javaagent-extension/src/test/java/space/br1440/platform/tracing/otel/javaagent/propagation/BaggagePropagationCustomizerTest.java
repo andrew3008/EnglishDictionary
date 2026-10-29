@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.propagation;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -10,34 +11,43 @@ import java.util.Objects;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.configuration.BaggageExtensionConfig;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
+import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
+
+import io.opentelemetry.api.baggage.Baggage;
 import io.opentelemetry.api.baggage.propagation.W3CBaggagePropagator;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.context.propagation.TextMapSetter;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
 
-import space.br1440.platform.tracing.otel.javaagent.configuration.BaggageExtensionConfig;
-import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
-import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
-
 @DisplayName("BaggagePropagationCustomizer")
 class BaggagePropagationCustomizerTest {
 
-    private final BaggagePropagationCustomizer customizer = new BaggagePropagationCustomizer();
+    private final TracingDiagnostics diagnostics = new TracingDiagnostics();
+    private final BaggagePropagationCustomizer customizer = new BaggagePropagationCustomizer(diagnostics);
 
     @Test
-    @DisplayName("W3C baggage + baggage enabled → возвращает единственную F0-границу")
-    void w3cBaggage_enabled_returnsWrapped() {
+    @DisplayName("W3C baggage + baggage enabled → разрешённый baggage передаётся в заголовке")
+    void w3cBaggage_enabled_injectsAllowedBaggage() {
         // given
-        TextMapPropagator propagator = W3CBaggagePropagator.getInstance();
+        TextMapPropagator propagator = customizer.apply(
+                W3CBaggagePropagator.getInstance(),
+                configWithBaggageEnabled(true)
+        );
+        Context context = Context.root().with(Baggage.builder().put("traffic_source", "qa").build());
+        Map<String, String> carrier = new HashMap<>();
 
         // when
-        TextMapPropagator result = customizer.apply(propagator, configWithBaggageEnabled(true));
+        propagator.inject(context, carrier, Map::put);
 
         // then
-        assertThat(result).isInstanceOf(FailClosedCorrelationBaggagePropagator.class);
+        assertThat(carrier).containsExactlyEntriesOf(Map.of("baggage", "traffic_source=qa"));
     }
 
     @Test
@@ -135,8 +145,8 @@ class BaggagePropagationCustomizerTest {
     }
 
     @Test
-    @DisplayName("характеризация: собранная цепочка фильтрует allowlist и убирает platform.correlation.id одновременно")
-    void assembledChain_filtersAllowlistAndStripsCorrelation_characterization() {
+    @DisplayName("собранная цепочка фильтрует allowlist и убирает platform.correlation.id одновременно")
+    void assembledChain_filtersAllowlistAndStripsCorrelation() {
         // given
         TextMapPropagator chain = customizer.apply(W3CBaggagePropagator.getInstance(), configWithBaggageEnabled(true));
         io.opentelemetry.context.Context ctx = io.opentelemetry.context.Context.root().with(
@@ -151,11 +161,7 @@ class BaggagePropagationCustomizerTest {
         chain.inject(ctx, carrier, (c, k, v) -> Objects.requireNonNull(c, "carrier").put(k, v));
 
         // then
-        String header = carrier.get("baggage");
-        assertThat(header)
-                .doesNotContain("password")
-                .doesNotContain("platform.correlation.id")
-                .contains("traffic_source");
+        assertThat(carrier).containsExactlyEntriesOf(Map.of("baggage", "traffic_source=qa"));
     }
 
     @Test
@@ -181,6 +187,45 @@ class BaggagePropagationCustomizerTest {
         assertThat(header)
                 .contains("traffic_source")
                 .doesNotContain("access_token");
+    }
+
+    @Test
+    @DisplayName("ошибка чтения carrier сохраняет допустимый baggage и удаляет reserved-ключ")
+    void assembledChain_stripsCorrelationAfterExtractionFailure() {
+        // given
+        TextMapPropagator chain = customizer.apply(
+                W3CBaggagePropagator.getInstance(),
+                configWithBaggageEnabled(true)
+        );
+
+        Context input = Context.root().with(Baggage.builder()
+                .put("platform.correlation.id", "unverified-workflow")
+                .put("traffic_source", "qa")
+                .build());
+
+        TextMapGetter<Map<String, String>> failingGetter = new TextMapGetter<>() {
+            @Override
+            public Iterable<String> keys(Map<String, String> carrier) {
+                return carrier.keySet();
+            }
+
+            @Override
+            public String get(Map<String, String> carrier, String key) {
+                throw new IllegalStateException("Carrier read failed");
+            }
+        };
+
+        // when
+        Context extracted = chain.extract(input, Map.of("baggage", "traffic_source=remote"), failingGetter);
+
+        // then
+        assertThat(diagnostics.getPropagatorFailures()).isEqualTo(1);
+        Baggage baggage = Baggage.fromContext(extracted);
+        assertThat(baggage.size()).isEqualTo(1);
+        assertThat(baggage.getEntryValue("traffic_source")).isEqualTo("qa");
+        assertThat(baggage.getEntryValue("platform.correlation.id")).isNull();
+        assertThat(Baggage.fromContext(input).getEntryValue("platform.correlation.id"))
+                .isEqualTo("unverified-workflow");
     }
 
     private static BaggageExtensionConfig configWithBaggageEnabled(boolean enabled) {

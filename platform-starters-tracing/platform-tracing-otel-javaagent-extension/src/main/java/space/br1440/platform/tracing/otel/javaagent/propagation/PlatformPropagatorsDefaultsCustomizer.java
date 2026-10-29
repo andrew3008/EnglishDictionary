@@ -5,32 +5,32 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkPropertyNames;
+import space.br1440.platform.tracing.otel.javaagent.configuration.PropagatorConfigurationContract;
+
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
 public final class PlatformPropagatorsDefaultsCustomizer implements Function<ConfigProperties, Map<String, String>> {
 
-    static final String PROPAGATORS_KEY = "otel.propagators";
-    static final String PLATFORM_PROPAGATOR = TraceControlPropagatorProvider.NAME;
-    static final String NONE = "none";
     static final List<String> OTEL_DEFAULT_PROPAGATORS = List.of("tracecontext", "baggage");
 
     @Override
     public Map<String, String> apply(ConfigProperties config) {
-        List<String> propagators = config.getList(PROPAGATORS_KEY);
+        List<String> propagators = config.getList(OtelSdkPropertyNames.PROPAGATORS);
         if (propagators.isEmpty()) {
             propagators = OTEL_DEFAULT_PROPAGATORS;
         }
 
-        if (propagators.contains(NONE)) {
+        if (propagators.contains(PropagatorConfigurationContract.NONE)) {
             return Map.of();
         }
 
-        if (propagators.contains(PLATFORM_PROPAGATOR)) {
+        if (propagators.contains(PropagatorConfigurationContract.PLATFORM_PROPAGATOR)) {
             return Map.of();
         }
 
         List<String> updated = new ArrayList<>(propagators);
-        updated.add(PLATFORM_PROPAGATOR);
-        return Map.of(PROPAGATORS_KEY, String.join(",", updated));
+        updated.add(PropagatorConfigurationContract.PLATFORM_PROPAGATOR);
+        return Map.of(OtelSdkPropertyNames.PROPAGATORS, String.join(",", updated));
     }
 }

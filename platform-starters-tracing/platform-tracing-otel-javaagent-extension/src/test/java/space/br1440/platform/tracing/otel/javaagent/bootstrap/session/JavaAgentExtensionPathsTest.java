@@ -94,7 +94,7 @@ class JavaAgentExtensionPathsTest {
             @Override public Long getLong(String name)               { return null; }
             @Override public Double getDouble(String name)           { return null; }
             @Override public Duration getDuration(String name)       { return null; }
-            @Override public List<String> getList(String name)       { return null; }
+            @Override public List<String> getList(String name)       { return List.of(); }
             @Override public Map<String, String> getMap(String name) { return null; }
         };
     }
@@ -108,7 +108,7 @@ class JavaAgentExtensionPathsTest {
             @Override public Long getLong(String name)               { return null; }
             @Override public Double getDouble(String name)           { return null; }
             @Override public Duration getDuration(String name)       { return null; }
-            @Override public List<String> getList(String name)       { return null; }
+            @Override public List<String> getList(String name)       { return List.of(); }
             @Override public Map<String, String> getMap(String name) { return null; }
         };
     }

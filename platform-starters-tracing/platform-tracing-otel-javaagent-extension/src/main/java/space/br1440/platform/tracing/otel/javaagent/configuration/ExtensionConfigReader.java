@@ -31,6 +31,7 @@ final class ExtensionConfigReader {
         return (configValue == null) ? defaultValue : configValue;
     }
 
+    @SuppressWarnings("SameParameterValue")
     String stringValue(String name, String defaultValue) {
         String configValue = config.getString(name);
         return (configValue == null) ? defaultValue : configValue;
@@ -65,10 +66,6 @@ final class ExtensionConfigReader {
 
     List<String> listValue(String name, List<String> defaultValue) {
         List<String> configValue = config.getList(name);
-        if (configValue == null) {
-            return defaultValue;
-        }
-
         if (configValue.isEmpty() && (config.getString(name) == null)) {
             return defaultValue;
         }

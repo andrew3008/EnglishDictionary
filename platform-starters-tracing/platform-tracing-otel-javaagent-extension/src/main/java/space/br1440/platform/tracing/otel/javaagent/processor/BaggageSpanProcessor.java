@@ -1,17 +1,15 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.propagation.PlatformBaggageKeys;
+import space.br1440.platform.tracing.otel.javaagent.configuration.BaggageKeyPolicy;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 
 import io.opentelemetry.api.baggage.Baggage;
@@ -40,20 +38,12 @@ public final class BaggageSpanProcessor implements SpanProcessor, ProcessorDiagn
     private static final int CORRELATION_ID_MAX_LENGTH = 128;
     private static final AttributeKey<String> CORRELATION_ATTRIBUTE_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_CORRELATION_ID);
 
-    private final Set<String> allowlist;
-    private final List<Pattern> denyPatterns;
+    private final BaggageKeyPolicy policy;
 
     private final Map<String, AttributeKey<String>> attributeKeysByNormalizedKey;
 
-    public BaggageSpanProcessor(Set<String> allowlistKeys, List<String> denyPatternStrings) {
-        this.allowlist = allowlistKeys.stream()
-                .map(key -> key.toLowerCase(Locale.ROOT))
-                .collect(Collectors.toUnmodifiableSet());
-
-        this.denyPatterns = denyPatternStrings.stream()
-                .map(pattern -> Pattern.compile(pattern, Pattern.CASE_INSENSITIVE))
-                .toList();
-
+    public BaggageSpanProcessor(BaggageKeyPolicy policy) {
+        this.policy = Objects.requireNonNull(policy, "policy");
         this.attributeKeysByNormalizedKey = new ConcurrentHashMap<>();
     }
 
@@ -64,7 +54,7 @@ public final class BaggageSpanProcessor implements SpanProcessor, ProcessorDiagn
 
     @Override
     public void onStart(@Nonnull Context parentContext, @Nonnull ReadWriteSpan span) {
-        if (allowlist.isEmpty()) {
+        if (policy.isEmpty()) {
             return;
         }
 
@@ -75,18 +65,11 @@ public final class BaggageSpanProcessor implements SpanProcessor, ProcessorDiagn
     }
 
     private void copyIfAllowed(String key, BaggageEntry entry, AttributesBuilder attributes) {
-        if (key == null || entry == null) {
+        if (entry == null || !policy.allows(key)) {
             return;
         }
 
         String normalizedKey = key.toLowerCase(Locale.ROOT);
-        if (!allowlist.contains(normalizedKey)) {
-            return;
-        }
-
-        if (matchesDeny(normalizedKey)) {
-            return;
-        }
 
         String value = entry.getValue();
         if (StringUtils.isNullOrBlank(value)) {
@@ -100,12 +83,12 @@ public final class BaggageSpanProcessor implements SpanProcessor, ProcessorDiagn
             return;
         }
 
-        attributes.put(attributeKeyFor(key, normalizedKey), value);
+        attributes.put(attributeKeyFor(normalizedKey), value);
     }
 
-    private AttributeKey<String> attributeKeyFor(String key, String normalizedKey) {
+    private AttributeKey<String> attributeKeyFor(String normalizedKey) {
         return attributeKeysByNormalizedKey.computeIfAbsent(
-                normalizedKey, ignored -> AttributeKey.stringKey(ATTRIBUTE_PREFIX + key)
+                normalizedKey, key -> AttributeKey.stringKey(ATTRIBUTE_PREFIX + key)
         );
     }
 
@@ -127,16 +110,6 @@ public final class BaggageSpanProcessor implements SpanProcessor, ProcessorDiagn
         }
 
         return true;
-    }
-
-    private boolean matchesDeny(String key) {
-        for (Pattern pattern : denyPatterns) {
-            if (pattern.matcher(key).find()) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     @Override

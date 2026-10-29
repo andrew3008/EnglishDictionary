@@ -67,9 +67,8 @@ class PropagationAndMdcBoundaryArchTest {
     void propagationDecoratorsAreNotPublic() {
         // given
         ArchRule rule = classes()
-                .that().haveSimpleName("FilteringBaggagePropagator")
+                .that().haveSimpleName("PlatformBaggagePropagator")
                 .or().haveSimpleName("SafeTextMapPropagator")
-                .or().haveSimpleName("FailClosedCorrelationBaggagePropagator")
                 .or().haveSimpleName("TraceControlPropagator")
                 .should().notBePublic()
                 .because("propagation decorators are internal implementation types");

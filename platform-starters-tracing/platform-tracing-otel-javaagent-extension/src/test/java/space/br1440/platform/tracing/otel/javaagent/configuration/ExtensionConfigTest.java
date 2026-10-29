@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -299,18 +300,18 @@ class ExtensionConfigTest {
         // given
         ExtensionConfig config = new ExtensionConfig(emptyConfig());
 
+        // when
+        BaggageKeyPolicy outboundPolicy = config.baggage().outboundHeaderPolicy();
+        BaggageKeyPolicy spanPolicy = config.baggage().spanAttributesPolicy();
+
         // then
         assertThat(config.baggage().propagationEnabled()).isTrue();
-
-        assertThat(config.baggage().outboundHeaderAllowedKeys())
-                .containsExactly("traffic_source", "tenant_class", "platform.correlation.id");
-
-        assertThat(config.baggage().outboundHeaderDenyPatterns()).containsExactly("password", "secret", "token");
-
-        assertThat(config.baggage().spanAttributesAllowedKeys())
-                .containsExactly("traffic_source", "tenant_class", "platform.correlation.id");
-
-        assertThat(config.baggage().spanAttributesDenyPatterns()).containsExactly("password", "secret", "token");
+        assertThat(outboundPolicy.allows("traffic_source")).isTrue();
+        assertThat(outboundPolicy.allows("tenant_class")).isTrue();
+        assertThat(outboundPolicy.allows("platform.correlation.id")).isFalse();
+        assertThat(spanPolicy.allows("traffic_source")).isTrue();
+        assertThat(spanPolicy.allows("tenant_class")).isTrue();
+        assertThat(spanPolicy.allows("platform.correlation.id")).isTrue();
     }
 
     @Test
@@ -484,9 +485,13 @@ class ExtensionConfigTest {
                 ExtensionPropertyNames.BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS,
                 List.of("x-tenant-id", "x-request-id")));
 
+        // when
+        BaggageKeyPolicy policy = config.baggage().outboundHeaderPolicy();
+
         // then
-        assertThat(config.baggage().outboundHeaderAllowedKeys())
-                .containsExactly("x-tenant-id", "x-request-id");
+        assertThat(policy.allows("x-tenant-id")).isTrue();
+        assertThat(policy.allows("x-request-id")).isTrue();
+        assertThat(policy.allows("traffic_source")).isFalse();
     }
 
     @Test
@@ -496,9 +501,13 @@ class ExtensionConfigTest {
                 ExtensionPropertyNames.BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS,
                 List.of("x-tenant-id", "x-request-id")));
 
+        // when
+        BaggageKeyPolicy policy = config.baggage().spanAttributesPolicy();
+
         // then
-        assertThat(config.baggage().spanAttributesAllowedKeys())
-                .containsExactly("x-tenant-id", "x-request-id");
+        assertThat(policy.allows("x-tenant-id")).isTrue();
+        assertThat(policy.allows("x-request-id")).isTrue();
+        assertThat(policy.allows("traffic_source")).isFalse();
     }
 
     @Test
@@ -555,19 +564,21 @@ class ExtensionConfigTest {
         }
 
         @Test
-        void baggage_allowlistKeys_is_unmodifiable_when_provided() {
+        void baggage_policy_is_not_affected_by_source_allowlist_mutation() {
             // given
+            List<String> allowedKeys = new ArrayList<>(List.of("x-tenant"));
             ExtensionConfig cfg = new ExtensionConfig(listConfig(
                     ExtensionPropertyNames.BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS,
-                    List.of("x-tenant"))
+                    allowedKeys)
             );
 
             // when
-            List<String> result = cfg.baggage().outboundHeaderAllowedKeys();
+            allowedKeys.clear();
+            allowedKeys.add("extra");
 
             // then
-            assertThatThrownBy(() -> result.add("extra"))
-                    .isInstanceOf(UnsupportedOperationException.class);
+            assertThat(cfg.baggage().outboundHeaderPolicy().allows("x-tenant")).isTrue();
+            assertThat(cfg.baggage().outboundHeaderPolicy().allows("extra")).isFalse();
         }
     }
 
@@ -603,7 +614,7 @@ class ExtensionConfigTest {
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return null; }
-            @Override public List<String> getList(String name) { return null; }
+            @Override public List<String> getList(String name) { return List.of(); }
             @Override public Map<String, String> getMap(String name) { return null; }
         };
     }
@@ -616,7 +627,7 @@ class ExtensionConfigTest {
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return null; }
-            @Override public List<String> getList(String name) { return null; }
+            @Override public List<String> getList(String name) { return List.of(); }
             @Override public Map<String, String> getMap(String name) { return null; }
         };
     }
@@ -629,7 +640,7 @@ class ExtensionConfigTest {
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return null; }
-            @Override public List<String> getList(String name) { return null; }
+            @Override public List<String> getList(String name) { return List.of(); }
             @Override public Map<String, String> getMap(String name) { return null; }
         };
     }
@@ -643,7 +654,7 @@ class ExtensionConfigTest {
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return key.equals(name) ? value : null; }
             @Override public Duration getDuration(String name) { return null; }
-            @Override public List<String> getList(String name) { return null; }
+            @Override public List<String> getList(String name) { return List.of(); }
             @Override public Map<String, String> getMap(String name) { return null; }
         };
     }
@@ -656,7 +667,7 @@ class ExtensionConfigTest {
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return key.equals(name) ? value : null; }
-            @Override public List<String> getList(String name) { return null; }
+            @Override public List<String> getList(String name) { return List.of(); }
             @Override public Map<String, String> getMap(String name) { return null; }
         };
     }
@@ -669,7 +680,7 @@ class ExtensionConfigTest {
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return values.get(name); }
-            @Override public List<String> getList(String name) { return null; }
+            @Override public List<String> getList(String name) { return List.of(); }
             @Override public Map<String, String> getMap(String name) { return null; }
         };
     }
@@ -682,7 +693,7 @@ class ExtensionConfigTest {
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return null; }
-            @Override public List<String> getList(String name) { return null; }
+            @Override public List<String> getList(String name) { return List.of(); }
             @Override public Map<String, String> getMap(String name) { return null; }
         };
     }
@@ -695,20 +706,24 @@ class ExtensionConfigTest {
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return null; }
-            @Override public List<String> getList(String name) { return null; }
+            @Override public List<String> getList(String name) { return List.of(); }
             @Override public Map<String, String> getMap(String name) { return null; }
         };
     }
 
     private static ConfigProperties listConfig(String key, List<String> value) {
         return new ConfigProperties() {
-            @Override public String getString(String name) { return null; }
+            @Override public String getString(String name) {
+                return key.equals(name) && value.isEmpty() ? "" : null;
+            }
             @Override public Boolean getBoolean(String name) { return null; }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return null; }
-            @Override public List<String> getList(String name) { return key.equals(name) ? value : null; }
+            @Override public List<String> getList(String name) {
+                return key.equals(name) ? List.copyOf(value) : List.of();
+            }
             @Override public Map<String, String> getMap(String name) { return null; }
         };
     }

@@ -13,6 +13,7 @@ import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 
+import space.br1440.platform.tracing.otel.javaagent.configuration.BaggageKeyPolicy;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
@@ -38,7 +39,7 @@ class ProcessorDiagnosticIdentityContractTest {
 
         try {
             List<ProcessorDiagnosticIdentity> processors = List.of(
-                    new BaggageSpanProcessor(Set.of(), List.of()),
+                    new BaggageSpanProcessor(new BaggageKeyPolicy(Set.of(), List.of())),
                     new EnrichingSpanProcessor(),
                     new RequestIdPropagatingSpanProcessor(),
                     ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of()),

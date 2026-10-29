@@ -55,7 +55,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return null; }
-            @Override public List<String> getList(String name) { return null; }
+            @Override public List<String> getList(String name) { return List.of(); }
             @Override public Map<String, String> getMap(String name) { return null; }
         });
     }
@@ -73,7 +73,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return null; }
-            @Override public List<String> getList(String name) { return null; }
+            @Override public List<String> getList(String name) { return List.of(); }
             @Override public Map<String, String> getMap(String name) { return null; }
         });
     }
@@ -94,7 +94,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return null; }
             @Override public List<String> getList(String name) {
-                return "platform.tracing.javaagent.scrubbing.built-in-rules".equals(name) ? List.of() : null;
+                return List.of();
             }
             @Override public Map<String, String> getMap(String name) { return null; }
         });
@@ -249,21 +249,23 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return null; }
-            @Override public List<String> getList(String name) { return null; }
+            @Override public List<String> getList(String name) { return List.of(); }
             @Override public Map<String, String> getMap(String name) { return null; }
         });
     }
 
     private static ExtensionConfig configWithListProperty(String propertyKey, List<String> value) {
         return new ExtensionConfig(new ConfigProperties() {
-            @Override public String getString(String name) { return null; }
+            @Override public String getString(String name) {
+                return propertyKey.equals(name) && value != null && value.isEmpty() ? "" : null;
+            }
             @Override public Boolean getBoolean(String name) { return null; }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return null; }
             @Override public List<String> getList(String name) {
-                return propertyKey.equals(name) ? value : null;
+                return propertyKey.equals(name) && value != null ? List.copyOf(value) : List.of();
             }
             @Override public Map<String, String> getMap(String name) { return null; }
         });

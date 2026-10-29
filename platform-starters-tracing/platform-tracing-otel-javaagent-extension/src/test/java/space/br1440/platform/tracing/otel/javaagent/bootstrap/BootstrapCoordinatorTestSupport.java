@@ -340,7 +340,7 @@ final class BootstrapCoordinatorTestSupport {
             String value = data.get(name);
 
             if (value == null) {
-                return null;
+                return List.of();
             }
 
             if (value.isBlank()) {

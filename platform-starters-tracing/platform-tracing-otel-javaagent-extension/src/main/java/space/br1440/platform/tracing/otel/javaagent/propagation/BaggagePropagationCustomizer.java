@@ -1,13 +1,24 @@
 package space.br1440.platform.tracing.otel.javaagent.propagation;
 
+import java.util.Objects;
+
+import space.br1440.platform.tracing.otel.javaagent.configuration.BaggageExtensionConfig;
+import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
+
 import io.opentelemetry.api.baggage.propagation.W3CBaggagePropagator;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 
-import java.util.HashSet;
-
-import space.br1440.platform.tracing.otel.javaagent.configuration.BaggageExtensionConfig;
-
 public final class BaggagePropagationCustomizer {
+
+    private final TracingDiagnostics diagnostics;
+
+    public BaggagePropagationCustomizer() {
+        this(TracingDiagnostics.shared());
+    }
+
+    BaggagePropagationCustomizer(TracingDiagnostics diagnostics) {
+        this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
+    }
 
     public TextMapPropagator apply(TextMapPropagator propagator, BaggageExtensionConfig baggage) {
         if (!(propagator instanceof W3CBaggagePropagator)) {
@@ -18,11 +29,9 @@ public final class BaggagePropagationCustomizer {
             return TextMapPropagator.noop();
         }
 
-        FilteringBaggagePropagator filtered = new FilteringBaggagePropagator(
-                propagator,
-                new HashSet<>(baggage.outboundHeaderAllowedKeys()),
-                baggage.outboundHeaderDenyPatterns()
+        return new PlatformBaggagePropagator(
+                new SafeTextMapPropagator(propagator, diagnostics),
+                baggage.outboundHeaderPolicy()
         );
-        return new FailClosedCorrelationBaggagePropagator(new SafeTextMapPropagator(filtered));
     }
 }

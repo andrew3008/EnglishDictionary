@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.otel.javaagent.propagation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.HashSet;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -10,7 +9,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
-import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
 import space.br1440.platform.tracing.otel.javaagent.processor.BaggageSpanProcessor;
 import space.br1440.platform.tracing.test.junit.OtelSdkExtension;
 import space.br1440.platform.tracing.test.junit.internal.ScopeMode;
@@ -47,8 +45,9 @@ class BaggageIngressPipelineTest {
     static OtelSdkExtension otel = OtelSdkExtension.builder()
             .scope(ScopeMode.METHOD)
             .addSpanProcessor(new BaggageSpanProcessor(
-                    new HashSet<>(ExtensionDefaults.DEFAULT_BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS),
-                    ExtensionDefaults.DEFAULT_BAGGAGE_SPAN_ATTRIBUTES_DENY_PATTERNS
+                    new ExtensionConfig(DefaultConfigProperties.createFromMap(Map.of()))
+                            .baggage()
+                            .spanAttributesPolicy()
             ))
             .build();
 

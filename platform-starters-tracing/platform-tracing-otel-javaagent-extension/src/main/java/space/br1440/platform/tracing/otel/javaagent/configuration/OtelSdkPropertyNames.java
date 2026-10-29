@@ -5,6 +5,8 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public final class OtelSdkPropertyNames {
 
+    public static final String PROPAGATORS = "otel.propagators";
+
     public static final String BSP_MAX_QUEUE_SIZE = "otel.bsp.max.queue.size";
     public static final String BSP_MAX_EXPORT_BATCH_SIZE = "otel.bsp.max.export.batch.size";
     public static final String BSP_SCHEDULE_DELAY = "otel.bsp.schedule.delay";

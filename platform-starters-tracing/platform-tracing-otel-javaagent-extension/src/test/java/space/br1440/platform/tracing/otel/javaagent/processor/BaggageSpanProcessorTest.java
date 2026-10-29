@@ -4,11 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.otel.javaagent.configuration.BaggageKeyPolicy;
 import space.br1440.platform.tracing.test.junit.OtelSdkExtension;
 import space.br1440.platform.tracing.test.junit.internal.ScopeMode;
 
@@ -30,10 +32,12 @@ class BaggageSpanProcessorTest {
     @RegisterExtension
     static OtelSdkExtension otel = OtelSdkExtension.builder()
             .scope(ScopeMode.METHOD)
-            .addSpanProcessor(new BaggageSpanProcessor(
-                    Set.of("tenant-id", "platform.correlation.id"),
-                    List.of("secret", "password", "token")
-            ))
+            .addSpanProcessor(new BaggageSpanProcessor(new BaggageKeyPolicy(
+                    Set.of("tenant-id", "tenant_class", "api-secret", "platform.correlation.id"),
+                    List.of("secret", "password", "token").stream()
+                            .map(pattern -> Pattern.compile(pattern, Pattern.CASE_INSENSITIVE))
+                            .toList()
+            )))
             .build();
 
     @Test
@@ -95,5 +99,25 @@ class BaggageSpanProcessorTest {
 
         // then
         assertThat(exporter.getFinishedSpanItems().getFirst().getAttributes().asMap()).isEmpty();
+    }
+
+    @Test
+    void attribute_name_uses_normalized_key_regardless_of_first_seen_case(
+            OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+        // given
+        Tracer tracer = sdk.getTracer("test");
+        Context mixedCase = Context.root().with(Baggage.builder().put("Tenant_Class", "gold").build());
+        Context lowerCase = Context.root().with(Baggage.builder().put("tenant_class", "silver").build());
+
+        // when
+        tracer.spanBuilder("mixed-case").setParent(mixedCase).startSpan().end();
+        tracer.spanBuilder("lower-case").setParent(lowerCase).startSpan().end();
+
+        // then
+        assertThat(exporter.getFinishedSpanItems()).hasSize(2);
+        assertThat(exporter.getFinishedSpanItems().getFirst().getAttributes().asMap())
+                .containsExactlyEntriesOf(Attributes.of(AttributeKey.stringKey("baggage.tenant_class"), "gold").asMap());
+        assertThat(exporter.getFinishedSpanItems().getLast().getAttributes().asMap())
+                .containsExactlyEntriesOf(Attributes.of(AttributeKey.stringKey("baggage.tenant_class"), "silver").asMap());
     }
 }

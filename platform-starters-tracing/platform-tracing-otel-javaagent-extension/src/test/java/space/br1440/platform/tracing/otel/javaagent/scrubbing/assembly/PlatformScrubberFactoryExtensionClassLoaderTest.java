@@ -238,7 +238,7 @@ class PlatformScrubberFactoryExtensionClassLoaderTest {
 
             @Override
             public List<String> getList(String name) {
-                return null;
+                return List.of();
             }
 
             @Override

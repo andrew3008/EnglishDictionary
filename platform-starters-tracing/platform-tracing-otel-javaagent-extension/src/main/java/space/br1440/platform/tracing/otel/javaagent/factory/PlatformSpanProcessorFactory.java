@@ -1,11 +1,11 @@
 package space.br1440.platform.tracing.otel.javaagent.factory;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import space.br1440.platform.tracing.otel.javaagent.configuration.BaggageKeyPolicy;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
@@ -70,18 +70,12 @@ public final class PlatformSpanProcessorFactory {
     }
 
     private Optional<SpanProcessor> baggageProcessor(ExtensionConfig extConfig) {
-        List<String> allowlist = extConfig.baggage().spanAttributesAllowedKeys();
-        if (allowlist.isEmpty()) {
+        BaggageKeyPolicy policy = extConfig.baggage().spanAttributesPolicy();
+        if (policy.isEmpty()) {
             return Optional.empty();
         }
 
-        List<String> denyPatterns = extConfig.baggage().spanAttributesDenyPatterns();
-
-        BaggageSpanProcessor processor = new BaggageSpanProcessor(
-                new HashSet<>(allowlist),
-                new ArrayList<>(denyPatterns)
-        );
-        return Optional.of(processor);
+        return Optional.of(new BaggageSpanProcessor(policy));
     }
 
     private Optional<SpanProcessor> scrubbingProcessor(ExtensionConfig extConfig) {

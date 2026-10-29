@@ -68,7 +68,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                     return List.of();
                 }
 
-                return null;
+                return List.of();
             }
             @Override public Map<String, String> getMap(String name) { return null; }
         });
@@ -86,7 +86,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return null; }
-            @Override public List<String> getList(String name) { return null; }
+            @Override public List<String> getList(String name) { return List.of(); }
             @Override public Map<String, String> getMap(String name) { return null; }
         });
     }
@@ -104,7 +104,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return null; }
             @Override public Map<String, String> getMap(String name) { return null; }
-            @Override public List<String> getList(String name) { return null; }
+            @Override public List<String> getList(String name) { return List.of(); }
         });
     }
 
@@ -124,7 +124,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return null; }
-            @Override public List<String> getList(String name) { return null; }
+            @Override public List<String> getList(String name) { return List.of(); }
             @Override public Map<String, String> getMap(String name) { return null; }
         });
     }
@@ -139,7 +139,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return null; }
-            @Override public List<String> getList(String name) { return null; }
+            @Override public List<String> getList(String name) { return List.of(); }
             @Override public Map<String, String> getMap(String name) { return null; }
         };
     }
@@ -563,7 +563,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                 @Override public Long getLong(String name) { return null; }
                 @Override public Double getDouble(String name) { return null; }
                 @Override public Duration getDuration(String name) { return null; }
-                @Override public List<String> getList(String name) { return null; }
+                @Override public List<String> getList(String name) { return List.of(); }
                 @Override public Map<String, String> getMap(String name) { return null; }
             });
 
@@ -614,7 +614,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                         return List.of();
                     }
 
-                    return null;
+                    return List.of();
                 }
 
                 @Override public Map<String, String> getMap(String name) { return null; }
@@ -652,7 +652,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                 @Override public Long getLong(String name) { return null; }
                 @Override public Double getDouble(String name) { return null; }
                 @Override public Duration getDuration(String name) { return null; }
-                @Override public List<String> getList(String name) { return null; }
+                @Override public List<String> getList(String name) { return List.of(); }
                 @Override public Map<String, String> getMap(String name) { return null; }
             });
 
@@ -684,7 +684,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                 @Override public Long getLong(String n) { return null; }
                 @Override public Double getDouble(String n) { return null; }
                 @Override public Duration getDuration(String n) { return null; }
-                @Override public List<String> getList(String n) { return null; }
+                @Override public List<String> getList(String n) { return List.of(); }
                 @Override public Map<String, String> getMap(String n) { return null; }
             });
 
@@ -710,7 +710,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         }
 
         @Test
-        @DisplayName("Baggage defaults: canonical allowlist and deny patterns")
+        @DisplayName("Baggage defaults: canonical span attribute policy")
         void default_baggage_matches_extension_defaults() {
             // given
             ExtensionConfig cfg = new ExtensionConfig(new ConfigProperties() {
@@ -720,17 +720,18 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                 @Override public Long getLong(String n) { return null; }
                 @Override public Double getDouble(String n) { return null; }
                 @Override public Duration getDuration(String n) { return null; }
-                @Override public List<String> getList(String n) { return null; }
+                @Override public List<String> getList(String n) { return List.of(); }
                 @Override public Map<String, String> getMap(String n) { return null; }
             });
 
+            // when
+            var policy = cfg.baggage().spanAttributesPolicy();
+
             // then
-            assertThat(cfg.baggage().spanAttributesAllowedKeys())
-                    .as("baggage.span-attributes.allowed-keys default")
-                    .containsExactly("traffic_source", "tenant_class", "platform.correlation.id");
-            assertThat(cfg.baggage().spanAttributesDenyPatterns())
-                    .as("baggage.span-attributes.deny-patterns default")
-                    .containsExactly("password", "secret", "token");
+            assertThat(policy.allows("traffic_source")).isTrue();
+            assertThat(policy.allows("tenant_class")).isTrue();
+            assertThat(policy.allows("platform.correlation.id")).isTrue();
+            assertThat(policy.allows("unlisted")).isFalse();
         }
     }
 

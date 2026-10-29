@@ -7,6 +7,7 @@ import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.Bootstra
 import space.br1440.platform.tracing.otel.javaagent.configuration.ConfigurationPropertyException;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
+import space.br1440.platform.tracing.otel.javaagent.configuration.PropagatorConfigurationContract;
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
@@ -47,6 +48,7 @@ public final class AutoconfigureSessionFactory {
                                        AgentInstanceId agentInstanceId,
                                        ExtensionRuntimeEvidence evidence) {
         SamplerConfigurationContract.requireFinal(config);
+        PropagatorConfigurationContract.requireSupported(config);
 
         ExtensionConfig extensionConfig = new ExtensionConfig(config);
         if (!extensionConfig.scrubbing().enabled()) {
