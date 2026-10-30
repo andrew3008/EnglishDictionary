@@ -64,17 +64,17 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void platformPropertiesFillIdentity() {
+    void platformPropertiesFillIdentityAlongsideSdkServiceName() {
         // given
+        Resource existing = existingWith(PlatformAttributes.SERVICE_NAME, "demo-service");
         Map<String, String> values = Map.of(
-                ExtensionPropertyNames.SERVICE_NAME, "demo-service",
                 ExtensionPropertyNames.SERVICE_VERSION, "1.0.0",
                 ExtensionPropertyNames.SERVICE_ENVIRONMENT, "production",
                 ExtensionPropertyNames.SERVICE_HOST, "Host-01",
                 ExtensionPropertyNames.SERVICE_CONTAINER_ID, "docker-abc123");
 
         // when
-        Resource resource = customize(customizer(), Resource.empty(), values);
+        Resource resource = customize(customizer(), existing, values);
 
         // then
         assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isEqualTo("demo-service");
@@ -87,15 +87,12 @@ class PlatformResourceCustomizerTest {
     @Test
     void platformPropertiesAreStripped() {
         // given
-        Map<String, String> values = Map.of(
-                ExtensionPropertyNames.SERVICE_NAME, "  demo-service ",
-                ExtensionPropertyNames.SERVICE_VERSION, " 1.0.0\t");
+        Map<String, String> values = Map.of(ExtensionPropertyNames.SERVICE_VERSION, " 1.0.0\t");
 
         // when
         Resource resource = customize(customizer(), Resource.empty(), values);
 
         // then
-        assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isEqualTo("demo-service");
         assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_VERSION))).isEqualTo("1.0.0");
     }
 
@@ -140,7 +137,7 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void platformPropertiesOverrideExistingIdentity() {
+    void platformPropertiesOverrideOtherIdentityButPreserveSdkServiceName() {
         // given
         Resource existing = Resource.create(Attributes.builder()
                 .put(key(PlatformAttributes.SERVICE_NAME), "existing-service")
@@ -156,7 +153,7 @@ class PlatformResourceCustomizerTest {
         Resource resource = customize(customizer(), existing, values);
 
         // then
-        assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isEqualTo("platform-service");
+        assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isEqualTo("existing-service");
         assertThat(resource.getAttribute(key(PlatformAttributes.PLATFORM_HOST))).isEqualTo("Platform-Host");
         assertThat(resource.getAttribute(key(PlatformAttributes.CONTAINER_ID))).isEqualTo("platform-container");
     }
@@ -414,7 +411,7 @@ class PlatformResourceCustomizerTest {
 
         // then
         assertThat(resource.getAttribute(key(PlatformAttributes.PLATFORM_HOST))).isNull();
-        assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isEqualTo("demo-service");
+        assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isNull();
     }
 
     @Test
@@ -472,12 +469,12 @@ class PlatformResourceCustomizerTest {
     @Test
     void completeIdentityIsLoggedAtInfoWithoutKindAndCount() {
         // given
+        Resource existing = existingWith(PlatformAttributes.SERVICE_NAME, "demo-service");
         Map<String, String> values = Map.of(
-                ExtensionPropertyNames.SERVICE_NAME, "demo-service",
                 ExtensionPropertyNames.SERVICE_ENVIRONMENT, "production");
         try (AgentLogCapture logs = AgentLogCapture.installed()) {
             // when
-            customize(customizer(), Resource.empty(), values);
+            customize(customizer(), existing, values);
 
             // then
             assertThat(logs.events())

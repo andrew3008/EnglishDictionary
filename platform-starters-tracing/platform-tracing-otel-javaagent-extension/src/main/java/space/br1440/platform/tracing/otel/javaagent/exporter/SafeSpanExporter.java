@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.function.LongSupplier;
 import jakarta.annotation.Nullable;
 
+import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseObservation;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseScope;
@@ -26,8 +27,11 @@ import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowable
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingBoundaryMetrics;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
+import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.sdk.common.CompletableResultCode;
+import io.opentelemetry.sdk.trace.data.DelegatingSpanData;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.data.StatusData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 
 public final class SafeSpanExporter implements SpanExporter {
@@ -60,6 +64,8 @@ public final class SafeSpanExporter implements SpanExporter {
     private final LongAdder flushFailures = new LongAdder();
     private final LongAdder shutdownFailures = new LongAdder();
     private final LongAdder gatedSpans = new LongAdder();
+    private final LongAdder oversizedSpansDropped = new LongAdder();
+    private final LongAdder shapeTruncationsTotal = new LongAdder();
 
     public SafeSpanExporter(SpanExporter delegate,
                             TracingSettingsSource acceptedPolicy,
@@ -107,7 +113,7 @@ public final class SafeSpanExporter implements SpanExporter {
                 return CompletableResultCode.ofSuccess();
             }
 
-            batch = applyBoundaryScrubbing(batch);
+            batch = prepareBatch(batch);
             effectiveCount = batch.size();
         } catch (Throwable failure) {
             PlatformThrowables.propagateIfFatal(failure);
@@ -149,12 +155,15 @@ public final class SafeSpanExporter implements SpanExporter {
         }
     }
 
-    private Collection<SpanData> applyBoundaryScrubbing(Collection<SpanData> batch) {
-        if (!scrubbingRuntime.enabled() || batch.isEmpty()) {
+    private Collection<SpanData> prepareBatch(Collection<SpanData> batch) {
+        if (batch.isEmpty()) {
             return batch;
         }
 
-        scrubbingRuntime.recordBoundaryExporterInvocation();
+        boolean scrubbingEnabled = scrubbingRuntime.enabled();
+        if (scrubbingEnabled) {
+            scrubbingRuntime.recordBoundaryExporterInvocation();
+        }
 
         List<SpanData> ordered;
         boolean snapshotRequired;
@@ -169,16 +178,26 @@ public final class SafeSpanExporter implements SpanExporter {
         List<SpanData> result = null;
         int index = 0;
         for (SpanData spanData : ordered) {
-            SpanBoundaryOutcome outcome = boundaryScrubber.scrub(spanData);
-            boolean unchanged = !outcome.dropSpan() && (outcome.spanData() == spanData);
+            SpanData prepared;
+            if (scrubbingEnabled) {
+                SpanBoundaryOutcome outcome = boundaryScrubber.scrub(spanData);
+                prepared = outcome.dropSpan() ? null : outcome.spanData();
+            } else {
+                prepared = Objects.requireNonNull(spanData, "spanData");
+            }
+            if (prepared != null) {
+                // Полный текст очищается до обрезки, иначе детектор может потерять JWT или email.
+                prepared = limitShape(prepared);
+            }
+            boolean unchanged = prepared == spanData && prepared != null;
 
             if (!unchanged && result == null) {
                 result = new ArrayList<>(ordered.size());
                 result.addAll(ordered.subList(0, index));
             }
 
-            if (result != null && !outcome.dropSpan()) {
-                result.add(outcome.spanData());
+            if (result != null && prepared != null) {
+                result.add(prepared);
             }
 
             index++;
@@ -191,25 +210,84 @@ public final class SafeSpanExporter implements SpanExporter {
         return snapshotRequired ? ordered : batch;
     }
 
+    private SpanData limitShape(SpanData spanData) {
+        String name = spanData.getName();
+        StatusData status = spanData.getStatus();
+        boolean nameTruncated = name.length() > OtelSdkDefaults.MAX_SPAN_NAME_LENGTH;
+        boolean descriptionTruncated = status.getStatusCode() == StatusCode.ERROR
+                && status.getDescription().length() > OtelSdkDefaults.MAX_SPAN_STATUS_DESCRIPTION_LENGTH;
+        if (!nameTruncated && !descriptionTruncated) {
+            return spanData;
+        }
+
+        String limitedName = nameTruncated ? name.substring(0, OtelSdkDefaults.MAX_SPAN_NAME_LENGTH) : name;
+        StatusData limitedStatus = descriptionTruncated
+                ? StatusData.create(StatusCode.ERROR,
+                        status.getDescription().substring(0, OtelSdkDefaults.MAX_SPAN_STATUS_DESCRIPTION_LENGTH))
+                : status;
+        SpanData result = new ShapeLimitedSpanData(spanData, limitedName, limitedStatus);
+        shapeTruncationsTotal.increment();
+        return result;
+    }
+
     private void onExportComplete(CompletableResultCode result,
                                   ExportResponseObservation observation,
                                   long operationSequence) {
         int count = observation.effectiveSpanCount();
         try {
-            if (result.isSuccess()) {
+            ExportResponseObservation.AggregateResult aggregate = observation.aggregateResult();
+            if (aggregate != null) {
+                recordAggregateResult(aggregate, operationSequence, result.getFailureThrowable());
+            } else if (result.isSuccess()) {
                 long failures = recordRecoverySuccess(operationSequence);
                 if (failures > 0L) {
                     tryPublishRecovery(failures);
                 }
                 recordAcceptedSpans(observation, count);
             } else {
-                recordFailureMetrics(count, operationSequence, ExporterLogEvent.SAFE_EXPORT_RETURNED_FAILURE);
+                recordFailureMetrics(count, operationSequence, ExporterLogEvent.SAFE_EXPORT_RETURNED_FAILURE,
+                        result.getFailureThrowable());
             }
         } catch (Throwable ex) {
             PlatformThrowables.propagateIfFatal(ex);
             diagnosticLog.log(ExporterLogEvent.EXPORT_COMPLETION_CALLBACK_FAILED, fields -> fields
                     .putString(AgentLogField.EXPORTER_TYPE, exporterType)
                     .cause(ex));
+        }
+    }
+
+    private void recordAggregateResult(ExportResponseObservation.AggregateResult aggregate,
+                                       long operationSequence,
+                                       Throwable error) {
+        exportedSpans.add(aggregate.accepted());
+        rejectedSpans.add(aggregate.rejected());
+        oversizedSpansDropped.add(aggregate.locallyDropped());
+        if (aggregate.rejected() > 0) {
+            partialSuccessBatches.increment();
+        }
+        if (aggregate.undetermined() > 0) {
+            acceptedUnknownBatches.increment();
+        }
+
+        if (aggregate.transportDropped() > 0) {
+            recordFailureMetrics(aggregate.transportDropped(), operationSequence,
+                    ExporterLogEvent.SAFE_EXPORT_RETURNED_FAILURE, error);
+        } else if (aggregate.accepted() + aggregate.rejected() + aggregate.undetermined() > 0) {
+            long failures = recordRecoverySuccess(operationSequence);
+            if (failures > 0L) {
+                tryPublishRecovery(failures);
+            }
+        }
+
+        if (aggregate.locallyDropped() > 0) {
+            exportLog.log(ExporterLogEvent.SAFE_EXPORT_OVERSIZED_SPAN_DROPPED, fields -> fields
+                    .putString(AgentLogField.EXPORTER_TYPE, exporterType)
+                    .putLong(AgentLogField.COUNT, aggregate.locallyDropped())
+                    .putLong(AgentLogField.LIMIT_BYTES, OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES));
+        }
+        if (aggregate.undetermined() > 0) {
+            diagnosticLog.log(ExporterLogEvent.EXPORT_ACCEPTED_SPAN_COUNT_UNAVAILABLE, fields -> fields
+                    .putString(AgentLogField.EXPORTER_TYPE, exporterType));
         }
     }
 
@@ -276,13 +354,6 @@ public final class SafeSpanExporter implements SpanExporter {
                                    AgentLogEventType eventType,
                                    Throwable error) {
         recordFailureMetrics(count, operationSequence, eventType, error);
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private void recordFailureMetrics(int count,
-                                      long operationSequence,
-                                      AgentLogEventType eventType) {
-        recordFailureMetrics(count, operationSequence, eventType, null);
     }
 
     private void recordFailureMetrics(int count,
@@ -453,6 +524,14 @@ public final class SafeSpanExporter implements SpanExporter {
         return gatedSpans.sum();
     }
 
+    public long getOversizedSpansDropped() {
+        return oversizedSpansDropped.sum();
+    }
+
+    public long getShapeTruncationsTotal() {
+        return shapeTruncationsTotal.sum();
+    }
+
     public Map<String, Long> metricsSnapshot() {
         Map<String, Long> snapshot = new LinkedHashMap<>();
         snapshot.put(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCHES, getExportBatches());
@@ -465,6 +544,8 @@ public final class SafeSpanExporter implements SpanExporter {
         snapshot.put(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_FLUSH_FAILURES, getFlushFailures());
         snapshot.put(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SHUTDOWN_FAILURES, getShutdownFailures());
         snapshot.put(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SUPPRESSED_SPANS_EXPORT_DISABLED, getGatedSpans());
+        snapshot.put(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_OVERSIZED_SPANS_DROPPED, getOversizedSpansDropped());
+        snapshot.put(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SHAPE_TRUNCATIONS_TOTAL, getShapeTruncationsTotal());
 
         if (scrubbingRuntime.enabled()) {
             ScrubbingBoundaryMetrics boundaryMetrics = scrubbingRuntime.boundaryMetrics();
@@ -492,5 +573,27 @@ public final class SafeSpanExporter implements SpanExporter {
         }
 
         return snapshot;
+    }
+
+    private static final class ShapeLimitedSpanData extends DelegatingSpanData {
+
+        private final String name;
+        private final StatusData status;
+
+        private ShapeLimitedSpanData(SpanData delegate, String name, StatusData status) {
+            super(delegate);
+            this.name = name;
+            this.status = status;
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public StatusData getStatus() {
+            return status;
+        }
     }
 }

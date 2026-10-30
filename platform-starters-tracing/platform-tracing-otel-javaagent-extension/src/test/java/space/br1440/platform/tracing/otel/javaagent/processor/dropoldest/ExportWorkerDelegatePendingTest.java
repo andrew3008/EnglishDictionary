@@ -1,6 +1,13 @@
 package space.br1440.platform.tracing.otel.javaagent.processor.dropoldest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -9,15 +16,19 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ExportPipelineLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ExporterLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
@@ -32,6 +43,60 @@ class ExportWorkerDelegatePendingTest {
 
     @RegisterExtension
     final AgentLogCapture capture = new AgentLogCapture();
+
+    @ParameterizedTest
+    @MethodSource("nonfatalReporterFailures")
+    @Timeout(10)
+    void completedDelegateReleasesTheSlotAndContinuesAfterReporterFailure(Throwable reporterFailure)
+            throws InterruptedException {
+        // given
+        CompletableResultCode completed = CompletableResultCode.ofSuccess();
+        CountDownLatch secondEntered = new CountDownLatch(1);
+        AtomicInteger exports = new AtomicInteger();
+        TimedSpanExporter exporter = Mockito.mock(TimedSpanExporter.class);
+        when(exporter.export(any())).thenAnswer(invocation -> {
+            if (exports.incrementAndGet() == 1) {
+                return TimedExport.timedOut(completed);
+            }
+            secondEntered.countDown();
+            return TimedExport.finished(true);
+        });
+        when(exporter.shutdown()).thenReturn(true);
+        doThrow(reporterFailure).when(exporter).reportDelegateReleased(anyLong(), eq(true));
+        ExportBuffer buffer = new ExportBuffer(8, 1, new DropOldestExportMetrics());
+        ExportWorker worker = new ExportWorker(
+                buffer, exporter, Duration.ofMinutes(10).toNanos(), Duration.ofSeconds(2).toNanos());
+        buffer.admit(spanData());
+        buffer.admit(spanData());
+        Thread thread = new Thread(worker, ExportWorker.THREAD_NAME);
+        thread.setDaemon(true);
+
+        try {
+            // when
+            thread.start();
+            boolean continued = secondEntered.await(3, TimeUnit.SECONDS);
+
+            // then
+            assertThat(continued).isTrue();
+            assertThat(exports).hasValue(2);
+            assertThat(buffer.lifecycleState()).isEqualTo(LifecycleState.ACTIVE);
+            verify(exporter, times(1)).reportDelegateReleased(anyLong(), eq(true));
+            assertThat(worker.shutdown().join(3, TimeUnit.SECONDS).isSuccess()).isTrue();
+            assertThat(capture.events())
+                    .noneMatch(event -> event.eventName().equals(
+                            ExportPipelineLogEvent.EXPORT_WORKER_TERMINATED_ABNORMALLY.name()));
+        } finally {
+            worker.shutdown().join(3, TimeUnit.SECONDS);
+            assertThat(thread.join(Duration.ofSeconds(3))).isTrue();
+        }
+    }
+
+    private static Stream<Throwable> nonfatalReporterFailures() {
+        return Stream.of(
+                new IllegalStateException("simulated reporter failure"),
+                new AssertionError("simulated reporter error")
+        );
+    }
 
     @Test
     void secondExportStartsOnlyAfterTheTimedOutDelegateCompletes() throws InterruptedException {

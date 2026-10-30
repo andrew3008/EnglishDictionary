@@ -22,6 +22,7 @@ import space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventC
 import space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventType;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ExportPipelineLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.event.ExporterLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.SamplingLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
@@ -148,6 +149,7 @@ class AgentLogEventTypeTest {
 
         // then
         assertThat(optional).containsExactlyInAnyOrder(
+                ExporterLogEvent.SAFE_EXPORT_RETURNED_FAILURE,
                 SamplingLogEvent.SAMPLER_FAILED_CLOSED_TO_DROP,
                 ScrubbingLogEvent.EXTENSION_SCRUBBING_RULE_SKIPPED,
                 ScrubbingLogEvent.SCRUBBING_RULES_UNREADABLE,

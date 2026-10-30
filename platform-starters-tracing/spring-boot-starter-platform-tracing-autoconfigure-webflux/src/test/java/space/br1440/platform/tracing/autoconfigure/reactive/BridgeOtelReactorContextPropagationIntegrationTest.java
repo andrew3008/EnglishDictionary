@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.TracingRuntimeDiagnosticsAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.status.TracingStatusAutoConfiguration;
 
 import io.opentelemetry.api.trace.Span;
@@ -77,6 +78,7 @@ class BridgeOtelReactorContextPropagationIntegrationTest {
     @EnableAutoConfiguration(exclude = {
             TracingRuntimeAutoConfiguration.class,
             TracingRuntimeDiagnosticsAutoConfiguration.class,
+            TracingMetricsAutoConfiguration.class,
             TracingStatusAutoConfiguration.class
     })
     @Import(TraceSnapshotController.class)

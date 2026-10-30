@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,7 +29,7 @@ import io.opentelemetry.context.propagation.TextMapSetter;
 class PlatformBaggagePropagatorInjectionTest {
 
     private static final Set<String> ALLOWLIST = Set.of("traffic_source", "tenant_class");
-    private static final List<Pattern> DENY = List.of("password", "secret", "token").stream()
+    private static final List<Pattern> DENY = Stream.of("password", "secret", "token")
             .map(pattern -> Pattern.compile(pattern, Pattern.CASE_INSENSITIVE))
             .toList();
 
@@ -48,7 +49,9 @@ class PlatformBaggagePropagatorInjectionTest {
         AtomicInteger setterCalls = new AtomicInteger();
         TextMapSetter<Map<String, String>> countingSetter = (carrier, key, value) -> {
             setterCalls.incrementAndGet();
-            carrier.put(key, value);
+            if (carrier != null) {
+                carrier.put(key, value);
+            }
         };
         Map<String, String> carrier = new HashMap<>();
 
@@ -87,7 +90,7 @@ class PlatformBaggagePropagatorInjectionTest {
                 .put("not_allowlisted", "x")
                 .put("tenant_class", "gold")
                 .build());
-        W3CBaggagePropagator.getInstance().inject(outboundCtx, carrier, (c, k, v) -> c.put(k, v));
+        W3CBaggagePropagator.getInstance().inject(outboundCtx, carrier, MAP_SETTER);
 
         // when
         Context extracted = newPropagator().extract(Context.root(), carrier, MAP_GETTER);
@@ -103,15 +106,12 @@ class PlatformBaggagePropagatorInjectionTest {
         assertThat(baggage.getEntryValue("tenant_class")).isEqualTo("gold");
     }
 
-    private static final TextMapGetter<Map<String, String>> MAP_GETTER = new TextMapGetter<>() {
-        @Override
-        public Iterable<String> keys(Map<String, String> carrier) {
-            return carrier.keySet();
-        }
+    private static final TextMapGetter<Map<String, String>> MAP_GETTER =
+            (carrier, key) -> carrier == null ? null : carrier.get(key);
 
-        @Override
-        public String get(Map<String, String> carrier, String key) {
-            return carrier == null ? null : carrier.get(key);
+    private static final TextMapSetter<Map<String, String>> MAP_SETTER = (carrier, key, value) -> {
+        if (carrier != null) {
+            carrier.put(key, value);
         }
     };
 
@@ -123,7 +123,7 @@ class PlatformBaggagePropagatorInjectionTest {
         Map<String, String> carrier = new HashMap<>();
 
         // when
-        newPropagator().inject(ctx, carrier, (c, k, v) -> c.put(k, v));
+        newPropagator().inject(ctx, carrier, MAP_SETTER);
 
         // then
         String header = carrier.get("baggage");
@@ -143,7 +143,7 @@ class PlatformBaggagePropagatorInjectionTest {
         Map<String, String> carrier = new HashMap<>();
 
         // when
-        newPropagator().inject(ctx, carrier, (c, k, v) -> c.put(k, v));
+        newPropagator().inject(ctx, carrier, MAP_SETTER);
         Context extracted = W3CBaggagePropagator.getInstance().extract(Context.root(), carrier, MAP_GETTER);
 
         // then
@@ -162,7 +162,7 @@ class PlatformBaggagePropagatorInjectionTest {
         Map<String, String> carrier = new HashMap<>();
 
         // when
-        newPropagator().inject(ctx, carrier, (c, k, v) -> c.put(k, v));
+        newPropagator().inject(ctx, carrier, MAP_SETTER);
 
         // then
         String header = carrier.get("baggage");
@@ -181,7 +181,7 @@ class PlatformBaggagePropagatorInjectionTest {
         Map<String, String> carrier = new HashMap<>();
 
         // when
-        newPropagator().inject(ctx, carrier, (c, k, v) -> c.put(k, v));
+        newPropagator().inject(ctx, carrier, MAP_SETTER);
         Context extracted = W3CBaggagePropagator.getInstance().extract(Context.root(), carrier, MAP_GETTER);
 
         // then
@@ -207,7 +207,7 @@ class PlatformBaggagePropagatorInjectionTest {
         Map<String, String> carrier = new HashMap<>();
 
         // when
-        propagator.inject(ctx, carrier, (c, k, v) -> c.put(k, v));
+        propagator.inject(ctx, carrier, MAP_SETTER);
 
         // then
         String header = carrier.get("baggage");
@@ -230,7 +230,7 @@ class PlatformBaggagePropagatorInjectionTest {
         Map<String, String> carrier = new HashMap<>();
 
         // when
-        newPropagator().inject(ctx, carrier, (c, k, v) -> c.put(k, v));
+        newPropagator().inject(ctx, carrier, MAP_SETTER);
 
         // then
         Baggage stillOriginal = Baggage.fromContext(ctx);

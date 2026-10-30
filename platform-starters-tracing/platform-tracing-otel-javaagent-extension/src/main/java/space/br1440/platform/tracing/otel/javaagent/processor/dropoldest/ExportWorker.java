@@ -97,7 +97,11 @@ final class ExportWorker implements Runnable {
         if (unfinished != null) {
             unfinished.whenComplete(() -> {
                 long heldNanos = buffer.releaseDelegate();
-                exporter.reportDelegateReleased(heldNanos, unfinished.isSuccess());
+                try {
+                    exporter.reportDelegateReleased(heldNanos, unfinished.isSuccess());
+                } catch (Throwable failure) {
+                    PlatformThrowables.propagateIfFatal(failure);
+                }
             });
         }
     }

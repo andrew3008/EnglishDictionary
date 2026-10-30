@@ -122,6 +122,7 @@ class ControlledAgentStartupTest {
 
     private static void assertStderrIsFreeOfLoggingAndExtensionFailures(ChildProcessResult result) {
         assertThat(result.stderr())
+                .doesNotContain("Attempting to merge Resources with different schemaUrls")
                 .doesNotContain("No SLF4J providers were found")
                 .doesNotContain("Defaulting to no-operation (NOP) logger implementation")
                 .doesNotContain("Failed to load extension")

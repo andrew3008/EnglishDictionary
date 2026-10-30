@@ -342,6 +342,8 @@ openTypes:
       - export_batch_failures
       - exported_spans
       - transport_dropped_spans
+      - oversized_spans_dropped
+      - shape_truncations_total
       - partial_success_batches
       - rejected_spans
       - accepted_unknown_batches

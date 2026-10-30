@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
@@ -24,17 +25,7 @@ class PlatformBaggagePropagatorBaggageLimitsTest {
 
     private static final Set<String> ALLOWLIST = Set.of("traffic_source", "tenant_class");
     private static final TextMapGetter<Map<String, String>> MAP_GETTER =
-            new TextMapGetter<>() {
-                @Override
-                public Iterable<String> keys(Map<String, String> carrier) {
-                    return carrier.keySet();
-                }
-
-                @Override
-                public String get(Map<String, String> carrier, String key) {
-                    return carrier == null ? null : carrier.get(key);
-                }
-            };
+            (carrier, key) -> (carrier == null) ? null : carrier.get(key);
 
     private static PlatformBaggagePropagator newPropagator() {
         return new PlatformBaggagePropagator(
@@ -98,7 +89,7 @@ class PlatformBaggagePropagatorBaggageLimitsTest {
         Map<String, String> carrier = new HashMap<>();
 
         // when
-        newPropagator().inject(ctx, carrier, (c, k, v) -> c.put(k, v));
+        newPropagator().inject(ctx, carrier, (c, k, v) -> Objects.requireNonNull(c, "carrier").put(k, v));
 
         // then
         String baggage = carrier.get("baggage");
@@ -109,7 +100,7 @@ class PlatformBaggagePropagatorBaggageLimitsTest {
     }
 
     @Test
-    @DisplayName("extract: empty W3C baggage value is retained on OTel 1.64")
+    @DisplayName("extract: empty W3C baggage value is retained")
     void extractRetainsEmptyBaggageValue() {
         // given
         Map<String, String> carrier = Map.of("baggage", "empty=,traffic_source=qa");

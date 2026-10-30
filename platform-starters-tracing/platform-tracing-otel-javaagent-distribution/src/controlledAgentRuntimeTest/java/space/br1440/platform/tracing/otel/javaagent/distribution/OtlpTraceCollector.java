@@ -35,6 +35,7 @@ final class OtlpTraceCollector implements AutoCloseable {
     private final long rejectedSpansPerBatch;
     private final List<List<ReceivedSpan>> receivedSpanBatches = new CopyOnWriteArrayList<>();
     private final List<ReceivedSpan> receivedSpans = new CopyOnWriteArrayList<>();
+    private final List<Integer> receivedRequestSizes = new CopyOnWriteArrayList<>();
 
     private OtlpTraceCollector(HttpServer server, ExecutorService executor, long rejectedSpansPerBatch) {
         this.server = server;
@@ -73,10 +74,15 @@ final class OtlpTraceCollector implements AutoCloseable {
         return List.copyOf(receivedSpans);
     }
 
+    List<Integer> receivedRequestSizes() {
+        return List.copyOf(receivedRequestSizes);
+    }
+
     private void handle(HttpExchange exchange) throws IOException {
         try (exchange) {
             byte[] requestBody = readBody(exchange);
             List<ReceivedSpan> spans = parseSpans(requestBody);
+            receivedRequestSizes.add(requestBody.length);
             receivedSpanBatches.add(spans);
             receivedSpans.addAll(spans);
 
@@ -138,7 +144,9 @@ final class OtlpTraceCollector implements AutoCloseable {
                 hex.formatHex(span.getSpanId().toByteArray()),
                 span.getName(),
                 Map.copyOf(attributes),
-                parentSpanId
+                parentSpanId,
+                span.getStatus().getCodeValue(),
+                span.getStatus().getMessage()
         );
     }
 
@@ -174,6 +182,8 @@ final class OtlpTraceCollector implements AutoCloseable {
                         String spanId,
                         String name,
                         Map<String, String> stringAttributes,
-                        String parentSpanId) {
+                        String parentSpanId,
+                        int statusCode,
+                        String statusDescription) {
     }
 }

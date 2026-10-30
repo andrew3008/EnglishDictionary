@@ -82,7 +82,7 @@ class SpringBootContextMatrixTest {
     }
 
     @Test
-    void micrometerAbsent_keepsOtelTracingRuntimeWithoutMeteredWrap() {
+    void meterRegistryAbsent_keepsOtelTracingRuntimeWithoutMeteredWrap() {
         controlledAgentRunner
                 .run(context -> {
                     assertThat(context.getBean(TracingRuntime.class))

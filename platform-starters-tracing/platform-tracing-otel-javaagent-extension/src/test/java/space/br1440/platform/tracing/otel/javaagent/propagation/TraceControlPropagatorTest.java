@@ -27,17 +27,8 @@ class TraceControlPropagatorTest {
 
     private final TraceControlPropagator propagator = new TraceControlPropagator();
 
-    private static final TextMapGetter<Map<String, String>> MAP_GETTER = new TextMapGetter<>() {
-        @Override
-        public Iterable<String> keys(Map<String, String> carrier) {
-            return carrier.keySet();
-        }
-
-        @Override
-        public String get(Map<String, String> carrier, String key) {
-            return carrier == null ? null : carrier.get(key);
-        }
-    };
+    private static final TextMapGetter<Map<String, String>> MAP_GETTER =
+            (carrier, key) -> carrier == null ? null : carrier.get(key);
 
     private static final TextMapSetter<Map<String, String>> MAP_SETTER = (carrier, key, value) -> {
         if (carrier == null) {
@@ -124,17 +115,9 @@ class TraceControlPropagatorTest {
 
             // when/then
             AtomicInteger getterCalls = new AtomicInteger();
-            TextMapGetter<Map<String, String>> countingGetter = new TextMapGetter<>() {
-                @Override
-                public Iterable<String> keys(Map<String, String> carrier) {
-                    return carrier.keySet();
-                }
-
-                @Override
-                public String get(Map<String, String> carrier, String key) {
-                    getterCalls.incrementAndGet();
-                    return carrier == null ? null : carrier.get(key);
-                }
+            TextMapGetter<Map<String, String>> countingGetter = (carrier, key) -> {
+                getterCalls.incrementAndGet();
+                return carrier == null ? null : carrier.get(key);
             };
             Context extracted = gated.extract(input, inbound, countingGetter);
             assertThat(extracted).isSameAs(input);

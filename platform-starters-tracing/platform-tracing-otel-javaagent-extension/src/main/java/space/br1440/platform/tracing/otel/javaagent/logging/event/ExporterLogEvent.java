@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.logging.event;
 
 import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.noCause;
+import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.optionalCause;
 import static space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventDefinition.requiresCause;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.INFO;
 import static space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel.WARN;
@@ -31,6 +32,14 @@ public enum ExporterLogEvent implements AgentLogEventType {
                     AgentEventCode.EXPORT_SAFE_EXPORTER, INFO,
                     "Span export delegate succeeded after terminal export failures",
                     AgentLogField.EXPORTER_TYPE, AgentLogField.FAILURES
+            )
+    ),
+
+    SAFE_EXPORT_OVERSIZED_SPAN_DROPPED(
+            noCause(
+                    AgentEventCode.EXPORT_SAFE_EXPORTER, WARN,
+                    "Oversized spans were dropped before OTLP export",
+                    AgentLogField.EXPORTER_TYPE, AgentLogField.COUNT, AgentLogField.LIMIT_BYTES
             )
     ),
 
@@ -67,7 +76,7 @@ public enum ExporterLogEvent implements AgentLogEventType {
     ),
 
     SAFE_EXPORT_RETURNED_FAILURE(
-            noCause(
+            optionalCause(
                     AgentEventCode.EXPORT_SAFE_EXPORTER, WARN,
                     "export() returned failure",
                     AgentLogField.EXPORTER_TYPE

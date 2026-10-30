@@ -12,6 +12,10 @@ public class OtelSdkDefaults {
     public static final Duration DEFAULT_BSP_EXPORT_TIMEOUT = Duration.ofMillis(30_000);
     public static final Duration DEFAULT_BSP_SCHEDULE_DELAY = Duration.ofMillis(5_000);
 
+    public static final long MAX_OTLP_REQUEST_SIZE_BYTES = 15 * 1024L * 1024L;
+    public static final int MAX_SPAN_NAME_LENGTH = 1024;
+    public static final int MAX_SPAN_STATUS_DESCRIPTION_LENGTH = 1024;
+
     static final int DEFAULT_SPAN_ATTRIBUTE_COUNT_LIMIT = 50;
     static final int DEFAULT_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT = 1_000;
     static final int DEFAULT_SPAN_EVENT_COUNT_LIMIT = 10;

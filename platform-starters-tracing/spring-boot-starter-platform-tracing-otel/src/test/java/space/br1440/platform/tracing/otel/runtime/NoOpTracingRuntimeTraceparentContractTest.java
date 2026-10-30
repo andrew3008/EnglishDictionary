@@ -9,10 +9,17 @@ import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
+import io.opentelemetry.sdk.trace.export.SpanExporter;
 
 class NoOpTracingRuntimeTraceparentContractTest {
 
-    private final OpenTelemetrySdk openTelemetry = OpenTelemetrySdk.builder().build();
+    private final OpenTelemetrySdk openTelemetry = OpenTelemetrySdk.builder()
+            .setTracerProvider(SdkTracerProvider.builder()
+                    .addSpanProcessor(SimpleSpanProcessor.create(SpanExporter.noop()))
+                    .build())
+            .build();
 
     @Test
     void traceparent_isEmpty_evenWithForeignActiveSpan() {

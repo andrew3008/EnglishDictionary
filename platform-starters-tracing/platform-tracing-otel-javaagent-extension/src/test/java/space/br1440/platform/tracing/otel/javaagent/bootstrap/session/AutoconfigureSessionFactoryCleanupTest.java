@@ -95,7 +95,7 @@ class AutoconfigureSessionFactoryCleanupTest {
     private static ExtensionRuntimeEvidence evidence() {
         return new ExtensionRuntimeEvidence(
                 "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-                "2.32.0",
+                "2.33.1",
                 "test-extension",
                 "extension-loader",
                 "sdk-loader"

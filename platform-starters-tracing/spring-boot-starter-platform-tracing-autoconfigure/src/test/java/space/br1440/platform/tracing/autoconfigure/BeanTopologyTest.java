@@ -21,6 +21,7 @@ import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.TracingRuntimeDiagnosticsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
 import space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
@@ -45,6 +46,7 @@ class BeanTopologyTest {
             .withConfiguration(AutoConfigurations.of(
                     TracingControlChannelAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class,
+                    TracingRuntimeDiagnosticsAutoConfiguration.class,
                     TracingMetricsAutoConfiguration.class)
             )
             .withPropertyValues(

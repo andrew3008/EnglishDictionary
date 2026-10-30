@@ -60,6 +60,30 @@ class SpanDataBoundaryScrubberTest {
     }
 
     @Test
+    void spanAttributeDropPreservesTheOriginalTotalAttributeCount() {
+        // given
+        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of());
+        AttributeKey<Value<?>> droppedKey = AttributeKey.valueKey("payload");
+        AttributeKey<String> retainedKey = AttributeKey.stringKey("operation");
+        SpanData input = ExporterBoundaryTestSupport.baseSpan("op")
+                .setAttributes(Attributes.of(droppedKey, Value.of("secret"), retainedKey, "read"))
+                .setTotalAttributeCount(5)
+                .build();
+
+        // when
+        SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(input);
+
+        // then
+        assertThat(outcome.dropSpan()).isFalse();
+        assertThat(outcome.changed()).isTrue();
+        assertThat(outcome.spanData().getAttributes().asMap()).containsOnlyKeys(retainedKey);
+        assertThat(outcome.spanData().getAttributes().get(retainedKey)).isEqualTo("read");
+        assertThat(outcome.spanData().getTotalAttributeCount()).isEqualTo(input.getTotalAttributeCount());
+        assertThat(outcome.spanData().getTotalAttributeCount() - outcome.spanData().getAttributes().size())
+                .isEqualTo(4);
+    }
+
+    @Test
     @DisplayName("Event attributes: MASK is applied using the same effective ruleset as span attributes")
     void eventAttributesAreScrubbedWithTheSharedRuleset() {
         // given

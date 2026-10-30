@@ -42,7 +42,7 @@ class AutoconfigureSessionFactorySamplerTest {
         ExtensionRuntimeEvidence evidence = evidence();
 
         // when
-        AutoconfigureSession session = factory.create(
+        try (AutoconfigureSession session = factory.create(
                 DefaultConfigProperties.createFromMap(Map.of(
                         "otel.traces.sampler", "always_off",
                         "platform.tracing.sampling.ratio", "0.375",
@@ -52,29 +52,30 @@ class AutoconfigureSessionFactorySamplerTest {
                 registrar,
                 agentInstanceId,
                 evidence
-        );
-        SafeSampler sampler = session.sampler();
-        CompositeSampler core = delegateOf(sampler);
+        )) {
+            SafeSampler sampler = session.sampler();
+            CompositeSampler core = delegateOf(sampler);
 
-        // then
-        assertThat(sampler).isExactlyInstanceOf(SafeSampler.class);
-        assertThat(core).isExactlyInstanceOf(CompositeSampler.class);
-        assertThat(core.acceptedPolicy()).isSameAs(session.policy());
-        assertThat(core.categoryBOverrides().getDroppedRoutes())
-                .containsExactlyElementsOf(session.extensionConfig().sampling().dropPaths());
-        assertThat(core.categoryBOverrides().getForceRecordValues())
-                .containsExactlyInAnyOrderElementsOf(session.extensionConfig().sampling().forceRecordValues());
-        assertThat(core.categoryBOverrides().getRouteRatioMap()).isEmpty();
-        assertThat(core.categoryBOverrides().getDefaultRatio()).isEqualTo(1.0d);
-        assertThat(session.evidence()).isSameAs(evidence);
-        verify(registrar).setCompositeSampler(same(core));
+            // then
+            assertThat(sampler).isExactlyInstanceOf(SafeSampler.class);
+            assertThat(core).isExactlyInstanceOf(CompositeSampler.class);
+            assertThat(core.acceptedPolicy()).isSameAs(session.policy());
+            assertThat(core.categoryBOverrides().getDroppedRoutes())
+                    .containsExactlyElementsOf(session.extensionConfig().sampling().dropPaths());
+            assertThat(core.categoryBOverrides().getForceRecordValues())
+                    .containsExactlyInAnyOrderElementsOf(session.extensionConfig().sampling().forceRecordValues());
+            assertThat(core.categoryBOverrides().getRouteRatioMap()).isEmpty();
+            assertThat(core.categoryBOverrides().getDefaultRatio()).isEqualTo(1.0d);
+            assertThat(session.evidence()).isSameAs(evidence);
+            verify(registrar).setCompositeSampler(same(core));
+        }
     }
 
     @Test
     void absent_force_record_values_keep_the_default_on_control_value() {
         // given
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
-        AutoconfigureSession session = factory().create(
+        try (AutoconfigureSession session = factory().create(
                 DefaultConfigProperties.createFromMap(Map.of(
                         "otel.traces.sampler", "always_off",
                         "platform.tracing.sampling.ratio", "0"
@@ -82,25 +83,26 @@ class AutoconfigureSessionFactorySamplerTest {
                 new PlatformTracingMBeanRegistrar(agentInstanceId),
                 agentInstanceId,
                 evidence()
-        );
-        Context forceContext = Context.root().with(
-                PlatformTraceContextKeys.TRACE_CONTROL,
-                new DefaultInboundTraceControlExtractor().fromHeaders("on", null, null)
-        );
+        )) {
+            Context forceContext = Context.root().with(
+                    PlatformTraceContextKeys.TRACE_CONTROL,
+                    new DefaultInboundTraceControlExtractor().fromHeaders("on", null, null)
+            );
 
-        // when
-        SafeSampler sampler = session.sampler();
-        SamplingResult result = SamplerHarness.of(sampler)
-                .traceId("00000000000000000000000000000001")
-                .spanKind(SpanKind.SERVER)
-                .parentContext(forceContext)
-                .sample("GET")
-                .result();
+            // when
+            SafeSampler sampler = session.sampler();
+            SamplingResult result = SamplerHarness.of(sampler)
+                    .traceId("00000000000000000000000000000001")
+                    .spanKind(SpanKind.SERVER)
+                    .parentContext(forceContext)
+                    .sample("GET")
+                    .result();
 
-        // then
-        assertThat(result.getDecision()).isEqualTo(SamplingDecision.RECORD_AND_SAMPLE);
-        assertThat(result.getAttributes().get(AttributeKey.stringKey("platform.sampling.reason")))
-                .isEqualTo(PlatformSamplingReasons.FORCE_HEADER);
+            // then
+            assertThat(result.getDecision()).isEqualTo(SamplingDecision.RECORD_AND_SAMPLE);
+            assertThat(result.getAttributes().get(AttributeKey.stringKey("platform.sampling.reason")))
+                    .isEqualTo(PlatformSamplingReasons.FORCE_HEADER);
+        }
     }
 
     @Test
@@ -111,12 +113,16 @@ class AutoconfigureSessionFactorySamplerTest {
         AutoconfigureSessionFactory factory = factory();
 
         // when/then
-        assertThatThrownBy(() -> factory.create(
-                DefaultConfigProperties.createFromMap(Map.of("otel.traces.sampler", "always_off")),
-                registrar,
-                foreignAgentInstanceId,
-                evidence()
-        ))
+        assertThatThrownBy(() -> {
+            try (AutoconfigureSession session = factory.create(
+                    DefaultConfigProperties.createFromMap(Map.of("otel.traces.sampler", "always_off")),
+                    registrar,
+                    foreignAgentInstanceId,
+                    evidence()
+            )) {
+                throw new AssertionError("create returned a session: " + session);
+            }
+        })
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Autoconfigure session and JMX registrar agentInstanceId values must match");
         verify(registrar, never()).setCompositeSampler(any());
@@ -142,7 +148,7 @@ class AutoconfigureSessionFactorySamplerTest {
     private static ExtensionRuntimeEvidence evidence() {
         return new ExtensionRuntimeEvidence(
                 "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-                "2.32.0",
+                "2.33.1",
                 "test-extension",
                 "extension-loader",
                 "sdk-loader"

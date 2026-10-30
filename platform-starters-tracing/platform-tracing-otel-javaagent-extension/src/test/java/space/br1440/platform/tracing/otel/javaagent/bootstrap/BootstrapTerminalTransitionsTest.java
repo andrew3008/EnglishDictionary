@@ -978,7 +978,7 @@ class BootstrapTerminalTransitionsTest {
     private static ExtensionRuntimeEvidence completeEvidence(PlatformExtensionReadiness readiness) {
         return new ExtensionRuntimeEvidence(
                 "0123456789abcdef",
-                "2.32.0",
+                "2.33.1",
                 readiness.snapshot().extensionVersion(),
                 "extension-loader",
                 "sdk-loader"

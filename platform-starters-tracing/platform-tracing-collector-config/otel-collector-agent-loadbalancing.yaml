@@ -17,6 +17,7 @@ receivers:
     protocols:
       grpc:
         endpoint: 0.0.0.0:4317
+        max_recv_msg_size_mib: 16
       http:
         endpoint: 0.0.0.0:4318
 
@@ -56,6 +57,13 @@ exporters:
     protocol:
       otlp:
         timeout: 1s
+        sending_queue:
+          batch:
+            # Только разделение: 16 MiB минус запас 64 KiB на gzip.
+            sizer: bytes
+            min_size: 0
+            max_size: 16711680
+            flush_timeout: 200ms
     resolver:
       dns:
         # Указание headless-сервиса Gateway-узлов

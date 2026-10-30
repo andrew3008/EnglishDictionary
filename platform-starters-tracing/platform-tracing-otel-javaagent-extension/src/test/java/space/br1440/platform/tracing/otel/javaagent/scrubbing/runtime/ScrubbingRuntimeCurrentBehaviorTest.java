@@ -32,6 +32,8 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
+import io.opentelemetry.sdk.trace.export.SpanExporter;
 
 class ScrubbingRuntimeCurrentBehaviorTest {
 
@@ -46,24 +48,25 @@ class ScrubbingRuntimeCurrentBehaviorTest {
         AttributeKey<Boolean> booleanKey = AttributeKey.booleanKey("geo.flag");
 
         // when
-        ScrubbingRuntime maskedRuntime = runtime(ScrubbingDecision.mask("current-behavior"));
-        Map<AttributeKey<?>, Object> masked = scrub(maskedRuntime, attributes(longKey, 55L));
-        ScrubbingRuntime dropped = runtime(ScrubbingDecision.drop("current-behavior"));
-        Map<AttributeKey<?>, Object> droppedValues = scrub(dropped, attributes(doubleKey, 1.5d));
-        ScrubbingRuntime hashed = runtime(ScrubbingDecision.hash("current-behavior"), null);
-        Map<AttributeKey<?>, Object> hashedValues = scrub(hashed, attributes(booleanKey, true));
+        try (ScrubbingRuntime maskedRuntime = runtime(ScrubbingDecision.mask("current-behavior"));
+             ScrubbingRuntime dropped = runtime(ScrubbingDecision.drop("current-behavior"));
+             ScrubbingRuntime hashed = runtime(ScrubbingDecision.hash("current-behavior"), null)) {
+            Map<AttributeKey<?>, Object> masked = scrub(maskedRuntime, attributes(longKey, 55L));
+            Map<AttributeKey<?>, Object> droppedValues = scrub(dropped, attributes(doubleKey, 1.5d));
+            Map<AttributeKey<?>, Object> hashedValues = scrub(hashed, attributes(booleanKey, true));
 
-        // then
-        assertThat(masked.get(longKey)).isEqualTo(0L);
-        assertThat(maskedRuntime.droppedActions()).isEqualTo(1);
-        assertThat(maskedRuntime.maskedActions()).isZero();
-        assertThat(droppedValues.get(doubleKey)).isEqualTo(0.0d);
-        assertThat(hashedValues.get(booleanKey)).isEqualTo(false);
-        assertThat(dropped.droppedActions()).isEqualTo(1);
-        assertThat(dropped.maskedActions()).isZero();
-        assertThat(hashed.droppedActions()).isEqualTo(1);
-        assertThat(hashed.hashMissingKey()).isZero();
-        assertThat(hashed.maskedActions()).isZero();
+            // then
+            assertThat(masked.get(longKey)).isEqualTo(0L);
+            assertThat(maskedRuntime.droppedActions()).isEqualTo(1);
+            assertThat(maskedRuntime.maskedActions()).isZero();
+            assertThat(droppedValues.get(doubleKey)).isEqualTo(0.0d);
+            assertThat(hashedValues.get(booleanKey)).isEqualTo(false);
+            assertThat(dropped.droppedActions()).isEqualTo(1);
+            assertThat(dropped.maskedActions()).isZero();
+            assertThat(hashed.droppedActions()).isEqualTo(1);
+            assertThat(hashed.hashMissingKey()).isZero();
+            assertThat(hashed.maskedActions()).isZero();
+        }
     }
 
     @Test
@@ -71,15 +74,16 @@ class ScrubbingRuntimeCurrentBehaviorTest {
     void numericArrayMaskKeepsLength() {
         // given
         AttributeKey<List<Long>> key = AttributeKey.longArrayKey("geo.parts");
-        ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("current-behavior"));
 
-        // when
-        Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, List.of(7L, 8L, 9L)));
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("current-behavior"))) {
+            // when
+            Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, List.of(7L, 8L, 9L)));
 
-        // then
-        assertThat(written.get(key)).isEqualTo(List.of(0L, 0L, 0L));
-        assertThat(runtime.droppedActions()).isEqualTo(1);
-        assertThat(runtime.maskedActions()).isZero();
+            // then
+            assertThat(written.get(key)).isEqualTo(List.of(0L, 0L, 0L));
+            assertThat(runtime.droppedActions()).isEqualTo(1);
+            assertThat(runtime.maskedActions()).isZero();
+        }
     }
 
     @Test
@@ -88,16 +92,17 @@ class ScrubbingRuntimeCurrentBehaviorTest {
         // given
         AttributeKey<Long> longKey = AttributeKey.longKey("client.address");
         AttributeKey<Boolean> booleanKey = AttributeKey.booleanKey("client.address.internal");
-        ScrubbingRuntime runtime = runtime(ScrubbingDecision.truncate("ip-address", 3));
 
-        // when
-        Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(longKey, 167838211L, booleanKey, true));
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.truncate("ip-address", 3))) {
+            // when
+            Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(longKey, 167838211L, booleanKey, true));
 
-        // then
-        assertThat(written).isEmpty();
-        assertThat(runtime.truncatedActions()).isZero();
-        assertThat(runtime.droppedActions()).isZero();
-        assertThat(runtime.maskedActions()).isZero();
+            // then
+            assertThat(written).isEmpty();
+            assertThat(runtime.truncatedActions()).isZero();
+            assertThat(runtime.droppedActions()).isZero();
+            assertThat(runtime.maskedActions()).isZero();
+        }
     }
 
     @Test
@@ -105,16 +110,17 @@ class ScrubbingRuntimeCurrentBehaviorTest {
     void hashWithoutKeyMasksAndCountsBoth() {
         // given
         AttributeKey<String> key = AttributeKey.stringKey("user.email");
-        ScrubbingRuntime runtime = runtime(ScrubbingDecision.hash("current-behavior"), null);
 
-        // when
-        Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, "ivan@example.com"));
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.hash("current-behavior"), null)) {
+            // when
+            Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, "ivan@example.com"));
 
-        // then
-        assertThat(written.get(key)).isEqualTo("***");
-        assertThat(runtime.hashMissingKey()).isEqualTo(1);
-        assertThat(runtime.maskedActions()).isEqualTo(1);
-        assertThat(runtime.hashedActions()).isZero();
+            // then
+            assertThat(written.get(key)).isEqualTo("***");
+            assertThat(runtime.hashMissingKey()).isEqualTo(1);
+            assertThat(runtime.maskedActions()).isEqualTo(1);
+            assertThat(runtime.hashedActions()).isZero();
+        }
     }
 
     @Test
@@ -122,14 +128,15 @@ class ScrubbingRuntimeCurrentBehaviorTest {
     void shortTruncateStillIncrementsTruncatedActions() {
         // given
         AttributeKey<String> key = AttributeKey.stringKey("note");
-        ScrubbingRuntime runtime = runtime(ScrubbingDecision.truncate("note", 100));
 
-        // when
-        Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, "short"));
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.truncate("note", 100))) {
+            // when
+            Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, "short"));
 
-        // then
-        assertThat(written).doesNotContainKey(key);
-        assertThat(runtime.truncatedActions()).isEqualTo(1);
+            // then
+            assertThat(written).doesNotContainKey(key);
+            assertThat(runtime.truncatedActions()).isEqualTo(1);
+        }
     }
 
     @Test
@@ -137,15 +144,16 @@ class ScrubbingRuntimeCurrentBehaviorTest {
     void failedIpTruncationMasksAndCountsFailure() {
         // given
         AttributeKey<String> key = AttributeKey.stringKey("client.address");
-        ScrubbingRuntime runtime = runtime(ScrubbingDecision.truncate("ip-address", 64));
 
-        // when
-        Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, "not-an-ip"));
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.truncate("ip-address", 64))) {
+            // when
+            Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, "not-an-ip"));
 
-        // then
-        assertThat(written.get(key)).isEqualTo("***");
-        assertThat(runtime.truncatedActions()).isEqualTo(1);
-        assertThat(runtime.failures()).isEqualTo(1);
+            // then
+            assertThat(written.get(key)).isEqualTo("***");
+            assertThat(runtime.truncatedActions()).isEqualTo(1);
+            assertThat(runtime.failures()).isEqualTo(1);
+        }
     }
 
     @Test
@@ -153,15 +161,16 @@ class ScrubbingRuntimeCurrentBehaviorTest {
     void failClosedCollapsesArrayToOneElement() {
         // given
         AttributeKey<List<Long>> key = AttributeKey.longArrayKey("secret.parts");
-        ScrubbingRuntime runtime = runtime(ScrubbingDecision.scrubbingFailed());
 
-        // when
-        Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, List.of(7L, 8L, 9L)));
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.scrubbingFailed())) {
+            // when
+            Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, List.of(7L, 8L, 9L)));
 
-        // then
-        assertThat(written.get(key)).isEqualTo(List.of(0L));
-        assertThat(runtime.maskedActions()).isEqualTo(1);
-        assertThat(runtime.attributesVerified()).isTrue();
+            // then
+            assertThat(written.get(key)).isEqualTo(List.of(0L));
+            assertThat(runtime.maskedActions()).isEqualTo(1);
+            assertThat(runtime.attributesVerified()).isTrue();
+        }
     }
 
     @Test
@@ -169,17 +178,18 @@ class ScrubbingRuntimeCurrentBehaviorTest {
     void valueAttributeIsLeftUntouched() {
         // given
         AttributeKey<Value<?>> key = AttributeKey.valueKey("payload");
-        ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("current-behavior"));
 
-        // when
-        Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, Value.of("secret")));
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("current-behavior"))) {
+            // when
+            Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, Value.of("secret")));
 
-        // then
-        assertThat(written).doesNotContainKey(key);
-        assertThat(key.getType()).isEqualTo(AttributeType.VALUE);
-        assertThat(runtime.maskedActions()).isZero();
-        assertThat(runtime.droppedActions()).isZero();
-        assertThat(runtime.attributesVerified()).isTrue();
+            // then
+            assertThat(written).doesNotContainKey(key);
+            assertThat(key.getType()).isEqualTo(AttributeType.VALUE);
+            assertThat(runtime.maskedActions()).isZero();
+            assertThat(runtime.droppedActions()).isZero();
+            assertThat(runtime.attributesVerified()).isTrue();
+        }
     }
 
     @Test
@@ -188,7 +198,7 @@ class ScrubbingRuntimeCurrentBehaviorTest {
         AttributeKey<Value<?>> valueKey = AttributeKey.valueKey("payload");
         AttributeKey<String> typedKey = AttributeKey.stringKey("payload");
 
-        try (SdkTracerProvider provider = SdkTracerProvider.builder().build()) {
+        try (SdkTracerProvider provider = realSpanProvider()) {
             ReadWriteSpan valueOrigin = (ReadWriteSpan) provider.get("value-origin").spanBuilder("value-origin").startSpan();
             valueOrigin.setAttribute(valueKey, Value.of("secret"));
             ReadWriteSpan nativeOrigin = (ReadWriteSpan) provider.get("native-origin").spanBuilder("native-origin").startSpan();
@@ -217,9 +227,9 @@ class ScrubbingRuntimeCurrentBehaviorTest {
         // given
         AttributeKey<Value<?>> valueKey = AttributeKey.valueKey("payload");
         AttributeKey<String> typedKey = AttributeKey.stringKey("payload");
-        ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("test"));
 
-        try (SdkTracerProvider provider = SdkTracerProvider.builder().build()) {
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("test"));
+             SdkTracerProvider provider = realSpanProvider()) {
             ReadWriteSpan valueOrigin = (ReadWriteSpan) provider.get("value-origin").spanBuilder("value-origin").startSpan();
             valueOrigin.setAttribute(valueKey, Value.of("secret"));
             ReadWriteSpan nativeOrigin = (ReadWriteSpan) provider.get("native-origin").spanBuilder("native-origin").startSpan();
@@ -247,9 +257,9 @@ class ScrubbingRuntimeCurrentBehaviorTest {
         AttributeKey<Value<?>> valueKey = AttributeKey.valueKey("payload");
         AttributeKey<String> projectedValueKey = AttributeKey.stringKey("payload");
         AttributeKey<String> nativeKey = AttributeKey.stringKey("neighbor.secret");
-        ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("test"));
 
-        try (SdkTracerProvider provider = SdkTracerProvider.builder().build()) {
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("test"));
+             SdkTracerProvider provider = realSpanProvider()) {
             ReadWriteSpan span = (ReadWriteSpan) provider.get("fail-closed").spanBuilder("fail-closed").startSpan();
             span.setAttribute(valueKey, Value.of("secret"));
             span.setAttribute(nativeKey, "native-secret");
@@ -281,14 +291,15 @@ class ScrubbingRuntimeCurrentBehaviorTest {
         input.add("alpha");
         input.add(null);
         input.add("beta");
-        ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("current-behavior"));
 
-        // when
-        Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, input));
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("current-behavior"))) {
+            // when
+            Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, input));
 
-        // then
-        assertThat(written.get(key)).isEqualTo(nullableList("***", null, "***"));
-        assertThat(runtime.maskedActions()).isEqualTo(2);
+            // then
+            assertThat(written.get(key)).isEqualTo(nullableList("***", null, "***"));
+            assertThat(runtime.maskedActions()).isEqualTo(2);
+        }
     }
 
     @Test
@@ -296,15 +307,16 @@ class ScrubbingRuntimeCurrentBehaviorTest {
     void dropStringWritesEmptyAndKeepsTheAttribute() {
         // given
         AttributeKey<String> key = AttributeKey.stringKey("user.email");
-        ScrubbingRuntime runtime = runtime(ScrubbingDecision.drop("current-behavior"));
 
-        // when
-        Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, "ivan@example.com"));
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.drop("current-behavior"))) {
+            // when
+            Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, "ivan@example.com"));
 
-        // then
-        assertThat(written).containsKey(key);
-        assertThat(written.get(key)).isEqualTo("");
-        assertThat(runtime.droppedActions()).isEqualTo(1);
+            // then
+            assertThat(written).containsKey(key);
+            assertThat(written.get(key)).isEqualTo("");
+            assertThat(runtime.droppedActions()).isEqualTo(1);
+        }
     }
 
     @Test
@@ -313,20 +325,21 @@ class ScrubbingRuntimeCurrentBehaviorTest {
         // given
         AttributeKey<String> first = AttributeKey.stringKey("first.secret");
         AttributeKey<String> second = AttributeKey.stringKey("second.secret");
-        ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("current-behavior"));
 
-        // when
-        Map<AttributeKey<?>, Object> written = new LinkedHashMap<>();
-        scrub(runtime, attributes(first, "first-raw", second, "second-raw"), false,
-                new IllegalStateException("synthetic mutation failure"), written);
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("current-behavior"))) {
+            // when
+            Map<AttributeKey<?>, Object> written = new LinkedHashMap<>();
+            scrub(runtime, attributes(first, "first-raw", second, "second-raw"), false,
+                    new IllegalStateException("synthetic mutation failure"), written);
 
-        // then
-        assertThat(written.get(first)).isEqualTo(FAILED);
-        assertThat(written.get(second)).isEqualTo(FAILED);
-        assertThat(runtime.failures()).isEqualTo(1);
-        assertThat(runtime.attributesVerified()).isFalse();
-        assertThat(runtime.collapseModeActivations()).isEqualTo(1);
-        assertThat(runtime.maskedActions()).isEqualTo(3);
+            // then
+            assertThat(written.get(first)).isEqualTo(FAILED);
+            assertThat(written.get(second)).isEqualTo(FAILED);
+            assertThat(runtime.failures()).isEqualTo(1);
+            assertThat(runtime.attributesVerified()).isFalse();
+            assertThat(runtime.collapseModeActivations()).isEqualTo(1);
+            assertThat(runtime.maskedActions()).isEqualTo(3);
+        }
     }
 
     @Test
@@ -334,18 +347,19 @@ class ScrubbingRuntimeCurrentBehaviorTest {
     void unavailableSnapshotLeavesAttributesAndCollapses() {
         // given
         AttributeKey<String> key = AttributeKey.stringKey("user.email");
-        ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("current-behavior"));
 
-        // when
-        Map<AttributeKey<?>, Object> written = new LinkedHashMap<>();
-        scrub(runtime, attributes(key, "ivan@example.com"), true, null, written);
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("current-behavior"))) {
+            // when
+            Map<AttributeKey<?>, Object> written = new LinkedHashMap<>();
+            scrub(runtime, attributes(key, "ivan@example.com"), true, null, written);
 
-        // then
-        assertThat(written).isEmpty();
-        assertThat(runtime.failures()).isEqualTo(1);
-        assertThat(runtime.attributesVerified()).isFalse();
-        assertThat(runtime.collapseModeActivations()).isEqualTo(1);
-        assertThat(runtime.maskedActions()).isZero();
+            // then
+            assertThat(written).isEmpty();
+            assertThat(runtime.failures()).isEqualTo(1);
+            assertThat(runtime.attributesVerified()).isFalse();
+            assertThat(runtime.collapseModeActivations()).isEqualTo(1);
+            assertThat(runtime.maskedActions()).isZero();
+        }
     }
 
     @Test
@@ -353,43 +367,44 @@ class ScrubbingRuntimeCurrentBehaviorTest {
     void fatalMutationFailureCollapsesBeforeItPropagates() {
         // given
         AttributeKey<String> key = AttributeKey.stringKey("user.email");
-        ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("current-behavior"));
         VirtualMachineError failure = new SyntheticVirtualMachineError();
 
-        // when
-        Map<AttributeKey<?>, Object> written = new LinkedHashMap<>();
-        Throwable thrown;
-        try {
-            scrub(runtime, attributes(key, "ivan@example.com"), false, failure, written);
-            thrown = null;
-        } catch (Throwable caught) {
-            thrown = caught;
-        }
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("current-behavior"))) {
+            // when
+            Map<AttributeKey<?>, Object> written = new LinkedHashMap<>();
+            Throwable thrown;
+            try {
+                scrub(runtime, attributes(key, "ivan@example.com"), false, failure, written);
+                thrown = null;
+            } catch (Throwable caught) {
+                thrown = caught;
+            }
 
-        // then
-        assertThat(thrown).isSameAs(failure);
-        assertThat(written.get(key)).isEqualTo(FAILED);
-        assertThat(runtime.failures()).isEqualTo(1);
-        assertThat(runtime.attributesVerified()).isFalse();
-        assertThat(runtime.collapseModeActivations()).isEqualTo(1);
-        assertThat(runtime.maskedActions()).isEqualTo(2);
+            // then
+            assertThat(thrown).isSameAs(failure);
+            assertThat(written.get(key)).isEqualTo(FAILED);
+            assertThat(runtime.failures()).isEqualTo(1);
+            assertThat(runtime.attributesVerified()).isFalse();
+            assertThat(runtime.collapseModeActivations()).isEqualTo(1);
+            assertThat(runtime.maskedActions()).isEqualTo(2);
+        }
     }
 
     @Test
     @DisplayName("текущее поведение: повторный markAttributesUnverified не увеличивает collapse")
     void repeatedUnverifiedMarkKeepsCollapseActivationsAtOne() {
         // given
-        ScrubbingRuntime runtime = runtime(ScrubbingDecision.keep());
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.keep())) {
+            // when
+            runtime.markAttributesUnverified();
+            runtime.markAttributesUnverified();
+            runtime.recordCollapsedSpan();
 
-        // when
-        runtime.markAttributesUnverified();
-        runtime.markAttributesUnverified();
-        runtime.recordCollapsedSpan();
-
-        // then
-        assertThat(runtime.attributesVerified()).isFalse();
-        assertThat(runtime.collapseModeActivations()).isEqualTo(1);
-        assertThat(runtime.collapsedSpans()).isEqualTo(1);
+            // then
+            assertThat(runtime.attributesVerified()).isFalse();
+            assertThat(runtime.collapseModeActivations()).isEqualTo(1);
+            assertThat(runtime.collapsedSpans()).isEqualTo(1);
+        }
     }
 
     @SuppressWarnings("SameParameterValue")
@@ -536,5 +551,12 @@ class ScrubbingRuntimeCurrentBehaviorTest {
                     return null;
                 });
         runtime.scrubSpanAttributes(span);
+    }
+
+    private static SdkTracerProvider realSpanProvider() {
+        // SDK 1.67 без процессора возвращает noop-tracer, и span не является ReadWriteSpan.
+        return SdkTracerProvider.builder()
+                .addSpanProcessor(SimpleSpanProcessor.create(SpanExporter.noop()))
+                .build();
     }
 }

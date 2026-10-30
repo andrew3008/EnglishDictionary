@@ -95,7 +95,7 @@ class ControlledAgentTestArgumentsTest {
         arguments.getExtensionJar().set(Files.createFile(directory.resolve("packaged extension.jar")).toFile());
         arguments.getUpstreamAgentJar().set(Files.createFile(directory.resolve("upstream agent.jar")).toFile());
         arguments.getDistributionVersion().set("1.2.3");
-        arguments.getExpectedOtelSdkVersion().set("1.66.0");
+        arguments.getExpectedOtelSdkVersion().set("1.67.0");
         arguments.getExpectedUpstreamCoordinate().set("io.opentelemetry.javaagent:synthetic-agent:1.0.0");
         return arguments;
     }

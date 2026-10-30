@@ -27,6 +27,7 @@ receivers:
     protocols:
       grpc:
         endpoint: 0.0.0.0:4317
+        max_recv_msg_size_mib: 16
       http:
         endpoint: 0.0.0.0:4318
 
@@ -89,6 +90,12 @@ exporters:
       enabled: true
       num_consumers: 4
       queue_size: 10000
+      batch:
+        # Только разделение: 16 MiB минус запас 64 KiB на gzip.
+        sizer: bytes
+        min_size: 0
+        max_size: 16711680
+        flush_timeout: 200ms
     retry_on_failure:
       enabled: true
       initial_interval: 1s
@@ -103,6 +110,12 @@ exporters:
       enabled: true
       num_consumers: 4
       queue_size: 10000
+      batch:
+        # Только разделение: 16 MiB минус запас 64 KiB на gzip.
+        sizer: bytes
+        min_size: 0
+        max_size: 16711680
+        flush_timeout: 200ms
     retry_on_failure:
       enabled: true
       initial_interval: 1s

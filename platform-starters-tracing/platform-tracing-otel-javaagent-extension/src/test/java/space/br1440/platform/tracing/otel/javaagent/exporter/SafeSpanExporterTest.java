@@ -63,7 +63,7 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 class SafeSpanExporterTest {
 
     private static Collection<SpanData> spansOfSize(int n) {
-        return Collections.nCopies(n, null);
+        return Collections.nCopies(n, ExporterBoundaryTestSupport.baseSpan("operation").build());
     }
 
     private static SafeSpanExporter safeExporter(SpanExporter delegate) {
@@ -123,6 +123,39 @@ class SafeSpanExporterTest {
         assertThat(safe.getExportFailures()).as("один упавший batch").isEqualTo(1);
         assertThat(safe.getDroppedSpans()).as("пять потерянных span'ов").isEqualTo(5);
         assertThat(safe.getExportedSpans()).isZero();
+    }
+
+    @Test
+    void exceptionalResultCountsOnceAndLogsCauseWithoutSensitiveMessages() {
+        // given
+        String secret = "private-endpoint-and-response-body";
+        IOException failure = new IOException("Request message size " + secret,
+                new IllegalArgumentException("grpc-message " + secret));
+        failure.addSuppressed(new IOException("HTTP body " + secret));
+        CompletableResultCode delegateResult = CompletableResultCode.ofExceptionalFailure(failure);
+        SafeSpanExporter safe = safeExporter(delegate(delegateResult));
+
+        try (AgentLogCapture capture = AgentLogCapture.installed()) {
+            // when
+            CompletableResultCode result = safe.export(spansOfSize(5));
+
+            // then
+            assertThat(result).isSameAs(delegateResult);
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(safe.getExportBatches()).isEqualTo(1L);
+            assertThat(safe.getExportFailures()).isEqualTo(1L);
+            assertThat(safe.getDroppedSpans()).isEqualTo(5L);
+            assertThat(safe.getExportedSpans()).isZero();
+            assertThat(capture.events()).singleElement().satisfies(event -> {
+                assertThat(event.eventName()).isEqualTo("SAFE_EXPORT_RETURNED_FAILURE");
+                assertThat(event.errorType()).isEqualTo(IOException.class.getName());
+                assertThat(event.throwableDigest())
+                        .contains(IOException.class.getName(), IllegalArgumentException.class.getName())
+                        .doesNotContain(secret, "Request message size", "grpc-message", "HTTP body");
+                assertThat(event.message()).doesNotContain(secret);
+                assertThat(event.fields().toString()).doesNotContain(secret);
+            });
+        }
     }
 
     @Test

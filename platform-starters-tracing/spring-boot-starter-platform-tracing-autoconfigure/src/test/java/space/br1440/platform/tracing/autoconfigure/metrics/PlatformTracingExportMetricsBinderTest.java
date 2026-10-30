@@ -6,11 +6,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.ExportObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.ExportProcessorValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.SafeExporterValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
@@ -138,5 +140,33 @@ class PlatformTracingExportMetricsBinderTest {
                 .containsEntry(ExportExporterMetricKey.PARTIAL_SUCCESS_BATCHES, 2L)
                 .containsEntry(ExportExporterMetricKey.REJECTED_SPANS, 5L)
                 .containsEntry(ExportExporterMetricKey.ACCEPTED_UNKNOWN_BATCHES, 1L);
+    }
+
+    @Test
+    void exporterCountersPublishLocalDropsAndShapeTruncationsWithoutProcessorOwner() {
+        // given
+        PlatformTracingJmxClient client = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
+        when(client.export().observation()).thenReturn(Optional.of(
+                new ExportObservation(
+                        "9f6a2d4a-5b88-4f50-9c34-8dc11435ecaa",
+                        new JmxOwnerState.Absent<>(0L),
+                        new JmxOwnerState.Present<>(new SafeExporterValues(Map.of(
+                                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_OVERSIZED_SPANS_DROPPED, 2L,
+                                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SHAPE_TRUNCATIONS_TOTAL, 3L
+                        )), 1L)
+                )
+        ));
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        new PlatformTracingExportMetricsBinder(client, () -> 0L).bindTo(registry);
+
+        // when
+        double dropped = registry.get("platform.tracing.export.exporter.count")
+                .tag("metric", "oversized_spans_dropped").functionCounter().count();
+        double truncated = registry.get("platform.tracing.export.exporter.count")
+                .tag("metric", "shape_truncations_total").functionCounter().count();
+
+        // then
+        assertThat(dropped).isEqualTo(2L);
+        assertThat(truncated).isEqualTo(3L);
     }
 }

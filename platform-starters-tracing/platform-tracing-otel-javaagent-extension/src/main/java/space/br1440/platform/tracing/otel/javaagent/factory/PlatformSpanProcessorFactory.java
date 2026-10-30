@@ -135,10 +135,6 @@ public final class PlatformSpanProcessorFactory {
     }
 
     private void installComposite(SdkTracerProviderBuilder tpBuilder, List<SpanProcessor> delegates) {
-        if (delegates.isEmpty()) {
-            return;
-        }
-
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(delegates);
         tpBuilder.addSpanProcessor(composite);
         jmxRegistrar.setComposite(composite);

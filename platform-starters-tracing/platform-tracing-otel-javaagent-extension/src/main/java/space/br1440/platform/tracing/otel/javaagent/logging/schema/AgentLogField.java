@@ -32,6 +32,7 @@ public enum AgentLogField {
     KIND("kind", Kind.STRING),
     LIFECYCLE("lifecycle", Kind.ENUM),
     LIMIT("limit", Kind.LONG),
+    LIMIT_BYTES("limitBytes", Kind.LONG),
     MAX_TRACKED_SPANS("maxTrackedSpans", Kind.LONG),
     MAX_TRACKED_SPANS_PER_TRACE("maxTrackedSpansPerTrace", Kind.LONG),
     MESSAGE_CODE("messageCode", Kind.ENUM),

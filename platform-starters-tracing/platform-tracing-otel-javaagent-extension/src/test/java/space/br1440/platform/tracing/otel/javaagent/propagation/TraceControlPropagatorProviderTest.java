@@ -22,17 +22,8 @@ import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
 @DisplayName("TraceControlPropagatorProvider (named platform-trace-control)")
 class TraceControlPropagatorProviderTest {
 
-    private static final TextMapGetter<Map<String, String>> MAP_GETTER = new TextMapGetter<>() {
-        @Override
-        public Iterable<String> keys(Map<String, String> carrier) {
-            return carrier.keySet();
-        }
-
-        @Override
-        public String get(Map<String, String> carrier, String key) {
-            return carrier == null ? null : carrier.get(key);
-        }
-    };
+    private static final TextMapGetter<Map<String, String>> MAP_GETTER =
+            (carrier, key) -> carrier == null ? null : carrier.get(key);
 
     private static ConfigProperties config(Map<String, String> map) {
         return DefaultConfigProperties.createFromMap(map);

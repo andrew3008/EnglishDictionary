@@ -176,17 +176,7 @@ class PlatformPropagationAutoconfigureIntegrationTest {
             // and: тот же final propagator должен вернуть исходное значение через extract
             io.opentelemetry.context.Context extracted =
                     root.extract(io.opentelemetry.context.Context.root(), carrier,
-                            new io.opentelemetry.context.propagation.TextMapGetter<>() {
-                                @Override
-                                public Iterable<String> keys(Map<String, String> c) {
-                                    return c.keySet();
-                                }
-
-                                @Override
-                                public String get(Map<String, String> c, String key) {
-                                    return c == null ? null : c.get(key);
-                                }
-                            });
+                            (carrierMap, key) -> carrierMap == null ? null : carrierMap.get(key));
             assertThat(io.opentelemetry.api.baggage.Baggage.fromContext(extracted).getEntryValue("tenant_class"))
                     .isEqualTo("DF 28");
         } finally {

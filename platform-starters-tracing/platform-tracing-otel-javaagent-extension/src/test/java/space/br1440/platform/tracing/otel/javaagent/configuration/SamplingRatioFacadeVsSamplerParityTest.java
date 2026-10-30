@@ -72,7 +72,7 @@ class SamplingRatioFacadeVsSamplerParityTest {
 
     private static double sessionSamplerRatio(ConfigProperties config) {
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
-        AutoconfigureSession session = new AutoconfigureSessionFactory(
+        try (AutoconfigureSession session = new AutoconfigureSessionFactory(
                 new PlatformScrubberFactory(),
                 AutoconfigureSessionFactory::currentProcessRemoteJmxAssessor
         ).create(
@@ -80,8 +80,9 @@ class SamplingRatioFacadeVsSamplerParityTest {
                 new PlatformTracingMBeanRegistrar(agentInstanceId),
                 agentInstanceId,
                 evidence()
-        );
-        return delegateOf(session.sampler()).acceptedPolicy().current().samplingRatio();
+        )) {
+            return delegateOf(session.sampler()).acceptedPolicy().current().samplingRatio();
+        }
     }
 
     private static CompositeSampler delegateOf(SafeSampler sampler) {
@@ -97,7 +98,7 @@ class SamplingRatioFacadeVsSamplerParityTest {
     private static ExtensionRuntimeEvidence evidence() {
         return new ExtensionRuntimeEvidence(
                 "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-                "2.32.0",
+                "2.33.1",
                 "test-extension",
                 "extension-loader",
                 "sdk-loader"

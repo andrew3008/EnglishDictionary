@@ -1,12 +1,17 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.SamplerConfigurationContract;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.TracePipelineSpiVerifier;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.configuration.PlatformTracingDefaultsProvider;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ResourceValidationMode;
+import space.br1440.platform.tracing.otel.javaagent.exporter.OtlpRequestSizeCustomizer;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ObservingSenderPreference;
 import space.br1440.platform.tracing.otel.javaagent.propagation.BaggagePropagationCustomizer;
 import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagatorsDefaultsCustomizer;
@@ -16,7 +21,9 @@ import space.br1440.platform.tracing.otel.javaagent.resource.PlatformResourceCus
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.resources.Resource;
+import io.opentelemetry.sdk.trace.export.SpanExporter;
 
 public final class BootstrapAutoConfigurationCustomizerProvider implements AutoConfigurationCustomizerProvider {
 
@@ -53,7 +60,9 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
                 return null;
             });
 
-            return SamplerConfigurationContract.normalize(config);
+            Map<String, String> overrides = new HashMap<>(SamplerConfigurationContract.normalize(config));
+            overrides.putAll(serviceNameDefaults(config));
+            return overrides;
         });
 
         customizer.addPropertiesCustomizer(propagatorsDefaults);
@@ -100,7 +109,21 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
         customizer.addSpanExporterCustomizer((exporter, config) ->
                 bootstrap.execute("EXPORTER_INITIALIZATION_FAILED", () -> {
                     AutoconfigureSession session = bootstrap.session();
-                    return session.exportProcessorFactory().captureExporter(exporter, session.policy());
+                    SpanExporter limited = OtlpRequestSizeCustomizer.customize(exporter, config);
+                    try {
+                        return session.exportProcessorFactory().captureExporter(limited, session.policy());
+                    } catch (Throwable failure) {
+                        if (limited != exporter) {
+                            try {
+                                limited.shutdown();
+                            } catch (Throwable cleanupFailure) {
+                                if (cleanupFailure != failure) {
+                                    failure.addSuppressed(cleanupFailure);
+                                }
+                            }
+                        }
+                        throw failure;
+                    }
                 }));
 
         customizer.addSpanProcessorCustomizer((processor, config) ->
@@ -110,5 +133,17 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
                             processor, config
                     );
                 }));
+    }
+
+    static Map<String, String> serviceNameDefaults(ConfigProperties config) {
+        if (config.getString("otel.service.name") != null
+                || config.getMap("otel.resource.attributes").containsKey("service.name")) {
+            return Map.of();
+        }
+
+        String platformName = config.getString(ExtensionPropertyNames.SERVICE_NAME);
+        return StringUtils.hasText(platformName)
+                ? Map.of("otel.service.name", platformName.strip())
+                : Map.of();
     }
 }

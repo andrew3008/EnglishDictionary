@@ -26,6 +26,7 @@ import org.springframework.test.context.TestPropertySource;
 
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.TracingRuntimeDiagnosticsAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.status.TracingStatusAutoConfiguration;
 
 import io.micrometer.context.ContextRegistry;
@@ -157,6 +158,7 @@ class MdcPropagationWebFluxIntegrationTest {
     @EnableAutoConfiguration(exclude = {
             TracingRuntimeAutoConfiguration.class,
             TracingRuntimeDiagnosticsAutoConfiguration.class,
+            TracingMetricsAutoConfiguration.class,
             TracingStatusAutoConfiguration.class
     })
     static class ReactiveTestApp {

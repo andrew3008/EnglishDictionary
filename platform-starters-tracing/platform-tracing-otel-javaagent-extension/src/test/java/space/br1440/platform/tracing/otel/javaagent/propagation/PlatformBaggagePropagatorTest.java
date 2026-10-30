@@ -35,25 +35,8 @@ class PlatformBaggagePropagatorTest {
     private static final BaggageKeyPolicy POLICY = new BaggageKeyPolicy(
             Set.of("tenant_class", PlatformBaggageKeys.CORRELATION_ID), List.of());
 
-    private static final TextMapGetter<Map<String, String>> GETTER = new TextMapGetter<>() {
-        @Override
-        public Iterable<String> keys(Map<String, String> carrier) {
-            if (carrier == null) {
-                return List.of();
-            }
-
-            return carrier.keySet();
-        }
-
-        @Override
-        public String get(Map<String, String> carrier, String key) {
-            if (carrier == null) {
-                return null;
-            }
-
-            return carrier.get(key);
-        }
-    };
+    private static final TextMapGetter<Map<String, String>> GETTER =
+            (carrier, key) -> (carrier == null) ? null : carrier.get(key);
 
     private static final TextMapSetter<Map<String, String>> SETTER = (carrier, key, value) -> {
         if (carrier == null || key == null || value == null) {

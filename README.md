@@ -63,7 +63,7 @@
 Controlled Platform Agent поставляется артефактом
 `space.br1440.platform.starters.tracing:platform-tracing-javaagent:<version>`.
 
-Это один готовый к запуску JAR: полный OpenTelemetry Java Agent `2.32.0` со вложенным
+Это один готовый к запуску JAR: полный OpenTelemetry Java Agent `2.33.1` со вложенным
 `extensions/platform-tracing-otel-javaagent-extension.jar`. Extension не нужно и нельзя
 передавать отдельно через `otel.javaagent.extensions`. Версия агента должна точно совпадать
 с версией starter/BOM release train; сам агент не входит в application BOM. Deployment

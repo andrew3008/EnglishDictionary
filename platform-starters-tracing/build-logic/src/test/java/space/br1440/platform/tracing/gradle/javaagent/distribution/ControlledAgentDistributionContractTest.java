@@ -485,7 +485,7 @@ class ControlledAgentDistributionContractTest {
         Files.createDirectories(catalog.getParent());
         Files.writeString(catalog, """
                 [versions]
-                bom-opentelemetry = "1.66.0"
+                bom-opentelemetry = "1.67.0"
                 """, StandardCharsets.UTF_8);
     }
 

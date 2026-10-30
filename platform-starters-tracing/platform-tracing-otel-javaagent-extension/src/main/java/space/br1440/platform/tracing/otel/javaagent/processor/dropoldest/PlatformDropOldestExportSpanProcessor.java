@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.Objects;
 import jakarta.annotation.Nonnull;
 
+import space.br1440.platform.tracing.otel.javaagent.configuration.BspExportTimeout;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
 import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
 import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkPropertyNames;
@@ -190,10 +191,7 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
                 this.scheduleDelay = sd;
             }
 
-            Duration et = config.getDuration(OtelSdkPropertyNames.BSP_EXPORT_TIMEOUT);
-            if (et != null) {
-                this.exportTimeout = et;
-            }
+            this.exportTimeout = BspExportTimeout.read(config);
 
             return this;
         }

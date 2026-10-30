@@ -31,7 +31,8 @@ import io.opentelemetry.sdk.resources.Resource;
 /**
  * Дополняет ресурс SDK identity-атрибутами платформы.
  *
- * <p>Порядок приоритетов одинаков для каждого атрибута:
+ * <p>Имя сервиса проецируется в {@code otel.service.name} до построения ресурса.
+ * Для остальных атрибутов действует следующий порядок приоритетов:
  * <ol>
  *   <li>явная OTel-конфигурация ({@code otel.service.name}, {@code otel.resource.attributes}) — атрибут не меняется;</li>
  *   <li>свойство {@code platform.tracing.service.*} — перекрывает значение, уже присутствующее в ресурсе;</li>
@@ -73,11 +74,6 @@ public final class PlatformResourceCustomizer {
         Objects.requireNonNull(buildVersion, "buildVersion");
         this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
         this.attributes = List.of(
-                new IdentityAttribute(
-                        SERVICE_NAME_KEY, ExtensionPropertyNames.SERVICE_NAME,
-                        String::strip, PlatformResourceCustomizer::isRealServiceName, true, NO_DETECTOR
-                ),
-
                 new IdentityAttribute(
                         SERVICE_VERSION_KEY, ExtensionPropertyNames.SERVICE_VERSION,
                         String::strip, StringUtils::hasText, false, buildVersion
@@ -157,6 +153,10 @@ public final class PlatformResourceCustomizer {
 
     private void validate(Resource merged, ResourceValidationMode mode) {
         List<String> missing = new ArrayList<>();
+        if (!isRealServiceName(merged.getAttribute(SERVICE_NAME_KEY))) {
+            missing.add(SERVICE_NAME_KEY.getKey());
+        }
+
         for (IdentityAttribute attribute : attributes) {
             if (attribute.required() && !attribute.isPresent(merged.getAttribute(attribute.key()))) {
                 missing.add(attribute.key().getKey());

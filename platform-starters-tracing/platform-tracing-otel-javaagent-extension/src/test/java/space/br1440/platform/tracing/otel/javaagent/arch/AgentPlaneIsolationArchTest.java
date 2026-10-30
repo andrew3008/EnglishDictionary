@@ -109,4 +109,17 @@ class AgentPlaneIsolationArchTest {
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages(packageName);
     }
+
+    @Test
+    void onlyRequestSplitterDependsOnInternalOtlpMarshalling() {
+        // given
+        ArchRule rule = noClasses()
+                .that().haveNameNotMatching(".*\\.OtlpRequestSplittingSpanExporter(\\$.*)?")
+                .should().dependOnClassesThat().resideInAPackage("io.opentelemetry.exporter.internal.otlp..")
+                .because("the request splitter owns the pinned internal OTLP dependency");
+
+        // when
+        // then
+        rule.check(EXTENSION_CLASSES);
+    }
 }

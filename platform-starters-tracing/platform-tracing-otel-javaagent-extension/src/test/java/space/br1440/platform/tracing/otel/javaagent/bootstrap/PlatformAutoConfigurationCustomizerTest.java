@@ -3,6 +3,10 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -23,12 +27,16 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.MockedStatic;
 
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSessionFactory;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
+import space.br1440.platform.tracing.otel.javaagent.exporter.OtlpRequestSizeCustomizer;
+import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
@@ -39,6 +47,8 @@ import space.br1440.platform.tracing.test.harness.SamplerHarness;
 
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Context;
+import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
+import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;
@@ -58,6 +68,57 @@ class PlatformAutoConfigurationCustomizerTest {
 
     private static BootstrapAutoConfigurationCustomizerProvider provider(BootstrapCoordinator coordinator) {
         return new BootstrapAutoConfigurationCustomizerProvider(coordinator);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"grpc", "http/protobuf"})
+    void exporter_customizer_limits_otlp_before_safe_wrapping(String protocol) {
+        // given
+        BootstrapCoordinator coordinator = coordinator();
+        Recorder recorder = new Recorder();
+        provider(coordinator).customize(recorder.proxy());
+
+        try (coordinator) {
+            ConfigProperties config = recorder.primeWithConfig(Map.of());
+            SpanExporter original = spy(protocol.equals("grpc")
+                    ? OtlpGrpcSpanExporter.builder().build()
+                    : OtlpHttpSpanExporter.builder().build());
+
+            // when
+            try (SpanExporter protectedExporter = recorder.spanExporterCustomizer.apply(original, config)) {
+                // then
+                verify(original).shutdown();
+                assertThat(protectedExporter).extracting("delegate").extracting("delegate")
+                        .extracting("delegate")
+                        .isNotSameAs(original)
+                        .isExactlyInstanceOf(original.getClass())
+                        .extracting("delegate")
+                        .extracting(protocol.equals("grpc") ? "maxRequestMessageSize" : "maxRequestBodySize")
+                        .isEqualTo(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES);
+            }
+        }
+    }
+
+    @Test
+    void exporterCustomizerClosesReplacementWhenCaptureFails() {
+        // given
+        BootstrapCoordinator coordinator = coordinator();
+        Recorder recorder = new Recorder();
+        provider(coordinator).customize(recorder.proxy());
+        try (coordinator;
+             SpanExporter original = mock(SpanExporter.class)) {
+            ConfigProperties config = recorder.primeWithConfig(Map.of());
+            SafeSpanExporter replacement = mock(SafeSpanExporter.class);
+            try (MockedStatic<OtlpRequestSizeCustomizer> customizer = mockStatic(OtlpRequestSizeCustomizer.class)) {
+                customizer.when(() -> OtlpRequestSizeCustomizer.customize(original, config)).thenReturn(replacement);
+
+                // when
+                // then
+                assertThatThrownBy(() -> recorder.spanExporterCustomizer.apply(original, config))
+                        .isInstanceOf(RuntimeException.class);
+                verify(replacement).shutdown();
+            }
+        }
     }
 
     @Test

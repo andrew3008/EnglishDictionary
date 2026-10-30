@@ -28,18 +28,8 @@ import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 
 class BaggageIngressPipelineTest {
 
-    private static final TextMapGetter<Map<String, String>> GETTER = new TextMapGetter<>() {
-
-        @Override
-        public Iterable<String> keys(Map<String, String> carrier) {
-            return carrier.keySet();
-        }
-
-        @Override
-        public String get(Map<String, String> carrier, String key) {
-            return (carrier == null) ? null : carrier.get(key);
-        }
-    };
+    private static final TextMapGetter<Map<String, String>> GETTER =
+            (carrier, key) -> (carrier == null) ? null : carrier.get(key);
 
     @RegisterExtension
     static OtelSdkExtension otel = OtelSdkExtension.builder()

@@ -19,6 +19,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.TracingRuntimeDiagnosticsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
@@ -38,6 +39,7 @@ class MeteredTopologyMatrixTest {
             .withConfiguration(AutoConfigurations.of(
                     TracingControlChannelAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class,
+                    TracingRuntimeDiagnosticsAutoConfiguration.class,
                     TracingMetricsAutoConfiguration.class)
             )
             .withPropertyValues("platform.tracing.control.channel=NONE")

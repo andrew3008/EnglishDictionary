@@ -117,11 +117,6 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
         INSTANCE;
 
         @Override
-        public Iterable<String> keys(Map<String, String> carrier) {
-            return carrier.keySet();
-        }
-
-        @Override
         @Nullable
         public String get(@Nullable Map<String, String> carrier, @Nonnull String key) {
             if (carrier == null) {

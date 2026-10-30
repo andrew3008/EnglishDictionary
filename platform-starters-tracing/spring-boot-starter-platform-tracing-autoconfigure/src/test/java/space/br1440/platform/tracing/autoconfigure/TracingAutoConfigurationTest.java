@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.TracingRuntimeDiagnosticsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup.TracingStartupContractHealthAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.integrations.aop.TracedAspect;
 import space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration;
@@ -31,6 +32,7 @@ class TracingAutoConfigurationTest {
             .withConfiguration(AutoConfigurations.of(
                     TracingControlChannelAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class,
+                    TracingRuntimeDiagnosticsAutoConfiguration.class,
                     TracingMetricsAutoConfiguration.class,
                     TracingAopAutoConfiguration.class,
                     TracingObservationAutoConfiguration.class,

@@ -7,6 +7,8 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
+import io.opentelemetry.sdk.trace.export.SpanExporter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,8 +30,11 @@ class RequestTraceContextSnapshotSupplierTest {
     @BeforeEach
     void setUp() {
         sdk = OpenTelemetrySdk.builder()
-                .setTracerProvider(SdkTracerProvider.builder().build())
+                .setTracerProvider(SdkTracerProvider.builder()
+                        .addSpanProcessor(SimpleSpanProcessor.create(SpanExporter.noop()))
+                        .build())
                 .build();
+
         runtime = OtelTracingRuntimeFactory.create(sdk);
         traceOperations = new DefaultTraceOperations(runtime);
         supplier = new RequestTraceContextSnapshotSupplier(() -> traceOperations);
@@ -46,8 +51,9 @@ class RequestTraceContextSnapshotSupplierTest {
         Tracer tracer = sdk.getTracer("test");
         Span span = tracer.spanBuilder("test-op").startSpan();
         try (Scope ignored = span.makeCurrent();
-             CorrelationScope request = runtime.openRequestIdentityScope("request-42");
-             CorrelationScope correlation = traceOperations.openCorrelationScope("business-42")) {
+             @SuppressWarnings("unused") CorrelationScope request = runtime.openRequestIdentityScope("request-42");
+             @SuppressWarnings("unused") CorrelationScope correlation =
+                     traceOperations.openCorrelationScope("business-42")) {
 
             RequestTraceContextSnapshot snapshot = supplier.get();
 

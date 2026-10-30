@@ -44,7 +44,7 @@ class BaggagePropagationCustomizerTest {
         Map<String, String> carrier = new HashMap<>();
 
         // when
-        propagator.inject(context, carrier, Map::put);
+        propagator.inject(context, carrier, (c, k, v) -> Objects.requireNonNull(c, "carrier").put(k, v));
 
         // then
         assertThat(carrier).containsExactlyEntriesOf(Map.of("baggage", "traffic_source=qa"));
@@ -203,20 +203,14 @@ class BaggagePropagationCustomizerTest {
                 .put("traffic_source", "qa")
                 .build());
 
-        TextMapGetter<Map<String, String>> failingGetter = new TextMapGetter<>() {
-            @Override
-            public Iterable<String> keys(Map<String, String> carrier) {
-                return carrier.keySet();
-            }
-
-            @Override
-            public String get(Map<String, String> carrier, String key) {
-                throw new IllegalStateException("Carrier read failed");
-            }
-        };
-
         // when
-        Context extracted = chain.extract(input, Map.of("baggage", "traffic_source=remote"), failingGetter);
+        Context extracted = chain.extract(
+                input,
+                Map.of("baggage", "traffic_source=remote"),
+                (carrier, key) -> {
+                    throw new IllegalStateException("Carrier read failed");
+                }
+        );
 
         // then
         assertThat(diagnostics.getPropagatorFailures()).isEqualTo(1);

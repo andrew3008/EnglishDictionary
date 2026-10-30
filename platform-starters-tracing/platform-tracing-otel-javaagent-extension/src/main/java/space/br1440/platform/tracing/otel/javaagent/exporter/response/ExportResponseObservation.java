@@ -1,11 +1,16 @@
 package space.br1440.platform.tracing.otel.javaagent.exporter.response;
 
+import java.util.Objects;
+import jakarta.annotation.Nullable;
+
 public final class ExportResponseObservation {
 
     private final int effectiveSpanCount;
 
     private Outcome outcome = Outcome.NOT_OBSERVED;
     private long rejectedSpans;
+    @Nullable
+    private AggregateResult aggregateResult;
 
     public ExportResponseObservation(int effectiveSpanCount) {
         if (effectiveSpanCount < 0) {
@@ -48,7 +53,30 @@ public final class ExportResponseObservation {
         return (effectiveSpanCount - rejectedSpans);
     }
 
+    public synchronized void recordAggregate(AggregateResult result) {
+        Objects.requireNonNull(result, "result");
+
+        if (aggregateResult != null || outcome != Outcome.NOT_OBSERVED) {
+            throw new IllegalStateException("Export outcome has already been recorded");
+        }
+
+        if (result.total() != effectiveSpanCount) {
+            throw new IllegalArgumentException("Aggregate count must equal the effective span count");
+        }
+
+        aggregateResult = result;
+    }
+
+    @Nullable
+    public synchronized AggregateResult aggregateResult() {
+        return aggregateResult;
+    }
+
     private void record(Outcome observed, long rejected) {
+        if (aggregateResult != null) {
+            throw new IllegalStateException("Aggregate export outcome has already been recorded");
+        }
+
         if (outcome != Outcome.NOT_OBSERVED) {
             outcome = Outcome.NOT_DETERMINED;
             rejectedSpans = 0L;
@@ -57,6 +85,23 @@ public final class ExportResponseObservation {
 
         outcome = observed;
         rejectedSpans = rejected;
+    }
+
+    public record AggregateResult(int accepted,
+                                  int rejected,
+                                  int transportDropped,
+                                  int undetermined,
+                                  int locallyDropped) {
+
+        public AggregateResult {
+            if (accepted < 0 || rejected < 0 || transportDropped < 0 || undetermined < 0 || locallyDropped < 0) {
+                throw new IllegalArgumentException("Aggregate span counts must not be negative");
+            }
+        }
+
+        public long total() {
+            return (long) accepted + rejected + transportDropped + undetermined + locallyDropped;
+        }
     }
 
     public enum Outcome {

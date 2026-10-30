@@ -43,8 +43,16 @@ def mockitoAgentConfiguration = configurations.register('mockitoAgent') {
     canBeResolved = true
 }
 
+def resourceDetectorsConfiguration = configurations.register('resourceDetectors') {
+    canBeConsumed = false
+    canBeResolved = true
+    transitive = false
+}
+
 dependencies {
     jmxExtensionContractSources project(':platform-starters-tracing:platform-tracing-jmx-contract')
+
+    resourceDetectors "io.opentelemetry.instrumentation:opentelemetry-resources:${libs.versions.bom.otelextension.get()}"
 
     mockitoAgent platform(project(':spring-boot-starter-platform-bom'))
     mockitoAgent('org.mockito:mockito-core') {
@@ -60,6 +68,8 @@ dependencies {
     compileOnly 'io.opentelemetry:opentelemetry-sdk'
     compileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
     compileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure'
+    compileOnly 'io.opentelemetry:opentelemetry-exporter-otlp'
+    compileOnly 'io.opentelemetry:opentelemetry-exporter-otlp-common'
     compileOnly 'io.opentelemetry:opentelemetry-exporter-sender-okhttp'
     compileOnly 'io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api'
 
@@ -84,6 +94,7 @@ dependencies {
     testImplementation 'io.opentelemetry:opentelemetry-exporter-logging'
     testImplementation 'io.opentelemetry:opentelemetry-exporter-logging-otlp'
     testImplementation 'io.opentelemetry:opentelemetry-exporter-otlp'
+    testImplementation 'io.opentelemetry:opentelemetry-exporter-otlp-common'
     testRuntimeOnly 'io.opentelemetry:opentelemetry-extension-trace-propagators'
 
     testCompileOnly "com.google.auto.service:auto-service-annotations:${libs.versions.auto.service.get()}"
@@ -92,6 +103,13 @@ dependencies {
     testRuntimeOnly project(path: ':spring-boot-starter-platform-logging', configuration: 'platformLogMaskingElements')
     testRuntimeOnly 'ch.qos.logback:logback-classic'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('processTestResources', ProcessResources) {
+    from(resourceDetectorsConfiguration) {
+        into 'resource-detectors'
+        rename { 'opentelemetry-resources.jar' }
+    }
 }
 
 tasks.named('test', Test) {
