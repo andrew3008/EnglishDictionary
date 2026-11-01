@@ -11,22 +11,22 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.parallel.ResourceLock;
-import org.junit.jupiter.api.parallel.Resources;
 
-import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.factory.PlatformExportProcessorFactory;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 
-import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
-import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdkBuilder;
+import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
 import io.opentelemetry.sdk.common.CompletableResultCode;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 
-@ExtendWith(AutoConfiguredSdkIsolationExtension.class)
-@ResourceLock(Resources.SYSTEM_PROPERTIES)
 class BspDropOldestNoDoubleExportTest {
 
     @Test
@@ -35,36 +35,30 @@ class BspDropOldestNoDoubleExportTest {
         // given
         CountingExporter counting = new CountingExporter();
 
-        AutoConfiguredOpenTelemetrySdkBuilder builder = AutoConfiguredOpenTelemetrySdk.builder()
-                .setServiceClassLoader(
-                        AutoConfigurationCustomizerTestClassLoader.withoutDiscoveredCustomizers())
-                .disableShutdownHook()
-                .addPropertiesSupplier(() -> Map.of(
-                        "otel.metrics.exporter", "none",
-                        "otel.logs.exporter", "none",
-                        "otel.traces.exporter", "otlp",
-                        "otel.exporter.otlp.endpoint", "http://127.0.0.1:1",
-                        "otel.bsp.schedule.delay", "100",
-                        "otel.bsp.export.timeout", "1000",
-                        "platform.tracing.sampling.ratio", "1.0"
-                ))
-                .addSpanExporterCustomizer((existing, cfg) -> counting);
-        new BootstrapAutoConfigurationCustomizerProvider(RuntimeEvidenceTestFixtures.coordinator()).customize(builder);
+        PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
+                new PlatformTracingMBeanRegistrar(AgentInstanceId.random()),
+                ScrubbingRuntimeTestFixtures.disabled()
+        );
+
+        SpanExporter wrapped = factory.captureExporter(
+                counting,
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random())
+        );
+
+        SpanProcessor processor = factory.maybeReplaceExportProcessor(
+                BatchSpanProcessor.builder(wrapped).build(),
+                DefaultConfigProperties.createFromMap(Map.of("otel.bsp.schedule.delay", "100"))
+        );
 
         // when
-        AutoConfiguredOpenTelemetrySdk sdk = builder.build();
         int totalSpans = 50;
-        try {
-            OpenTelemetry otel = sdk.getOpenTelemetrySdk();
-            Tracer tracer = otel.getTracer("no-double-export-test");
+        try (SdkTracerProvider provider = SdkTracerProvider.builder().addSpanProcessor(processor).build()) {
+            Tracer tracer = provider.get("no-double-export-test");
             for (int i = 0; i < totalSpans; i++) {
                 tracer.spanBuilder("nde-" + i).startSpan().end();
             }
 
-            sdk.getOpenTelemetrySdk().getSdkTracerProvider().forceFlush().join(5, TimeUnit.SECONDS);
-        } finally {
-            sdk.getOpenTelemetrySdk().getSdkTracerProvider().shutdown().join(5, TimeUnit.SECONDS);
-            sdk.getOpenTelemetrySdk().close();
+            assertThat(provider.forceFlush().join(5, TimeUnit.SECONDS).isSuccess()).isTrue();
         }
 
         // then

@@ -72,6 +72,7 @@ dependencies {
     controlledAgentRuntimeTestImplementation awaitility
     controlledAgentRuntimeTestImplementation otelProto
     controlledAgentRuntimeTestImplementation protobufJava
+    controlledAgentRuntimeTestImplementation "com.squareup.okhttp3:mockwebserver3:${libs.versions.bom.okhttp.get()}"
     controlledAgentRuntimeTestImplementation project(tracingApiProjectPath)
     controlledAgentRuntimeTestImplementation otelApi
     controlledAgentRuntimeTestRuntimeOnly launcher

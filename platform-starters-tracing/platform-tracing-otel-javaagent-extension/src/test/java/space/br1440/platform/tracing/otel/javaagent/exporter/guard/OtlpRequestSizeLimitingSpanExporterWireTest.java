@@ -1,14 +1,17 @@
-package space.br1440.platform.tracing.otel.javaagent.exporter;
+package space.br1440.platform.tracing.otel.javaagent.exporter.guard;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -21,6 +24,7 @@ import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResp
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseScope;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ObservingSenderTestFixtures;
 
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
@@ -39,9 +43,11 @@ import io.opentelemetry.sdk.common.export.GrpcSenderConfig;
 import io.opentelemetry.sdk.common.export.GrpcSenderProvider;
 import io.opentelemetry.sdk.common.export.GrpcStatusCode;
 import io.opentelemetry.sdk.common.export.HttpResponse;
+import io.opentelemetry.exporter.sender.okhttp.internal.OkHttpHttpSenderProvider;
 import io.opentelemetry.sdk.common.export.HttpSender;
 import io.opentelemetry.sdk.common.export.HttpSenderConfig;
 import io.opentelemetry.sdk.common.export.HttpSenderProvider;
+import io.opentelemetry.sdk.common.export.RetryPolicy;
 import io.opentelemetry.sdk.common.export.MemoryMode;
 import io.opentelemetry.sdk.common.export.MessageWriter;
 import io.opentelemetry.sdk.resources.Resource;
@@ -51,8 +57,11 @@ import io.opentelemetry.sdk.trace.data.DelegatingSpanData;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
+import mockwebserver3.MockResponse;
+import mockwebserver3.MockWebServer;
+import okio.Buffer;
 
-class OtlpRequestSplittingSpanExporterWireTest {
+class OtlpRequestSizeLimitingSpanExporterWireTest {
 
     @Test
     void spanHttpExporterBuilderHasNoJsonSerializationMode() {
@@ -84,11 +93,11 @@ class OtlpRequestSplittingSpanExporterWireTest {
             capture.payloads.clear();
             capture.declaredLengths.clear();
 
-            OtlpRequestSplittingSpanExporter isolator = isolator(delegate, limit);
+            OtlpRequestSizeLimitingSpanExporter isolator = isolator(delegate, limit);
             ExportResponseObservation rejected = new ExportResponseObservation(1);
 
             // when
-            CompletableResultCode accepted = isolator.export(List.of(exact));
+            CompletableResultCode accepted = isolator.export(List.of(exact), new ExportResponseObservation(1));
             CompletableResultCode dropped = export(isolator, List.of(larger), rejected);
 
             // then
@@ -97,7 +106,7 @@ class OtlpRequestSplittingSpanExporterWireTest {
             assertThat(capture.payloads).singleElement().satisfies(bytes -> assertThat(bytes).hasSize(limit));
             assertThat(capture.declaredLengths).containsExactly(limit);
             assertThat(rejected.aggregateResult())
-                    .isEqualTo(new ExportResponseObservation.AggregateResult(0, 0, 0, 0, 1));
+                    .isEqualTo(new ExportResponseObservation.AggregateResult(0, 0, 0, 0, 1, 0, 0, null));
         }
     }
 
@@ -132,7 +141,7 @@ class OtlpRequestSplittingSpanExporterWireTest {
 
             // then
             assertThat(result.isSuccess()).isTrue();
-            assertThat(parent.aggregateResult()).isEqualTo(new ExportResponseObservation.AggregateResult(4, 0, 0, 0, 0));
+            assertThat(parent.aggregateResult()).isEqualTo(new ExportResponseObservation.AggregateResult(4, 0, 0, 0, 0, 0, 4, null));
             assertThat(capture.payloads).hasSize(4).allSatisfy(bytes -> assertThat(bytes.length).isLessThanOrEqualTo(limit));
             List<String> ids = new ArrayList<>();
             List<String> resources = new ArrayList<>();
@@ -184,7 +193,7 @@ class OtlpRequestSplittingSpanExporterWireTest {
             // then
             assertThat(result.isSuccess()).isTrue();
             assertThat(capture.payloads).hasSize(2);
-            assertThat(parent.aggregateResult()).isEqualTo(new ExportResponseObservation.AggregateResult(0, 2, 0, 0, 0));
+            assertThat(parent.aggregateResult()).isEqualTo(new ExportResponseObservation.AggregateResult(0, 2, 0, 0, 0, 0, 2, null));
         }
     }
 
@@ -208,7 +217,7 @@ class OtlpRequestSplittingSpanExporterWireTest {
             // then
             assertThat(result.isSuccess()).isTrue();
             assertThat(capture.payloads).hasSize(2);
-            assertThat(parent.aggregateResult()).isEqualTo(new ExportResponseObservation.AggregateResult(0, 0, 0, 2, 0));
+            assertThat(parent.aggregateResult()).isEqualTo(new ExportResponseObservation.AggregateResult(0, 0, 0, 2, 0, 0, 2, null));
         }
     }
 
@@ -232,9 +241,124 @@ class OtlpRequestSplittingSpanExporterWireTest {
 
             // then
             assertThat(result.isSuccess()).isFalse();
-            assertThat(capture.payloads).hasSize(1);
-            assertThat(parent.aggregateResult()).isEqualTo(new ExportResponseObservation.AggregateResult(0, 0, 2, 0, 0));
+            assertThat(capture.payloads).hasSize(2);
+            assertThat(parent.aggregateResult()).isEqualTo(new ExportResponseObservation.AggregateResult(0, 0, 2, 0, 0, 0, 2, null));
         }
+    }
+
+    @ParameterizedTest
+    @MethodSource("protocolsAndMemoryModes")
+    void jointRequestNeverExceedsSumOfPerSpanSizes(Protocol protocol, MemoryMode memoryMode) {
+        // given
+        SenderCapture capture = new SenderCapture();
+        try (SpanExporter delegate = exporter(protocol, memoryMode, capture)) {
+            for (int boundary : new int[]{127, 128, 16383, 16384}) {
+                String value = "x".repeat(boundary);
+                try (SdkTracerProvider first = SdkTracerProvider.builder()
+                        .addSpanProcessor(SimpleSpanProcessor.create(SpanExporter.composite()))
+                        .setResource(Resource.create(Attributes.of(AttributeKey.stringKey("resource"), value)))
+                        .build();
+                     SdkTracerProvider second = SdkTracerProvider.builder()
+                             .addSpanProcessor(SimpleSpanProcessor.create(SpanExporter.composite()))
+                             .setResource(Resource.create(Attributes.of(AttributeKey.stringKey("resource"), "other" + value)))
+                             .build()) {
+
+                    List<SpanData> spans = List.of(span(first, value, value), span(first, value, value),
+                            span(first, "other" + value, value), span(second, value, value));
+                    capture.payloads.clear();
+                    for (SpanData span : spans) {
+                        assertThat(delegate.export(List.of(span)).isSuccess()).isTrue();
+                    }
+
+                    long sum = capture.payloads.stream().mapToLong(payload -> payload.length).sum();
+                    capture.payloads.clear();
+                    ExportResponseObservation parent = new ExportResponseObservation(spans.size());
+
+                    // when
+                    CompletableResultCode result = export(isolator(delegate, Math.toIntExact(sum)), spans, parent);
+
+                    // then
+                    assertThat(result.isSuccess()).isTrue();
+                    assertThat(capture.payloads).singleElement()
+                            .satisfies(payload -> assertThat((long) payload.length).isLessThanOrEqualTo(sum));
+                    assertThat(parent.aggregateResult()).isEqualTo(
+                            new ExportResponseObservation.AggregateResult(4, 0, 0, 0, 0, 0, 1, null));
+                }
+            }
+        }
+    }
+
+    @Test
+    void httpRetryDoesNotReadTheExportScopeAgain() throws Exception {
+        // given
+        AtomicInteger sends = new AtomicInteger();
+        AtomicReference<ExportResponseObservation> leaf = new AtomicReference<>();
+        byte[] body = ExportTraceServiceResponse.getDefaultInstance().toByteArray();
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(new MockResponse.Builder().code(503).build());
+            server.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/x-protobuf")
+                    .body(new Buffer().write(body))
+                    .build());
+            server.start();
+            ComponentLoader loader = new ComponentLoader() {
+                private final ComponentLoader delegate = ComponentLoader.forClassLoader(getClass().getClassLoader());
+
+                @Override
+                public <T> Iterable<T> load(Class<T> spiClass) {
+                    if (spiClass == HttpSenderProvider.class) {
+                        HttpSenderProvider observing = ObservingSenderTestFixtures.http(config -> countingSender(config, sends, leaf));
+                        return List.of(spiClass.cast(observing));
+                    }
+                    return delegate.load(spiClass);
+                }
+            };
+            try (SdkTracerProvider provider = provider();
+                 SpanExporter http = OtlpHttpSpanExporter.builder()
+                         .setEndpoint(server.url("/v1/traces").toString())
+                         .setComponentLoader(loader)
+                         .setTimeout(Duration.ofSeconds(5))
+                         .setRetryPolicy(RetryPolicy.builder()
+                                 .setMaxAttempts(2)
+                                 .setInitialBackoff(Duration.ofMillis(1))
+                                 .setMaxBackoff(Duration.ofMillis(1))
+                                 .build())
+                         .build()) {
+                OtlpRequestSizeLimitingSpanExporter guard = isolator(http, 1_000_000);
+                ExportResponseObservation parent = new ExportResponseObservation(1);
+
+                // when
+                CompletableResultCode result = guard.export(List.of(span(provider, "retry", "leaf")), parent);
+                result.join(5, TimeUnit.SECONDS);
+
+                // then
+                assertThat(server.getRequestCount()).isEqualTo(2);
+                assertThat(sends).hasValue(1);
+                assertThat(leaf).hasValueSatisfying(observation -> assertThat(observation.outcome())
+                        .isEqualTo(ExportResponseObservation.Outcome.ALL_ACCEPTED));
+                assertThat(parent.aggregateResult().accepted()).isEqualTo(1);
+            }
+        }
+    }
+
+    private static HttpSender countingSender(HttpSenderConfig config,
+                                             AtomicInteger sends,
+                                             AtomicReference<ExportResponseObservation> leaf) {
+        HttpSender delegate = new OkHttpHttpSenderProvider().createSender(config);
+        return new HttpSender() {
+            @Override
+            public void send(MessageWriter writer, Consumer<HttpResponse> onResponse, Consumer<Throwable> onError) {
+                sends.incrementAndGet();
+                leaf.compareAndSet(null, ExportResponseScope.current());
+                delegate.send(writer, onResponse, onError);
+            }
+
+            @Override
+            public CompletableResultCode shutdown() {
+                return delegate.shutdown();
+            }
+        };
     }
 
     private static Stream<Arguments> protocolsAndMemoryModes() {
@@ -259,8 +383,8 @@ class OtlpRequestSplittingSpanExporterWireTest {
         return ((ReadableSpan) span).toSpanData();
     }
 
-    private static OtlpRequestSplittingSpanExporter isolator(SpanExporter delegate, int limit) {
-        return new OtlpRequestSplittingSpanExporter(delegate, limit, TimeUnit.SECONDS.toNanos(30), () -> 0L);
+    private static OtlpRequestSizeLimitingSpanExporter isolator(SpanExporter delegate, int limit) {
+        return new OtlpRequestSizeLimitingSpanExporter(delegate, limit);
     }
 
     private static SpanExporter exporter(Protocol protocol, MemoryMode mode, SenderCapture capture) {
@@ -269,12 +393,10 @@ class OtlpRequestSplittingSpanExporterWireTest {
                 : OtlpHttpSpanExporter.builder().setComponentLoader(capture).setMemoryMode(mode).setRetryPolicy(null).build();
     }
 
-    private static CompletableResultCode export(SpanExporter exporter,
+    private static CompletableResultCode export(OtlpRequestSizeLimitingSpanExporter exporter,
                                                  List<SpanData> spans,
                                                  ExportResponseObservation observation) {
-        try (ExportResponseScope.Handle ignored = ExportResponseScope.open(observation)) {
-            return exporter.export(spans);
-        }
+        return exporter.export(spans, observation);
     }
 
     private enum Protocol {

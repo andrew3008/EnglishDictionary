@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.exporter;
+package space.br1440.platform.tracing.otel.javaagent.exporter.boundary;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.javaagent.exporter.ExporterTestSpans;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
@@ -38,10 +39,10 @@ class SpanDataBoundaryScrubberTest {
     @DisplayName("Verified span attributes only remove unsupported VALUE trees at the export boundary")
     void verifiedSpanAttributesOnlyRemoveValueTreesAtTheBoundary() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(EMAIL));
         AttributeKey<String> emailKey = AttributeKey.stringKey("user.email");
         AttributeKey<Value<?>> valueKey = AttributeKey.valueKey("qualification.custom.mask");
-        SpanData input = ExporterBoundaryTestSupport.baseSpan("op")
+        SpanData input = ExporterTestSpans.baseSpan("op")
                 .setAttributes(Attributes.of(
                         emailKey,
                         "ivan@example.com",
@@ -62,10 +63,10 @@ class SpanDataBoundaryScrubberTest {
     @Test
     void spanAttributeDropPreservesTheOriginalTotalAttributeCount() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of());
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of());
         AttributeKey<Value<?>> droppedKey = AttributeKey.valueKey("payload");
         AttributeKey<String> retainedKey = AttributeKey.stringKey("operation");
-        SpanData input = ExporterBoundaryTestSupport.baseSpan("op")
+        SpanData input = ExporterTestSpans.baseSpan("op")
                 .setAttributes(Attributes.of(droppedKey, Value.of("secret"), retainedKey, "read"))
                 .setTotalAttributeCount(5)
                 .build();
@@ -87,10 +88,10 @@ class SpanDataBoundaryScrubberTest {
     @DisplayName("Event attributes: MASK is applied using the same effective ruleset as span attributes")
     void eventAttributesAreScrubbedWithTheSharedRuleset() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(PASSWORD));
         EventData event = EventData.create(5L, "db.query",
                 Attributes.of(AttributeKey.stringKey("db.password"), "supersecret"));
-        SpanData input = ExporterBoundaryTestSupport.baseSpan("op")
+        SpanData input = ExporterTestSpans.baseSpan("op")
                 .setEvents(List.of(event))
                 .build();
 
@@ -107,10 +108,10 @@ class SpanDataBoundaryScrubberTest {
     @DisplayName("Link attributes: DROP removes the key entirely (unlike span-attribute DROP, which uses \"\")")
     void linkAttributeDropRemovesTheKey() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
-        LinkData link = LinkData.create(ExporterBoundaryTestSupport.LINK_TARGET,
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(PASSWORD));
+        LinkData link = LinkData.create(ExporterTestSpans.LINK_TARGET,
                 Attributes.of(AttributeKey.stringKey("db.password"), "supersecret"));
-        SpanData input = ExporterBoundaryTestSupport.baseSpan("op")
+        SpanData input = ExporterTestSpans.baseSpan("op")
                 .setLinks(List.of(link))
                 .build();
 
@@ -128,10 +129,10 @@ class SpanDataBoundaryScrubberTest {
     void exceptionEventsLoseTheThrowableSideChannel() {
         // given
         String secret = "boom with secret token=abc123";
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of());
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of());
         ExceptionEventData exceptionEvent = ExceptionEventData.create(
                 7L, new RuntimeException(secret), Attributes.empty(), 0);
-        SpanData input = ExporterBoundaryTestSupport.baseSpan("op")
+        SpanData input = ExporterTestSpans.baseSpan("op")
                 .setEvents(List.of(exceptionEvent))
                 .build();
 
@@ -206,8 +207,8 @@ class SpanDataBoundaryScrubberTest {
     @DisplayName("Span name: forbidden HASH downgrades to <redacted>, never the raw HMAC digest or KEEP")
     void hashOnSpanNameDowngradesToRedacted() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL), "some-hmac-key");
-        SpanData input = ExporterBoundaryTestSupport.baseSpan("contact ivan@example.com now").build();
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(EMAIL), "some-hmac-key");
+        SpanData input = ExporterTestSpans.baseSpan("contact ivan@example.com now").build();
 
         // when
         SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(input);
@@ -222,11 +223,11 @@ class SpanDataBoundaryScrubberTest {
     @DisplayName("Status description: DROP becomes empty string, not <redacted>")
     void dropOnStatusDescriptionBecomesEmptyString() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(
                 List.of(BuiltInSpanAttributeScrubbingRules.JWT.create())
         );
 
-        SpanData input = ExporterBoundaryTestSupport.baseSpan("op")
+        SpanData input = ExporterTestSpans.baseSpan("op")
                 .setStatus(StatusData.create(io.opentelemetry.api.trace.StatusCode.ERROR,
                         "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.signature"))
                 .build();
@@ -243,9 +244,9 @@ class SpanDataBoundaryScrubberTest {
     @DisplayName("attributesVerified=false: span attributes collapse to sentinels, span not dropped")
     void unverifiedAttributesCollapseToSentinelsInsteadOfLeaking() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of());
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of());
         runtime.markAttributesUnverified();
-        SpanData input = ExporterBoundaryTestSupport.baseSpan("op")
+        SpanData input = ExporterTestSpans.baseSpan("op")
                 .setAttributes(Attributes.of(AttributeKey.stringKey("raw.secret"), "leaked-value"))
                 .build();
 
@@ -264,7 +265,7 @@ class SpanDataBoundaryScrubberTest {
     @DisplayName("Fail-closed: an exception while scrubbing drops only that span, never throws")
     void aThrowingSpanDataIsDroppedNotPropagated() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(EMAIL));
         SpanData poisoned = new ThrowingSpanData();
 
         // when
@@ -279,8 +280,8 @@ class SpanDataBoundaryScrubberTest {
     @DisplayName("Identity fast-path: nothing to scrub returns the exact same SpanData instance")
     void noChangesReturnsTheSameInstance() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL));
-        SpanData input = ExporterBoundaryTestSupport.baseSpan("op").build();
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(EMAIL));
+        SpanData input = ExporterTestSpans.baseSpan("op").build();
 
         // when
         SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(input);
@@ -294,9 +295,9 @@ class SpanDataBoundaryScrubberTest {
     @DisplayName("Event name: email HASH downgrades to <redacted>, never raw and never HMAC")
     void hashOnEventNameDowngradesToRedacted() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL), "some-hmac-key");
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(EMAIL), "some-hmac-key");
         EventData event = EventData.create(5L, "contact ivan@example.com now", Attributes.empty());
-        SpanData input = ExporterBoundaryTestSupport.baseSpan("op")
+        SpanData input = ExporterTestSpans.baseSpan("op")
                 .setEvents(List.of(event))
                 .build();
 
@@ -314,7 +315,7 @@ class SpanDataBoundaryScrubberTest {
     @DisplayName("DROP on event attributes removes the key but preserves totalAttributeCount and timestamp")
     void eventDropPreservesTotalAttributeCountAndTimestamp() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(PASSWORD));
         EventData event = EventData.create(
                 11L,
                 "db.query",
@@ -322,7 +323,7 @@ class SpanDataBoundaryScrubberTest {
                         AttributeKey.stringKey("db.password"), "supersecret",
                         AttributeKey.stringKey("db.statement"), "SELECT 1"),
                 2);
-        SpanData input = ExporterBoundaryTestSupport.baseSpan("op")
+        SpanData input = ExporterTestSpans.baseSpan("op")
                 .setEvents(List.of(event))
                 .build();
 
@@ -340,12 +341,12 @@ class SpanDataBoundaryScrubberTest {
     @DisplayName("DROP on link attributes removes the key but preserves SpanContext and totalAttributeCount")
     void linkDropPreservesContextAndTotalAttributeCount() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(PASSWORD));
         LinkData link = LinkData.create(
-                ExporterBoundaryTestSupport.LINK_TARGET,
+                ExporterTestSpans.LINK_TARGET,
                 Attributes.of(AttributeKey.stringKey("db.password"), "supersecret"),
                 1);
-        SpanData input = ExporterBoundaryTestSupport.baseSpan("op")
+        SpanData input = ExporterTestSpans.baseSpan("op")
                 .setLinks(List.of(link))
                 .build();
 
@@ -353,7 +354,7 @@ class SpanDataBoundaryScrubberTest {
         LinkData scrubbed = new SpanDataBoundaryScrubber(runtime).scrub(input).spanData().getLinks().getFirst();
 
         // then
-        assertThat(scrubbed.getSpanContext()).isEqualTo(ExporterBoundaryTestSupport.LINK_TARGET);
+        assertThat(scrubbed.getSpanContext()).isEqualTo(ExporterTestSpans.LINK_TARGET);
         assertThat(scrubbed.getAttributes().asMap()).doesNotContainKey(AttributeKey.stringKey("db.password"));
         assertThat(scrubbed.getTotalAttributeCount()).isEqualTo(1);
     }
@@ -363,10 +364,10 @@ class SpanDataBoundaryScrubberTest {
     void externalRulesDoNotSeeStructuralTextKeys() {
         // given
         RecordingRule spy = new RecordingRule();
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(
                 List.of(EMAIL), List.of(spy), "some-hmac-key");
         EventData event = EventData.create(1L, "contact ivan@example.com", Attributes.empty());
-        SpanData input = ExporterBoundaryTestSupport.baseSpan("contact ivan@example.com")
+        SpanData input = ExporterTestSpans.baseSpan("contact ivan@example.com")
                 .setEvents(List.of(event))
                 .setStatus(StatusData.create(
                         io.opentelemetry.api.trace.StatusCode.ERROR, "failed for ivan@example.com"))
@@ -399,7 +400,7 @@ class SpanDataBoundaryScrubberTest {
 
     private static final class ThrowingSpanData extends io.opentelemetry.sdk.trace.data.DelegatingSpanData {
         ThrowingSpanData() {
-            super(ExporterBoundaryTestSupport.baseSpan("op").build());
+            super(ExporterTestSpans.baseSpan("op").build());
         }
 
         @Override

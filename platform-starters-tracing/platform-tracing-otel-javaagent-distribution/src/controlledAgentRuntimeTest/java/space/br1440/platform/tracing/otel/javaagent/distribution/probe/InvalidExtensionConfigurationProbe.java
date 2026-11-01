@@ -17,6 +17,7 @@ public final class InvalidExtensionConfigurationProbe {
     public static final String MAIN_REACHED_MARKER = "APPLICATION_MAIN_REACHED";
     public static final String RESULT_PREFIX = "INVALID_EXTENSION_CONFIGURATION_PROBE";
     public static final String SAMPLER_CAPABILITY_PREFIX = "INVALID_EXTENSION_CONFIGURATION_SAMPLER_CAPABILITY";
+    public static final String READINESS_ABSENT_MARKER = "INVALID_EXTENSION_CONFIGURATION_READINESS_ABSENT";
 
     private static final String PLATFORM_SAMPLER_CAPABILITY = "PLATFORM_SAMPLER_INSTALLED";
 
@@ -30,7 +31,13 @@ public final class InvalidExtensionConfigurationProbe {
         Tracer tracer = GlobalOpenTelemetry.getTracer("invalid-extension-configuration-probe");
         tracer.spanBuilder(spanName).startSpan().end();
 
-        CompositeData snapshot = readinessSnapshot(ManagementFactory.getPlatformMBeanServer());
+        MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+        if (!server.isRegistered(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME)) {
+            System.out.println(READINESS_ABSENT_MARKER);
+            return;
+        }
+
+        CompositeData snapshot = readinessSnapshot(server);
         String lifecycle = stringField(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE);
         String failureCode = stringField(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE);
         String[] capabilities = stringArrayField(

@@ -1,22 +1,27 @@
-package space.br1440.platform.tracing.otel.javaagent.exporter;
+package space.br1440.platform.tracing.otel.javaagent.exporter.guard;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseObservation;
-import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseScope;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
@@ -41,10 +46,47 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 
 @Timeout(value = 120, unit = TimeUnit.SECONDS)
-class OtlpRequestSplittingSpanExporterOverflowTest {
+class OtlpRequestSizeLimitingSpanExporterOverflowTest {
 
     private static final int LIMIT = Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES);
 
+    @Tag("sdk-characterization")
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void singleSpanWithSharedArrayStringsWrapsToPositiveSdkSize(boolean grpc) {
+        // given
+        SpanData span = positiveWrappedSpan();
+        HeaderCapture capture = new HeaderCapture();
+        try (SpanExporter delegate = exporter(grpc, MemoryMode.REUSABLE_DATA, capture)) {
+            // when
+            CompletableResultCode result = delegate.export(List.of(span));
+
+            // then
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(capture.calls).isEqualTo(1);
+            assertThat(capture.contentLength).isPositive().isLessThan(LIMIT);
+        }
+    }
+
+    @Test
+    void guardRejectsSingleSpanPositiveWrapWithoutMeasurementOrTransportFailure() {
+        // given
+        SpanData span = positiveWrappedSpan();
+        SpanExporter delegate = mock(SpanExporter.class);
+        ExportResponseObservation observation = new ExportResponseObservation(1);
+        OtlpRequestSizeLimitingSpanExporter guard = new OtlpRequestSizeLimitingSpanExporter(delegate, LIMIT);
+
+        // when
+        CompletableResultCode result = guard.export(List.of(span), observation);
+
+        // then
+        assertThat(result.isSuccess()).isTrue();
+        verifyNoInteractions(delegate);
+        assertThat(observation.aggregateResult()).isEqualTo(
+                new ExportResponseObservation.AggregateResult(0, 0, 0, 0, 1, 0, 0, null));
+    }
+
+    @Tag("sdk-characterization")
     @ParameterizedTest
     @MethodSource("bareSdkCases")
     void bareSdkExposesWrappedSizeBeforeSender(boolean grpc, int count) {
@@ -66,35 +108,75 @@ class OtlpRequestSplittingSpanExporterOverflowTest {
             } else {
                 assertThat(capture.calls).isZero();
             }
+
             System.out.printf("SDK overflow: protocol=%s, spans=%d, senderCalls=%d, contentLength=%d%n",
                     grpc ? "grpc" : "http", count, capture.calls, capture.contentLength);
         }
     }
 
-    @ParameterizedTest
-    @MethodSource("isolatedCases")
-    void isolatorDropsPositiveWrapBeforeEitherMemoryModeReachesSender(boolean grpc, MemoryMode memoryMode) {
+    @Test
+    void guardDropsPositiveWrapBeforeDelegate() {
         // given
         List<SpanData> spans = Collections.nCopies(224, oversizedSpan());
+        SpanExporter delegate = mock(SpanExporter.class);
+        ExportResponseObservation observation = new ExportResponseObservation(spans.size());
+        OtlpRequestSizeLimitingSpanExporter isolator = new OtlpRequestSizeLimitingSpanExporter(delegate, LIMIT);
+
+        // when
+        CompletableResultCode result = isolator.export(spans, observation);
+
+        // then
+        assertThat(result.isSuccess()).as("isolation failure: %s", result.getFailureThrowable()).isTrue();
+        verifyNoInteractions(delegate);
+        assertThat(observation.aggregateResult())
+                .isEqualTo(new ExportResponseObservation.AggregateResult(0, 0, 0, 0, spans.size(), 0, 0, null));
+    }
+
+    @ParameterizedTest
+    @MethodSource("isolatedCases")
+    void legalSpansWhoseBatchSizeWrapsAreSentOnlyInBoundedChunks(boolean grpc, MemoryMode memoryMode) {
+        // given
+        List<SpanData> spans = Collections.nCopies(512, spanWithArraySize(56));
         HeaderCapture capture = new HeaderCapture();
         ExportResponseObservation observation = new ExportResponseObservation(spans.size());
-        try (SpanExporter delegate = exporter(grpc, memoryMode, capture);
-             ExportResponseScope.Handle ignored = ExportResponseScope.open(observation)) {
-            SpanExporter isolator = new OtlpRequestSplittingSpanExporter(delegate, LIMIT, 1, () -> 0L);
+        try (SpanExporter delegate = exporter(grpc, memoryMode, capture)) {
+            OtlpRequestSizeLimitingSpanExporter guard = new OtlpRequestSizeLimitingSpanExporter(delegate, LIMIT);
 
             // when
-            CompletableResultCode result = isolator.export(spans);
+            CompletableResultCode result = guard.export(spans, observation);
 
             // then
-            assertThat(result.isSuccess()).as("isolation failure: %s", result.getFailureThrowable()).isTrue();
-            assertThat(capture.calls).isZero();
-            assertThat(observation.aggregateResult())
-                    .isEqualTo(new ExportResponseObservation.AggregateResult(0, 0, 0, 0, spans.size()));
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(capture.lengths).hasSize(spans.size())
+                    .allSatisfy(size -> assertThat(size).isPositive().isLessThanOrEqualTo(LIMIT));
+            assertThat(capture.lengths.stream().mapToLong(Integer::longValue).sum()).isGreaterThan(1L << 32);
+            assertThat(observation.aggregateResult()).isEqualTo(
+                    new ExportResponseObservation.AggregateResult(0, 0, spans.size(), 0, 0, 0, spans.size(), null));
         }
     }
 
     private static SpanData oversizedSpan() {
-        List<String> values = Collections.nCopies(128, "漢".repeat(1000));
+        return spanWithArraySize(128);
+    }
+
+    private static SpanData positiveWrappedSpan() {
+        List<String> values = Collections.nCopies(4_269_352, "x".repeat(1000));
+        try (SdkTracerProvider provider = SdkTracerProvider.builder()
+                .setResource(Resource.empty())
+                .setSpanLimits(SpanLimits.builder().setMaxNumberOfAttributes(50).setMaxAttributeValueLength(1000).build())
+                .addSpanProcessor(SimpleSpanProcessor.create(SpanExporter.composite()))
+                .build()) {
+            Span span = provider.get("overflow").spanBuilder("overflow").setNoParent().startSpan();
+            span.setAttribute(AttributeKey.stringArrayKey("payload"), values);
+            span.end();
+            SpanData data = ((ReadableSpan) span).toSpanData();
+            assertThat(data.getAttributes().get(AttributeKey.stringArrayKey("payload"))).hasSize(values.size());
+            return data;
+        }
+    }
+
+    private static SpanData spanWithArraySize(int arraySize) {
+        List<String> values = Collections.nCopies(arraySize, "漢".repeat(1000));
         try (SdkTracerProvider provider = SdkTracerProvider.builder()
                 .setResource(Resource.empty())
                 .setSpanLimits(SpanLimits.builder().setMaxNumberOfAttributes(50).setMaxAttributeValueLength(1000).build())
@@ -107,7 +189,7 @@ class OtlpRequestSplittingSpanExporterOverflowTest {
             span.end();
             SpanData data = ((ReadableSpan) span).toSpanData();
             assertThat(data.getAttributes().size()).isEqualTo(50);
-            assertThat(data.getAttributes().get(AttributeKey.stringArrayKey("array0"))).hasSize(128);
+            assertThat(data.getAttributes().get(AttributeKey.stringArrayKey("array0"))).hasSize(arraySize);
             return data;
         }
     }
@@ -134,6 +216,7 @@ class OtlpRequestSplittingSpanExporterOverflowTest {
 
         private int calls;
         private int contentLength;
+        private final List<Integer> lengths = new ArrayList<>();
 
         @Override
         public <T> List<T> load(Class<T> spiClass) {
@@ -171,6 +254,7 @@ class OtlpRequestSplittingSpanExporterOverflowTest {
         private void capture(MessageWriter writer, Consumer<Throwable> failure) {
             calls++;
             contentLength = writer.getContentLength();
+            lengths.add(contentLength);
             failure.accept(new IOException("Oversized request captured before transmission"));
         }
     }

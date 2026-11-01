@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.exporter;
+package space.br1440.platform.tracing.otel.javaagent.exporter.boundary;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -86,7 +86,7 @@ class AttributeValueFailClosedTest {
     @MethodSource("valueShapes")
     void dropRemovesTheWholeValueAttribute(String shape, Value<?> value) {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(PASSWORD));
         Attributes input = Attributes.of(SENSITIVE, value);
 
         // when
@@ -102,7 +102,7 @@ class AttributeValueFailClosedTest {
     @MethodSource("valueShapes")
     void maskRemovesTheWholeValueAttribute(String shape, Value<?> value) {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(alwaysMask()));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(alwaysMask()));
         Attributes input = Attributes.of(NEUTRAL, value);
 
         // when
@@ -117,7 +117,7 @@ class AttributeValueFailClosedTest {
     @MethodSource("valueShapes")
     void hashRemovesTheWholeValueAttribute(String shape, Value<?> value) {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(alwaysHash()), "test-hmac-key");
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(alwaysHash()), "test-hmac-key");
         Attributes input = Attributes.of(NEUTRAL, value);
 
         // when
@@ -132,7 +132,7 @@ class AttributeValueFailClosedTest {
     @MethodSource("valueShapes")
     void truncateRemovesTheWholeValueAttribute(String shape, Value<?> value) {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(IP));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(IP));
         AttributeKey<Value<?>> key = AttributeKey.valueKey("client.address");
         Attributes input = Attributes.of(key, value);
 
@@ -164,7 +164,7 @@ class AttributeValueFailClosedTest {
     @MethodSource("valueShapes")
     void keepCannotAuthorizeComplexValue(String shape, Value<?> value) {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD, IP));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(PASSWORD, IP));
         Attributes input = Attributes.of(NEUTRAL, value);
 
         // when
@@ -180,7 +180,7 @@ class AttributeValueFailClosedTest {
     @DisplayName("Neighbouring attributes survive the removal regardless of the position of the VALUE key")
     void neighbouringAttributesSurviveTheRemoval() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(PASSWORD));
         Attributes input = Attributes.builder()
                 .put(AttributeKey.stringKey("a.first"), "keep-me")
                 .put(SENSITIVE, Value.of("supersecret"))
@@ -200,7 +200,7 @@ class AttributeValueFailClosedTest {
     @DisplayName("VALUE remains fail-closed when no attribute rules are configured")
     void valueIsRemovedWithoutConfiguredRules() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of());
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of());
         Attributes input = Attributes.of(NEUTRAL, Value.of("supersecret"));
 
         // when

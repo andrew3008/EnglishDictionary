@@ -20,29 +20,6 @@ public enum ExportPipelineLogEvent implements AgentLogEventType {
             )
     ),
 
-    MULTIPLE_SPAN_EXPORTERS_FALLBACK(
-            noCause(
-                    AgentEventCode.EXPORT_FACTORY, WARN,
-                    "Multiple SpanExporters; falling back to stock BatchSpanProcessor",
-                    AgentLogField.COUNT
-            )
-    ),
-
-    CAPTURED_SPAN_EXPORTER_NULL_FALLBACK(
-            noCause(
-                    AgentEventCode.EXPORT_FACTORY, WARN,
-                    "Captured SpanExporter is null; falling back"
-            )
-    ),
-
-    NON_BATCH_SPAN_PROCESSOR_FALLBACK(
-            noCause(
-                    AgentEventCode.EXPORT_FACTORY, WARN,
-                    "Pipeline processor is not BatchSpanProcessor; falling back",
-                    AgentLogField.TYPE
-            )
-    ),
-
     STOCK_BATCH_SPAN_PROCESSOR_SHUTDOWN_UNSUCCESSFUL(
             noCause(
                     AgentEventCode.EXPORT_FACTORY, WARN,
@@ -99,14 +76,6 @@ public enum ExportPipelineLogEvent implements AgentLogEventType {
             requiresCause(
                     AgentEventCode.EXPORT_DROP_OLDEST, WARN,
                     "toSpanData() failed"
-            )
-    ),
-
-    MAX_EXPORT_BATCH_SIZE_CLAMPED(
-            noCause(
-                    AgentEventCode.EXPORT_DROP_OLDEST, WARN,
-                    "Exceeds maxQueueSize; clamped to queue size",
-                    AgentLogField.NAME
             )
     );
 

@@ -84,6 +84,43 @@ class TraceResponseHeaderWebFilterTest {
     }
 
     @Test
+    void edgeResolvedRequestIdReplacesPreSeededReactorRequestId() {
+        withReactiveIdentityPropagation(runtime -> {
+            TraceResponseHeaderWebFilter filter = filterWith(traceOperationsWithoutTraceId());
+            MockServerWebExchange exchange = exchangeFor("/preseeded", PlatformHeaders.X_REQUEST_ID, "edge-request");
+            WebFilterChain chain = ignored -> Mono.fromRunnable(() ->
+                    assertThat(runtime.currentRequestId()).contains("edge-request")
+            );
+
+            filter.filter(exchange, chain)
+                    .contextWrite(context -> context.put(
+                            ReactiveIdentityContextPropagation.KEY,
+                            new ReactiveIdentityContextPropagation.IdentityState(
+                                    "preseeded-request", null, false, false)))
+                    .block();
+        });
+    }
+
+    @Test
+    void absentHeaderReplacesPreSeededReactorRequestId() {
+        withReactiveIdentityPropagation(runtime -> {
+            TraceResponseHeaderWebFilter filter = filterWith(traceOperationsWithoutTraceId());
+            MockServerWebExchange exchange = exchangeFor("/preseeded-absent");
+            WebFilterChain chain = ignored -> Mono.fromRunnable(() -> {
+                assertThat(runtime.currentRequestId()).isPresent();
+                assertThat(runtime.currentRequestId().orElseThrow()).isNotEqualTo("preseeded-request");
+            });
+
+            filter.filter(exchange, chain)
+                    .contextWrite(context -> context.put(
+                            ReactiveIdentityContextPropagation.KEY,
+                            new ReactiveIdentityContextPropagation.IdentityState(
+                                    "preseeded-request", null, false, false)))
+                    .block();
+        });
+    }
+
+    @Test
     void ignoresValidInboundCorrelationIdWhenAcceptInboundDisabled() {
         withReactiveIdentityPropagation(runtime -> {
             // given

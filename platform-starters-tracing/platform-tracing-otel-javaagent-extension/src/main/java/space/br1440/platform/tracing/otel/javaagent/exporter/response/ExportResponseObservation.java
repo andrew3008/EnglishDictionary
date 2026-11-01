@@ -91,16 +91,24 @@ public final class ExportResponseObservation {
                                   int rejected,
                                   int transportDropped,
                                   int undetermined,
-                                  int locallyDropped) {
+                                  int locallyDropped,
+                                  int measurementFailed,
+                                  int requests,
+                                  @Nullable Throwable measurementCause) {
 
         public AggregateResult {
-            if (accepted < 0 || rejected < 0 || transportDropped < 0 || undetermined < 0 || locallyDropped < 0) {
+            if (accepted < 0 || rejected < 0 || transportDropped < 0 || undetermined < 0 || locallyDropped < 0
+                    || measurementFailed < 0) {
                 throw new IllegalArgumentException("Aggregate span counts must not be negative");
+            }
+
+            if (requests < 0) {
+                throw new IllegalArgumentException("Aggregate request count must not be negative");
             }
         }
 
         public long total() {
-            return (long) accepted + rejected + transportDropped + undetermined + locallyDropped;
+            return (long) accepted + rejected + transportDropped + undetermined + locallyDropped + measurementFailed;
         }
     }
 

@@ -9,7 +9,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import jakarta.annotation.Nonnull;
 
+import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.exporter.guard.OtlpRequestSizeLimitingSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
@@ -49,7 +51,14 @@ public final class PlatformExportProcessorFactory {
 
         rejectForeignSafeExporter(exporter);
 
-        SafeSpanExporter safeExporter = new SafeSpanExporter(exporter, acceptedPolicy, scrubbingRuntime);
+        SafeSpanExporter safeExporter = new SafeSpanExporter(
+                new OtlpRequestSizeLimitingSpanExporter(
+                        exporter,
+                        Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)
+                ),
+                acceptedPolicy,
+                scrubbingRuntime
+        );
         scrubbingRuntime.acknowledgeExporterWrapped();
 
         ReplacementAwareSpanExporter stockExporter = new ReplacementAwareSpanExporter(safeExporter);
@@ -87,21 +96,14 @@ public final class PlatformExportProcessorFactory {
 
     private SpanProcessor selectExportProcessor(SpanProcessor processor,
                                                 ConfigProperties config) {
-        if (capturedExporters.size() > 1) {
-            log.log(ExportPipelineLogEvent.MULTIPLE_SPAN_EXPORTERS_FALLBACK,
-                    fields -> fields.putLong(AgentLogField.COUNT, capturedExporters.size()));
-            return processor;
-        }
-
-        if (capturedExporters.isEmpty()) {
-            log.log(ExportPipelineLogEvent.CAPTURED_SPAN_EXPORTER_NULL_FALLBACK);
-            return processor;
+        if (capturedExporters.size() != 1) {
+            throw new IllegalStateException(
+                    "Expected exactly one captured span exporter, found " + capturedExporters.size()
+            );
         }
 
         if (!(processor instanceof BatchSpanProcessor stockProcessor)) {
-            log.log(ExportPipelineLogEvent.NON_BATCH_SPAN_PROCESSOR_FALLBACK,
-                    fields -> fields.putString(AgentLogField.TYPE, processor.getClass().getName()));
-            return processor;
+            throw new IllegalStateException("Expected BatchSpanProcessor, found " + processor.getClass().getName());
         }
 
         return replaceStockProcessor(stockProcessor, capturedExporters.getFirst(), config);
@@ -136,10 +138,6 @@ public final class PlatformExportProcessorFactory {
     }
 
     private void markExportPathProtected() {
-        if (capturedExporters.isEmpty()) {
-            return;
-        }
-
         jmxRegistrar.extensionReadiness().markInstalled(PlatformExtensionCapability.EXPORT_PATH_PROTECTED);
         scrubbingRuntime.acknowledgeExportPathProtected();
     }

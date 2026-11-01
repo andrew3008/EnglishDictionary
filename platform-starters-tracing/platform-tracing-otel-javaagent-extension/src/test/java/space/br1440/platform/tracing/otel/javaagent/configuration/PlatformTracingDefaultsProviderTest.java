@@ -9,6 +9,31 @@ import org.junit.jupiter.api.Test;
 class PlatformTracingDefaultsProviderTest {
 
     @Test
+    void supply_disables_non_trace_signals_without_disabling_mdc() {
+        // given
+        PlatformTracingDefaultsProvider provider = new PlatformTracingDefaultsProvider();
+
+        // when
+        Map<String, String> defaults = provider.supply();
+
+        // then
+        assertThat(defaults)
+                .containsEntry("otel.metrics.exporter", "none")
+                .containsEntry("otel.logs.exporter", "none")
+                .containsEntry("otel.instrumentation.logback-appender.enabled", "false")
+                .containsEntry("otel.instrumentation.log4j-appender.enabled", "false")
+                .containsEntry("otel.instrumentation.java-util-logging.enabled", "false")
+                .containsEntry("otel.instrumentation.jboss-logmanager-appender.enabled", "false")
+                .containsEntry("otel.instrumentation.runtime-telemetry.enabled", "false")
+                .containsEntry("otel.jmx.enabled", "false")
+                .doesNotContainKeys(
+                        "otel.instrumentation.logback-mdc.enabled",
+                        "otel.instrumentation.log4j-mdc.enabled", "otel.instrumentation.log4j-context-data.enabled",
+                        "otel.instrumentation.common.default-enabled", "otel.exporter.otlp.protocol"
+                );
+    }
+
+    @Test
     void supply_does_not_select_an_sdk_sampler() {
         // when
         Map<String, String> defaults = new PlatformTracingDefaultsProvider().supply();

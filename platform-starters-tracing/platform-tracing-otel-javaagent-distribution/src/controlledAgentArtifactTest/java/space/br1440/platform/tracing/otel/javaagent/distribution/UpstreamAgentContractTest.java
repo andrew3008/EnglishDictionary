@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.zip.ZipFile;
 
 import org.junit.jupiter.api.Test;
 
@@ -20,6 +21,40 @@ class UpstreamAgentContractTest {
             "inst/META-INF/services/io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider";
     private static final String EXPECTED_PIN_FORMAT_VERSION = "1";
     private static final String PROVIDER_KEY_PREFIX = "provider.";
+    private static final String REQUEST_MARSHALER_ENTRY =
+            "inst/io/opentelemetry/exporter/internal/otlp/traces/LowAllocationTraceRequestMarshaler.classdata";
+    private static final String DECLARATIVE_CONFIGURATION_SERVICE =
+            "META-INF/services/io.opentelemetry.sdk.autoconfigure.declarativeconfig.DeclarativeConfigurationProvider";
+
+    @Test
+    void controlled_agent_contains_the_request_size_marshaler() throws IOException {
+        // given
+        Path agent = AgentArchive.requiredPath("platformTracing.controlledAgentJar");
+
+        // when
+        try (ZipFile archive = new ZipFile(agent.toFile(), StandardCharsets.UTF_8)) {
+            // then
+            assertThat(archive.getEntry(REQUEST_MARSHALER_ENTRY)).isNotNull();
+        }
+    }
+
+    @Test
+    void controlled_agent_and_extension_cannot_enable_declarative_configuration_through_spi() throws IOException {
+        // given
+        List<Path> artifacts = List.of(
+                AgentArchive.requiredPath("platformTracing.controlledAgentJar"),
+                AgentArchive.requiredPath("platformTracing.extensionJar"));
+
+        // when
+        for (Path artifact : artifacts) {
+            try (ZipFile archive = new ZipFile(artifact.toFile(), StandardCharsets.UTF_8)) {
+                // then
+                assertThat(archive.stream().map(entry -> entry.getName()))
+                        .as("Declarative configuration SPI must be absent from %s", artifact)
+                        .noneMatch(name -> name.endsWith(DECLARATIVE_CONFIGURATION_SERVICE));
+            }
+        }
+    }
 
     @Test
     void pin_matches_the_resolved_otel_java_agent() throws IOException {

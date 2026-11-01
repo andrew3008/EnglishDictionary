@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayDeque;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
@@ -17,65 +16,77 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.exporter.guard.OtlpRequestSizeLimitingSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseObservation;
-import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseObservation.AggregateResult;
+import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseObservation.Outcome;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseScope;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.sdk.common.CompletableResultCode;
+import io.opentelemetry.sdk.trace.data.DelegatingSpanData;
+import io.opentelemetry.sdk.trace.data.EventData;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 
 @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class SafeSpanExporterAggregateTest {
 
+    private static final int REQUEST_LIMIT = 512;
+
     @Test
     void creditsEveryAggregateCategoryDespiteTransportFailure() {
         // given
-        AggregateResult outcome = new AggregateResult(2, 1, 1, 1, 1);
-        try (SafeSpanExporter safe = exporter(new Step(outcome, CompletableResultCode.ofFailure()))) {
+        try (SafeSpanExporter safe = exporter(accepted(), accepted(), rejected(), failed(), undetermined())) {
             // when
-            CompletableResultCode result = safe.export(batch(6));
+            CompletableResultCode result = safe.export(List.of(span(), span(), span(), span(), span(),
+                    oversized(), unmeasurable(new IllegalStateException("sensitive detail"))));
 
             // then
             assertThat(result.isSuccess()).isFalse();
-            assertThat(safe.getExportBatches()).isEqualTo(1);
-            assertThat(safe.getExportFailures()).isEqualTo(1);
-            assertThat(safe.getExportedSpans()).isEqualTo(2);
-            assertThat(safe.getRejectedSpans()).isEqualTo(1);
-            assertThat(safe.getDroppedSpans()).isEqualTo(1);
-            assertThat(safe.getOversizedSpansDropped()).isEqualTo(1);
-            assertThat(safe.getAcceptedUnknownBatches()).isEqualTo(1);
-            assertThat(safe.getPartialSuccessBatches()).isEqualTo(1);
-            assertThat(safe.metricsSnapshot()).containsEntry("oversized_spans_dropped", 1L);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCHES, 0L).longValue()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isEqualTo(2);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_REJECTED_SPANS, 0L).longValue()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_OVERSIZED_SPANS_DROPPED, 0L).longValue()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SIZE_MEASUREMENT_FAILURES, 0L).longValue()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SPLIT_EXPORT_BATCHES, 0L).longValue()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_ACCEPTED_UNKNOWN_BATCHES, 0L).longValue()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_PARTIAL_SUCCESS_BATCHES, 0L).longValue()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot())
+                    .containsEntry("oversized_spans_dropped", 1L)
+                    .containsEntry("size_measurement_failures", 1L)
+                    .containsEntry("split_export_batches", 1L);
         }
     }
 
     @Test
     void localDropsHaveSeparateAccountingAndNumericOnlyDiagnostic() {
         // given
-        SpanData input = ExporterBoundaryTestSupport.baseSpan("sensitive-operation").build();
-        try (SafeSpanExporter safe = exporter(new Step(new AggregateResult(0, 0, 0, 0, 2),
-                CompletableResultCode.ofSuccess()));
-             AgentLogCapture capture = AgentLogCapture.installed()) {
+        try (SafeSpanExporter safe = exporter(); AgentLogCapture capture = AgentLogCapture.installed()) {
             // when
-            CompletableResultCode result = safe.export(List.of(input, input));
+            CompletableResultCode result = safe.export(List.of(oversized(), oversized()));
 
             // then
             assertThat(result.isSuccess()).isTrue();
-            assertThat(safe.getOversizedSpansDropped()).isEqualTo(2);
-            assertThat(safe.getDroppedSpans()).isZero();
-            assertThat(safe.getExportedSpans()).isZero();
-            assertThat(safe.getExportFailures()).isZero();
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_OVERSIZED_SPANS_DROPPED, 0L).longValue()).isEqualTo(2);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isZero();
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isZero();
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isZero();
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SIZE_MEASUREMENT_FAILURES, 0L).longValue()).isZero();
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SPLIT_EXPORT_BATCHES, 0L).longValue()).isZero();
             assertThat(capture.events())
                     .filteredOn(event -> "SAFE_EXPORT_OVERSIZED_SPAN_DROPPED".equals(event.eventName()))
                     .singleElement().satisfies(event -> {
                         assertThat(event.level()).isEqualTo(AgentLogLevel.WARN);
-                        assertThat(event.fields()).containsOnlyKeys("exporterType", "count", "limitBytes");
+                        assertThat(event.fields()).containsOnlyKeys("count", "limitBytes");
                         assertThat(event.fields()).containsEntry("count", "2");
                         assertThat(event.fields()).containsEntry("limitBytes",
                                 Long.toString(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES));
@@ -86,53 +97,88 @@ class SafeSpanExporterAggregateTest {
     }
 
     @Test
-    void mixedFailureAndLocalDropsKeepTheRecoveryEpisodeOpen() {
+    void measurementFailuresHaveSeparateAccountingAndKeepRecoveryOpen() {
         // given
-        try (SafeSpanExporter safe = exporter(
-                new Step(new AggregateResult(0, 0, 2, 0, 0), CompletableResultCode.ofFailure()),
-                new Step(new AggregateResult(1, 0, 1, 0, 0), CompletableResultCode.ofFailure()),
-                new Step(new AggregateResult(0, 0, 0, 0, 2), CompletableResultCode.ofSuccess()),
-                new Step(new AggregateResult(1, 1, 0, 0, 0), CompletableResultCode.ofSuccess()));
+        IllegalArgumentException firstCause = new IllegalArgumentException("sensitive-operation");
+        try (SafeSpanExporter safe = exporter(failed(), accepted());
+             AgentLogCapture capture = AgentLogCapture.installed()) {
+            safe.export(List.of(span()));
+
+            // when
+            CompletableResultCode result = safe.export(List.of(unmeasurable(firstCause),
+                    unmeasurable(new NullPointerException("sensitive second cause"))));
+
+            // then
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SIZE_MEASUREMENT_FAILURES, 0L).longValue()).isEqualTo(2);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_OVERSIZED_SPANS_DROPPED, 0L).longValue()).isZero();
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isZero();
+            assertThat(recoveryEvents(capture)).isEmpty();
+            assertThat(capture.events())
+                    .filteredOn(event -> "SAFE_EXPORT_SIZE_MEASUREMENT_FAILED".equals(event.eventName()))
+                    .singleElement().satisfies(event -> {
+                        assertThat(event.level()).isEqualTo(AgentLogLevel.WARN);
+                        assertThat(event.fields()).containsOnlyKeys("count");
+                        assertThat(event.fields()).containsEntry("count", "2");
+                        assertThat(event.errorType()).isEqualTo(IllegalArgumentException.class.getName());
+                        assertThat(event.throwableDigest()).contains(IllegalArgumentException.class.getName());
+                    });
+            assertThat(capture.rendered()).doesNotContain("sensitive-operation", "sensitive second cause");
+
+            // when
+            safe.export(List.of(span()));
+
+            // then
+            assertThat(recoveryEvents(capture)).singleElement()
+                    .satisfies(event -> assertThat(event.fields()).containsEntry("failures", "1"));
+        }
+    }
+
+    @Test
+    void mixedFailureAndLocalDropsKeepTheOutageOpen() {
+        // given
+        try (SafeSpanExporter safe = exporter(failed(), failed(), accepted(), failed(), accepted(), rejected());
              AgentLogCapture capture = AgentLogCapture.installed()) {
             // when
-            safe.export(batch(2));
-            safe.export(batch(2));
-            safe.export(batch(2));
+            safe.export(List.of(span(), span()));
+            safe.export(List.of(span(), span()));
+            safe.export(List.of(oversized(), oversized()));
 
             // then
             assertThat(recoveryEvents(capture)).isEmpty();
-            assertThat(safe.getExportFailures()).isEqualTo(2);
-            assertThat(safe.getDroppedSpans()).isEqualTo(3);
-            assertThat(safe.getExportedSpans()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isEqualTo(2);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isEqualTo(3);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isEqualTo(1);
 
             // when
-            safe.export(batch(2));
+            safe.export(List.of(span(), span()));
 
             // then
             assertThat(recoveryEvents(capture)).singleElement()
                     .satisfies(event -> assertThat(event.fields()).containsEntry("failures", "2"));
-            assertThat(safe.getExportedSpans()).isEqualTo(2);
-            assertThat(safe.getRejectedSpans()).isEqualTo(1);
-            assertThat(safe.getOversizedSpansDropped()).isEqualTo(2);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isEqualTo(2);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_REJECTED_SPANS, 0L).longValue()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_OVERSIZED_SPANS_DROPPED, 0L).longValue()).isEqualTo(2);
         }
     }
 
     @ParameterizedTest
     @MethodSource("successfulResponses")
-    void successfulObservedLeafCanCloseRecovery(AggregateResult outcome) {
+    void successfulObservedLeafCanCloseRecovery(Step outcome) {
         // given
-        try (SafeSpanExporter safe = exporter(
-                new Step(new AggregateResult(0, 0, 1, 0, 0), CompletableResultCode.ofFailure()),
-                new Step(outcome, CompletableResultCode.ofSuccess()));
+        try (SafeSpanExporter safe = exporter(failed(), outcome);
              AgentLogCapture capture = AgentLogCapture.installed()) {
-            safe.export(batch(1));
+            safe.export(List.of(span()));
 
             // when
-            safe.export(batch(1));
+            safe.export(List.of(span()));
 
             // then
             assertThat(recoveryEvents(capture)).hasSize(1);
-            assertThat(safe.getExportFailures()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SPLIT_EXPORT_BATCHES, 0L).longValue()).isZero();
         }
     }
 
@@ -140,34 +186,71 @@ class SafeSpanExporterAggregateTest {
     void lateCompletionAppliesAggregateOnlyOnce() {
         // given
         CompletableResultCode pending = new CompletableResultCode();
-        try (SafeSpanExporter safe = exporter(new Step(new AggregateResult(1, 0, 0, 0, 1), pending))) {
-            CompletableResultCode returned = safe.export(batch(2));
+        try (SafeSpanExporter safe = exporter(new Step(Outcome.ALL_ACCEPTED, pending))) {
+            CompletableResultCode returned = safe.export(List.of(span(), oversized()));
+            assertThat(returned.isDone()).isFalse();
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_OVERSIZED_SPANS_DROPPED, 0L).longValue()).isZero();
 
             // when
             pending.succeed();
             pending.succeed();
 
             // then
-            assertThat(returned).isSameAs(pending);
-            assertThat(safe.getExportedSpans()).isEqualTo(1);
-            assertThat(safe.getOversizedSpansDropped()).isEqualTo(1);
-            assertThat(safe.getExportFailures()).isZero();
+            assertThat(returned.isSuccess()).isTrue();
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_OVERSIZED_SPANS_DROPPED, 0L).longValue()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isZero();
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SPLIT_EXPORT_BATCHES, 0L).longValue()).isZero();
         }
     }
 
-    private static Stream<AggregateResult> successfulResponses() {
-        return Stream.of(new AggregateResult(1, 0, 0, 0, 0),
-                new AggregateResult(0, 1, 0, 0, 0), new AggregateResult(0, 0, 0, 1, 0));
+    private static Stream<Step> successfulResponses() {
+        return Stream.of(accepted(), rejected(), undetermined());
+    }
+
+    private static Step accepted() {
+        return new Step(Outcome.ALL_ACCEPTED, CompletableResultCode.ofSuccess());
+    }
+
+    private static Step rejected() {
+        return new Step(Outcome.PARTIALLY_REJECTED, CompletableResultCode.ofSuccess());
+    }
+
+    private static Step undetermined() {
+        return new Step(Outcome.NOT_DETERMINED, CompletableResultCode.ofSuccess());
+    }
+
+    private static Step failed() {
+        return new Step(Outcome.NOT_OBSERVED, CompletableResultCode.ofFailure());
     }
 
     private static SafeSpanExporter exporter(Step... steps) {
-        return new SafeSpanExporter(new SequenceExporter(steps),
+        return new SafeSpanExporter(
+                new OtlpRequestSizeLimitingSpanExporter(new SequenceExporter(steps), REQUEST_LIMIT),
                 TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
-                ScrubbingRuntimeTestFixtures.disabled());
+                ScrubbingRuntimeTestFixtures.disabled()
+        );
     }
 
-    private static Collection<SpanData> batch(int size) {
-        return Collections.nCopies(size, ExporterBoundaryTestSupport.baseSpan("operation").build());
+    private static SpanData span() {
+        return ExporterTestSpans.baseSpan("operation")
+                .setAttributes(Attributes.of(AttributeKey.stringKey("payload"), "x".repeat(300)))
+                .build();
+    }
+
+    private static SpanData oversized() {
+        return ExporterTestSpans.baseSpan("sensitive-operation")
+                .setAttributes(Attributes.of(AttributeKey.stringKey("payload"), "x".repeat(1024)))
+                .build();
+    }
+
+    private static SpanData unmeasurable(RuntimeException failure) {
+        return new DelegatingSpanData(span()) {
+            @Override
+            public List<EventData> getEvents() {
+                throw failure;
+            }
+        };
     }
 
     private static List<CapturedLogEvent> recoveryEvents(AgentLogCapture capture) {
@@ -175,7 +258,7 @@ class SafeSpanExporterAggregateTest {
                 .filter(event -> "SAFE_EXPORT_SUCCEEDED_AFTER_FAILURES".equals(event.eventName())).toList();
     }
 
-    private record Step(AggregateResult outcome, CompletableResultCode result) {
+    private record Step(Outcome outcome, CompletableResultCode result) {
     }
 
     private static final class SequenceExporter implements SpanExporter {
@@ -190,7 +273,12 @@ class SafeSpanExporterAggregateTest {
         public CompletableResultCode export(Collection<SpanData> spans) {
             Step step = steps.removeFirst();
             ExportResponseObservation observation = Objects.requireNonNull(ExportResponseScope.current());
-            observation.recordAggregate(step.outcome());
+            switch (step.outcome()) {
+                case ALL_ACCEPTED -> observation.recordAllAccepted();
+                case PARTIALLY_REJECTED -> observation.recordRejected(1);
+                case NOT_DETERMINED -> observation.recordNotDetermined();
+                case NOT_OBSERVED -> { }
+            }
             return step.result();
         }
 

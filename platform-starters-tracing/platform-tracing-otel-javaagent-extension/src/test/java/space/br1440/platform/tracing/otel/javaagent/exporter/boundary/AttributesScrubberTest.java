@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.exporter;
+package space.br1440.platform.tracing.otel.javaagent.exporter.boundary;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,7 +27,7 @@ class AttributesScrubberTest {
     @DisplayName("No rules configured: attributes pass through untouched, changed=false")
     void noRulesMeansIdentity() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of());
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of());
         Attributes input = Attributes.of(AttributeKey.stringKey("user.email"), "ivan@example.com");
 
         // when
@@ -42,7 +42,7 @@ class AttributesScrubberTest {
     @DisplayName("DROP removes the attribute key entirely (nested surfaces do not use \"\")")
     void dropRemovesKey() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(PASSWORD));
         Attributes input = Attributes.of(
                 AttributeKey.stringKey("db.password"), "supersecret",
                 AttributeKey.stringKey("db.statement"), "SELECT 1");
@@ -60,7 +60,7 @@ class AttributesScrubberTest {
     @DisplayName("HASH without an HMAC key falls back to MASK (\"***\"), never keeps the raw value")
     void hashWithoutHmacKeyFallsBackToMask() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(EMAIL));
         Attributes input = Attributes.of(AttributeKey.stringKey("user.email"), "ivan@example.com");
 
         // when
@@ -75,7 +75,7 @@ class AttributesScrubberTest {
     @DisplayName("HASH with an HMAC key produces a deterministic digest, never the raw value")
     void hashWithHmacKeyProducesADigest() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL), "test-hmac-key");
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(EMAIL), "test-hmac-key");
         Attributes input = Attributes.of(AttributeKey.stringKey("user.email"), "ivan@example.com");
 
         // when
@@ -91,7 +91,7 @@ class AttributesScrubberTest {
     @DisplayName("TRUNCATE (IP address) collapses to a /24-style prefix, same as span-attribute plane")
     void truncateAppliesIpPrefixTruncation() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(IP));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(IP));
         Attributes input = Attributes.of(AttributeKey.stringKey("client.address"), "10.1.2.3");
 
         // when
@@ -119,7 +119,7 @@ class AttributesScrubberTest {
                 return ScrubbingDecision.mask(name());
             }
         };
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(alwaysMask));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(alwaysMask));
         Attributes input = Attributes.of(AttributeKey.longKey("some.counter"), 123456L);
 
         // when
@@ -134,7 +134,7 @@ class AttributesScrubberTest {
     @DisplayName("DROP on a non-string attribute removes the key entirely (contract is uniform across types)")
     void dropOnNonStringAttributeRemovesKey() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(PASSWORD));
         Attributes input = Attributes.of(AttributeKey.longKey("db.password"), 123456L);
 
         // when
@@ -150,7 +150,7 @@ class AttributesScrubberTest {
     void dropOnStringArrayAttributeRemovesKey() {
         // given
         AttributeKey<List<String>> key = AttributeKey.stringArrayKey("db.password");
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(PASSWORD));
         Attributes input = Attributes.of(key, List.of("secret-one", "secret-two"));
 
         // when
@@ -165,7 +165,7 @@ class AttributesScrubberTest {
     @DisplayName("TRUNCATE on a numeric attribute keeps the value: the matrix maps numeric TRUNCATE to KEEP")
     void truncateOnNumericAttributeKeepsTheValue() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(IP));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(IP));
         Attributes input = Attributes.of(AttributeKey.longKey("client.address"), 167838211L);
 
         // when
@@ -183,7 +183,7 @@ class AttributesScrubberTest {
     @DisplayName("TRUNCATE on a boolean attribute keeps the value")
     void truncateOnBooleanAttributeKeepsTheValue() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(IP));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(IP));
         Attributes input = Attributes.of(AttributeKey.booleanKey("client.address.internal"), true);
 
         // when
@@ -198,7 +198,7 @@ class AttributesScrubberTest {
     @DisplayName("TRUNCATE keeps numeric and boolean arrays too, element-for-element")
     void truncateOnNumericAndBooleanArraysKeepsEveryElement() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(IP));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(IP));
         AttributeKey<List<Long>> longs = AttributeKey.longArrayKey("client.address.parts");
         AttributeKey<List<Double>> doubles = AttributeKey.doubleArrayKey("client.address.weights");
         AttributeKey<List<Boolean>> booleans = AttributeKey.booleanArrayKey("client.address.flags");
@@ -223,7 +223,7 @@ class AttributesScrubberTest {
     @DisplayName("Non-TRUNCATE actions still collapse numeric arrays to a sentinel of the same length")
     void maskOnNumericArrayStillCollapsesToSentinel() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(PASSWORD));
         AttributeKey<List<Long>> longs = AttributeKey.longArrayKey("db.password.parts");
         Attributes input = Attributes.of(longs, List.of(7L, 8L, 9L));
 
@@ -241,7 +241,7 @@ class AttributesScrubberTest {
     @DisplayName("Clean attributes are returned as the same instance: no builder allocation on the clean path")
     void cleanAttributesArePassedThroughByIdentity() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL, PASSWORD, IP));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(EMAIL, PASSWORD, IP));
         Attributes input = Attributes.of(
                 AttributeKey.stringKey("http.route"), "/orders/{id}",
                 AttributeKey.longKey("http.status_code"), 200L);
@@ -258,7 +258,7 @@ class AttributesScrubberTest {
     @DisplayName("Entries read before the first change are preserved when the lazy copy starts")
     void lazyCopyPreservesThePrefixReadBeforeTheFirstChange() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(PASSWORD));
         Attributes input = Attributes.builder()
                 .put(AttributeKey.stringKey("a.first"), "keep-me")
                 .put(AttributeKey.stringKey("db.password"), "supersecret")
@@ -279,7 +279,7 @@ class AttributesScrubberTest {
     @DisplayName("Empty attributes short-circuit without allocating a builder")
     void emptyAttributesShortCircuit() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(EMAIL));
 
         // when
         AttributesScrubber.Result result = AttributesScrubber.scrub(Attributes.empty(), runtime);

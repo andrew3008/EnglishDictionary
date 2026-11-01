@@ -35,7 +35,7 @@ import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationEx
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSessionFactory;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
-import space.br1440.platform.tracing.otel.javaagent.exporter.OtlpRequestSizeCustomizer;
+import space.br1440.platform.tracing.otel.javaagent.exporter.guard.OtlpRequestSizeCustomizer;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;

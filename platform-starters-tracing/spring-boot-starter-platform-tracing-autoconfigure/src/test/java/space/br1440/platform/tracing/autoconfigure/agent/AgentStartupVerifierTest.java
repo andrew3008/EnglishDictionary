@@ -13,6 +13,8 @@ import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
@@ -269,11 +271,12 @@ class AgentStartupVerifierTest {
                         .isEqualTo(AgentReadinessCoherenceGuard.ANCHOR_NOT_PINNED));
     }
 
-    @Test
-    void rejectsFailedSnapshot() {
+    @ParameterizedTest
+    @ValueSource(strings = {"SPI_DISCOVERY_INCOMPLETE", "CONFIGURATION_INITIALIZATION_FAILED"})
+    void rejectsFailedSnapshot(String failureCode) {
         // given
         MBeanServer server = MBeanServerFactory.createMBeanServer();
-        AgentReadinessSnapshot failed = ReadinessTestFixtures.failedSnapshot("SPI_DISCOVERY_INCOMPLETE");
+        AgentReadinessSnapshot failed = ReadinessTestFixtures.failedSnapshot(failureCode);
         ReadinessTestFixtures.register(server, () -> ReadinessTestFixtures.composite(failed));
         AgentStartupVerifier verifier = verifier(server);
 
@@ -282,7 +285,7 @@ class AgentStartupVerifierTest {
         assertThatIllegalStateException()
                 .isThrownBy(() -> verifier.verify(true, true, false, true))
                 .withMessageContaining("runtimeState=EXTENSION_FAILED")
-                .withMessageContaining("reason=SPI_DISCOVERY_INCOMPLETE");
+                .withMessageContaining("reason=" + failureCode);
     }
 
     @Test

@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.exporter;
+package space.br1440.platform.tracing.otel.javaagent.exporter.boundary;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -36,7 +36,7 @@ class BoundaryTextPolicyTest {
     @DisplayName("scrubName: null/empty input is returned as-is (never crashes, never redacted needlessly)")
     void scrubNamePassesThroughNullAndEmpty() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(EMAIL));
 
         // when/then
         assertThat(BoundaryTextPolicy.scrubSpanName(null, runtime).value()).isNull();
@@ -47,7 +47,7 @@ class BoundaryTextPolicyTest {
     @DisplayName("scrubName: KEEP leaves the name untouched")
     void scrubNameKeepsSafeNames() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(EMAIL));
 
         // when/then
         assertThat(BoundaryTextPolicy.scrubSpanName("GET /orders/{id}", runtime).value()).isEqualTo("GET /orders/{id}");
@@ -57,7 +57,7 @@ class BoundaryTextPolicyTest {
     @DisplayName("scrubName: HASH is forbidden for names and downgrades to <redacted>, never a raw digest")
     void scrubNameDowngradesHashToRedacted() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL), "some-hmac-key");
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(EMAIL), "some-hmac-key");
 
         // when
         String result = BoundaryTextPolicy.scrubSpanName("contact ivan@example.com", runtime).value();
@@ -71,7 +71,7 @@ class BoundaryTextPolicyTest {
     @DisplayName("scrubName: DROP never produces an empty/null name, downgrades to <redacted>")
     void scrubNameDowngradesDropToRedactedNeverEmpty() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(JWT));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(JWT));
 
         // when
         String result = BoundaryTextPolicy.scrubSpanName("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.signature", runtime).value();
@@ -84,7 +84,7 @@ class BoundaryTextPolicyTest {
     @DisplayName("scrubName: unbounded TRUNCATE (IP prefix rule) downgrades to <redacted>")
     void scrubNameDowngradesIpTruncateToRedacted() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(UNBOUNDED_TRUNCATE));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(UNBOUNDED_TRUNCATE));
 
         // when
         String result = BoundaryTextPolicy.scrubSpanName("connect from 10.1.2.3", runtime).value();
@@ -113,7 +113,7 @@ class BoundaryTextPolicyTest {
                         : ScrubbingDecision.keep();
             }
         };
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(eventNameOnly));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(eventNameOnly));
 
         // when/then
         assertThat(BoundaryTextPolicy.scrubEventName("exception", runtime).value())
@@ -127,7 +127,7 @@ class BoundaryTextPolicyTest {
     @DisplayName("scrubStatusDescription: DROP becomes empty string, distinct from name's <redacted>")
     void scrubStatusDescriptionDropBecomesEmpty() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(JWT));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(JWT));
 
         // when
         String result = BoundaryTextPolicy.scrubStatusDescription(
@@ -141,7 +141,7 @@ class BoundaryTextPolicyTest {
     @DisplayName("scrubStatusDescription: HASH is forbidden and downgrades to <redacted>")
     void scrubStatusDescriptionDowngradesHashToRedacted() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL), "some-hmac-key");
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(EMAIL), "some-hmac-key");
 
         // when
         String result = BoundaryTextPolicy.scrubStatusDescription("failed for ivan@example.com", runtime).value();
@@ -154,7 +154,7 @@ class BoundaryTextPolicyTest {
     @DisplayName("No built-in text rules configured: text passes through unchanged")
     void noBuiltInTextRulesMeansIdentity() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of());
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of());
 
         // when/then
         assertThat(BoundaryTextPolicy.scrubSpanName("contact ivan@example.com", runtime).value())
@@ -178,7 +178,7 @@ class BoundaryTextPolicyTest {
                 return ScrubbingDecision.mask(name());
             }
         };
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(), List.of(external), null);
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(), List.of(external), null);
 
         // when/then
         assertThat(BoundaryTextPolicy.scrubSpanName("contact ivan@example.com", runtime).value())

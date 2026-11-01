@@ -24,6 +24,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
@@ -234,6 +235,43 @@ class PlatformSamplerInstallationTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"logging", "none"})
+    @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
+    void unsupported_exporter_fails_before_exporter_customization(String exporter) {
+        // given
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        AtomicBoolean exporterCustomizerInvoked = new AtomicBoolean();
+        AutoConfigurationCustomizerProvider lateProvider = lateCustomizer(customizer -> {
+            customizer.addPropertiesCustomizer(ignoredConfig -> Map.of("otel.traces.exporter", exporter));
+            customizer.addSpanExporterCustomizer((delegate, ignoredConfig) -> {
+                exporterCustomizerInvoked.set(true);
+                return delegate;
+            });
+        });
+
+        try (AgentLogCapture logs = AgentLogCapture.installed();
+             BootstrapCoordinator coordinator = coordinator(server)) {
+            // when
+            BootstrapException failure = catchThrowableOfType(
+                    BootstrapException.class,
+                    () -> buildSdk(coordinator, lateProvider, Map.of())
+            );
+
+            // then
+            assertThat(failure.failure().effectiveCode()).isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
+            assertThat(coordinator.currentWire().lifecycle()).isEqualTo("FAILED");
+            assertThat(coordinator.currentWire().failureCode()).isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
+            assertThat(exporterCustomizerInvoked).isFalse();
+            assertThat(logs.events())
+                    .filteredOn(event -> "BOOTSTRAP_PHASE_FAILED".equals(event.eventName()))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.fields())
+                            .containsEntry("propertyName", "otel.traces.exporter")
+                    );
+        }
+    }
+
     @Test
     void late_drop_paths_are_shared_by_the_session_and_installed_sampler() {
         // given
@@ -358,7 +396,8 @@ class PlatformSamplerInstallationTest {
         Map<String, String> properties = new LinkedHashMap<>();
         properties.put("otel.metrics.exporter", "none");
         properties.put("otel.logs.exporter", "none");
-        properties.put("otel.traces.exporter", "logging");
+        properties.put("otel.traces.exporter", "otlp");
+        properties.put("platform.tracing.exporter.enabled", "false");
         properties.put("otel.propagators", "tracecontext,baggage,platform-trace-control");
         properties.put("platform.tracing.sampling.ratio", "1.0");
         properties.putAll(additionalProperties);

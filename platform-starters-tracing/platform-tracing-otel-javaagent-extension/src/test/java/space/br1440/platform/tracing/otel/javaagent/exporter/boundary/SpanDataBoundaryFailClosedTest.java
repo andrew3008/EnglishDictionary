@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.exporter;
+package space.br1440.platform.tracing.otel.javaagent.exporter.boundary;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.javaagent.exporter.ExporterTestSpans;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -26,11 +27,6 @@ import io.opentelemetry.sdk.trace.data.StatusData;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Нормативная таблица ошибок ADR-scrubbing-hybrid-processor-export-boundary.md.
- * Critical rule failure и infrastructure failure обязаны схлопывать <b>весь</b> слой boundary,
- * а не отдельное значение; span удаляется только тогда, когда сам collapse завершился ошибкой.
- */
 class SpanDataBoundaryFailClosedTest {
 
     private static final AttributeKey<String> EVENT_ATTR = AttributeKey.stringKey("payload");
@@ -88,7 +84,7 @@ class SpanDataBoundaryFailClosedTest {
     @DisplayName("Critical rule failure collapses every boundary surface, not just the failing value")
     void criticalFailureCollapsesTheWholeBoundaryLayer() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(CRITICAL_THROWING));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(CRITICAL_THROWING));
         SpanDataBoundaryScrubber scrubber = new SpanDataBoundaryScrubber(runtime);
 
         // when
@@ -120,7 +116,7 @@ class SpanDataBoundaryFailClosedTest {
     @DisplayName("Non-critical rule failure is counted at the boundary and leaves other surfaces intact")
     void nonCriticalFailureDoesNotCollapseTheLayer() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(NON_CRITICAL_THROWING));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(NON_CRITICAL_THROWING));
         SpanDataBoundaryScrubber scrubber = new SpanDataBoundaryScrubber(runtime);
 
         // when
@@ -138,7 +134,7 @@ class SpanDataBoundaryFailClosedTest {
     @DisplayName("Infrastructure failure collapses the boundary first; the span is still exported")
     void infrastructureFailureCollapsesBeforeDropping() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(INERT));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(INERT));
         SpanDataBoundaryScrubber scrubber = new SpanDataBoundaryScrubber(runtime);
 
         // when
@@ -157,7 +153,7 @@ class SpanDataBoundaryFailClosedTest {
     @DisplayName("Only a failing collapse drops the span, and the drop is counted")
     void failingCollapseDropsTheSpanAndIncrementsTheCounter() {
         // given
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(INERT));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(INERT));
         SpanDataBoundaryScrubber scrubber = new SpanDataBoundaryScrubber(runtime);
 
         // when
@@ -176,12 +172,12 @@ class SpanDataBoundaryFailClosedTest {
     }
 
     private static SpanData richSpan() {
-        return ExporterBoundaryTestSupport.baseSpan("op")
+        return ExporterTestSpans.baseSpan("op")
                 .setStatus(StatusData.create(StatusCode.ERROR, "failure detail"))
                 .setAttributes(Attributes.of(SPAN_ATTR, "raw-span-value"))
                 .setEvents(List.of(EventData.create(1L, "event.name", Attributes.of(EVENT_ATTR, "raw-event-value"))))
                 .setLinks(List.of(LinkData.create(
-                        ExporterBoundaryTestSupport.LINK_TARGET, Attributes.of(LINK_ATTR, "raw-link-value"))))
+                        ExporterTestSpans.LINK_TARGET, Attributes.of(LINK_ATTR, "raw-link-value"))))
                 .build();
     }
 

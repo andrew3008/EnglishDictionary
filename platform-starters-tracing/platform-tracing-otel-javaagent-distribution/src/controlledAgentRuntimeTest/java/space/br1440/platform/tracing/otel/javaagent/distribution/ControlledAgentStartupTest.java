@@ -85,7 +85,7 @@ class ControlledAgentStartupTest {
 
     private static List<String> command(AgentTestFixture fixture, boolean verifyBootstrapPolicy) throws URISyntaxException {
         List<String> command = ControlledAgentChild.javaCommand(List.of());
-        ControlledAgentChild.appendLoggingExporter(command);
+        ControlledAgentChild.appendDisabledOtlpExporter(command);
         ControlledAgentChild.appendServiceIdentity(command);
 
         List<String> arguments = new ArrayList<>();

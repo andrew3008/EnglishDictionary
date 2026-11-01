@@ -1,58 +1,58 @@
-package space.br1440.platform.tracing.otel.javaagent.exporter;
+package space.br1440.platform.tracing.otel.javaagent.exporter.guard;
+
+import jakarta.annotation.Nullable;
 
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseObservation;
 
-/** Учёт исходов split-export по span. Сумма пяти счётчиков и {@code remaining} равна размеру batch. */
-final class ExportOutcomeTally {
+final class SpanOutcomeAccumulator {
 
-    private int remaining;
     private int accepted;
     private int rejected;
     private int transportDropped;
     private int undetermined;
     private int locallyDropped;
-
-    ExportOutcomeTally(int total) {
-        if (total < 0) {
-            throw new IllegalArgumentException("total must not be negative: " + total);
-        }
-        this.remaining = total;
-    }
+    private int measurementFailed;
+    @Nullable
+    private Throwable measurementCause;
 
     void fold(ExportResponseObservation observation) {
         int count = observation.effectiveSpanCount();
+
         switch (observation.outcome()) {
             case ALL_ACCEPTED, NOT_OBSERVED -> accepted += count;
             case PARTIALLY_REJECTED -> {
                 int rejectedCount = Math.toIntExact(observation.rejectedSpans());
                 rejected += rejectedCount;
-                accepted += count - rejectedCount;
+                accepted += (count - rejectedCount);
             }
             case NOT_DETERMINED -> undetermined += count;
         }
-        remaining -= count;
     }
 
     void dropOversized() {
         locallyDropped++;
-        remaining--;
     }
 
-    void dropRemainingAsTransportFailure() {
-        transportDropped += remaining;
-        remaining = 0;
+    void transportFailed(int count) {
+        transportDropped += count;
     }
 
-    int remaining() {
-        return remaining;
+    void measurementFailed(Throwable cause) {
+        measurementFailed++;
+
+        if (measurementCause == null) {
+            measurementCause = cause;
+        }
     }
 
     int transportDropped() {
         return transportDropped;
     }
 
-    ExportResponseObservation.AggregateResult toAggregate() {
+    ExportResponseObservation.AggregateResult toAggregate(int requests) {
         return new ExportResponseObservation.AggregateResult(
-                accepted, rejected, transportDropped, undetermined, locallyDropped);
+                accepted, rejected, transportDropped, undetermined, locallyDropped, measurementFailed,
+                requests, measurementCause
+        );
     }
 }

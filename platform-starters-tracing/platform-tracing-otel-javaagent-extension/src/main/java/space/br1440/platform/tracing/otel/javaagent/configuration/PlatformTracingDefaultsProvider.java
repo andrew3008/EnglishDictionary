@@ -41,6 +41,15 @@ public final class PlatformTracingDefaultsProvider {
 
         defaults.put("otel.attribute.count.limit", String.valueOf(OtelSdkDefaults.DEFAULT_ATTRIBUTE_COUNT_LIMIT));
 
+        defaults.put("otel.metrics.exporter", "none");
+        defaults.put("otel.logs.exporter", "none");
+        defaults.put("otel.instrumentation.logback-appender.enabled", "false");
+        defaults.put("otel.instrumentation.log4j-appender.enabled", "false");
+        defaults.put("otel.instrumentation.java-util-logging.enabled", "false");
+        defaults.put("otel.instrumentation.jboss-logmanager-appender.enabled", "false");
+        defaults.put("otel.instrumentation.runtime-telemetry.enabled", "false");
+        defaults.put("otel.jmx.enabled", "false");
+
         defaults.put("otel.instrumentation.common.logging.trace-id-key", TracingMdcKeys.TRACE_ID);
         defaults.put("otel.instrumentation.common.logging.span-id-key", TracingMdcKeys.SPAN_ID);
         defaults.put("otel.instrumentation.common.logging.trace-flags-key", TracingMdcKeys.TRACE_FLAGS);

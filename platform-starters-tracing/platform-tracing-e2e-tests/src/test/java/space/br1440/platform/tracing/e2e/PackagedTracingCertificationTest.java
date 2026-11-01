@@ -17,6 +17,8 @@ import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.e2e.artifact.ControlledAgentArtifactMutator;
@@ -158,6 +160,41 @@ class PackagedTracingCertificationTest {
 
         // then
         assertExtensionConfigurationFailure(result, "invalid-scan-interval-lazy");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"otel.config.file", "otel.javaagent.configuration-file"})
+    void unsupported_configuration_channel_is_rejected_by_spring_without_readiness_endpoint(String property) throws Exception {
+        // given
+        String scenario = property.equals("otel.config.file") ? "declarative-config" : "agent-config-file";
+        Path configuration = evidenceDirectory.resolve(scenario + ".config");
+        Files.writeString(configuration, "");
+        PackagedProcessLauncher.LaunchRequest request = controlledRequest(
+                scenario, applicationBootJar, controlledAgent,
+                ControlledAgentArtifactMutator.sha256(controlledAgent),
+                Map.of(property, configuration.toAbsolutePath().toString()));
+
+        // when
+        PackagedProcessLauncher.ProcessResult result = launcher.launch(request);
+
+        // then
+        assertFailure(scenario, result, "EXTENSION_MISSING", "PLATFORM_EXTENSION_MISSING", null);
+        assertThat(result.stderr()).contains("OpenTelemetry Javaagent failed to start");
+    }
+
+    @Test
+    void disabled_sdk_is_rejected_by_spring_as_failed_extension() throws Exception {
+        // given
+        PackagedProcessLauncher.LaunchRequest request = controlledRequest(
+                "sdk-disabled", applicationBootJar, controlledAgent,
+                ControlledAgentArtifactMutator.sha256(controlledAgent),
+                Map.of("otel.sdk.disabled", "true"));
+
+        // when
+        PackagedProcessLauncher.ProcessResult result = launcher.launch(request);
+
+        // then
+        assertExtensionConfigurationFailure(result, "sdk-disabled");
     }
 
     @Test
@@ -381,7 +418,8 @@ class PackagedTracingCertificationTest {
         Map<String, String> properties = new LinkedHashMap<>();
         properties.put("spring.main.banner-mode", "off");
         properties.put("logging.level.root", "ERROR");
-        properties.put("otel.traces.exporter", "logging");
+        properties.put("otel.traces.exporter", "otlp");
+        properties.put("platform.tracing.exporter.enabled", "false");
         properties.put("otel.metrics.exporter", "none");
         properties.put("otel.logs.exporter", "none");
         properties.put("platform.tracing.service.name", "packaged-tracing-certification");

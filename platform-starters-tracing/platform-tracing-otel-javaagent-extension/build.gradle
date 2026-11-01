@@ -49,6 +49,20 @@ def resourceDetectorsConfiguration = configurations.register('resourceDetectors'
     transitive = false
 }
 
+def agentToolingTestConfiguration = configurations.register('agentToolingTest') {
+    canBeConsumed = false
+    canBeResolved = true
+    transitive = false
+}
+
+def agentToolingTestJar = tasks.register('agentToolingTestJar', Jar) {
+    archiveFileName = 'agent-tooling-test.jar'
+    destinationDirectory = layout.buildDirectory.dir('test-support')
+    from({ zipTree(agentToolingTestConfiguration.get().singleFile) }) {
+        exclude 'META-INF/services/**'
+    }
+}
+
 dependencies {
     jmxExtensionContractSources project(':platform-starters-tracing:platform-tracing-jmx-contract')
 
@@ -72,6 +86,9 @@ dependencies {
     compileOnly 'io.opentelemetry:opentelemetry-exporter-otlp-common'
     compileOnly 'io.opentelemetry:opentelemetry-exporter-sender-okhttp'
     compileOnly 'io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api'
+    compileOnly("io.opentelemetry.javaagent:opentelemetry-javaagent-tooling:${libs.versions.bom.otelextension.get()}") {
+        transitive = false
+    }
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -91,10 +108,14 @@ dependencies {
     testImplementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
     testImplementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure'
     testImplementation 'io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api'
+    agentToolingTest "io.opentelemetry.javaagent:opentelemetry-javaagent-tooling:${libs.versions.bom.otelextension.get()}"
+    testImplementation files(agentToolingTestJar)
     testImplementation 'io.opentelemetry:opentelemetry-exporter-logging'
     testImplementation 'io.opentelemetry:opentelemetry-exporter-logging-otlp'
     testImplementation 'io.opentelemetry:opentelemetry-exporter-otlp'
     testImplementation 'io.opentelemetry:opentelemetry-exporter-otlp-common'
+    testImplementation 'io.opentelemetry:opentelemetry-exporter-sender-okhttp'
+    testImplementation "com.squareup.okhttp3:mockwebserver3:${libs.versions.bom.okhttp.get()}"
     testRuntimeOnly 'io.opentelemetry:opentelemetry-extension-trace-propagators'
 
     testCompileOnly "com.google.auto.service:auto-service-annotations:${libs.versions.auto.service.get()}"
@@ -116,11 +137,19 @@ tasks.named('test', Test) {
     def expectedExtensionVersion = extensionVersionProvider.get()
     def mockitoAgentArguments = objects.newInstance(JavaAgentArgumentProvider)
     def updateJmxContractBaseline = providers.gradleProperty('updateJmxContractBaseline')
+    def includeSdkCharacterization = providers.gradleProperty('includeSdkCharacterization')
+            .map { it.toBoolean() }.getOrElse(false)
     mockitoAgentArguments.agentClasspath.from(mockitoAgentConfiguration)
     jvmArgumentProviders.add(mockitoAgentArguments)
 
     inputs.property('expectedExtensionVersion', expectedExtensionVersion)
     systemProperty('platformTracing.expectedExtensionVersion', expectedExtensionVersion)
+
+    useJUnitPlatform {
+        if (!includeSdkCharacterization) {
+            excludeTags 'sdk-characterization'
+        }
+    }
 
     if (updateJmxContractBaseline.isPresent()) {
         outputs.upToDateWhen { false }

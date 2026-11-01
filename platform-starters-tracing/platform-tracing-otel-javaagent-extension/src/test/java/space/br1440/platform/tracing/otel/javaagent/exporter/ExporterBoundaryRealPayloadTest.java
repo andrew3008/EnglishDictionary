@@ -20,7 +20,10 @@ import org.junit.jupiter.api.Test;
 import com.sun.net.httpserver.HttpServer;
 
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.exporter.boundary.BoundaryTestSupport;
+import space.br1440.platform.tracing.otel.javaagent.exporter.guard.OtlpRequestSizeLimitingSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
@@ -54,14 +57,14 @@ class ExporterBoundaryRealPayloadTest {
     );
 
     private static SpanData spanWithSecretsEverywhere() {
-        return ExporterBoundaryTestSupport.baseSpan("GET /login " + EMAIL_CANARY)
+        return ExporterTestSpans.baseSpan("GET /login " + EMAIL_CANARY)
                 .setStatus(StatusData.create(StatusCode.ERROR, "failed for " + EMAIL_CANARY))
                 .setEvents(List.of(EventData.create(
                         1L,
                         "login attempt for " + EMAIL_CANARY,
                         Attributes.of(AttributeKey.stringKey("password"), PASSWORD_CANARY))))
                 .setLinks(List.of(LinkData.create(
-                        ExporterBoundaryTestSupport.LINK_TARGET,
+                        ExporterTestSpans.LINK_TARGET,
                         Attributes.of(AttributeKey.stringKey("contact"), EMAIL_CANARY))))
                 .build();
     }
@@ -97,9 +100,12 @@ class ExporterBoundaryRealPayloadTest {
         julLogger.setLevel(Level.ALL);
 
         try (SpanExporter delegate = OtlpJsonLoggingSpanExporter.create()) {
-            ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(RULES);
+            ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
             SpanExporter exporter = new SafeSpanExporter(
-                    delegate, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
+                    new OtlpRequestSizeLimitingSpanExporter(delegate, Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)),
+                    TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
+                    runtime
+            );
 
             // when
             exporter.export(List.of(spanWithSecretsEverywhere()));
@@ -128,9 +134,12 @@ class ExporterBoundaryRealPayloadTest {
         julLogger.setLevel(Level.ALL);
 
         try (LoggingSpanExporter delegate = LoggingSpanExporter.create()) {
-            ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(RULES);
+            ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
             SpanExporter exporter = new SafeSpanExporter(
-                    delegate, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
+                    new OtlpRequestSizeLimitingSpanExporter(delegate, Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)),
+                    TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
+                    runtime
+            );
 
             // when
             exporter.export(List.of(spanWithSecretsEverywhere()));
@@ -151,9 +160,12 @@ class ExporterBoundaryRealPayloadTest {
     void realRecordExceptionIsCanonicalizedAtTheBoundary() {
         // given
         InMemorySpanExporter delegate = InMemorySpanExporter.create();
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(RULES);
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
         SpanExporter exporter = new SafeSpanExporter(
-                delegate, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
+                new OtlpRequestSizeLimitingSpanExporter(delegate, Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)),
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
+                runtime
+        );
 
         List<SpanData> finished;
         try (SdkTracerProvider provider = SdkTracerProvider.builder()
@@ -251,9 +263,10 @@ class ExporterBoundaryRealPayloadTest {
 
     /** Настоящий SDK-путь: {@code recordException} на живом span, затем boundary и транспорт. */
     private static void recordExceptionThrough(SpanExporter delegate) {
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(RULES);
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
         SpanExporter exporter = new SafeSpanExporter(
-                delegate, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
+                new OtlpRequestSizeLimitingSpanExporter(delegate, Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)),
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         try (SdkTracerProvider provider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))

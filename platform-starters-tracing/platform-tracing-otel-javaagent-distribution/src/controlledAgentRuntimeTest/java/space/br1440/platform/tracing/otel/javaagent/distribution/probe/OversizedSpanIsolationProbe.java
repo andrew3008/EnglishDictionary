@@ -14,7 +14,6 @@ import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWir
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 
 public final class OversizedSpanIsolationProbe {
@@ -24,7 +23,6 @@ public final class OversizedSpanIsolationProbe {
     public static final String RIGHT_SPAN = NAME_PREFIX + "right";
     public static final String OVERSIZED_SPAN = NAME_PREFIX + "oversized";
     public static final String FOLLOW_UP_PREFIX = NAME_PREFIX + "follow-up-";
-    public static final String TRUNCATED_NAME = NAME_PREFIX + "s".repeat(1024 - NAME_PREFIX.length());
 
     private static final Duration TIMEOUT = Duration.ofSeconds(20);
     private static final Duration POLL_INTERVAL = Duration.ofMillis(50);
@@ -42,7 +40,7 @@ public final class OversizedSpanIsolationProbe {
         Snapshot baseline = primeWorker(server, tracer);
 
         mixedBatch.forEach(Span::end);
-        Snapshot first = awaitExport(server, baseline, 3L);
+        Snapshot first = awaitExport(server, baseline, 2L);
         if (first.batches() - baseline.batches() != 1L) {
             throw new IllegalStateException("Mixed probe spans must belong to one logical export batch");
         }
@@ -51,9 +49,9 @@ public final class OversizedSpanIsolationProbe {
             tracer.spanBuilder(FOLLOW_UP_PREFIX + index).startSpan().end();
         }
 
-        awaitExport(server, baseline, 7L);
+        awaitExport(server, baseline, 6L);
 
-        System.out.println("OVERSIZED_SPAN_ISOLATION_PROBE_OK oversized=1 shape=1 transportDropped=0 failures=0");
+        System.out.println("OVERSIZED_SPAN_ISOLATION_PROBE_OK oversized=1 transportDropped=0 failures=0");
     }
 
     private static List<Span> prepareMixedBatch(Tracer tracer) {
@@ -65,10 +63,8 @@ public final class OversizedSpanIsolationProbe {
 
         Span left = tracer.spanBuilder(LEFT_SPAN).startSpan();
         Span right = tracer.spanBuilder(RIGHT_SPAN).startSpan();
-        Span shaped = tracer.spanBuilder(TRUNCATED_NAME + "s").startSpan();
-        shaped.setStatus(StatusCode.ERROR, "d".repeat(1025));
 
-        return List.of(left, oversized, right, shaped);
+        return List.of(left, oversized, right);
     }
 
     private static Snapshot primeWorker(MBeanServer server, Tracer tracer) throws InterruptedException {
@@ -118,10 +114,12 @@ public final class OversizedSpanIsolationProbe {
     }
 
     private static void requireMetricsOwnerAbsent(MBeanServer server) {
-        CompositeData observation = JmxValues.attribute(server,
+        CompositeData observation = JmxValues.attribute(
+                server,
                 JmxWireContract.PROCESSOR_METRICS_OBSERVATION_OBJECT_NAME,
                 JmxWireContract.ATTRIBUTE_PROCESSOR_METRICS_OBSERVATION_PROCESSOR_METRICS_OBSERVATION,
-                JmxOpenTypes.PROCESSOR_METRICS_OBSERVATION);
+                JmxOpenTypes.PROCESSOR_METRICS_OBSERVATION
+        );
 
         CompositeData metrics = JmxValues.composite(observation, JmxWireContract.FIELD_PROCESSOR_METRICS_OBSERVATION_METRICS);
         if (JmxValues.bool(metrics, JmxWireContract.FIELD_PROCESSOR_METRICS_VALUES_OWNER_PRESENT)) {
@@ -143,8 +141,12 @@ public final class OversizedSpanIsolationProbe {
                 throw new IllegalStateException("Oversized isolation caused a transport failure: " + latest);
             }
 
+            if (latest.splitBatches() != baseline.splitBatches()
+                    || latest.measurementFailures() != baseline.measurementFailures()) {
+                throw new IllegalStateException("Oversized isolation must retain one measured request: " + latest);
+            }
+
             if (latest.oversized() - baseline.oversized() == 1L
-                    && latest.shape() - baseline.shape() == 1L
                     && latest.exported() - baseline.exported() >= expectedExported) {
                 return latest;
             }
@@ -159,7 +161,8 @@ public final class OversizedSpanIsolationProbe {
     }
 
     private record Snapshot(String agentInstanceId, long ownerGeneration, long batches, long oversized,
-                            long shape, long exported, long transportDropped, long failures) {
+                            long exported, long transportDropped, long failures,
+                            long splitBatches, long measurementFailures) {
 
         static Snapshot read(MBeanServer server) {
             CompositeData observation = JmxValues.attribute(server,
@@ -178,10 +181,11 @@ public final class OversizedSpanIsolationProbe {
                     JmxValues.longValue(exporter, JmxWireContract.FIELD_SAFE_EXPORTER_VALUES_OWNER_GENERATION),
                     counter(metrics, JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCHES),
                     counter(metrics, JmxWireContract.KEY_SAFE_EXPORTER_METRICS_OVERSIZED_SPANS_DROPPED),
-                    counter(metrics, JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SHAPE_TRUNCATIONS_TOTAL),
                     counter(metrics, JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS),
                     counter(metrics, JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS),
-                    counter(metrics, JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES));
+                    counter(metrics, JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES),
+                    counter(metrics, JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SPLIT_EXPORT_BATCHES),
+                    counter(metrics, JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SIZE_MEASUREMENT_FAILURES));
         }
 
         private static long counter(TabularData metrics, String key) {

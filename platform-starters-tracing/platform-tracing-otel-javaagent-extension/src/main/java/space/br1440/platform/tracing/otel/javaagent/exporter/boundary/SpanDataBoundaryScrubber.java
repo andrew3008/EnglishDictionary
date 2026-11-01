@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.exporter;
+package space.br1440.platform.tracing.otel.javaagent.exporter.boundary;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,17 +17,17 @@ import io.opentelemetry.sdk.trace.data.LinkData;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.data.StatusData;
 
-final class SpanDataBoundaryScrubber {
+public final class SpanDataBoundaryScrubber {
 
     private static final RateLimitedLogger log = new RateLimitedLogger(SpanDataBoundaryScrubber.class);
 
     private final ScrubbingRuntime runtime;
 
-    SpanDataBoundaryScrubber(ScrubbingRuntime runtime) {
+    public SpanDataBoundaryScrubber(ScrubbingRuntime runtime) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
     }
 
-    SpanBoundaryOutcome scrub(SpanData spanData) {
+    public SpanBoundaryOutcome scrub(SpanData spanData) {
         runtime.recordBoundaryInputSpan();
 
         SpanBoundaryOutcome outcome;

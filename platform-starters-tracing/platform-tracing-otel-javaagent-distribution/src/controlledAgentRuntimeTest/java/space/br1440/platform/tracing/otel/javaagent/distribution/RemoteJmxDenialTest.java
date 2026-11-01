@@ -45,11 +45,13 @@ class RemoteJmxDenialTest {
 
     private static List<String> command(AgentTestFixture fixture) throws URISyntaxException {
         List<String> command = ControlledAgentChild.javaCommand(
-                List.of("-Dcom.sun.management.jmxremote.authenticate=false"));
-        ControlledAgentChild.appendLoggingExporter(command);
+                List.of("-Dcom.sun.management.jmxremote.authenticate=false")
+        );
+        ControlledAgentChild.appendDisabledOtlpExporter(command);
         ControlledAgentChild.appendServiceIdentity(command);
         ControlledAgentChild.appendAgentLaunch(
-                command, fixture, ControlledAgentRemoteJmxDenialProbe.class, List.of());
+                command, fixture, ControlledAgentRemoteJmxDenialProbe.class, List.of()
+        );
         return command;
     }
 }

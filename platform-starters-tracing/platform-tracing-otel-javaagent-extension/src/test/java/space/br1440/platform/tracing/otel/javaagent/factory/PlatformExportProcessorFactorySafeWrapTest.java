@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.factory;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -15,10 +16,13 @@ import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 
+import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
 import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
 import io.opentelemetry.sdk.common.CompletableResultCode;
+import io.opentelemetry.sdk.testing.trace.TestSpanData;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.data.StatusData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 
 class PlatformExportProcessorFactorySafeWrapTest {
@@ -32,7 +36,11 @@ class PlatformExportProcessorFactorySafeWrapTest {
 
         // when
         SpanExporter result = factory.captureExporter(delegate, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
-        result.export(java.util.List.of()).join(1, java.util.concurrent.TimeUnit.SECONDS);
+        result.export(List.of(
+                        TestSpanData.builder().setName("factory-export")
+                                .setKind(SpanKind.INTERNAL).setStatus(StatusData.unset())
+                                .setStartEpochNanos(0).setEndEpochNanos(1).setHasEnded(true).build())
+                ).join(1, TimeUnit.SECONDS);
 
         // then
         assertThat(delegate.exportCalls).hasValue(1);
@@ -56,9 +64,7 @@ class PlatformExportProcessorFactorySafeWrapTest {
     @Test
     void real_otlp_http_exporter_accepts_wrapper_then_raw_delegate_shutdown() {
         // given
-        SpanExporter rawDelegate = OtlpHttpSpanExporter.builder()
-                .setEndpoint("http://127.0.0.1:1/v1/traces")
-                .build();
+        SpanExporter rawDelegate = OtlpHttpSpanExporter.builder().build();
 
         assertWrapperThenRawDelegateShutdown(rawDelegate);
     }
@@ -66,9 +72,7 @@ class PlatformExportProcessorFactorySafeWrapTest {
     @Test
     void real_otlp_grpc_exporter_accepts_wrapper_then_raw_delegate_shutdown() {
         // given
-        SpanExporter rawDelegate = OtlpGrpcSpanExporter.builder()
-                .setEndpoint("http://127.0.0.1:1")
-                .build();
+        SpanExporter rawDelegate = OtlpGrpcSpanExporter.builder().build();
 
         assertWrapperThenRawDelegateShutdown(rawDelegate);
     }
@@ -103,12 +107,21 @@ class PlatformExportProcessorFactorySafeWrapTest {
     private static final class CountingExporter implements SpanExporter {
         private final AtomicInteger exportCalls = new AtomicInteger();
 
-        @Override public CompletableResultCode export(Collection<SpanData> spans) {
+        @Override
+        public CompletableResultCode export(Collection<SpanData> spans) {
             exportCalls.incrementAndGet();
             return CompletableResultCode.ofSuccess();
         }
-        @Override public CompletableResultCode flush() { return CompletableResultCode.ofSuccess(); }
-        @Override public CompletableResultCode shutdown() { return CompletableResultCode.ofSuccess(); }
+
+        @Override
+        public CompletableResultCode flush() {
+            return CompletableResultCode.ofSuccess();
+        }
+
+        @Override
+        public CompletableResultCode shutdown() {
+            return CompletableResultCode.ofSuccess();
+        }
     }
 
 }

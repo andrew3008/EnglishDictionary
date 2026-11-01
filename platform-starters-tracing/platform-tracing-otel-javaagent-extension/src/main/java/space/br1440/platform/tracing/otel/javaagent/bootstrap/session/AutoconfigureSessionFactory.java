@@ -6,6 +6,7 @@ import java.util.function.Function;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.configuration.BaggageAttributeCopyContract;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ConfigurationPropertyException;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExportConfigurationContract;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.configuration.PropagatorConfigurationContract;
@@ -49,6 +50,7 @@ public final class AutoconfigureSessionFactory {
                                        AgentInstanceId agentInstanceId,
                                        ExtensionRuntimeEvidence evidence) {
         SamplerConfigurationContract.requireFinal(config);
+        ExportConfigurationContract.requireSupported(config);
         PropagatorConfigurationContract.requireSupported(config);
         BaggageAttributeCopyContract.requireDisabled(config);
 

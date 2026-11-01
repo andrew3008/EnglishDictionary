@@ -2,6 +2,8 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import java.util.Objects;
 
+import space.br1440.platform.tracing.otel.javaagent.configuration.PreSdkLaunchContract;
+
 import io.opentelemetry.javaagent.extension.AgentListener;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
@@ -18,6 +20,7 @@ public final class ActivationAgentListener implements AgentListener {
     }
 
     ActivationAgentListener(BootstrapCoordinator bootstrap) {
+        PreSdkLaunchContract.requireSupported();
         this.bootstrap = Objects.requireNonNull(bootstrap, "bootstrap");
     }
 

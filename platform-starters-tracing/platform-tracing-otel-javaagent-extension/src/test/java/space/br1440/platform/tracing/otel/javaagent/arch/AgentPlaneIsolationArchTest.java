@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.arch;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -16,13 +17,9 @@ import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
 class AgentPlaneIsolationArchTest {
 
-    private static final String EXTENSION_PACKAGE =
-            "space.br1440.platform.tracing.otel.javaagent";
-
+    private static final String EXTENSION_PACKAGE = "space.br1440.platform.tracing.otel.javaagent";
     private static final String CONFIGURATION_PACKAGE = EXTENSION_PACKAGE + ".configuration";
-
     private static final String CONFIG_PROPERTIES = ConfigProperties.class.getName();
-
     private static final JavaClasses EXTENSION_CLASSES = productionClasses(EXTENSION_PACKAGE);
 
     @Test
@@ -111,15 +108,30 @@ class AgentPlaneIsolationArchTest {
     }
 
     @Test
-    void onlyRequestSplitterDependsOnInternalOtlpMarshalling() {
+    void onlySpanSizeMeasurerDependsOnInternalOtlpMarshalling() {
         // given
         ArchRule rule = noClasses()
-                .that().haveNameNotMatching(".*\\.OtlpRequestSplittingSpanExporter(\\$.*)?")
+                .that().haveNameNotMatching(".*\\.OtlpSpanSizeMeasurer(\\$.*)?")
                 .should().dependOnClassesThat().resideInAPackage("io.opentelemetry.exporter.internal.otlp..")
-                .because("the request splitter owns the pinned internal OTLP dependency");
+                .because("the span size measurer isolates the pinned internal OTLP dependency");
 
         // when
         // then
+        rule.check(EXTENSION_CLASSES);
+    }
+
+    @Test
+    void onlyRequestSizeExporterDependsOnSpanSizeLowerBound() {
+        // given
+        ArchRule rule = noClasses()
+                .that().haveNameNotMatching(".*\\.(OtlpRequestSizeLimitingSpanExporter|SpanSizeLowerBound)(\\$.*)?")
+                .should().dependOnClassesThat().haveNameMatching(".*\\.SpanSizeLowerBound(\\$.*)?")
+                .because("the lower bound gates the exact size measurement of a single exporter");
+
+        // when
+        // then
+        Assertions.assertTrue(EXTENSION_CLASSES.stream()
+                .anyMatch(type -> "SpanSizeLowerBound".equals(type.getSimpleName())));
         rule.check(EXTENSION_CLASSES);
     }
 }

@@ -18,7 +18,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.exporter.boundary.BoundaryTestSupport;
+import space.br1440.platform.tracing.otel.javaagent.exporter.guard.OtlpRequestSizeLimitingSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
@@ -70,9 +73,10 @@ class ValueAttributeFailClosedContractTest {
     void valueNeverSurvivesTheExportBoundary(String caseName, Value<?> payload, ScrubbingAction action) {
         // given
         InMemorySpanExporter delegate = InMemorySpanExporter.create();
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(ruleReturning(action)));
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(ruleReturning(action)));
         SpanExporter exporter = new SafeSpanExporter(
-                delegate, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
+                new OtlpRequestSizeLimitingSpanExporter(delegate, Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)),
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         // when
         List<SpanData> finished;
@@ -110,9 +114,10 @@ class ValueAttributeFailClosedContractTest {
     void coerced_value_is_removed_at_export_when_no_rules_are_configured() {
         // given
         InMemorySpanExporter delegate = InMemorySpanExporter.create();
-        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of());
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of());
         SpanExporter exporter = new SafeSpanExporter(
-                delegate, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
+                new OtlpRequestSizeLimitingSpanExporter(delegate, Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)),
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         // when
         List<SpanData> finished;

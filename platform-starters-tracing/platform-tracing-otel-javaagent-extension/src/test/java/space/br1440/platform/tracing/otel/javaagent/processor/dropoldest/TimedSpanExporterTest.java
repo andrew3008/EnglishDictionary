@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -13,17 +14,23 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
+import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.exporter.guard.OtlpRequestSizeLimitingSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 
+import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.sdk.common.CompletableResultCode;
+import io.opentelemetry.sdk.testing.trace.TestSpanData;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.data.StatusData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 
 @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
@@ -61,8 +68,9 @@ class TimedSpanExporterTest {
         assertThat(results).extracting(TimedExport::success).containsExactly(false, false, false, false);
         assertThat(results.get(0).unfinished()).isNull();
         assertThat(results.get(1).unfinished()).isNull();
-        assertThat(results.get(2).unfinished()).isNotNull();
-        assertThat(results.get(2).unfinished().isDone()).isFalse();
+        CompletableResultCode unfinished = results.get(2).unfinished();
+        assertThat(unfinished).isNotNull();
+        assertThat(Objects.requireNonNull(unfinished).isDone()).isFalse();
         assertThat(results.get(3).unfinished()).isNull();
         assertThat(metrics.failuresTotal()).isEqualTo(4L);
         assertThat(metrics.timeoutsTotal()).isEqualTo(1L);
@@ -152,11 +160,39 @@ class TimedSpanExporterTest {
     }
 
     @Test
-    void processorTimeoutWithoutDelegateCompletionDoesNotOpenRecoveryEpisode() {
+    void processorTimeoutWithoutDelegateCompletionDoesNotOpenOutage() {
         // given
         CompletableResultCode pending = new CompletableResultCode();
-        AtomicInteger calls = new AtomicInteger();
-        SpanExporter transport = new SpanExporter() {
+        SpanExporter transport = pendingOnFirstExport(pending, new AtomicInteger());
+
+        SafeSpanExporter safe = new SafeSpanExporter(
+                new OtlpRequestSizeLimitingSpanExporter(transport, Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)),
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
+                ScrubbingRuntimeTestFixtures.disabled()
+        );
+        DropOldestExportMetrics metrics = new DropOldestExportMetrics();
+        TimedSpanExporter timed = new TimedSpanExporter(safe, TIMEOUT_NANOS, TIMEOUT_NANOS, metrics);
+        SpanData span = TestSpanData.builder().setName("operation").setKind(SpanKind.INTERNAL)
+                .setStatus(StatusData.unset()).setStartEpochNanos(0L).setEndEpochNanos(1L).setHasEnded(true).build();
+
+        // when
+        TimedExport outcome = timed.export(List.of(span));
+        safe.export(List.of(span));
+
+        // then
+        CompletableResultCode unfinished = outcome.unfinished();
+        assertThat(outcome.success()).isFalse();
+        assertThat(unfinished).isNotNull();
+        assertThat(Objects.requireNonNull(unfinished).isDone()).isFalse();
+        assertThat(pending.isDone()).isFalse();
+        assertThat(metrics.timeoutsTotal()).isEqualTo(1L);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isZero();
+        assertThat(capture.events())
+                .noneMatch(event -> "SAFE_EXPORT_SUCCEEDED_AFTER_FAILURES".equals(event.eventName()));
+    }
+
+    private static SpanExporter pendingOnFirstExport(CompletableResultCode pending, AtomicInteger calls) {
+        return new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
                 return calls.getAndIncrement() == 0 ? pending : CompletableResultCode.ofSuccess();
@@ -172,27 +208,6 @@ class TimedSpanExporterTest {
                 return CompletableResultCode.ofSuccess();
             }
         };
-
-        SafeSpanExporter safe = new SafeSpanExporter(
-                transport,
-                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
-                ScrubbingRuntimeTestFixtures.disabled()
-        );
-        DropOldestExportMetrics metrics = new DropOldestExportMetrics();
-        TimedSpanExporter timed = new TimedSpanExporter(safe, TIMEOUT_NANOS, TIMEOUT_NANOS, metrics);
-
-        // when
-        TimedExport outcome = timed.export(List.of());
-        safe.export(List.of());
-
-        // then
-        assertThat(outcome.success()).isFalse();
-        assertThat(outcome.unfinished()).isSameAs(pending);
-        assertThat(pending.isDone()).isFalse();
-        assertThat(metrics.timeoutsTotal()).isEqualTo(1L);
-        assertThat(safe.getExportFailures()).isZero();
-        assertThat(capture.events())
-                .noneMatch(event -> "SAFE_EXPORT_SUCCEEDED_AFTER_FAILURES".equals(event.eventName()));
     }
 
     private static TimedSpanExporter exporter(Supplier<CompletableResultCode> exportResult,

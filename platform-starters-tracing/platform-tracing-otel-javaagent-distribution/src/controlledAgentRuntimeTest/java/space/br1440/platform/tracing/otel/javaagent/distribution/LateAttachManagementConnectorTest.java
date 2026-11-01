@@ -66,7 +66,7 @@ class LateAttachManagementConnectorTest {
 
     private static List<String> command(AgentTestFixture fixture) throws URISyntaxException {
         List<String> command = ControlledAgentChild.javaCommand(List.of("-Djava.rmi.server.hostname=127.0.0.1"));
-        ControlledAgentChild.appendLoggingExporter(command);
+        ControlledAgentChild.appendDisabledOtlpExporter(command);
         ControlledAgentChild.appendServiceIdentity(command);
         ControlledAgentChild.appendAgentLaunch(command, fixture, ControlledAgentLateAttachProbe.class, List.of());
         return command;

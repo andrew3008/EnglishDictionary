@@ -10,7 +10,6 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefault
 import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ExportPipelineLogEvent;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
@@ -211,10 +210,7 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
             }
 
             if (maxExportBatchSize > maxQueueSize) {
-                log.log(ExportPipelineLogEvent.MAX_EXPORT_BATCH_SIZE_CLAMPED,
-                        fields -> fields.putString(AgentLogField.NAME, "maxExportBatchSize"));
-
-                maxExportBatchSize = maxQueueSize;
+                throw new IllegalArgumentException("maxExportBatchSize must not exceed maxQueueSize");
             }
 
             if (scheduleDelay == null || scheduleDelay.isNegative() || scheduleDelay.isZero()) {

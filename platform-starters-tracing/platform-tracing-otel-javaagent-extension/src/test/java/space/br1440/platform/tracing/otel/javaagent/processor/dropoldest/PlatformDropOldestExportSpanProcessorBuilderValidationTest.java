@@ -32,19 +32,17 @@ class PlatformDropOldestExportSpanProcessorBuilderValidationTest {
     }
 
     @Test
-    void batchSizeGreaterThanQueueClampsToQueue() {
-        // given/when
-        PlatformDropOldestExportSpanProcessor p = PlatformDropOldestExportSpanProcessor.builder(NOOP)
+    void batchSizeGreaterThanQueueIsRejected() {
+        // given
+        var builder = PlatformDropOldestExportSpanProcessor.builder(NOOP)
                 .maxQueueSize(16)
-                .maxExportBatchSize(64)
-                .build();
-        try {
-            // then
-            assertThat(p.metricsSnapshot().queueCapacity()).isEqualTo(16);
-            assertThat(p.metricsSnapshot().queueSize()).isZero();
-        } finally {
-            p.shutdown().join(2, java.util.concurrent.TimeUnit.SECONDS);
-        }
+                .maxExportBatchSize(64);
+
+        // when
+        // then
+        assertThatThrownBy(builder::build)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("maxExportBatchSize must not exceed maxQueueSize");
     }
 
     @Test

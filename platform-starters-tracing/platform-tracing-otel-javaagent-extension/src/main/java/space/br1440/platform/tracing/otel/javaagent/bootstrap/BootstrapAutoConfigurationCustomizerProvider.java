@@ -11,7 +11,7 @@ import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.Trace
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.configuration.PlatformTracingDefaultsProvider;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ResourceValidationMode;
-import space.br1440.platform.tracing.otel.javaagent.exporter.OtlpRequestSizeCustomizer;
+import space.br1440.platform.tracing.otel.javaagent.exporter.guard.OtlpRequestSizeCustomizer;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ObservingSenderPreference;
 import space.br1440.platform.tracing.otel.javaagent.propagation.BaggagePropagationCustomizer;
 import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagatorsDefaultsCustomizer;

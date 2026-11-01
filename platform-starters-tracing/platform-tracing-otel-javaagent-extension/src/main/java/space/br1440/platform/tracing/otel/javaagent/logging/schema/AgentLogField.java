@@ -22,7 +22,6 @@ public enum AgentLogField {
     EVICTED("evicted", Kind.LONG),
     EXTENSION_VERSION("extensionVersion", Kind.STRING),
     FAILED_PROVIDERS("failedProviders", Kind.LONG),
-    EXPORTER_TYPE("exporterType", Kind.STRING),
     FAILURE_CODE("failureCode", Kind.STRING),
     FAILURE_CONTEXT("failureContext", Kind.STRING),
     FAILURE_SAMPLE("failureSample", Kind.STRING),

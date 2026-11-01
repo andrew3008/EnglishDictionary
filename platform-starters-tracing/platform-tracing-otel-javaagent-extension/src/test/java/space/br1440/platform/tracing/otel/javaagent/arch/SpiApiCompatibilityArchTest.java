@@ -8,14 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
-/**
- * API Compatibility Guard: публичный SPI-контракт scrubbing'а должен быть полностью
- * платформенным и не зависеть от {@code io.opentelemetry.*}.
- * <p>
- * Это прямой урок инцидента с {@code AbstractMethodError}: когда сигнатура SPI зависела от
- * {@code AttributeKey}, shading OTel Java Agent ломал контракт между расширением и кастомными
- * правилами. Запрет {@code io.opentelemetry.*} в пакете {@code ..api.spi..} предотвращает регресс.
- */
 class SpiApiCompatibilityArchTest {
 
     @Test

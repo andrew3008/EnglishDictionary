@@ -7,7 +7,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -33,9 +32,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.exporter.boundary.BoundaryTestSupport;
+import space.br1440.platform.tracing.otel.javaagent.exporter.guard.OtlpRequestSizeLimitingSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseObservation;
 import space.br1440.platform.tracing.otel.javaagent.exporter.response.ExportResponseScope;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
@@ -63,7 +65,7 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 class SafeSpanExporterTest {
 
     private static Collection<SpanData> spansOfSize(int n) {
-        return Collections.nCopies(n, ExporterBoundaryTestSupport.baseSpan("operation").build());
+        return Collections.nCopies(n, ExporterTestSpans.baseSpan("operation").build());
     }
 
     private static SafeSpanExporter safeExporter(SpanExporter delegate) {
@@ -78,18 +80,22 @@ class SafeSpanExporterTest {
     private static SafeSpanExporter safeExporter(SpanExporter delegate,
                                                  TracingSettingsSource acceptedPolicy,
                                                  ScrubbingRuntime runtime) {
-        return new SafeSpanExporter(delegate, acceptedPolicy, runtime);
+        return new SafeSpanExporter(guard(delegate), acceptedPolicy, runtime);
     }
 
     private static SafeSpanExporter safeExporter(SpanExporter delegate, LongSupplier nanoClock) {
         return new SafeSpanExporter(
-                delegate,
+                guard(delegate),
                 TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled(),
                 new RateLimitedLogger(SafeSpanExporterTest.class),
                 new RateLimitedLogger(SafeSpanExporterTest.class),
                 nanoClock
         );
+    }
+
+    private static OtlpRequestSizeLimitingSpanExporter guard(SpanExporter delegate) {
+        return new OtlpRequestSizeLimitingSpanExporter(delegate, Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES));
     }
 
     @Test
@@ -103,10 +109,10 @@ class SafeSpanExporterTest {
 
         // then
         assertThat(result.isSuccess()).isTrue();
-        assertThat(safe.getExportedSpans()).isEqualTo(3);
-        assertThat(safe.getExportFailures()).isZero();
-        assertThat(safe.getDroppedSpans()).isZero();
-        assertThat(safe.getExportBatches()).isEqualTo(1);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isEqualTo(3);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCHES, 0L).longValue()).isEqualTo(1);
     }
 
     @Test
@@ -120,9 +126,9 @@ class SafeSpanExporterTest {
 
         // then
         assertThat(result.isSuccess()).isFalse();
-        assertThat(safe.getExportFailures()).as("один упавший batch").isEqualTo(1);
-        assertThat(safe.getDroppedSpans()).as("пять потерянных span'ов").isEqualTo(5);
-        assertThat(safe.getExportedSpans()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).as("один упавший batch").isEqualTo(1);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).as("пять потерянных span'ов").isEqualTo(5);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isZero();
     }
 
     @Test
@@ -140,12 +146,12 @@ class SafeSpanExporterTest {
             CompletableResultCode result = safe.export(spansOfSize(5));
 
             // then
-            assertThat(result).isSameAs(delegateResult);
+            assertThat(result.getFailureThrowable()).isSameAs(failure);
             assertThat(result.isSuccess()).isFalse();
-            assertThat(safe.getExportBatches()).isEqualTo(1L);
-            assertThat(safe.getExportFailures()).isEqualTo(1L);
-            assertThat(safe.getDroppedSpans()).isEqualTo(5L);
-            assertThat(safe.getExportedSpans()).isZero();
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCHES, 0L).longValue()).isEqualTo(1L);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isEqualTo(1L);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isEqualTo(5L);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isZero();
             assertThat(capture.events()).singleElement().satisfies(event -> {
                 assertThat(event.eventName()).isEqualTo("SAFE_EXPORT_RETURNED_FAILURE");
                 assertThat(event.errorType()).isEqualTo(IOException.class.getName());
@@ -181,9 +187,10 @@ class SafeSpanExporterTest {
                 return CompletableResultCode.ofSuccess();
             }
         };
+
         RateLimitedLogger recoveryLog = new RateLimitedLogger(SafeSpanExporterTest.class);
         try (SafeSpanExporter safe = new SafeSpanExporter(
-                sequencedDelegate,
+                guard(sequencedDelegate),
                 TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled(),
                 recoveryLog,
@@ -231,7 +238,7 @@ class SafeSpanExporterTest {
     }
 
     @Test
-    void lateSuccessStartedBeforeFailureDoesNotCloseRecoveryEpisode() {
+    void lateSuccessStartedBeforeFailureDoesNotCloseOutage() {
         // given
         CompletableResultCode first = new CompletableResultCode();
         CompletableResultCode failure = new CompletableResultCode();
@@ -263,7 +270,7 @@ class SafeSpanExporterTest {
     }
 
     @Test
-    void successStartedBeforeNewestFailureDoesNotCloseRecoveryEpisode() {
+    void successStartedBeforeNewestFailureDoesNotCloseOutage() {
         // given
         CompletableResultCode firstFailure = new CompletableResultCode();
         CompletableResultCode candidate = new CompletableResultCode();
@@ -298,7 +305,7 @@ class SafeSpanExporterTest {
     }
 
     @Test
-    void lateFailureStartedBeforeCloseDoesNotOpenNewRecoveryEpisode() {
+    void lateFailureStartedBeforeCloseDoesNotOpenNewOutage() {
         // given
         CompletableResultCode lateFailure = new CompletableResultCode();
         CompletableResultCode failure = new CompletableResultCode();
@@ -324,13 +331,13 @@ class SafeSpanExporterTest {
             assertThat(recoveryEvents(capture))
                     .singleElement()
                     .satisfies(event -> assertThat(event.fields()).containsEntry("failures", "1"));
-            assertThat(safe.getExportFailures()).isEqualTo(2L);
-            assertThat(safe.getDroppedSpans()).isEqualTo(2L);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isEqualTo(2L);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isEqualTo(2L);
         }
     }
 
     @Test
-    void lateFailureStartedBeforeOrdinarySuccessDoesNotOpenRecoveryEpisode() {
+    void lateFailureStartedBeforeOrdinarySuccessDoesNotOpenOutage() {
         // given
         CompletableResultCode lateFailure = new CompletableResultCode();
         CompletableResultCode success = new CompletableResultCode();
@@ -351,13 +358,13 @@ class SafeSpanExporterTest {
 
             // then
             assertThat(recoveryEvents(capture)).isEmpty();
-            assertThat(safe.getExportFailures()).isEqualTo(1L);
-            assertThat(safe.getDroppedSpans()).isEqualTo(1L);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isEqualTo(1L);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isEqualTo(1L);
         }
     }
 
     @Test
-    void recoveryEventReportsAllFailuresInClosedEpisodeOnlyOnce() {
+    void recoveryEventReportsAllFailuresInClosedOutageOnlyOnce() {
         // given
         CompletableResultCode firstFailure = new CompletableResultCode();
         CompletableResultCode secondFailure = new CompletableResultCode();
@@ -389,7 +396,7 @@ class SafeSpanExporterTest {
     }
 
     @Test
-    void synchronousExportExceptionOpensRecoveryEpisode() {
+    void synchronousExportExceptionOpensOutage() {
         // given
         AtomicInteger calls = new AtomicInteger();
         SafeSpanExporter safe = safeExporter(new SpanExporter() {
@@ -425,7 +432,7 @@ class SafeSpanExporterTest {
     }
 
     @Test
-    void nullExportResultOpensRecoveryEpisode() {
+    void nullExportResultOpensOutage() {
         // given
         SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
                 step(null), step(CompletableResultCode.ofSuccess())
@@ -444,7 +451,7 @@ class SafeSpanExporterTest {
     }
 
     @Test
-    void partialSuccessClosesRecoveryEpisode() {
+    void partialSuccessClosesOutage() {
         // given
         SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
                 step(CompletableResultCode.ofFailure()),
@@ -458,14 +465,14 @@ class SafeSpanExporterTest {
 
             // then
             assertThat(recoveryEvents(capture)).hasSize(1);
-            assertThat(safe.getPartialSuccessBatches()).isEqualTo(1L);
-            assertThat(safe.getExportedSpans()).isEqualTo(2L);
-            assertThat(safe.getRejectedSpans()).isEqualTo(1L);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_PARTIAL_SUCCESS_BATCHES, 0L).longValue()).isEqualTo(1L);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isEqualTo(2L);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_REJECTED_SPANS, 0L).longValue()).isEqualTo(1L);
         }
     }
 
     @Test
-    void undeterminedSuccessClosesRecoveryEpisode() {
+    void undeterminedSuccessClosesOutage() {
         // given
         SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
                 step(CompletableResultCode.ofFailure()),
@@ -479,8 +486,8 @@ class SafeSpanExporterTest {
 
             // then
             assertThat(recoveryEvents(capture)).hasSize(1);
-            assertThat(safe.getAcceptedUnknownBatches()).isEqualTo(1L);
-            assertThat(safe.getExportedSpans()).isZero();
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_ACCEPTED_UNKNOWN_BATCHES, 0L).longValue()).isEqualTo(1L);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isZero();
         }
     }
 
@@ -512,7 +519,7 @@ class SafeSpanExporterTest {
     }
 
     @Test
-    void filteredRecoveryConsumesPublicationPermitWithoutKeepingEpisodeOpen() {
+    void filteredRecoveryConsumesPublicationPermitWithoutKeepingOutageOpen() {
         // given
         AtomicLong clock = new AtomicLong();
         SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
@@ -549,7 +556,7 @@ class SafeSpanExporterTest {
     }
 
     @Test
-    void exportGateSuccessDoesNotCloseRecoveryEpisode() {
+    void exportGateSuccessDoesNotCloseOutage() {
         // given
         TracingSettingsSource policy = TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random());
         SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
@@ -576,7 +583,7 @@ class SafeSpanExporterTest {
     }
 
     @Test
-    void boundaryDroppedEmptyBatchDoesNotCloseRecoveryEpisode() {
+    void boundaryDroppedEmptyBatchDoesNotCloseOutage() {
         // given
         ScrubbingRuntime runtime = enabledRuntime("email");
         SafeSpanExporter safe = safeExporter(
@@ -586,8 +593,8 @@ class SafeSpanExporterTest {
                 TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 runtime
         );
-        SpanData normal = ExporterBoundaryTestSupport.baseSpan("normal").build();
-        SpanData poisoned = new DelegatingSpanData(ExporterBoundaryTestSupport.baseSpan("poisoned").build()) {
+        SpanData normal = ExporterTestSpans.baseSpan("normal").build();
+        SpanData poisoned = new DelegatingSpanData(ExporterTestSpans.baseSpan("poisoned").build()) {
             @Override
             public Attributes getAttributes() {
                 throw new IllegalStateException("simulated corruption");
@@ -613,7 +620,7 @@ class SafeSpanExporterTest {
     }
 
     @Test
-    void acceptedCountDeliveryFailureLeavesRecoveryEpisodeClosed() throws Exception {
+    void acceptedCountDeliveryFailureLeavesOutageClosed() throws Exception {
         // given
         SelectiveFailureOutputStream output = new SelectiveFailureOutputStream(
                 "\"event_name\":\"EXPORT_ACCEPTED_SPAN_COUNT_UNAVAILABLE\""
@@ -646,7 +653,7 @@ class SafeSpanExporterTest {
                 .filter(line -> line.contains("\"event_name\":\"SAFE_EXPORT_SUCCEEDED_AFTER_FAILURES\"")))
                 .hasSize(2)
                 .allMatch(line -> line.contains("\"failures\":\"1\""));
-        assertThat(safe.getAcceptedUnknownBatches()).isEqualTo(1L);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_ACCEPTED_UNKNOWN_BATCHES, 0L).longValue()).isEqualTo(1L);
     }
 
     @Test
@@ -683,30 +690,8 @@ class SafeSpanExporterTest {
                 .filter(line -> line.contains("\"event_name\":\"SAFE_EXPORT_SUCCEEDED_AFTER_FAILURES\"")))
                 .hasSize(2)
                 .allMatch(line -> line.contains("\"failures\":\"1\""));
-        assertThat(safe.getAcceptedUnknownBatches()).isEqualTo(1L);
-        assertThat(safe.getExportFailures()).isEqualTo(2L);
-    }
-
-    @Test
-    void sequenceFencingSurvivesSignedLongRollover() throws Exception {
-        // given
-        SafeSpanExporter safe = safeExporter(new QueuedSpanExporter(
-                step(CompletableResultCode.ofFailure()), step(CompletableResultCode.ofSuccess())
-        ));
-        Field operationSeq = SafeSpanExporter.class.getDeclaredField("operationSeq");
-        operationSeq.setAccessible(true);
-        operationSeq.setLong(safe, Long.MAX_VALUE - 1L);
-
-        try (AgentLogCapture capture = AgentLogCapture.installed()) {
-            // when
-            safe.export(spansOfSize(1));
-            safe.export(spansOfSize(1));
-
-            // then
-            assertThat(recoveryEvents(capture))
-                    .singleElement()
-                    .satisfies(event -> assertThat(event.fields()).containsEntry("failures", "1"));
-        }
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_ACCEPTED_UNKNOWN_BATCHES, 0L).longValue()).isEqualTo(1L);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isEqualTo(2L);
     }
 
     @Test
@@ -786,7 +771,7 @@ class SafeSpanExporterTest {
             assertThat(named(capture, "SAFE_EXPORT_RETURNED_FAILURE")).hasSizeLessThan(20);
             assertThat(named(capture, "SAFE_FLUSH_RETURNED_FAILURE")).hasSize(1);
             assertThat(named(capture, "EXPORT_ACCEPTED_SPAN_COUNT_UNAVAILABLE")).hasSize(1);
-            assertThat(safe.getAcceptedUnknownBatches()).isEqualTo(1L);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_ACCEPTED_UNKNOWN_BATCHES, 0L).longValue()).isEqualTo(1L);
         }
     }
 
@@ -867,12 +852,12 @@ class SafeSpanExporterTest {
 
         // then
         assertThat(result.isSuccess()).isFalse();
-        assertThat(safe.getExportFailures()).isEqualTo(1);
-        assertThat(safe.getDroppedSpans()).isEqualTo(4);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isEqualTo(1);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isEqualTo(4);
     }
 
     @Test
-    @DisplayName("Делегат вернул null: трактуем как failure без NPE")
+    @DisplayName("Внутренний экспортёр вернул null: guard превращает это в failure, счётчики растут")
     void nullResultTreatedAsFailure() {
         // given
         SafeSpanExporter safe = safeExporter(delegate(null));
@@ -882,8 +867,8 @@ class SafeSpanExporterTest {
 
         // then
         assertThat(result.isSuccess()).isFalse();
-        assertThat(safe.getExportFailures()).isEqualTo(1);
-        assertThat(safe.getDroppedSpans()).isEqualTo(2);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isEqualTo(1);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isEqualTo(2);
     }
 
     @Test
@@ -897,8 +882,8 @@ class SafeSpanExporterTest {
         safe.export(spansOfSize(3));
 
         // then
-        assertThat(safe.getExportFailures()).as("failures — это batches").isEqualTo(2);
-        assertThat(safe.getDroppedSpans()).as("dropped — это spans").isEqualTo(6);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).as("failures — это batches").isEqualTo(2);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).as("dropped — это spans").isEqualTo(6);
     }
 
     @Test
@@ -927,7 +912,7 @@ class SafeSpanExporterTest {
 
         // then
         assertThat(result.isSuccess()).isFalse();
-        assertThat(safe.getFlushFailures()).isEqualTo(1);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_FLUSH_FAILURES, 0L).longValue()).isEqualTo(1);
     }
 
     @Test
@@ -956,18 +941,18 @@ class SafeSpanExporterTest {
 
         // then
         assertThat(result.isSuccess()).isFalse();
-        assertThat(safe.getShutdownFailures()).isEqualTo(1);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SHUTDOWN_FAILURES, 0L).longValue()).isEqualTo(1);
     }
 
     @Test
-    void flushNullResultLogsExporterTypeWithoutRawTransportData() {
+    void flushNullResultIsLoggedAsThrownWithoutRawTransportData() {
         // given
         LifecycleSpanExporter delegate = new LifecycleSpanExporter(
                 null,
                 CompletableResultCode.ofSuccess()
         );
         try (SafeSpanExporter safe = new SafeSpanExporter(
-                delegate,
+                guard(delegate),
                 TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled(),
                 new RateLimitedLogger(SafeSpanExporterTest.class),
@@ -979,12 +964,11 @@ class SafeSpanExporterTest {
 
             // then
             assertThat(result.isSuccess()).isFalse();
-            assertThat(safe.getFlushFailures()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_FLUSH_FAILURES, 0L).longValue()).isEqualTo(1);
             assertThat(logs.events())
-                    .filteredOn(event -> "SAFE_FLUSH_RETURNED_NULL".equals(event.eventName()))
+                    .filteredOn(event -> "SAFE_FLUSH_THROWN".equals(event.eventName()))
                     .singleElement()
-                    .satisfies(event -> assertThat(event.fields())
-                            .containsOnly(Map.entry("exporterType", "LifecycleSpanExporter")));
+                    .satisfies(event -> assertThat(event.fields()).isEmpty());
             assertThat(logs.rendered()).doesNotContain("endpoint", "transport message");
         }
     }
@@ -998,7 +982,7 @@ class SafeSpanExporterTest {
                 pendingShutdown
         );
         try (SafeSpanExporter safe = new SafeSpanExporter(
-                delegate,
+                guard(delegate),
                 TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled(),
                 new RateLimitedLogger(SafeSpanExporterTest.class),
@@ -1012,12 +996,11 @@ class SafeSpanExporterTest {
 
             // then
             assertThat(result.isSuccess()).isFalse();
-            assertThat(safe.getShutdownFailures()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SHUTDOWN_FAILURES, 0L).longValue()).isEqualTo(1);
             assertThat(logs.events())
                     .filteredOn(event -> "SAFE_SHUTDOWN_RETURNED_FAILURE".equals(event.eventName()))
                     .singleElement()
-                    .satisfies(event -> assertThat(event.fields())
-                            .containsOnly(Map.entry("exporterType", "LifecycleSpanExporter")));
+                    .satisfies(event -> assertThat(event.fields()).isEmpty());
             assertThat(logs.rendered()).doesNotContain("endpoint", "transport message");
         }
     }
@@ -1033,10 +1016,8 @@ class SafeSpanExporterTest {
         Map<String, Long> snapshot = safe.metricsSnapshot();
 
         // then
-        assertThat(snapshot).containsKeys(
-                "export_batches", "export_batch_failures", "exported_spans", "transport_dropped_spans",
-                "flush_failures", "shutdown_failures", "suppressed_spans_export_disabled");
-        assertThat(snapshot.get("exported_spans")).isEqualTo(1L);
+        assertContractKeys(snapshot);
+        assertThat(snapshot.get(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS)).isEqualTo(1L);
     }
 
     @Test
@@ -1070,11 +1051,11 @@ class SafeSpanExporterTest {
         // then
         assertThat(gated.isSuccess()).as("gate возвращает success, BSP не ретраит").isTrue();
         assertThat(delegateCalls.get()).as("делегат не вызывается").isZero();
-        assertThat(safe.getGatedSpans()).isEqualTo(4);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SUPPRESSED_SPANS_EXPORT_DISABLED, 0L).longValue()).isEqualTo(4);
         assertThat(safe.metricsSnapshot().get("suppressed_spans_export_disabled")).isEqualTo(4L);
-        assertThat(safe.getExportBatches()).as("gated не считается батчем экспорта").isZero();
-        assertThat(safe.getExportFailures()).as("gate — не отказ транспорта").isZero();
-        assertThat(safe.getDroppedSpans()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCHES, 0L).longValue()).as("gated не считается батчем экспорта").isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).as("gate — не отказ транспорта").isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isZero();
 
         // when
         AcceptedPolicyMutationAccess.applyExporter(access, true);
@@ -1082,7 +1063,7 @@ class SafeSpanExporterTest {
 
         // then
         assertThat(delegateCalls.get()).as("после включения делегат снова вызывается").isEqualTo(1);
-        assertThat(safe.getExportedSpans()).isEqualTo(2);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isEqualTo(2);
     }
 
     @Test
@@ -1112,7 +1093,7 @@ class SafeSpanExporterTest {
 
         // when
         AcceptedPolicyMutationAccess.applyExporter(access, false);
-        SpanData span = ExporterBoundaryTestSupport.baseSpan("op")
+        SpanData span = ExporterTestSpans.baseSpan("op")
                 .setEvents(List.of(EventData.create(
                         1L, "db.query", Attributes.of(AttributeKey.stringKey("db.password"), "supersecret"))))
                 .build();
@@ -1121,7 +1102,7 @@ class SafeSpanExporterTest {
         // then
         assertThat(gated.isSuccess()).isTrue();
         assertThat(delegateCalls.get()).isZero();
-        assertThat(safe.getGatedSpans()).isEqualTo(2);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SUPPRESSED_SPANS_EXPORT_DISABLED, 0L).longValue()).isEqualTo(2);
         assertThat(runtime.boundaryMetrics().exporterInvocations())
                 .as("gated export must not enter the boundary")
                 .isZero();
@@ -1223,7 +1204,7 @@ class SafeSpanExporterTest {
         // then
         assertThat(result).isNotNull();
         assertThat(result.isSuccess()).isFalse();
-        assertThat(safe.getFlushFailures()).isEqualTo(1);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_FLUSH_FAILURES, 0L).longValue()).isEqualTo(1);
     }
 
     @Test
@@ -1253,7 +1234,7 @@ class SafeSpanExporterTest {
         // then
         assertThat(result).isNotNull();
         assertThat(result.isSuccess()).isFalse();
-        assertThat(safe.getShutdownFailures()).isEqualTo(1);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SHUTDOWN_FAILURES, 0L).longValue()).isEqualTo(1);
     }
 
     @Test
@@ -1395,11 +1376,11 @@ class SafeSpanExporterTest {
 
         // then
         assertThat(result.isSuccess()).isTrue();
-        assertThat(safe.getExportedSpans()).as("принято N - R").isEqualTo(2);
-        assertThat(safe.getRejectedSpans()).isEqualTo(1);
-        assertThat(safe.getPartialSuccessBatches()).isEqualTo(1);
-        assertThat(safe.getAcceptedUnknownBatches()).isZero();
-        assertThat(safe.getDroppedSpans()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).as("принято N - R").isEqualTo(2);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_REJECTED_SPANS, 0L).longValue()).isEqualTo(1);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_PARTIAL_SUCCESS_BATCHES, 0L).longValue()).isEqualTo(1);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_ACCEPTED_UNKNOWN_BATCHES, 0L).longValue()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isZero();
     }
 
     @Test
@@ -1414,10 +1395,10 @@ class SafeSpanExporterTest {
 
         // then
         assertThat(result.isSuccess()).isTrue();
-        assertThat(safe.getExportedSpans()).isZero();
-        assertThat(safe.getRejectedSpans()).isZero();
-        assertThat(safe.getPartialSuccessBatches()).isZero();
-        assertThat(safe.getAcceptedUnknownBatches()).isEqualTo(1);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_REJECTED_SPANS, 0L).longValue()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_PARTIAL_SUCCESS_BATCHES, 0L).longValue()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_ACCEPTED_UNKNOWN_BATCHES, 0L).longValue()).isEqualTo(1);
     }
 
     @Test
@@ -1431,9 +1412,9 @@ class SafeSpanExporterTest {
         safe.export(spansOfSize(3));
 
         // then
-        assertThat(safe.getExportedSpans()).isZero();
-        assertThat(safe.getRejectedSpans()).isZero();
-        assertThat(safe.getAcceptedUnknownBatches()).isEqualTo(1);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_REJECTED_SPANS, 0L).longValue()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_ACCEPTED_UNKNOWN_BATCHES, 0L).longValue()).isEqualTo(1);
     }
 
     @Test
@@ -1447,9 +1428,9 @@ class SafeSpanExporterTest {
         safe.export(spansOfSize(4));
 
         // then
-        assertThat(safe.getExportedSpans()).isEqualTo(4);
-        assertThat(safe.getRejectedSpans()).isZero();
-        assertThat(safe.getPartialSuccessBatches()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isEqualTo(4);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_REJECTED_SPANS, 0L).longValue()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_PARTIAL_SUCCESS_BATCHES, 0L).longValue()).isZero();
     }
 
     @Test
@@ -1463,10 +1444,10 @@ class SafeSpanExporterTest {
         safe.export(spansOfSize(3));
 
         // then
-        assertThat(safe.getExportedSpans()).isZero();
-        assertThat(safe.getDroppedSpans()).isEqualTo(3);
-        assertThat(safe.getExportFailures()).isEqualTo(1);
-        assertThat(safe.getRejectedSpans()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isEqualTo(3);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isEqualTo(1);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_REJECTED_SPANS, 0L).longValue()).isZero();
     }
 
     @Test
@@ -1501,18 +1482,18 @@ class SafeSpanExporterTest {
 
         // then
         assertThat(result.isDone()).as("processor увидит незавершённый export и зафиксирует timeout").isFalse();
-        assertThat(safe.getExportedSpans()).isZero();
-        assertThat(safe.getRejectedSpans()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_REJECTED_SPANS, 0L).longValue()).isZero();
 
         // when
         pending.succeed();
 
         // then
-        assertThat(safe.getExportedSpans()).as("принято N - R после позднего ответа").isEqualTo(2);
-        assertThat(safe.getRejectedSpans()).isEqualTo(1);
-        assertThat(safe.getPartialSuccessBatches()).isEqualTo(1);
-        assertThat(safe.getExportFailures()).as("поздний успех не считается транспортной ошибкой").isZero();
-        assertThat(safe.getDroppedSpans()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).as("принято N - R после позднего ответа").isEqualTo(2);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_REJECTED_SPANS, 0L).longValue()).isEqualTo(1);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_PARTIAL_SUCCESS_BATCHES, 0L).longValue()).isEqualTo(1);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).as("поздний успех не считается транспортной ошибкой").isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isZero();
     }
 
     @Test
@@ -1527,15 +1508,64 @@ class SafeSpanExporterTest {
         pending.fail();
 
         // then
-        assertThat(safe.getExportFailures()).isEqualTo(1);
-        assertThat(safe.getDroppedSpans()).isEqualTo(3);
-        assertThat(safe.getExportedSpans()).isZero();
-        assertThat(safe.getAcceptedUnknownBatches()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isEqualTo(1);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isEqualTo(3);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_ACCEPTED_UNKNOWN_BATCHES, 0L).longValue()).isZero();
     }
 
-    @SuppressWarnings("unused")
+    @Test
+    void emptyBatchDoesNotCallDelegateOrCountAnExport() {
+        // given
+        AtomicInteger delegateCalls = new AtomicInteger();
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
+            @Override
+            public CompletableResultCode export(Collection<SpanData> spans) {
+                delegateCalls.incrementAndGet();
+                return CompletableResultCode.ofSuccess();
+            }
+
+            @Override
+            public CompletableResultCode flush() {
+                return CompletableResultCode.ofSuccess();
+            }
+
+            @Override
+            public CompletableResultCode shutdown() {
+                return CompletableResultCode.ofSuccess();
+            }
+        });
+
+        // when
+        CompletableResultCode result = safe.export(emptySpans());
+
+        // then
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(delegateCalls).hasValue(0);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCHES, 0L).longValue())
+                .isZero();
+    }
+
     private static List<SpanData> emptySpans() {
         return List.of();
+    }
+
+    private static void assertContractKeys(Map<String, Long> snapshot) {
+        assertThat(snapshot.keySet()).containsExactlyInAnyOrder(
+                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCHES,
+                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES,
+                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS,
+                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS,
+                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_PARTIAL_SUCCESS_BATCHES,
+                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_REJECTED_SPANS,
+                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_ACCEPTED_UNKNOWN_BATCHES,
+                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_FLUSH_FAILURES,
+                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SHUTDOWN_FAILURES,
+                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SUPPRESSED_SPANS_EXPORT_DISABLED,
+                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_OVERSIZED_SPANS_DROPPED,
+                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SIZE_MEASUREMENT_FAILURES,
+                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SPLIT_EXPORT_BATCHES
+        );
     }
 
     private static ScrubbingRuntime enabledRuntime(String... ruleNames) {
@@ -1543,7 +1573,7 @@ class SafeSpanExporterTest {
         for (String name : ruleNames) {
             rules.add(BuiltInSpanAttributeScrubbingRules.resolve(name));
         }
-        return ExporterBoundaryTestSupport.runtimeOf(rules);
+        return BoundaryTestSupport.runtimeOf(rules);
     }
 
     @Test
@@ -1571,7 +1601,7 @@ class SafeSpanExporterTest {
         }, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         // when
-        SpanData span = ExporterBoundaryTestSupport.baseSpan("op")
+        SpanData span = ExporterTestSpans.baseSpan("op")
                 .setEvents(List.of(EventData.create(
                         1L, "db.query", Attributes.of(AttributeKey.stringKey("db.password"), "supersecret"))))
                 .build();
@@ -1581,7 +1611,7 @@ class SafeSpanExporterTest {
         assertThat(captured).hasSize(1);
         assertThat(captured.getFirst().getEvents().getFirst().getAttributes().get(AttributeKey.stringKey("db.password")))
                 .isNull();
-        assertThat(safe.getExportedSpans()).isEqualTo(1);
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isEqualTo(1);
     }
 
     @Test
@@ -1608,9 +1638,9 @@ class SafeSpanExporterTest {
             }
         }, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
-        SpanData healthy = ExporterBoundaryTestSupport.baseSpan("op-1").build();
+        SpanData healthy = ExporterTestSpans.baseSpan("op-1").build();
         SpanData poisoned = new DelegatingSpanData(
-                ExporterBoundaryTestSupport.baseSpan("op-2").build()) {
+                ExporterTestSpans.baseSpan("op-2").build()) {
             @Override
             public Attributes getAttributes() {
                 throw new IllegalStateException("simulated corruption");
@@ -1623,8 +1653,8 @@ class SafeSpanExporterTest {
         // then
         assertThat(result.isSuccess()).as("boundary drop is not a transport failure").isTrue();
         assertThat(delegateBatchSize.get()).as("only the healthy span reaches the delegate").isEqualTo(1);
-        assertThat(safe.getExportFailures()).isZero();
-        assertThat(safe.getDroppedSpans()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isZero();
         assertThat(runtime.boundaryMetrics().collapseFailures()).isEqualTo(1L);
     }
 
@@ -1673,8 +1703,8 @@ class SafeSpanExporterTest {
                 .as("boundary preparation failure must never fall through to delegate.export(rawBatch)")
                 .isFalse();
         assertThat(delegateCalls.get()).as("delegate must never be called with an unscrubbed batch").isZero();
-        assertThat(safe.getExportFailures()).as("boundary failure is not a transport failure").isZero();
-        assertThat(safe.getDroppedSpans()).as("boundary failure is not a transport drop").isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).as("boundary failure is not a transport failure").isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).as("boundary failure is not a transport drop").isZero();
         assertThat(runtime.boundaryMetrics().batchPreparationFailures()).isEqualTo(1L);
         assertThat(runtime.boundaryMetrics().spansDroppedFailClosed()).isEqualTo(1L);
     }
@@ -1724,8 +1754,8 @@ class SafeSpanExporterTest {
                 .as("a hostile size() must fail closed exactly like a hostile iterator()")
                 .isFalse();
         assertThat(delegateCalls.get()).as("delegate must never be called").isZero();
-        assertThat(safe.getExportFailures()).isZero();
-        assertThat(safe.getDroppedSpans()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isZero();
         assertThat(runtime.boundaryMetrics().batchPreparationFailures()).isEqualTo(1L);
         assertThat(runtime.boundaryMetrics().spansDroppedFailClosed())
                 .as("original count is unknown when size() itself throws; nothing countable was dropped")
@@ -1810,7 +1840,7 @@ class SafeSpanExporterTest {
             }
         }, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
-        SpanData span = ExporterBoundaryTestSupport.baseSpan("op").build();
+        SpanData span = ExporterTestSpans.baseSpan("op").build();
         AtomicInteger sizeCalls = new AtomicInteger();
         List<SpanData> hostileBatch = new AbstractList<>() {
             @Override
@@ -1845,8 +1875,8 @@ class SafeSpanExporterTest {
                 .as("a hostile size() call after boundary scrubbing must fail closed exactly like the first")
                 .isFalse();
         assertThat(delegateCalls.get()).as("delegate must never be called").isZero();
-        assertThat(safe.getExportFailures()).isZero();
-        assertThat(safe.getDroppedSpans()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isZero();
         assertThat(runtime.boundaryMetrics().batchPreparationFailures()).isEqualTo(1L);
     }
 
@@ -1875,7 +1905,7 @@ class SafeSpanExporterTest {
         }, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         SpanData poisoned = new DelegatingSpanData(
-                ExporterBoundaryTestSupport.baseSpan("op").build()
+                ExporterTestSpans.baseSpan("op").build()
         ) {
             @Override
             public Attributes getAttributes() {
@@ -1889,32 +1919,29 @@ class SafeSpanExporterTest {
         // then
         assertThat(result.isSuccess()).isTrue();
         assertThat(delegateCalls.get()).as("empty effective batch never reaches the delegate").isZero();
-        assertThat(safe.getExportBatches()).isZero();
+        assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCHES, 0L).longValue()).isZero();
     }
 
     @Test
-    @DisplayName("metricsSnapshot exposes boundary counters only when scrubbing is enabled")
-    void metricsSnapshotExposesBoundaryCountersOnlyWhenEnabled() {
+    void metricsSnapshotKeepsContractKeysWhenScrubbingIsEnabled() {
         // given
         ScrubbingRuntime disabled = ScrubbingRuntimeTestFixtures.disabled();
         try (SafeSpanExporter withDisabledRuntime = new SafeSpanExporter(
-                delegate(CompletableResultCode.ofSuccess()), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), disabled)) {
+                guard(delegate(CompletableResultCode.ofSuccess())), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), disabled)) {
             // when/then
-            assertThat(withDisabledRuntime.metricsSnapshot()).doesNotContainKey("boundary.input_spans");
+            assertContractKeys(withDisabledRuntime.metricsSnapshot());
         }
 
         // given
         ScrubbingRuntime enabled = enabledRuntime("email");
         enabled.recordBoundaryValueAttributesRemoved(2L);
         try (SafeSpanExporter withEnabledRuntime = new SafeSpanExporter(
-                delegate(CompletableResultCode.ofSuccess()), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), enabled)) {
+                guard(delegate(CompletableResultCode.ofSuccess())), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), enabled)) {
             // when
-            withEnabledRuntime.export(List.of(ExporterBoundaryTestSupport.baseSpan("op").build()));
+            withEnabledRuntime.export(List.of(ExporterTestSpans.baseSpan("op").build()));
 
             // then
-            assertThat(withEnabledRuntime.metricsSnapshot())
-                    .containsEntry("boundary.value_attributes_removed", 2L)
-                    .containsKey("boundary.input_spans");
+            assertContractKeys(withEnabledRuntime.metricsSnapshot());
         }
     }
 
@@ -1927,7 +1954,7 @@ class SafeSpanExporterTest {
         // then
         for (Constructor<?> constructor : constructors) {
             boolean productionSignature = List.of(constructor.getParameterTypes()).equals(List.of(
-                    SpanExporter.class,
+                    OtlpRequestSizeLimitingSpanExporter.class,
                     TracingSettingsSource.class,
                     ScrubbingRuntime.class
             ));
@@ -2040,8 +2067,8 @@ class SafeSpanExporterTest {
     }
 
     @Test
-    @DisplayName("Clean batch is forwarded as the same Collection instance (no defensive copy)")
-    void cleanBatchIsForwardedWithoutCopying() {
+    @DisplayName("Чистые span сохраняются при упаковке batch в запрос")
+    void cleanBatchPreservesSpanIdentityAndOrder() {
         // given
         ScrubbingRuntime enabled = enabledRuntime("email");
         List<Collection<SpanData>> seen = new ArrayList<>();
@@ -2063,13 +2090,14 @@ class SafeSpanExporterTest {
             }
         }, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), enabled);
 
-        Collection<SpanData> batch = List.of(ExporterBoundaryTestSupport.baseSpan("clean").build());
+        Collection<SpanData> batch = List.of(ExporterTestSpans.baseSpan("clean").build());
 
         // when
         safe.export(batch);
 
         // then
         assertThat(seen).hasSize(1);
-        assertThat(seen.getFirst()).isSameAs(batch);
+        assertThat(seen.getFirst()).containsExactlyElementsOf(batch);
+        assertThat(seen.getFirst().iterator().next()).isSameAs(batch.iterator().next());
     }
 }

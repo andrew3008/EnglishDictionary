@@ -5,24 +5,23 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.exporter.guard.OtlpRequestSizeLimitingSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
-import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadinessSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
@@ -44,97 +43,70 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 class PlatformExportProcessorFactoryBoundaryTest {
 
     @Test
-    @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
-    @DisplayName("Non-batch processor keeps the wrapped exporter")
-    void nonBatchProcessorKeepsTheWrappedExporter() {
-        try (AgentLogCapture logs = AgentLogCapture.installed()) {
-            // given
-            ScrubbingRuntime runtime = runtimeOfPassword();
-            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
-            PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(registrar, runtime);
-            List<SpanData> captured = new ArrayList<>();
-            SpanExporter wrapped = factory.captureExporter(capturing(captured), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
-
-            SpanProcessor stock = SimpleSpanProcessor.create(wrapped);
-
+    @DisplayName("Non-batch processor is rejected without protecting the export path")
+    void nonBatchProcessorIsRejected() {
+        // given
+        ScrubbingRuntime runtime = runtimeOfPassword();
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
+        PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(registrar, runtime);
+        SpanExporter wrapped = factory.captureExporter(capturing(new ArrayList<>()),
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
+        try (SpanProcessor stock = SimpleSpanProcessor.create(wrapped)) {
             // when
-            SpanProcessor result = factory.maybeReplaceExportProcessor(stock, emptyConfig());
+            Throwable failure = catchThrowable(() -> factory.maybeReplaceExportProcessor(stock, emptyConfig()));
 
             // then
-            assertThat(result).isSameAs(stock);
-            assertThat(logs.events())
-                    .filteredOn(event -> "NON_BATCH_SPAN_PROCESSOR_FALLBACK".equals(event.eventName()))
-                    .singleElement()
-                    .satisfies(event -> assertThat(event.fields())
-                            .containsEntry("type", stock.getClass().getName()));
-            assertThat(registrar.extensionReadiness().snapshot().has(
-                    PlatformExtensionCapability.EXPORT_PATH_PROTECTED)).isTrue();
-
-            // when
-            wrapped.export(List.of(spanWithPasswordEvent()));
-
-            // then
-            assertThat(captured).hasSize(1);
-            assertThat(captured.getFirst().getEvents().getFirst().getAttributes().get(AttributeKey.stringKey("db.password")))
-                    .isNull();
-        }
-    }
-
-    @Test
-    @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
-    @DisplayName("Missing captured exporter keeps the incoming processor")
-    void missingCapturedExporterKeepsTheIncomingProcessor() {
-        try (AgentLogCapture logs = AgentLogCapture.installed()) {
-            // given
-            ScrubbingRuntime runtime = runtimeOfPassword();
-            PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
-            PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(registrar, runtime);
-            SpanProcessor stock = SimpleSpanProcessor.create(capturing(new ArrayList<>()));
-
-            // when
-            SpanProcessor result = factory.maybeReplaceExportProcessor(stock, emptyConfig());
-
-            // then
-            assertThat(result).isSameAs(stock);
-            assertThat(logs.events())
-                    .filteredOn(event -> "CAPTURED_SPAN_EXPORTER_NULL_FALLBACK".equals(event.eventName()))
-                    .singleElement()
-                    .satisfies(event -> {
-                        assertThat(event.level()).isEqualTo(AgentLogLevel.WARN);
-                        assertThat(event.eventCode()).isEqualTo(AgentEventCode.EXPORT_FACTORY);
-                        assertThat(event.fields()).isEmpty();
-                    });
+            assertThat(failure).isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining(stock.getClass().getName());
             assertThat(registrar.extensionReadiness().snapshot().has(
                     PlatformExtensionCapability.EXPORT_PATH_PROTECTED)).isFalse();
         }
     }
 
     @Test
-    @DisplayName("Single wrapped exporter still acknowledges export mode for a non-batch processor")
-    void singleWrappedExporterAcknowledgesExportModeForNonBatchProcessor() {
+    @DisplayName("Missing captured exporter is rejected")
+    void missingCapturedExporterIsRejected() {
         // given
         ScrubbingRuntime runtime = runtimeOfPassword();
         PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(registrar, runtime);
-        AtomicInteger delegateCalls = new AtomicInteger();
-        SpanExporter wrapped = factory.captureExporter(new SpanExporter() {
-            @Override
-            public CompletableResultCode export(Collection<SpanData> spans) {
-                delegateCalls.incrementAndGet();
-                return CompletableResultCode.ofSuccess();
-            }
-            @Override public CompletableResultCode flush() { return CompletableResultCode.ofSuccess(); }
-            @Override public CompletableResultCode shutdown() { return CompletableResultCode.ofSuccess(); }
-        }, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
+        try (SpanProcessor stock = SimpleSpanProcessor.create(capturing(new ArrayList<>()))) {
+            // when
+            Throwable failure = catchThrowable(() -> factory.maybeReplaceExportProcessor(stock, emptyConfig()));
+
+            // then
+            assertThat(failure).isInstanceOf(IllegalStateException.class).hasMessageContaining("found 0");
+            assertThat(registrar.extensionReadiness().snapshot().has(
+                    PlatformExtensionCapability.EXPORT_PATH_PROTECTED)).isFalse();
+        }
+    }
+
+    @Test
+    @DisplayName("Multiple captured exporters are rejected")
+    void multipleCapturedExportersAreRejected() {
+        // given
+        ScrubbingRuntime runtime = runtimeOfPassword();
+        PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
+        PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(registrar, runtime);
+        SpanExporter first = factory.captureExporter(
+                capturing(new ArrayList<>()),
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random())
+        );
+        SpanExporter second = factory.captureExporter(
+                capturing(new ArrayList<>()),
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random())
+        );
+        SpanProcessor stock = SimpleSpanProcessor.create(first);
 
         // when
-        factory.maybeReplaceExportProcessor(SimpleSpanProcessor.create(wrapped), emptyConfig());
+        Throwable failure = catchThrowable(() -> factory.maybeReplaceExportProcessor(stock, emptyConfig()));
 
         // then
-        PlatformExtensionReadinessSnapshot readiness = registrar.extensionReadiness().snapshot();
-        assertThat(readiness.has(PlatformExtensionCapability.EXPORT_PATH_PROTECTED)
-                || readiness.has(PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED))
-                .isTrue();
+        assertThat(failure).isInstanceOf(IllegalStateException.class).hasMessageContaining("found 2");
+        assertThat(registrar.extensionReadiness().snapshot()
+                .has(PlatformExtensionCapability.EXPORT_PATH_PROTECTED)).isFalse();
+        stock.close();
+        second.close();
     }
 
     @Test
@@ -144,7 +116,11 @@ class PlatformExportProcessorFactoryBoundaryTest {
         ScrubbingRuntime session = runtimeOfPassword();
         List<SpanData> captured = new ArrayList<>();
         SafeSpanExporter foreign = new SafeSpanExporter(
-                capturing(captured), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
+                new OtlpRequestSizeLimitingSpanExporter(
+                        capturing(captured),
+                        Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)
+                ),
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled());
 
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
@@ -171,7 +147,11 @@ class PlatformExportProcessorFactoryBoundaryTest {
         ScrubbingRuntime session = runtimeOfPassword();
         List<SpanData> captured = new ArrayList<>();
         SafeSpanExporter lookalike = new SafeSpanExporter(
-                capturing(captured), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), session
+                new OtlpRequestSizeLimitingSpanExporter(
+                        capturing(captured),
+                        Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)
+                ),
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), session
         );
 
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
@@ -189,9 +169,9 @@ class PlatformExportProcessorFactoryBoundaryTest {
     }
 
     @Test
-    @DisplayName("Re-entry with this factory's own ReplacementAwareSpanExporter output does not re-wrap "
-            + "or run the boundary a second time")
-    void ownReplacementAwareOutputIsShortCircuitedOnReentry() {
+    @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
+    @DisplayName("Factory re-entry preserves one scrubbed export path that drops oversized spans and retains neighbours")
+    void ownReplacementAwareOutputKeepsSingleProtectedExportPath() {
         // given
         ScrubbingRuntime session = runtimeOfPassword();
         List<SpanData> captured = new ArrayList<>();
@@ -199,22 +179,43 @@ class PlatformExportProcessorFactoryBoundaryTest {
                 new PlatformTracingMBeanRegistrar(AgentInstanceId.random()), session
         );
 
-        SpanExporter firstCapture = factory.captureExporter(capturing(captured), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
-        SpanExporter secondCapture = factory.captureExporter(firstCapture, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
+        SpanData oversized = TestSpanData.builder()
+                .setName("oversized")
+                .setKind(io.opentelemetry.api.trace.SpanKind.INTERNAL)
+                .setStatus(StatusData.unset())
+                .setStartEpochNanos(0L)
+                .setEndEpochNanos(1L)
+                .setHasEnded(true)
+                .setAttributes(Attributes.of(AttributeKey.stringArrayKey("payload"), Collections.nCopies(
+                        Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES / 1024) + 1,
+                        "x".repeat(1024))))
+                .build();
 
-        // then
-        assertThat(secondCapture).isSameAs(firstCapture);
+        try (SpanExporter firstCapture = factory.captureExporter(
+                capturing(captured),
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()))) {
+            SpanExporter secondCapture = factory.captureExporter(
+                    firstCapture,
+                    TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random())
+            );
 
-        // when
-        secondCapture.export(List.of(spanWithPasswordEvent()));
+            // when
+            CompletableResultCode result = secondCapture.export(List.of(
+                    spanWithPasswordEvent("left"),
+                    oversized,
+                    spanWithPasswordEvent("right"))
+            );
 
-        // then
-        assertThat(captured).hasSize(1);
-        assertThat(captured.getFirst().getEvents().getFirst().getAttributes().get(AttributeKey.stringKey("db.password")))
-                .isNull();
-        assertThat(session.boundaryMetrics().inputSpans())
-                .as("exactly one boundary pass, not one per re-entry")
-                .isEqualTo(1L);
+            // then
+            assertThat(secondCapture).isSameAs(firstCapture);
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(captured).extracting(SpanData::getName).containsExactly("left", "right");
+            assertThat(captured).allSatisfy(span -> assertThat(
+                    span.getEvents().getFirst().getAttributes().get(AttributeKey.stringKey("db.password"))).isNull());
+            assertThat(session.boundaryMetrics().inputSpans())
+                    .as("each input span passes the boundary exactly once despite factory re-entry")
+                    .isEqualTo(3L);
+        }
     }
 
     private static ScrubbingRuntime runtimeOfPassword() {
@@ -234,9 +235,9 @@ class PlatformExportProcessorFactoryBoundaryTest {
         };
     }
 
-    private static SpanData spanWithPasswordEvent() {
+    private static SpanData spanWithPasswordEvent(String name) {
         return TestSpanData.builder()
-                .setName("op")
+                .setName(name)
                 .setKind(io.opentelemetry.api.trace.SpanKind.INTERNAL)
                 .setStatus(StatusData.unset())
                 .setStartEpochNanos(0L)

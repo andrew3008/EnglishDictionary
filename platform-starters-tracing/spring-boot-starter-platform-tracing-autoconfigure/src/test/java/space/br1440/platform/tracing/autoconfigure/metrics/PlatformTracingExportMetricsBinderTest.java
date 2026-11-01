@@ -143,7 +143,7 @@ class PlatformTracingExportMetricsBinderTest {
     }
 
     @Test
-    void exporterCountersPublishLocalDropsAndShapeTruncationsWithoutProcessorOwner() {
+    void exporterCountersPublishGuardMetricsWithoutProcessorOwner() {
         // given
         PlatformTracingJmxClient client = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
         when(client.export().observation()).thenReturn(Optional.of(
@@ -152,7 +152,8 @@ class PlatformTracingExportMetricsBinderTest {
                         new JmxOwnerState.Absent<>(0L),
                         new JmxOwnerState.Present<>(new SafeExporterValues(Map.of(
                                 JmxWireContract.KEY_SAFE_EXPORTER_METRICS_OVERSIZED_SPANS_DROPPED, 2L,
-                                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SHAPE_TRUNCATIONS_TOTAL, 3L
+                                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SIZE_MEASUREMENT_FAILURES, 4L,
+                                JmxWireContract.KEY_SAFE_EXPORTER_METRICS_SPLIT_EXPORT_BATCHES, 5L
                         )), 1L)
                 )
         ));
@@ -162,11 +163,14 @@ class PlatformTracingExportMetricsBinderTest {
         // when
         double dropped = registry.get("platform.tracing.export.exporter.count")
                 .tag("metric", "oversized_spans_dropped").functionCounter().count();
-        double truncated = registry.get("platform.tracing.export.exporter.count")
-                .tag("metric", "shape_truncations_total").functionCounter().count();
+        double measurementFailures = registry.get("platform.tracing.export.exporter.count")
+                .tag("metric", "size_measurement_failures").functionCounter().count();
+        double splitBatches = registry.get("platform.tracing.export.exporter.count")
+                .tag("metric", "split_export_batches").functionCounter().count();
 
         // then
         assertThat(dropped).isEqualTo(2L);
-        assertThat(truncated).isEqualTo(3L);
+        assertThat(measurementFailures).isEqualTo(4L);
+        assertThat(splitBatches).isEqualTo(5L);
     }
 }

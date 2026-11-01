@@ -107,7 +107,8 @@ class TracePipelineSpiVerifierIntegrationTest {
                 .addPropertiesSupplier(() -> Map.of(
                         "otel.metrics.exporter", "none",
                         "otel.logs.exporter", "none",
-                        "otel.traces.exporter", "none"))
+                        "otel.traces.exporter", "otlp",
+                        "platform.tracing.exporter.enabled", "false"))
                 .build();
     }
 

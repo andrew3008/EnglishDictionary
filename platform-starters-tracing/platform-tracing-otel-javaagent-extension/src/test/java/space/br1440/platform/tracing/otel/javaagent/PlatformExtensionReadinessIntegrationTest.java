@@ -37,7 +37,8 @@ class PlatformExtensionReadinessIntegrationTest {
                     .setServiceClassLoader(isolatedLoader)
                     .addPropertiesSupplier(() -> Map.of(
                             "otel.service.name", "readiness-integration-test",
-                            "otel.traces.exporter", "logging",
+                            "otel.traces.exporter", "otlp",
+                            "platform.tracing.exporter.enabled", "false",
                             "otel.metrics.exporter", "none",
                             "otel.logs.exporter", "none",
                             "otel.propagators", "tracecontext,baggage,platform-trace-control"))
@@ -69,7 +70,8 @@ class PlatformExtensionReadinessIntegrationTest {
 
     private static AutoCloseable bootstrapOwner(ClassLoader isolatedLoader) throws ReflectiveOperationException {
         Class<?> runtime = isolatedLoader.loadClass(
-                "space.br1440.platform.tracing.otel.javaagent.bootstrap.ExtensionRuntime");
+                "space.br1440.platform.tracing.otel.javaagent.bootstrap.ExtensionRuntime"
+        );
         Method bootstrap = runtime.getDeclaredMethod("bootstrap");
         bootstrap.setAccessible(true);
         return (AutoCloseable) bootstrap.invoke(null);

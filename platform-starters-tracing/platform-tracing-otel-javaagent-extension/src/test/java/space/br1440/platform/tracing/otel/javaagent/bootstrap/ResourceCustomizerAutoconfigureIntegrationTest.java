@@ -217,7 +217,8 @@ class ResourceCustomizerAutoconfigureIntegrationTest {
         Map<String, String> effective = new HashMap<>(properties);
         effective.put("otel.metrics.exporter", "none");
         effective.put("otel.logs.exporter", "none");
-        effective.put("otel.traces.exporter", "none");
+        effective.put("otel.traces.exporter", "otlp");
+        effective.put("platform.tracing.exporter.enabled", "false");
 
         AtomicReference<Resource> observed = new AtomicReference<>();
         AutoConfiguredOpenTelemetrySdkBuilder builder = AutoConfiguredOpenTelemetrySdk.builder()

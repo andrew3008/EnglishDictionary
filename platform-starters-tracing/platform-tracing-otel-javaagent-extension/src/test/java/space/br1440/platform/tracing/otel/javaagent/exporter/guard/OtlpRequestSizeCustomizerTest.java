@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.exporter.response;
+package space.br1440.platform.tracing.otel.javaagent.exporter.guard;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -31,9 +31,10 @@ import org.junit.jupiter.params.provider.EnumSource;
 import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
 import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
-import space.br1440.platform.tracing.otel.javaagent.exporter.OtlpRequestSizeCustomizer;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
+import space.br1440.platform.tracing.otel.javaagent.exporter.response.ObservingSenderTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 
@@ -69,15 +70,15 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 class OtlpRequestSizeCustomizerTest {
 
     @Test
-    void otherExportersAreNeitherReplacedNorClosed() {
+    void otherExportersAreRejectedWithoutBeingClosed() {
         // given
         SpanExporter original = mock(SpanExporter.class);
 
         // when
-        SpanExporter replacement = OtlpRequestSizeCustomizer.customize(original, config(false));
-
         // then
-        assertThat(replacement).isSameAs(original);
+        assertThatThrownBy(() -> OtlpRequestSizeCustomizer.customize(original, config(false)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Expected an OTLP span exporter");
         verifyNoInteractions(original);
     }
 
@@ -133,15 +134,14 @@ class OtlpRequestSizeCustomizerTest {
 
             // then
             assertThat(replacement).isNotSameAs(original);
-            SpanExporter copiedExporter = (SpanExporter) field(replacement, "delegate");
-            assertThat(copiedExporter).isExactlyInstanceOf(original.getClass());
+            assertThat(replacement).isExactlyInstanceOf(original.getClass());
             assertThat(senders.states).hasSize(2);
             assertThat(senders.states.getFirst().shutdownCalls).isEqualTo(1);
             verify(original).shutdown();
             assertThat(senders.states.getLast().shutdownCalls).isZero();
-            assertThat(field(field(copiedExporter, "builder"), "meterProviderSupplier")).isSameAs(meterSupplier);
+            assertThat(field(field(replacement, "builder"), "meterProviderSupplier")).isSameAs(meterSupplier);
             assertThat(meterSupplier.get()).isSameAs(updatedMeters);
-            assertThat(field(field(copiedExporter, "marshaler"), "memoryMode"))
+            assertThat(field(field(replacement, "marshaler"), "memoryMode"))
                     .isEqualTo(MemoryMode.IMMUTABLE_DATA);
             if (protocol == Protocol.GRPC) {
                 GrpcSenderConfig copied = senders.grpcConfigs.getLast();
@@ -155,9 +155,9 @@ class OtlpRequestSizeCustomizerTest {
                 assertThat(copied.getHeadersSupplier().get()).containsEntry("constant", List.of("kept"))
                         .containsEntry("dynamic", List.of("after"));
                 assertThat(copied.getRetryPolicy()).isEqualTo(retryPolicy);
-                assertThat(field(field(copiedExporter, "delegate"), "maxRequestMessageSize"))
+                assertThat(field(field(replacement, "delegate"), "maxRequestMessageSize"))
                         .isEqualTo(15 * 1024L * 1024L);
-                assertThat(field(field(copiedExporter, "delegate"), "grpcSender").getClass().getSimpleName())
+                assertThat(field(field(replacement, "delegate"), "grpcSender").getClass().getSimpleName())
                         .isEqualTo("ObservingGrpcSender");
             } else {
                 HttpSenderConfig copied = senders.httpConfigs.getLast();
@@ -172,9 +172,9 @@ class OtlpRequestSizeCustomizerTest {
                         .containsEntry("dynamic", List.of("after"));
                 assertThat(copied.getRetryPolicy()).isEqualTo(retryPolicy);
                 assertThat(copied.getProxyOptions()).isSameAs(proxy);
-                assertThat(field(field(copiedExporter, "delegate"), "maxRequestBodySize"))
+                assertThat(field(field(replacement, "delegate"), "maxRequestBodySize"))
                         .isEqualTo(15 * 1024L * 1024L);
-                assertThat(field(field(copiedExporter, "delegate"), "httpSender").getClass().getSimpleName())
+                assertThat(field(field(replacement, "delegate"), "httpSender").getClass().getSimpleName())
                         .isEqualTo("ObservingHttpSender");
             }
             meters.set(MeterProvider.noop());
@@ -220,7 +220,11 @@ class OtlpRequestSizeCustomizerTest {
         int overhead = senders.states.getFirst().contentLength - probeLength;
         String exactPayload = "a".repeat(Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES) - overhead);
         SpanExporter replacement = OtlpRequestSizeCustomizer.customize(original, config(false));
-        try (SafeSpanExporter safe = new SafeSpanExporter(replacement,
+        try (SafeSpanExporter safe = new SafeSpanExporter(
+                new OtlpRequestSizeLimitingSpanExporter(
+                        replacement,
+                        Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)
+                ),
                 TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
                 ScrubbingRuntimeTestFixtures.disabled());
              AgentLogCapture capture = AgentLogCapture.installed()) {
@@ -235,12 +239,12 @@ class OtlpRequestSizeCustomizerTest {
             assertThat(senders.states.getLast().sendCalls).isEqualTo(1);
             assertThat(senders.states.getLast().contentLength)
                     .isEqualTo(Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES));
-            assertThat(safe.getExportBatches()).isEqualTo(2);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCHES, 0L).longValue()).isEqualTo(2);
             assertThat(senders.states.getLast().actualLength).isEqualTo(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES);
-            assertThat(safe.getExportFailures()).isZero();
-            assertThat(safe.getDroppedSpans()).isZero();
-            assertThat(safe.getOversizedSpansDropped()).isEqualTo(1);
-            assertThat(safe.getExportedSpans()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isZero();
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_TRANSPORT_DROPPED_SPANS, 0L).longValue()).isZero();
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_OVERSIZED_SPANS_DROPPED, 0L).longValue()).isEqualTo(1);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isEqualTo(1);
             assertThat(capture.events()).filteredOn(event -> event.eventName().equals("SAFE_EXPORT_OVERSIZED_SPAN_DROPPED"))
                     .singleElement().satisfies(event -> {
                         assertThat(event.errorType()).isNull();
@@ -249,9 +253,9 @@ class OtlpRequestSizeCustomizerTest {
             assertThat(capture.events()).noneMatch(event -> event.eventName().equals("INVARIANT_VIOLATION"));
             assertThat(safe.export(List.of(span("next"))).isSuccess()).isTrue();
             assertThat(senders.states.getLast().sendCalls).isEqualTo(2);
-            assertThat(safe.getExportBatches()).isEqualTo(3);
-            assertThat(safe.getExportFailures()).isZero();
-            assertThat(safe.getExportedSpans()).isEqualTo(2);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCHES, 0L).longValue()).isEqualTo(3);
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORT_BATCH_FAILURES, 0L).longValue()).isZero();
+            assertThat(safe.metricsSnapshot().getOrDefault(JmxWireContract.KEY_SAFE_EXPORTER_METRICS_EXPORTED_SPANS, 0L).longValue()).isEqualTo(2);
         }
     }
 
@@ -275,20 +279,20 @@ class OtlpRequestSizeCustomizerTest {
 
     @ParameterizedTest
     @EnumSource(Protocol.class)
-    void closesCopyWhenTimeoutConfigurationPreventsWrapperConstruction(Protocol protocol) {
+    void requestSizeCustomizationDoesNotOwnBspTimeoutValidation(Protocol protocol) {
         // given
         SenderCapture senders = new SenderCapture();
         SpanExporter original = exporter(protocol, senders, false);
-        ConfigProperties invalid = DefaultConfigProperties.createFromMap(Map.of(
+        ConfigProperties config = DefaultConfigProperties.createFromMap(Map.of(
                 OtelSdkPropertyNames.BSP_EXPORT_TIMEOUT, "0"));
 
         // when
-        // then
-        try (original) {
-            assertThatThrownBy(() -> OtlpRequestSizeCustomizer.customize(original, invalid))
-                    .isInstanceOf(IllegalArgumentException.class);
+        try (SpanExporter replacement = OtlpRequestSizeCustomizer.customize(original, config)) {
+            // then
+            assertThat(replacement.export(List.of(span("valid"))).isSuccess()).isTrue();
             assertThat(senders.states).hasSize(2);
-            assertThat(senders.states.getLast().shutdownCalls).isEqualTo(1);
+            assertThat(senders.states.getFirst().shutdownCalls).isEqualTo(1);
+            assertThat(senders.states.getLast().shutdownCalls).isZero();
         }
     }
 
@@ -367,10 +371,10 @@ class OtlpRequestSizeCustomizerTest {
         @Override
         public <T> Iterable<T> load(Class<T> spiClass) {
             if (spiClass == GrpcSenderProvider.class) {
-                return List.of(spiClass.cast(new ObservingGrpcSenderProvider(this::grpcSender)));
+                return List.of(spiClass.cast(ObservingSenderTestFixtures.grpc(this::grpcSender)));
             }
             if (spiClass == HttpSenderProvider.class) {
-                return List.of(spiClass.cast(new ObservingHttpSenderProvider(this::httpSender)));
+                return List.of(spiClass.cast(ObservingSenderTestFixtures.http(this::httpSender)));
             }
             return delegate.load(spiClass);
         }

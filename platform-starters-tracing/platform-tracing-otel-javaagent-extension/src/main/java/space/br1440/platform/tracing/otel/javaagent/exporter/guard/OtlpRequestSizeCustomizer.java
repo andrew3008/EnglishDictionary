@@ -1,6 +1,5 @@
-package space.br1440.platform.tracing.otel.javaagent.exporter;
+package space.br1440.platform.tracing.otel.javaagent.exporter.guard;
 
-import space.br1440.platform.tracing.otel.javaagent.configuration.BspExportTimeout;
 import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
 import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkPropertyNames;
 
@@ -36,18 +35,12 @@ public final class OtlpRequestSizeCustomizer {
 
             replacement = builder.build();
         } else {
-            return exporter;
+            throw new IllegalStateException("Expected an OTLP span exporter, found " + exporter.getClass().getName());
         }
 
         try {
-            SpanExporter isolated = new OtlpRequestSplittingSpanExporter(
-                    replacement,
-                    Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES),
-                    BspExportTimeout.read(config).toNanos()
-            );
-
             exporter.shutdown();
-            return isolated;
+            return replacement;
         } catch (Throwable failure) {
             try {
                 replacement.shutdown();

@@ -19,7 +19,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.exporter.guard.OtlpRequestSizeLimitingSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
@@ -31,7 +33,6 @@ import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.Platfor
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntimeTestFixtures;
 
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
@@ -56,9 +57,9 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
                         "otel.metrics.exporter", "none",
                         "otel.logs.exporter", "none",
                         "otel.traces.exporter", "otlp",
-                        "otel.exporter.otlp.endpoint", "http://127.0.0.1:1",
+                        "platform.tracing.exporter.enabled", "false",
                         "otel.bsp.schedule.delay", "600000",
-                        "otel.bsp.export.timeout", "1000"
+                        "otel.bsp.export.timeout", "10000"
                 ));
     }
 
@@ -92,8 +93,8 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
 
     @Test
     @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
-    @DisplayName("Multiple exporters keep the stock OTLP BatchSpanProcessor")
-    void multipleExportersKeepStockBatchSpanProcessor() {
+    @DisplayName("Multiple exporters fail before exporter construction")
+    void multipleExportersAreRejectedBeforeConstruction() {
         try (AgentLogCapture logs = AgentLogCapture.installed()) {
             // given
             List<SpanProcessor> observedProcessors = new ArrayList<>();
@@ -105,9 +106,9 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
                             "otel.metrics.exporter", "none",
                             "otel.logs.exporter", "none",
                             "otel.traces.exporter", "otlp,logging",
-                            "otel.exporter.otlp.endpoint", "http://127.0.0.1:1",
+                            "platform.tracing.exporter.enabled", "false",
                             "otel.bsp.schedule.delay", "600000",
-                            "otel.bsp.export.timeout", "1000"
+                            "otel.bsp.export.timeout", "10000"
                     ));
             newProvider().customize(builder);
             builder.addSpanProcessorCustomizer((processor, config) -> {
@@ -116,23 +117,14 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
             });
 
             // when
-            AutoConfiguredOpenTelemetrySdk sdk = builder.build();
+            Throwable failure = catchThrowable(builder::build);
 
-            try {
-                // then
-                assertThat(observedProcessors)
-                        .filteredOn(BatchSpanProcessor.class::isInstance)
-                        .singleElement()
-                        .isExactlyInstanceOf(BatchSpanProcessor.class);
-                assertThat(observedProcessors)
-                        .noneMatch(PlatformDropOldestExportSpanProcessor.class::isInstance);
-                assertThat(logs.events())
-                        .filteredOn(event -> "MULTIPLE_SPAN_EXPORTERS_FALLBACK".equals(event.eventName()))
-                        .isNotEmpty()
-                        .allSatisfy(event -> assertThat(event.fields()).containsEntry("count", "2"));
-            } finally {
-                sdk.getOpenTelemetrySdk().close();
-            }
+            // then
+            assertThat(failure).isInstanceOf(BootstrapException.class)
+                    .hasStackTraceContaining("Only the otlp traces exporter is supported");
+            assertThat(observedProcessors).isEmpty();
+            assertThat(logs.events()).noneMatch(event ->
+                    "DROP_OLDEST_EXPORT_PROCESSOR_ENABLED".equals(event.eventName()));
         }
     }
 
@@ -145,7 +137,14 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
         BootstrapCoordinator bootstrap = coordinator(server);
         AutoConfiguredOpenTelemetrySdkBuilder builder = baseBuilder();
         builder.addSpanExporterCustomizer((exporter, config) -> new SafeSpanExporter(
-                exporter, TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), ScrubbingRuntimeTestFixtures.disabled()));
+                        new OtlpRequestSizeLimitingSpanExporter(
+                                exporter,
+                                Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)
+                        ),
+                        TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
+                        ScrubbingRuntimeTestFixtures.disabled()
+                )
+        );
         new BootstrapAutoConfigurationCustomizerProvider(bootstrap).customize(builder);
 
         try (bootstrap) {
@@ -156,10 +155,10 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
             assertThat(failure).isInstanceOf(ConfigurationException.class);
             assertThat(failure.getCause()).isInstanceOfSatisfying(BootstrapException.class,
                     bootstrapFailure -> assertThat(bootstrapFailure.failure().effectiveCode())
-                            .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER));
+                            .isEqualTo("EXPORTER_INITIALIZATION_FAILED"));
             assertThat(bootstrap.currentWire().lifecycle()).isEqualTo("FAILED");
             assertThat(bootstrap.currentWire().failureCode())
-                    .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER);
+                    .isEqualTo("EXPORTER_INITIALIZATION_FAILED");
             assertThat(bootstrap.currentWire().capabilities())
                     .doesNotContain(PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED.name());
             assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isTrue();
@@ -199,8 +198,8 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
     }
 
     @Test
-    @DisplayName("Failing log record exporter abandons PREPARED with diagnostic readiness still INITIALIZING")
-    void failingLogRecordExporterAbandonsPreparedWithDiagnosticReadinessInitializing() {
+    @DisplayName("Log record exporter is rejected before SDK pipeline construction")
+    void logRecordExporterIsRejectedBeforeSdkPipelineConstruction() {
         // given
         MBeanServer server = MBeanServerFactory.newMBeanServer();
         BootstrapCoordinator bootstrap = coordinator(server);
@@ -210,27 +209,28 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
                 .disableShutdownHook()
                 .addPropertiesSupplier(() -> Map.of(
                         "otel.metrics.exporter", "none",
-                        "otel.traces.exporter", "none",
-                        "otel.logs.exporter", FailingLogRecordExporterProvider.NAME
+                        "otel.traces.exporter", "otlp"
                 ));
         new BootstrapAutoConfigurationCustomizerProvider(bootstrap).customize(builder);
+        builder.addPropertiesCustomizer(config -> Map.of("otel.logs.exporter", FailingLogRecordExporterProvider.NAME));
 
         try (bootstrap) {
             // when
             Throwable failure = catchThrowable(builder::build);
 
             // then
-            assertSdkBuildAbandonedAfterPrepare(
-                    server,
-                    bootstrap,
-                    failure,
-                    FailingLogRecordExporterProvider.class.getName()
-            );
+            assertThat(failure).isInstanceOf(BootstrapException.class)
+                    .hasStackTraceContaining("exporter must be none");
+            assertThat(bootstrap.currentWire().lifecycle()).isEqualTo("FAILED");
+            assertThat(bootstrap.currentWire().failureCode()).isEqualTo("CONFIGURATION_INITIALIZATION_FAILED");
+            assertThat(bootstrap.currentWire().capabilities())
+                    .doesNotContain(PlatformExtensionCapability.EXPORT_PATH_PROTECTED.name());
         }
 
         assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isFalse();
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static void assertSdkBuildAbandonedAfterPrepare(MBeanServer server,
                                                             BootstrapCoordinator bootstrap,
                                                             Throwable failure,

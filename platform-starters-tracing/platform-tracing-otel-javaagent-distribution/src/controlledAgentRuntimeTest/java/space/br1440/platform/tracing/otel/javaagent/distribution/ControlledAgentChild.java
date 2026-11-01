@@ -82,8 +82,9 @@ final class ControlledAgentChild {
         return command;
     }
 
-    static void appendLoggingExporter(List<String> command) {
-        command.add("-Dotel.traces.exporter=logging");
+    static void appendDisabledOtlpExporter(List<String> command) {
+        command.add("-Dotel.traces.exporter=otlp");
+        command.add("-Dplatform.tracing.exporter.enabled=false");
         command.add("-Dotel.metrics.exporter=none");
         command.add("-Dotel.logs.exporter=none");
     }

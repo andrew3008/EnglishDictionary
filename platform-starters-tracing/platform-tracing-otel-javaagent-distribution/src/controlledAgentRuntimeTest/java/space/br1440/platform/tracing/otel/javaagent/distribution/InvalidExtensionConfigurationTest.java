@@ -16,6 +16,9 @@ import java.util.jar.Manifest;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.tracing.otel.javaagent.distribution.probe.InvalidExtensionConfigurationProbe;
 
@@ -257,21 +260,33 @@ class InvalidExtensionConfigurationTest {
         }
     }
 
-    @Test
-    void declarative_configuration_file_fails_bootstrap_without_platform_export()
+    @ParameterizedTest
+    @CsvSource({
+            "otel.config.file, OTEL_CONFIG_FILE, false",
+            "otel.config.file, OTEL_CONFIG_FILE, true",
+            "otel.javaagent.configuration-file, OTEL_JAVAAGENT_CONFIGURATION_FILE, false",
+            "otel.javaagent.configuration-file, OTEL_JAVAAGENT_CONFIGURATION_FILE, true"
+    })
+    void external_configuration_file_stops_agent_before_sdk_initialization(String property,
+                                                                           String environmentVariable,
+                                                                           boolean fromEnvironment)
             throws IOException, InterruptedException, URISyntaxException {
         // given
         AgentTestFixture fixture = AgentTestFixture.load();
         String spanName = "extension-configuration-declarative-" + UUID.randomUUID();
         Path configurationFile = temporaryDirectory.resolve("otel-declarative-config.yaml");
-        Files.writeString(configurationFile, """
+        String configuration = property.equals("otel.config.file") ? """
                 file_format: "1.1"
                 tracer_provider:
                   processors:
                     - simple:
                         exporter:
                           console: {}
-                """, StandardCharsets.UTF_8);
+                """ : "otel.traces.exporter=console\n";
+        Files.writeString(configurationFile, configuration, StandardCharsets.UTF_8);
+        String absolutePath = configurationFile.toAbsolutePath().toString();
+        List<String> options = fromEnvironment ? List.of() : List.of("-D" + property + "=" + absolutePath);
+        Map<String, String> environment = fromEnvironment ? Map.of(environmentVariable, absolutePath) : Map.of();
 
         try (OtlpTraceCollector collector = OtlpTraceCollector.startAcceptingAllSpans()) {
             // when
@@ -281,14 +296,40 @@ class InvalidExtensionConfigurationTest {
                     collector.otlpEndpoint(),
                     spanName,
                     false,
-                    List.of("-Dotel.config.file=" + configurationFile.toAbsolutePath()),
-                    Map.of()
+                    options,
+                    environment
             );
 
             // then
             result.assertCompletedSuccessfully();
             assertThat(result.stdout()).contains(InvalidExtensionConfigurationProbe.MAIN_REACHED_MARKER);
-            assertReadiness(result, "FAILED", "PLATFORM_ACP_NOT_EXECUTED", spanName);
+            assertThat(result.stderr()).contains("OpenTelemetry Javaagent failed to start")
+                    .contains(property + " is not supported by the controlled agent profile");
+            assertThat(result.stdout()).contains(InvalidExtensionConfigurationProbe.READINESS_ABSENT_MARKER)
+                    .doesNotContain(spanName)
+                    .doesNotContain(InvalidExtensionConfigurationProbe.RESULT_PREFIX + " lifecycle=");
+            assertThat(result.stderr()).doesNotContain(spanName);
+            assertThat(collector.receivedSpans()).isEmpty();
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"none", "logging", "console", "zipkin", "otlp,logging"})
+    void unsupported_exporter_fails_bootstrap_without_platform_export(String exporter)
+            throws IOException, InterruptedException, URISyntaxException {
+        // given
+        AgentTestFixture fixture = AgentTestFixture.load();
+        String spanName = "extension-configuration-exporter-" + UUID.randomUUID();
+
+        try (OtlpTraceCollector collector = OtlpTraceCollector.startAcceptingAllSpans()) {
+            // when
+            ChildProcessResult result = run(
+                    fixture, "extension-configuration-exporter", collector.otlpEndpoint(), spanName, false,
+                    List.of("-Dotel.traces.exporter=" + exporter), Map.of());
+
+            // then
+            result.assertCompletedSuccessfully();
+            assertReadiness(result, "FAILED", "CONFIGURATION_INITIALIZATION_FAILED", spanName);
             assertThat(collector.receivedSpans()).isEmpty();
         }
     }
