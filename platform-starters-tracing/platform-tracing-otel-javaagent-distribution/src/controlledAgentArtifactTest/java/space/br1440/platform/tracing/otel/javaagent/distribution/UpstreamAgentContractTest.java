@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,10 @@ class UpstreamAgentContractTest {
             "inst/io/opentelemetry/exporter/internal/otlp/traces/LowAllocationTraceRequestMarshaler.classdata";
     private static final String DECLARATIVE_CONFIGURATION_SERVICE =
             "META-INF/services/io.opentelemetry.sdk.autoconfigure.declarativeconfig.DeclarativeConfigurationProvider";
+
+    private static boolean isDeclarativeConfigurationService(String name) {
+        return name.endsWith(DECLARATIVE_CONFIGURATION_SERVICE);
+    }
 
     @Test
     void controlled_agent_contains_the_request_size_marshaler() throws IOException {
@@ -49,9 +54,9 @@ class UpstreamAgentContractTest {
         for (Path artifact : artifacts) {
             try (ZipFile archive = new ZipFile(artifact.toFile(), StandardCharsets.UTF_8)) {
                 // then
-                assertThat(archive.stream().map(entry -> entry.getName()))
+                assertThat(archive.stream().map(ZipEntry::getName))
                         .as("Declarative configuration SPI must be absent from %s", artifact)
-                        .noneMatch(name -> name.endsWith(DECLARATIVE_CONFIGURATION_SERVICE));
+                        .noneMatch(UpstreamAgentContractTest::isDeclarativeConfigurationService);
             }
         }
     }

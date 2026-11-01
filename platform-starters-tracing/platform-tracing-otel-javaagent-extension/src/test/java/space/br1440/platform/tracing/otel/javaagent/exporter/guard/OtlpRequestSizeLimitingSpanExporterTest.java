@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -57,14 +58,14 @@ class OtlpRequestSizeLimitingSpanExporterTest {
     @Test
     void requestLimitCannotExceedThePlatformBound() {
         // given
-        SpanExporter delegate = exporter(spans -> CompletableResultCode.ofSuccess());
-
-        // when
-        // then
-        assertThatThrownBy(() -> new OtlpRequestSizeLimitingSpanExporter(delegate,
-                Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES) + 1))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("platform limit");
+        try (SpanExporter delegate = exporter(spans -> CompletableResultCode.ofSuccess())) {
+            // when
+            // then
+            assertThatThrownBy(() -> new OtlpRequestSizeLimitingSpanExporter(delegate,
+                    Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES) + 1))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("platform limit");
+        }
     }
 
     @Test
@@ -94,7 +95,7 @@ class OtlpRequestSizeLimitingSpanExporterTest {
         ExportResponseObservation parent = new ExportResponseObservation(1);
         List<ExportResponseObservation> leaves = new ArrayList<>();
         OtlpRequestSizeLimitingSpanExporter guard = guard(exporter(spans -> {
-            ExportResponseObservation leaf = ExportResponseScope.current();
+            ExportResponseObservation leaf = Objects.requireNonNull(ExportResponseScope.current(), "observation");
             leaves.add(leaf);
             leaf.recordAllAccepted();
             assertThat(parent.aggregateResult()).isNull();
@@ -189,7 +190,7 @@ class OtlpRequestSizeLimitingSpanExporterTest {
         AtomicInteger calls = new AtomicInteger();
         OtlpRequestSizeLimitingSpanExporter guard = guard(exporter(spans -> {
             if (calls.incrementAndGet() == 2) {
-                ExportResponseScope.current().recordAllAccepted();
+                Objects.requireNonNull(ExportResponseScope.current(), "observation").recordAllAccepted();
                 return CompletableResultCode.ofFailure();
             }
             return CompletableResultCode.ofSuccess();
@@ -241,7 +242,7 @@ class OtlpRequestSizeLimitingSpanExporterTest {
         AtomicInteger calls = new AtomicInteger();
         List<ExportResponseObservation> leaves = new ArrayList<>();
         OtlpRequestSizeLimitingSpanExporter guard = guard(exporter(spans -> {
-            ExportResponseObservation leaf = ExportResponseScope.current();
+            ExportResponseObservation leaf = Objects.requireNonNull(ExportResponseScope.current(), "observation");
             leaves.add(leaf);
             if (calls.incrementAndGet() == 1) {
                 leaf.recordRejected(1);
@@ -355,10 +356,11 @@ class OtlpRequestSizeLimitingSpanExporterTest {
         // then
         assertThat(result.isSuccess()).isTrue();
         assertThat(sent).containsExactly(small);
-        assertThat(parent.aggregateResult().measurementFailed()).isEqualTo(1);
-        assertThat(parent.aggregateResult().locallyDropped()).isZero();
-        assertThat(parent.aggregateResult().total()).isEqualTo(2);
-        assertThat(parent.aggregateResult().measurementCause()).isInstanceOf(IllegalStateException.class)
+        ExportResponseObservation.AggregateResult aggregate = Objects.requireNonNull(parent.aggregateResult(), "aggregate");
+        assertThat(aggregate.measurementFailed()).isEqualTo(1);
+        assertThat(aggregate.locallyDropped()).isZero();
+        assertThat(aggregate.total()).isEqualTo(2);
+        assertThat(aggregate.measurementCause()).isInstanceOf(IllegalStateException.class)
                 .hasMessage("negative serialized size");
     }
 
@@ -392,9 +394,11 @@ class OtlpRequestSizeLimitingSpanExporterTest {
         // then
         assertThat(result.isSuccess()).isTrue();
         assertThat(sent).containsExactly(small);
-        assertThat(parent.aggregateResult().measurementFailed()).isEqualTo(1);
-        assertThat(parent.aggregateResult().locallyDropped()).isZero();
-        assertThat(parent.aggregateResult().measurementCause()).isInstanceOf(IllegalStateException.class)
+        ExportResponseObservation.AggregateResult aggregate = Objects.requireNonNull(
+                parent.aggregateResult(), "aggregate");
+        assertThat(aggregate.measurementFailed()).isEqualTo(1);
+        assertThat(aggregate.locallyDropped()).isZero();
+        assertThat(aggregate.measurementCause()).isInstanceOf(IllegalStateException.class)
                 .hasMessage("attribute value nesting exceeds " + SpanSizeLowerBound.MAX_VALUE_DEPTH);
     }
 

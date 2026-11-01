@@ -7,6 +7,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import io.opentelemetry.proto.trace.v1.ScopeSpans;
+import io.opentelemetry.proto.trace.v1.Span;
+
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -37,16 +42,21 @@ class OtlpProtocolExportTest {
             collector.setProtocols(List.of(grpc ? Protocol.H2_PRIOR_KNOWLEDGE : Protocol.HTTP_1_1));
             collector.setDispatcher(new Dispatcher() {
                 @Override
-                public MockResponse dispatch(RecordedRequest request) {
-                    return grpc
-                            ? new MockResponse.Builder()
-                                    .addHeader("Content-Type", "application/grpc")
-                                    .body(new Buffer().write(new byte[5]))
-                                    .trailers(Headers.of("grpc-status", "0"))
-                                    .build()
-                            : new MockResponse.Builder()
-                                    .addHeader("Content-Type", "application/x-protobuf")
-                                    .build();
+                public @NotNull MockResponse dispatch(@NotNull RecordedRequest request) {
+                    if (!grpc) {
+                        return new MockResponse.Builder()
+                                .addHeader("Content-Type", "application/x-protobuf")
+                                .build();
+                    }
+
+                    try (Buffer frame = new Buffer()) {
+                        frame.write(new byte[5]);
+                        return new MockResponse.Builder()
+                                .addHeader("Content-Type", "application/grpc")
+                                .body(frame)
+                                .trailers(Headers.of("grpc-status", "0"))
+                                .build();
+                    }
                 }
             });
             collector.start();
@@ -84,9 +94,11 @@ class OtlpProtocolExportTest {
             byte[] protobuf = grpc ? Arrays.copyOfRange(body, 5, body.length) : body;
             ExportTraceServiceRequest exported = ExportTraceServiceRequest.parseFrom(protobuf);
             assertThat(exported.getResourceSpansList().stream()
-                    .flatMap(resource -> resource.getScopeSpansList().stream())
-                    .flatMap(scope -> scope.getSpansList().stream())
-                    .map(span -> span.getName()))
+                    .map(ResourceSpans::getScopeSpansList)
+                    .flatMap(List::stream)
+                    .map(ScopeSpans::getSpansList)
+                    .flatMap(List::stream)
+                    .map(Span::getName))
                     .contains(spanName);
         }
     }

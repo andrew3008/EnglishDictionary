@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.exporter.guard;
 
+import java.io.Serial;
 import java.nio.ByteBuffer;
 import java.util.List;
 import jakarta.annotation.Nullable;
@@ -167,6 +168,7 @@ final class SpanSizeLowerBound {
 
     private static final class LimitBreach extends RuntimeException {
 
+        @Serial
         private static final long serialVersionUID = 1L;
         private static final LimitBreach INSTANCE = new LimitBreach();
 

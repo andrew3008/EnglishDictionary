@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -296,12 +297,16 @@ class OtlpRequestSizeLimitingSpanExporterWireTest {
         byte[] body = ExportTraceServiceResponse.getDefaultInstance().toByteArray();
         try (MockWebServer server = new MockWebServer()) {
             server.enqueue(new MockResponse.Builder().code(503).build());
-            server.enqueue(new MockResponse.Builder()
-                    .code(200)
-                    .addHeader("Content-Type", "application/x-protobuf")
-                    .body(new Buffer().write(body))
-                    .build());
+            try (Buffer bodyBuffer = new Buffer()) {
+                bodyBuffer.write(body);
+                server.enqueue(new MockResponse.Builder()
+                        .code(200)
+                        .addHeader("Content-Type", "application/x-protobuf")
+                        .body(bodyBuffer)
+                        .build());
+            }
             server.start();
+
             ComponentLoader loader = new ComponentLoader() {
                 private final ComponentLoader delegate = ComponentLoader.forClassLoader(getClass().getClassLoader());
 
@@ -314,6 +319,7 @@ class OtlpRequestSizeLimitingSpanExporterWireTest {
                     return delegate.load(spiClass);
                 }
             };
+
             try (SdkTracerProvider provider = provider();
                  SpanExporter http = OtlpHttpSpanExporter.builder()
                          .setEndpoint(server.url("/v1/traces").toString())
@@ -337,7 +343,7 @@ class OtlpRequestSizeLimitingSpanExporterWireTest {
                 assertThat(sends).hasValue(1);
                 assertThat(leaf).hasValueSatisfying(observation -> assertThat(observation.outcome())
                         .isEqualTo(ExportResponseObservation.Outcome.ALL_ACCEPTED));
-                assertThat(parent.aggregateResult().accepted()).isEqualTo(1);
+                assertThat(Objects.requireNonNull(parent.aggregateResult(), "aggregate").accepted()).isEqualTo(1);
             }
         }
     }

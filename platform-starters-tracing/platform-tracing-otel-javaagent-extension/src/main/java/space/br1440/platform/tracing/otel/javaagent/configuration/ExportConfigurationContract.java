@@ -40,7 +40,7 @@ public final class ExportConfigurationContract {
     }
 
     private static void requireSupportedProtocol(ConfigProperties config) {
-        String propertyName = effectiveProperty(config, TRACES_PROTOCOL, OTLP_PROTOCOL);
+        String propertyName = (config.getString(TRACES_PROTOCOL) == null) ? OTLP_PROTOCOL : TRACES_PROTOCOL;
         String protocol = config.getString(propertyName);
         if (protocol != null && !"grpc".equals(protocol) && !"http/protobuf".equals(protocol)) {
             throw invalid(config, propertyName, "Only grpc and http/protobuf OTLP protocols are supported");
@@ -114,10 +114,6 @@ public final class ExportConfigurationContract {
         }
 
         return value;
-    }
-
-    private static String effectiveProperty(ConfigProperties config, String specific, String general) {
-        return config.getString(specific) == null ? general : specific;
     }
 
     private static ConfigurationPropertyException invalid(ConfigProperties config, String propertyName, String message) {
