@@ -766,7 +766,7 @@ class MalformedPayloadTest {
 
     private TabularData buildRouteTable(Map<String, Double> routes) throws OpenDataException {
         TabularDataSupport table = new TabularDataSupport(JmxOpenTypes.ROUTE_RATIOS);
-        for (var e : routes.entrySet()) {
+        for (Map.Entry<String, Double> e : routes.entrySet()) {
             table.put(new CompositeDataSupport(
                     JmxOpenTypes.ROUTE_RATIO,
                     new String[]{"ratio", "routePrefix"},

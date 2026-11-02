@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
+import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 
 import java.util.List;
@@ -54,7 +55,7 @@ class OtelTracingRuntimeCreationAttributesTest {
 
         try {
             OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(provider).build();
-            var runtime = OtelTracingRuntimeFactory.create(sdk);
+            TracingRuntime runtime = OtelTracingRuntimeFactory.create(sdk);
             SpanSpec spec = SpanSpec.builder("typed-attributes")
                     .category(SpanCategory.INTERNAL)
                     .attribute(STRING_KEY.getKey(), "value")

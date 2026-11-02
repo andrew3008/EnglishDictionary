@@ -1,11 +1,14 @@
 package space.br1440.platform.tracing.otel.runtime.otel;
 
-import io.opentelemetry.api.common.AttributeKey;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
+
+import io.opentelemetry.api.common.AttributeKey;
 
 class SpanSpecAttributeValueConverterMixedListTypeTest {
 
@@ -29,14 +32,14 @@ class SpanSpecAttributeValueConverterMixedListTypeTest {
     @Test
     void nullSingletonListElement_throwsIllegalArgumentException() {
         assertThatThrownBy(() -> SpanSpecAttributeValueConverter.fromOtelValue(
-                STRING_LIST_KEY, java.util.Collections.singletonList(null)))
+                STRING_LIST_KEY, Collections.singletonList(null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Null list elements are not supported");
     }
 
     @Test
     void nullListElementInMixedList_throwsIllegalArgumentException() {
-        var list = new java.util.ArrayList<Object>();
+        ArrayList<Object> list = new ArrayList<>();
         list.add("a");
         list.add(null);
         assertThatThrownBy(() -> SpanSpecAttributeValueConverter.fromOtelValue(STRING_LIST_KEY, list))

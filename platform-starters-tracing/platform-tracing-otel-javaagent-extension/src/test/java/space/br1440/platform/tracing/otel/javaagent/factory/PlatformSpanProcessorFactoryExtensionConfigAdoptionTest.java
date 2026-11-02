@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.otel.javaagent.configuration.BaggageKeyPolicy;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
@@ -725,7 +726,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             });
 
             // when
-            var policy = cfg.baggage().spanAttributesPolicy();
+            BaggageKeyPolicy policy = cfg.baggage().spanAttributesPolicy();
 
             // then
             assertThat(policy.allows("traffic_source")).isTrue();

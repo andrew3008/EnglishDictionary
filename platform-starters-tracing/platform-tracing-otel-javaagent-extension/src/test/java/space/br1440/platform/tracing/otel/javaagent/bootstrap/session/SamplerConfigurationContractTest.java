@@ -19,6 +19,7 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.ConfigurationP
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
 
 @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
@@ -37,7 +38,7 @@ class SamplerConfigurationContractTest {
     @MethodSource("normalizable_sampler_properties")
     void normalize_supplies_the_placeholder_for_an_absent_or_empty_sampler(Map<String, String> properties) {
         // given
-        var config = DefaultConfigProperties.createFromMap(properties);
+        ConfigProperties config = DefaultConfigProperties.createFromMap(properties);
 
         // when
         Map<String, String> overrides = SamplerConfigurationContract.normalize(config);
@@ -49,7 +50,7 @@ class SamplerConfigurationContractTest {
     @Test
     void normalize_preserves_an_explicit_sampler_for_final_validation() {
         // given
-        var config = DefaultConfigProperties.createFromMap(Map.of(SAMPLER, "always_on"));
+        ConfigProperties config = DefaultConfigProperties.createFromMap(Map.of(SAMPLER, "always_on"));
 
         // when
         Map<String, String> overrides = SamplerConfigurationContract.normalize(config);
@@ -61,7 +62,7 @@ class SamplerConfigurationContractTest {
     @Test
     void require_final_accepts_the_controlled_agent_configuration() {
         // given
-        var config = DefaultConfigProperties.createFromMap(Map.of(
+        ConfigProperties config = DefaultConfigProperties.createFromMap(Map.of(
                 SAMPLER, "always_off",
                 SAMPLER_ARG, "",
                 SDK_DISABLED, "false",
@@ -82,7 +83,7 @@ class SamplerConfigurationContractTest {
                                                                              String propertyName,
                                                                              String message) {
         // given
-        var config = DefaultConfigProperties.createFromMap(properties);
+        ConfigProperties config = DefaultConfigProperties.createFromMap(properties);
 
         // when
         Throwable failure = catchThrowable(() -> SamplerConfigurationContract.requireFinal(config));
@@ -99,7 +100,7 @@ class SamplerConfigurationContractTest {
     @Test
     void sampler_argument_value_is_not_exposed_in_the_failure_or_logs() {
         // given
-        var config = DefaultConfigProperties.createFromMap(finalProperties(SAMPLER_ARG, CANARY));
+        ConfigProperties config = DefaultConfigProperties.createFromMap(finalProperties(SAMPLER_ARG, CANARY));
 
         // when
         Throwable failure = catchThrowable(() -> SamplerConfigurationContract.requireFinal(config));

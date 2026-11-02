@@ -9,6 +9,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.SpanResult;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.enrich.SpanEnricher;
 import space.br1440.platform.tracing.otel.span.enrich.DefaultSpanEnricher;
 import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
@@ -41,7 +42,7 @@ class SpanEnricherV3CharacterizationTest {
 
     @Test
     void enrichCurrentSpan_onV3ManualSpan_writesPlatformSafeAttributes() {
-        try (var ignored = tracing.spans().operation("checkout").start()) {
+        try (SpanHandle ignored = tracing.spans().operation("checkout").start()) {
             enricher.enrichCurrentSpan(scope -> scope
                     .requestId("req-v3")
                     .result(SpanResult.SUCCESS));

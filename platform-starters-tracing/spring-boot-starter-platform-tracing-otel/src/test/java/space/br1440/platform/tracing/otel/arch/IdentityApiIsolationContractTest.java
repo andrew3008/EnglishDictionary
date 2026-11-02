@@ -9,7 +9,7 @@ class IdentityApiIsolationContractTest {
     @Test
     void infrastructureIdentityTypesDoNotEnterPlatformApi() {
         // given
-        var infrastructureTypeNames = new String[]{
+        String[] infrastructureTypeNames = new String[]{
                 "RequestContextAccessor",
                 "RequestIdentityAccessor",
                 "RequestIdentityContext",

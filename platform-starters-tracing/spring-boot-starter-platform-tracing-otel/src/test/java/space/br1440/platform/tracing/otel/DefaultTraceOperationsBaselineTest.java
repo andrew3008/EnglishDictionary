@@ -16,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 
@@ -51,8 +52,8 @@ class DefaultTraceOperationsBaselineTest {
 
     @Test
     void childSpan_keepsActiveParent() {
-        try (var parent = tracing.spans().operation("parent").start()) {
-            try (var child = tracing.spans().operation("child").child().start()) {
+        try (SpanHandle ignored = tracing.spans().operation("parent").start()) {
+            try (SpanHandle ignored1 = tracing.spans().operation("child").child().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
                 assertThat(tracing.traceContext().spanId()).isPresent();
             }
@@ -68,8 +69,8 @@ class DefaultTraceOperationsBaselineTest {
 
     @Test
     void defaultChildSpan_keepsActiveParent() {
-        try (var parent = tracing.spans().operation("parent").start()) {
-            try (var child = tracing.spans().operation("child").start()) {
+        try (SpanHandle ignored = tracing.spans().operation("parent").start()) {
+            try (SpanHandle ignored1 = tracing.spans().operation("child").start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
             }
         }
@@ -84,9 +85,9 @@ class DefaultTraceOperationsBaselineTest {
 
     @Test
     void rootSpan_hasNoParent_evenInsideActiveParentScope() {
-        try (var parent = tracing.spans().operation("parent").start()) {
+        try (SpanHandle ignored = tracing.spans().operation("parent").start()) {
             String parentTraceId = tracing.traceContext().traceId().orElseThrow();
-            try (var root = tracing.spans().operation("job").root().start()) {
+            try (SpanHandle ignored1 = tracing.spans().operation("job").root().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
                 assertThat(tracing.traceContext().traceId()).isNotEqualTo(java.util.Optional.of(parentTraceId));
             }
@@ -103,9 +104,9 @@ class DefaultTraceOperationsBaselineTest {
 
     @Test
     void detachedSpan_hasNoParentAndNoLinks_evenInsideActiveParentScope() {
-        try (var parent = tracing.spans().operation("parent").start()) {
+        try (SpanHandle ignored = tracing.spans().operation("parent").start()) {
             String parentTraceId = tracing.traceContext().traceId().orElseThrow();
-            try (var detached = tracing.spans().operation("orphan").detached().start()) {
+            try (SpanHandle ignored1 = tracing.spans().operation("orphan").detached().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
                 assertThat(tracing.traceContext().traceId()).isNotEqualTo(java.util.Optional.of(parentTraceId));
             }
@@ -131,7 +132,7 @@ class DefaultTraceOperationsBaselineTest {
                 .linkedTo(link1, link2)
                 .build();
 
-        try (var scope = tracing.spans().fromSpec(spec).start()) {
+        try (SpanHandle scope = tracing.spans().fromSpec(spec).start()) {
             assertThat(tracing.traceContext().spanId()).isPresent();
         }
 
@@ -150,7 +151,7 @@ class DefaultTraceOperationsBaselineTest {
         assertThat(tracing.traceContext().traceId()).isEmpty();
         assertThat(tracing.traceContext().spanId()).isEmpty();
 
-        try (var scope = tracing.spans().operation("active").start()) {
+        try (SpanHandle scope = tracing.spans().operation("active").start()) {
             assertThat(tracing.traceContext().traceId()).isPresent();
             assertThat(tracing.traceContext().spanId()).isPresent();
         }
@@ -162,7 +163,7 @@ class DefaultTraceOperationsBaselineTest {
 
     @Test
     void recordException_recordsOnCurrentSpan() {
-        try (var scope = tracing.spans().operation("op").start()) {
+        try (SpanHandle scope = tracing.spans().operation("op").start()) {
             scope.recordException(new IllegalStateException("boom"));
         }
 

@@ -15,6 +15,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
 
 class PropagatorConfigurationContractTest {
@@ -28,7 +29,7 @@ class PropagatorConfigurationContractTest {
     @MethodSource("rejectedAgentPropagators")
     void rejects_agent_propagators_outside_the_supported_set(String propagator) {
         // given
-        var config = DefaultConfigProperties.createFromMap(Map.of(OtelSdkPropertyNames.PROPAGATORS, propagator));
+        ConfigProperties config = DefaultConfigProperties.createFromMap(Map.of(OtelSdkPropertyNames.PROPAGATORS, propagator));
 
         // when
         Throwable failure = catchThrowable(() -> PropagatorConfigurationContract.requireSupported(config));
@@ -61,7 +62,7 @@ class PropagatorConfigurationContractTest {
     })
     void accepts_supported_propagators(String propagators) {
         // given
-        var config = DefaultConfigProperties.createFromMap(Map.of(OtelSdkPropertyNames.PROPAGATORS, propagators));
+        ConfigProperties config = DefaultConfigProperties.createFromMap(Map.of(OtelSdkPropertyNames.PROPAGATORS, propagators));
 
         // when
         Throwable failure = catchThrowable(() -> PropagatorConfigurationContract.requireSupported(config));
@@ -73,7 +74,7 @@ class PropagatorConfigurationContractTest {
     @Test
     void accepts_absent_propagators() {
         // given
-        var config = DefaultConfigProperties.createFromMap(Map.of());
+        ConfigProperties config = DefaultConfigProperties.createFromMap(Map.of());
 
         // when
         Throwable failure = catchThrowable(() -> PropagatorConfigurationContract.requireSupported(config));
@@ -86,7 +87,7 @@ class PropagatorConfigurationContractTest {
     @ValueSource(strings = {"JAEGER", "B3", "unknown"})
     void rejects_unknown_or_differently_cased_names(String propagator) {
         // given
-        var config = DefaultConfigProperties.createFromMap(Map.of(OtelSdkPropertyNames.PROPAGATORS, propagator));
+        ConfigProperties config = DefaultConfigProperties.createFromMap(Map.of(OtelSdkPropertyNames.PROPAGATORS, propagator));
 
         // when
         Throwable failure = catchThrowable(() -> PropagatorConfigurationContract.requireSupported(config));
@@ -101,7 +102,7 @@ class PropagatorConfigurationContractTest {
     @Test
     void reports_unsupported_and_supported_names_in_deterministic_order() {
         // given
-        var config = DefaultConfigProperties.createFromMap(Map.of(
+        ConfigProperties config = DefaultConfigProperties.createFromMap(Map.of(
                 OtelSdkPropertyNames.PROPAGATORS, "xray,tracecontext,ottrace,jaeger,xray"
         ));
 

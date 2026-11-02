@@ -15,6 +15,7 @@ import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 
 public final class ControlledAgentTestRuntime implements AutoCloseable {
@@ -41,7 +42,7 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
                                                     DynamicMBean readinessEndpoint) {
         GLOBAL_RUNTIME_LOCK.lock();
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
-        var tracerProviderBuilder = SdkTracerProvider.builder();
+        SdkTracerProviderBuilder tracerProviderBuilder = SdkTracerProvider.builder();
         if (spanExporter != null) {
             tracerProviderBuilder.addSpanProcessor(SimpleSpanProcessor.create(spanExporter));
         }

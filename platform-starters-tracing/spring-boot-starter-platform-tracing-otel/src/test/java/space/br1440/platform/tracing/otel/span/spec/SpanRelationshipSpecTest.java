@@ -13,6 +13,7 @@ import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec;
 import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
@@ -51,8 +52,8 @@ class SpanRelationshipSpecTest {
 
     @Test
     void childInsideActiveParent_inheritsParentSpanIdAndTraceId() {
-        try (var parent = tracing.spans().operation("parent").start()) {
-            try (var child = tracing.spans().operation("child").child().start()) {
+        try (SpanHandle parent = tracing.spans().operation("parent").start()) {
+            try (SpanHandle child = tracing.spans().operation("child").child().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
             }
         }
@@ -65,8 +66,8 @@ class SpanRelationshipSpecTest {
 
     @Test
     void rootInsideActiveParent_hasInvalidParentAndIndependentTraceId() {
-        try (var parent = tracing.spans().operation("parent").start()) {
-            try (var root = tracing.spans().operation("job").root().start()) {
+        try (SpanHandle parent = tracing.spans().operation("parent").start()) {
+            try (SpanHandle root = tracing.spans().operation("job").root().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
             }
         }
@@ -79,8 +80,8 @@ class SpanRelationshipSpecTest {
 
     @Test
     void detachedInsideActiveParent_hasInvalidParentIndependentTraceIdAndNoLinks() {
-        try (var parent = tracing.spans().operation("parent").start()) {
-            try (var detached = tracing.spans().operation("orphan").detached().start()) {
+        try (SpanHandle parent = tracing.spans().operation("parent").start()) {
+            try (SpanHandle detached = tracing.spans().operation("orphan").detached().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
             }
         }

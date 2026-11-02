@@ -1,4 +1,6 @@
 package space.br1440.platform.tracing.otel;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
+import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 import space.br1440.platform.tracing.otel.propagation.OtelPlatformContextPropagation;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
@@ -56,7 +58,7 @@ class OtelPlatformContextPropagationTest {
 
     @Test
     void wrapRunnable_propagates_traceId_into_completableFuture() throws Exception {
-        try (var parent = tracing.spans().operation("parent").start()) {
+        try (SpanHandle parent = tracing.spans().operation("parent").start()) {
             String parentTraceId = tracing.traceContext().traceId().orElseThrow();
             AtomicReference<String> captured = new AtomicReference<>();
 
@@ -71,7 +73,7 @@ class OtelPlatformContextPropagationTest {
 
     @Test
     void runnable_without_wrap_loses_traceId_in_completableFuture() throws Exception {
-        try (var parent = tracing.spans().operation("parent").start()) {
+        try (SpanHandle parent = tracing.spans().operation("parent").start()) {
             AtomicReference<String> captured = new AtomicReference<>();
 
             CompletableFuture.runAsync(() ->
@@ -84,10 +86,10 @@ class OtelPlatformContextPropagationTest {
 
     @Test
     void wrapThrowingSupplier_propagates_traceId_and_returns_value() throws Exception {
-        try (var ignored = tracing.spans().operation("parent").start()) {
+        try (SpanHandle ignored = tracing.spans().operation("parent").start()) {
             String parentTraceId = tracing.traceContext().traceId().orElseThrow();
 
-            var wrapped = propagation.wrap(() -> Span.current().getSpanContext().getTraceId());
+            ThrowingSupplier<String> wrapped = propagation.wrap(() -> Span.current().getSpanContext().getTraceId());
 
             String supplied = executor.submit(() -> {
                 try {
@@ -103,8 +105,8 @@ class OtelPlatformContextPropagationTest {
 
     @Test
     void wrapThrowingSupplier_correctly_rethrows_checked_exception() {
-        try (var parent = tracing.spans().operation("parent").start()) {
-            var wrapped = propagation.wrap((space.br1440.platform.tracing.api.util.ThrowingSupplier<String>) () -> {
+        try (SpanHandle parent = tracing.spans().operation("parent").start()) {
+            ThrowingSupplier<String> wrapped = propagation.wrap((ThrowingSupplier<String>) () -> {
                 throw new Exception("checked failure");
             });
 
@@ -119,7 +121,7 @@ class OtelPlatformContextPropagationTest {
         ExecutorService aware = (ExecutorService) propagation.contextAware(executor);
 
         AtomicReference<String> firstCapture = new AtomicReference<>();
-        try (var first = tracing.spans().operation("first").start()) {
+        try (SpanHandle first = tracing.spans().operation("first").start()) {
             String firstTrace = tracing.traceContext().traceId().orElseThrow();
             aware.submit(() -> firstCapture.set(Span.current().getSpanContext().getTraceId()))
                     .get(5, TimeUnit.SECONDS);
@@ -127,7 +129,7 @@ class OtelPlatformContextPropagationTest {
         }
 
         AtomicReference<String> secondCapture = new AtomicReference<>();
-        try (var second = tracing.spans().operation("second").start()) {
+        try (SpanHandle second = tracing.spans().operation("second").start()) {
             String secondTrace = tracing.traceContext().traceId().orElseThrow();
             aware.submit(() -> secondCapture.set(Span.current().getSpanContext().getTraceId()))
                     .get(5, TimeUnit.SECONDS);
@@ -139,8 +141,8 @@ class OtelPlatformContextPropagationTest {
 
     @Test
     void wrap_inside_nested_spans_keeps_child_context_not_parent() throws Exception {
-        try (var parent = tracing.spans().operation("parent").start()) {
-            try (var child = tracing.spans().operation("child").child().start()) {
+        try (SpanHandle parent = tracing.spans().operation("parent").start()) {
+            try (SpanHandle child = tracing.spans().operation("child").child().start()) {
                 String childTraceId = tracing.traceContext().traceId().orElseThrow();
                 String childSpanId = Span.current().getSpanContext().getSpanId();
 
@@ -185,8 +187,8 @@ class OtelPlatformContextPropagationTest {
         AtomicReference<String> capturedDuring = new AtomicReference<>();
 
         try (CorrelationScope requestScope = runtime.openRequestIdentityScope("request-77")) {
-            var wrapped = propagation.wrap(
-                    (space.br1440.platform.tracing.api.util.ThrowingSupplier<String>)
+            ThrowingSupplier<String> wrapped = propagation.wrap(
+                    (ThrowingSupplier<String>)
                             () -> MDC.get(TracingMdcKeys.REQUEST_ID));
 
             // when

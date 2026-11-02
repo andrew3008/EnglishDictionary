@@ -11,6 +11,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
 
 class PlatformServiceNameDefaultsTest {
@@ -21,7 +22,7 @@ class PlatformServiceNameDefaultsTest {
                                               Map<String, String> properties,
                                               Map<String, String> expected) {
         // given
-        var config = DefaultConfigProperties.createFromMap(properties);
+        ConfigProperties config = DefaultConfigProperties.createFromMap(properties);
 
         // when
         Map<String, String> overrides = BootstrapAutoConfigurationCustomizerProvider.serviceNameDefaults(config);

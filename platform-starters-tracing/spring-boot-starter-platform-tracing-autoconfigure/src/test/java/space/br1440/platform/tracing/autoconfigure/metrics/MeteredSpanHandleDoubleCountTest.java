@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.otel.runtime.DelegatingTracingRuntime;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 class MeteredSpanHandleDoubleCountTest {
@@ -32,7 +33,7 @@ class MeteredSpanHandleDoubleCountTest {
     }
 
     private double exceptionsRecordedCount() {
-        var counter = registry.find(PlatformTracingMetrics.EXCEPTIONS_RECORDED).counter();
+        Counter counter = registry.find(PlatformTracingMetrics.EXCEPTIONS_RECORDED).counter();
         return counter == null ? 0.0 : counter.count();
     }
 

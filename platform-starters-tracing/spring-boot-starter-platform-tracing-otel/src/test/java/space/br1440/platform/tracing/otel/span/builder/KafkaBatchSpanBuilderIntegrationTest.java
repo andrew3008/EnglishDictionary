@@ -11,6 +11,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.otel.propagation.OtelTraceparentReaderImpl;
 import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
@@ -97,7 +98,7 @@ class KafkaBatchSpanBuilderIntegrationTest {
     void batchInsideActiveParent_rootDoesNotBecomeChild() {
         RemoteSpanLink link = OtelTraceparentReaderImpl.INSTANCE.require(TRACEPARENT);
 
-        try (var parent = traceOperations.spans().operation("parent").start()) {
+        try (SpanHandle parent = traceOperations.spans().operation("parent").start()) {
             traceOperations.spans()
                     .transport()
                     .kafka()

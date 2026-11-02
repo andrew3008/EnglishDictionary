@@ -15,6 +15,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import space.br1440.platform.tracing.api.attributes.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.RpcTracing;
+import space.br1440.platform.tracing.api.span.builder.TransportTracing;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidationMetrics;
 import space.br1440.platform.tracing.otel.attributes.validation.SpanAttributeValidator;
@@ -41,8 +43,8 @@ class ManualSpanBuilderRelationshipContractTest {
         RecordingTracingRuntime impl = new RecordingTracingRuntime();
         SpanAttributeValidator policy = new SpanAttributeValidator(SpanAttributeValidationLevel.WARNING, SpanAttributeValidationMetrics.NOOP);
         DefaultSpanFactory manual = new DefaultSpanFactory(impl, policy);
-        var transport = manual.transport();
-        var rpc = transport.rpc();
+        TransportTracing transport = manual.transport();
+        RpcTracing rpc = transport.rpc();
         return Stream.of(
                 manual.operation("op"),
                 transport.http().server().method("GET").route("/api"),

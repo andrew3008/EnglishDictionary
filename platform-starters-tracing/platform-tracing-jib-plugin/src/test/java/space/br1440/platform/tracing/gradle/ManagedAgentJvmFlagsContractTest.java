@@ -2,6 +2,8 @@ package space.br1440.platform.tracing.gradle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 
 class ManagedAgentJvmFlagsContractTest {
@@ -13,7 +15,7 @@ class ManagedAgentJvmFlagsContractTest {
         String expectedSha256 = "deadbeef";
 
         // when
-        var arguments = ManagedAgentJvmFlags.forAgentPath(agentPath, expectedSha256);
+        List<String> arguments = ManagedAgentJvmFlags.forAgentPath(agentPath, expectedSha256);
 
         // then
         assertThat(arguments).containsExactly(
@@ -26,7 +28,7 @@ class ManagedAgentJvmFlagsContractTest {
     void forAgentPath_never_emits_management_agent_activation_arguments() {
         // given
         // when
-        var arguments = ManagedAgentJvmFlags.forAgentPath("/agent.jar", "deadbeef");
+        List<String> arguments = ManagedAgentJvmFlags.forAgentPath("/agent.jar", "deadbeef");
 
         // then
         assertThat(arguments)

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
 
@@ -46,7 +47,7 @@ class RpcSpanBuilderIntegrationTest {
 
     @Test
     void rpcServerChild_insideActiveParent_isChildWithSemconvAttributes() {
-        try (@SuppressWarnings("unused") var parent = tracing.spans().operation("parent").start()) {
+        try (@SuppressWarnings("unused") SpanHandle parent = tracing.spans().operation("parent").start()) {
             String parentTraceId = tracing.traceContext().traceId().orElseThrow();
             String parentSpanId = tracing.traceContext().spanId().orElseThrow();
             tracing.spans().transport().rpc().server()

@@ -11,6 +11,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;
 import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
 
@@ -20,7 +21,7 @@ class BaggageAttributeCopyContractTest {
     @MethodSource("includeProperties")
     void rejects_non_empty_include(String propertyName) {
         // given
-        var config = DefaultConfigProperties.createFromMap(Map.of(propertyName, "session.id"));
+        ConfigProperties config = DefaultConfigProperties.createFromMap(Map.of(propertyName, "session.id"));
 
         // when
         Throwable failure = catchThrowable(() -> BaggageAttributeCopyContract.requireDisabled(config));
@@ -42,7 +43,7 @@ class BaggageAttributeCopyContractTest {
     @MethodSource("emptyIncludes")
     void accepts_empty_include(String propertyName, String value) {
         // given
-        var config = DefaultConfigProperties.createFromMap(Map.of(propertyName, value));
+        ConfigProperties config = DefaultConfigProperties.createFromMap(Map.of(propertyName, value));
 
         // when
         Throwable failure = catchThrowable(() -> BaggageAttributeCopyContract.requireDisabled(config));
@@ -54,7 +55,7 @@ class BaggageAttributeCopyContractTest {
     @Test
     void accepts_absent_include() {
         // given
-        var config = DefaultConfigProperties.createFromMap(Map.of());
+        ConfigProperties config = DefaultConfigProperties.createFromMap(Map.of());
 
         // when
         Throwable failure = catchThrowable(() -> BaggageAttributeCopyContract.requireDisabled(config));

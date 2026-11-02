@@ -33,6 +33,7 @@ import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWir
 import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPlatformJmxPlane;
 import space.br1440.platform.tracing.autoconfigure.support.ReadinessJmxTestFixtures;
 import space.br1440.platform.tracing.autoconfigure.support.SettingsJmxTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 
 final class PlatformJmxTracingSettingsClientWireGuardTest {
 
@@ -221,13 +222,13 @@ final class PlatformJmxTracingSettingsClientWireGuardTest {
 
         CompositeData request = (CompositeData) requestCaptor.getValue()[0];
         String encodedWriter = (String) request.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_WRITER);
-        var agentWriter =
+        space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter agentWriter =
                 space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter.valueOf(
                         encodedWriter
                 );
-        var agentRevision =
+        space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsRevision agentRevision =
                 new space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsRevision(
-                        space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId.parse(
+                        AgentInstanceId.parse(
                                 (String) request.get(
                                         JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_EXPECTED_AGENT_INSTANCE_ID
                                 )

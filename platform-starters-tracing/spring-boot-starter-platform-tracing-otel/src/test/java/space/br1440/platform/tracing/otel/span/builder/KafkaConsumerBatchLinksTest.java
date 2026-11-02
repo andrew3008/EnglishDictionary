@@ -87,7 +87,7 @@ class KafkaConsumerBatchLinksTest {
 
     @Test
     void kafkaBatchRootInsideActiveParent_isNotChildSpan() {
-        try (var parent = tracing.spans().operation("parent").start()) {
+        try (SpanHandle parent = tracing.spans().operation("parent").start()) {
             tracing.spans().transport().kafka().consumer()
                     .batch("orders")
                     .root()

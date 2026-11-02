@@ -8,6 +8,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsResolver;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingControlChannel;
 
@@ -29,11 +30,11 @@ class TracingSettingsContractTest {
     @Test
     void actuatorIsAllowedWithoutEnvironmentGate() {
         // given
-        var environment = new MockEnvironment()
+        MockEnvironment environment = new MockEnvironment()
                 .withProperty("platform.tracing.control.channel", "ACTUATOR");
 
         // when
-        var settings = TracingBootstrapSettingsResolver.resolve(environment);
+        TracingBootstrapSettings settings = TracingBootstrapSettingsResolver.resolve(environment);
 
         // then
         assertThat(settings.controlChannel()).isEqualTo(TracingControlChannel.ACTUATOR);
@@ -43,7 +44,7 @@ class TracingSettingsContractTest {
     @Test
     void missingControlChannelIsRejected() {
         // given
-        var environment = new MockEnvironment();
+        MockEnvironment environment = new MockEnvironment();
 
         // when
         // then
@@ -55,7 +56,7 @@ class TracingSettingsContractTest {
     @Test
     void emptyControlChannelIsRejected() {
         // given
-        var environment = new MockEnvironment()
+        MockEnvironment environment = new MockEnvironment()
                 .withProperty("platform.tracing.control.channel", "  ");
 
         // when
@@ -68,7 +69,7 @@ class TracingSettingsContractTest {
     @Test
     void legacyDevActuatorControlChannelIsRejected() {
         // given
-        var environment = new MockEnvironment()
+        MockEnvironment environment = new MockEnvironment()
                 .withProperty("platform.tracing.control.channel", "DEV_ACTUATOR");
 
         // when
@@ -81,12 +82,12 @@ class TracingSettingsContractTest {
     @Test
     void disabledTracingWithConfigServerIsAccepted() {
         // given
-        var environment = new MockEnvironment()
+        MockEnvironment environment = new MockEnvironment()
                 .withProperty("platform.tracing.control.channel", "CONFIG_SERVER")
                 .withProperty("platform.tracing.enabled", "false");
 
         // when
-        var settings = TracingBootstrapSettingsResolver.resolve(environment);
+        TracingBootstrapSettings settings = TracingBootstrapSettingsResolver.resolve(environment);
 
         // then
         assertThat(settings.tracingEnabled()).isFalse();
@@ -95,7 +96,7 @@ class TracingSettingsContractTest {
 
     @Test
     void partialSnapshotIsRejected() {
-        var builder = CompleteTracingSettings.builder()
+        CompleteTracingSettings.Builder builder = CompleteTracingSettings.builder()
                 .samplingEnabled(true)
                 .samplingRatio(0.5);
 
@@ -105,7 +106,7 @@ class TracingSettingsContractTest {
 
     @Test
     void completeSnapshotIsBuilt() {
-        var builder = CompleteTracingSettings.builder()
+        CompleteTracingSettings.Builder builder = CompleteTracingSettings.builder()
                 .samplingEnabled(true)
                 .samplingRatio(0.5)
                 .samplingRouteRatios(Map.of())

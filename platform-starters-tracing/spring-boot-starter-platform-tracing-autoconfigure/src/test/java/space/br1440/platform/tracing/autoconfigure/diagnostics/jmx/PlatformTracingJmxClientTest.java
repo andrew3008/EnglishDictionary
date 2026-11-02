@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import javax.management.MBeanServer;
+import javax.management.ObjectName;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,7 +40,7 @@ class PlatformTracingJmxClientTest {
 
     @AfterEach
     void cleanup() throws Exception {
-        for (var name : new javax.management.ObjectName[]{
+        for (ObjectName name : new ObjectName[]{
                 DomainObjectNames.SAMPLING,
                 DomainObjectNames.SCRUBBING,
                 DomainObjectNames.VALIDATION,

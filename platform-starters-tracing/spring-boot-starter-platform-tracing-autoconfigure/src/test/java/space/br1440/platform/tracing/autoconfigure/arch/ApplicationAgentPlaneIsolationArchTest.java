@@ -14,6 +14,7 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.syntax.elements.GivenClassesConjunction;
 
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.arch.archfixture.invalid.DependsOnScrubbingRuntime;
@@ -130,7 +131,7 @@ class ApplicationAgentPlaneIsolationArchTest {
     }
 
     private static ArchRule scrubbingBoundaryRule(boolean excludeFixture) {
-        var classes = noClasses().that().resideInAPackage(AUTOCONFIGURE_PACKAGE);
+        GivenClassesConjunction classes = noClasses().that().resideInAPackage(AUTOCONFIGURE_PACKAGE);
         if (excludeFixture) {
             classes = classes.and().resideOutsideOfPackage("..archfixture.invalid..");
         }

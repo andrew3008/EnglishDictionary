@@ -34,7 +34,7 @@ class PlatformDropOldestExportSpanProcessorBuilderValidationTest {
     @Test
     void batchSizeGreaterThanQueueIsRejected() {
         // given
-        var builder = PlatformDropOldestExportSpanProcessor.builder(NOOP)
+        PlatformDropOldestExportSpanProcessor.Builder builder = PlatformDropOldestExportSpanProcessor.builder(NOOP)
                 .maxQueueSize(16)
                 .maxExportBatchSize(64);
 

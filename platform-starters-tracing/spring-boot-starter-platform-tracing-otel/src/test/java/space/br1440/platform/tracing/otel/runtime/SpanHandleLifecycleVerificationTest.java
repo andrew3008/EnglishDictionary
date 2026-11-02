@@ -4,8 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,8 +70,8 @@ class SpanHandleLifecycleVerificationTest {
 
     @Test
     void concurrentScopedExecutions_keepContextConfinedToOwningThread() throws Exception {
-        try (var executor = Executors.newFixedThreadPool(4)) {
-            var tasks = java.util.stream.IntStream.range(0, 8)
+        try (ExecutorService executor = Executors.newFixedThreadPool(4)) {
+            List<Callable<String>> tasks = IntStream.range(0, 8)
                     .<Callable<String>>mapToObj(index -> () -> {
                         String traceId = tracing.spans().operation("task-" + index).call(
                                 () -> tracing.traceContext().traceId().orElseThrow());
@@ -76,8 +80,8 @@ class SpanHandleLifecycleVerificationTest {
                     })
                     .toList();
 
-            var traceIds = new HashSet<String>();
-            for (var result : executor.invokeAll(tasks)) {
+            HashSet<String> traceIds = new HashSet<String>();
+            for (Future<String> result : executor.invokeAll(tasks)) {
                 traceIds.add(result.get());
             }
 
@@ -89,7 +93,7 @@ class SpanHandleLifecycleVerificationTest {
 
     @Test
     void noOpHandle_preservesCloseAndExceptionSafety() {
-        var noop = NoopTraceOperations.forDisabledRuntime(
+        NoopTraceOperations noop = NoopTraceOperations.forDisabledRuntime(
                 NoOpTracingRuntime.disabledByConfiguration("slice-f-verification"));
         SpanHandle handle = noop.spans().operation("noop").start();
 

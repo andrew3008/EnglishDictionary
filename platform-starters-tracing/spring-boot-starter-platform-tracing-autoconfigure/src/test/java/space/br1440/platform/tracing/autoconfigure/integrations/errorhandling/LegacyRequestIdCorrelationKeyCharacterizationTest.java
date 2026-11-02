@@ -6,6 +6,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 
+import space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 
 class LegacyRequestIdCorrelationKeyCharacterizationTest {
@@ -19,7 +20,7 @@ class LegacyRequestIdCorrelationKeyCharacterizationTest {
     void legacyMdcKeyIsNotAnIdentityReadPath() {
         MDC.put("correlation_id", "legacy-request-42");
 
-        var snapshot = new RequestTraceContextSnapshotSupplier(() -> null).get();
+        RequestTraceContextSnapshot snapshot = new RequestTraceContextSnapshotSupplier(() -> null).get();
 
         assertThat(TracingMdcKeys.REQUEST_ID).isEqualTo("requestId");
         assertThat(TracingMdcKeys.CORRELATION_ID).isEqualTo("correlationId");

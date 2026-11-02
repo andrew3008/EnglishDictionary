@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.stream.Stream;
 
 import org.gradle.api.GradleException;
 import org.junit.jupiter.api.Test;
@@ -29,7 +30,7 @@ class DistributionFilesTest {
         assertThat(Files.readAllBytes(target)).isEqualTo(content);
         assertThat(Files.readAllBytes(staged)).isEqualTo(content);
 
-        try (var files = Files.list(directory)) {
+        try (Stream<Path> files = Files.list(directory)) {
             assertThat(files.map(path -> path.getFileName().toString()).toList())
                     .containsExactlyInAnyOrder("staged.jar", "agent.jar");
         }
@@ -52,7 +53,7 @@ class DistributionFilesTest {
 
         assertThat(Files.readString(target, StandardCharsets.UTF_8)).isEqualTo("existing");
 
-        try (var files = Files.list(directory)) {
+        try (Stream<Path> files = Files.list(directory)) {
             assertThat(files.map(path -> path.getFileName().toString()).toList())
                     .containsExactly("agent.jar");
         }
@@ -76,12 +77,12 @@ class DistributionFilesTest {
         assertThat(Files.readString(staged, StandardCharsets.UTF_8)).isEqualTo("replacement");
         assertThat(Files.readString(marker, StandardCharsets.UTF_8)).isEqualTo("existing");
 
-        try (var files = Files.list(directory)) {
+        try (Stream<Path> files = Files.list(directory)) {
             assertThat(files.map(path -> path.getFileName().toString()).toList())
                     .containsExactlyInAnyOrder("staged.jar", "agent.jar");
         }
 
-        try (var files = Files.list(target)) {
+        try (Stream<Path> files = Files.list(target)) {
             assertThat(files.map(path -> path.getFileName().toString()).toList())
                     .containsExactly("marker");
         }

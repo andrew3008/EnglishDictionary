@@ -2,6 +2,8 @@ package space.br1440.platform.tracing.autoconfigure.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -16,6 +18,8 @@ import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.data.EventData;
+import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 
 class ExceptionRecordingAutoConfigurationTest {
@@ -51,13 +55,13 @@ class ExceptionRecordingAutoConfigurationTest {
                 span.end();
 
                 // then
-                var properties = context.getBean(TracingProperties.class).getExceptionRecording();
+                TracingProperties.ExceptionRecording properties = context.getBean(TracingProperties.class).getExceptionRecording();
                 assertThat(properties.isIncludeMessage()).isFalse();
                 assertThat(properties.isIncludeStacktrace()).isFalse();
-                var finished = exporter.getFinishedSpanItems().getFirst();
+                SpanData finished = exporter.getFinishedSpanItems().getFirst();
                 assertThat(finished.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
                 assertThat(finished.getStatus().getDescription()).isEmpty();
-                var event = finished.getEvents().getFirst();
+                EventData event = finished.getEvents().getFirst();
                 assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_TYPE))
                         .isEqualTo(CountingMessageException.class.getName());
                 assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isNull();
@@ -87,9 +91,9 @@ class ExceptionRecordingAutoConfigurationTest {
                         span.end();
 
                         // then
-                        var finished = exporter.getFinishedSpanItems().getFirst();
+                        SpanData finished = exporter.getFinishedSpanItems().getFirst();
                         assertThat(finished.getStatus().getDescription()).isEmpty();
-                        var event = finished.getEvents().getFirst();
+                        EventData event = finished.getEvents().getFirst();
                         assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isNull();
                         assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE))
                                 .contains(CountingMessageException.class.getName(), "Caused by:")
@@ -121,12 +125,12 @@ class ExceptionRecordingAutoConfigurationTest {
                         // when
                         recorder.record(span, new IllegalStateException("boom"));
                         span.end();
-                        var finished = exporter.getFinishedSpanItems();
+                        List<SpanData> finished = exporter.getFinishedSpanItems();
 
                         // then
                         assertThat(finished).hasSize(1);
                         assertThat(finished.getFirst().getStatus().getDescription()).isEqualTo("boom");
-                        var event = finished.getFirst().getEvents().getFirst();
+                        EventData event = finished.getFirst().getEvents().getFirst();
                         assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isEqualTo("boom");
                         assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE))
                                 .contains("IllegalStateException: boom");

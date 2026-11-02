@@ -12,6 +12,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
 
 class ExportConfigurationContractTest {
@@ -20,7 +21,7 @@ class ExportConfigurationContractTest {
     @MethodSource("supportedConfigurations")
     void acceptsSupportedConfiguration(Map<String, String> properties) {
         // given
-        var config = DefaultConfigProperties.createFromMap(properties);
+        ConfigProperties config = DefaultConfigProperties.createFromMap(properties);
 
         // when
         Throwable failure = catchThrowable(() -> ExportConfigurationContract.requireSupported(config));
@@ -34,7 +35,7 @@ class ExportConfigurationContractTest {
             "otlp,otlp", "otlp ,", "custom-spi", "OTLP", " "})
     void rejectsOtherTraceExporters(String value) {
         // given
-        var config = DefaultConfigProperties.createFromMap(Map.of("otel.traces.exporter", value));
+        ConfigProperties config = DefaultConfigProperties.createFromMap(Map.of("otel.traces.exporter", value));
 
         // when
         Throwable failure = catchThrowable(() -> ExportConfigurationContract.requireSupported(config));
@@ -48,7 +49,7 @@ class ExportConfigurationContractTest {
     @MethodSource("invalidConfigurations")
     void rejectsInvalidConfigurationWithPropertyName(String propertyName, String value) {
         // given
-        var config = DefaultConfigProperties.createFromMap(Map.of(propertyName, value));
+        ConfigProperties config = DefaultConfigProperties.createFromMap(Map.of(propertyName, value));
 
         // when
         Throwable failure = catchThrowable(() -> ExportConfigurationContract.requireSupported(config));
@@ -60,7 +61,7 @@ class ExportConfigurationContractTest {
     @Test
     void emptyTraceProtocolDoesNotFallBackToGeneralProtocol() {
         // given
-        var config = DefaultConfigProperties.createFromMap(Map.of(
+        ConfigProperties config = DefaultConfigProperties.createFromMap(Map.of(
                 "otel.exporter.otlp.traces.protocol", "",
                 "otel.exporter.otlp.protocol", "grpc"
         ));
@@ -75,7 +76,7 @@ class ExportConfigurationContractTest {
     @Test
     void effectiveTraceTimeoutMustNotExceedBspTimeout() {
         // given
-        var config = DefaultConfigProperties.createFromMap(Map.of(
+        ConfigProperties config = DefaultConfigProperties.createFromMap(Map.of(
                 "otel.exporter.otlp.timeout", "1s",
                 "otel.exporter.otlp.traces.timeout", "11s",
                 "otel.bsp.export.timeout", "10s"
@@ -91,7 +92,7 @@ class ExportConfigurationContractTest {
     @Test
     void defaultOtlpTimeoutMustFitBspTimeout() {
         // given
-        var config = DefaultConfigProperties.createFromMap(Map.of("otel.bsp.export.timeout", "9s"));
+        ConfigProperties config = DefaultConfigProperties.createFromMap(Map.of("otel.bsp.export.timeout", "9s"));
 
         // when
         Throwable failure = catchThrowable(() -> ExportConfigurationContract.requireSupported(config));
@@ -103,7 +104,7 @@ class ExportConfigurationContractTest {
     @Test
     void emptyTraceTimeoutStillValidatesTheGeneralTimeout() {
         // given
-        var config = DefaultConfigProperties.createFromMap(Map.of(
+        ConfigProperties config = DefaultConfigProperties.createFromMap(Map.of(
                 "otel.exporter.otlp.traces.timeout", "",
                 "otel.exporter.otlp.timeout", "31s"
         ));

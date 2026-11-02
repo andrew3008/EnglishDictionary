@@ -10,6 +10,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
 
 import java.util.List;
@@ -42,7 +43,7 @@ class HttpSpanBuilderIntegrationTest {
 
     @Test
     void httpServerChild_insideActiveParent_isChildWithSemconvAttributes() {
-        try (var parent = tracing.spans().operation("parent").start()) {
+        try (SpanHandle parent = tracing.spans().operation("parent").start()) {
             String parentTraceId = tracing.traceContext().traceId().orElseThrow();
             String parentSpanId = tracing.traceContext().spanId().orElseThrow();
             tracing.spans().transport().http().server()

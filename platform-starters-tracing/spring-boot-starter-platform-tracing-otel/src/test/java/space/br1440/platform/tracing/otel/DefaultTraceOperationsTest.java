@@ -12,6 +12,7 @@ import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
 
@@ -47,8 +48,8 @@ class DefaultTraceOperationsTest {
 
     @Test
     void childSpan_inherits_parent_traceId() {
-        try (@SuppressWarnings("unused") var parent = tracing.spans().operation("parent").start()) {
-            try (@SuppressWarnings("unused") var child = tracing.spans().operation("child").child().start()) {
+        try (@SuppressWarnings("unused") SpanHandle parent = tracing.spans().operation("parent").start()) {
+            try (@SuppressWarnings("unused") SpanHandle child = tracing.spans().operation("child").child().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
             }
         }
@@ -63,8 +64,8 @@ class DefaultTraceOperationsTest {
 
     @Test
     void rootSpan_creates_new_trace_without_parent() {
-        try (@SuppressWarnings("unused") var parent = tracing.spans().operation("parent").start()) {
-            try (@SuppressWarnings("unused") var root = tracing.spans().operation("job").root().start()) {
+        try (@SuppressWarnings("unused") SpanHandle parent = tracing.spans().operation("parent").start()) {
+            try (@SuppressWarnings("unused") SpanHandle root = tracing.spans().operation("job").root().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
             }
         }
@@ -79,7 +80,7 @@ class DefaultTraceOperationsTest {
 
     @Test
     void detachedSpan_has_no_parent() {
-        try (@SuppressWarnings("unused") var detached = tracing.spans().operation("orphan").detached().start()) {
+        try (@SuppressWarnings("unused") SpanHandle detached = tracing.spans().operation("orphan").detached().start()) {
             assertThat(tracing.traceContext().traceId()).isPresent();
         }
 
@@ -100,7 +101,7 @@ class DefaultTraceOperationsTest {
                 .linkedTo(link1, link2)
                 .build();
 
-        try (@SuppressWarnings("unused") var scope = tracing.spans().fromSpec(spec).start()) {
+        try (@SuppressWarnings("unused") SpanHandle scope = tracing.spans().fromSpec(spec).start()) {
             assertThat(tracing.traceContext().traceId()).isPresent();
         }
 
@@ -120,7 +121,7 @@ class DefaultTraceOperationsTest {
 
     @Test
     void rootSpan_is_equivalent_to_explicit_root() {
-        try (@SuppressWarnings("unused") var scope = tracing.spans().operation("job").root().start()) {
+        try (@SuppressWarnings("unused") SpanHandle scope = tracing.spans().operation("job").root().start()) {
             assertThat(tracing.traceContext().spanId()).isPresent();
         }
 

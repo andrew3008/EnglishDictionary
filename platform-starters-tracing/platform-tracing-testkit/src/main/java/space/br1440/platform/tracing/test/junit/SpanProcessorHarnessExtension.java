@@ -80,7 +80,7 @@ public final class SpanProcessorHarnessExtension implements BeforeAllCallback, B
     private ExtensionContext.Store rootStore(ExtensionContext context) {
         ExtensionContext walker = context;
         while (walker.getParent().isPresent()) {
-            var parent = walker.getParent().get();
+            ExtensionContext parent = walker.getParent().get();
             if (parent.getStore(NS).get(HARNESS_KEY) != null) {
                 return parent.getStore(NS);
             }

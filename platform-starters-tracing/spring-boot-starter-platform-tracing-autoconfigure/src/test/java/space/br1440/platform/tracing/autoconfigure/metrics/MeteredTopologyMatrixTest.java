@@ -76,7 +76,7 @@ class MeteredTopologyMatrixTest {
         contextRunner.run(context -> {
             TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
-            try (var ignored = tracing.spans().operation("parent").start()) {
+            try (SpanHandle ignored = tracing.spans().operation("parent").start()) {
                 tracing.spans().operation("orphan").detached().start().close();
             }
 

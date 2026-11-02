@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceException;
+import space.br1440.platform.tracing.autoconfigure.control.jmx.PlatformJmxTracingSettingsClient;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.control.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.management.TracingSettingsMutationService;
@@ -196,7 +197,7 @@ class TracingSettingsMutationServiceTest {
                 BEFORE_RESTART_AGENT_INSTANCE_ID,
                 5L
         )) {
-            var realClient = agent.client();
+            PlatformJmxTracingSettingsClient realClient = agent.client();
 
             Supplier<Optional<AcceptedSettings>> interleavingReader = () -> {
                 Optional<AcceptedSettings> observed = realClient.current();

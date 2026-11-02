@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.actuate.endpoint.annotation.WriteOperation;
@@ -63,7 +64,7 @@ class ActuatorEndpointContractTest {
         WebEndpoint endpoint = TracingControlEndpoint.class.getAnnotation(WebEndpoint.class);
 
         // when
-        var writeOperations = Arrays.stream(TracingControlEndpoint.class.getDeclaredMethods())
+        List<Method> writeOperations = Arrays.stream(TracingControlEndpoint.class.getDeclaredMethods())
                 .filter(method -> method.isAnnotationPresent(WriteOperation.class))
                 .toList();
 
