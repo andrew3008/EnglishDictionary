@@ -32,22 +32,15 @@ public final class ExecutableRule {
             case OPEN -> rule.critical()
                     ? RuleOutcome.criticalFailure(ScrubbingDecision.scrubbingFailed())
                     : RuleOutcome.skippedCircuitOpen();
-            case HALF_OPEN -> executeProbeDetailed(admission, key, value);
-            case CLOSED -> executeNormalDetailed(admission, key, value);
+            case HALF_OPEN, CLOSED -> executeAdmitted(admission, key, value);
         };
     }
 
-    private RuleOutcome executeProbeDetailed(Admission admission, String key, Object value) {
+    private RuleOutcome executeAdmitted(Admission admission, String key, Object value) {
         try {
-            if (rule.isExcluded(key)) {
-                breaker.recordSuccess(admission);
-                return RuleOutcome.keep();
-            }
-
-            ScrubbingDecision result = rule.evaluate(key, value);
-            requireNonNull(result);
+            RuleOutcome result = rule.isExcluded(key) ? RuleOutcome.keep() : evaluateRule(key, value);
             breaker.recordSuccess(admission);
-            return classify(result);
+            return result;
         } catch (Throwable t) {
             PlatformThrowables.propagateIfFatal(t);
             breaker.recordFailure(admission, t);
@@ -57,25 +50,18 @@ public final class ExecutableRule {
         }
     }
 
-    private RuleOutcome executeNormalDetailed(Admission admission, String key, Object value) {
-        try {
-            if (rule.isExcluded(key)) {
-                return RuleOutcome.keep();
+    private RuleOutcome evaluateRule(String key, Object value) {
+        if (rule instanceof TextTransformingRule transformingRule && value instanceof String text) {
+            String transformed = transformingRule.transform(key, text);
+            if (transformed == null) {
+                return RuleOutcome.decision(ScrubbingDecision.drop(rule.name()));
             }
 
-            ScrubbingDecision result = rule.evaluate(key, value);
-            requireNonNull(result);
-            return classify(result);
-        } catch (Throwable t) {
-            PlatformThrowables.propagateIfFatal(t);
-            breaker.recordFailure(admission, t);
-            return rule.critical()
-                    ? RuleOutcome.criticalFailure(ScrubbingDecision.scrubbingFailed())
-                    : RuleOutcome.nonCriticalFailure();
+            return text.equals(transformed) ? RuleOutcome.keep() : RuleOutcome.maskedText(transformed);
         }
-    }
 
-    private static RuleOutcome classify(ScrubbingDecision result) {
+        ScrubbingDecision result = rule.evaluate(key, value);
+        requireNonNull(result);
         return (result.action() == ScrubbingAction.KEEP)
                 ? RuleOutcome.keep()
                 : RuleOutcome.decision(result);

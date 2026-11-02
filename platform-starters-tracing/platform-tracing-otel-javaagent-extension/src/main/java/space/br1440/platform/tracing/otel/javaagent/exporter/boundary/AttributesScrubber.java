@@ -126,6 +126,9 @@ final class AttributesScrubber {
             ScrubbingDecision decision = outcome.decision();
             ScrubbingAction action = decision.action();
             if (action == ScrubbingAction.KEEP) {
+                if (outcome.maskedValue() != null) {
+                    replace(key, outcome.maskedValue());
+                }
                 return;
             }
 
@@ -140,7 +143,8 @@ final class AttributesScrubber {
             }
 
             if (type == AttributeType.STRING) {
-                String transformed = transformString((String) value, decision, runtime);
+                String masked = (outcome.maskedValue() != null) ? outcome.maskedValue() : (String) value;
+                String transformed = transformString(masked, decision, runtime);
                 if (Objects.equals(transformed, value)) {
                     return;
                 }

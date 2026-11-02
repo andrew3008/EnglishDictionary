@@ -124,7 +124,7 @@ class ScrubbingRuntimeCurrentBehaviorTest {
     }
 
     @Test
-    @DisplayName("текущее поведение: короткая строка TRUNCATE увеличивает truncatedActions без перезаписи")
+    @DisplayName("TRUNCATE сохраняет короткое значение и увеличивает truncatedActions")
     void shortTruncateStillIncrementsTruncatedActions() {
         // given
         AttributeKey<String> key = AttributeKey.stringKey("note");
@@ -134,7 +134,7 @@ class ScrubbingRuntimeCurrentBehaviorTest {
             Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, "short"));
 
             // then
-            assertThat(written).doesNotContainKey(key);
+            assertThat(written.get(key)).isEqualTo("short");
             assertThat(runtime.truncatedActions()).isEqualTo(1);
         }
     }

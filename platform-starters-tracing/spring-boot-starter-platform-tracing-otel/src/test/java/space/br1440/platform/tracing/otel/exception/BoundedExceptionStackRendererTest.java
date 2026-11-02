@@ -28,11 +28,10 @@ class BoundedExceptionStackRendererTest {
         exception.setStackTrace(frames(3, "com.example.Type"));
 
         // when
-        RenderedExceptionStack rendered = new BoundedExceptionStackRenderer(budget, RAW_MESSAGE).render(exception);
+        String rendered = render(budget, RAW_MESSAGE, exception);
 
         // then
-        assertThat(rendered.truncated()).isTrue();
-        assertThat(rendered.text())
+        assertThat(rendered)
                 .hasSize(budget)
                 .isEqualTo((BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n").substring(0, budget));
     }
@@ -44,12 +43,55 @@ class BoundedExceptionStackRendererTest {
         exception.setStackTrace(frames(3, "com.example.Type"));
 
         // when
-        RenderedExceptionStack rendered = new BoundedExceptionStackRenderer(EXHAUSTED_LINE + 1, RAW_MESSAGE)
-                .render(exception);
+        String rendered = render(EXHAUSTED_LINE + 1, RAW_MESSAGE, exception);
 
         // then
-        assertThat(rendered.text()).isEqualTo(BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
-        assertThat(rendered.truncated()).isTrue();
+        assertThat(rendered).isEqualTo(BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
+    }
+
+    @Test
+    void shortNaturalStackFitsBelowMarkerLength() {
+        // given
+        Throwable exception = new Throwable();
+        exception.setStackTrace(NO_FRAMES);
+
+        // when
+        String rendered = render(32, RAW_MESSAGE, exception);
+
+        // then
+        assertThat(rendered).isEqualTo("java.lang.Throwable\n");
+    }
+
+    @Test
+    void impossibleHeaderAtTinyBudgetDoesNotReadThrowableGetters() {
+        // given
+        CountingException exception = new CountingException("message", null);
+
+        // when
+        String rendered = new BoundedExceptionStackRenderer(1, RAW_MESSAGE).render(exception, null);
+
+        // then
+        assertThat(rendered).isEqualTo(".");
+        assertThat(exception.messageReads).isZero();
+        assertThat(exception.causeReads).isZero();
+        assertThat(exception.stackReads).isZero();
+    }
+
+    @Test
+    void headersExhaustingBudgetAvoidStackGetters() {
+        // given
+        CountingException cause = new CountingException("root-".repeat(100), null);
+        CountingException exception = new CountingException("outer-".repeat(100), cause);
+        int headers = (CountingException.class.getName() + "\n").length()
+                + ("Caused by: " + CountingException.class.getName() + "\n").length();
+
+        // when
+        String rendered = render(EXHAUSTED_LINE + headers, RAW_MESSAGE, exception);
+
+        // then
+        assertThat(rendered).hasSize(EXHAUSTED_LINE + headers);
+        assertThat(exception.stackReads).isZero();
+        assertThat(cause.stackReads).isZero();
     }
 
     @Test
@@ -60,11 +102,11 @@ class BoundedExceptionStackRendererTest {
         int budget = EXHAUSTED_LINE + 20;
 
         // when
-        RenderedExceptionStack rendered = new BoundedExceptionStackRenderer(budget, RAW_MESSAGE).render(exception);
+        String rendered = render(budget, RAW_MESSAGE, exception);
 
         // then
-        assertThat(rendered.text()).isEqualTo("java.lang.IllegalSt\n" + BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
-        assertThat(rendered.text()).hasSize(budget);
+        assertThat(rendered).isEqualTo("java.lang.IllegalSt\n" + BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
+        assertThat(rendered).hasSize(budget);
     }
 
     @Test
@@ -81,12 +123,31 @@ class BoundedExceptionStackRendererTest {
         int budget = EXHAUSTED_LINE + 2 * causedBy.length();
 
         // when
-        RenderedExceptionStack rendered = new BoundedExceptionStackRenderer(budget, RAW_MESSAGE).render(outer);
+        String rendered = render(budget, RAW_MESSAGE, outer);
 
         // then
-        assertThat(rendered.text()).isEqualTo(causedBy + causedBy + BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
-        assertThat(rendered.text()).startsWith("Caused by: ");
-        assertThat(rendered.truncated()).isTrue();
+        assertThat(rendered).isEqualTo(causedBy + causedBy + BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
+        assertThat(rendered).startsWith("Caused by: ");
+    }
+
+    @Test
+    void droppingOuterHeadersRestoresDeepestMessageIntoFreedBudget() {
+        // given
+        CountingException root = new CountingException("ROOT_DIAGNOSTIC_57P03", null);
+        CountingException middle = new CountingException("middle-".repeat(100), root);
+        CountingException outer = new CountingException("outer-".repeat(100), middle);
+        String bareHeader = "Caused by: " + CountingException.class.getName() + "\n";
+        String rootHeader = "Caused by: " + CountingException.class.getName() + ": ROOT_DIAGNOSTIC_57P03\n";
+        int budget = EXHAUSTED_LINE + bareHeader.length() + rootHeader.length();
+
+        // when
+        String rendered = render(budget, RAW_MESSAGE, outer);
+
+        // then
+        assertThat(rendered).isEqualTo(bareHeader + rootHeader + BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
+        assertThat(outer.stackReads).isZero();
+        assertThat(middle.stackReads).isZero();
+        assertThat(root.stackReads).isZero();
     }
 
     @Test
@@ -101,10 +162,10 @@ class BoundedExceptionStackRendererTest {
         int budget = EXHAUSTED_LINE + outerHeader.length() + rootHeader.length();
 
         // when
-        RenderedExceptionStack rendered = new BoundedExceptionStackRenderer(budget, RAW_MESSAGE).render(outer);
+        String rendered = render(budget, RAW_MESSAGE, outer);
 
         // then
-        assertThat(rendered.text()).isEqualTo(outerHeader + rootHeader + BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
+        assertThat(rendered).isEqualTo(outerHeader + rootHeader + BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
     }
 
     @Test
@@ -123,10 +184,10 @@ class BoundedExceptionStackRendererTest {
                 + BoundedExceptionStackRenderer.framesOmitted(4).length() + 1;
 
         // when
-        RenderedExceptionStack rendered = new BoundedExceptionStackRenderer(budget, RAW_MESSAGE).render(outer);
+        String rendered = render(budget, RAW_MESSAGE, outer);
 
         // then
-        assertThat(rendered.text()).isEqualTo(outerHeader + rootHeader
+        assertThat(rendered).isEqualTo(outerHeader + rootHeader
                 + "\tat " + root.getStackTrace()[0] + "\n"
                 + BoundedExceptionStackRenderer.framesOmitted(4) + "\n"
                 + circular
@@ -145,11 +206,10 @@ class BoundedExceptionStackRendererTest {
         String rootHeader = "Caused by: java.lang.IllegalStateException: root\n";
 
         // when
-        RenderedExceptionStack rendered = new BoundedExceptionStackRenderer(
-                EXHAUSTED_LINE + outerHeader.length() + rootHeader.length(), RAW_MESSAGE).render(outer);
+        String rendered = render(EXHAUSTED_LINE + outerHeader.length() + rootHeader.length(), RAW_MESSAGE, outer);
 
         // then
-        assertThat(rendered.text()).isEqualTo(outerHeader + rootHeader + BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
+        assertThat(rendered).isEqualTo(outerHeader + rootHeader + BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
     }
 
     @Test
@@ -167,16 +227,14 @@ class BoundedExceptionStackRendererTest {
         }
 
         // when
-        RenderedExceptionStack rendered = new BoundedExceptionStackRenderer(EXHAUSTED_LINE + headers + rootFrames, RAW_MESSAGE)
-                .render(outer);
+        String rendered = render(EXHAUSTED_LINE + headers + rootFrames, RAW_MESSAGE, outer);
 
         // then
-        assertThat(rendered.text())
+        assertThat(rendered)
                 .contains("\tat com.example.Root0.method")
                 .contains("\tat com.example.Root2.method")
                 .doesNotContain("com.example.Outer")
                 .doesNotContain("frames omitted");
-        assertThat(rendered.truncated()).isTrue();
     }
 
     @Test
@@ -195,15 +253,14 @@ class BoundedExceptionStackRendererTest {
         }
 
         // when
-        RenderedExceptionStack rendered = new BoundedExceptionStackRenderer(100_000, RAW_MESSAGE).render(chain[0]);
+        String rendered = render(100_000, RAW_MESSAGE, chain[0]);
 
         // then
-        assertThat(rendered.truncated()).isTrue();
-        assertThat(rendered.text())
+        assertThat(rendered)
                 .contains("Caused by: " + MutableCause.class.getName() + ": c10")
                 .contains(BoundedExceptionStackRenderer.FURTHER_CAUSES_OMITTED)
                 .doesNotContain("CIRCULAR");
-        assertThat(rendered.text().split("\n")).hasSize(12);
+        assertThat(rendered.split("\n")).hasSize(12);
     }
 
     @Test
@@ -216,15 +273,14 @@ class BoundedExceptionStackRendererTest {
         int budget = EXHAUSTED_LINE + headers;
 
         // when
-        RenderedExceptionStack rendered = new BoundedExceptionStackRenderer(budget, RAW_MESSAGE).render(exception);
+        String rendered = render(budget, RAW_MESSAGE, exception);
 
         // then
-        assertThat(rendered.truncated()).isTrue();
-        assertThat(rendered.text()).hasSize(budget);
-        assertThat(rendered.text()).doesNotContain(BoundedExceptionStackRenderer.FURTHER_CAUSES_OMITTED);
-        assertThat(rendered.text()).doesNotContain("cause-");
-        assertThat(rendered.text()).endsWith(BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
-        assertThat(countCausedBy(rendered.text())).isEqualTo(BoundedExceptionStackRenderer.MAX_CAUSED_BY_LEVELS);
+        assertThat(rendered).hasSize(budget);
+        assertThat(rendered).doesNotContain(BoundedExceptionStackRenderer.FURTHER_CAUSES_OMITTED);
+        assertThat(rendered).doesNotContain("cause-");
+        assertThat(rendered).endsWith(BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
+        assertThat(countCausedBy(rendered)).isEqualTo(BoundedExceptionStackRenderer.MAX_CAUSED_BY_LEVELS);
     }
 
     @Test
@@ -237,15 +293,14 @@ class BoundedExceptionStackRendererTest {
         second.setStackTrace(NO_FRAMES);
 
         // when
-        RenderedExceptionStack rendered = new BoundedExceptionStackRenderer(1_000, throwable -> null).render(first);
+        String rendered = render(1_000, throwable -> null, first);
 
         // then
-        assertThat(rendered.text()).isEqualTo("""
+        assertThat(rendered).isEqualTo("""
                 java.lang.IllegalStateException
                 Caused by: java.lang.IllegalStateException
                 Caused by: [CIRCULAR REFERENCE: java.lang.IllegalStateException]
                 """);
-        assertThat(rendered.truncated()).isFalse();
     }
 
     @Test
@@ -255,10 +310,10 @@ class BoundedExceptionStackRendererTest {
         exception.setStackTrace(NO_FRAMES);
 
         // when
-        RenderedExceptionStack rendered = new BoundedExceptionStackRenderer(1_000, throwable -> "[redacted]").render(exception);
+        String rendered = render(1_000, throwable -> "[redacted]", exception);
 
         // then
-        assertThat(rendered.text()).isEqualTo("java.lang.IllegalStateException: [redacted]\n");
+        assertThat(rendered).isEqualTo("java.lang.IllegalStateException: [redacted]\n");
     }
 
     @Test
@@ -268,11 +323,10 @@ class BoundedExceptionStackRendererTest {
         exception.setStackTrace(NO_FRAMES);
 
         // when
-        RenderedExceptionStack rendered = new BoundedExceptionStackRenderer(1_000, throwable -> "").render(exception);
+        String rendered = render(1_000, throwable -> "", exception);
 
         // then
-        assertThat(rendered.text()).isEqualTo("java.lang.IllegalStateException: \n");
-        assertThat(rendered.truncated()).isFalse();
+        assertThat(rendered).isEqualTo("java.lang.IllegalStateException: \n");
     }
 
     @Test
@@ -280,15 +334,165 @@ class BoundedExceptionStackRendererTest {
         // given
         IllegalStateException exception = new IllegalStateException("boom");
         exception.setStackTrace(NO_FRAMES);
-        String natural = new BoundedExceptionStackRenderer(10_000, RAW_MESSAGE).render(exception).text();
+        String natural = render(10_000, RAW_MESSAGE, exception);
 
         // when
-        RenderedExceptionStack rendered = new BoundedExceptionStackRenderer(natural.length(), RAW_MESSAGE).render(exception);
+        String rendered = render(natural.length(), RAW_MESSAGE, exception);
 
         // then
-        assertThat(rendered.truncated()).isFalse();
-        assertThat(rendered.text()).isEqualTo(natural);
-        assertThat(rendered.text()).hasSize(natural.length());
+        assertThat(rendered).isEqualTo(natural);
+        assertThat(rendered).hasSize(natural.length());
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {999, 1_000, 1_001})
+    void exactNaturalFrameBudgetDoesNotReserveExhaustedMarker(int budget) {
+        // given
+        Throwable exception = new Throwable();
+        String className = "x".repeat(1_000 - "java.lang.Throwable\n\tat .run(A.java:1)\n".length());
+        StackTraceElement frame = new StackTraceElement(className, "run", "A.java", 1);
+        exception.setStackTrace(new StackTraceElement[] {frame});
+        String natural = "java.lang.Throwable\n\tat " + frame + "\n";
+
+        // when
+        String rendered = render(budget, RAW_MESSAGE, exception);
+
+        // then
+        assertThat(natural).hasSize(1_000);
+        assertThat(rendered).hasSizeLessThanOrEqualTo(budget);
+        if (budget >= natural.length()) {
+            assertThat(rendered).isEqualTo(natural);
+        } else {
+            assertThat(rendered).contains(BoundedExceptionStackRenderer.BUDGET_EXHAUSTED);
+        }
+    }
+
+    @Test
+    void preservesJdkFrameSyntaxAtExactBudget() {
+        // given
+        Throwable exception = new Throwable();
+        StackTraceElement[] frames = {
+                new StackTraceElement("app", "module", "1.0", "a.Type", "nativeCall", "Type.java", -2),
+                new StackTraceElement("a.Type", "unknownCall", null, -1),
+                new StackTraceElement("a.Type", "sourceCall", "Type.java", 17)
+        };
+        exception.setStackTrace(frames);
+        String natural = "java.lang.Throwable\n";
+        for (StackTraceElement frame : frames) {
+            natural += "\tat " + frame + "\n";
+        }
+
+        // when
+        String rendered = render(natural.length(), RAW_MESSAGE, exception);
+
+        // then
+        assertThat(rendered).isEqualTo(natural);
+    }
+
+    @Test
+    void readsEachThrowableOnceAcrossNaturalAndBudgetedRendering() {
+        // given
+        CountingException cause = new CountingException("root", null);
+        cause.setStackTrace(frames(2, "com.example.Root"));
+        CountingException exception = new CountingException("outer", cause);
+        exception.setStackTrace(frames(32, "com.example.Outer" + "x".repeat(100)));
+
+        // when
+        String rendered = render(1_000, RAW_MESSAGE, exception);
+
+        // then
+        assertThat(rendered).contains("com.example.Root0.method", BoundedExceptionStackRenderer.BUDGET_EXHAUSTED);
+        assertThat(exception.messageReads).isEqualTo(1);
+        assertThat(exception.causeReads).isEqualTo(1);
+        assertThat(exception.stackReads).isEqualTo(1);
+        assertThat(cause.messageReads).isEqualTo(1);
+        assertThat(cause.causeReads).isEqualTo(1);
+        assertThat(cause.stackReads).isEqualTo(1);
+    }
+
+    @Test
+    void usesProvidedRootMessageWithoutCallingItsSanitizer() {
+        // given
+        CountingException exception = new CountingException("raw", null);
+        exception.setStackTrace(NO_FRAMES);
+
+        // when
+        String rendered = new BoundedExceptionStackRenderer(1_000, throwable -> {
+            throw new AssertionError("Root sanitizer must not be called");
+        }).render(exception, "sanitized");
+
+        // then
+        assertThat(rendered).isEqualTo(CountingException.class.getName() + ": sanitized\n");
+        assertThat(exception.messageReads).isZero();
+    }
+
+    @Test
+    void oversizedFrameComponentsStopTheRemainingFramePrefix() {
+        // given
+        Throwable exception = new Throwable();
+        exception.setStackTrace(new StackTraceElement[] {
+                new StackTraceElement("x".repeat(100_000), "run", "Type.java", 1),
+                new StackTraceElement("com.example.LaterFrame", "run", "Type.java", 2)
+        });
+
+        // when
+        String rendered = render(1_000, RAW_MESSAGE, exception);
+
+        // then
+        assertThat(rendered).isEqualTo("java.lang.Throwable\n"
+                + BoundedExceptionStackRenderer.framesOmitted(2) + "\n"
+                + BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
+    }
+
+    @Test
+    void oversizedIgnoredNativeSourceIsConservativelyOmitted() {
+        // given
+        Throwable exception = new Throwable();
+        exception.setStackTrace(new StackTraceElement[] {
+                new StackTraceElement("a.Type", "nativeCall", "x".repeat(100_000), -2)
+        });
+
+        // when
+        String rendered = render(1_000, RAW_MESSAGE, exception);
+
+        // then
+        assertThat(rendered).contains(BoundedExceptionStackRenderer.framesOmitted(1));
+        assertThat(rendered).doesNotContain("Native Method");
+    }
+
+    @Test
+    void headerTruncationDoesNotSplitSurrogatePair() {
+        // given
+        Throwable exception = new 𐐀Exception("x".repeat(512));
+        exception.setStackTrace(NO_FRAMES);
+        String className = exception.getClass().getName();
+        int surrogate = className.indexOf("\uD801\uDC00");
+        int budget = EXHAUSTED_LINE + surrogate + 2;
+
+        // when
+        String rendered = render(budget, RAW_MESSAGE, exception);
+
+        // then
+        assertThat(rendered).isEqualTo(className.substring(0, surrogate) + "\n"
+                + BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
+        assertThat(rendered).hasSizeLessThanOrEqualTo(budget);
+    }
+
+    @Test
+    void nullFrameFromOverridingThrowableUsesBoundedLiteral() {
+        // given
+        Throwable exception = new Throwable() {
+            @Override
+            public StackTraceElement[] getStackTrace() {
+                return new StackTraceElement[] {null};
+            }
+        };
+
+        // when
+        String rendered = render(1_000, RAW_MESSAGE, exception);
+
+        // then
+        assertThat(rendered).isEqualTo(exception.getClass().getName() + "\n\tat null\n");
     }
 
     @Test
@@ -302,11 +506,10 @@ class BoundedExceptionStackRendererTest {
         };
 
         // when
-        RenderedExceptionStack rendered = new BoundedExceptionStackRenderer(1_000, RAW_MESSAGE).render(exception);
+        String rendered = render(1_000, RAW_MESSAGE, exception);
 
         // then
-        assertThat(rendered.text()).endsWith(": no-frames\n");
-        assertThat(rendered.truncated()).isFalse();
+        assertThat(rendered).endsWith(": no-frames\n");
     }
 
     @Test
@@ -335,22 +538,20 @@ class BoundedExceptionStackRendererTest {
         }
 
         // when
-        List<RenderedExceptionStack> rendered = new ArrayList<>();
+        List<String> rendered = new ArrayList<>();
         for (int caseIndex = 0; caseIndex < throwables.size(); caseIndex++) {
-            rendered.add(new BoundedExceptionStackRenderer(
-                    budgets.get(caseIndex), ExceptionRecordingPolicy::sanitizedMessageOrNull)
-                    .render(throwables.get(caseIndex)));
+            rendered.add(render(budgets.get(caseIndex), ExceptionRecordingPolicy::sanitizedMessageOrNull,
+                    throwables.get(caseIndex)));
         }
 
         // then
         for (int caseIndex = 0; caseIndex < rendered.size(); caseIndex++) {
-            RenderedExceptionStack stack = rendered.get(caseIndex);
-            assertThat(stack.text().length()).isLessThanOrEqualTo(budgets.get(caseIndex));
-            assertThat(stack.text()).endsWith("\n").doesNotContain("\r");
-            assertThat(stack.text().startsWith("\tat ")).isFalse();
-            if (stack.text().contains(BoundedExceptionStackRenderer.BUDGET_EXHAUSTED)) {
-                assertThat(stack.truncated()).isTrue();
-                assertThat(stack.text()).endsWith(BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
+            String stack = rendered.get(caseIndex);
+            assertThat(stack.length()).isLessThanOrEqualTo(budgets.get(caseIndex));
+            assertThat(stack).endsWith("\n").doesNotContain("\r");
+            assertThat(stack.startsWith("\tat ")).isFalse();
+            if (stack.contains(BoundedExceptionStackRenderer.BUDGET_EXHAUSTED)) {
+                assertThat(stack).endsWith(BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
             }
         }
     }
@@ -369,6 +570,10 @@ class BoundedExceptionStackRendererTest {
         assertThatThrownBy(() -> new BoundedExceptionStackRenderer(-1, RAW_MESSAGE))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("characterBudget must be positive");
+    }
+
+    private static String render(int budget, Function<Throwable, String> sanitizer, Throwable throwable) {
+        return new BoundedExceptionStackRenderer(budget, sanitizer).render(throwable, sanitizer.apply(throwable));
     }
 
     private static Throwable causeChain() {
@@ -470,6 +675,42 @@ class BoundedExceptionStackRendererTest {
         @Override
         public synchronized Throwable getCause() {
             return cause;
+        }
+    }
+
+    private static final class 𐐀Exception extends RuntimeException {
+
+        private 𐐀Exception(String message) {
+            super(message);
+        }
+    }
+
+    private static final class CountingException extends RuntimeException {
+
+        private int messageReads;
+        private int causeReads;
+        private int stackReads;
+
+        private CountingException(String message, Throwable cause) {
+            super(message, cause);
+        }
+
+        @Override
+        public String getMessage() {
+            messageReads++;
+            return super.getMessage();
+        }
+
+        @Override
+        public synchronized Throwable getCause() {
+            causeReads++;
+            return super.getCause();
+        }
+
+        @Override
+        public StackTraceElement[] getStackTrace() {
+            stackReads++;
+            return super.getStackTrace();
         }
     }
 

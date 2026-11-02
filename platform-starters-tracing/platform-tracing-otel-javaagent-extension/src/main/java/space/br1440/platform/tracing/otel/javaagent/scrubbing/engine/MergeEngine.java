@@ -12,12 +12,13 @@ public final class MergeEngine {
 
     public static MergeOutcome evaluateDetailed(List<ExecutableRule> wrappers, String key, Object value) {
         ScrubbingDecision accumulated = ScrubbingDecision.keep();
+        String maskedValue = null;
         long skippedCircuitOpen = 0L;
         long nonCriticalFailures = 0L;
         long criticalFailures = 0L;
 
         for (ExecutableRule wrapper : wrappers) {
-            RuleOutcome outcome = wrapper.executeDetailed(key, value);
+            RuleOutcome outcome = wrapper.executeDetailed(key, (maskedValue != null) ? maskedValue : value);
             switch (outcome.outcome()) {
                 case SKIPPED_CIRCUIT_OPEN -> {
                     skippedCircuitOpen++;
@@ -33,6 +34,10 @@ public final class MergeEngine {
                 default -> {}
             }
 
+            if (outcome.maskedValue() != null) {
+                maskedValue = outcome.maskedValue();
+            }
+
             ScrubbingDecision candidate = outcome.decision();
             if (candidate == null) {
                 continue;
@@ -45,7 +50,7 @@ public final class MergeEngine {
             }
         }
 
-        return new MergeOutcome(accumulated, skippedCircuitOpen, nonCriticalFailures, criticalFailures);
+        return new MergeOutcome(accumulated, maskedValue, skippedCircuitOpen, nonCriticalFailures, criticalFailures);
     }
 
     static ScrubbingDecision merge(ScrubbingDecision current, ScrubbingDecision next, boolean nextIsTerminal) {

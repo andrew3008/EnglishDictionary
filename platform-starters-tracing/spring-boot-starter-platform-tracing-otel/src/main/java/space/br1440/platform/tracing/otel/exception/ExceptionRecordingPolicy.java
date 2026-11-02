@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.otel.exception;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
-import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.runtime.scrubbing.UrlCredentialMasker;
 
 public final class ExceptionRecordingPolicy {
 
@@ -24,7 +24,7 @@ public final class ExceptionRecordingPolicy {
         this.includeStackTrace = includeStackTrace;
         this.stackRenderer = new BoundedExceptionStackRenderer(
                 characterBudget,
-                ExceptionRecordingPolicy::sanitizedMessageOrNull
+                this::sanitizeOrNull
         );
     }
 
@@ -43,12 +43,12 @@ public final class ExceptionRecordingPolicy {
     }
 
     @Nullable
-    RenderedExceptionStack renderStack(@Nullable Throwable exception) {
+    String renderStack(@Nullable Throwable exception, @Nullable String rootMessage) {
         if (!includeStackTrace || (exception == null)) {
             return null;
         }
 
-        return stackRenderer.render(exception);
+        return stackRenderer.render(exception, includeMessage ? rootMessage : null);
     }
 
     @Nullable
@@ -58,13 +58,27 @@ public final class ExceptionRecordingPolicy {
         }
 
         String message = exception.getMessage();
-        if (StringUtils.isNullOrBlank(message)) {
+        if (message == null) {
             return null;
         }
 
-        String trimmed = message.strip();
+        String masked = UrlCredentialMasker.mask(message);
+        if (masked == null) {
+            return null;
+        }
+
+        String trimmed = masked.strip();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+
         if (trimmed.length() > MAX_MESSAGE_LENGTH) {
-            return trimmed.substring(0, MAX_MESSAGE_LENGTH);
+            int end = MAX_MESSAGE_LENGTH;
+            if (Character.isHighSurrogate(trimmed.charAt(end - 1)) && Character.isLowSurrogate(trimmed.charAt(end))) {
+                end--;
+            }
+
+            return trimmed.substring(0, end);
         }
 
         return trimmed;

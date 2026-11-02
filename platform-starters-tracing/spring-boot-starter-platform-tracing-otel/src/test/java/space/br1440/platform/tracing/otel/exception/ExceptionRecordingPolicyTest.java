@@ -4,10 +4,76 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class ExceptionRecordingPolicyTest {
 
     private static final StackTraceElement[] NO_FRAMES = new StackTraceElement[0];
+
+    @Test
+    void masksUrlCredentialsBeforeMessageTruncation() {
+        // given
+        String userinfo = "user:" + "secret".repeat(100);
+        IllegalStateException exception = new IllegalStateException(
+                "Failed https://" + userinfo + "@host/?token=value#fragment-canary");
+        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, false);
+
+        // when
+        String message = policy.sanitizeOrNull(exception);
+
+        // then
+        assertThat(message).isEqualTo("Failed https://***@host/?token=***#***");
+    }
+
+    @Test
+    void masksEveryAllowedCauseMessage() {
+        // given
+        IllegalStateException cause = new IllegalStateException("Cause http://host/?token=cause-secret#cause-fragment-canary");
+        cause.setStackTrace(NO_FRAMES);
+        IllegalStateException exception = new IllegalStateException("Failed https://user:password@host/", cause);
+        exception.setStackTrace(NO_FRAMES);
+        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true);
+
+        // when
+        String rendered = renderStack(policy, exception);
+
+        // then
+        assertThat(rendered).isNotNull();
+        assertThat(rendered).contains("Failed https://***@host/", "Cause http://host/?token=***#***");
+        assertThat(rendered).doesNotContain("password", "cause-secret", "cause-fragment-canary");
+        assertThat(policy.sanitizeOrNull(exception)).isEqualTo("Failed https://***@host/");
+    }
+
+    @Test
+    void omitsOversizedMessageAndKeepsExceptionType() {
+        // given
+        IllegalStateException exception = new IllegalStateException("https://user:" + "s".repeat(4_096) + "@host/");
+        exception.setStackTrace(NO_FRAMES);
+        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true);
+
+        // when
+        String message = policy.sanitizeOrNull(exception);
+        String rendered = policy.renderStack(exception, message);
+
+        // then
+        assertThat(message).isNull();
+        assertThat(rendered).isNotNull();
+        assertThat(rendered).isEqualTo("java.lang.IllegalStateException\n");
+    }
+
+    @Test
+    void omitsMessageWithTruncatedUserinfo() {
+        // given
+        IllegalStateException exception = new IllegalStateException("Failed https://user:secret");
+        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, false);
+
+        // when
+        String message = policy.sanitizeOrNull(exception);
+
+        // then
+        assertThat(message).isNull();
+    }
 
     @Test
     void rendersClassHeaderAndFrameWithinBudget() {
@@ -19,16 +85,15 @@ class ExceptionRecordingPolicyTest {
         ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true);
 
         // when
-        RenderedExceptionStack rendered = policy.renderStack(exception);
+        String rendered = renderStack(policy, exception);
 
         // then
         assertThat(rendered).isNotNull();
-        assertThat(rendered.truncated()).isFalse();
-        assertThat(rendered.text()).isEqualTo("""
+        assertThat(rendered).isEqualTo("""
                 java.lang.IllegalStateException: boom
                 \tat com.example.A.method(A.java:4)
                 """);
-        assertThat(rendered.text()).hasSizeLessThanOrEqualTo(BoundedExceptionStackRenderer.DEFAULT_CHARACTER_BUDGET);
+        assertThat(rendered).hasSizeLessThanOrEqualTo(BoundedExceptionStackRenderer.DEFAULT_CHARACTER_BUDGET);
     }
 
     @Test
@@ -39,14 +104,13 @@ class ExceptionRecordingPolicyTest {
         ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true, 100_000);
 
         // when
-        RenderedExceptionStack rendered = policy.renderStack(exception);
+        String rendered = renderStack(policy, exception);
 
         // then
         assertThat(rendered).isNotNull();
-        assertThat(rendered.truncated()).isTrue();
-        assertThat(rendered.text()).contains(BoundedExceptionStackRenderer.framesOmitted(8));
-        assertThat(rendered.text()).doesNotContain(BoundedExceptionStackRenderer.BUDGET_EXHAUSTED);
-        assertThat(countOf(rendered.text(), "\tat ")).isEqualTo(BoundedExceptionStackRenderer.MAX_FRAMES);
+        assertThat(rendered).contains(BoundedExceptionStackRenderer.framesOmitted(8));
+        assertThat(rendered).doesNotContain(BoundedExceptionStackRenderer.BUDGET_EXHAUSTED);
+        assertThat(countOf(rendered, "\tat ")).isEqualTo(BoundedExceptionStackRenderer.MAX_FRAMES);
     }
 
     @Test
@@ -59,16 +123,15 @@ class ExceptionRecordingPolicyTest {
         ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true, 200);
 
         // when
-        RenderedExceptionStack rendered = policy.renderStack(outer);
+        String rendered = renderStack(policy, outer);
 
         // then
         assertThat(rendered).isNotNull();
-        assertThat(rendered.truncated()).isTrue();
-        assertThat(rendered.text()).contains("root-marker");
-        assertThat(rendered.text()).contains("Caused by: java.lang.IllegalStateException: root-marker");
-        assertThat(rendered.text()).contains(BoundedExceptionStackRenderer.BUDGET_EXHAUSTED);
-        assertThat(rendered.text().length()).isLessThanOrEqualTo(200);
-        assertThat(rendered.text()).doesNotContain("VeryLongClassNameThatConsumesBudget39");
+        assertThat(rendered).contains("root-marker");
+        assertThat(rendered).contains("Caused by: java.lang.IllegalStateException: root-marker");
+        assertThat(rendered).contains(BoundedExceptionStackRenderer.BUDGET_EXHAUSTED);
+        assertThat(rendered.length()).isLessThanOrEqualTo(200);
+        assertThat(rendered).doesNotContain("VeryLongClassNameThatConsumesBudget39");
     }
 
     @Test
@@ -78,32 +141,30 @@ class ExceptionRecordingPolicyTest {
         ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true, 100_000);
 
         // when
-        RenderedExceptionStack rendered = policy.renderStack(exception);
+        String rendered = renderStack(policy, exception);
 
         // then
         assertThat(rendered).isNotNull();
-        assertThat(rendered.truncated()).isTrue();
-        assertThat(countOf(rendered.text(), "Caused by:")).isEqualTo(BoundedExceptionStackRenderer.MAX_CAUSED_BY_LEVELS);
-        assertThat(rendered.text()).contains("cause-10");
-        assertThat(rendered.text()).contains(BoundedExceptionStackRenderer.FURTHER_CAUSES_OMITTED);
-        assertThat(rendered.text()).doesNotContain("cause-11");
-        assertThat(rendered.text()).doesNotContain("cause-12");
+        assertThat(countOf(rendered, "Caused by:")).isEqualTo(BoundedExceptionStackRenderer.MAX_CAUSED_BY_LEVELS);
+        assertThat(rendered).contains("cause-10");
+        assertThat(rendered).contains(BoundedExceptionStackRenderer.FURTHER_CAUSES_OMITTED);
+        assertThat(rendered).doesNotContain("cause-11");
+        assertThat(rendered).doesNotContain("cause-12");
     }
 
     @Test
-    void keepsTenCauseLevelsWithoutTruncationFlag() {
+    void keepsExactlyTenCauseLevels() {
         // given
         Throwable exception = causeChain(10);
         ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true, 100_000);
 
         // when
-        RenderedExceptionStack rendered = policy.renderStack(exception);
+        String rendered = renderStack(policy, exception);
 
         // then
         assertThat(rendered).isNotNull();
-        assertThat(rendered.truncated()).isFalse();
-        assertThat(countOf(rendered.text(), "Caused by:")).isEqualTo(10);
-        assertThat(rendered.text()).contains("cause-10");
+        assertThat(countOf(rendered, "Caused by:")).isEqualTo(10);
+        assertThat(rendered).contains("cause-10");
     }
 
     @Test
@@ -117,13 +178,12 @@ class ExceptionRecordingPolicyTest {
         ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true);
 
         // when
-        RenderedExceptionStack rendered = policy.renderStack(first);
+        String rendered = renderStack(policy, first);
 
         // then
         assertThat(rendered).isNotNull();
-        assertThat(rendered.text()).contains("Caused by: [CIRCULAR REFERENCE: java.lang.IllegalStateException]");
-        assertThat(countOf(rendered.text(), "Caused by:")).isEqualTo(2);
-        assertThat(rendered.truncated()).isFalse();
+        assertThat(rendered).contains("Caused by: [CIRCULAR REFERENCE: java.lang.IllegalStateException]");
+        assertThat(countOf(rendered, "Caused by:")).isEqualTo(2);
     }
 
     @Test
@@ -135,13 +195,13 @@ class ExceptionRecordingPolicyTest {
         ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true);
 
         // when
-        RenderedExceptionStack rendered = policy.renderStack(exception);
+        String rendered = renderStack(policy, exception);
 
         // then
         assertThat(rendered).isNotNull();
-        assertThat(rendered.text()).doesNotContain("suppressed-secret-value");
-        assertThat(rendered.text()).doesNotContain("SuppressedSecretException");
-        assertThat(rendered.text()).doesNotContain("Suppressed:");
+        assertThat(rendered).doesNotContain("suppressed-secret-value");
+        assertThat(rendered).doesNotContain("SuppressedSecretException");
+        assertThat(rendered).doesNotContain("Suppressed:");
     }
 
     @Test
@@ -153,29 +213,29 @@ class ExceptionRecordingPolicyTest {
         ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true);
 
         // when
-        RenderedExceptionStack rendered = policy.renderStack(exception);
+        String rendered = renderStack(policy, exception);
 
         // then
         assertThat(rendered).isNotNull();
-        assertThat(rendered.text()).contains("a".repeat(512));
-        assertThat(rendered.text()).doesNotContain("a".repeat(513));
+        assertThat(rendered).contains("a".repeat(512));
+        assertThat(rendered).doesNotContain("a".repeat(513));
         assertThat(policy.sanitizeOrNull(exception)).hasSize(512);
     }
 
     @Test
-    void stackHeaderKeepsSanitizedMessageWhenMessageAttributeIsDisabled() {
+    void stackHeaderOmitsMessageWhenMessagesAreDisabled() {
         // given
         IllegalStateException exception = new IllegalStateException("boom");
         exception.setStackTrace(NO_FRAMES);
         ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(false, true);
 
         // when
-        RenderedExceptionStack rendered = policy.renderStack(exception);
+        String rendered = policy.renderStack(exception, "boom");
 
         // then
         assertThat(rendered).isNotNull();
         assertThat(policy.sanitizeOrNull(exception)).isNull();
-        assertThat(rendered.text()).contains("boom");
+        assertThat(rendered).isEqualTo("java.lang.IllegalStateException\n");
     }
 
     @Test
@@ -184,8 +244,8 @@ class ExceptionRecordingPolicyTest {
         ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, false);
 
         // when
-        RenderedExceptionStack disabled = policy.renderStack(new IllegalStateException("boom"));
-        RenderedExceptionStack absent = new ExceptionRecordingPolicy(true, true).renderStack(null);
+        String disabled = policy.renderStack(new IllegalStateException("boom"), null);
+        String absent = new ExceptionRecordingPolicy(true, true).renderStack(null, null);
 
         // then
         assertThat(disabled).isNull();
@@ -206,6 +266,26 @@ class ExceptionRecordingPolicyTest {
         assertThatThrownBy(() -> new ExceptionRecordingPolicy(true, true, -1))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("characterBudget must be positive");
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {510, 511, 512})
+    void truncationDoesNotSplitSurrogatePair(int prefixLength) {
+        // given
+        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true);
+        IllegalStateException exception = new IllegalStateException("a".repeat(prefixLength) + "\uD83D\uDE80z");
+
+        // when
+        String message = policy.sanitizeOrNull(exception);
+
+        // then
+        String expected = "a".repeat(prefixLength) + (prefixLength == 510 ? "\uD83D\uDE80" : "");
+        assertThat(message).isEqualTo(expected);
+        assertThat(message).hasSizeLessThanOrEqualTo(512);
+    }
+
+    private static String renderStack(ExceptionRecordingPolicy policy, Throwable exception) {
+        return policy.renderStack(exception, policy.sanitizeOrNull(exception));
     }
 
     private static Throwable causeChain(int causedByLevels) {

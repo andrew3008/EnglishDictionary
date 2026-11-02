@@ -3,8 +3,11 @@ package space.br1440.platform.tracing.e2e;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.InetSocketAddress;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -12,6 +15,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,6 +23,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+
+import com.sun.net.httpserver.HttpServer;
 
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.e2e.artifact.ControlledAgentArtifactMutator;
@@ -83,6 +89,50 @@ class PackagedTracingCertificationTest {
                 .doesNotContain("Unable to load extension")
                 .doesNotContain("Failed to load extension")
                 .doesNotContain("FATAL");
+    }
+
+    @Test
+    void packaged_agent_masks_exception_url_credentials_in_the_otlp_payload() throws Exception {
+        // given
+        List<String> payloads = new CopyOnWriteArrayList<>();
+        HttpServer collector = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        collector.createContext("/v1/traces", exchange -> {
+            try (InputStream input = exchange.getRequestBody()) {
+                payloads.add(new String(input.readAllBytes(), StandardCharsets.UTF_8));
+            }
+            exchange.sendResponseHeaders(200, 0);
+            exchange.close();
+        });
+        collector.start();
+        PackagedProcessLauncher.ProcessResult result;
+        try {
+            PackagedProcessLauncher.LaunchRequest request = controlledRequest(
+                    "url-credential-masking", applicationBootJar, controlledAgent,
+                    ControlledAgentArtifactMutator.sha256(controlledAgent),
+                    Map.of(
+                            "platformTracing.packagedScenario", "URL_MASKING",
+                            "platform.tracing.exporter.enabled", "true",
+                            "platform.tracing.sampling.ratio", "1.0",
+                            "otel.exporter.otlp.traces.protocol", "http/protobuf",
+                            "otel.exporter.otlp.traces.compression", "none",
+                            "otel.exporter.otlp.traces.endpoint",
+                            "http://127.0.0.1:" + collector.getAddress().getPort() + "/v1/traces"
+                    ));
+
+            // when
+            result = launcher.launch(request);
+        } finally {
+            collector.stop(0);
+        }
+
+        // then
+        assertSuccessful(result, "url-credential-masking");
+        assertThat(payloads).isNotEmpty();
+        String maskedMessage = "Request failed: https://***@service.example/path?token=***&mode=***#***";
+        assertThat(String.join("\n", payloads))
+                .contains("packaged-url-failure", "exception.message", "exception.type")
+                .containsSubsequence(maskedMessage, maskedMessage)
+                .doesNotContain("packaged-user", "packaged-password-canary", "packaged-query-canary", "packaged-fragment-canary", "debug");
     }
 
     @Test

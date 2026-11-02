@@ -1,20 +1,21 @@
 package space.br1440.platform.tracing.otel.runtime.otel.scope;
 
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.StatusCode;
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.Scope;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import lombok.extern.slf4j.Slf4j;
+
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.otel.mdc.SpanContextMdcProjection;
 import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
 
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public final class OwningSpanScope implements AutoCloseable {
@@ -25,7 +26,6 @@ public final class OwningSpanScope implements AutoCloseable {
     private static final int MAX_RESPONSE_STATUS_CODE_LENGTH = 64;
 
     private final AtomicBoolean closed = new AtomicBoolean(false);
-    private final AtomicBoolean resultDeclared = new AtomicBoolean(false);
     private final AtomicBoolean failureLatched = new AtomicBoolean(false);
     private String admittedResponseStatusCode;
 
@@ -92,13 +92,6 @@ public final class OwningSpanScope implements AutoCloseable {
         return this;
     }
 
-    @Nonnull
-    public OwningSpanScope setResult(@Nonnull SpanResult result) {
-        applyResult(result);
-        resultDeclared.set(true);
-        return this;
-    }
-
     public void responseStatusCode(@Nullable String code) {
         if (closed.get() || !span.getSpanContext().isValid()) {
             return;
@@ -118,10 +111,9 @@ public final class OwningSpanScope implements AutoCloseable {
 
     @Nonnull
     public OwningSpanScope recordException(@Nullable Throwable throwable) {
-        exceptionRecorder.record(span, throwable, admittedResponseStatusCode);
         if (throwable != null) {
             failureLatched.set(true);
-            resultDeclared.set(true);
+            exceptionRecorder.record(span, throwable, admittedResponseStatusCode);
         }
 
         return this;
@@ -145,30 +137,16 @@ public final class OwningSpanScope implements AutoCloseable {
         return code;
     }
 
-    private void applyResult(@Nonnull SpanResult result) {
-        if (result == SpanResult.FAILURE) {
-            failureLatched.set(true);
-        } else if (failureLatched.get()) {
-            return;
-        }
-
-        span.setAttribute(PlatformAttributes.PLATFORM_RESULT, result.value());
-        if (result == SpanResult.FAILURE) {
-            span.setStatus(StatusCode.ERROR);
-        } else {
-            span.setStatus(StatusCode.OK);
-        }
-    }
-
     @Override
     public void close() {
         if (!closed.compareAndSet(false, true)) {
             return;
         }
 
-        if (!resultDeclared.get()) {
+        if (!failureLatched.get()) {
             try {
-                applyResult(SpanResult.SUCCESS);
+                span.setAttribute(PlatformAttributes.PLATFORM_RESULT, SpanResult.SUCCESS.value());
+                span.setStatus(StatusCode.OK);
             } catch (RuntimeException e) {
                 log.warn("Failed to apply default result for span '{}': {}", span, e.getMessage());
             }

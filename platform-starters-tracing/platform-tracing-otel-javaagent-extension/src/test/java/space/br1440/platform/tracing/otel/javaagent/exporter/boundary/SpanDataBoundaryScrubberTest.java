@@ -241,6 +241,91 @@ class SpanDataBoundaryScrubberTest {
     }
 
     @Test
+    void urlCredentialsAreMaskedInExceptionMessagesAndStatusDescriptions() {
+        // given
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(
+                List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()));
+        AttributeKey<String> messageKey = AttributeKey.stringKey("exception.message");
+        String message = "Request failed: https://operator:credential-canary@service.example/path"
+                + "?token=query-canary&mode=debug#opaque-fragment-canary; try again";
+        String sanitized = "Request failed: https://***@service.example/path"
+                + "?token=***&mode=***#***; try again";
+        EventData event = EventData.create(19L, "exception", Attributes.of(messageKey, message), 3);
+        SpanData input = ExporterTestSpans.baseSpan("checkout")
+                .setEvents(List.of(event))
+                .setStatus(StatusData.create(io.opentelemetry.api.trace.StatusCode.ERROR, message))
+                .build();
+
+        // when
+        SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(input);
+
+        // then
+        assertThat(outcome.dropSpan()).isFalse();
+        assertThat(outcome.changed()).isTrue();
+        assertThat(outcome.spanData().getName()).isEqualTo("checkout");
+        assertThat(outcome.spanData().getStatus().getStatusCode())
+                .isEqualTo(io.opentelemetry.api.trace.StatusCode.ERROR);
+        assertThat(outcome.spanData().getStatus().getDescription()).isEqualTo(sanitized);
+        EventData scrubbedEvent = outcome.spanData().getEvents().getFirst();
+        assertThat(scrubbedEvent.getName()).isEqualTo("exception");
+        assertThat(scrubbedEvent.getEpochNanos()).isEqualTo(19L);
+        assertThat(scrubbedEvent.getTotalAttributeCount()).isEqualTo(3);
+        assertThat(scrubbedEvent.getAttributes().get(messageKey)).isEqualTo(sanitized);
+        assertThat(dumpOtlpVisibleFields(outcome.spanData()))
+                .doesNotContain("operator", "credential-canary", "query-canary", "opaque-fragment-canary", "debug");
+        assertThat(runtime.boundaryMetrics().eventsScrubbed()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().spansChanged()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
+        assertThat(input.getStatus().getDescription()).isEqualTo(message);
+        assertThat(event.getAttributes().get(messageKey)).isEqualTo(message);
+    }
+
+    @Test
+    void urlMaskingDoesNotChangeHttpAttributesOrOtherTextSurfaces() {
+        // given
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(
+                List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()));
+        String url = "https://service.example/path?token=query-canary";
+        AttributeKey<String> urlKey = AttributeKey.stringKey("url.full");
+        AttributeKey<String> queryKey = AttributeKey.stringKey("url.query");
+        EventData event = EventData.create(19L, url,
+                Attributes.of(urlKey, url, queryKey, "token=query-canary"));
+        SpanData input = ExporterTestSpans.baseSpan(url).setEvents(List.of(event)).build();
+
+        // when
+        SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(input);
+
+        // then
+        assertThat(outcome.dropSpan()).isFalse();
+        assertThat(outcome.changed()).isFalse();
+        assertThat(outcome.spanData()).isSameAs(input);
+    }
+
+    @Test
+    void urlMaskingDoesNotSuppressJwtProtectionForTheRestOfTheMessage() {
+        // given
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(
+                BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create(),
+                BuiltInSpanAttributeScrubbingRules.JWT.create()));
+        AttributeKey<String> messageKey = AttributeKey.stringKey("exception.message");
+        String message = "https://service.example/path?token=query-canary "
+                + "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.signature";
+        SpanData input = ExporterTestSpans.baseSpan("checkout")
+                .setEvents(List.of(EventData.create(19L, "exception", Attributes.of(messageKey, message))))
+                .setStatus(StatusData.create(io.opentelemetry.api.trace.StatusCode.ERROR, message))
+                .build();
+
+        // when
+        SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(input);
+
+        // then
+        assertThat(outcome.dropSpan()).isFalse();
+        assertThat(outcome.spanData().getEvents().getFirst().getAttributes().get(messageKey)).isNull();
+        assertThat(outcome.spanData().getStatus().getDescription()).isEmpty();
+        assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
+    }
+
+    @Test
     @DisplayName("attributesVerified=false: span attributes collapse to sentinels, span not dropped")
     void unverifiedAttributesCollapseToSentinelsInsteadOfLeaking() {
         // given

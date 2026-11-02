@@ -16,7 +16,8 @@ import jakarta.annotation.Nullable;
  * <p>Строки используют словарь {@link Throwable#printStackTrace()} ({@code Caused by:}, {@code \tat},
  * перевод строки {@code \n}), но текст не является выводом {@code printStackTrace}: подавленные
  * исключения и общие кадры ({@code \t... N more}) не печатаются, сообщение уровня берётся только
- * из {@code messageSanitizer}, циклическая ссылка содержит {@code Class.getName()}, а не
+ * из переданного сообщения корневого исключения и {@code messageSanitizer} для causes,
+ * циклическая ссылка содержит {@code Class.getName()}, а не
  * {@code Throwable.toString()}.
  *
  * <p>Обходятся исключение и не больше {@link #MAX_CAUSED_BY_LEVELS} causes. Повтор того же
@@ -51,21 +52,27 @@ final class BoundedExceptionStackRenderer {
     }
 
     @Nonnull
-    RenderedExceptionStack render(@Nonnull Throwable throwable) {
+    String render(@Nonnull Throwable throwable, @Nullable String rootMessage) {
         Objects.requireNonNull(throwable, "throwable");
 
-        Chain chain = collect(throwable);
-        if (chain.naturalCost() <= characterBudget) {
-            return new RenderedExceptionStack(write(chain.levels, chain.trailer, false), chain.limited());
+        if ((characterBudget <= lineCost(BUDGET_EXHAUSTED))
+                && (throwable.getClass().getName().length() >= characterBudget)) {
+            return exhaustedPrefix();
+        }
+
+        Chain chain = collect(throwable, rootMessage);
+        String natural = renderNatural(chain);
+        if (natural != null) {
+            return natural;
         }
 
         int bodyBudget = characterBudget - lineCost(BUDGET_EXHAUSTED);
         if (bodyBudget <= 0) {
-            return new RenderedExceptionStack((BUDGET_EXHAUSTED + LINE_END).substring(0, characterBudget), true);
+            return exhaustedPrefix();
         }
 
-        List<Level> levels = fitHeaders(chain.levels, bodyBudget);
-        int remaining = bodyBudget - headerCost(levels);
+        List<Level> levels = chain.levels;
+        int remaining = fitHeaders(levels, bodyBudget);
 
         String trailer = chain.trailer;
         if ((trailer != null) && (lineCost(trailer) <= remaining)) {
@@ -75,85 +82,140 @@ final class BoundedExceptionStackRenderer {
         }
 
         for (int index = (levels.size() - 1); index >= 0; index--) {
-            remaining -= levels.get(index).fitFrames(remaining);
+            Level level = levels.get(index);
+            level.selectedFrames = level.renderFrames(remaining, false);
+            remaining -= level.selectedFrames.length();
         }
 
-        String stack = write(levels, trailer, true);
-        return new RenderedExceptionStack(stack, true);
-    }
-
-    private Chain collect(Throwable root) {
-        List<Level> levels = new ArrayList<>();
-        Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
-        seen.add(root);
-
-        Throwable current = root;
-        while (true) {
-            Level level = new Level(current, !levels.isEmpty(), messageSanitizer.apply(current));
-            levels.add(level);
-
-            Throwable cause = current.getCause();
-            if (cause == null) {
-                return new Chain(levels, null, false);
-            }
-
-            if (levels.size() > MAX_CAUSED_BY_LEVELS) {
-                return new Chain(levels, FURTHER_CAUSES_OMITTED, true);
-            }
-
-            if (!seen.add(cause)) {
-                String trailer = CAUSED_BY + "[CIRCULAR REFERENCE: " + cause.getClass().getName() + "]";
-                return new Chain(levels, trailer, false);
-            }
-
-            current = cause;
-        }
-    }
-
-    private static List<Level> fitHeaders(List<Level> levels, int bodyBudget) {
-        for (Level level : levels) {
-            if (headerCost(levels) <= bodyBudget) {
-                break;
-            }
-
-            level.dropMessage();
-        }
-
-        while ((levels.size() > 1) && (headerCost(levels) > bodyBudget)) {
-            levels.removeFirst();
-        }
-
-        if (headerCost(levels) > bodyBudget) {
-            levels.getFirst().truncateHeader(bodyBudget - 1);
-        }
-
-        return levels;
-    }
-
-    private static String write(List<Level> levels, @Nullable String trailer, boolean budgetExhausted) {
         StringBuilder out = new StringBuilder();
         for (Level level : levels) {
-            level.writeTo(out);
+            if (!level.selectedHeader.isEmpty()) {
+                out.append(level.selectedHeader).append(LINE_END);
+            }
+            out.append(level.selectedFrames);
         }
 
         if (trailer != null) {
             out.append(trailer).append(LINE_END);
         }
 
-        if (budgetExhausted) {
-            out.append(BUDGET_EXHAUSTED).append(LINE_END);
+        return out.append(BUDGET_EXHAUSTED).append(LINE_END).toString();
+    }
+
+    private String exhaustedPrefix() {
+        return (BUDGET_EXHAUSTED + LINE_END).substring(0, characterBudget);
+    }
+
+    @Nullable
+    private String renderNatural(Chain chain) {
+        int remaining = remainingAfterHeaders(chain.levels, characterBudget, true);
+        if (remaining < 0) {
+            return null;
         }
 
+        if (chain.trailer != null) {
+            if (lineCost(chain.trailer) > remaining) {
+                return null;
+            }
+
+            remaining -= lineCost(chain.trailer);
+        }
+
+        StringBuilder out = new StringBuilder();
+        for (Level level : chain.levels) {
+            String frames = level.renderFrames(remaining, true);
+            if (frames == null) {
+                return null;
+            }
+
+            level.appendHeader(out, true);
+            out.append(frames);
+            remaining -= frames.length();
+        }
+
+
+        if (chain.trailer != null) {
+            out.append(chain.trailer).append(LINE_END);
+        }
         return out.toString();
     }
 
-    private static int headerCost(List<Level> levels) {
-        int cost = 0;
-        for (Level level : levels) {
-            cost += level.headerCost();
+    private Chain collect(Throwable root, @Nullable String rootMessage) {
+        List<Level> levels = new ArrayList<>();
+        Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        seen.add(root);
+
+        Throwable current = root;
+        while (true) {
+            String message = levels.isEmpty() ? rootMessage : messageSanitizer.apply(current);
+            Level level = new Level(current, !levels.isEmpty(), message);
+            levels.add(level);
+
+            Throwable cause = current.getCause();
+            if (cause == null) {
+                return new Chain(levels, null);
+            }
+
+            if (levels.size() > MAX_CAUSED_BY_LEVELS) {
+                return new Chain(levels, FURTHER_CAUSES_OMITTED);
+            }
+
+            if (!seen.add(cause)) {
+                String trailer = CAUSED_BY + "[CIRCULAR REFERENCE: " + cause.getClass().getName() + "]";
+                return new Chain(levels, trailer);
+            }
+
+            current = cause;
+        }
+    }
+
+    private static int fitHeaders(List<Level> levels, int bodyBudget) {
+        int remaining = remainingAfterHeaders(levels, bodyBudget, false);
+        while ((levels.size() > 1) && (remaining < 0)) {
+            levels.removeFirst();
+            remaining = remainingAfterHeaders(levels, bodyBudget, false);
         }
 
-        return cost;
+        if (remaining < 0) {
+            Level level = levels.getFirst();
+            int end = bodyBudget - 1;
+            if ((end > 0) && Character.isHighSurrogate(level.headerWithoutMessage.charAt(end - 1))
+                    && Character.isLowSurrogate(level.headerWithoutMessage.charAt(end))) {
+                end--;
+            }
+
+            level.selectedHeader = level.headerWithoutMessage.substring(0, end);
+            return bodyBudget - lineCost(level.selectedHeader);
+        }
+
+        for (int index = levels.size() - 1; index >= 0; index--) {
+            Level level = levels.get(index);
+            if ((level.message != null) && (remaining >= 2) && (level.message.length() <= remaining - 2)) {
+                level.selectedHeader = level.headerWithoutMessage + ": " + level.message;
+                remaining -= level.message.length() + 2;
+            }
+        }
+
+        return remaining;
+    }
+
+    private static int remainingAfterHeaders(List<Level> levels, int budget, boolean includeMessages) {
+        for (Level level : levels) {
+            if (level.headerWithoutMessage.length() >= budget) {
+                return -1;
+            }
+
+            budget -= lineCost(level.headerWithoutMessage);
+            if (includeMessages && (level.message != null)) {
+                if ((budget < 2) || (level.message.length() > budget - 2)) {
+                    return -1;
+                }
+
+                budget -= level.message.length() + 2;
+            }
+        }
+
+        return budget;
     }
 
     private static int lineCost(String line) {
@@ -164,117 +226,128 @@ final class BoundedExceptionStackRenderer {
         return "... (" + omitted + " frames omitted)";
     }
 
-    private record Chain(List<Level> levels, @Nullable String trailer, boolean causeTruncated) {
+    private record Chain(List<Level> levels, @Nullable String trailer) {
+    }
 
-        int naturalCost() {
-            int cost = headerCost(levels);
-            for (Level level : levels) {
-                cost += level.frameCost();
-            }
+    private final class Level {
 
-            return (trailer == null) ? cost : cost + lineCost(trailer);
+        private final Throwable throwable;
+        private final String headerWithoutMessage;
+        @Nullable
+        private final String message;
+        @Nullable
+        private StackTraceElement[] frames;
+        private List<String> naturalFrames = List.of();
+        private String selectedHeader;
+        private String selectedFrames = "";
+
+        Level(Throwable throwable, boolean causedBy, @Nullable String message) {
+            this.throwable = throwable;
+            this.headerWithoutMessage = (causedBy ? CAUSED_BY : "") + throwable.getClass().getName();
+            this.message = message;
+            this.selectedHeader = headerWithoutMessage;
         }
 
-        boolean limited() {
-            if (causeTruncated) {
-                return true;
+        void appendHeader(StringBuilder out, boolean includeMessage) {
+            out.append(headerWithoutMessage);
+            if (includeMessage && (message != null)) {
+                out.append(": ").append(message);
+            }
+            out.append(LINE_END);
+        }
+
+        @Nullable
+        String renderFrames(int budget, boolean natural) {
+            if (!natural && (budget <= FRAME_PREFIX.length())) {
+                return "";
             }
 
-            for (Level level : levels) {
-                if (level.omittedFrames() > 0) {
-                    return true;
+            if (frames == null) {
+                frames = throwable.getStackTrace();
+                if (frames == null) {
+                    frames = NO_FRAMES;
                 }
             }
 
-            return false;
+            List<String> selected = new ArrayList<>();
+            int cost = 0;
+            int frameLimit = Math.min(MAX_FRAMES, frames.length);
+            while (selected.size() < frameLimit) {
+                String line = frameLine(selected.size(), budget - cost);
+                if (line == null) {
+                    break;
+                }
+
+                selected.add(line);
+                cost += lineCost(line);
+            }
+
+            if (natural) {
+                naturalFrames = selected;
+                if (selected.size() < frameLimit) {
+                    return null;
+                }
+            }
+
+            String marker = null;
+            if (selected.size() < frames.length) {
+                marker = framesOmitted(frames.length - selected.size());
+                while (lineCost(marker) > budget - cost) {
+                    if (natural) {
+                        return null;
+                    }
+
+                    if (selected.isEmpty()) {
+                        return "";
+                    }
+
+                    cost -= lineCost(selected.removeLast());
+                    marker = framesOmitted(frames.length - selected.size());
+                }
+            }
+
+            StringBuilder out = new StringBuilder();
+            for (String line : selected) {
+                out.append(line).append(LINE_END);
+            }
+
+            if (marker != null) {
+                out.append(marker).append(LINE_END);
+            }
+
+            return out.toString();
+        }
+
+        @Nullable
+        private String frameLine(int index, int remaining) {
+            if (remaining <= FRAME_PREFIX.length()) {
+                return null;
+            }
+
+            String line;
+            if (index < naturalFrames.size()) {
+                line = naturalFrames.get(index);
+            } else {
+                StackTraceElement frame = frames[index];
+                if ((frame != null) && !frameComponentsFit(frame)) {
+                    return null;
+                }
+
+                line = FRAME_PREFIX + frame;
+            }
+
+            return line.length() < remaining ? line : null;
         }
     }
 
-    private static final class Level {
+    private boolean frameComponentsFit(StackTraceElement frame) {
+        long length = (long) length(frame.getClassLoaderName()) + length(frame.getModuleName())
+                + length(frame.getModuleVersion()) + length(frame.getClassName())
+                + length(frame.getMethodName()) + length(frame.getFileName());
+        return length <= characterBudget;
+    }
 
-        private final String headerWithoutMessage;
-        private final String[] frameLines;
-        private final int[] cumulativeFrameCost;
-        private final int totalFrames;
-
-        private String header;
-        private int shownFrames;
-        private boolean omittedMarkerShown;
-
-        Level(Throwable throwable, boolean causedBy, @Nullable String message) {
-            StackTraceElement[] frames = throwable.getStackTrace();
-            if (frames == null) {
-                frames = NO_FRAMES;
-            }
-
-            this.headerWithoutMessage = (causedBy ? CAUSED_BY : "") + throwable.getClass().getName();
-            this.header = (message == null) ? headerWithoutMessage : headerWithoutMessage + ": " + message;
-            this.totalFrames = frames.length;
-            this.shownFrames = Math.min(MAX_FRAMES, frames.length);
-            this.omittedMarkerShown = totalFrames > shownFrames;
-            this.frameLines = new String[shownFrames];
-            this.cumulativeFrameCost = new int[shownFrames + 1];
-            for (int index = 0; index < shownFrames; index++) {
-                frameLines[index] = FRAME_PREFIX + frames[index];
-                cumulativeFrameCost[index + 1] = cumulativeFrameCost[index] + lineCost(frameLines[index]);
-            }
-        }
-
-        int headerCost() {
-            return lineCost(header);
-        }
-
-        void dropMessage() {
-            header = headerWithoutMessage;
-        }
-
-        void truncateHeader(int room) {
-            if (header.length() > room) {
-                header = header.substring(0, room);
-            }
-        }
-
-        int omittedFrames() {
-            return totalFrames - shownFrames;
-        }
-
-        int frameCost() {
-            return frameCost(shownFrames);
-        }
-
-        private int frameCost(int shown) {
-            int omitted = totalFrames - shown;
-            return cumulativeFrameCost[shown] + ((omitted > 0) ? lineCost(framesOmitted(omitted)) : 0);
-        }
-
-        int fitFrames(int remaining) {
-            for (int shown = frameLines.length; shown >= 0; shown--) {
-                int cost = frameCost(shown);
-                if (cost <= remaining) {
-                    shownFrames = shown;
-                    omittedMarkerShown = totalFrames > shown;
-                    return cost;
-                }
-            }
-
-            shownFrames = 0;
-            omittedMarkerShown = false;
-            return 0;
-        }
-
-        void writeTo(StringBuilder out) {
-            if (header.isEmpty() && (shownFrames == 0) && !omittedMarkerShown) {
-                return;
-            }
-
-            out.append(header).append(LINE_END);
-            for (int index = 0; index < shownFrames; index++) {
-                out.append(frameLines[index]).append(LINE_END);
-            }
-
-            if (omittedMarkerShown) {
-                out.append(framesOmitted(totalFrames - shownFrames)).append(LINE_END);
-            }
-        }
+    private static int length(@Nullable String value) {
+        return (value == null) ? 0 : value.length();
     }
 }

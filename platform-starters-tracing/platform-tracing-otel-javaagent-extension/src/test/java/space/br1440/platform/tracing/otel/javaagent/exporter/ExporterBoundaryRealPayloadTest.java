@@ -13,18 +13,22 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.sun.net.httpserver.HttpServer;
 
+import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.exporter.boundary.BoundaryTestSupport;
 import space.br1440.platform.tracing.otel.javaagent.exporter.guard.OtlpRequestSizeLimitingSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
@@ -50,8 +54,13 @@ class ExporterBoundaryRealPayloadTest {
 
     private static final String EMAIL_CANARY = "canary@example.com";
     private static final String PASSWORD_CANARY = "hunter2-canary";
+    private static final String URL_MESSAGE = "Request failed: https://url-user:url-password-canary@service.example/path"
+            + "?token=url-query-canary&mode=debug#url-fragment-canary";
+    private static final String MASKED_URL_MESSAGE = "Request failed: https://***@service.example/path"
+            + "?token=***&mode=***#***";
 
     private static final List<SpanAttributeScrubbingRule> RULES = List.of(
+            BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create(),
             BuiltInSpanAttributeScrubbingRules.EMAIL.create(),
             BuiltInSpanAttributeScrubbingRules.PASSWORD_KEY.create()
     );
@@ -259,6 +268,132 @@ class ExporterBoundaryRealPayloadTest {
         assertThat(wire)
                 .doesNotContain(EMAIL_CANARY)
                 .doesNotContain("login failed");
+    }
+
+    @Test
+    void exceptionUrlCredentialsAreMaskedInTheSerializedJsonPayload() {
+        // given
+        List<String> rendered = new CopyOnWriteArrayList<>();
+        Logger julLogger = Logger.getLogger(OtlpJsonLoggingSpanExporter.class.getName());
+        Handler capture = capturingHandler(rendered);
+        Level previousLevel = julLogger.getLevel();
+        julLogger.addHandler(capture);
+        julLogger.setLevel(Level.ALL);
+
+        try (SpanExporter delegate = OtlpJsonLoggingSpanExporter.create()) {
+            // when
+            recordUrlFailureThrough(delegate);
+        } finally {
+            julLogger.removeHandler(capture);
+            julLogger.setLevel(previousLevel);
+        }
+
+        // then
+        String payload = String.join("\n", rendered);
+        assertThat(payload).contains("scopeSpans", "exception.message")
+                .containsSubsequence(MASKED_URL_MESSAGE, MASKED_URL_MESSAGE)
+                .doesNotContain("url-user", "url-password-canary", "url-query-canary", "url-fragment-canary", "debug");
+    }
+
+    @Test
+    void exceptionUrlCredentialsAreMaskedInTheSerializedBinaryPayload() throws Exception {
+        // given
+        List<byte[]> bodies = new CopyOnWriteArrayList<>();
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/traces", exchange -> {
+            try (InputStream in = exchange.getRequestBody()) {
+                bodies.add(in.readAllBytes());
+            }
+            exchange.sendResponseHeaders(200, 0);
+            exchange.close();
+        });
+        server.start();
+
+        try (SpanExporter delegate = OtlpHttpSpanExporter.builder()
+                .setEndpoint("http://127.0.0.1:" + server.getAddress().getPort() + "/v1/traces")
+                .setCompression("none")
+                .build()) {
+            // when
+            recordUrlFailureThrough(delegate);
+        } finally {
+            server.stop(0);
+        }
+
+        // then
+        assertThat(bodies).isNotEmpty();
+        String wire = new String(concat(bodies), StandardCharsets.UTF_8);
+        assertThat(wire).contains("exception.message", "exception.type")
+                .containsSubsequence(MASKED_URL_MESSAGE, MASKED_URL_MESSAGE)
+                .doesNotContain("url-user", "url-password-canary", "url-query-canary", "url-fragment-canary", "debug");
+    }
+
+    @Test
+    void urlMaskingSurvivesNoOpTruncationBeforeExport() {
+        // given
+        SpanAttributeScrubbingRule lengthLimit = new SpanAttributeScrubbingRule() {
+            @Nonnull
+            @Override
+            public String name() {
+                return "message-length-limit";
+            }
+
+            @Nonnull
+            @Override
+            public ScrubbingDecision evaluate(@Nonnull String key, @Nullable Object value) {
+                return "exception.message".equals(key)
+                        ? ScrubbingDecision.truncate(name(), 512)
+                        : ScrubbingDecision.keep();
+            }
+        };
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(
+                List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()), List.of(lengthLimit), null);
+        InMemorySpanExporter delegate = InMemorySpanExporter.create();
+        SpanExporter exporter = new SafeSpanExporter(
+                new OtlpRequestSizeLimitingSpanExporter(delegate, Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)),
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
+        List<SpanData> finished;
+
+        try (runtime; SdkTracerProvider provider = SdkTracerProvider.builder()
+                .addSpanProcessor(new ScrubbingSpanProcessor(runtime))
+                .addSpanProcessor(SimpleSpanProcessor.create(exporter))
+                .build()) {
+            Span span = provider.get("test").spanBuilder("url-truncation").startSpan();
+            span.setAttribute("exception.message", URL_MESSAGE);
+
+            // when
+            span.end();
+            finished = List.copyOf(delegate.getFinishedSpanItems());
+        }
+
+        // then
+        assertThat(finished).singleElement().satisfies(span ->
+                assertThat(span.getAttributes().get(AttributeKey.stringKey("exception.message")))
+                        .isEqualTo(MASKED_URL_MESSAGE));
+        assertThat(runtime.attributesVerified()).isTrue();
+        assertThat(runtime.boundaryMetrics().spansChanged()).isZero();
+    }
+
+    private static void recordUrlFailureThrough(SpanExporter delegate) {
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
+        SpanExporter exporter = new SafeSpanExporter(
+                new OtlpRequestSizeLimitingSpanExporter(delegate, Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)),
+                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
+
+        try (SdkTracerProvider provider = SdkTracerProvider.builder()
+                .addSpanProcessor(SimpleSpanProcessor.create(exporter))
+                .build()) {
+            Span span = provider.get("test").spanBuilder("url-failure").startSpan();
+            span.addEvent("exception", Attributes.of(
+                    AttributeKey.stringKey("exception.type"), IllegalStateException.class.getName(),
+                    AttributeKey.stringKey("exception.message"), URL_MESSAGE));
+            span.setStatus(StatusCode.ERROR, URL_MESSAGE);
+            span.end();
+            assertThat(provider.forceFlush().join(10, TimeUnit.SECONDS).isSuccess()).isTrue();
+        }
+
+        assertThat(runtime.boundaryMetrics().eventsScrubbed()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().spansChanged()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
     }
 
     /** Настоящий SDK-путь: {@code recordException} на живом span, затем boundary и транспорт. */

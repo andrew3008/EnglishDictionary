@@ -3,7 +3,6 @@ package space.br1440.platform.tracing.otel.javaagent.exporter.boundary;
 import java.util.List;
 
 import space.br1440.platform.common.util.StringUtils;
-import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ScrubbingKeyNormalizer;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
@@ -34,52 +33,33 @@ final class BoundaryTextPolicy {
     }
 
     private static TextResult scrubName(String name, String ruleKey, ScrubbingRuntime runtime) {
-        if (StringUtils.isNullOrEmpty(name)) {
-            return new TextResult(name, false);
+        TextResult result = scrubText(name, ruleKey, runtime);
+        if (!StringUtils.isNullOrEmpty(name) && StringUtils.isNullOrEmpty(result.value())) {
+            return new TextResult(REDACTED, result.criticalFailure());
         }
-
-        List<ExecutableRule> rules = runtime.builtInTextRules();
-        if (rules.isEmpty()) {
-            return new TextResult(name, false);
-        }
-
-        String normalizedKey = ScrubbingKeyNormalizer.normalize(ruleKey);
-        MergeOutcome outcome = MergeEngine.evaluateDetailed(rules, normalizedKey, name);
-        boolean criticalFailure = recordOutcome(outcome, runtime);
-
-        ScrubbingDecision decision = outcome.decision();
-        if (decision.action() == ScrubbingAction.KEEP) {
-            return new TextResult(name, criticalFailure);
-        }
-
-        String result = apply(name, decision, runtime);
-        return new TextResult(StringUtils.isNullOrEmpty(result) ? REDACTED : result, criticalFailure);
+        return result;
     }
 
     static TextResult scrubStatusDescription(String description, ScrubbingRuntime runtime) {
-        if (StringUtils.isNullOrEmpty(description)) {
-            return new TextResult(description, false);
+        return scrubText(description, STATUS_DESCRIPTION_KEY, runtime);
+    }
+
+    private static TextResult scrubText(String value, String ruleKey, ScrubbingRuntime runtime) {
+        if (StringUtils.isNullOrEmpty(value)) {
+            return new TextResult(value, false);
         }
 
         List<ExecutableRule> rules = runtime.builtInTextRules();
         if (rules.isEmpty()) {
-            return new TextResult(description, false);
+            return new TextResult(value, false);
         }
 
-        String normalizedKey = ScrubbingKeyNormalizer.normalize(STATUS_DESCRIPTION_KEY);
-        MergeOutcome outcome = MergeEngine.evaluateDetailed(rules, normalizedKey, description);
+        String normalizedKey = ScrubbingKeyNormalizer.normalize(ruleKey);
+        MergeOutcome outcome = MergeEngine.evaluateDetailed(rules, normalizedKey, value);
         boolean criticalFailure = recordOutcome(outcome, runtime);
 
-        ScrubbingDecision decision = outcome.decision();
-        if (decision.action() == ScrubbingAction.KEEP) {
-            return new TextResult(description, criticalFailure);
-        }
-
-        if (decision.action() == ScrubbingAction.DROP) {
-            return new TextResult("", criticalFailure);
-        }
-
-        return new TextResult(apply(description, decision, runtime), criticalFailure);
+        String masked = (outcome.maskedValue() != null) ? outcome.maskedValue() : value;
+        return new TextResult(apply(masked, outcome.decision(), runtime), criticalFailure);
     }
 
     private static boolean recordOutcome(MergeOutcome outcome, ScrubbingRuntime runtime) {
@@ -102,7 +82,7 @@ final class BoundaryTextPolicy {
     private static String apply(String value, ScrubbingDecision decision, ScrubbingRuntime runtime) {
         return switch (decision.action()) {
             case MASK -> REDACTED;
-            case DROP -> REDACTED;
+            case DROP -> "";
             case HASH -> {
                 runtime.recordBoundaryHashDowngradedToMask();
                 yield REDACTED;

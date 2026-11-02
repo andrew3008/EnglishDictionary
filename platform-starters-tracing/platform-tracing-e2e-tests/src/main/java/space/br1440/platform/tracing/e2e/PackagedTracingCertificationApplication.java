@@ -10,6 +10,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
 
+import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.StatusCode;
+
 @SpringBootApplication
 public class PackagedTracingCertificationApplication {
 
@@ -56,8 +62,30 @@ public class PackagedTracingCertificationApplication {
 
         try (ConfigurableApplicationContext context = application.run(arguments)) {
             configServerScenario.verify(context);
+            if ("URL_MASKING".equals(System.getProperty("platformTracing.packagedScenario"))) {
+                recordUrlFailure();
+            }
         }
 
         System.out.println(PROCESS_OK_TOKEN);
+    }
+
+    private static void recordUrlFailure() {
+        String message = "Request failed: https://packaged-user:packaged-password-canary@service.example/path"
+                + "?token=packaged-query-canary&mode=debug#packaged-fragment-canary";
+        Span span = GlobalOpenTelemetry.getTracer("packaged-url-masking")
+                .spanBuilder("packaged-url-failure").startSpan();
+        try {
+            if (!span.isRecording()) {
+                throw new IllegalStateException("Packaged URL masking scenario did not create a recording span");
+            }
+
+            span.addEvent("exception", Attributes.of(
+                    AttributeKey.stringKey("exception.type"), IllegalStateException.class.getName(),
+                    AttributeKey.stringKey("exception.message"), message));
+            span.setStatus(StatusCode.ERROR, message);
+        } finally {
+            span.end();
+        }
     }
 }

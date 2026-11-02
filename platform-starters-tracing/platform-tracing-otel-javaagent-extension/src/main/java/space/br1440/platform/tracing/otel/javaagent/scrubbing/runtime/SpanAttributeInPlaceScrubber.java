@@ -76,9 +76,15 @@ final class SpanAttributeInPlaceScrubber {
 
                 ScrubbingDecision decision = outcome.decision();
                 if (decision.action() == ScrubbingAction.KEEP) {
+                    if (outcome.maskedValue() != null) {
+                        span.setAttribute(key.getKey(), outcome.maskedValue());
+                        actions.recordMasked();
+                    }
+
                     return;
                 }
-                apply(span, key, value, decision);
+
+                apply(span, key, (outcome.maskedValue() != null) ? outcome.maskedValue() : value, decision);
             });
         } catch (Throwable t) {
             actions.recordFailure();
@@ -161,19 +167,13 @@ final class SpanAttributeInPlaceScrubber {
         }
 
         switch (type) {
-            case STRING -> {
-                String result = transformString((String) value, decision);
-                if (result != null) {
-                    span.setAttribute((AttributeKey<String>) key, result);
-                }
-            }
+            case STRING -> span.setAttribute((AttributeKey<String>) key, transformString((String) value, decision));
 
             case STRING_ARRAY -> {
                 List<String> in = (List<String>) value;
                 List<String> out = new ArrayList<>(in.size());
                 for (String element : in) {
-                    String transformed = transformString(element, decision);
-                    out.add(transformed != null ? transformed : element);
+                    out.add(transformString(element, decision));
                 }
                 span.setAttribute((AttributeKey<List<String>>) key, out);
             }
@@ -253,7 +253,7 @@ final class SpanAttributeInPlaceScrubber {
             }
 
             default -> {
-                return null;
+                return value;
             }
         }
     }
@@ -276,7 +276,7 @@ final class SpanAttributeInPlaceScrubber {
             return value.substring(0, max);
         }
 
-        return null;
+        return value;
     }
 
     private void applyNonString(ReadWriteSpan span, AttributeKey<?> key, Object value,

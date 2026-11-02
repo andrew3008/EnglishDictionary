@@ -4,6 +4,9 @@ import java.util.Objects;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
 
@@ -14,6 +17,7 @@ import io.opentelemetry.api.trace.StatusCode;
 
 public final class ExceptionRecorder {
 
+    private static final Logger log = LoggerFactory.getLogger(ExceptionRecorder.class);
     private static final String EXCEPTION_EVENT_NAME = "exception";
 
     private final ExceptionRecordingPolicy recordingPolicy;
@@ -36,51 +40,32 @@ public final class ExceptionRecorder {
     }
 
     public void record(@Nullable Span span, @Nullable Throwable exception, @Nullable String errorType) {
-        if (span == null || exception == null || !span.getSpanContext().isValid()) {
+        if (span == null || exception == null || !span.isRecording()) {
             return;
         }
 
         String type = exception.getClass().getName();
         span.setAttribute(SemconvKeys.ERROR_TYPE, errorTypeOrExceptionClass(errorType, type));
         span.setAttribute(SemconvKeys.PLATFORM_RESULT, SpanResult.FAILURE.value());
-
-        String safeMessage = recordingPolicy.sanitizeOrNull(exception);
-        if (safeMessage != null) {
-            span.setStatus(StatusCode.ERROR, safeMessage);
-        } else {
-            span.setStatus(StatusCode.ERROR);
-        }
+        span.setStatus(StatusCode.ERROR);
 
         AttributesBuilder event = Attributes.builder().put(SemconvKeys.EXCEPTION_TYPE, type);
-        if (safeMessage != null) {
-            event.put(SemconvKeys.EXCEPTION_MESSAGE, safeMessage);
-        }
+        try {
+            String safeMessage = recordingPolicy.sanitizeOrNull(exception);
+            if (safeMessage != null) {
+                event.put(SemconvKeys.EXCEPTION_MESSAGE, safeMessage);
+                span.setStatus(StatusCode.ERROR, safeMessage);
+            }
 
-        RenderedExceptionStack rendered = recordingPolicy.renderStack(exception);
-        if ((rendered != null) && !rendered.text().isEmpty()) {
-            event.put(SemconvKeys.EXCEPTION_STACKTRACE, rendered.text());
+            String stack = recordingPolicy.renderStack(exception, safeMessage);
+            if ((stack != null) && !stack.isEmpty()) {
+                event.put(SemconvKeys.EXCEPTION_STACKTRACE, stack);
+            }
+        } catch (RuntimeException failure) {
+            log.debug("Failed to capture exception details: {}", failure.getClass().getName());
         }
 
         span.addEvent(EXCEPTION_EVENT_NAME, event.build());
-    }
-
-    public void markCurrentSpanAsError() {
-        Span span = Span.current();
-        if (!span.getSpanContext().isValid()) {
-            return;
-        }
-
-        span.setStatus(StatusCode.ERROR);
-        span.setAttribute(SemconvKeys.PLATFORM_RESULT, SpanResult.FAILURE.value());
-    }
-
-    public void result(@Nonnull SpanResult result) {
-        Objects.requireNonNull(result, "result");
-
-        Span span = Span.current();
-        if (span.getSpanContext().isValid()) {
-            span.setAttribute(SemconvKeys.PLATFORM_RESULT, result.value());
-        }
     }
 
     @Nonnull

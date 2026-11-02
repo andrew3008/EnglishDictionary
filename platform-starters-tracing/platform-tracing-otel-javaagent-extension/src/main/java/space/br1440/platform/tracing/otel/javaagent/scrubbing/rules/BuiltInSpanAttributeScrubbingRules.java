@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public enum BuiltInSpanAttributeScrubbingRules {
 
+    URL_CREDENTIALS("url-credentials", 5, true),
     OAUTH_HEADER("oauth-header", 10, true),
     X_AUTH_HEADER("x-auth-header", 15, true),
     JWT("jwt", 20, true),
@@ -41,6 +42,7 @@ public enum BuiltInSpanAttributeScrubbingRules {
 
     public SpanAttributeScrubbingRule create() {
         return switch (this) {
+            case URL_CREDENTIALS -> new UrlCredentialMaskingRule();
             case OAUTH_HEADER -> new OAuthHeaderRule();
             case X_AUTH_HEADER -> new XAuthHeaderRule();
             case JWT -> new JwtRule();
@@ -77,6 +79,7 @@ public enum BuiltInSpanAttributeScrubbingRules {
 
     public static List<String> defaultConfigNames() {
         return List.of(
+                URL_CREDENTIALS.configName(),
                 PASSWORD_KEY.configName(),
                 JWT.configName(),
                 EMAIL.configName(),

@@ -103,17 +103,6 @@ class ExceptionRecorderTest {
     }
 
     @Test
-    void markCurrentSpanAsError_setsStatusErrorAndResultFailure() {
-        ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
-        runInSpan(recorder::markCurrentSpanAsError);
-
-        SpanData span = exporter.getFinishedSpanItems().getFirst();
-        assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
-        assertThat(span.getAttributes().get(SemconvKeys.PLATFORM_RESULT)).isEqualTo("failure");
-        assertThat(span.getEvents()).isEmpty();
-    }
-
-    @Test
     void record_withErrorTypeOverride_keepsExceptionClassOnEvent() {
         // given
         ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
@@ -153,7 +142,7 @@ class ExceptionRecorderTest {
     @Test
     void record_truncatedStack_keepsCauseWithinBudget() {
         // given
-        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(false, true));
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true));
         IllegalStateException cause = new IllegalStateException("root-marker");
         cause.setStackTrace(new StackTraceElement[0]);
         IllegalStateException outer = new IllegalStateException("outer", cause);

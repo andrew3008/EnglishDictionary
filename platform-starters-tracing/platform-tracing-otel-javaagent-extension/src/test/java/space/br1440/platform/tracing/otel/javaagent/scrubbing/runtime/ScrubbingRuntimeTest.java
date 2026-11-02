@@ -13,6 +13,8 @@ import jakarta.annotation.Nullable;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
@@ -21,12 +23,105 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.Rul
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuntimeRule;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 
 class ScrubbingRuntimeTest {
+
+    @ParameterizedTest
+    @ValueSource(ints = {-1, 512})
+    void urlMaskingSurvivesSubsequentTruncateWithoutLengthChange(int maximumLength) {
+        // given
+        AttributeKey<String> key = AttributeKey.stringKey("exception.message");
+        SpanAttributeScrubbingRule lengthLimit = new SpanAttributeScrubbingRule() {
+            @Nonnull
+            @Override
+            public String name() {
+                return "length-limit";
+            }
+
+            @Nonnull
+            @Override
+            public ScrubbingDecision evaluate(@Nonnull String attributeKey, @Nullable Object value) {
+                return ScrubbingDecision.truncate(name(), maximumLength);
+            }
+        };
+        List<RuntimeRule> rules = List.of(
+                runtimeRule(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create(), RuleOrigin.BUILT_IN),
+                runtimeRule(lengthLimit, RuleOrigin.EXTERNAL_EXTENSION));
+        try (ScrubbingRuntime runtime = ScrubbingRuntime.create(rules, 1L, null, false);
+             SpanProcessorHarness harness = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {
+            Span span = harness.tracer().spanBuilder("url-with-length-limit").startSpan();
+            span.setAttribute(key, "Failed https://service.example/?token=secret");
+
+            // when
+            span.end();
+
+            // then
+            assertThat(harness.spans().getFirst().getAttributes().get(key))
+                    .isEqualTo("Failed https://service.example/?token=***");
+            assertThat(runtime.truncatedActions()).isEqualTo(1L);
+            assertThat(runtime.maskedActions()).isZero();
+            assertThat(runtime.failures()).isZero();
+        }
+    }
+
+    @Test
+    void urlRuleDropsUnexpectedMessageArraysAndCountsTheAction() {
+        // given
+        AttributeKey<List<String>> key = AttributeKey.stringArrayKey("exception.message");
+        try (ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
+                List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()));
+             SpanProcessorHarness harness = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {
+            Span span = harness.tracer().spanBuilder("unexpected-message-array").startSpan();
+            span.setAttribute(key, List.of("https://user:secret@service.example/?token=secret"));
+
+            // when
+            span.end();
+
+            // then
+            assertThat(harness.spans().getFirst().getAttributes().get(key)).containsExactly("");
+            assertThat(runtime.droppedActions()).isEqualTo(1L);
+            assertThat(runtime.maskedActions()).isZero();
+            assertThat(runtime.failures()).isZero();
+        }
+    }
+
+    @Test
+    void urlMaskingUsesExistingActionCounters() {
+        // given
+        try (ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
+                List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()));
+             SpanProcessorHarness harness = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {
+            Span masked = harness.tracer().spanBuilder("masked").startSpan();
+            masked.setAttribute("exception.message", "Failed https://service.example/?token=secret");
+
+            // when
+            masked.end();
+
+            // then
+            assertThat(harness.spans().getFirst().getAttributes().get(AttributeKey.stringKey("exception.message")))
+                    .isEqualTo("Failed https://service.example/?token=***");
+            assertThat(runtime.maskedActions()).isEqualTo(1L);
+            assertThat(runtime.droppedActions()).isZero();
+            assertThat(runtime.failures()).isZero();
+
+            // when
+            Span oversized = harness.tracer().spanBuilder("oversized").startSpan();
+            oversized.setAttribute("exception.message", "s".repeat(4097));
+            oversized.end();
+
+            // then
+            assertThat(runtime.maskedActions()).isEqualTo(1L);
+            assertThat(runtime.droppedActions()).isEqualTo(1L);
+            assertThat(harness.spans().getLast().getAttributes().get(AttributeKey.stringKey("exception.message")))
+                    .isEmpty();
+        }
+    }
 
     private static final class MatchEverythingRule implements SpanAttributeScrubbingRule {
         @Nonnull
