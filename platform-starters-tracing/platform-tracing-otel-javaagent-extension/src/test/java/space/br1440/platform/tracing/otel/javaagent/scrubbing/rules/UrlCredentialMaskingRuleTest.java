@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.scrubbing.rules;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -20,7 +21,10 @@ class UrlCredentialMaskingRuleTest {
     @Test
     void registeredByDefaultAsCriticalBeforeOtherRules() {
         // given
-        SpanAttributeScrubbingRule rule = BuiltInSpanAttributeScrubbingRules.resolve("url-credentials");
+        SpanAttributeScrubbingRule rule = Objects.requireNonNull(
+                BuiltInSpanAttributeScrubbingRules.resolve("url-credentials"),
+                "url-credentials"
+        );
 
         // when
         List<String> defaults = BuiltInSpanAttributeScrubbingRules.defaultConfigNames();

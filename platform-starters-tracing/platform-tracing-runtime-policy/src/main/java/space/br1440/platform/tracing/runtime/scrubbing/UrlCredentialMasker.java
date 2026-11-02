@@ -5,8 +5,8 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
 /**
- * Маскирует credentials в URL внутри произвольного текста без декодирования URL: userinfo и значения
- * параметров {@code key=value} в query и fragment.
+ * Маскирует credentials в URL внутри произвольного текста без декодирования URL: userinfo, значения
+ * {@code key=value} в query и fragment целиком.
  */
 public final class UrlCredentialMasker {
 
@@ -57,6 +57,7 @@ public final class UrlCredentialMasker {
         boolean inParameters = false;
         boolean inValue = false;
         boolean inFragment = false;
+        boolean inAuthority = true;
         for (int end = authorityStart; end < text.length(); end++) {
             char c = text.charAt(end);
             if (isTextDelimiter(c)) {
@@ -65,11 +66,16 @@ public final class UrlCredentialMasker {
 
             if (text.startsWith(SCHEME_SEPARATOR, end)) {
                 int nextSchemeStart = schemeStart(text, authorityStart, end);
-                if ((inFragment && (nextSchemeStart > authorityStart)
+                boolean startsNext = (inFragment && (nextSchemeStart > authorityStart)
                         && isFragmentUrlSeparator(text.charAt(nextSchemeStart - 1)))
-                        || (!inFragment && !inValue)) {
+                        || (!inFragment && !inValue);
+                if (startsNext && (!inAuthority || isHostAndPort(text, authorityStart, nextSchemeStart))) {
                     return nextSchemeStart;
                 }
+            }
+
+            if ((c == '/') || (c == '?') || (c == '#')) {
+                inAuthority = false;
             }
 
             switch (c) {
@@ -94,6 +100,7 @@ public final class UrlCredentialMasker {
         int brackets = balance(text, authorityStart, candidateEnd, '[', ']');
         int braces = balance(text, authorityStart, candidateEnd, '{', '}');
         boolean quoted = (schemeStart > 0) && (text.charAt(schemeStart - 1) == '\'');
+        boolean doubleQuoted = (schemeStart > 0) && (text.charAt(schemeStart - 1) == '"');
         int urlEnd = candidateEnd;
         while (urlEnd > authorityStart) {
             char c = text.charAt(urlEnd - 1);
@@ -104,7 +111,8 @@ public final class UrlCredentialMasker {
             } else if ((c == '}') && (braces < 0)) {
                 braces++;
             } else if (!isTrailingPunctuation(c)
-                    && !((c == '\'') && (quoted || (candidateEnd < text.length())))) {
+                    && !((c == '\'') && (quoted || (candidateEnd < text.length())))
+                    && !((c == '"') && doubleQuoted)) {
                 break;
             }
 
@@ -117,10 +125,13 @@ public final class UrlCredentialMasker {
     private static boolean maskUrl(String text, int authorityStart, int urlEnd, MaskedText result) {
         int authorityEnd = indexOfAny(text, authorityStart, urlEnd, "/?#");
         int userinfoEnd = lastIndexOf(text, '@', authorityStart, authorityEnd);
+        int hostStart = (userinfoEnd >= 0) ? (userinfoEnd + 1) : authorityStart;
+        if (!isHostAndPort(text, hostStart, authorityEnd)) {
+            return false;
+        }
+
         if (userinfoEnd >= 0) {
             result.mask(authorityStart, userinfoEnd);
-        } else if (!isHostAndPort(text, authorityStart, authorityEnd)) {
-            return false;
         }
 
         int separator = indexOfAny(text, authorityEnd, urlEnd, "?#");
@@ -143,9 +154,18 @@ public final class UrlCredentialMasker {
     }
 
     private static boolean isHostAndPort(String text, int start, int end) {
-        int hostEnd = ((start < end) && (text.charAt(start) == '['))
-                ? (indexOfAny(text, start, end, "]") + 1)
-                : indexOfAny(text, start, end, ":");
+        int hostEnd;
+        if ((start < end) && (text.charAt(start) == '[')) {
+            int close = indexOfAny(text, start + 1, end, "]");
+            if ((close >= end) || !isIpLiteral(text, start + 1, close)) {
+                return false;
+            }
+
+            hostEnd = close + 1;
+        } else {
+            hostEnd = indexOfAny(text, start, end, ":");
+        }
+
         if (hostEnd > end) {
             return false;
         }
@@ -155,6 +175,28 @@ public final class UrlCredentialMasker {
         }
 
         return (text.charAt(hostEnd) == ':') && isPort(text, hostEnd + 1, end);
+    }
+
+    private static boolean isIpLiteral(String text, int start, int end) {
+        if (start == end) {
+            return false;
+        }
+
+        boolean colon = false;
+        for (int index = start; index < end; index++) {
+            char c = text.charAt(index);
+            if (c == ':') {
+                colon = true;
+            } else if ((c != '.') && !isHexDigit(c)) {
+                return false;
+            }
+        }
+
+        return colon;
+    }
+
+    private static boolean isHexDigit(char c) {
+        return ((c >= '0') && (c <= '9')) || ((c >= 'a') && (c <= 'f')) || ((c >= 'A') && (c <= 'F'));
     }
 
     private static boolean isPort(String text, int start, int end) {
@@ -217,8 +259,7 @@ public final class UrlCredentialMasker {
     }
 
     private static boolean isTextDelimiter(char c) {
-        return Character.isWhitespace(c) || Character.isSpaceChar(c) || Character.isISOControl(c)
-                || (c == '"') || (c == '<') || (c == '>') || (c == '`');
+        return Character.isWhitespace(c);
     }
 
     private static boolean isTrailingPunctuation(char c) {

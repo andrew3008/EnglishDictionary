@@ -83,8 +83,9 @@ final class BoundedExceptionStackRenderer {
 
         for (int index = (levels.size() - 1); index >= 0; index--) {
             Level level = levels.get(index);
-            level.selectedFrames = level.renderFrames(remaining, false);
-            remaining -= level.selectedFrames.length();
+            String renderedFrames = Objects.requireNonNull(level.renderFrames(remaining, false), "frames");
+            level.selectedFrames = renderedFrames;
+            remaining -= renderedFrames.length();
         }
 
         StringBuilder out = new StringBuilder();
@@ -128,7 +129,7 @@ final class BoundedExceptionStackRenderer {
                 return null;
             }
 
-            level.appendHeader(out, true);
+            level.appendHeader(out);
             out.append(frames);
             remaining -= frames.length();
         }
@@ -190,9 +191,10 @@ final class BoundedExceptionStackRenderer {
 
         for (int index = levels.size() - 1; index >= 0; index--) {
             Level level = levels.get(index);
-            if ((level.message != null) && (remaining >= 2) && (level.message.length() <= remaining - 2)) {
-                level.selectedHeader = level.headerWithoutMessage + ": " + level.message;
-                remaining -= level.message.length() + 2;
+            String levelMessage = level.message();
+            if ((levelMessage != null) && (remaining >= 2) && (levelMessage.length() <= remaining - 2)) {
+                level.selectedHeader = level.headerWithoutMessage + ": " + levelMessage;
+                remaining -= levelMessage.length() + 2;
             }
         }
 
@@ -206,12 +208,13 @@ final class BoundedExceptionStackRenderer {
             }
 
             budget -= lineCost(level.headerWithoutMessage);
-            if (includeMessages && (level.message != null)) {
-                if ((budget < 2) || (level.message.length() > budget - 2)) {
+            String levelMessage = level.message();
+            if (includeMessages && (levelMessage != null)) {
+                if ((budget < 2) || (levelMessage.length() > budget - 2)) {
                     return -1;
                 }
 
-                budget -= level.message.length() + 2;
+                budget -= levelMessage.length() + 2;
             }
         }
 
@@ -248,9 +251,14 @@ final class BoundedExceptionStackRenderer {
             this.selectedHeader = headerWithoutMessage;
         }
 
-        void appendHeader(StringBuilder out, boolean includeMessage) {
+        @Nullable
+        String message() {
+            return message;
+        }
+
+        void appendHeader(StringBuilder out) {
             out.append(headerWithoutMessage);
-            if (includeMessage && (message != null)) {
+            if (message != null) {
                 out.append(": ").append(message);
             }
             out.append(LINE_END);
@@ -269,11 +277,12 @@ final class BoundedExceptionStackRenderer {
                 }
             }
 
+            StackTraceElement[] resolvedFrames = Objects.requireNonNull(frames, "frames");
             List<String> selected = new ArrayList<>();
             int cost = 0;
-            int frameLimit = Math.min(MAX_FRAMES, frames.length);
+            int frameLimit = Math.min(MAX_FRAMES, resolvedFrames.length);
             while (selected.size() < frameLimit) {
-                String line = frameLine(selected.size(), budget - cost);
+                String line = frameLine(resolvedFrames, selected.size(), budget - cost);
                 if (line == null) {
                     break;
                 }
@@ -290,8 +299,8 @@ final class BoundedExceptionStackRenderer {
             }
 
             String marker = null;
-            if (selected.size() < frames.length) {
-                marker = framesOmitted(frames.length - selected.size());
+            if (selected.size() < resolvedFrames.length) {
+                marker = framesOmitted(resolvedFrames.length - selected.size());
                 while (lineCost(marker) > budget - cost) {
                     if (natural) {
                         return null;
@@ -302,7 +311,7 @@ final class BoundedExceptionStackRenderer {
                     }
 
                     cost -= lineCost(selected.removeLast());
-                    marker = framesOmitted(frames.length - selected.size());
+                    marker = framesOmitted(resolvedFrames.length - selected.size());
                 }
             }
 
@@ -319,7 +328,7 @@ final class BoundedExceptionStackRenderer {
         }
 
         @Nullable
-        private String frameLine(int index, int remaining) {
+        private String frameLine(@Nonnull StackTraceElement[] resolvedFrames, int index, int remaining) {
             if (remaining <= FRAME_PREFIX.length()) {
                 return null;
             }
@@ -328,7 +337,7 @@ final class BoundedExceptionStackRenderer {
             if (index < naturalFrames.size()) {
                 line = naturalFrames.get(index);
             } else {
-                StackTraceElement frame = frames[index];
+                StackTraceElement frame = resolvedFrames[index];
                 if ((frame != null) && !frameComponentsFit(frame)) {
                     return null;
                 }

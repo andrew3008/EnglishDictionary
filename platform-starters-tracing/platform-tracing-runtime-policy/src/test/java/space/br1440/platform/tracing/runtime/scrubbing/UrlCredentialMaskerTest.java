@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.runtime.scrubbing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Objects;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -14,15 +15,12 @@ class UrlCredentialMaskerTest {
     @ParameterizedTest
     @MethodSource("messages")
     void masksCredentialsAndPreservesDiagnosticText(String message, String expected) {
-        // given
-        String input = message;
-
         // when
-        String result = UrlCredentialMasker.mask(input);
+        String result = UrlCredentialMasker.mask(message);
 
         // then
         assertThat(result).isEqualTo(expected);
-        assertThat(UrlCredentialMasker.mask(result)).isEqualTo(result);
+        assertThat(UrlCredentialMasker.mask(Objects.requireNonNull(result))).isEqualTo(result);
     }
 
     static Stream<Arguments> messages() {
@@ -82,18 +80,24 @@ class UrlCredentialMaskerTest {
                 Arguments.of("https://h/?flag;https://user:secret@host/path", "https://h/?flag;https://***@host/path"),
                 Arguments.of("https://h/?next&https://user:secret@host/path", "https://h/?next&https://***@host/path"),
                 Arguments.of("First https://u:p@a/?x=1, then http://b/?y=2!", "First https://***@a/?x=***, then http://b/?y=***"),
-                Arguments.of("https://host/?token=***", "https://host/?token=***")
+                Arguments.of("https://host/?token=***", "https://host/?token=***"),
+                Arguments.of("http://host ?token=S3cret", "http://host ?token=S3cret"),
+                Arguments.of("http://host\u00A0?token=S3cret", "http://host\u00A0?token=***"),
+                Arguments.of("http://user\u00A0:S3cret@host", "http://***@host"),
+                Arguments.of("http://h?token=S3\u0000cret", "http://h?token=***"),
+                Arguments.of("http://host?token=\"S3cret\"", "http://host?token=***"),
+                Arguments.of("http://host?token=sec\"ret", "http://host?token=***"),
+                Arguments.of("http://host?token=sec<ret", "http://host?token=***"),
+                Arguments.of("http://host?token=sec`ret", "http://host?token=***"),
+                Arguments.of("http://user:12345", "http://user:12345")
         );
     }
 
     @ParameterizedTest
     @MethodSource("ambiguousMessages")
     void dropsAmbiguousAuthority(String message) {
-        // given
-        String input = message;
-
         // when
-        String result = UrlCredentialMasker.mask(input);
+        String result = UrlCredentialMasker.mask(message);
 
         // then
         assertThat(result).isNull();
@@ -107,7 +111,15 @@ class UrlCredentialMaskerTest {
                 "https://user:/secret@host",
                 "https://[2001:db8::1",
                 "https://[::1]x",
-                "https://host:bad/path"
+                "https://host:bad/path",
+                "http://[user:S3cret]",
+                "http://[user:S3cret]:80",
+                "http://[user:123456]",
+                "http://a@user:S3cret",
+                "http://a@[::1]:S3cret",
+                "http://user:S3cret://host",
+                "http://user:123456://host",
+                "http://host:/path"
         );
     }
 
@@ -170,7 +182,7 @@ class UrlCredentialMaskerTest {
 
         // then
         assertThat(result).isEqualTo("https://host/?" + "a=***&".repeat(500));
-        assertThat(UrlCredentialMasker.mask(result)).isEqualTo(result);
+        assertThat(UrlCredentialMasker.mask(Objects.requireNonNull(result))).isEqualTo(result);
     }
 
     @Test

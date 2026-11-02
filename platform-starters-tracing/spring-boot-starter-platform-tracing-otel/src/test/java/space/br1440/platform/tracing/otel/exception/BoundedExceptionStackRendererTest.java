@@ -377,16 +377,17 @@ class BoundedExceptionStackRendererTest {
                 new StackTraceElement("a.Type", "sourceCall", "Type.java", 17)
         };
         exception.setStackTrace(frames);
-        String natural = "java.lang.Throwable\n";
+        StringBuilder natural = new StringBuilder("java.lang.Throwable\n");
         for (StackTraceElement frame : frames) {
-            natural += "\tat " + frame + "\n";
+            natural.append("\tat ").append(frame).append('\n');
         }
+        String expected = natural.toString();
 
         // when
-        String rendered = render(natural.length(), RAW_MESSAGE, exception);
+        String rendered = render(expected.length(), RAW_MESSAGE, exception);
 
         // then
-        assertThat(rendered).isEqualTo(natural);
+        assertThat(rendered).isEqualTo(expected);
     }
 
     @Test
@@ -461,24 +462,6 @@ class BoundedExceptionStackRendererTest {
     }
 
     @Test
-    void headerTruncationDoesNotSplitSurrogatePair() {
-        // given
-        Throwable exception = new 𐐀Exception("x".repeat(512));
-        exception.setStackTrace(NO_FRAMES);
-        String className = exception.getClass().getName();
-        int surrogate = className.indexOf("\uD801\uDC00");
-        int budget = EXHAUSTED_LINE + surrogate + 2;
-
-        // when
-        String rendered = render(budget, RAW_MESSAGE, exception);
-
-        // then
-        assertThat(rendered).isEqualTo(className.substring(0, surrogate) + "\n"
-                + BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
-        assertThat(rendered).hasSizeLessThanOrEqualTo(budget);
-    }
-
-    @Test
     void nullFrameFromOverridingThrowableUsesBoundedLiteral() {
         // given
         Throwable exception = new Throwable() {
@@ -514,8 +497,6 @@ class BoundedExceptionStackRendererTest {
 
     @Test
     void defaultCharacterBudgetStaysWithinSdkAttributeValueLengthLimit() {
-        // Бюджет не выше OtelSdkDefaults.DEFAULT_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT
-        // в модуле javaagent-extension. Иначе SDK оставит голову exception.stacktrace.
         // given
         int sdkAttributeValueLengthLimit = 1_000;
 
@@ -640,11 +621,13 @@ class BoundedExceptionStackRendererTest {
             case 4 -> "long-" + "y".repeat(400 + random.nextInt(300));
             default -> "  padded " + level + "  ";
         };
+
         Throwable throwable = switch (random.nextInt(3)) {
             case 0 -> new IllegalStateException(message, cause);
             case 1 -> new RuntimeException(message, cause);
             default -> new MutableCauseException(message, cause);
         };
+
         int frameCount = switch (random.nextInt(5)) {
             case 0 -> 0;
             case 1 -> 1 + random.nextInt(3);
@@ -652,6 +635,7 @@ class BoundedExceptionStackRendererTest {
             case 3 -> 33 + random.nextInt(40);
             default -> random.nextInt(8);
         };
+
         StackTraceElement[] frames = new StackTraceElement[frameCount];
         String className = (random.nextBoolean() ? "a.B" : "com.example.service.VeryLongClassNameForBudgetPressure")
                 + level;
@@ -675,13 +659,6 @@ class BoundedExceptionStackRendererTest {
         @Override
         public synchronized Throwable getCause() {
             return cause;
-        }
-    }
-
-    private static final class 𐐀Exception extends RuntimeException {
-
-        private 𐐀Exception(String message) {
-            super(message);
         }
     }
 

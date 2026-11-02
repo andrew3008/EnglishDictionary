@@ -100,7 +100,7 @@ class SpanLifecycleTest {
     }
 
     @Test
-    void callChecked_propagatesCheckedExceptionAndRecordsExactlyOnce() throws Exception {
+    void callChecked_propagatesCheckedExceptionAndRecordsExactlyOnce() {
         Exception error = new Exception("checked");
         assertThatThrownBy(() ->
                 tracing.spans().operation("checked").callChecked(() -> {
@@ -208,6 +208,7 @@ class SpanLifecycleTest {
         BrokenGetterException failure = new BrokenGetterException(getter);
         SpanContext previousContext = Span.current().getSpanContext();
         Span span = tracerProvider.get("test").spanBuilder("broken-getter").startSpan();
+        //noinspection resource — Scope закрывает колбэк OwningSpanScope; повторный close в try-with-resources сбил бы счётчик
         Scope activeScope = span.makeCurrent();
         AtomicInteger scopeCloses = new AtomicInteger();
         OwningSpanScope owning = new OwningSpanScope(span, () -> {

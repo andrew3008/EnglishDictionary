@@ -227,7 +227,8 @@ class TracedAspectTest {
     @Test
     void doesNotCreateChildSpanWhenParentActive(InMemorySpanExporter exporter) {
         // given
-        try (SpanHandle parent = tracing.spans().operation("parent.span").start()) {
+        SpanHandle parentHandle = tracing.spans().operation("parent.span").start();
+        try (parentHandle) {
             // when
             service.process(7L);
         }
