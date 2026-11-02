@@ -39,6 +39,8 @@ public final class HostlessOtlpEndpointProbe {
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         CompositeData snapshot = readinessSnapshot(server);
         String lifecycle = stringField(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE);
+        String failureCode = stringField(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_FAILURE_CODE);
+        String primaryFailureCode = stringField(snapshot, JmxWireContract.FIELD_READINESS_SNAPSHOT_PRIMARY_FAILURE_CODE);
         String runtimeMBeans = runtimeMBeansAbsent(server) ? "absent" : "present";
         List<String> platformThreads = Thread.getAllStackTraces().keySet().stream()
                 .filter(Thread::isAlive)
@@ -49,9 +51,11 @@ public final class HostlessOtlpEndpointProbe {
 
         System.out.printf(
                 Locale.ROOT,
-                "%s lifecycle=%s runtimeMBeans=%s platformThreads=%s%n",
+                "%s lifecycle=%s failureCode=%s primaryFailureCode=%s runtimeMBeans=%s platformThreads=%s%n",
                 RESULT_PREFIX,
                 lifecycle,
+                failureCode,
+                primaryFailureCode,
                 runtimeMBeans,
                 platformThreads
         );
@@ -81,7 +85,6 @@ public final class HostlessOtlpEndpointProbe {
         return snapshot;
     }
 
-    @SuppressWarnings("SameParameterValue")
     private static String stringField(CompositeData snapshot, String field) {
         Object raw = snapshot.get(field);
         require(raw instanceof String, "Readiness field has an unexpected type: " + field);

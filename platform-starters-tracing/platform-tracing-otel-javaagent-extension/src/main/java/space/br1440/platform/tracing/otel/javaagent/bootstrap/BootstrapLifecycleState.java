@@ -148,6 +148,12 @@ final class BootstrapLifecycleState {
         }
     }
 
+    BootstrapDiagnosticSnapshot diagnosticSnapshot() {
+        synchronized (monitor) {
+            return new BootstrapDiagnosticSnapshot(state, failure);
+        }
+    }
+
     BootstrapFailure failure() {
         synchronized (monitor) {
             if (failure == null) {

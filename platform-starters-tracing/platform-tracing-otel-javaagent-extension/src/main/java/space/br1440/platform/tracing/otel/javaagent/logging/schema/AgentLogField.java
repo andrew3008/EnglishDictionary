@@ -23,6 +23,7 @@ public enum AgentLogField {
     EXTENSION_VERSION("extensionVersion", Kind.STRING),
     FAILED_PROVIDERS("failedProviders", Kind.LONG),
     FAILURE_CODE("failureCode", Kind.STRING),
+    PRIMARY_FAILURE_CODE("primaryFailureCode", Kind.STRING),
     FAILURE_CONTEXT("failureContext", Kind.STRING),
     FAILURE_SAMPLE("failureSample", Kind.STRING),
     FAILURE_TYPE("failureType", Kind.STRING),

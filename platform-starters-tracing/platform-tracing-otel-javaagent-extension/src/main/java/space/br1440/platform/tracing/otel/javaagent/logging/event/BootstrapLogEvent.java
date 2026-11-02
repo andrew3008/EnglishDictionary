@@ -11,6 +11,14 @@ import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField
 
 public enum BootstrapLogEvent implements AgentLogEventType {
 
+    STARTUP_FAILED(
+            requiresCause(
+                    AgentEventCode.BOOT_STARTUP_FAILED, ERROR,
+                    "OpenTelemetry Java agent startup failed",
+                    AgentLogField.LIFECYCLE, AgentLogField.FAILURE_CODE, AgentLogField.PRIMARY_FAILURE_CODE
+            )
+    ),
+
     REMOTE_JMX_MUTATION_REGISTRATION_DENIED(
             noCause(
                     AgentEventCode.BOOT_REMOTE_JMX_DENIED, ERROR,

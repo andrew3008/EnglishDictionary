@@ -20,6 +20,9 @@ import java.util.zip.ZipOutputStream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
@@ -160,6 +163,29 @@ class ControlledAgentVerifierTest {
 
         // then
         assertThat(failure.code()).isEqualTo(VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING);
+        assertThat(failure).hasMessage(
+                "Expected controlled agent SHA-256 is not set: "
+                        + ExtensionPropertyNames.CONTROLLED_AGENT_EXPECTED_SHA256
+        );
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "simple", "none", "PLATFORM", " platform ", "secret-provider-value"})
+    void missingOrNonCanonicalLoggingPropertyFailsWithFixedMessage(String loggingProvider) throws IOException {
+        // given
+        Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8));
+        ControlledAgentVerifier verifier = new ControlledAgentVerifier(
+                environment(sha256(agent), loggingProvider, agent, isolatedLoader(), isolatedLoader())
+        );
+
+        // when
+        VerificationException failure = attestFailure(verifier, VERSION);
+
+        // then
+        assertThat(failure.code()).isEqualTo(VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING);
+        assertThat(failure).hasMessage(
+                "Controlled agent requires system property otel.javaagent.logging=platform");
     }
 
     @Test
@@ -307,14 +333,21 @@ class ControlledAgentVerifierTest {
         output.closeEntry();
     }
 
-    private static ControlledAgentVerifier.RuntimeEnvironment environment(
-            String expectedSha256,
-            Path agent,
-            ClassLoader extensionLoader,
-            ClassLoader sdkLoader
-    ) {
+    private static ControlledAgentVerifier.RuntimeEnvironment environment(String expectedSha256,
+                                                                          Path agent,
+                                                                          ClassLoader extensionLoader,
+                                                                          ClassLoader sdkLoader) {
+        return environment(expectedSha256, "platform", agent, extensionLoader, sdkLoader);
+    }
+
+    private static ControlledAgentVerifier.RuntimeEnvironment environment(String expectedSha256,
+                                                                          String loggingProvider,
+                                                                          Path agent,
+                                                                          ClassLoader extensionLoader,
+                                                                          ClassLoader sdkLoader) {
         return new TestRuntimeEnvironment(
                 expectedSha256,
+                loggingProvider,
                 List.of("-javaagent:" + agent),
                 extensionLoader,
                 sdkLoader
@@ -367,6 +400,7 @@ class ControlledAgentVerifierTest {
     }
 
     private record TestRuntimeEnvironment(String expectedSha256,
+                                          String loggingProvider,
                                           List<String> inputArguments,
                                           ClassLoader extensionDefiningLoader,
                                           ClassLoader sdkDefiningLoader)
@@ -374,10 +408,11 @@ class ControlledAgentVerifierTest {
 
         @Override
         public String systemProperty(String name) {
-            if (!ExtensionPropertyNames.CONTROLLED_AGENT_EXPECTED_SHA256.equals(name)) {
-                throw new IllegalArgumentException("Unexpected system property: " + name);
-            }
-            return expectedSha256;
+            return switch (name) {
+                case ExtensionPropertyNames.CONTROLLED_AGENT_EXPECTED_SHA256 -> expectedSha256;
+                case "otel.javaagent.logging" -> loggingProvider;
+                default -> throw new IllegalArgumentException("Unexpected system property: " + name);
+            };
         }
     }
 }

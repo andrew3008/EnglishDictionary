@@ -28,6 +28,10 @@ sourceSets {
         java.srcDir 'src/collisionAgent/java'
     }
 
+    postSdkFailureListener {
+        java.srcDir 'src/postSdkFailureListener/java'
+    }
+
     dualSdk {
         java.srcDir 'src/dualSdk/java'
         compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
@@ -52,6 +56,9 @@ dependencies {
     collisionAgentCompileOnly "org.projectlombok:lombok:${libs.versions.lombok.get()}"
     collisionAgentAnnotationProcessor "org.projectlombok:lombok:${libs.versions.lombok.get()}"
 
+    postSdkFailureListenerCompileOnly "io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api:${libs.versions.bom.otelextension.get()}"
+    postSdkFailureListenerCompileOnly "io.opentelemetry:opentelemetry-sdk-extension-autoconfigure:${libs.versions.bom.opentelemetry.get()}"
+
     dualSdkImplementation 'io.opentelemetry:opentelemetry-sdk'
 
     testCompileOnly "org.projectlombok:lombok:${libs.versions.lombok.get()}"
@@ -59,6 +66,7 @@ dependencies {
     testImplementation project(':platform-starters-common:platform-starters-common-util')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
@@ -129,6 +137,12 @@ def collisionAgentJar = tasks.register('collisionAgentJar', Jar) {
     }
 }
 
+def postSdkFailureListenerJar = tasks.register('postSdkFailureListenerJar', Jar) {
+    group = 'verification'
+    archiveFileName = 'platform-tracing-post-sdk-failure-listener.jar'
+    from sourceSets.postSdkFailureListener.output
+}
+
 abstract class PackagedProcessArguments implements CommandLineArgumentProvider {
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
@@ -146,13 +160,18 @@ abstract class PackagedProcessArguments implements CommandLineArgumentProvider {
     @PathSensitive(PathSensitivity.NONE)
     abstract RegularFileProperty getCollisionAgentJar()
 
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getPostSdkFailureListenerJar()
+
     @Override
     Iterable<String> asArguments() {
         [
                 '-DplatformTracing.controlledAgentJar=' + controlledAgentJar.get().asFile.absolutePath,
                 '-DplatformTracing.applicationBootJar=' + applicationBootJar.get().asFile.absolutePath,
                 '-DplatformTracing.dualSdkApplicationBootJar=' + dualSdkApplicationBootJar.get().asFile.absolutePath,
-                '-DplatformTracing.collisionAgentJar=' + collisionAgentJar.get().asFile.absolutePath
+                '-DplatformTracing.collisionAgentJar=' + collisionAgentJar.get().asFile.absolutePath,
+                '-DplatformTracing.postSdkFailureListenerJar=' + postSdkFailureListenerJar.get().asFile.absolutePath
         ]
     }
 }
@@ -162,6 +181,7 @@ tasks.named('test', Test) {
     dependsOn tasks.named('bootJar')
     dependsOn dualSdkBootJar
     dependsOn collisionAgentJar
+    dependsOn postSdkFailureListenerJar
 
     def arguments = objects.newInstance(PackagedProcessArguments)
     arguments.controlledAgentJar.fileProvider(providers.provider {
@@ -177,9 +197,13 @@ tasks.named('test', Test) {
     Provider<RegularFile> packagedCollisionAgentJar = collisionAgentJar
             .flatMap { Jar jar -> jar.archiveFile } as Provider<RegularFile>
 
+    Provider<RegularFile> packagedPostSdkFailureListenerJar = postSdkFailureListenerJar
+            .flatMap { Jar jar -> jar.archiveFile } as Provider<RegularFile>
+
     arguments.applicationBootJar.set(packagedApplicationBootJar)
     arguments.dualSdkApplicationBootJar.set(packagedDualSdkBootJar)
     arguments.collisionAgentJar.set(packagedCollisionAgentJar)
+    arguments.postSdkFailureListenerJar.set(packagedPostSdkFailureListenerJar)
     jvmArgumentProviders.add(arguments)
 
     systemProperty 'platformTracing.buildInfoFixtureVersion', buildInfoFixtureVersion

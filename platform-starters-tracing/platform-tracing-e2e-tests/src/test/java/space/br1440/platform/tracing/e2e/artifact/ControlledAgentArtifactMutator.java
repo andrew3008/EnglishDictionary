@@ -3,11 +3,13 @@ package space.br1440.platform.tracing.e2e.artifact;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Properties;
 
 import space.br1440.platform.common.util.StringUtils;
@@ -26,6 +28,46 @@ public final class ControlledAgentArtifactMutator {
 
     private static final String STALE_TOPOLOGY_METHOD = "sdkDefiningLoader";
     private static final String STALE_TOPOLOGY_METHOD_DESCRIPTOR = "()Ljava/lang/ClassLoader;";
+    private static final String AGENT_LISTENER_DESCRIPTOR =
+            "META-INF/services/io.opentelemetry.javaagent.extension.AgentListener";
+    private static final String PLATFORM_LISTENER =
+            "space.br1440.platform.tracing.otel.javaagent.bootstrap.ActivationAgentListener";
+    private static final String POST_SDK_FAILURE_LISTENER =
+            "space.br1440.platform.tracing.e2e.startup.FailingBeforeActivationAgentListener";
+
+    public static Path withFailingBeforeActivationListener(Path source,
+                                                           Path target,
+                                                           Path listenerFixture) throws IOException {
+        JarArchive.Content outer = JarArchive.read(Files.readAllBytes(source));
+        JarArchive.Content nested = JarArchive.read(JarArchive.requiredEntry(outer.entries(), EXTENSION_ENTRY));
+        JarArchive.Content fixture = JarArchive.read(Files.readAllBytes(listenerFixture));
+        String listenerEntry = POST_SDK_FAILURE_LISTENER.replace('.', '/') + ".class";
+        byte[] listenerClass = JarArchive.requiredEntry(fixture.entries(), listenerEntry);
+        if (nested.entries().putIfAbsent(listenerEntry, listenerClass) != null) {
+            throw new IllegalArgumentException("Post-SDK failure listener is already packaged in the extension");
+        }
+
+        String descriptor = new String(
+                JarArchive.requiredEntry(nested.entries(), AGENT_LISTENER_DESCRIPTOR), StandardCharsets.UTF_8);
+        List<String> providers = descriptor.lines().map(String::strip)
+                .filter(line -> !line.isEmpty() && !line.startsWith("#"))
+                .toList();
+        if (providers.stream().filter(PLATFORM_LISTENER::equals).count() != 1L
+                || providers.contains(POST_SDK_FAILURE_LISTENER)) {
+            throw new IllegalArgumentException("Expected exactly one platform listener and no failure fixture");
+        }
+        String mergedDescriptor = descriptor + (descriptor.endsWith("\n") ? "" : "\n")
+                + POST_SDK_FAILURE_LISTENER + "\n";
+        nested.entries().put(AGENT_LISTENER_DESCRIPTOR, mergedDescriptor.getBytes(StandardCharsets.UTF_8));
+
+        byte[] mutatedExtension = JarArchive.write(nested);
+        outer.entries().put(EXTENSION_ENTRY, mutatedExtension);
+        Properties identity = loadIdentity(outer);
+        identity.setProperty("extension.sha256", sha256(mutatedExtension));
+        outer.entries().put(IDENTITY_ENTRY, ControlledAgentIdentityCodec.canonicalize(identity));
+        JarArchive.write(target, outer);
+        return target;
+    }
 
     public static Path withoutPackagedExtension(Path source,
                                                 Path target) throws IOException {

@@ -15,6 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
@@ -22,6 +25,80 @@ import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 class AgentLoggingFailurePathTest {
+
+    private static final ObjectMapper JSON = new ObjectMapper();
+
+    @Test
+    void startup_summary_encoder_failure_delivers_one_bounded_error_fallback() throws IOException {
+        // given
+        ByteArrayOutputStream sink = new ByteArrayOutputStream();
+        PlatformLogEventEncoder encoder = new PlatformLogEventEncoder() {
+            @Override
+            EncodedLogEvent encodeWithOutcome(AgentLogRecord event) {
+                throw new AssertionError("encoder-secret");
+            }
+        };
+        PlatformAgentLogger logger = logger(encoder, sink);
+
+        // when
+        EmitResult result = logger.emitAdmitted(BootstrapLogEvent.STARTUP_FAILED,
+                fields -> fields.cause(new IllegalStateException("startup-secret")));
+
+        // then
+        assertThat(result).isEqualTo(EmitResult.FALLBACK_EMITTED);
+        String output = sink.toString(StandardCharsets.UTF_8);
+        assertThat(output.lines()).hasSize(1);
+        assertThat(output).doesNotContain("encoder-secret", "startup-secret");
+        JsonNode fallback = JSON.readTree(output);
+        assertThat(fallback.path("level").asText()).isEqualTo("ERROR");
+        assertThat(fallback.path("event_name").asText()).isEqualTo("ENCODE_FALLBACK");
+        assertThat(fallback.path("original_event_name").asText()).isEqualTo("STARTUP_FAILED");
+        assertThat(fallback.path("fields").path("original_event_code").asText()).isEqualTo("PTA-BOOT-012");
+    }
+
+    @Test
+    void startup_summary_sink_failure_is_not_retried() {
+        // given
+        CountingFailingOutputStream sink = new CountingFailingOutputStream();
+        PlatformAgentLogger logger = logger(new PlatformLogEventEncoder(), sink);
+
+        // when
+        EmitResult result = logger.emitAdmitted(BootstrapLogEvent.STARTUP_FAILED,
+                fields -> fields.cause(new IllegalStateException("Startup failed")));
+
+        // then
+        assertThat(result).isEqualTo(EmitResult.DELIVERY_FAILED);
+        assertThat(sink.attempts()).isOne();
+    }
+
+    @Test
+    void startup_summary_respects_regular_info_and_off_admission() throws IOException {
+        // given
+        ByteArrayOutputStream sink = new ByteArrayOutputStream();
+        AgentLoggingRuntime runtime = new AgentLoggingRuntime(
+                new PlatformLogEventEncoder(), new PlatformStderrSink(sink), AgentLogLevel.INFO);
+        PlatformAgentLogger logger = new PlatformAgentLogger(getClass().getName(), runtime);
+        AtomicInteger writtenFields = new AtomicInteger();
+        AgentLogFieldsWriter fieldsWriter = fields -> {
+            writtenFields.incrementAndGet();
+            fields.cause(new IllegalStateException("startup-secret"));
+        };
+
+        // when
+        logger.log(BootstrapLogEvent.STARTUP_FAILED, fieldsWriter);
+        runtime.applyLevel(AgentLogLevel.OFF);
+        logger.log(BootstrapLogEvent.STARTUP_FAILED, fieldsWriter);
+
+        // then
+        assertThat(writtenFields).hasValue(1);
+        String output = sink.toString(StandardCharsets.UTF_8);
+        assertThat(output.lines()).hasSize(1);
+        assertThat(output).doesNotContain("startup-secret");
+        JsonNode summary = JSON.readTree(output);
+        assertThat(summary.path("level").asText()).isEqualTo("ERROR");
+        assertThat(summary.path("event_name").asText()).isEqualTo("STARTUP_FAILED");
+        assertThat(summary.path("event_code").asText()).isEqualTo("PTA-BOOT-012");
+    }
 
     @Test
     void io_failure_before_write_is_not_retried() {

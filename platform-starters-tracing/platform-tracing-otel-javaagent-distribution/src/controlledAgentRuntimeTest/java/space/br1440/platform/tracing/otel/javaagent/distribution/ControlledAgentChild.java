@@ -124,6 +124,7 @@ final class ControlledAgentChild {
                                   Class<?> probe,
                                   List<String> probeArguments) throws URISyntaxException {
         command.add("-Dplatform.tracing.controlled-agent.expected-sha256=" + fixture.expectedControlledAgentSha());
+        command.add("-Dotel.javaagent.logging=platform");
         command.add("-javaagent:" + fixture.controlledAgent());
         command.add("-cp");
         command.add(probeClassPath(probe).toString());
@@ -138,6 +139,7 @@ final class ControlledAgentChild {
                                          List<String> probeArguments) throws URISyntaxException {
         String apiClasspath = AgentTestFixture.requiredProperty(OTLP_PROBE_API_CLASSPATH_PROPERTY);
         command.add("-Dplatform.tracing.controlled-agent.expected-sha256=" + fixture.expectedControlledAgentSha());
+        command.add("-Dotel.javaagent.logging=platform");
         if (publishExpectedApiClasspath) {
             command.add("-D" + ControlledAgentRuntimeProbe.EXPECTED_API_CLASSPATH_PROPERTY + "=" + apiClasspath);
         }

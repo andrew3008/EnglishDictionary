@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.AGENT_STARTUP_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.CONFIGURATION_INITIALIZATION_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.DIAGNOSTIC_MBEAN_REGISTRATION_FAILED;
 
@@ -231,12 +232,24 @@ final class BootstrapCoordinator implements AutoCloseable {
         activation.activate(tracerProvider, this::installLifecycleShutdownHook);
     }
 
+    void onStartupFailure(Throwable cause) {
+        Objects.requireNonNull(cause, "cause");
+
+        if (lifecycle.state() == BootstrapState.PREPARED) {
+            failPreparedSession(AGENT_STARTUP_FAILED, "startup", "startup", cause);
+        }
+    }
+
     ExtensionReadinessWireSnapshot currentWire() {
         return journal.current();
     }
 
     BootstrapState state() {
         return lifecycle.state();
+    }
+
+    BootstrapDiagnosticSnapshot diagnosticSnapshot() {
+        return lifecycle.diagnosticSnapshot();
     }
 
     @Override
@@ -374,6 +387,13 @@ final class BootstrapCoordinator implements AutoCloseable {
     }
 
     private BootstrapException failCustomization(String code, String phase, Throwable cause) {
+        return failPreparedSession(code, phase, "customization", cause);
+    }
+
+    private BootstrapException failPreparedSession(String code,
+                                                   String phase,
+                                                   String cleanupPhase,
+                                                   Throwable cause) {
         ExtensionRuntimeEvidence evidence = currentEvidence();
         BootstrapException classified = null;
         Throwable outcome = cause;
@@ -393,7 +413,7 @@ final class BootstrapCoordinator implements AutoCloseable {
                     outcome = BootstrapCleanupFailures.aggregate(outcome, cleanupFailure);
 
                     Throwable settledFailure = terminalTransitions.completeCleanupFailure(
-                            "customization",
+                            cleanupPhase,
                             classified == null ? outcome : classified,
                             cleanupFailure,
                             evidence

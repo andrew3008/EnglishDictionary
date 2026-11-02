@@ -34,6 +34,8 @@ class ExtensionSurfaceTest {
     private static final Map<String, String> EXPECTED_SERVICE_DESCRIPTORS = Map.of(
             "META-INF/services/io.opentelemetry.javaagent.extension.AgentListener",
             "space.br1440.platform.tracing.otel.javaagent.bootstrap.ActivationAgentListener",
+            "META-INF/services/io.opentelemetry.javaagent.tooling.LoggingCustomizer",
+            "space.br1440.platform.tracing.otel.javaagent.bootstrap.PlatformStartupLoggingCustomizer",
             "META-INF/services/io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider",
             "space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapAutoConfigurationCustomizerProvider",
             "META-INF/services/io.opentelemetry.sdk.autoconfigure.spi.ConfigurablePropagatorProvider",
@@ -50,6 +52,7 @@ class ExtensionSurfaceTest {
             "io/opentelemetry/api/",
             "io/opentelemetry/context/",
             "io/opentelemetry/common/",
+            "io/opentelemetry/javaagent/tooling/",
             "space/br1440/platform/logging/",
             "space/br1440/platform/tracing/otel/runtime/",
             "space/br1440/platform/tracing/autoconfigure/"

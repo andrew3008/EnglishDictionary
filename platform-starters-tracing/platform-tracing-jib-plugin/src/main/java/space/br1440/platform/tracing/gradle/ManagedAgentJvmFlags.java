@@ -12,7 +12,8 @@ final class ManagedAgentJvmFlags {
     static List<String> forAgentPath(String javaAgentPath, String expectedSha256) {
         return List.of(
                 "-javaagent:" + javaAgentPath,
-                "-D" + EXPECTED_SHA256_PROPERTY + "=" + expectedSha256
+                "-D" + EXPECTED_SHA256_PROPERTY + "=" + expectedSha256,
+                "-Dotel.javaagent.logging=platform"
         );
     }
 }

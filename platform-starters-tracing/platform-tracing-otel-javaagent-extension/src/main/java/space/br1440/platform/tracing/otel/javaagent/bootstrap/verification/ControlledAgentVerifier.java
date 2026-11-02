@@ -22,6 +22,7 @@ import io.opentelemetry.sdk.OpenTelemetrySdk;
  *   <li>версия расширения присутствует в class-local build metadata;</li>
  *   <li>SHA-256 JAR из {@code -javaagent} совпадает с ожидаемой, переданной через
  *       system property (по аналогии с {@code distributionSha256Sum} в Gradle/Maven Wrapper);</li>
+ *   <li>managed system property выбирает платформенный обработчик отказа запуска;</li>
  *   <li>upstream-сборка OpenTelemetry Java agent, записанная в JAR, совпадает с той,
  *       для которой составлен список разрешённых customizer-провайдеров.</li>
  * </ol>
@@ -33,6 +34,8 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
     private static final String UPSTREAM_COORDINATE_KEY = "upstream.coordinate";
     private static final String UPSTREAM_COORDINATE_PREFIX = "io.opentelemetry.javaagent:opentelemetry-javaagent:";
     private static final String BOOTSTRAP_LOADER_LABEL = "bootstrap";
+    private static final String LOGGING_PROPERTY = "otel.javaagent.logging";
+    private static final String PLATFORM_LOGGING = "platform";
 
     private final RuntimeEnvironment environment;
 
@@ -48,6 +51,7 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
     public ExtensionRuntimeEvidence verify(String extensionVersion) {
         String releaseVersion = requireExtensionVersion(extensionVersion);
         AgentDistributionDigest expectedDigest = readExpectedDistributionDigest();
+        verifyManagedLoggingProperty();
 
         ControlledAgentArtifact artifact = ControlledAgentArtifactLocator.locate(environment.inputArguments());
         AgentDistributionDigest actualDigest = verifyDistributionDigest(artifact.path(), expectedDigest);
@@ -88,6 +92,15 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
                 VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
                 "Expected controlled agent SHA-256 is not a 64-character hex value: " + property
         ));
+    }
+
+    private void verifyManagedLoggingProperty() {
+        if (!PLATFORM_LOGGING.equals(environment.systemProperty(LOGGING_PROPERTY))) {
+            throw new VerificationException(
+                    VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
+                    "Controlled agent requires system property otel.javaagent.logging=platform"
+            );
+        }
     }
 
     private static AgentDistributionDigest verifyDistributionDigest(Path artifactPath, AgentDistributionDigest expected) {

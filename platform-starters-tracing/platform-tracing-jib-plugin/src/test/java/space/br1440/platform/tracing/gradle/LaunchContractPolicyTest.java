@@ -75,6 +75,8 @@ class LaunchContractPolicyTest {
             "-Dotel.propagators",
             "-Dotel.javaagent.configuration-file=/app/otel.properties",
             "-Dotel.javaagent.extensions=/app/ext.jar",
+            "-Dotel.javaagent.logging=platform",
+            "-Dotel.javaagent.logging=simple",
             "-Dotel.sdk.disabled=true",
             "-Dplatform.tracing.controlled-agent.expected-sha256=0000",
             "-Dotel.traces.sampler=always_off",
@@ -112,7 +114,7 @@ class LaunchContractPolicyTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "_JAVA_OPTIONS", "OTEL_SERVICE_NAME", "OTEL_JAVAAGENT_EXTENSIONS"})
+    @ValueSource(strings = {"JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "_JAVA_OPTIONS", "OTEL_SERVICE_NAME", "OTEL_JAVAAGENT_EXTENSIONS", "OTEL_JAVAAGENT_LOGGING"})
     void reserved_environment_name_is_rejected(String name) {
         // given
         Map<String, String> environment = Map.of(name, "value");
@@ -200,6 +202,7 @@ class LaunchContractPolicyTest {
                 "-Xms32m",
                 "-javaagent:/opt/platform-tracing/agent.jar",
                 "-Dplatform.tracing.controlled-agent.expected-sha256=" + SHA256,
+                "-Dotel.javaagent.logging=platform",
                 "-cp",
                 "@/app/jib-classpath-file",
                 "example.Main"

@@ -310,6 +310,7 @@ class PlatformTracingJibPluginFunctionalTest extends FunctionalTestSupport {
                 .hasContent("""
                         -javaagent:%s
                         -Dplatform.tracing.controlled-agent.expected-sha256=%s
+                        -Dotel.javaagent.logging=platform
                         """.formatted(agentJarIn(project).toRealPath(), pinnedSha256()));
     }
 
@@ -355,6 +356,7 @@ class PlatformTracingJibPluginFunctionalTest extends FunctionalTestSupport {
                 .hasContent("""
                         "-javaagent:%s"
                         "-Dplatform.tracing.controlled-agent.expected-sha256=%s"
+                        "-Dotel.javaagent.logging=platform"
                         """.formatted(agentPath, pinnedSha256()));
     }
 
@@ -391,8 +393,10 @@ class PlatformTracingJibPluginFunctionalTest extends FunctionalTestSupport {
                 .isZero();
         assertThat(result.stdout())
                 .contains("MANAGED_AGENT_PROBE_PROPERTY platform.tracing.controlled-agent.expected-sha256=" + pinnedSha256())
+                .contains("MANAGED_AGENT_PROBE_PROPERTY otel.javaagent.logging=platform")
                 .as("the assessor reads startup arguments delivered through java @argfile")
-                .contains("MANAGED_AGENT_PROBE_INPUT_ARGUMENT -Dplatform.tracing.controlled-agent.expected-sha256=" + pinnedSha256());
+                .contains("MANAGED_AGENT_PROBE_INPUT_ARGUMENT -Dplatform.tracing.controlled-agent.expected-sha256=" + pinnedSha256())
+                .contains("MANAGED_AGENT_PROBE_INPUT_ARGUMENT -Dotel.javaagent.logging=platform");
 
         List<String> managementInputArguments = result.stdout().lines()
                 .filter(line -> line.startsWith("MANAGED_AGENT_PROBE_INPUT_ARGUMENT -Dcom.sun.management")

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
+import space.br1440.platform.tracing.otel.javaagent.distribution.probe.AgentListenerOrderProbe;
 import space.br1440.platform.tracing.otel.javaagent.distribution.probe.ControlledAgentRuntimeProbe;
 
 class ControlledAgentStartupTest {
@@ -54,7 +55,28 @@ class ControlledAgentStartupTest {
         // then
         result.assertCompletedSuccessfully();
         assertProbeReportedExpectedIdentity(result, fixture.distributionVersion());
+        assertThat(result.stderr()).contains("opentelemetry-javaagent - version:");
         assertThat(result.stdout()).doesNotContain(ANY_PTA_EVENT_CODE);
+        assertStderrIsFreeOfLoggingAndExtensionFailures(result);
+    }
+
+    @Test
+    void platform_activation_runs_after_every_discovered_agent_listener()
+            throws IOException, InterruptedException, URISyntaxException {
+        // given
+        AgentTestFixture fixture = AgentTestFixture.load();
+        List<String> command = ControlledAgentChild.javaCommand(List.of());
+        ControlledAgentChild.appendDisabledOtlpExporter(command);
+        ControlledAgentChild.appendServiceIdentity(command);
+        ControlledAgentChild.appendAgentLaunch(command, fixture, AgentListenerOrderProbe.class, List.of());
+
+        // when
+        ChildProcessResult result = ControlledAgentChild.run(temporaryDirectory, "agent-listener-order", command);
+
+        // then
+        result.assertCompletedSuccessfully();
+        assertThat(result.stdout().lines().filter(line -> line.startsWith(AgentListenerOrderProbe.RESULT_PREFIX)))
+                .hasSize(1);
         assertStderrIsFreeOfLoggingAndExtensionFailures(result);
     }
 
@@ -131,6 +153,7 @@ class ControlledAgentStartupTest {
                 .doesNotContain("SHUTDOWN_CLEANUP_FAILED")
                 .doesNotContain("PTA-BOOT-002")
                 .doesNotContain("BOOTSTRAP_PHASE_FAILED")
+                .doesNotContain("STARTUP_FAILED")
                 .doesNotContain("BOOTSTRAP_SHUTDOWN_CLEANUP_FAILED")
                 .doesNotContain("BOOTSTRAP_SHUTDOWN_COMPLETION_FAILED")
                 .doesNotContain("Exception in thread")

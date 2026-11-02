@@ -10,6 +10,7 @@ import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -25,6 +26,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
 
 import space.br1440.platform.common.util.StringUtils;
@@ -32,6 +35,8 @@ import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWir
 import space.br1440.platform.tracing.e2e.artifact.ControlledAgentArtifactMutator;
 
 class PackagedTracingCertificationTest {
+
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     static final Pattern FAILURE_ENVELOPE = Pattern.compile(
             "Platform tracing startup rejected: "
@@ -49,6 +54,7 @@ class PackagedTracingCertificationTest {
     private Path applicationBootJar;
     private Path dualSdkApplicationBootJar;
     private Path collisionAgent;
+    private Path postSdkFailureListener;
     private Path evidenceDirectory;
     private PackagedProcessLauncher launcher;
 
@@ -58,6 +64,7 @@ class PackagedTracingCertificationTest {
         applicationBootJar = requiredFile("platformTracing.applicationBootJar");
         dualSdkApplicationBootJar = requiredFile("platformTracing.dualSdkApplicationBootJar");
         collisionAgent = requiredFile("platformTracing.collisionAgentJar");
+        postSdkFailureListener = requiredFile("platformTracing.postSdkFailureListenerJar");
         evidenceDirectory = Path.of(requiredProperty("platformTracing.evidenceDirectory"))
                 .toAbsolutePath()
                 .normalize();
@@ -241,7 +248,78 @@ class PackagedTracingCertificationTest {
 
         // then
         assertFailure(scenario, result, "EXTENSION_MISSING", "PLATFORM_EXTENSION_MISSING", null);
-        assertThat(result.stderr()).contains("OpenTelemetry Javaagent failed to start");
+        assertStartupFailureSummary(result);
+        assertThat(result.stderr()).doesNotContain("OpenTelemetry Javaagent failed to start");
+    }
+
+    @Test
+    @SuppressWarnings("HttpUrlsUsage")
+    void hostless_otlp_endpoint_is_rejected_by_spring_without_readiness_timeout() throws Exception {
+        // given
+        PackagedProcessLauncher.LaunchRequest request = controlledRequest(
+                "hostless-otlp-endpoint", applicationBootJar, controlledAgent,
+                ControlledAgentArtifactMutator.sha256(controlledAgent),
+                Map.of("otel.exporter.otlp.endpoint", "http:///v1/traces")
+        );
+
+        // when
+        PackagedProcessLauncher.ProcessResult result = launcher.launch(request);
+
+        // then
+        assertFailure("hostless-otlp-endpoint", result, "EXTENSION_FAILED", "AGENT_STARTUP_FAILED", "FAILED");
+        assertStartupFailureSummary(result);
+        assertThat(result.combinedOutput())
+                .doesNotContain("EXTENSION_READINESS_TIMEOUT")
+                .doesNotContain(PackagedTracingCertificationApplication.LIFECYCLE_SENTINEL_STARTED_TOKEN)
+                .doesNotContain(PackagedTracingCertificationApplication.APPLICATION_READY_TOKEN);
+        assertThat(result.stderr()).doesNotContain("OpenTelemetry Javaagent failed to start");
+    }
+
+    @Test
+    void listener_failure_after_sdk_creation_is_rejected_before_platform_activation() throws Exception {
+        // given
+        String sourceAgentSha = ControlledAgentArtifactMutator.sha256(controlledAgent);
+        Path fixtureAgent = ControlledAgentArtifactMutator.withFailingBeforeActivationListener(
+                controlledAgent,
+                evidenceDirectory.resolve("fixture-agent-post-sdk-listener-failure.jar"),
+                postSdkFailureListener
+        );
+        String fixtureAgentSha = ControlledAgentArtifactMutator.sha256(fixtureAgent);
+        String fixtureExtensionSha = ControlledAgentArtifactMutator.sha256(
+                ControlledAgentArtifactMutator.packagedExtension(fixtureAgent));
+        Files.writeString(evidenceDirectory.resolve("post-sdk-listener-failure.digests.properties"),
+                "source.agent.sha256=" + sourceAgentSha + "\n"
+                        + "fixture.agent.sha256=" + fixtureAgentSha + "\n"
+                        + "fixture.extension.sha256=" + fixtureExtensionSha + "\n"
+                        + "listener.fixture.sha256=" + ControlledAgentArtifactMutator.sha256(postSdkFailureListener) + "\n",
+                StandardCharsets.UTF_8);
+        PackagedProcessLauncher.LaunchRequest request = controlledRequest(
+                "post-sdk-listener-failure", applicationBootJar, fixtureAgent, fixtureAgentSha, Map.of());
+
+        // when
+        PackagedProcessLauncher.ProcessResult result = launcher.launch(request);
+
+        // then
+        assertThat(result.stdout().lines()
+                .filter(line -> line.equals("SDK_CREATED_BEFORE_PLATFORM_ACTIVATION")))
+                .containsExactly("SDK_CREATED_BEFORE_PLATFORM_ACTIVATION");
+        assertFailure("post-sdk-listener-failure", result, "EXTENSION_FAILED", "AGENT_STARTUP_FAILED", "FAILED");
+        JsonNode summary = assertStartupFailureSummary(result);
+        assertThat(summary.path("fields").path("lifecycle").asText()).isEqualTo("FAILED");
+        assertThat(summary.path("fields").path("failureCode").asText()).isEqualTo("AGENT_STARTUP_FAILED");
+        assertThat(summary.path("fields").path("primaryFailureCode").asText()).isEqualTo("AGENT_STARTUP_FAILED");
+        assertThat(result.combinedOutput())
+                .doesNotContain("EXTENSION_READINESS_TIMEOUT")
+                .doesNotContain("\"event_name\":\"EXTENSION_INSTALLED\"")
+                .doesNotContain("lifecycle=READY")
+                .doesNotContain("\"lifecycle\":\"READY\"")
+                .doesNotContain(PackagedTracingCertificationApplication.LIFECYCLE_SENTINEL_STARTED_TOKEN)
+                .doesNotContain(PackagedTracingCertificationApplication.APPLICATION_READY_TOKEN);
+        assertThat(result.stderr()).doesNotContain("OpenTelemetry Javaagent failed to start");
+        assertThat(ControlledAgentArtifactMutator.sha256(controlledAgent)).isEqualTo(sourceAgentSha);
+        assertThat(fixtureAgentSha).isNotEqualTo(sourceAgentSha);
+        assertThat(ControlledAgentArtifactMutator.identity(fixtureAgent).getProperty("extension.sha256"))
+                .isEqualTo(fixtureExtensionSha);
     }
 
     @Test
@@ -444,6 +522,25 @@ class PackagedTracingCertificationTest {
         // then
         assertFailedProcess(result, "mbean-collision");
         assertThat(result.combinedOutput()).contains("JMX_BATCH_REGISTRATION_FAILED");
+    }
+
+    private static JsonNode assertStartupFailureSummary(PackagedProcessLauncher.ProcessResult result) throws IOException {
+        List<JsonNode> summaries = new ArrayList<>();
+        for (String line : result.stderr().lines().filter(value -> value.startsWith("{")).toList()) {
+            JsonNode event = JSON.readTree(line);
+            if ("STARTUP_FAILED".equals(event.path("event_name").asText())) {
+                summaries.add(event);
+            }
+        }
+
+        assertThat(summaries)
+                .as("Packaged stderr must contain exactly one startup failure summary: %s", result.stderr())
+                .singleElement()
+                .satisfies(event -> {
+                    assertThat(event.path("level").asText()).isEqualTo("ERROR");
+                    assertThat(event.path("event_code").asText()).isEqualTo("PTA-BOOT-012");
+                });
+        return summaries.getFirst();
     }
 
     @SuppressWarnings("SameParameterValue")

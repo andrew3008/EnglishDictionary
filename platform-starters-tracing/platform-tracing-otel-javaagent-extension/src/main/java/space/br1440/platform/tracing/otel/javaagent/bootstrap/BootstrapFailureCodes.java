@@ -15,6 +15,8 @@ final class BootstrapFailureCodes {
 
     static final String ACTIVATION_FAILED = "ACTIVATION_FAILED";
 
+    static final String AGENT_STARTUP_FAILED = "AGENT_STARTUP_FAILED";
+
     static final String FAILED_ROLLBACK_INCOMPLETE = "FAILED_ROLLBACK_INCOMPLETE";
 
     static final String SHUTDOWN_CLEANUP_FAILED = "SHUTDOWN_CLEANUP_FAILED";

@@ -74,6 +74,7 @@ class PlatformTracingJibExtensionTest {
                 "-Xms32m",
                 "-javaagent:/opt/platform-tracing/agent.jar",
                 "-Dplatform.tracing.controlled-agent.expected-sha256=" + agentSha256,
+                "-Dotel.javaagent.logging=platform",
                 "-cp",
                 "@/app/jib-classpath-file",
                 "example.Main"

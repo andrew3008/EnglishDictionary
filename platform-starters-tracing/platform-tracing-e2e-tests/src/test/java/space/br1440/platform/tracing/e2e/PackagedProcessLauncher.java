@@ -77,6 +77,7 @@ final class PackagedProcessLauncher {
         List<String> command = new ArrayList<>();
         command.add(javaExecutable.toString());
         command.addAll(FORKED_JVM_ENCODING);
+        command.add("-Dotel.javaagent.logging=platform");
         request.systemProperties().forEach((name, value) -> command.add("-D" + name + "=" + value));
         request.javaAgents().forEach(agent -> command.add("-javaagent:" + agent));
         command.add("-jar");

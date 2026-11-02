@@ -25,6 +25,7 @@ import space.br1440.platform.tracing.otel.javaagent.distribution.probe.InvalidEx
 class InvalidExtensionConfigurationTest {
 
     private static final String EXPECTED_AGENT_SHA256_OPTION_PREFIX = "-Dplatform.tracing.controlled-agent.expected-sha256=";
+    private static final String PLATFORM_LOGGING_OPTION = "-Dotel.javaagent.logging=platform";
     private static final String SAMPLER_ARGUMENT_CANARY = "sampler-arg-must-not-appear-7f31";
 
     @TempDir
@@ -69,6 +70,58 @@ class InvalidExtensionConfigurationTest {
         assertThat(invalid.stdout()).contains(InvalidExtensionConfigurationProbe.MAIN_REACHED_MARKER);
         assertReadiness(invalid, "FAILED", "CONFIGURATION_INITIALIZATION_FAILED", invalidSpanName);
         assertThat(invalidCollector.receivedSpans()).isEmpty();
+    }
+
+    @Test
+    void managed_logging_property_takes_precedence_over_conflicting_environment()
+            throws IOException, InterruptedException, URISyntaxException {
+        // given
+        AgentTestFixture fixture = AgentTestFixture.load();
+        String spanName = "logging-property-precedence-" + UUID.randomUUID();
+        try (OtlpTraceCollector collector = OtlpTraceCollector.startAcceptingAllSpans()) {
+            // when
+            ChildProcessResult result = run(fixture, "logging-property-precedence", collector.otlpEndpoint(),
+                    spanName, false, Map.of("OTEL_JAVAAGENT_LOGGING", "none"));
+
+            // then
+            result.assertCompletedSuccessfully();
+            assertReadiness(result, "READY", "", spanName);
+            assertThat(result.stderr()).contains("opentelemetry-javaagent - version:");
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"'', false", "simple, false", "'', true"})
+    void missing_or_wrong_managed_logging_property_fails_before_sdk_build(String logging,
+                                                                         boolean environmentOnly)
+            throws IOException, InterruptedException, URISyntaxException {
+        // given
+        AgentTestFixture fixture = AgentTestFixture.load();
+        String spanName = "logging-property-invalid-" + UUID.randomUUID();
+        try (OtlpTraceCollector collector = OtlpTraceCollector.startAcceptingAllSpans()) {
+            List<String> command = command(fixture, collector.otlpEndpoint(), spanName, false, List.of());
+            assertThat(command.remove(PLATFORM_LOGGING_OPTION)).isTrue();
+            if (!logging.isEmpty()) {
+                command.add(1, "-Dotel.javaagent.logging=" + logging);
+            }
+            Map<String, String> environment = environmentOnly ? Map.of("OTEL_JAVAAGENT_LOGGING", "platform") : Map.of();
+
+            // when
+            ChildProcessResult result = ControlledAgentChild.run(
+                    temporaryDirectory,
+                    "logging-property-invalid-" + logging + "-" + environmentOnly,
+                    command,
+                    environment
+            );
+
+            // then
+            result.assertCompletedSuccessfully();
+            assertReadiness(result, "FAILED", "DISTRIBUTION_EVIDENCE_MISSING", spanName);
+            assertThat(collector.receivedSpans()).isEmpty();
+            if (environmentOnly) {
+                result.assertStartupFailureSummary();
+            }
+        }
     }
 
     @Test
@@ -303,8 +356,10 @@ class InvalidExtensionConfigurationTest {
             // then
             result.assertCompletedSuccessfully();
             assertThat(result.stdout()).contains(InvalidExtensionConfigurationProbe.MAIN_REACHED_MARKER);
-            assertThat(result.stderr()).contains("OpenTelemetry Javaagent failed to start")
-                    .contains(property + " is not supported by the controlled agent profile");
+            result.assertStartupFailureSummary();
+            assertThat(result.stderr())
+                    .doesNotContain("OpenTelemetry Javaagent failed to start")
+                    .doesNotContain("\tat ");
             assertThat(result.stdout()).contains(InvalidExtensionConfigurationProbe.READINESS_ABSENT_MARKER)
                     .doesNotContain(spanName)
                     .doesNotContain(InvalidExtensionConfigurationProbe.RESULT_PREFIX + " lifecycle=");

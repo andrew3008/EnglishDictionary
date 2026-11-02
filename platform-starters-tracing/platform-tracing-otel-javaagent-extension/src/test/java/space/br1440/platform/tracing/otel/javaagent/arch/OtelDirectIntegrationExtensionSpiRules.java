@@ -1,12 +1,17 @@
 package space.br1440.platform.tracing.otel.javaagent.arch;
 
+import static com.tngtech.archunit.base.DescribedPredicate.not;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.equivalentTo;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.constructors;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.CompositeArchRule;
 
 import io.opentelemetry.javaagent.extension.AgentListener;
+import io.opentelemetry.javaagent.tooling.LoggingCustomizer;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.internal.ExtendedSpanProcessor;
@@ -15,6 +20,9 @@ import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public final class OtelDirectIntegrationExtensionSpiRules {
+
+    private static final String STARTUP_LOGGING_ADAPTER =
+            "space.br1440.platform.tracing.otel.javaagent.bootstrap.PlatformStartupLoggingCustomizer";
 
     public static final ArchRule BAGGAGE_SPAN_PROCESSOR_IMPLEMENTS_SPI = classes()
             .that().haveSimpleName("BaggageSpanProcessor")
@@ -81,11 +89,20 @@ public final class OtelDirectIntegrationExtensionSpiRules {
                     + "it is applied after exporter/processor customization and can add a parallel "
                     + "unwrapped export path");
 
-    public static final ArchRule BOOTSTRAP_DOES_NOT_DEPEND_ON_AGENT_TOOLING = noClasses()
-            .that().resideInAPackage("space.br1440.platform.tracing.otel.javaagent.bootstrap..")
-            .should().dependOnClassesThat().resideInAnyPackage(
-                    "io.opentelemetry.javaagent.tooling..",
-                    "io.opentelemetry.javaagent.bootstrap..")
-            .because("platform bootstrap uses only the public AgentListener extension API; "
-                    + "agent tooling / bootstrap-implementation packages are forbidden (S6)");
+    public static final ArchRule BOOTSTRAP_DOES_NOT_DEPEND_ON_AGENT_TOOLING = CompositeArchRule.of(noClasses()
+                    .that().resideInAPackage("space.br1440.platform.tracing.otel.javaagent.bootstrap..")
+                    .and().doNotHaveFullyQualifiedName(STARTUP_LOGGING_ADAPTER)
+                    .should().dependOnClassesThat().resideInAnyPackage(
+                            "io.opentelemetry.javaagent.tooling..",
+                            "io.opentelemetry.javaagent.bootstrap.."))
+            .and(noClasses()
+                    .that().haveFullyQualifiedName(STARTUP_LOGGING_ADAPTER)
+                    .should().dependOnClassesThat(resideInAnyPackage(
+                                    "io.opentelemetry.javaagent.tooling..",
+                                    "io.opentelemetry.javaagent.bootstrap..")
+                            .and(not(equivalentTo(LoggingCustomizer.class)))
+                    )
+            )
+            .because("only the startup logging adapter may depend on the pinned LoggingCustomizer contract; "
+                    + "all other agent tooling and bootstrap implementation dependencies remain forbidden");
 }
