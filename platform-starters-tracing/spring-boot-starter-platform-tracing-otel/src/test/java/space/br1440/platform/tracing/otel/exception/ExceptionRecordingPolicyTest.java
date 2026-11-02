@@ -34,13 +34,15 @@ class ExceptionRecordingPolicyTest {
     @Test
     void omitsFramesBeyondCapWithoutExhaustingCharacterBudget() {
         // given
-        Throwable exception = withFrames("boom", 40, "com.example.Short");
+        Throwable exception = new IllegalStateException("boom");
+        exception.setStackTrace(frames(40, "com.example.Short"));
         ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true, 100_000);
 
         // when
         RenderedExceptionStack rendered = policy.renderStack(exception);
 
         // then
+        assertThat(rendered).isNotNull();
         assertThat(rendered.truncated()).isTrue();
         assertThat(rendered.text()).contains(BoundedExceptionStackRenderer.framesOmitted(8));
         assertThat(rendered.text()).doesNotContain(BoundedExceptionStackRenderer.BUDGET_EXHAUSTED);
@@ -60,6 +62,7 @@ class ExceptionRecordingPolicyTest {
         RenderedExceptionStack rendered = policy.renderStack(outer);
 
         // then
+        assertThat(rendered).isNotNull();
         assertThat(rendered.truncated()).isTrue();
         assertThat(rendered.text()).contains("root-marker");
         assertThat(rendered.text()).contains("Caused by: java.lang.IllegalStateException: root-marker");
@@ -78,6 +81,7 @@ class ExceptionRecordingPolicyTest {
         RenderedExceptionStack rendered = policy.renderStack(exception);
 
         // then
+        assertThat(rendered).isNotNull();
         assertThat(rendered.truncated()).isTrue();
         assertThat(countOf(rendered.text(), "Caused by:")).isEqualTo(BoundedExceptionStackRenderer.MAX_CAUSED_BY_LEVELS);
         assertThat(rendered.text()).contains("cause-10");
@@ -96,6 +100,7 @@ class ExceptionRecordingPolicyTest {
         RenderedExceptionStack rendered = policy.renderStack(exception);
 
         // then
+        assertThat(rendered).isNotNull();
         assertThat(rendered.truncated()).isFalse();
         assertThat(countOf(rendered.text(), "Caused by:")).isEqualTo(10);
         assertThat(rendered.text()).contains("cause-10");
@@ -115,6 +120,7 @@ class ExceptionRecordingPolicyTest {
         RenderedExceptionStack rendered = policy.renderStack(first);
 
         // then
+        assertThat(rendered).isNotNull();
         assertThat(rendered.text()).contains("Caused by: [CIRCULAR REFERENCE: java.lang.IllegalStateException]");
         assertThat(countOf(rendered.text(), "Caused by:")).isEqualTo(2);
         assertThat(rendered.truncated()).isFalse();
@@ -132,6 +138,7 @@ class ExceptionRecordingPolicyTest {
         RenderedExceptionStack rendered = policy.renderStack(exception);
 
         // then
+        assertThat(rendered).isNotNull();
         assertThat(rendered.text()).doesNotContain("suppressed-secret-value");
         assertThat(rendered.text()).doesNotContain("SuppressedSecretException");
         assertThat(rendered.text()).doesNotContain("Suppressed:");
@@ -149,6 +156,7 @@ class ExceptionRecordingPolicyTest {
         RenderedExceptionStack rendered = policy.renderStack(exception);
 
         // then
+        assertThat(rendered).isNotNull();
         assertThat(rendered.text()).contains("a".repeat(512));
         assertThat(rendered.text()).doesNotContain("a".repeat(513));
         assertThat(policy.sanitizeOrNull(exception)).hasSize(512);
@@ -165,6 +173,7 @@ class ExceptionRecordingPolicyTest {
         RenderedExceptionStack rendered = policy.renderStack(exception);
 
         // then
+        assertThat(rendered).isNotNull();
         assertThat(policy.sanitizeOrNull(exception)).isNull();
         assertThat(rendered.text()).contains("boom");
     }
@@ -211,12 +220,7 @@ class ExceptionRecordingPolicyTest {
         return current;
     }
 
-    private static Throwable withFrames(String message, int frameCount, String classNamePrefix) {
-        IllegalStateException exception = new IllegalStateException(message);
-        exception.setStackTrace(frames(frameCount, classNamePrefix));
-        return exception;
-    }
-
+    @SuppressWarnings("SameParameterValue")
     private static StackTraceElement[] frames(int frameCount, String classNamePrefix) {
         StackTraceElement[] frames = new StackTraceElement[frameCount];
         for (int index = 0; index < frameCount; index++) {

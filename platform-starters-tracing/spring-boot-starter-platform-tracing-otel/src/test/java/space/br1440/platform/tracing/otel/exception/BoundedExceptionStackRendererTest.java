@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.otel.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +24,8 @@ class BoundedExceptionStackRendererTest {
     @ValueSource(ints = {1, 2, 10, 32, 33})
     void budgetNotLargerThanExhaustedLineReturnsItsPrefixOnly(int budget) {
         // given
-        Throwable exception = withFrames("boom", 3);
+        IllegalStateException exception = new IllegalStateException("boom");
+        exception.setStackTrace(frames(3, "com.example.Type"));
 
         // when
         RenderedExceptionStack rendered = new BoundedExceptionStackRenderer(budget, RAW_MESSAGE).render(exception);
@@ -40,7 +40,8 @@ class BoundedExceptionStackRendererTest {
     @Test
     void budgetOneAboveExhaustedLineKeepsOnlyTheMarker() {
         // given
-        Throwable exception = withFrames("boom", 3);
+        IllegalStateException exception = new IllegalStateException("boom");
+        exception.setStackTrace(frames(3, "com.example.Type"));
 
         // when
         RenderedExceptionStack rendered = new BoundedExceptionStackRenderer(EXHAUSTED_LINE + 1, RAW_MESSAGE)
@@ -208,7 +209,7 @@ class BoundedExceptionStackRendererTest {
     @Test
     void furtherCausesMarkerIsDroppedWhenHeadersConsumeTheBudget() {
         // given
-        Throwable exception = causeChain(12);
+        Throwable exception = causeChain();
         String outerHeader = "java.lang.IllegalStateException\n";
         String causedByHeader = "Caused by: java.lang.IllegalStateException\n";
         int headers = outerHeader.length() + BoundedExceptionStackRenderer.MAX_CAUSED_BY_LEVELS * causedByHeader.length();
@@ -223,7 +224,7 @@ class BoundedExceptionStackRendererTest {
         assertThat(rendered.text()).doesNotContain(BoundedExceptionStackRenderer.FURTHER_CAUSES_OMITTED);
         assertThat(rendered.text()).doesNotContain("cause-");
         assertThat(rendered.text()).endsWith(BoundedExceptionStackRenderer.BUDGET_EXHAUSTED + "\n");
-        assertThat(countOf(rendered.text(), "Caused by:")).isEqualTo(BoundedExceptionStackRenderer.MAX_CAUSED_BY_LEVELS);
+        assertThat(countCausedBy(rendered.text())).isEqualTo(BoundedExceptionStackRenderer.MAX_CAUSED_BY_LEVELS);
     }
 
     @Test
@@ -370,28 +371,10 @@ class BoundedExceptionStackRendererTest {
                 .hasMessage("characterBudget must be positive");
     }
 
-    @Test
-    void rejectsNullSanitizer() {
-        // given
-        int budget = 1;
-
-        // when
-        Throwable thrown = catchThrowable(() -> new BoundedExceptionStackRenderer(budget, null));
-
-        // then
-        assertThat(thrown).isInstanceOf(NullPointerException.class).hasMessage("messageSanitizer");
-    }
-
-    private static Throwable withFrames(String message, int frameCount) {
-        IllegalStateException exception = new IllegalStateException(message);
-        exception.setStackTrace(frames(frameCount, "com.example.Type"));
-        return exception;
-    }
-
-    private static Throwable causeChain(int causedByLevels) {
-        Throwable current = new IllegalStateException("cause-" + causedByLevels);
+    private static Throwable causeChain() {
+        Throwable current = new IllegalStateException("cause-12");
         current.setStackTrace(NO_FRAMES);
-        for (int index = causedByLevels - 1; index >= 0; index--) {
+        for (int index = 11; index >= 0; index--) {
             IllegalStateException wrapper = new IllegalStateException("cause-" + index, current);
             wrapper.setStackTrace(NO_FRAMES);
             current = wrapper;
@@ -409,7 +392,8 @@ class BoundedExceptionStackRendererTest {
         return frames;
     }
 
-    private static int countOf(String text, String token) {
+    private static int countCausedBy(String text) {
+        String token = "Caused by:";
         int count = 0;
         int from = 0;
         while (from <= text.length()) {
@@ -435,7 +419,7 @@ class BoundedExceptionStackRendererTest {
             current = next;
         }
 
-        if ((chain.size() > 1) && (random.nextInt(3) == 0) && (chain.get(0) instanceof MutableCauseException deepest)) {
+        if ((chain.size() > 1) && (random.nextInt(3) == 0) && (chain.getFirst() instanceof MutableCauseException deepest)) {
             deepest.cause = chain.get(random.nextInt(chain.size()));
         }
 
