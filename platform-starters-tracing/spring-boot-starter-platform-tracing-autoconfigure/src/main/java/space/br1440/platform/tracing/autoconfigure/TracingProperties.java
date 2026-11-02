@@ -84,15 +84,11 @@ public class TracingProperties {
 
         /**
          * Публиковать {@code exception.message} в exception-событии span'а.
-         * По-умолчанию выключено, так как сообщение исключения может содержать
-         * PII или внутренние детали реализации; включение — осознанный выбор.
          */
-        private boolean includeMessage = false;
+        private boolean includeMessage = true;
 
         /**
          * Публиковать stacktrace в exception-событии span'а.
-         * По-умолчанию выключено: stacktrace раскрывает внутреннюю структуру кода и
-         * может быть избыточным по объёму; включение — осознанный выбор.
          */
         private boolean includeStacktrace = false;
     }

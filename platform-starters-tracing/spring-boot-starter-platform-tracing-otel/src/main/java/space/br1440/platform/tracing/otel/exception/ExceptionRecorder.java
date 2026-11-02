@@ -1,15 +1,16 @@
 package space.br1440.platform.tracing.otel.exception;
 
+import java.util.Objects;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+
+import space.br1440.platform.tracing.api.span.SpanResult;
+import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
+
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
-import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
-import space.br1440.platform.tracing.api.span.SpanResult;
-
-import java.util.Objects;
 
 public final class ExceptionRecorder {
 
@@ -55,9 +56,9 @@ public final class ExceptionRecorder {
             event.put(SemconvKeys.EXCEPTION_MESSAGE, safeMessage);
         }
 
-        String stack = recordingPolicy.sanitizedStackOrNull(exception);
-        if (stack != null) {
-            event.put(SemconvKeys.EXCEPTION_STACKTRACE, stack);
+        RenderedExceptionStack rendered = recordingPolicy.renderStack(exception);
+        if ((rendered != null) && !rendered.text().isEmpty()) {
+            event.put(SemconvKeys.EXCEPTION_STACKTRACE, rendered.text());
         }
 
         span.addEvent(EXCEPTION_EVENT_NAME, event.build());

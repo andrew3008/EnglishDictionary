@@ -28,7 +28,6 @@ public class ExceptionRecordingAutoConfiguration {
                 recording.isIncludeMessage(),
                 recording.isIncludeStacktrace()
         );
-
         return new ExceptionRecorder(recordingPolicy);
     }
 }

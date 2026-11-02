@@ -1,5 +1,14 @@
 package space.br1440.platform.tracing.otel.exception;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
+
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
@@ -9,14 +18,6 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.EventData;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 class ExceptionRecorderTest {
 
@@ -46,17 +47,14 @@ class ExceptionRecorderTest {
         runInSpan(() -> recorder.record(new IllegalStateException("SELECT * FROM users WHERE ssn='123'")));
 
         SpanData span = exporter.getFinishedSpanItems().getFirst();
-        assertThat(span.getAttributes().get(SemconvKeys.ERROR_TYPE))
-                .isEqualTo("java.lang.IllegalStateException");
+        assertThat(span.getAttributes().get(SemconvKeys.ERROR_TYPE)).isEqualTo("java.lang.IllegalStateException");
         assertThat(span.getAttributes().get(SemconvKeys.PLATFORM_RESULT)).isEqualTo("failure");
         assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
-        // Секьюр-дефолт: НЕ должно быть description и exception.message (защита от утечки PII/SQL).
         assertThat(span.getStatus().getDescription()).isEmpty();
 
         EventData event = span.getEvents().getFirst();
         assertThat(event.getName()).isEqualTo("exception");
-        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_TYPE))
-                .isEqualTo("java.lang.IllegalStateException");
+        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_TYPE)).isEqualTo("java.lang.IllegalStateException");
         assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isNull();
         assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE)).isNull();
     }
@@ -68,9 +66,7 @@ class ExceptionRecorderTest {
 
         SpanData span = exporter.getFinishedSpanItems().getFirst();
         assertThat(span.getStatus().getDescription()).isEqualTo("boom");
-        assertThat(span.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE))
-                .isEqualTo("boom");
-        // stacktrace всё равно off
+        assertThat(span.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isEqualTo("boom");
         assertThat(span.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE)).isNull();
     }
 
@@ -80,7 +76,6 @@ class ExceptionRecorderTest {
         assertThatCode(() -> recorder.record(new RuntimeException("no span"))).doesNotThrowAnyException();
         runInSpan(() -> recorder.record(null));
 
-        // первый вызов вне span'а ничего не экспортировал; runInSpan(null) создал пустой span без error
         assertThat(exporter.getFinishedSpanItems()).hasSize(1);
         assertThat(exporter.getFinishedSpanItems().getFirst().getAttributes().get(SemconvKeys.PLATFORM_RESULT)).isNull();
     }
@@ -88,7 +83,6 @@ class ExceptionRecorderTest {
     @Test
     void record_withExplicitSpan_writesToPassedSpanNotCurrent() {
         ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
-        // span НЕ делаем current — overload record(Span, Throwable) должен писать именно в него.
         Span span = tracer.spanBuilder("explicit").startSpan();
         recorder.record(span, new IllegalStateException("boom"));
         span.end();
@@ -96,19 +90,15 @@ class ExceptionRecorderTest {
         SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getName()).isEqualTo("explicit");
         assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
-        assertThat(data.getAttributes().get(SemconvKeys.ERROR_TYPE))
-                .isEqualTo("java.lang.IllegalStateException");
+        assertThat(data.getAttributes().get(SemconvKeys.ERROR_TYPE)).isEqualTo("java.lang.IllegalStateException");
         assertThat(data.getEvents().getFirst().getName()).isEqualTo("exception");
     }
 
     @Test
     void record_withNullSpan_andInvalidSpan_doNotThrow() {
         ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
-        assertThatCode(() -> recorder.record(null, new RuntimeException("x")))
-                .doesNotThrowAnyException();
-        assertThatCode(() -> recorder.record(Span.getInvalid(), new RuntimeException("x")))
-                .doesNotThrowAnyException();
-        // Невалидный span ничего не экспортирует.
+        assertThatCode(() -> recorder.record(null, new RuntimeException("x"))).doesNotThrowAnyException();
+        assertThatCode(() -> recorder.record(Span.getInvalid(), new RuntimeException("x"))).doesNotThrowAnyException();
         assertThat(exporter.getFinishedSpanItems()).isEmpty();
     }
 
@@ -158,6 +148,57 @@ class ExceptionRecorderTest {
         SpanData data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(SemconvKeys.ERROR_TYPE))
                 .isEqualTo(IllegalStateException.class.getName());
+    }
+
+    @Test
+    void record_truncatedStack_keepsCauseWithinBudget() {
+        // given
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(false, true));
+        IllegalStateException cause = new IllegalStateException("root-marker");
+        cause.setStackTrace(new StackTraceElement[0]);
+        IllegalStateException outer = new IllegalStateException("outer", cause);
+        StackTraceElement[] frames = new StackTraceElement[40];
+        for (int index = 0; index < frames.length; index++) {
+            frames[index] = new StackTraceElement(
+                    "com.example.VeryLongClassNameThatConsumesBudget" + index,
+                    "method",
+                    "Type.java",
+                    index + 1
+            );
+        }
+        outer.setStackTrace(frames);
+        Span span = tracer.spanBuilder("bounded").startSpan();
+
+        // when
+        recorder.record(span, outer);
+        span.end();
+
+        // then
+        String stack = exporter.getFinishedSpanItems().getFirst().getEvents().getFirst()
+                .getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE);
+        assertThat(stack).contains("root-marker");
+        assertThat(stack).contains(BoundedExceptionStackRenderer.BUDGET_EXHAUSTED);
+        assertThat(stack).hasSizeLessThanOrEqualTo(BoundedExceptionStackRenderer.DEFAULT_CHARACTER_BUDGET);
+    }
+
+    @Test
+    void record_shortStack_recordsFrame() {
+        // given
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true));
+        IllegalStateException exception = new IllegalStateException("boom");
+        exception.setStackTrace(new StackTraceElement[] {
+                new StackTraceElement("com.example.A", "method", "A.java", 1)
+        });
+        Span span = tracer.spanBuilder("short").startSpan();
+
+        // when
+        recorder.record(span, exception);
+        span.end();
+
+        // then
+        assertThat(exporter.getFinishedSpanItems().getFirst().getEvents().getFirst()
+                .getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE))
+                .contains("com.example.A.method");
     }
 
     private void runInSpan(Runnable body) {

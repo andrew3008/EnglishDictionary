@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.exception;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -13,8 +15,6 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class ExceptionRecordingAutoConfigurationTest {
 
@@ -60,6 +60,47 @@ class ExceptionRecordingAutoConfigurationTest {
                         assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isEqualTo("boom");
                         assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE))
                                 .contains("IllegalStateException");
+                    }
+                });
+    }
+
+    @Test
+    void truncatedStackKeepsCauseWithinBudget() {
+        // given
+        IllegalStateException cause = new IllegalStateException("root-marker");
+        cause.setStackTrace(new StackTraceElement[0]);
+        IllegalStateException outer = new IllegalStateException("outer", cause);
+        StackTraceElement[] frames = new StackTraceElement[40];
+        for (int index = 0; index < frames.length; index++) {
+            frames[index] = new StackTraceElement(
+                    "com.example.VeryLongClassNameThatConsumesBudget" + index,
+                    "method",
+                    "Type.java",
+                    index + 1
+            );
+        }
+        outer.setStackTrace(frames);
+
+        // when
+        contextRunner
+                .withPropertyValues("platform.tracing.exception-recording.include-stacktrace=true")
+                .run(context -> {
+                    ExceptionRecorder recorder = context.getBean(ExceptionRecorder.class);
+                    InMemorySpanExporter exporter = InMemorySpanExporter.create();
+                    try (SdkTracerProvider provider = SdkTracerProvider.builder()
+                            .addSpanProcessor(SimpleSpanProcessor.create(exporter))
+                            .build()) {
+                        Tracer tracer = provider.get("test");
+                        Span span = tracer.spanBuilder("op").startSpan();
+                        recorder.record(span, outer);
+                        span.end();
+                        String stack = exporter.getFinishedSpanItems().getFirst().getEvents().getFirst()
+                                .getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE);
+
+                        // then
+                        assertThat(stack).contains("root-marker");
+                        assertThat(stack).contains("... (character budget exhausted)");
+                        assertThat(stack).hasSizeLessThanOrEqualTo(1_000);
                     }
                 });
     }
