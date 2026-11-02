@@ -18,6 +18,7 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeOutcome;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ScrubbingKeyNormalizer;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.ValueScanPolicy;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -120,7 +121,7 @@ final class AttributesScrubber {
             }
 
             String normalizedKey = ScrubbingKeyNormalizer.normalize(key.getKey());
-            MergeOutcome outcome = MergeEngine.evaluateDetailed(rules, normalizedKey, value);
+            MergeOutcome outcome = MergeEngine.evaluateDetailed(rules, normalizedKey, value, key.getType());
             recordOutcome(outcome);
 
             ScrubbingDecision decision = outcome.decision();
@@ -238,6 +239,10 @@ final class AttributesScrubber {
         AttributeType type = key.getType();
         return switch (type) {
             case STRING_ARRAY -> {
+                if (ValueScanPolicy.isInputLimitMask(decision)) {
+                    yield List.of(MASK);
+                }
+
                 List<String> in = (List<String>) value;
                 yield in.stream().map(v -> transformString(v, decision, runtime)).toList();
             }

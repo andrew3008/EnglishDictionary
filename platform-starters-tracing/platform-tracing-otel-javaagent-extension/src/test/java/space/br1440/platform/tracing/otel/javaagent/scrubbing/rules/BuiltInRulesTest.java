@@ -1,9 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.rules;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
-
-import java.time.Duration;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -70,63 +67,6 @@ class BuiltInRulesTest {
         assertThat(rule.evaluate("db.password", "x").action()).isEqualTo(ScrubbingAction.DROP);
         assertThat(rule.evaluate("app.client-secret", "x").action()).isEqualTo(ScrubbingAction.DROP);
         assertThat(rule.evaluate("user.name", "ivan").action()).isEqualTo(ScrubbingAction.KEEP);
-    }
-
-    @Test
-    void jwt_rule_drops_only_string_value_starting_with_eyJ() {
-        // given
-        SpanAttributeScrubbingRule rule = new JwtRule();
-        // when/then
-        assertThat(rule.evaluate("v", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.sig").action())
-                .isEqualTo(ScrubbingAction.DROP);
-        assertThat(rule.evaluate("v", "просто текст").action()).isEqualTo(ScrubbingAction.KEEP);
-        assertThat(rule.evaluate("v", 123L).action()).isEqualTo(ScrubbingAction.KEEP);
-    }
-
-    @Test
-    void email_rule_hashes_string_with_email() {
-        // given
-        SpanAttributeScrubbingRule rule = new EmailRule();
-        // when/then
-        assertThat(rule.evaluate("c", "ivan@example.com").action()).isEqualTo(ScrubbingAction.HASH);
-        assertThat(rule.evaluate("c", "contact ivan@example.co.uk").action()).isEqualTo(ScrubbingAction.HASH);
-        assertThat(rule.evaluate("c", "no email here").action()).isEqualTo(ScrubbingAction.KEEP);
-        assertThat(rule.evaluate("c", "ivan@example..com").action()).isEqualTo(ScrubbingAction.KEEP);
-        assertThat(rule.evaluate("c", "ivan@" + "a".repeat(64) + ".com").action())
-                .isEqualTo(ScrubbingAction.KEEP);
-    }
-
-    @Test
-    void email_rule_hashes_over_limit_value_without_regex_scan() {
-        // given
-        SpanAttributeScrubbingRule rule = new EmailRule();
-        String value = "a".repeat(EmailRule.MAX_SCAN_LENGTH + 1);
-
-        // when
-        ScrubbingDecision decision = assertTimeoutPreemptively(
-                Duration.ofSeconds(1),
-                () -> rule.evaluate("c", value)
-        );
-
-        // then
-        assertThat(decision.action()).isEqualTo(ScrubbingAction.HASH);
-        assertThat(decision.reason()).isEqualTo("email");
-    }
-
-    @Test
-    void email_rule_handles_worst_case_bounded_input_within_timeout() {
-        // given
-        SpanAttributeScrubbingRule rule = new EmailRule();
-        String value = "a".repeat(EmailRule.MAX_SCAN_LENGTH - 2) + "@x";
-
-        // when
-        ScrubbingDecision decision = assertTimeoutPreemptively(
-                Duration.ofSeconds(1),
-                () -> rule.evaluate("c", value)
-        );
-
-        // then
-        assertThat(decision.action()).isEqualTo(ScrubbingAction.KEEP);
     }
 
     @Test

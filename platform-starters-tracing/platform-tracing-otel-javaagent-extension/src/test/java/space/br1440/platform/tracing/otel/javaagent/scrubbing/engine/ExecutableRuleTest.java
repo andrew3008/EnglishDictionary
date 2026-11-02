@@ -2,6 +2,8 @@ package space.br1440.platform.tracing.otel.javaagent.scrubbing.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -16,9 +18,36 @@ import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
+
+import io.opentelemetry.api.common.AttributeType;
 
 @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class ExecutableRuleTest {
+
+    @Test
+    void open_value_scan_breaker_does_not_affect_non_string_types() {
+        // given
+        SpanAttributeScrubbingRule rule = BuiltInSpanAttributeScrubbingRules.JWT.create();
+        RuleCircuitBreaker breaker = new RuleCircuitBreaker(rule.name(), 1, 60_000L, 0L);
+        breaker.recordFailure(breaker.acquireExecution(), new IllegalStateException("Test failure"));
+        ExecutableRule executable = new ExecutableRule(rule, breaker);
+
+        // when
+        RuleOutcome scalar = executable.executeDetailed("count", 1L, AttributeType.LONG);
+        RuleOutcome array = executable.executeDetailed(
+                "counts", Collections.nCopies(10_000, 1L), AttributeType.LONG_ARRAY
+        );
+        RuleOutcome text = executable.executeDetailed("text", "value", AttributeType.STRING);
+        RuleOutcome texts = executable.executeDetailed("texts", List.of("value"), AttributeType.STRING_ARRAY);
+
+        // then
+        assertThat(scalar.outcome()).isEqualTo(RuleExecutionOutcome.KEEP);
+        assertThat(array.outcome()).isEqualTo(RuleExecutionOutcome.KEEP);
+        assertThat(text.outcome()).isEqualTo(RuleExecutionOutcome.CRITICAL_FAILURE);
+        assertThat(texts.outcome()).isEqualTo(RuleExecutionOutcome.CRITICAL_FAILURE);
+        assertThat(breaker.getState()).isEqualTo(RuleCircuitBreaker.State.OPEN);
+    }
 
     @Test
     void stale_closed_failure_does_not_complete_in_flight_probe() throws Exception {
@@ -39,12 +68,12 @@ class ExecutableRuleTest {
         // when
         try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
             try {
-                Future<RuleOutcome> stale = executor.submit(() -> executable.executeDetailed("stale", "value"));
+                Future<RuleOutcome> stale = executor.submit(() -> executable.executeDetailed("stale", "value", AttributeType.STRING));
                 assertThat(staleEntered.await(10, TimeUnit.SECONDS)).isTrue();
-                assertThat(executable.executeDetailed("open", "value").outcome())
+                assertThat(executable.executeDetailed("open", "value", AttributeType.STRING).outcome())
                         .isEqualTo(RuleExecutionOutcome.NON_CRITICAL_FAILURE);
 
-                Future<RuleOutcome> probe = executor.submit(() -> executable.executeDetailed("probe", "value"));
+                Future<RuleOutcome> probe = executor.submit(() -> executable.executeDetailed("probe", "value", AttributeType.STRING));
                 assertThat(probeEntered.await(10, TimeUnit.SECONDS)).isTrue();
                 releaseStale.countDown();
                 assertThat(stale.get(10, TimeUnit.SECONDS).outcome())

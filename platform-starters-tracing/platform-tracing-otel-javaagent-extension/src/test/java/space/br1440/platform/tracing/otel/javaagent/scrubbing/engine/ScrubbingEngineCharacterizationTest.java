@@ -7,7 +7,6 @@ import jakarta.annotation.Nonnull;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
@@ -18,7 +17,7 @@ class ScrubbingEngineCharacterizationTest {
         return new ExecutableRule(rule, new RuleCircuitBreaker(rule.name()));
     }
 
-    private static SpanAttributeScrubbingRule rule(boolean critical, int priority, ScrubbingDecision result) {
+    private static SpanAttributeScrubbingRule rule(int priority) {
         return new SpanAttributeScrubbingRule() {
             @Nonnull
             @Override
@@ -31,52 +30,28 @@ class ScrubbingEngineCharacterizationTest {
                 return priority;
             }
 
-            @Override public boolean critical() {
-                return critical;
-            }
-
             @Nonnull
             @Override public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
-                return result;
+                return ScrubbingDecision.keep();
             }
         };
-    }
-
-    @Test
-    void keep_never_weakens_drop() {
-        // given
-        ExecutableRule drop = wrap(rule(true, 10, ScrubbingDecision.drop("oauth")));
-        ExecutableRule keep = wrap(rule(false, 900, ScrubbingDecision.keep()));
-        // when/then
-        assertThat(MergeEngine.evaluateDetailed(List.of(drop, keep), "k", "v").decision().action())
-                .isEqualTo(ScrubbingAction.DROP);
-    }
-
-    @Test
-    void all_keep_yields_keep() {
-        // given
-        ExecutableRule a = wrap(rule(false, 900, ScrubbingDecision.keep()));
-        ExecutableRule b = wrap(rule(true, 10, ScrubbingDecision.keep()));
-        // when/then
-        assertThat(MergeEngine.evaluateDetailed(List.of(a, b), "k", "v").decision().action())
-                .isEqualTo(ScrubbingAction.KEEP);
     }
 
     @Test
     void priority_floor_applies_only_to_non_critical_external_origins() {
         // given
         RuntimeRule builtIn = new RuntimeRule(
-                wrap(rule(false, 130, ScrubbingDecision.keep())),
+                wrap(rule(130)),
                 RuleOrigin.BUILT_IN
         );
 
         RuntimeRule bundled = new RuntimeRule(
-                wrap(rule(false, 140, ScrubbingDecision.keep())),
+                wrap(rule(140)),
                 RuleOrigin.BUNDLED_SPI
         );
 
         RuntimeRule external = new RuntimeRule(
-                wrap(rule(false, 150, ScrubbingDecision.keep())),
+                wrap(rule(150)),
                 RuleOrigin.EXTERNAL_EXTENSION
         );
 

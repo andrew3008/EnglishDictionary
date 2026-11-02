@@ -5,12 +5,20 @@ import java.util.List;
 import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 
+import io.opentelemetry.api.common.AttributeType;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public final class MergeEngine {
 
-    public static MergeOutcome evaluateDetailed(List<ExecutableRule> wrappers, String key, Object value) {
+    public static MergeOutcome evaluateDetailed(List<ExecutableRule> wrappers, String key, String value) {
+        return evaluateDetailed(wrappers, key, value, AttributeType.STRING);
+    }
+
+    public static MergeOutcome evaluateDetailed(List<ExecutableRule> wrappers,
+                                                String key,
+                                                Object value,
+                                                AttributeType type) {
         ScrubbingDecision accumulated = ScrubbingDecision.keep();
         String maskedValue = null;
         long skippedCircuitOpen = 0L;
@@ -18,7 +26,7 @@ public final class MergeEngine {
         long criticalFailures = 0L;
 
         for (ExecutableRule wrapper : wrappers) {
-            RuleOutcome outcome = wrapper.executeDetailed(key, (maskedValue != null) ? maskedValue : value);
+            RuleOutcome outcome = wrapper.executeDetailed(key, (maskedValue != null) ? maskedValue : value, type);
             switch (outcome.outcome()) {
                 case SKIPPED_CIRCUIT_OPEN -> {
                     skippedCircuitOpen++;

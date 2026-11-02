@@ -7,6 +7,7 @@ import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowable
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker.Admission;
 
+import io.opentelemetry.api.common.AttributeType;
 import lombok.Getter;
 
 @Getter
@@ -26,7 +27,11 @@ public final class ExecutableRule {
         this.effectivePriority = effectivePriority;
     }
 
-    RuleOutcome executeDetailed(String key, Object value) {
+    RuleOutcome executeDetailed(String key, Object value, AttributeType type) {
+        if (rule instanceof StringValueRule && type != AttributeType.STRING && type != AttributeType.STRING_ARRAY) {
+            return RuleOutcome.keep();
+        }
+
         Admission admission = breaker.acquireExecution();
         return switch (admission.state()) {
             case OPEN -> rule.critical()

@@ -8,7 +8,7 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +18,8 @@ import jakarta.annotation.Nullable;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 
-import space.br1440.platform.common.util.ArrayUtils;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
@@ -28,7 +28,6 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.AttributeType;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.Value;
-import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
@@ -287,17 +286,14 @@ class ScrubbingRuntimeCurrentBehaviorTest {
     void stringArrayKeepsNullElement() {
         // given
         AttributeKey<List<String>> key = AttributeKey.stringArrayKey("tags");
-        List<String> input = new ArrayList<>();
-        input.add("alpha");
-        input.add(null);
-        input.add("beta");
+        List<String> input = Arrays.asList("alpha", null, "beta");
 
         try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("current-behavior"))) {
             // when
             Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, input));
 
             // then
-            assertThat(written.get(key)).isEqualTo(nullableList("***", null, "***"));
+            assertThat(written.get(key)).isEqualTo(Arrays.asList("***", null, "***"));
             assertThat(runtime.maskedActions()).isEqualTo(2);
         }
     }
@@ -407,15 +403,6 @@ class ScrubbingRuntimeCurrentBehaviorTest {
         }
     }
 
-    @SuppressWarnings("SameParameterValue")
-    private static List<String> nullableList(String first, String second, String third) {
-        List<String> values = new ArrayList<>();
-        values.add(first);
-        values.add(second);
-        values.add(third);
-        return values;
-    }
-
     private static ScrubbingRuntime runtime(ScrubbingDecision decision) {
         return runtime(decision, MaskedSecret.of("test-key"));
     }
@@ -494,67 +481,30 @@ class ScrubbingRuntimeCurrentBehaviorTest {
 
     private static void scrub(ScrubbingRuntime runtime, Attributes snapshot, boolean snapshotUnavailable,
                               Throwable setAttributeFailure, Map<AttributeKey<?>, Object> written) {
-        SpanData spanData = mock(SpanData.class);
-        when(spanData.getAttributes()).thenReturn(snapshot);
-        boolean[] failed = {setAttributeFailure != null};
-        ReadWriteSpan span = (ReadWriteSpan) Proxy.newProxyInstance(
-                ScrubbingRuntimeCurrentBehaviorTest.class.getClassLoader(),
-                new Class<?>[] {ReadWriteSpan.class},
-                (proxy, method, args) -> {
-                    if ("toSpanData".equals(method.getName()) && ArrayUtils.isNullOrEmpty(args)) {
-                        if (snapshotUnavailable) {
-                            throw new IllegalStateException("snapshot unavailable");
-                        }
-                        return spanData;
-                    }
-                    if ("setAttribute".equals(method.getName())
-                            && args != null
-                            && args.length == 2
-                            && args[0] instanceof AttributeKey<?> key) {
-                        if (failed[0] && setAttributeFailure != null) {
-                            failed[0] = false;
-                            throw setAttributeFailure;
-                        }
-                        written.put(key, args[1]);
-                        return proxy;
-                    }
+        ReadWriteSpan span = mock(ReadWriteSpan.class);
+        if (snapshotUnavailable) {
+            when(span.toSpanData()).thenThrow(new IllegalStateException("snapshot unavailable"));
+        } else {
+            SpanData spanData = mock(SpanData.class);
+            when(spanData.getAttributes()).thenReturn(snapshot);
+            when(span.toSpanData()).thenReturn(spanData);
+        }
 
-                    switch (method.getName()) {
-                        case "equals" -> {
-                            return proxy == args[0];
-                        }
-                        case "hashCode" -> {
-                            return System.identityHashCode(proxy);
-                        }
-                        case "toString" -> {
-                            return "RecordingAttributeSpan";
-                        }
-                    }
+        boolean[] failed = {false};
+        doAnswer(invocation -> {
+            if (!failed[0] && setAttributeFailure != null) {
+                failed[0] = true;
+                throw setAttributeFailure;
+            }
 
-                    Class<?> returnType = method.getReturnType();
-                    if (returnType.equals(boolean.class)) {
-                        return false;
-                    }
-
-                    if (returnType.equals(int.class)) {
-                        return 0;
-                    }
-
-                    if (returnType.equals(long.class)) {
-                        return 0L;
-                    }
-
-                    if (Span.class.isAssignableFrom(returnType) || returnType.equals(ReadWriteSpan.class)) {
-                        return proxy;
-                    }
-
-                    return null;
-                });
+            AttributeKey<?> key = invocation.getArgument(0);
+            written.put(key, invocation.getArgument(1));
+            return span;
+        }).when(span).setAttribute(ArgumentMatchers.<AttributeKey<Object>>any(), any());
         runtime.scrubSpanAttributes(span);
     }
 
     private static SdkTracerProvider realSpanProvider() {
-        // SDK 1.67 без процессора возвращает noop-tracer, и span не является ReadWriteSpan.
         return SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(SpanExporter.noop()))
                 .build();

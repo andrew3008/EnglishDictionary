@@ -1,8 +1,14 @@
 package space.br1440.platform.tracing.otel.javaagent.exporter.boundary;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 
+import java.util.AbstractList;
+import java.util.Collections;
 import java.util.List;
+import java.util.function.BiConsumer;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
@@ -20,6 +26,7 @@ import io.opentelemetry.api.common.Attributes;
 class AttributesScrubberTest {
 
     private static final SpanAttributeScrubbingRule EMAIL = BuiltInSpanAttributeScrubbingRules.EMAIL.create();
+    private static final SpanAttributeScrubbingRule JWT = BuiltInSpanAttributeScrubbingRules.JWT.create();
     private static final SpanAttributeScrubbingRule PASSWORD = BuiltInSpanAttributeScrubbingRules.PASSWORD_KEY.create();
     private static final SpanAttributeScrubbingRule IP = BuiltInSpanAttributeScrubbingRules.IP_ADDRESS.create();
 
@@ -88,6 +95,136 @@ class AttributesScrubberTest {
     }
 
     @Test
+    void emailInArrayHashesEveryOriginalElement() {
+        // given
+        AttributeKey<List<String>> key = AttributeKey.stringArrayKey("custom.values");
+        List<String> values = List.of("contact ivan@example.com", "safe-neighbor");
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(EMAIL), "test-hmac-key");
+
+        // when
+        AttributesScrubber.Result result = AttributesScrubber.scrub(Attributes.of(key, values), runtime);
+
+        // then
+        assertThat(result.changed()).isTrue();
+        assertThat(result.attributes().get(key)).containsExactly(
+                runtime.hmacHex(values.getFirst()), runtime.hmacHex(values.getLast()));
+        assertThat(result.criticalFailure()).isFalse();
+    }
+
+    @Test
+    void emailInArrayWithoutHmacKeyMasksEveryElement() {
+        // given
+        AttributeKey<List<String>> key = AttributeKey.stringArrayKey("custom.values");
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(EMAIL));
+        Attributes input = Attributes.of(key, List.of("ivan@example.com", "safe-neighbor"));
+
+        // when
+        AttributesScrubber.Result result = AttributesScrubber.scrub(input, runtime);
+
+        // then
+        assertThat(result.attributes().get(key)).containsExactly("***", "***");
+        assertThat(result.criticalFailure()).isFalse();
+    }
+
+    @Test
+    void jwtTakesPrecedenceOverEmailAndRemovesTheWholeArray() {
+        // given
+        AttributeKey<List<String>> key = AttributeKey.stringArrayKey("custom.values");
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(JWT, EMAIL), "test-hmac-key");
+        Attributes input = Attributes.of(key, List.of(
+                "ivan@example.com", "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.signature"));
+
+        // when
+        AttributesScrubber.Result result = AttributesScrubber.scrub(input, runtime);
+
+        // then
+        assertThat(result.changed()).isTrue();
+        assertThat(result.attributes().asMap()).doesNotContainKey(key);
+        assertThat(result.criticalFailure()).isFalse();
+    }
+
+    @Test
+    void aggregateLimitIsCheckedBeforeHashingAnEarlyEmailMatch() {
+        // given
+        AttributeKey<List<String>> key = AttributeKey.stringArrayKey("custom.values");
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(EMAIL), "test-hmac-key");
+        Attributes input = Attributes.of(key, List.of("ivan@example.com", "x".repeat(4096)));
+
+        // when
+        AttributesScrubber.Result result = AttributesScrubber.scrub(input, runtime);
+
+        // then
+        assertThat(result.attributes().get(key)).containsExactly("***");
+        assertThat(result.criticalFailure()).isFalse();
+        assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
+        assertThat(runtime.boundaryMetrics().nonCriticalFailures()).isZero();
+        assertThat(runtime.attributesVerified()).isTrue();
+    }
+
+    @Test
+    void oversizedArrayCollapsesWithoutReadingItsElements() {
+        // given
+        AttributeKey<List<String>> key = AttributeKey.stringArrayKey("custom.values");
+        List<String> values = new AbstractList<>() {
+            @Override
+            public String get(int index) {
+                throw new AssertionError("Oversized array elements must not be read");
+            }
+
+            @Override
+            public int size() {
+                return Integer.MAX_VALUE;
+            }
+        };
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(JWT, EMAIL), "test-hmac-key");
+
+        // when
+        AttributesScrubber.Result result = AttributesScrubber.scrub(attributesWithValue(key, values), runtime);
+
+        // then
+        assertThat(result.attributes().get(key)).containsExactly("***");
+        assertThat(result.criticalFailure()).isFalse();
+        assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
+        assertThat(runtime.boundaryMetrics().nonCriticalFailures()).isZero();
+    }
+
+    @Test
+    void malformedStringArrayCollapsesWithoutATypeCastFailure() {
+        // given
+        AttributeKey<List<String>> key = AttributeKey.stringArrayKey("custom.values");
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(JWT, EMAIL), "test-hmac-key");
+        Attributes input = attributesWithValue(key, List.of("ivan@example.com", 42L));
+
+        // when
+        AttributesScrubber.Result result = AttributesScrubber.scrub(input, runtime);
+
+        // then
+        assertThat(result.attributes().get(key)).containsExactly("***");
+        assertThat(result.criticalFailure()).isFalse();
+        assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
+        assertThat(runtime.boundaryMetrics().nonCriticalFailures()).isZero();
+    }
+
+    @Test
+    void valueRulesDoNotApplyStringArrayLimitsToNumericOrBooleanArrays() {
+        // given
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(JWT, EMAIL));
+        Attributes input = Attributes.builder()
+                .put(AttributeKey.longArrayKey("custom.longs"), Collections.nCopies(33, 42L))
+                .put(AttributeKey.doubleArrayKey("custom.doubles"), Collections.nCopies(33, 1.5d))
+                .put(AttributeKey.booleanArrayKey("custom.booleans"), Collections.nCopies(33, true))
+                .build();
+
+        // when
+        AttributesScrubber.Result result = AttributesScrubber.scrub(input, runtime);
+
+        // then
+        assertThat(result.changed()).isFalse();
+        assertThat(result.attributes()).isSameAs(input);
+        assertThat(result.criticalFailure()).isFalse();
+    }
+
+    @Test
     @DisplayName("TRUNCATE (IP address) collapses to a /24-style prefix, same as span-attribute plane")
     void truncateAppliesIpPrefixTruncation() {
         // given
@@ -103,8 +240,8 @@ class AttributesScrubberTest {
     }
 
     @Test
-    @DisplayName("Non-string attribute types are collapsed to a typed sentinel for MASK/HASH decisions")
-    void nonStringAttributesCollapseToSentinel() {
+    @DisplayName("Обычный MASK сохраняет типы атрибутов и число элементов массивов")
+    void ordinaryMaskPreservesTypedSentinelsAndArrayCardinality() {
         // given
         SpanAttributeScrubbingRule alwaysMask = new SpanAttributeScrubbingRule() {
             @Nonnull
@@ -120,7 +257,15 @@ class AttributesScrubberTest {
             }
         };
         ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(alwaysMask));
-        Attributes input = Attributes.of(AttributeKey.longKey("some.counter"), 123456L);
+        AttributeKey<String> scalarKey = AttributeKey.stringKey("custom.message");
+        AttributeKey<List<String>> arrayKey = AttributeKey.stringArrayKey("custom.values");
+        AttributeKey<List<Long>> numericArrayKey = AttributeKey.longArrayKey("custom.numbers");
+        Attributes input = Attributes.builder()
+                .put(AttributeKey.longKey("some.counter"), 123456L)
+                .put(scalarKey, "scalar-value")
+                .put(arrayKey, List.of("first-value", "second-value"))
+                .put(numericArrayKey, List.of(7L, 8L, 9L))
+                .build();
 
         // when
         AttributesScrubber.Result result = AttributesScrubber.scrub(input, runtime);
@@ -128,6 +273,10 @@ class AttributesScrubberTest {
         // then
         assertThat(result.changed()).isTrue();
         assertThat(result.attributes().get(AttributeKey.longKey("some.counter"))).isEqualTo(0L);
+        assertThat(result.attributes().get(scalarKey)).isEqualTo("***");
+        assertThat(result.attributes().get(arrayKey)).containsExactly("***", "***");
+        assertThat(result.attributes().get(numericArrayKey)).containsExactly(0L, 0L, 0L);
+        assertThat(result.criticalFailure()).isFalse();
     }
 
     @Test
@@ -220,24 +369,6 @@ class AttributesScrubberTest {
     }
 
     @Test
-    @DisplayName("Non-TRUNCATE actions still collapse numeric arrays to a sentinel of the same length")
-    void maskOnNumericArrayStillCollapsesToSentinel() {
-        // given
-        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(PASSWORD));
-        AttributeKey<List<Long>> longs = AttributeKey.longArrayKey("db.password.parts");
-        Attributes input = Attributes.of(longs, List.of(7L, 8L, 9L));
-
-        // when
-        AttributesScrubber.Result result = AttributesScrubber.scrub(input, runtime);
-
-        // then
-        assertThat(result.changed()).isTrue();
-        assertThat(result.attributes().get(longs))
-                .as("DROP на immutable поверхности удаляет ключ целиком")
-                .isNull();
-    }
-
-    @Test
     @DisplayName("Clean attributes are returned as the same instance: no builder allocation on the clean path")
     void cleanAttributesArePassedThroughByIdentity() {
         // given
@@ -287,5 +418,15 @@ class AttributesScrubberTest {
         // then
         assertThat(result.changed()).isFalse();
         assertThat(result.attributes()).isEqualTo(Attributes.empty());
+    }
+
+    private static Attributes attributesWithValue(AttributeKey<?> key, Object value) {
+        Attributes attributes = mock(Attributes.class);
+        doAnswer(invocation -> {
+            BiConsumer<AttributeKey<?>, Object> consumer = invocation.getArgument(0);
+            consumer.accept(key, value);
+            return null;
+        }).when(attributes).forEach(any());
+        return attributes;
     }
 }

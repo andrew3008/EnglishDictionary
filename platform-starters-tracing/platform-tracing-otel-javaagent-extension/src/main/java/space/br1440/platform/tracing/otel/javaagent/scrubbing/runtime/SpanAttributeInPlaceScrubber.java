@@ -18,6 +18,7 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeOutcome;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ScrubbingKeyNormalizer;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.ValueScanPolicy;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.AttributeType;
@@ -65,7 +66,7 @@ final class SpanAttributeInPlaceScrubber {
                 }
 
                 String normalizedKey = ScrubbingKeyNormalizer.normalize(key.getKey());
-                MergeOutcome outcome = MergeEngine.evaluateDetailed(rules, normalizedKey, value);
+                MergeOutcome outcome = MergeEngine.evaluateDetailed(rules, normalizedKey, value, key.getType());
                 if (outcome.skippedCircuitOpen() > 0L) {
                     actions.addSkippedCircuitOpen(outcome.skippedCircuitOpen());
                 }
@@ -170,11 +171,18 @@ final class SpanAttributeInPlaceScrubber {
             case STRING -> span.setAttribute((AttributeKey<String>) key, transformString((String) value, decision));
 
             case STRING_ARRAY -> {
+                if (ValueScanPolicy.isInputLimitMask(decision)) {
+                    span.setAttribute((AttributeKey<List<String>>) key, List.of(MASK));
+                    actions.recordMasked();
+                    return;
+                }
+
                 List<String> in = (List<String>) value;
                 List<String> out = new ArrayList<>(in.size());
                 for (String element : in) {
                     out.add(transformString(element, decision));
                 }
+
                 span.setAttribute((AttributeKey<List<String>>) key, out);
             }
 

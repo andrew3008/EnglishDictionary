@@ -5,20 +5,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
@@ -50,6 +53,7 @@ import io.opentelemetry.sdk.trace.data.StatusData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 
+@ResourceLock("io.opentelemetry.exporter.logging.otlp.OtlpJsonLoggingSpanExporter")
 class ExporterBoundaryRealPayloadTest {
 
     private static final String EMAIL_CANARY = "canary@example.com";
@@ -78,49 +82,17 @@ class ExporterBoundaryRealPayloadTest {
                 .build();
     }
 
-    /** Захватывает именно отрендеренную запись (сообщение вместе с подставленными параметрами). */
-    private static Handler capturingHandler(List<String> sink) {
-        SimpleFormatter formatter = new SimpleFormatter();
-        return new Handler() {
-            @Override
-            public void publish(LogRecord record) {
-                sink.add(formatter.format(record));
-            }
-
-            @Override
-            public void flush() {
-            }
-
-            @Override
-            public void close() {
-            }
-        };
-    }
-
     @Test
     @DisplayName("Реальный OTLP payload не содержит сырых значений")
     void otlpPayloadCarriesNoRawSecrets() {
         // given
         List<String> rendered = new CopyOnWriteArrayList<>();
-        Logger julLogger = Logger.getLogger(OtlpJsonLoggingSpanExporter.class.getName());
-        Handler capture = capturingHandler(rendered);
-        Level previousLevel = julLogger.getLevel();
-        julLogger.addHandler(capture);
-        julLogger.setLevel(Level.ALL);
-
-        try (SpanExporter delegate = OtlpJsonLoggingSpanExporter.create()) {
-            ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
-            SpanExporter exporter = new SafeSpanExporter(
-                    new OtlpRequestSizeLimitingSpanExporter(delegate, Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)),
-                    TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
-                    runtime
-            );
+        try (ExporterLogCapture capture = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
+             ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
+             SpanExporter exporter = safeExporter(OtlpJsonLoggingSpanExporter.create(), runtime)) {
 
             // when
             exporter.export(List.of(spanWithSecretsEverywhere()));
-        } finally {
-            julLogger.removeHandler(capture);
-            julLogger.setLevel(previousLevel);
         }
 
         // then
@@ -135,26 +107,13 @@ class ExporterBoundaryRealPayloadTest {
     @DisplayName("Отрендеренный вывод LoggingSpanExporter (сообщение + параметры) не содержит секретов")
     void loggingExporterRenderedOutputCarriesNoRawSecrets() {
         // given
-        Logger julLogger = Logger.getLogger(LoggingSpanExporter.class.getName());
         List<String> rendered = new CopyOnWriteArrayList<>();
-        Handler capture = capturingHandler(rendered);
-        Level previousLevel = julLogger.getLevel();
-        julLogger.addHandler(capture);
-        julLogger.setLevel(Level.ALL);
-
-        try (LoggingSpanExporter delegate = LoggingSpanExporter.create()) {
-            ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
-            SpanExporter exporter = new SafeSpanExporter(
-                    new OtlpRequestSizeLimitingSpanExporter(delegate, Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)),
-                    TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
-                    runtime
-            );
+        try (ExporterLogCapture capture = new ExporterLogCapture(LoggingSpanExporter.class, rendered);
+             ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
+             SpanExporter exporter = safeExporter(LoggingSpanExporter.create(), runtime)) {
 
             // when
             exporter.export(List.of(spanWithSecretsEverywhere()));
-        } finally {
-            julLogger.removeHandler(capture);
-            julLogger.setLevel(previousLevel);
         }
 
         // then
@@ -170,14 +129,10 @@ class ExporterBoundaryRealPayloadTest {
         // given
         InMemorySpanExporter delegate = InMemorySpanExporter.create();
         ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
-        SpanExporter exporter = new SafeSpanExporter(
-                new OtlpRequestSizeLimitingSpanExporter(delegate, Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)),
-                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()),
-                runtime
-        );
+        SpanExporter exporter = safeExporter(delegate, runtime);
 
         List<SpanData> finished;
-        try (SdkTracerProvider provider = SdkTracerProvider.builder()
+        try (runtime; SdkTracerProvider provider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build()) {
             Tracer tracer = provider.get("test");
@@ -208,18 +163,10 @@ class ExporterBoundaryRealPayloadTest {
     void realRecordExceptionIsAbsentFromTheSerializedJsonPayload() {
         // given
         List<String> rendered = new CopyOnWriteArrayList<>();
-        Logger julLogger = Logger.getLogger(OtlpJsonLoggingSpanExporter.class.getName());
-        Handler capture = capturingHandler(rendered);
-        Level previousLevel = julLogger.getLevel();
-        julLogger.addHandler(capture);
-        julLogger.setLevel(Level.ALL);
-
-        try (SpanExporter delegate = OtlpJsonLoggingSpanExporter.create()) {
+        try (ExporterLogCapture capture = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
+             SpanExporter delegate = OtlpJsonLoggingSpanExporter.create()) {
             // when
             recordExceptionThrough(delegate);
-        } finally {
-            julLogger.removeHandler(capture);
-            julLogger.setLevel(previousLevel);
         }
 
         // then
@@ -274,18 +221,10 @@ class ExporterBoundaryRealPayloadTest {
     void exceptionUrlCredentialsAreMaskedInTheSerializedJsonPayload() {
         // given
         List<String> rendered = new CopyOnWriteArrayList<>();
-        Logger julLogger = Logger.getLogger(OtlpJsonLoggingSpanExporter.class.getName());
-        Handler capture = capturingHandler(rendered);
-        Level previousLevel = julLogger.getLevel();
-        julLogger.addHandler(capture);
-        julLogger.setLevel(Level.ALL);
-
-        try (SpanExporter delegate = OtlpJsonLoggingSpanExporter.create()) {
+        try (ExporterLogCapture capture = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
+             SpanExporter delegate = OtlpJsonLoggingSpanExporter.create()) {
             // when
             recordUrlFailureThrough(delegate);
-        } finally {
-            julLogger.removeHandler(capture);
-            julLogger.setLevel(previousLevel);
         }
 
         // then
@@ -348,9 +287,7 @@ class ExporterBoundaryRealPayloadTest {
         ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(
                 List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()), List.of(lengthLimit), null);
         InMemorySpanExporter delegate = InMemorySpanExporter.create();
-        SpanExporter exporter = new SafeSpanExporter(
-                new OtlpRequestSizeLimitingSpanExporter(delegate, Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)),
-                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
+        SpanExporter exporter = safeExporter(delegate, runtime);
         List<SpanData> finished;
 
         try (runtime; SdkTracerProvider provider = SdkTracerProvider.builder()
@@ -373,13 +310,163 @@ class ExporterBoundaryRealPayloadTest {
         assertThat(runtime.boundaryMetrics().spansChanged()).isZero();
     }
 
-    private static void recordUrlFailureThrough(SpanExporter delegate) {
-        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
-        SpanExporter exporter = new SafeSpanExporter(
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "array-value-scan-hmac-key")
+    void stringArraySecretsAreScrubbedInTheSerializedJsonPayload(String hmacKey) throws Exception {
+        // given
+        String jwt = "eyJhbGciOiJIUzI1NiJ9." + "p".repeat(513) + ".signature-canary";
+        String emailNeighbor = "email-neighbor-canary";
+        String jwtNeighbor = "jwt-neighbor-canary";
+        Attributes attributes = Attributes.builder()
+                .put(AttributeKey.stringArrayKey("participants"), List.of(EMAIL_CANARY, emailNeighbor))
+                .put(AttributeKey.stringArrayKey("messages"), List.of(jwt, jwtNeighbor))
+                .put(AttributeKey.stringArrayKey("combined"), List.of(EMAIL_CANARY, jwt))
+                .build();
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(
+                BuiltInSpanAttributeScrubbingRules.JWT.create(),
+                BuiltInSpanAttributeScrubbingRules.EMAIL.create()), hmacKey);
+        String expectedEmail = hmacKey == null ? "***" : runtime.hmacHex(EMAIL_CANARY);
+        String expectedNeighbor = hmacKey == null ? "***" : runtime.hmacHex(emailNeighbor);
+        String doubleHashedEmail = hmacKey == null ? null : runtime.hmacHex(expectedEmail);
+        List<String> rendered = new CopyOnWriteArrayList<>();
+
+        // when
+        try (runtime;
+             ExporterLogCapture capture = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
+             SdkTracerProvider provider = SdkTracerProvider.builder()
+                     .addSpanProcessor(new ScrubbingSpanProcessor(runtime))
+                     .addSpanProcessor(SimpleSpanProcessor.create(
+                             safeExporter(OtlpJsonLoggingSpanExporter.create(), runtime)))
+                     .build()) {
+            Span span = provider.get("test").spanBuilder("value-scan-arrays")
+                    .addLink(ExporterTestSpans.LINK_TARGET, attributes)
+                    .startSpan();
+            span.setAllAttributes(attributes);
+            span.addEvent("array-event", attributes);
+            span.end();
+            assertThat(provider.forceFlush().join(10, TimeUnit.SECONDS).isSuccess()).isTrue();
+        }
+
+        // then
+        assertThat(rendered).hasSize(1);
+        String payload = rendered.getFirst();
+        assertThat(payload).contains("scopeSpans")
+                .doesNotContain(EMAIL_CANARY, jwt, emailNeighbor, jwtNeighbor);
+        JsonNode span = new ObjectMapper().readTree(payload).path("scopeSpans").path(0).path("spans").path(0);
+        assertThat(span.path("name").asText()).isEqualTo("value-scan-arrays");
+        assertThat(span.path("events").size()).isEqualTo(1);
+        assertThat(span.path("links").size()).isEqualTo(1);
+        JsonNode event = span.path("events").path(0);
+        JsonNode link = span.path("links").path(0);
+        assertThat(event.path("name").asText()).isEqualTo("array-event");
+        for (JsonNode owner : List.of(span, event, link)) {
+            assertThat(stringArrayAttribute(owner, "participants")).containsExactly(expectedEmail, expectedNeighbor);
+        }
+        assertThat(stringArrayAttribute(span, "messages")).containsExactly("", "");
+        assertThat(stringArrayAttribute(span, "combined")).containsExactly("", "");
+        for (JsonNode owner : List.of(event, link)) {
+            assertThat(attributeValue(owner, "messages")).isNull();
+            assertThat(attributeValue(owner, "combined")).isNull();
+        }
+        if (hmacKey != null) {
+            assertThat(payload).doesNotContain(doubleHashedEmail);
+        }
+        assertThat(runtime.attributesVerified()).isTrue();
+        assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
+    }
+
+    @Test
+    void overBudgetStringArraysCollapseWithoutAffectingNumericArraysInTheSerializedJsonPayload() throws Exception {
+        // given
+        String longNeighbor = "aggregate-neighbor-canary" + "x".repeat(4060);
+        Attributes attributes = Attributes.builder()
+                .put(AttributeKey.stringArrayKey("many"), Collections.nCopies(10_000, "element-count-canary"))
+                .put(AttributeKey.stringArrayKey("long"), List.of(EMAIL_CANARY, longNeighbor))
+                .put(AttributeKey.longArrayKey("numbers"), Collections.nCopies(33, 42L))
+                .build();
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(
+                BuiltInSpanAttributeScrubbingRules.JWT.create(),
+                BuiltInSpanAttributeScrubbingRules.EMAIL.create()), "array-value-scan-hmac-key");
+        String hashedEmail = runtime.hmacHex(EMAIL_CANARY);
+        List<String> rendered = new CopyOnWriteArrayList<>();
+
+        // when
+        try (runtime;
+             ExporterLogCapture capture = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
+             SdkTracerProvider provider = SdkTracerProvider.builder()
+                     .addSpanProcessor(new ScrubbingSpanProcessor(runtime))
+                     .addSpanProcessor(SimpleSpanProcessor.create(
+                             safeExporter(OtlpJsonLoggingSpanExporter.create(), runtime)))
+                     .build()) {
+            Span span = provider.get("test").spanBuilder("value-scan-budgets")
+                    .addLink(ExporterTestSpans.LINK_TARGET, attributes)
+                    .startSpan();
+            span.setAllAttributes(attributes);
+            span.addEvent("budget-event", attributes);
+            span.end();
+            assertThat(provider.forceFlush().join(10, TimeUnit.SECONDS).isSuccess()).isTrue();
+        }
+
+        // then
+        assertThat(rendered).hasSize(1);
+        String payload = rendered.getFirst();
+        assertThat(payload).contains("scopeSpans")
+                .doesNotContain(EMAIL_CANARY, "element-count-canary", "aggregate-neighbor-canary", hashedEmail);
+        JsonNode span = new ObjectMapper().readTree(payload).path("scopeSpans").path(0).path("spans").path(0);
+        assertThat(span.path("name").asText()).isEqualTo("value-scan-budgets");
+        assertThat(span.path("events").size()).isEqualTo(1);
+        assertThat(span.path("links").size()).isEqualTo(1);
+        JsonNode event = span.path("events").path(0);
+        assertThat(event.path("name").asText()).isEqualTo("budget-event");
+        for (JsonNode owner : List.of(span, event, span.path("links").path(0))) {
+            assertThat(stringArrayAttribute(owner, "many")).containsExactly("***");
+            assertThat(stringArrayAttribute(owner, "long")).containsExactly("***");
+            JsonNode numbers = attributeValue(owner, "numbers").path("arrayValue").path("values");
+            assertThat(numbers.size()).isEqualTo(33);
+            for (JsonNode number : numbers) {
+                assertThat(number.path("intValue").asLong()).isEqualTo(42L);
+            }
+        }
+        assertThat(runtime.maskedActions()).isEqualTo(2L);
+        assertThat(runtime.hashedActions()).isZero();
+        assertThat(runtime.failures()).isZero();
+        assertThat(runtime.attributesVerified()).isTrue();
+        assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
+    }
+
+    private static JsonNode attributeValue(JsonNode owner, String key) {
+        for (JsonNode attribute : owner.path("attributes")) {
+            if (attribute.path("key").asText().equals(key)) {
+                return attribute.path("value");
+            }
+        }
+        return null;
+    }
+
+    private static List<String> stringArrayAttribute(JsonNode owner, String key) {
+        JsonNode value = attributeValue(owner, key);
+        assertThat(value).isNotNull();
+        List<String> elements = new ArrayList<>();
+        for (JsonNode element : value.path("arrayValue").path("values")) {
+            JsonNode stringValue = element.path("stringValue");
+            assertThat(stringValue.isTextual()).as("stringValue in array %s", key).isTrue();
+            elements.add(stringValue.asText());
+        }
+        return elements;
+    }
+
+    private static SpanExporter safeExporter(SpanExporter delegate, ScrubbingRuntime runtime) {
+        return new SafeSpanExporter(
                 new OtlpRequestSizeLimitingSpanExporter(delegate, Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)),
                 TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
+    }
 
-        try (SdkTracerProvider provider = SdkTracerProvider.builder()
+    private static void recordUrlFailureThrough(SpanExporter delegate) {
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
+        SpanExporter exporter = safeExporter(delegate, runtime);
+
+        try (runtime; SdkTracerProvider provider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build()) {
             Span span = provider.get("test").spanBuilder("url-failure").startSpan();
@@ -396,14 +483,11 @@ class ExporterBoundaryRealPayloadTest {
         assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
     }
 
-    /** Настоящий SDK-путь: {@code recordException} на живом span, затем boundary и транспорт. */
     private static void recordExceptionThrough(SpanExporter delegate) {
         ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
-        SpanExporter exporter = new SafeSpanExporter(
-                new OtlpRequestSizeLimitingSpanExporter(delegate, Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)),
-                TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
+        SpanExporter exporter = safeExporter(delegate, runtime);
 
-        try (SdkTracerProvider provider = SdkTracerProvider.builder()
+        try (runtime; SdkTracerProvider provider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build()) {
             Span span = provider.get("test").spanBuilder("checkout").startSpan();

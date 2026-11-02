@@ -4,11 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -40,22 +35,15 @@ class FacadeExceptionPayloadTest {
         exception.setStackTrace(new StackTraceElement[0]);
         ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(includeMessage, includeStack));
         List<String> rendered = new CopyOnWriteArrayList<>();
-        Logger logger = Logger.getLogger(OtlpJsonLoggingSpanExporter.class.getName());
-        Handler capture = capturingHandler(rendered);
-        Level previousLevel = logger.getLevel();
-        logger.addHandler(capture);
-        logger.setLevel(Level.ALL);
 
         // when
-        try (SdkTracerProvider provider = SdkTracerProvider.builder()
-                .addSpanProcessor(SimpleSpanProcessor.create(OtlpJsonLoggingSpanExporter.create()))
-                .build()) {
+        try (ExporterLogCapture ignored = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
+             SdkTracerProvider provider = SdkTracerProvider.builder()
+                     .addSpanProcessor(SimpleSpanProcessor.create(OtlpJsonLoggingSpanExporter.create()))
+                     .build()) {
             Span span = provider.get("facade-policy").spanBuilder("exception-policy").startSpan();
             recorder.record(span, exception);
             span.end();
-        } finally {
-            logger.removeHandler(capture);
-            logger.setLevel(previousLevel);
         }
 
         // then
@@ -94,23 +82,5 @@ class FacadeExceptionPayloadTest {
             }
         }
         return null;
-    }
-
-    private static Handler capturingHandler(List<String> sink) {
-        SimpleFormatter formatter = new SimpleFormatter();
-        return new Handler() {
-            @Override
-            public void publish(LogRecord record) {
-                sink.add(formatter.formatMessage(record));
-            }
-
-            @Override
-            public void flush() {
-            }
-
-            @Override
-            public void close() {
-            }
-        };
     }
 }

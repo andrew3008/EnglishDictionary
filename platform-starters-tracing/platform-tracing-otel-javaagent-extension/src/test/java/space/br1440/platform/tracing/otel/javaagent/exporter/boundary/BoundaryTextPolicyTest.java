@@ -8,6 +8,8 @@ import jakarta.annotation.Nullable;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
@@ -148,6 +150,60 @@ class BoundaryTextPolicyTest {
 
         // then
         assertThat(result).isEqualTo(BoundaryTextPolicy.REDACTED);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {4096, 4097})
+    void textLimitAppliesToEveryStructuralSurfaceWithoutSecretMarkers(int length) {
+        // given
+        String text = "x".repeat(length);
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(JWT, EMAIL));
+        String expected = length == 4096 ? text : BoundaryTextPolicy.REDACTED;
+
+        // when
+        BoundaryTextPolicy.TextResult spanName = BoundaryTextPolicy.scrubSpanName(text, runtime);
+        BoundaryTextPolicy.TextResult eventName = BoundaryTextPolicy.scrubEventName(text, runtime);
+        BoundaryTextPolicy.TextResult status = BoundaryTextPolicy.scrubStatusDescription(text, runtime);
+
+        // then
+        assertThat(spanName.value()).isEqualTo(expected);
+        assertThat(eventName.value()).isEqualTo(expected);
+        assertThat(status.value()).isEqualTo(expected);
+        assertThat(spanName.criticalFailure()).isFalse();
+        assertThat(eventName.criticalFailure()).isFalse();
+        assertThat(status.criticalFailure()).isFalse();
+        assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
+        assertThat(runtime.boundaryMetrics().nonCriticalFailures()).isZero();
+        assertThat(runtime.boundaryMetrics().hashDowngradedToMask()).isZero();
+    }
+
+    @Test
+    void embeddedJwtInEventNameIsRedacted() {
+        // given
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(JWT));
+        String name = "token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.signature; operation failed";
+
+        // when
+        BoundaryTextPolicy.TextResult result = BoundaryTextPolicy.scrubEventName(name, runtime);
+
+        // then
+        assertThat(result.value()).isEqualTo(BoundaryTextPolicy.REDACTED);
+        assertThat(result.criticalFailure()).isFalse();
+    }
+
+    @Test
+    void oversizedStatusIsMaskedBeforeDetectingAnEarlyJwt() {
+        // given
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(JWT));
+        String description = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.signature " + "x".repeat(4096);
+
+        // when
+        BoundaryTextPolicy.TextResult result = BoundaryTextPolicy.scrubStatusDescription(description, runtime);
+
+        // then
+        assertThat(result.value()).isEqualTo(BoundaryTextPolicy.REDACTED);
+        assertThat(result.criticalFailure()).isFalse();
+        assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
     }
 
     @Test

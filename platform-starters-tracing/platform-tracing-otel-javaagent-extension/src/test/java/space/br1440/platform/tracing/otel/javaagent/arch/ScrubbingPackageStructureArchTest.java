@@ -46,6 +46,7 @@ class ScrubbingPackageStructureArchTest {
                     .should().dependOnClassesThat().resideInAnyPackage(
                             SCRUBBING + ".runtime..",
                             SCRUBBING + ".assembly..",
+                            SCRUBBING + ".rules..",
                             SCRUBBING + ".loader..")
                     .because("engine — общее ядро правил и не должен знать о фазах сборки или сессии");
 }

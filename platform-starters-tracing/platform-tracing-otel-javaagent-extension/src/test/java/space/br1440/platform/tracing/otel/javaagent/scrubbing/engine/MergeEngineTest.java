@@ -67,15 +67,18 @@ class MergeEngineTest {
     }
 
     @Test
-    void tie_breaker_drop_beats_mask_for_two_critical() {
+    void non_critical_drop_promotes_accumulated_mask() {
         // given
-        ExecutableRule criticalDrop = wrap(rule(true, 10, ScrubbingDecision.drop("oauth")));
-        ExecutableRule criticalMask = wrap(rule(true, 20, ScrubbingDecision.mask("other")));
+        ExecutableRule mask = wrap(rule(false, 900, ScrubbingDecision.mask("first")));
+        ExecutableRule drop = wrap(rule(false, 950, ScrubbingDecision.drop("later")));
 
         // when
-        ScrubbingDecision result = MergeEngine.evaluateDetailed(List.of(criticalDrop, criticalMask), "authorization", "s").decision();
+        ScrubbingDecision result = MergeEngine.evaluateDetailed(List.of(mask, drop), "authorization", "s").decision();
+
         // then
         assertThat(result.action()).isEqualTo(ScrubbingAction.DROP);
+        assertThat(result.reason()).isEqualTo("later");
+        assertThat(result.terminal()).isFalse();
     }
 
     @Test

@@ -16,6 +16,8 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableR
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeOutcome;
 
+import io.opentelemetry.api.common.AttributeType;
+
 class UrlCredentialMaskingRuleTest {
 
     @Test
@@ -138,7 +140,7 @@ class UrlCredentialMaskingRuleTest {
 
         // when
         MergeOutcome outcome = MergeEngine.evaluateDetailed(
-                List.of(executable(new UrlCredentialMaskingRule())), key, input);
+                List.of(executable(new UrlCredentialMaskingRule())), key, input, AttributeType.STRING_ARRAY);
 
         // then
         assertThat(outcome.decision().action()).isEqualTo(ScrubbingAction.DROP);
@@ -153,7 +155,7 @@ class UrlCredentialMaskingRuleTest {
 
         // when
         MergeOutcome outcome = MergeEngine.evaluateDetailed(
-                List.of(executable(new UrlCredentialMaskingRule())), "url.full", input);
+                List.of(executable(new UrlCredentialMaskingRule())), "url.full", input, AttributeType.STRING_ARRAY);
 
         // then
         assertThat(outcome.decision().action()).isEqualTo(ScrubbingAction.KEEP);
@@ -189,6 +191,26 @@ class UrlCredentialMaskingRuleTest {
         // then
         assertThat(outcome.decision().action()).isEqualTo(ScrubbingAction.KEEP);
         assertThat(outcome.maskedValue()).isEqualTo("Failed https://***@service.example/path?token=***");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Contact o'neil@example.com. Failed https://user:secret@service.example/path",
+            "Failed https://user:secret@service.example/path. Contact user{1}@example.com.",
+            "Failed https://user:secret@service.example/path. Contact ***@example.com."
+    })
+    void detectsEmailOutsideMaskedUrlUserinfo(String input) {
+        // given
+        List<ExecutableRule> rules = List.of(
+                executable(new UrlCredentialMaskingRule()), executable(new EmailRule()));
+
+        // when
+        MergeOutcome outcome = MergeEngine.evaluateDetailed(rules, "exception.message", input);
+
+        // then
+        assertThat(outcome.decision().action()).isEqualTo(ScrubbingAction.HASH);
+        assertThat(outcome.decision().reason()).isEqualTo("email");
+        assertThat(outcome.maskedValue()).contains("https://***@service.example").doesNotContain("user:secret");
     }
 
     private static ExecutableRule executable(SpanAttributeScrubbingRule rule) {

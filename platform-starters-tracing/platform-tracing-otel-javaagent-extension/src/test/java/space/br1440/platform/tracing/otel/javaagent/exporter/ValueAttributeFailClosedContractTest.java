@@ -1,21 +1,25 @@
 package space.br1440.platform.tracing.otel.javaagent.exporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkDefaults;
@@ -42,8 +46,8 @@ class ValueAttributeFailClosedContractTest {
     private static final String PROBE_KEY = "payload";
     private static final AttributeKey<Value<?>> KEY = AttributeKey.valueKey(PROBE_KEY);
 
-    static Stream<Arguments> shapesAndActions() {
-        List<Arguments> shapes = List.of(
+    static Stream<Arguments> valueShapes() {
+        return Stream.of(
                 Arguments.of("scalar-string", Value.of(CANARY)),
                 Arguments.of("scalar-long", Value.of(42L)),
                 Arguments.of("scalar-double", Value.of(1.5d)),
@@ -58,29 +62,24 @@ class ValueAttributeFailClosedContractTest {
                         Value.of(Map.of("inner", Value.of(CANARY))),
                         Value.of(new byte[]{1, 2, 3})))))
         );
-
-        List<ScrubbingAction> actions = List.of(
-                ScrubbingAction.MASK, ScrubbingAction.DROP, ScrubbingAction.HASH,
-                ScrubbingAction.TRUNCATE, ScrubbingAction.KEEP
-        );
-
-        return shapes.stream().flatMap(shape -> actions.stream()
-                .map(action -> Arguments.of(shape.get()[0] + "/" + action, shape.get()[1], action)));
     }
 
     @ParameterizedTest(name = "VALUE не переживает exporter boundary: {0}")
-    @MethodSource("shapesAndActions")
-    void valueNeverSurvivesTheExportBoundary(String caseName, Value<?> payload, ScrubbingAction action) {
+    @MethodSource("valueShapes")
+    void valueNeverSurvivesTheExportBoundary(String caseName, Value<?> payload) {
         // given
         InMemorySpanExporter delegate = InMemorySpanExporter.create();
-        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(ruleReturning(action)));
+        SpanAttributeScrubbingRule rule = mock(SpanAttributeScrubbingRule.class);
+        when(rule.name()).thenReturn("test-rule");
+        when(rule.evaluate(anyString(), any())).thenReturn(ScrubbingDecision.keep());
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(rule));
         SpanExporter exporter = new SafeSpanExporter(
                 new OtlpRequestSizeLimitingSpanExporter(delegate, Math.toIntExact(OtelSdkDefaults.MAX_OTLP_REQUEST_SIZE_BYTES)),
                 TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
 
         // when
         List<SpanData> finished;
-        try (SdkTracerProvider provider = SdkTracerProvider.builder()
+        try (runtime; SdkTracerProvider provider = SdkTracerProvider.builder()
                 .addSpanProcessor(new ScrubbingSpanProcessor(runtime))
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build()) {
@@ -93,6 +92,8 @@ class ValueAttributeFailClosedContractTest {
         }
 
         // then
+        verify(rule, never()).evaluate(eq(PROBE_KEY), any());
+        verify(rule).evaluate("control.marker", "present");
         assertThat(finished).hasSize(1);
         SpanData exported = finished.getFirst();
 
@@ -108,6 +109,8 @@ class ValueAttributeFailClosedContractTest {
         assertThat(runtime.boundaryMetrics().valueAttributesRemoved())
                 .as("удаление обязано быть наблюдаемым для оператора")
                 .isPositive();
+        assertThat(runtime.attributesVerified()).isTrue();
+        assertThat(runtime.failures()).isZero();
     }
 
     @Test
@@ -121,7 +124,7 @@ class ValueAttributeFailClosedContractTest {
 
         // when
         List<SpanData> finished;
-        try (SdkTracerProvider provider = SdkTracerProvider.builder()
+        try (runtime; SdkTracerProvider provider = SdkTracerProvider.builder()
                 .addSpanProcessor(new ScrubbingSpanProcessor(runtime))
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build()) {
@@ -152,29 +155,5 @@ class ValueAttributeFailClosedContractTest {
             parts.add(value instanceof Value<?> typed ? typed.asString() : String.valueOf(value));
         });
         return String.join("|", parts);
-    }
-
-    private static SpanAttributeScrubbingRule ruleReturning(ScrubbingAction action) {
-        ScrubbingDecision decision = switch (action) {
-            case MASK -> ScrubbingDecision.mask("test-rule");
-            case DROP -> ScrubbingDecision.drop("test-rule");
-            case HASH -> ScrubbingDecision.hash("test-rule");
-            case TRUNCATE -> ScrubbingDecision.truncate("test-rule", 4);
-            case KEEP -> ScrubbingDecision.keep();
-        };
-
-        return new SpanAttributeScrubbingRule() {
-            @Nonnull
-            @Override
-            public String name() {
-                return "test-rule";
-            }
-
-            @Nonnull
-            @Override
-            public ScrubbingDecision evaluate(@Nonnull String key, @Nullable Object value) {
-                return PROBE_KEY.equals(key) ? decision : ScrubbingDecision.keep();
-            }
-        };
     }
 }

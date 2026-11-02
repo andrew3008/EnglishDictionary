@@ -1,35 +1,61 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.rules;
 
-import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
-
-import java.util.regex.Pattern;
 
 /**
  * Правило обнаружения JWT-токенов формата {@code header.payload.signature} (base64url).
  * <p>
  * Условие срабатывания — наличие префикса {@code eyJ}, характерного для base64url-кодированного
- * заголовка JWT. Это value-based правило: проверяет значение, только если оно {@link String}.
+ * заголовка JWT. Проверяет строковые значения и элементы строковых массивов.
  * Действие — {@link ScrubbingDecision#drop}: усечение токена всё равно оставляет валидный
  * секрет, поэтому значение удаляется целиком.
  */
-final class JwtRule extends AbstractBuiltInRule {
-
-    private static final Pattern PATTERN = Pattern.compile(
-            "eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]*"
-    );
+final class JwtRule extends AbstractValueScanRule {
 
     JwtRule() {
-        super(BuiltInSpanAttributeScrubbingRules.JWT);
+        super(BuiltInSpanAttributeScrubbingRules.JWT, ScrubbingDecision.drop("jwt"));
     }
 
-    @Nonnull
     @Override
-    public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
-        if (value instanceof String s && PATTERN.matcher(s).find()) {
-            return ScrubbingDecision.drop("jwt");
+    protected boolean matches(String text) {
+        int headerStart = text.indexOf("eyJ");
+        if (headerStart < 0) {
+            return false;
         }
 
-        return ScrubbingDecision.keep();
+        int segmentStart = headerStart;
+        boolean headerBeforeDot = false;
+        for (int index = headerStart; index < text.length(); index++) {
+            char character = text.charAt(index);
+            if (isBase64Url(character)) {
+                if (headerStart < 0 && character == 'e' && text.startsWith("eyJ", index)) {
+                    headerStart = index;
+                }
+
+                continue;
+            }
+
+            if (character == '.') {
+                if (headerBeforeDot && index > segmentStart) {
+                    return true;
+                }
+
+                headerBeforeDot = (headerStart >= 0) && ((index - headerStart) > 3);
+            } else {
+                headerBeforeDot = false;
+            }
+
+            segmentStart = index + 1;
+            headerStart = -1;
+        }
+
+        return false;
+    }
+
+    private static boolean isBase64Url(char character) {
+        return character >= 'A' && character <= 'Z'
+                || character >= 'a' && character <= 'z'
+                || character >= '0' && character <= '9'
+                || character == '_' || character == '-';
     }
 }
