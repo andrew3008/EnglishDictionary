@@ -5,6 +5,8 @@ import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
 
+import space.br1440.platform.common.util.StringUtils;
+
 public abstract sealed class PlatformExtensionReadinessSnapshot
         permits PlatformExtensionReadinessSnapshot.Initializing,
                 PlatformExtensionReadinessSnapshot.Ready,
@@ -71,7 +73,7 @@ public abstract sealed class PlatformExtensionReadinessSnapshot
     }
 
     private static String requireResolvedVersion(String extensionVersion) {
-        if (extensionVersion == null || extensionVersion.isBlank()) {
+        if (StringUtils.isNullOrBlank(extensionVersion)) {
             throw new IllegalStateException(
                     "Platform extension readiness is not READY: extensionVersion is missing"
             );

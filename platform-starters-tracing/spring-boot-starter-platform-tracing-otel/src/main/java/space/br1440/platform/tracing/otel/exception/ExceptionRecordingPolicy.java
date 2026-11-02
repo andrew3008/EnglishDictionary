@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.exception;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.runtime.scrubbing.UrlCredentialMasker;
 
 public final class ExceptionRecordingPolicy {
@@ -63,15 +64,11 @@ public final class ExceptionRecordingPolicy {
         }
 
         String masked = UrlCredentialMasker.mask(message);
-        if (masked == null) {
+        if (StringUtils.isNullOrBlank(masked)) {
             return null;
         }
 
         String trimmed = masked.strip();
-        if (trimmed.isEmpty()) {
-            return null;
-        }
-
         if (trimmed.length() > MAX_MESSAGE_LENGTH) {
             int end = MAX_MESSAGE_LENGTH;
             if (Character.isHighSurrogate(trimmed.charAt(end - 1)) && Character.isLowSurrogate(trimmed.charAt(end))) {

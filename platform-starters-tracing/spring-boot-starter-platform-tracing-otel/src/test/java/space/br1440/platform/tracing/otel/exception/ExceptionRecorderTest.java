@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
 
@@ -68,6 +70,81 @@ class ExceptionRecorderTest {
         assertThat(span.getStatus().getDescription()).isEqualTo("boom");
         assertThat(span.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isEqualTo("boom");
         assertThat(span.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE)).isNull();
+    }
+
+    @Test
+    void record_masksUrlTextInEventStatusAndCauseHeaders() {
+        // given
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true));
+        IllegalStateException cause = new IllegalStateException("Cause https://host/?opaque-canary");
+        cause.setStackTrace(new StackTraceElement[0]);
+        IllegalStateException failure = new IllegalStateException(
+                "Failed HTTPS://user:password-canary@host/?token=query-canary#fragment-canary", cause);
+        failure.setStackTrace(new StackTraceElement[0]);
+
+        // when
+        runInSpan(() -> recorder.record(failure));
+
+        // then
+        SpanData span = exporter.getFinishedSpanItems().getFirst();
+        String expected = "Failed HTTPS://***@host/?token=***#***";
+        EventData event = span.getEvents().getFirst();
+        assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+        assertThat(span.getStatus().getDescription()).isEqualTo(expected);
+        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isEqualTo(expected);
+        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE))
+                .contains(expected, "Cause https://host/?***")
+                .doesNotContain("password-canary", "query-canary", "fragment-canary", "opaque-canary");
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+            "https://h/#,https://example.com/SENTINEL | https://h/#***",
+            "https://h/(#SENTINEL)) | https://h/(#***"
+    })
+    void record_masksOpaqueUrlFragmentsInEventStatusAndStack(String message, String expected) {
+        // given
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true));
+        IllegalStateException failure = new IllegalStateException(message);
+        failure.setStackTrace(new StackTraceElement[0]);
+
+        // when
+        runInSpan(() -> recorder.record(failure));
+
+        // then
+        SpanData span = exporter.getFinishedSpanItems().getFirst();
+        EventData event = span.getEvents().getFirst();
+        assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+        assertThat(span.getStatus().getDescription()).isEqualTo(expected);
+        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_TYPE)).isEqualTo(IllegalStateException.class.getName());
+        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isEqualTo(expected);
+        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE))
+                .contains(expected)
+                .doesNotContain("SENTINEL");
+    }
+
+    @Test
+    void record_dropsAmbiguousUrlTextAndKeepsExceptionIdentity() {
+        // given
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true));
+        IllegalStateException failure = new IllegalStateException("Failed https://user%3Asecret-canary%40host/");
+        failure.setStackTrace(new StackTraceElement[0]);
+
+        // when
+        runInSpan(() -> recorder.record(failure));
+
+        // then
+        SpanData span = exporter.getFinishedSpanItems().getFirst();
+        assertThat(span.getName()).isEqualTo("op");
+        assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+        assertThat(span.getStatus().getDescription()).isEmpty();
+        assertThat(span.getEvents()).hasSize(1);
+        EventData event = span.getEvents().getFirst();
+        assertThat(event.getName()).isEqualTo("exception");
+        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_TYPE)).isEqualTo(IllegalStateException.class.getName());
+        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isNull();
+        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE))
+                .isEqualTo("java.lang.IllegalStateException\n");
     }
 
     @Test

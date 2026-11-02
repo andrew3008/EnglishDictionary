@@ -2,11 +2,13 @@ package space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mockStatic;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.Collections;
 import java.util.List;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -15,6 +17,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.MockedStatic;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
@@ -24,11 +27,13 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableR
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuntimeRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
+import space.br1440.platform.tracing.runtime.scrubbing.UrlCredentialMasker;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.sdk.trace.ReadWriteSpan;
 
 class ScrubbingRuntimeTest {
 
@@ -78,7 +83,7 @@ class ScrubbingRuntimeTest {
                 List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()));
              SpanProcessorHarness harness = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {
             Span span = harness.tracer().spanBuilder("unexpected-message-array").startSpan();
-            span.setAttribute(key, List.of("https://user:secret@service.example/?token=secret"));
+            span.setAttribute(key, Collections.nCopies(33, "https://user:secret@service.example/?token=secret"));
 
             // when
             span.end();
@@ -101,6 +106,7 @@ class ScrubbingRuntimeTest {
             masked.setAttribute("exception.message", "Failed https://service.example/?token=secret");
 
             // when
+            runtime.scrubSpanAttributes((ReadWriteSpan) masked);
             masked.end();
 
             // then
@@ -120,6 +126,38 @@ class ScrubbingRuntimeTest {
             assertThat(runtime.droppedActions()).isEqualTo(1L);
             assertThat(harness.spans().getLast().getAttributes().get(AttributeKey.stringKey("exception.message")))
                     .isEmpty();
+        }
+    }
+
+    @Test
+    void urlHelperFailureDropsOnlyMessageAndCountsFailureOnce() {
+        // given
+        String input = "Failed https://service.example/?token=secret";
+        try (ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
+                List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()));
+             SpanProcessorHarness harness = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {
+            Span span = harness.tracer().spanBuilder("url-helper-failure").startSpan();
+            span.setAttribute("exception.message", input);
+            span.setAttribute("detail", "safe detail");
+
+            // when
+            try (MockedStatic<UrlCredentialMasker> masker = mockStatic(UrlCredentialMasker.class)) {
+                masker.when(() -> UrlCredentialMasker.mask(input))
+                        .thenThrow(new IllegalArgumentException("Simulated parser failure"));
+                runtime.scrubSpanAttributes((ReadWriteSpan) span);
+                masker.verify(() -> UrlCredentialMasker.mask(input));
+            }
+            span.end();
+
+            // then
+            assertThat(harness.spans().getFirst().getAttributes().get(AttributeKey.stringKey("exception.message")))
+                    .isEmpty();
+            assertThat(harness.spans().getFirst().getAttributes().get(AttributeKey.stringKey("detail")))
+                    .isEqualTo("safe detail");
+            assertThat(runtime.failures()).isEqualTo(1L);
+            assertThat(runtime.droppedActions()).isEqualTo(1L);
+            assertThat(runtime.maskedActions()).isZero();
+            assertThat(runtime.attributesVerified()).isTrue();
         }
     }
 

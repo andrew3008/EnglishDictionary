@@ -66,6 +66,7 @@ class OversizedSpanIsolationExportTest {
         ControlledAgentChild.appendSamplingAlwaysOn(command);
         ControlledAgentChild.appendServiceIdentity(command);
         command.add("-Dplatform.tracing.metrics.enabled=false");
+        command.add("-Dplatform.tracing.javaagent.scrubbing.built-in-rules=password");
         command.add("-Dotel.bsp.max.export.batch.size=4");
         command.add("-Dotel.bsp.schedule.delay=5000");
         ControlledAgentChild.appendAgentLaunchWithApi(

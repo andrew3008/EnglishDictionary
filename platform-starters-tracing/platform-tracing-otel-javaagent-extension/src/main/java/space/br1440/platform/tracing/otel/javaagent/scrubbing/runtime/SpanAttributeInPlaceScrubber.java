@@ -17,6 +17,7 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.IpPrefixTru
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeOutcome;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ScrubbingKeyNormalizer;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.UrlCredentialMaskingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.ValueScanPolicy;
 
@@ -76,6 +77,10 @@ final class SpanAttributeInPlaceScrubber {
                 }
 
                 ScrubbingDecision decision = outcome.decision();
+                if (decision.action() == ScrubbingAction.DROP && outcome.criticalFailures() > 0L) {
+                    actions.addFailures(outcome.criticalFailures());
+                }
+
                 if (decision.action() == ScrubbingAction.KEEP) {
                     if (outcome.maskedValue() != null) {
                         span.setAttribute(key.getKey(), outcome.maskedValue());
@@ -171,6 +176,12 @@ final class SpanAttributeInPlaceScrubber {
             case STRING -> span.setAttribute((AttributeKey<String>) key, transformString((String) value, decision));
 
             case STRING_ARRAY -> {
+                if (isUrlDrop(decision)) {
+                    span.setAttribute((AttributeKey<List<String>>) key, List.of(""));
+                    actions.recordDropped();
+                    return;
+                }
+
                 if (ValueScanPolicy.isInputLimitMask(decision)) {
                     span.setAttribute((AttributeKey<List<String>>) key, List.of(MASK));
                     actions.recordMasked();
@@ -292,7 +303,11 @@ final class SpanAttributeInPlaceScrubber {
         switch (decision.action()) {
             case MASK, DROP, HASH -> {
                 actions.recordDropped();
-                writeSentinel(span, key, value, type);
+                if (isUrlDrop(decision)) {
+                    writeFailClosedSentinel(span, key, type);
+                } else {
+                    writeSentinel(span, key, value, type);
+                }
             }
 
             case TRUNCATE -> {
@@ -303,6 +318,12 @@ final class SpanAttributeInPlaceScrubber {
                 // KEEP сюда не попадает
             }
         }
+    }
+
+    private static boolean isUrlDrop(ScrubbingDecision decision) {
+        return decision.action() == ScrubbingAction.DROP
+                && (UrlCredentialMaskingRule.NAME.equals(decision.reason())
+                || ScrubbingDecision.SCRUBBING_FAILED_REASON.equals(decision.reason()));
     }
 
     @SuppressWarnings("unchecked")

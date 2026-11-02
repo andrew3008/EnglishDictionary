@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.exporter.boundary;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import jakarta.annotation.Nonnull;
@@ -24,8 +26,6 @@ import io.opentelemetry.sdk.trace.data.EventData;
 import io.opentelemetry.sdk.trace.data.LinkData;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.data.StatusData;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class SpanDataBoundaryFailClosedTest {
 
@@ -128,6 +128,37 @@ class SpanDataBoundaryFailClosedTest {
         assertThat(runtime.boundaryMetrics().nonCriticalFailures()).isPositive();
         assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
         assertThat(runtime.boundaryMetrics().surfacesCollapsedFailClosed()).isZero();
+    }
+
+    @Test
+    void priorNonCriticalDropCannotSuppressCriticalBoundaryCollapse() {
+        // given
+        SpanAttributeScrubbingRule drop = new SpanAttributeScrubbingRule() {
+            @Nonnull
+            @Override
+            public String name() {
+                return "early-drop";
+            }
+
+            @Nonnull
+            @Override
+            public ScrubbingDecision evaluate(@Nonnull String key, @Nullable Object value) {
+                return ScrubbingDecision.drop(name());
+            }
+        };
+        try (ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(drop, CRITICAL_THROWING))) {
+            // when
+            SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(richSpan());
+
+            // then
+            assertThat(outcome.dropSpan()).isFalse();
+            assertThat(outcome.spanData().getAttributes().get(SPAN_ATTR))
+                    .isEqualTo(ScrubbingDecision.SCRUBBING_FAILED_REASON);
+            assertThat(outcome.spanData().getEvents().getFirst().getAttributes().get(EVENT_ATTR))
+                    .isEqualTo(ScrubbingDecision.SCRUBBING_FAILED_REASON);
+            assertThat(runtime.boundaryMetrics().criticalFailures()).isPositive();
+            assertThat(runtime.boundaryMetrics().surfacesCollapsedFailClosed()).isEqualTo(1L);
+        }
     }
 
     @Test

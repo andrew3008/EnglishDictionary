@@ -173,7 +173,7 @@ final class AttributesScrubber {
 
             if (outcome.criticalFailures() > 0L) {
                 runtime.recordBoundaryCriticalFailures(outcome.criticalFailures());
-                criticalFailure = true;
+                criticalFailure |= outcome.requiresBoundaryCollapse();
             }
         }
 

@@ -74,8 +74,6 @@ public final class JmxMBeanInfoShape {
                     || signature.length != 1
                     || !(signature[0] instanceof OpenMBeanParameterInfo openParameter)
                     || openParameter.getOpenType() == null
-                    || signature[0].getName() == null
-                    || signature[0].getName().isBlank()
                     || !parameterName.equals(signature[0].getName())
                     || !requestOpenType.equals(openParameter.getOpenType())) {
                 throw new JmxMBeanInfoShapeViolationException();

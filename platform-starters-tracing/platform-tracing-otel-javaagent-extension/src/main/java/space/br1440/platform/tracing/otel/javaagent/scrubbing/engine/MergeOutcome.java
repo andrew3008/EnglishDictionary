@@ -8,5 +8,6 @@ public record MergeOutcome(ScrubbingDecision decision,
                            @Nullable String maskedValue,
                            long skippedCircuitOpen,
                            long nonCriticalFailures,
-                           long criticalFailures) {
+                           long criticalFailures,
+                           boolean requiresBoundaryCollapse) {
 }

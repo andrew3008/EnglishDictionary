@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
@@ -17,6 +18,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -34,6 +37,7 @@ import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
+import space.br1440.platform.tracing.runtime.scrubbing.UrlCredentialMasker;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -218,20 +222,81 @@ class ExporterBoundaryRealPayloadTest {
     }
 
     @Test
-    void exceptionUrlCredentialsAreMaskedInTheSerializedJsonPayload() {
+    void exceptionUrlCredentialsAreMaskedInTheSerializedJsonPayload() throws Exception {
         // given
         List<String> rendered = new CopyOnWriteArrayList<>();
         try (ExporterLogCapture ignored = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
-             SpanExporter delegate = OtlpJsonLoggingSpanExporter.create()) {
+             ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES)) {
             // when
-            recordUrlFailureThrough(delegate);
+            recordUrlFailureThrough(OtlpJsonLoggingSpanExporter.create(), runtime);
         }
 
         // then
-        String payload = String.join("\n", rendered);
+        assertThat(rendered).hasSize(1);
+        String payload = rendered.getFirst();
         assertThat(payload).contains("scopeSpans", "exception.message")
-                .containsSubsequence(MASKED_URL_MESSAGE, MASKED_URL_MESSAGE)
+                .containsSubsequence(MASKED_URL_MESSAGE, MASKED_URL_MESSAGE, MASKED_URL_MESSAGE)
                 .doesNotContain("url-user", "url-password-canary", "url-query-canary", "url-fragment-canary", "debug");
+        JsonNode span = new ObjectMapper().readTree(payload).path("scopeSpans").path(0).path("spans").path(0);
+        for (JsonNode owner : List.of(span, span.path("events").path(0))) {
+            JsonNode message = attributeValue(owner, "exception.message");
+            assertThat(message).isNotNull();
+            assertThat(message.path("stringValue").asText()).isEqualTo(MASKED_URL_MESSAGE);
+        }
+        assertThat(span.path("status").path("message").asText()).isEqualTo(MASKED_URL_MESSAGE);
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+            "https://h/#,https://example.com/SENTINEL | https://h/#***",
+            "https://h/(#SENTINEL)) | https://h/(#***"
+    })
+    void opaqueUrlComponentsStayMaskedAcrossProcessorAndSerializedBoundary(String message, String expected)
+            throws Exception {
+        // given
+        String sanitized = UrlCredentialMasker.mask(message);
+        assertThat(sanitized).isEqualTo(expected);
+        List<String> rendered = new CopyOnWriteArrayList<>();
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
+        try (runtime;
+             ExporterLogCapture ignored = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
+             SdkTracerProvider provider = SdkTracerProvider.builder()
+                     .addSpanProcessor(new ScrubbingSpanProcessor(runtime))
+                     .addSpanProcessor(SimpleSpanProcessor.create(
+                             safeExporter(OtlpJsonLoggingSpanExporter.create(), runtime)))
+                     .build()) {
+            Span span = provider.get("test").spanBuilder("opaque-url").startSpan();
+            span.setAttribute("exception.message", message);
+            span.addEvent("exception", Attributes.of(
+                    AttributeKey.stringKey("exception.type"), IllegalStateException.class.getName(),
+                    AttributeKey.stringKey("exception.message"), sanitized));
+            span.setStatus(StatusCode.ERROR, sanitized);
+
+            // when
+            span.end();
+            assertThat(provider.forceFlush().join(10, TimeUnit.SECONDS).isSuccess()).isTrue();
+        }
+
+        // then
+        assertThat(rendered).hasSize(1);
+        String payload = rendered.getFirst();
+        assertThat(payload).doesNotContain("SENTINEL");
+        JsonNode span = new ObjectMapper().readTree(payload).path("scopeSpans").path(0).path("spans").path(0);
+        assertThat(span.path("name").asText()).isEqualTo("opaque-url");
+        assertThat(span.path("events").size()).isEqualTo(1);
+        for (JsonNode owner : List.of(span, span.path("events").path(0))) {
+            JsonNode value = attributeValue(owner, "exception.message");
+            assertThat(value).isNotNull();
+            assertThat(value.path("stringValue").asText()).isEqualTo(expected);
+        }
+        assertThat(span.path("status").path("code").asInt()).isEqualTo(2);
+        assertThat(span.path("status").path("message").asText()).isEqualTo(expected);
+        assertThat(runtime.maskedActions()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().eventsScrubbed()).isZero();
+        assertThat(runtime.boundaryMetrics().spansChanged()).isZero();
+        assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
+        assertThat(runtime.failures()).isZero();
+        assertThat(runtime.attributesVerified()).isTrue();
     }
 
     @Test
@@ -248,12 +313,13 @@ class ExporterBoundaryRealPayloadTest {
         });
         server.start();
 
-        try (SpanExporter delegate = OtlpHttpSpanExporter.builder()
-                .setEndpoint("http://127.0.0.1:" + server.getAddress().getPort() + "/v1/traces")
-                .setCompression("none")
-                .build()) {
+        try (ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES)) {
+            SpanExporter delegate = OtlpHttpSpanExporter.builder()
+                    .setEndpoint("http://127.0.0.1:" + server.getAddress().getPort() + "/v1/traces")
+                    .setCompression("none")
+                    .build();
             // when
-            recordUrlFailureThrough(delegate);
+            recordUrlFailureThrough(delegate, runtime);
         } finally {
             server.stop(0);
         }
@@ -262,8 +328,66 @@ class ExporterBoundaryRealPayloadTest {
         assertThat(bodies).isNotEmpty();
         String wire = new String(concat(bodies), StandardCharsets.UTF_8);
         assertThat(wire).contains("exception.message", "exception.type")
-                .containsSubsequence(MASKED_URL_MESSAGE, MASKED_URL_MESSAGE)
+                .containsSubsequence(MASKED_URL_MESSAGE, MASKED_URL_MESSAGE, MASKED_URL_MESSAGE)
                 .doesNotContain("url-user", "url-password-canary", "url-query-canary", "url-fragment-canary", "debug");
+    }
+
+    @ParameterizedTest(name = "[{index}]")
+    @MethodSource("droppedUrlMessages")
+    void unsafeUrlTextIsDroppedWithoutLosingTheSpanOrExceptionType(String message) throws Exception {
+        // given
+        List<String> rendered = new CopyOnWriteArrayList<>();
+        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
+        try (runtime;
+             ExporterLogCapture ignored = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
+             SdkTracerProvider provider = SdkTracerProvider.builder()
+                     .addSpanProcessor(new ScrubbingSpanProcessor(runtime))
+                     .addSpanProcessor(SimpleSpanProcessor.create(
+                             safeExporter(OtlpJsonLoggingSpanExporter.create(), runtime)))
+                     .build()) {
+            Span span = provider.get("test").spanBuilder("url-text-drop").startSpan();
+            span.setAttribute("exception.message", message);
+            span.addEvent("exception", Attributes.of(
+                    AttributeKey.stringKey("exception.type"), IllegalStateException.class.getName(),
+                    AttributeKey.stringKey("exception.message"), message));
+            span.setStatus(StatusCode.ERROR, message);
+
+            // when
+            span.end();
+            assertThat(provider.forceFlush().join(10, TimeUnit.SECONDS).isSuccess()).isTrue();
+        }
+
+        // then
+        assertThat(rendered).hasSize(1);
+        String payload = rendered.getFirst();
+        assertThat(payload).doesNotContain("url-user", "url-password-canary", "url-query-canary", "url-fragment-canary");
+        JsonNode spans = new ObjectMapper().readTree(payload).path("scopeSpans").path(0).path("spans");
+        assertThat(spans.size()).isEqualTo(1);
+        JsonNode span = spans.path(0);
+        assertThat(span.path("name").asText()).isEqualTo("url-text-drop");
+        JsonNode spanMessage = attributeValue(span, "exception.message");
+        assertThat(spanMessage).isNotNull();
+        assertThat(spanMessage.path("stringValue").isTextual()).isTrue();
+        assertThat(spanMessage.path("stringValue").asText()).isEmpty();
+        assertThat(span.path("status").path("code").asInt()).isEqualTo(2);
+        assertThat(span.path("status").path("message").asText()).isEmpty();
+        assertThat(span.path("events").size()).isEqualTo(1);
+        JsonNode event = span.path("events").path(0);
+        assertThat(event.path("name").asText()).isEqualTo("exception");
+        assertThat(attributeValue(event, "exception.message")).isNull();
+        JsonNode exceptionType = attributeValue(event, "exception.type");
+        assertThat(exceptionType).isNotNull();
+        assertThat(exceptionType.path("stringValue").asText()).isEqualTo(IllegalStateException.class.getName());
+        assertThat(runtime.attributesVerified()).isTrue();
+        assertThat(runtime.droppedActions()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
+    }
+
+    private static Stream<String> droppedUrlMessages() {
+        return Stream.of(
+                URL_MESSAGE + "x".repeat(4096),
+                "Request failed: https://[broken?token=url-query-canary"
+        );
     }
 
     @Test
@@ -465,14 +589,15 @@ class ExporterBoundaryRealPayloadTest {
                 TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()), runtime);
     }
 
-    private static void recordUrlFailureThrough(SpanExporter delegate) {
-        ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
+    private static void recordUrlFailureThrough(SpanExporter delegate, ScrubbingRuntime runtime) {
         SpanExporter exporter = safeExporter(delegate, runtime);
 
-        try (runtime; SdkTracerProvider provider = SdkTracerProvider.builder()
+        try (SdkTracerProvider provider = SdkTracerProvider.builder()
+                .addSpanProcessor(new ScrubbingSpanProcessor(runtime))
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build()) {
             Span span = provider.get("test").spanBuilder("url-failure").startSpan();
+            span.setAttribute("exception.message", URL_MESSAGE);
             span.addEvent("exception", Attributes.of(
                     AttributeKey.stringKey("exception.type"), IllegalStateException.class.getName(),
                     AttributeKey.stringKey("exception.message"), URL_MESSAGE));
@@ -484,6 +609,8 @@ class ExporterBoundaryRealPayloadTest {
         assertThat(runtime.boundaryMetrics().eventsScrubbed()).isEqualTo(1L);
         assertThat(runtime.boundaryMetrics().spansChanged()).isEqualTo(1L);
         assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
+        assertThat(runtime.attributesVerified()).isTrue();
+        assertThat(runtime.maskedActions()).isEqualTo(1L);
     }
 
     private static void recordExceptionThrough(SpanExporter delegate) {

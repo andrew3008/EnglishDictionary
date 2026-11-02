@@ -106,13 +106,20 @@ public final class PlatformScrubberFactory {
         String extensionsProperty = scrubbing.rulesExtensions();
         try (ExtensionRuleLoader extensionRuleLoader = new ExtensionRuleLoader(validationMode)) {
             List<SpanAttributeScrubbingRule> custom = extensionRuleLoader.load(extensionsProperty);
-            List<RuntimeRule> merged = mergeRules(builtIn, bundledSpi, custom);
-            if (merged.isEmpty()) {
+            if (builtIn.isEmpty() && bundledSpi.isEmpty() && custom.isEmpty()) {
                 throw new SanitizerBootstrapException(
                         SanitizerBootstrapException.RULE_SET_EMPTY,
                         "Scrubbing is enabled, but no effective sanitizing rules were loaded"
                 );
             }
+
+            addBuiltInRules(
+                    builtIn,
+                    seenBuiltInNames,
+                    List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.configName()),
+                    SCRUBBING_BUILT_IN_RULES
+            );
+            List<RuntimeRule> merged = mergeRules(builtIn, bundledSpi, custom);
 
             emitStartupDiagnostics(
                     builtIn,

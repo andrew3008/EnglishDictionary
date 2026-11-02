@@ -15,6 +15,7 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.Rul
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeOutcome;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.UrlCredentialMaskingRule;
 
 import io.opentelemetry.api.common.AttributeType;
 

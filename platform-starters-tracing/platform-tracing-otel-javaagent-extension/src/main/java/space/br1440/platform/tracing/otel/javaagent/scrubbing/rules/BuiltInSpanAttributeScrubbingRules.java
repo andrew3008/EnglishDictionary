@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Locale;
 
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.UrlCredentialMaskingRule;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +12,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public enum BuiltInSpanAttributeScrubbingRules {
 
-    URL_CREDENTIALS("url-credentials", 5, true),
+    URL_CREDENTIALS(UrlCredentialMaskingRule.NAME, UrlCredentialMaskingRule.PRIORITY, true),
     OAUTH_HEADER("oauth-header", 10, true),
     X_AUTH_HEADER("x-auth-header", 15, true),
     JWT("jwt", 20, true),

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
+import java.util.AbstractList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,11 +19,18 @@ import jakarta.annotation.Nullable;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentMatchers;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuntimeRule;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.AttributeType;
@@ -37,6 +45,50 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 class ScrubbingRuntimeCurrentBehaviorTest {
 
     private static final String FAILED = ScrubbingDecision.SCRUBBING_FAILED_REASON;
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void urlDropReplacesInvalidArraysWithoutInspectingTheirContentsOrSize(boolean circuitOpen) {
+        // given
+        List<Object> inaccessible = new AbstractList<>() {
+            @Override
+            public Object get(int index) {
+                throw new AssertionError("Rejected array elements must not be read");
+            }
+
+            @Override
+            public int size() {
+                throw new AssertionError("Rejected array size must not be read");
+            }
+        };
+        Map<AttributeKey<?>, Object> sentinels = Map.of(
+                AttributeKey.stringArrayKey("exception.message"), List.of(""),
+                AttributeKey.longArrayKey("exception.message"), List.of(0L),
+                AttributeKey.doubleArrayKey("exception.message"), List.of(0.0d),
+                AttributeKey.booleanArrayKey("exception.message"), List.of(false));
+        SpanAttributeScrubbingRule rule = BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create();
+        RuleCircuitBreaker breaker = new RuleCircuitBreaker(rule.name(), 1, 60_000L, 0L);
+        if (circuitOpen) {
+            breaker.recordFailure(breaker.acquireExecution(), new IllegalStateException("Simulated parser failure"));
+        }
+
+        try (ScrubbingRuntime runtime = ScrubbingRuntime.create(List.of(
+                new RuntimeRule(new ExecutableRule(rule, breaker), RuleOrigin.BUILT_IN)), 1L, null, false)) {
+            for (Map.Entry<AttributeKey<?>, Object> sentinel : sentinels.entrySet()) {
+                // when
+                Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(sentinel.getKey(), inaccessible));
+
+                // then
+                assertThat(written).containsOnly(sentinel);
+            }
+
+            assertThat(runtime.droppedActions()).isEqualTo(4L);
+            assertThat(runtime.maskedActions()).isZero();
+            assertThat(runtime.failures()).isEqualTo(circuitOpen ? 4L : 0L);
+            assertThat(runtime.attributesVerified()).isTrue();
+            assertThat(runtime.collapseModeActivations()).isZero();
+        }
+    }
 
     @Test
     @DisplayName("текущее поведение: MASK/DROP/HASH числа и boolean увеличивают droppedActions")

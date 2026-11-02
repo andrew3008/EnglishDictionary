@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.exporter.boundary;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mockStatic;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,12 +14,14 @@ import jakarta.annotation.Nullable;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.exporter.ExporterTestSpans;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
+import space.br1440.platform.tracing.runtime.scrubbing.UrlCredentialMasker;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -249,7 +252,7 @@ class SpanDataBoundaryScrubberTest {
         String message = "Request failed: https://operator:credential-canary@service.example/path"
                 + "?token=query-canary&mode=debug#opaque-fragment-canary; try again";
         String sanitized = "Request failed: https://***@service.example/path"
-                + "?token=***&mode=***#***; try again";
+                + "?token=***&mode=***#*** try again";
         EventData event = EventData.create(19L, "exception", Attributes.of(messageKey, message), 3);
         SpanData input = ExporterTestSpans.baseSpan("checkout")
                 .setEvents(List.of(event))
@@ -278,6 +281,66 @@ class SpanDataBoundaryScrubberTest {
         assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
         assertThat(input.getStatus().getDescription()).isEqualTo(message);
         assertThat(event.getAttributes().get(messageKey)).isEqualTo(message);
+
+        // when
+        SpanBoundaryOutcome repeated = new SpanDataBoundaryScrubber(runtime).scrub(outcome.spanData());
+
+        // then
+        assertThat(repeated.changed()).isFalse();
+        assertThat(repeated.spanData()).isSameAs(outcome.spanData());
+        assertThat(runtime.boundaryMetrics().eventsScrubbed()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().spansChanged()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().inputSpans()).isEqualTo(2L);
+        assertThat(runtime.boundaryMetrics().outputSpans()).isEqualTo(2L);
+    }
+
+    @Test
+    void failedUrlTextIsDroppedWithoutCollapsingOtherSurfaces() {
+        // given
+        AttributeKey<String> messageKey = AttributeKey.stringKey("exception.message");
+        AttributeKey<String> detailKey = AttributeKey.stringKey("detail");
+        String input = "Failed https://service.example/?token=secret";
+        EventData event = EventData.create(
+                19L, "exception",
+                Attributes.of(messageKey, input, detailKey, "safe detail"), 3
+        );
+
+        SpanData span = ExporterTestSpans.baseSpan("checkout")
+                .setAttributes(Attributes.of(detailKey, "safe span attribute"))
+                .setEvents(List.of(event))
+                .setStatus(StatusData.create(io.opentelemetry.api.trace.StatusCode.ERROR, input))
+                .build();
+
+        try (ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(
+                List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()));
+             MockedStatic<UrlCredentialMasker> masker = mockStatic(UrlCredentialMasker.class)) {
+            masker.when(() -> UrlCredentialMasker.mask(input))
+                    .thenThrow(new IllegalArgumentException("Simulated parser failure"));
+
+            // when
+            SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(span);
+            SpanBoundaryOutcome repeated = new SpanDataBoundaryScrubber(runtime).scrub(outcome.spanData());
+
+            // then
+            assertThat(outcome.dropSpan()).isFalse();
+            assertThat(outcome.spanData().getName()).isEqualTo("checkout");
+            assertThat(outcome.spanData().getAttributes().get(detailKey)).isEqualTo("safe span attribute");
+            assertThat(outcome.spanData().getStatus().getStatusCode())
+                    .isEqualTo(io.opentelemetry.api.trace.StatusCode.ERROR);
+            assertThat(outcome.spanData().getStatus().getDescription()).isEmpty();
+            EventData safeEvent = outcome.spanData().getEvents().getFirst();
+            assertThat(safeEvent.getName()).isEqualTo("exception");
+            assertThat(safeEvent.getEpochNanos()).isEqualTo(19L);
+            assertThat(safeEvent.getTotalAttributeCount()).isEqualTo(3);
+            assertThat(safeEvent.getAttributes().get(messageKey)).isNull();
+            assertThat(safeEvent.getAttributes().get(detailKey)).isEqualTo("safe detail");
+            assertThat(repeated.changed()).isFalse();
+            assertThat(runtime.boundaryMetrics().criticalFailures()).isEqualTo(2L);
+            assertThat(runtime.boundaryMetrics().surfacesCollapsedFailClosed()).isZero();
+            assertThat(runtime.boundaryMetrics().spansDroppedFailClosed()).isZero();
+            assertThat(runtime.boundaryMetrics().eventsScrubbed()).isEqualTo(1L);
+            assertThat(runtime.boundaryMetrics().spansChanged()).isEqualTo(1L);
+        }
     }
 
     @Test

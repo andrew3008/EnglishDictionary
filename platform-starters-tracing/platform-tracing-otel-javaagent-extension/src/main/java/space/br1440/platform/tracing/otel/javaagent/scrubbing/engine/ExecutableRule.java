@@ -28,6 +28,10 @@ public final class ExecutableRule {
     }
 
     RuleOutcome executeDetailed(String key, Object value, AttributeType type) {
+        if (rule instanceof UrlCredentialMaskingRule && rule.isExcluded(key)) {
+            return RuleOutcome.keep();
+        }
+
         if (rule instanceof StringValueRule && type != AttributeType.STRING && type != AttributeType.STRING_ARRAY) {
             return RuleOutcome.keep();
         }
@@ -35,7 +39,7 @@ public final class ExecutableRule {
         Admission admission = breaker.acquireExecution();
         return switch (admission.state()) {
             case OPEN -> rule.critical()
-                    ? RuleOutcome.criticalFailure(ScrubbingDecision.scrubbingFailed())
+                    ? criticalFailure()
                     : RuleOutcome.skippedCircuitOpen();
             case HALF_OPEN, CLOSED -> executeAdmitted(admission, key, value);
         };
@@ -50,14 +54,14 @@ public final class ExecutableRule {
             PlatformThrowables.propagateIfFatal(t);
             breaker.recordFailure(admission, t);
             return rule.critical()
-                    ? RuleOutcome.criticalFailure(ScrubbingDecision.scrubbingFailed())
+                    ? criticalFailure()
                     : RuleOutcome.nonCriticalFailure();
         }
     }
 
     private RuleOutcome evaluateRule(String key, Object value) {
-        if (rule instanceof TextTransformingRule transformingRule && value instanceof String text) {
-            String transformed = transformingRule.transform(key, text);
+        if (rule instanceof UrlCredentialMaskingRule urlRule && value instanceof String text) {
+            String transformed = urlRule.mask(text);
             if (transformed == null) {
                 return RuleOutcome.decision(ScrubbingDecision.drop(rule.name()));
             }
@@ -70,6 +74,13 @@ public final class ExecutableRule {
         return (result.action() == ScrubbingAction.KEEP)
                 ? RuleOutcome.keep()
                 : RuleOutcome.decision(result);
+    }
+
+    private RuleOutcome criticalFailure() {
+        ScrubbingDecision decision = rule instanceof UrlCredentialMaskingRule
+                ? ScrubbingDecision.drop(ScrubbingDecision.SCRUBBING_FAILED_REASON)
+                : ScrubbingDecision.scrubbingFailed();
+        return RuleOutcome.criticalFailure(decision);
     }
 
     private void requireNonNull(ScrubbingDecision result) {

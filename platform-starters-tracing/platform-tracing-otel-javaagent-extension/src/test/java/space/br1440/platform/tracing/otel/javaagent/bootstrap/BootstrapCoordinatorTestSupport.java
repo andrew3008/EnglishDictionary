@@ -23,6 +23,7 @@ import javax.management.timer.Timer;
 
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.ShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.ExtensionRuntimeVerifier;
@@ -337,12 +338,7 @@ final class BootstrapCoordinatorTestSupport {
         @Override
         public List<String> getList(String name) {
             String value = data.get(name);
-
-            if (value == null) {
-                return List.of();
-            }
-
-            if (value.isBlank()) {
+            if (StringUtils.isNullOrBlank(value)) {
                 return List.of();
             }
 

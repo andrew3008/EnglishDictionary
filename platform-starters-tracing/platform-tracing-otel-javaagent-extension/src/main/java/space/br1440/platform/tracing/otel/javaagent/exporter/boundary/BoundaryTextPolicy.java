@@ -73,7 +73,7 @@ final class BoundaryTextPolicy {
 
         if (outcome.criticalFailures() > 0L) {
             runtime.recordBoundaryCriticalFailures(outcome.criticalFailures());
-            return true;
+            return outcome.requiresBoundaryCollapse();
         }
 
         return false;

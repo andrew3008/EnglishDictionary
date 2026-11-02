@@ -90,4 +90,41 @@ class MergeEngineTest {
         assertThat(MergeEngine.evaluateDetailed(List.of(a, b), "k", "v").decision().action())
                 .isEqualTo(ScrubbingAction.KEEP);
     }
+
+    @Test
+    void nonCriticalDropDoesNotHideSubsequentCriticalFailureScope() {
+        // given
+        SpanAttributeScrubbingRule failing = new SpanAttributeScrubbingRule() {
+            @Nonnull
+            @Override
+            public String name() {
+                return "critical-failure";
+            }
+
+            @Override
+            public boolean critical() {
+                return true;
+            }
+
+            @Nonnull
+            @Override
+            public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
+                throw new IllegalStateException("Simulated critical failure");
+            }
+        };
+
+        List<ExecutableRule> rules = List.of(
+                wrap(rule(false, 10, ScrubbingDecision.drop("early-drop"))),
+                wrap(failing)
+        );
+
+        // when
+        MergeOutcome outcome = MergeEngine.evaluateDetailed(rules, "payload", "secret");
+
+        // then
+        assertThat(outcome.decision().action()).isEqualTo(ScrubbingAction.DROP);
+        assertThat(outcome.decision().reason()).isEqualTo("early-drop");
+        assertThat(outcome.criticalFailures()).isEqualTo(1L);
+        assertThat(outcome.requiresBoundaryCollapse()).isTrue();
+    }
 }

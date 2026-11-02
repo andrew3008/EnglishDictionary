@@ -24,9 +24,11 @@ public final class MergeEngine {
         long skippedCircuitOpen = 0L;
         long nonCriticalFailures = 0L;
         long criticalFailures = 0L;
+        boolean requiresBoundaryCollapse = false;
 
         for (ExecutableRule wrapper : wrappers) {
             RuleOutcome outcome = wrapper.executeDetailed(key, (maskedValue != null) ? maskedValue : value, type);
+            ScrubbingDecision candidate = outcome.decision();
             switch (outcome.outcome()) {
                 case SKIPPED_CIRCUIT_OPEN -> {
                     skippedCircuitOpen++;
@@ -38,7 +40,11 @@ public final class MergeEngine {
                     continue;
                 }
 
-                case CRITICAL_FAILURE -> criticalFailures++;
+                case CRITICAL_FAILURE -> {
+                    criticalFailures++;
+                    requiresBoundaryCollapse |= (candidate == null) || (candidate.action() != ScrubbingAction.DROP);
+                }
+
                 default -> {}
             }
 
@@ -46,7 +52,6 @@ public final class MergeEngine {
                 maskedValue = outcome.maskedValue();
             }
 
-            ScrubbingDecision candidate = outcome.decision();
             if (candidate == null) {
                 continue;
             }
@@ -58,7 +63,8 @@ public final class MergeEngine {
             }
         }
 
-        return new MergeOutcome(accumulated, maskedValue, skippedCircuitOpen, nonCriticalFailures, criticalFailures);
+        return new MergeOutcome(accumulated, maskedValue, skippedCircuitOpen,
+                nonCriticalFailures, criticalFailures, requiresBoundaryCollapse);
     }
 
     static ScrubbingDecision merge(ScrubbingDecision current, ScrubbingDecision next, boolean nextIsTerminal) {

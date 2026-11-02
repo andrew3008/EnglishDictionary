@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import com.sun.net.httpserver.HttpServer;
@@ -92,9 +93,12 @@ class PackagedTracingCertificationTest {
                 .doesNotContain("FATAL");
     }
 
-    @Test
-    void packaged_agent_masks_exception_url_credentials_in_the_otlp_payload() throws Exception {
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "password")
+    void packaged_agent_masks_exception_url_credentials_in_the_otlp_payload(String builtInRules) throws Exception {
         // given
+        String scenario = "url-credential-masking-" + (builtInRules == null ? "default" : "restricted");
         List<String> payloads = new CopyOnWriteArrayList<>();
         HttpServer collector = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         collector.createContext("/v1/traces", exchange -> {
@@ -107,18 +111,25 @@ class PackagedTracingCertificationTest {
         collector.start();
         PackagedProcessLauncher.ProcessResult result;
         try {
+            Map<String, String> properties = new LinkedHashMap<>(Map.of(
+                    "platformTracing.packagedScenario", "URL_MASKING",
+                    "platform.tracing.exporter.enabled", "true",
+                    "platform.tracing.sampling.ratio", "1.0",
+                    "otel.exporter.otlp.traces.protocol", "http/protobuf",
+                    "otel.exporter.otlp.traces.compression", "none",
+                    "otel.exporter.otlp.traces.endpoint",
+                    "http://127.0.0.1:" + collector.getAddress().getPort() + "/v1/traces"
+            ));
+
+            if (builtInRules != null) {
+                properties.put("platform.tracing.javaagent.scrubbing.built-in-rules", builtInRules);
+            }
+
             PackagedProcessLauncher.LaunchRequest request = controlledRequest(
-                    "url-credential-masking", applicationBootJar, controlledAgent,
+                    scenario, applicationBootJar, controlledAgent,
                     ControlledAgentArtifactMutator.sha256(controlledAgent),
-                    Map.of(
-                            "platformTracing.packagedScenario", "URL_MASKING",
-                            "platform.tracing.exporter.enabled", "true",
-                            "platform.tracing.sampling.ratio", "1.0",
-                            "otel.exporter.otlp.traces.protocol", "http/protobuf",
-                            "otel.exporter.otlp.traces.compression", "none",
-                            "otel.exporter.otlp.traces.endpoint",
-                            "http://127.0.0.1:" + collector.getAddress().getPort() + "/v1/traces"
-                    ));
+                    properties
+            );
 
             // when
             result = launcher.launch(request);
@@ -127,7 +138,7 @@ class PackagedTracingCertificationTest {
         }
 
         // then
-        assertSuccessful(result, "url-credential-masking");
+        assertSuccessful(result, scenario);
         assertThat(payloads).isNotEmpty();
         String maskedMessage = "Request failed: https://***@service.example/path?token=***&mode=***#***";
         assertThat(String.join("\n", payloads))
