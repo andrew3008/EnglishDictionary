@@ -55,8 +55,7 @@ class StartupAndSettingsBoundaryArchTest {
     @ArchTest
     @SuppressWarnings("unused")
     static final ArchRule startupCoreDoesNotDependOnAutoConfiguration =
-            TracingStartupContractHealthDependencyRules.coreMustNotDependOnAutoConfiguration(
-                    PRODUCTION_AUTOCONFIG_FQCN);
+            TracingStartupContractHealthDependencyRules.coreMustNotDependOnAutoConfiguration();
 
     @ArchTest
     @SuppressWarnings("unused")
@@ -106,7 +105,7 @@ class StartupAndSettingsBoundaryArchTest {
     void startupDirectionBoundaryDetectsReverseDependency() {
         // given
         ArchRule rule = TracingStartupContractHealthDependencyRules
-                .coreMustNotDependOnAutoConfiguration(PRODUCTION_AUTOCONFIG_FQCN);
+                .coreMustNotDependOnAutoConfiguration();
 
         // when
         // then

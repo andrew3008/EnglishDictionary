@@ -14,11 +14,10 @@ public final class BspExportTimeout {
                 .getDuration(OtelSdkPropertyNames.BSP_EXPORT_TIMEOUT);
 
         Duration timeout = configured == null ? OtelSdkDefaults.DEFAULT_BSP_EXPORT_TIMEOUT : configured;
-        if (timeout.isZero() || timeout.isNegative()) {
+        if (timeout.isNegative() || timeout.toNanos() == 0) {
             throw new IllegalArgumentException("Export timeout must be positive");
         }
 
-        timeout.toNanos();
         return timeout;
     }
 }

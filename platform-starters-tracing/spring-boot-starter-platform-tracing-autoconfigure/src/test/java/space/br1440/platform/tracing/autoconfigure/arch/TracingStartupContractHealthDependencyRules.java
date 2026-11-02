@@ -59,10 +59,10 @@ final class TracingStartupContractHealthDependencyRules {
     }
 
     /** Rule D: startup-ядро не образует обратное ребро на единственную adapter-точку. */
-    static ArchRule coreMustNotDependOnAutoConfiguration(String autoconfigFqcn) {
+    static ArchRule coreMustNotDependOnAutoConfiguration() {
         return noClasses()
                 .that().resideInAPackage(STARTUP_PACKAGE)
-                .and().doNotHaveFullyQualifiedName(autoconfigFqcn)
-                .should().dependOnClassesThat().haveFullyQualifiedName(autoconfigFqcn);
+                .and().doNotHaveFullyQualifiedName(PRODUCTION_AUTOCONFIG_FQCN)
+                .should().dependOnClassesThat().haveFullyQualifiedName(PRODUCTION_AUTOCONFIG_FQCN);
     }
 }

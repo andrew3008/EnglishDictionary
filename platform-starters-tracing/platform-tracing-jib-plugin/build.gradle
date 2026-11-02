@@ -20,13 +20,13 @@ def writeJibPluginVersion = tasks.register('writeJibPluginVersion') {
 
 gradlePlugin {
     plugins {
-        platformTracingJib {
-            id = 'platform.tracing-jib'
-            implementationClass = 'space.br1440.platform.tracing.gradle.PlatformTracingJibPlugin'
-            displayName = 'Platform Tracing controlled Java agent'
-            description = """
+        create('platformTracingJib') { PluginDeclaration declaration ->
+            declaration.setId('platform.tracing-jib')
+            declaration.setImplementationClass('space.br1440.platform.tracing.gradle.PlatformTracingJibPlugin')
+            declaration.setDisplayName('Platform Tracing controlled Java agent')
+            declaration.setDescription("""
                     Adds the controlled Platform Tracing Java agent to a service build \
-                    without any configuration in the consuming build script."""
+                    without any configuration in the consuming build script.""")
         }
     }
 }
