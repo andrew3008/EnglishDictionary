@@ -10,6 +10,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Properties;
 
+import space.br1440.platform.common.util.StringUtils;
+
 public final class ControlledAgentArtifactMutator {
 
     private static final String EXTENSION_ENTRY = "extensions/platform-tracing-otel-javaagent-extension.jar";
@@ -61,7 +63,7 @@ public final class ControlledAgentArtifactMutator {
     public static Path withSeparatelyVersionedStaleTopologyApi(Path source,
                                                                Path target,
                                                                String staleVersion) throws IOException {
-        if (staleVersion == null || staleVersion.isBlank()) {
+        if (StringUtils.isNullOrBlank(staleVersion)) {
             throw new IllegalArgumentException("Stale fixture version must not be blank");
         }
 
@@ -89,7 +91,7 @@ public final class ControlledAgentArtifactMutator {
     public static Path withMismatchedExtensionBuildVersion(Path source,
                                                            Path target,
                                                            String mismatchedVersion) throws IOException {
-        if (mismatchedVersion == null || mismatchedVersion.isBlank()) {
+        if (StringUtils.isNullOrBlank(mismatchedVersion)) {
             throw new IllegalArgumentException("Mismatched extension version must not be blank");
         }
 

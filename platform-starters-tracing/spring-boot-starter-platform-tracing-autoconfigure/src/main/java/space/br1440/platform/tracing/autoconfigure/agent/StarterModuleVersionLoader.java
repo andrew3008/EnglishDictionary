@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.Properties;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.errorhandling.startup.PlatformConfigurationException;
 
 import lombok.experimental.UtilityClass;
@@ -48,7 +49,7 @@ final class StarterModuleVersionLoader {
         }
 
         String moduleVersion = properties.getProperty("module.version");
-        if (moduleVersion == null || moduleVersion.isBlank()) {
+        if (StringUtils.isNullOrBlank(moduleVersion)) {
             throw new PlatformConfigurationException(
                     "Missing module.version in starter compatibility metadata: " + resource,
                     """

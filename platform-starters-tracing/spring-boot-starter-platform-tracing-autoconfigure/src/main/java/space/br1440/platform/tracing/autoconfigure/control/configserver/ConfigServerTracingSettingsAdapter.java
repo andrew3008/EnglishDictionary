@@ -6,8 +6,8 @@ import java.util.Set;
 
 import org.springframework.cloud.context.environment.EnvironmentChangeEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.util.CollectionUtils;
 
+import space.br1440.platform.common.util.SetUtils;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsManifestException;
 
 import lombok.extern.slf4j.Slf4j;
@@ -49,7 +49,7 @@ public final class ConfigServerTracingSettingsAdapter {
     }
 
     private static List<String> relevantPolicyKeys(Set<String> changedKeys) {
-        if (CollectionUtils.isEmpty(changedKeys)) {
+        if (SetUtils.isNullOrEmpty(changedKeys)) {
             return List.of();
         }
 

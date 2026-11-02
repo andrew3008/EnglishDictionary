@@ -15,6 +15,7 @@ import javax.management.RuntimeErrorException;
 import javax.management.RuntimeMBeanException;
 import javax.management.openmbean.CompositeData;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxMBeanInfoShape;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxMBeanInfoShapeViolationException;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxWireGraphValidator;
@@ -187,7 +188,7 @@ final class AgentReadinessProbe {
         }
 
         private static String requireToken(String value, String fieldName) {
-            if (value == null || value.isBlank() || !value.equals(value.trim())
+            if (StringUtils.isNullOrBlank(value) || !value.equals(value.trim())
                     || value.chars().anyMatch(Character::isISOControl)) {
                 throw new IllegalArgumentException("Readiness field is not a canonical token: " + fieldName);
             }

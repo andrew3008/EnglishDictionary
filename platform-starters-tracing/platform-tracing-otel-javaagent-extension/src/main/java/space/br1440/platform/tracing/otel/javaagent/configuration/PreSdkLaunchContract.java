@@ -2,6 +2,8 @@ package space.br1440.platform.tracing.otel.javaagent.configuration;
 
 import java.util.function.Function;
 
+import space.br1440.platform.common.util.StringUtils;
+
 import io.opentelemetry.javaagent.tooling.config.EarlyInitAgentConfig;
 
 public final class PreSdkLaunchContract {
@@ -20,7 +22,7 @@ public final class PreSdkLaunchContract {
 
     private static void requireAbsent(Function<String, String> properties, String propertyName) {
         String value = properties.apply(propertyName);
-        if (value != null && !value.isEmpty()) {
+        if (!StringUtils.isNullOrEmpty(value)) {
             throw new IllegalStateException(propertyName + " is not supported by the controlled agent profile");
         }
     }

@@ -42,7 +42,7 @@ final class TracingStartupContractIndicator extends AbstractHealthIndicator {
         builder.withDetail("agentState", snapshot.agentState());
 
         String failureCode = snapshot.failureCode();
-        if ((failureCode != null) && !failureCode.isBlank()) {
+        if (!failureCode.isBlank()) {
             builder.withDetail("failureCode", failureCode);
         }
 

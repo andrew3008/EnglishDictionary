@@ -50,6 +50,7 @@ dependencies {
     implementation 'org.springframework.cloud:spring-cloud-context'
 
     dualSdkImplementation 'io.opentelemetry:opentelemetry-sdk'
+    testImplementation project(':platform-starters-common:platform-starters-common-util')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

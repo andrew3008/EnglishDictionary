@@ -5,6 +5,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
@@ -121,7 +122,7 @@ public final class OwningSpanScope implements AutoCloseable {
 
     @Nullable
     private static String admitResponseStatusCode(@Nullable String code) {
-        if (code == null || code.isBlank() || code.length() > MAX_RESPONSE_STATUS_CODE_LENGTH) {
+        if (StringUtils.isNullOrBlank(code) || code.length() > MAX_RESPONSE_STATUS_CODE_LENGTH) {
             return null;
         }
 

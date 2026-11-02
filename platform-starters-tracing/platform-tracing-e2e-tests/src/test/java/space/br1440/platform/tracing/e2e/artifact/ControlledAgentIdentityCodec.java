@@ -6,6 +6,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
+import space.br1440.platform.common.util.StringUtils;
+
 final class ControlledAgentIdentityCodec {
 
     private static final String[] REQUIRED_KEYS = {
@@ -35,7 +37,7 @@ final class ControlledAgentIdentityCodec {
         StringBuilder content = new StringBuilder();
         for (String key : REQUIRED_KEYS) {
             String value = identity.getProperty(key);
-            if (value == null || value.isBlank()) {
+            if (StringUtils.isNullOrBlank(value)) {
                 throw new IllegalArgumentException("Controlled agent identity is missing " + key);
             }
 

@@ -3,6 +3,8 @@ package space.br1440.platform.tracing.runtime.sampling.properties;
 import java.util.List;
 import java.util.Objects;
 
+import space.br1440.platform.common.util.StringUtils;
+
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
@@ -23,7 +25,7 @@ public final class SamplingPolicyPropertiesValidator {
         }
 
         for (String path : droppedRoutes) {
-            if (path == null || path.isBlank()) {
+            if (StringUtils.isNullOrBlank(path)) {
                 throw new IllegalArgumentException("Drop path must not be null or blank");
             }
 
@@ -39,7 +41,7 @@ public final class SamplingPolicyPropertiesValidator {
         }
 
         for (String value : forceRecordValues) {
-            if (value == null || value.isBlank()) {
+            if (StringUtils.isNullOrBlank(value)) {
                 throw new IllegalArgumentException("Force record value must not be null or blank");
             }
 

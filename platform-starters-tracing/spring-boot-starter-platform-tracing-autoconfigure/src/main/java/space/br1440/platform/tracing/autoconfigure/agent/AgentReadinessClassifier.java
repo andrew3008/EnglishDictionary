@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 import lombok.experimental.UtilityClass;
@@ -189,7 +190,7 @@ final class AgentReadinessClassifier {
         }
 
         String name = loader.getName();
-        String stableName = (name == null || name.isBlank()) ? loader.getClass().getName() : name;
+        String stableName = StringUtils.isNullOrBlank(name) ? loader.getClass().getName() : name;
         return stableName + "@" + Integer.toHexString(System.identityHashCode(loader));
     }
 

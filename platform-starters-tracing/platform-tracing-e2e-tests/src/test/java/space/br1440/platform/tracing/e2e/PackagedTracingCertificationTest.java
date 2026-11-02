@@ -26,6 +26,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import com.sun.net.httpserver.HttpServer;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.e2e.artifact.ControlledAgentArtifactMutator;
 
@@ -604,7 +605,7 @@ class PackagedTracingCertificationTest {
 
     private static String requiredProperty(String name) {
         String value = System.getProperty(name);
-        if (value == null || value.isBlank()) {
+        if (StringUtils.isNullOrBlank(value)) {
             throw new IllegalStateException("Required test system property is missing: " + name);
         }
 

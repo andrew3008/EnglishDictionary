@@ -7,6 +7,7 @@ import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
 
@@ -58,7 +59,7 @@ public final class ExceptionRecorder {
             }
 
             String stack = recordingPolicy.renderStack(exception, safeMessage);
-            if ((stack != null) && !stack.isEmpty()) {
+            if (!StringUtils.isNullOrEmpty(stack)) {
                 event.put(SemconvKeys.EXCEPTION_STACKTRACE, stack);
             }
         } catch (RuntimeException failure) {
@@ -70,7 +71,7 @@ public final class ExceptionRecorder {
 
     @Nonnull
     private static String errorTypeOrExceptionClass(@Nullable String errorType, @Nonnull String exceptionType) {
-        if (errorType == null || errorType.isBlank()) {
+        if (StringUtils.isNullOrBlank(errorType)) {
             return exceptionType;
         }
 

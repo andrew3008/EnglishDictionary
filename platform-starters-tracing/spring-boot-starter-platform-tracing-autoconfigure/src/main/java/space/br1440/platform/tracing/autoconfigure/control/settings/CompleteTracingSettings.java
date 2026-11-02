@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireUtf8Meter;
 
@@ -202,7 +203,7 @@ public final class CompleteTracingSettings {
     }
 
     private static String canonicalizeValidationLevel(String validationLevel) {
-        if (validationLevel == null || validationLevel.isBlank()) {
+        if (StringUtils.isNullOrBlank(validationLevel)) {
             throw new IllegalArgumentException("validationLevel must not be blank");
         }
 

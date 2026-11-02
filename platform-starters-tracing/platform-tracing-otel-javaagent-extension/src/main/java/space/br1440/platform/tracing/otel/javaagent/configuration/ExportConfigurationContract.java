@@ -3,6 +3,8 @@ package space.br1440.platform.tracing.otel.javaagent.configuration;
 import java.time.Duration;
 import java.util.Objects;
 
+import space.br1440.platform.common.util.StringUtils;
+
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;
 
@@ -21,7 +23,7 @@ public final class ExportConfigurationContract {
     public static void requireSupported(ConfigProperties config) {
         Objects.requireNonNull(config, "config");
         String exporter = config.getString(TRACES_EXPORTER);
-        if (exporter != null && !exporter.isEmpty() && !"otlp".equals(exporter)) {
+        if (!StringUtils.isNullOrEmpty(exporter) && !"otlp".equals(exporter)) {
             throw invalid(config, TRACES_EXPORTER, "Only the otlp traces exporter is supported");
         }
 
