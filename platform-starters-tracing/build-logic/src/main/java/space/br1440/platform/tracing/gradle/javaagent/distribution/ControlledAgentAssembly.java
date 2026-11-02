@@ -18,10 +18,10 @@ import org.gradle.api.tasks.bundling.Jar;
 import space.br1440.platform.tracing.gradle.javaagent.ComponentIdentity;
 import space.br1440.platform.tracing.gradle.javaagent.PackagedExtensionAttributes;
 
-final class ControlledAgentAssembly {
+import lombok.experimental.UtilityClass;
 
-    private ControlledAgentAssembly() {
-    }
+@UtilityClass
+final class ControlledAgentAssembly {
 
     static Inputs declareInputs(Project project) {
         Configuration otelJavaAgent = project.getConfigurations().create("otelJavaAgent", configuration -> {

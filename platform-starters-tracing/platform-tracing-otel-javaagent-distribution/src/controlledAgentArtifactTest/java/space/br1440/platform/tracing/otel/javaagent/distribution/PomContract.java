@@ -15,6 +15,9 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class PomContract {
 
     static final String GROUP_ID = "space.br1440.platform.starters.tracing";
@@ -22,9 +25,6 @@ final class PomContract {
     static final String NAME = "Platform Tracing Controlled OpenTelemetry Java Agent";
     static final String DESCRIPTION =
             "Controlled OpenTelemetry Java agent distribution with the platform tracing extension embedded";
-
-    private PomContract() {
-    }
 
     static void assertMatches(Path pomFile, String expectedVersion) throws IOException {
         Element root = parseXml(pomFile).getDocumentElement();

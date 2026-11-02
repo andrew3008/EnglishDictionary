@@ -15,7 +15,9 @@ import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
+import lombok.experimental.UtilityClass;
 
+@UtilityClass
 public final class OversizedSpanIsolationProbe {
 
     public static final String NAME_PREFIX = "oversized-isolation-";
@@ -26,9 +28,6 @@ public final class OversizedSpanIsolationProbe {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(20);
     private static final Duration POLL_INTERVAL = Duration.ofMillis(50);
-
-    private OversizedSpanIsolationProbe() {
-    }
 
     public static void main(String[] arguments) throws InterruptedException {
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();

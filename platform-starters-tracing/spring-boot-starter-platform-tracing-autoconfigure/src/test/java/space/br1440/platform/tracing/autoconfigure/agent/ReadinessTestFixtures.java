@@ -8,6 +8,9 @@ import javax.management.openmbean.CompositeData;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.autoconfigure.support.ReadinessJmxTestFixtures;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class ReadinessTestFixtures {
 
     static final String APPLICATION_VERSION = "1.2.3";
@@ -15,9 +18,6 @@ final class ReadinessTestFixtures {
     static final String BATCH_ID = "batch-1";
     static final String SHA256 = "a".repeat(64);
     static final Set<String> COMPLETE_CAPABILITIES = Set.copyOf(JmxWireContract.REQUIRED_CAPABILITIES);
-
-    private ReadinessTestFixtures() {
-    }
 
     static AgentReadinessSnapshot readySnapshot() {
         return new AgentReadinessSnapshot(

@@ -14,6 +14,9 @@ import java.util.zip.ZipFile;
 
 import org.gradle.api.GradleException;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class JavaAgentDistribution {
 
     static final String MAVEN_ARTIFACT_ID = "platform-tracing-javaagent";
@@ -29,9 +32,6 @@ final class JavaAgentDistribution {
     private static final String UPSTREAM_PIN_KEY = "otel.javaagent.sha256";
     private static final Pattern LOWERCASE_SHA256 = Pattern.compile("[0-9a-f]{64}");
     private static final Set<String> RESERVED_ENTRIES = Set.of(IDENTITY_ENTRY_PATH.toLowerCase(Locale.ROOT));
-
-    private JavaAgentDistribution() {
-    }
 
     static String requireReviewedUpstreamSha256(Path upstreamAgentJar, Path packagedExtensionJar) {
         String raw = DistributionFiles.readJarProperties(packagedExtensionJar, UPSTREAM_PIN_ENTRY)

@@ -20,10 +20,10 @@ import java.util.zip.ZipFile;
 
 import org.gradle.api.GradleException;
 
-final class DistributionFiles {
+import lombok.experimental.UtilityClass;
 
-    private DistributionFiles() {
-    }
+@UtilityClass
+final class DistributionFiles {
 
     static String sha256Hex(Path file) {
         MessageDigest digest = newSha256Digest();

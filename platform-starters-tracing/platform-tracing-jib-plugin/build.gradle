@@ -49,6 +49,8 @@ dependencies {
     compileOnly "org.projectlombok:lombok:${libs.versions.lombok.get()}"
     annotationProcessor "org.projectlombok:lombok:${libs.versions.lombok.get()}"
 
+    testCompileOnly "org.projectlombok:lombok:${libs.versions.lombok.get()}"
+    testAnnotationProcessor "org.projectlombok:lombok:${libs.versions.lombok.get()}"
     testImplementation gradleApi()
     testImplementation gradleTestKit()
     testImplementation "com.google.cloud.tools:jib-gradle-plugin-extension-api:${libs.versions.jib.extension.api.get()}"

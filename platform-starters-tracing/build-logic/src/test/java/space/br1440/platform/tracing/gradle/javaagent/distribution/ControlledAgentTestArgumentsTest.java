@@ -17,6 +17,8 @@ import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import lombok.experimental.UtilityClass;
+
 class ControlledAgentTestArgumentsTest {
 
     private static final String PROBE_PROPERTY = "platformTracing.otlpProbeApiClasspath";
@@ -100,6 +102,7 @@ class ControlledAgentTestArgumentsTest {
         return arguments;
     }
 
+    @UtilityClass
     public static final class PropertyProbe {
 
         public static void main(String[] arguments) throws IOException {

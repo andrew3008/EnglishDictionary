@@ -13,7 +13,9 @@ import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.Tracer;
+import lombok.experimental.UtilityClass;
 
+@UtilityClass
 public final class SpanAttributeValidationDiagnosticProbe {
 
     private static final Duration READY_TIMEOUT = Duration.ofSeconds(20);
@@ -24,9 +26,6 @@ public final class SpanAttributeValidationDiagnosticProbe {
     private static final String LIFECYCLE_FAILED = "FAILED";
 
     public static final String INVALID_SPAN_NAME = "span-attribute-validation-invalid";
-
-    private SpanAttributeValidationDiagnosticProbe() {
-    }
 
     public static void main(String[] arguments) throws Exception {
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();

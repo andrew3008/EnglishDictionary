@@ -50,6 +50,7 @@ def awaitility = "org.awaitility:awaitility:${libs.versions.awaitility.get()}"
 def junit = 'org.junit.jupiter:junit-jupiter'
 def assertj = 'org.assertj:assertj-core'
 def launcher = 'org.junit.platform:junit-platform-launcher'
+def lombok = "org.projectlombok:lombok:${libs.versions.lombok.get()}"
 def commonUtil = project(':platform-starters-common:platform-starters-common-util')
 
 dependencies {
@@ -63,6 +64,8 @@ dependencies {
     controlledAgentArtifactTestImplementation junit
     controlledAgentArtifactTestImplementation assertj
     controlledAgentArtifactTestImplementation commonUtil
+    controlledAgentArtifactTestCompileOnly lombok
+    controlledAgentArtifactTestAnnotationProcessor lombok
     controlledAgentArtifactTestRuntimeOnly launcher
 
     controlledAgentRuntimeTestImplementation platform(project(platformBomProjectPath))
@@ -75,6 +78,8 @@ dependencies {
     controlledAgentRuntimeTestImplementation "com.squareup.okhttp3:mockwebserver3:${libs.versions.bom.okhttp.get()}"
     controlledAgentRuntimeTestImplementation project(tracingApiProjectPath)
     controlledAgentRuntimeTestImplementation otelApi
+    controlledAgentRuntimeTestCompileOnly lombok
+    controlledAgentRuntimeTestAnnotationProcessor lombok
     controlledAgentRuntimeTestRuntimeOnly launcher
 
     otlpProbeApiRuntimeClasspath otelApi

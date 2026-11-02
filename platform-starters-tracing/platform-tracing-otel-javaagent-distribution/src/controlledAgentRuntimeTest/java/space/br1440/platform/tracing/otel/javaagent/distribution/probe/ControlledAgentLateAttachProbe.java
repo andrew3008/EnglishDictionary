@@ -11,6 +11,9 @@ import javax.management.openmbean.CompositeData;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class ControlledAgentLateAttachProbe {
 
     public static final String READY_LINE_PREFIX = "CONTROLLED_AGENT_LATE_ATTACH_PROBE_READY pid=";
@@ -19,9 +22,6 @@ public final class ControlledAgentLateAttachProbe {
     private static final Duration READINESS_POLL_INTERVAL = Duration.ofMillis(50);
     private static final String LIFECYCLE_READY = "READY";
     private static final String LIFECYCLE_FAILED = "FAILED";
-
-    private ControlledAgentLateAttachProbe() {
-    }
 
     public static void main(String[] arguments) throws Exception {
         awaitExtensionReady(ManagementFactory.getPlatformMBeanServer());

@@ -1,9 +1,9 @@
 package space.br1440.platform.tracing.autoconfigure.agent;
 
-public final class StarterModuleVersionTestSupport {
+import lombok.experimental.UtilityClass;
 
-    private StarterModuleVersionTestSupport() {
-    }
+@UtilityClass
+public final class StarterModuleVersionTestSupport {
 
     public static String current() {
         return StarterModuleVersionLoader.starterModuleVersion();

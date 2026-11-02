@@ -4,11 +4,10 @@ import java.time.Duration;
 import java.util.Objects;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
+import lombok.experimental.UtilityClass;
 
+@UtilityClass
 public final class BspExportTimeout {
-
-    private BspExportTimeout() {
-    }
 
     public static Duration read(ConfigProperties config) {
         Duration configured = Objects.requireNonNull(config, "config")

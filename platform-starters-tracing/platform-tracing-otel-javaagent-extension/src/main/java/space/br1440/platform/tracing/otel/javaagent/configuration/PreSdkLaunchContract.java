@@ -5,11 +5,10 @@ import java.util.function.Function;
 import space.br1440.platform.common.util.StringUtils;
 
 import io.opentelemetry.javaagent.tooling.config.EarlyInitAgentConfig;
+import lombok.experimental.UtilityClass;
 
+@UtilityClass
 public final class PreSdkLaunchContract {
-
-    private PreSdkLaunchContract() {
-    }
 
     public static void requireSupported() {
         requireSupported(EarlyInitAgentConfig.get()::getString);

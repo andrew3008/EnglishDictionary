@@ -14,10 +14,10 @@ import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
 
-final class JarArchive {
+import lombok.experimental.UtilityClass;
 
-    private JarArchive() {
-    }
+@UtilityClass
+final class JarArchive {
 
     record Content(Manifest manifest, Map<String, byte[]> entries) {
     }

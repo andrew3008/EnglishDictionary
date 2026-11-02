@@ -39,7 +39,9 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingR
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import lombok.experimental.UtilityClass;
 
+@UtilityClass
 final class BootstrapCoordinatorTestSupport {
 
     static final String WIRE_INITIALIZING = "INITIALIZING";
@@ -47,9 +49,6 @@ final class BootstrapCoordinatorTestSupport {
     static final String WIRE_FAILED = "FAILED";
 
     static final long CLOSE_FAILURE_EVIDENCE_GENERATION = 2L;
-
-    private BootstrapCoordinatorTestSupport() {
-    }
 
     static CoordinatorBuilder coordinator() {
         return new CoordinatorBuilder();

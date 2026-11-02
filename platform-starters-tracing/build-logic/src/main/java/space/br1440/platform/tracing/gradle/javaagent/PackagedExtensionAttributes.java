@@ -7,12 +7,12 @@ import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.model.ObjectFactory;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class PackagedExtensionAttributes {
 
     private static final String PACKAGED_LIBRARY_ELEMENTS = "javaagent-extension-jar";
-
-    private PackagedExtensionAttributes() {
-    }
 
     public static void configure(ObjectFactory objects, AttributeContainer attributes) {
         attributes.attribute(

@@ -6,10 +6,10 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import javax.management.MBeanServer;
 
-final class FakeMBeanServers {
+import lombok.experimental.UtilityClass;
 
-    private FakeMBeanServers() {
-    }
+@UtilityClass
+final class FakeMBeanServers {
 
     static MBeanServer alwaysReportRegistered(MBeanServer delegate) {
         return proxy(delegate, (proxy, method, args) ->

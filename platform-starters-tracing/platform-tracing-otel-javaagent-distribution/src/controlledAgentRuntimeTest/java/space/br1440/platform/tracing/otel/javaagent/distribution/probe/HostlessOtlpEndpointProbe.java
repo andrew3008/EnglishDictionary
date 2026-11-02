@@ -10,6 +10,9 @@ import javax.management.openmbean.CompositeData;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class HostlessOtlpEndpointProbe {
 
     public static final String MAIN_REACHED_MARKER = "APPLICATION_MAIN_REACHED";
@@ -25,9 +28,6 @@ public final class HostlessOtlpEndpointProbe {
             JmxWireContract.SETTINGS_STATUS_OBJECT_NAME,
             JmxWireContract.SETTINGS_MUTATION_OBJECT_NAME
     };
-
-    private HostlessOtlpEndpointProbe() {
-    }
 
     public static void main(String[] arguments) throws Exception {
         if (arguments.length != 0) {

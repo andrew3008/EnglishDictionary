@@ -14,7 +14,9 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
+import lombok.experimental.UtilityClass;
 
+@UtilityClass
 public final class RequestIdPropagationProbe {
 
     public static final String OK_PREFIX = "REQUEST_ID_PROPAGATION_OK";
@@ -27,9 +29,6 @@ public final class RequestIdPropagationProbe {
     private static final Duration POLL_INTERVAL = Duration.ofMillis(100);
     private static final String LIFECYCLE_READY = "READY";
     private static final String LIFECYCLE_FAILED = "FAILED";
-
-    private RequestIdPropagationProbe() {
-    }
 
     public static void main(String[] arguments) throws Exception {
         waitForReady(ManagementFactory.getPlatformMBeanServer());

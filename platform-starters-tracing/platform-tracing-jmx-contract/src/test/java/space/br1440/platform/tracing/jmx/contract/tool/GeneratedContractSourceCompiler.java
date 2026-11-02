@@ -13,10 +13,10 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 
-final class GeneratedContractSourceCompiler {
+import lombok.experimental.UtilityClass;
 
-    private GeneratedContractSourceCompiler() {
-    }
+@UtilityClass
+final class GeneratedContractSourceCompiler {
 
     static Class<?> compileAndLoad(String tempDirPrefix,
                                    String rendererMethodName,

@@ -12,6 +12,9 @@ import java.util.Properties;
 
 import space.br1440.platform.common.util.StringUtils;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class ControlledAgentArtifactMutator {
 
     private static final String EXTENSION_ENTRY = "extensions/platform-tracing-otel-javaagent-extension.jar";
@@ -23,9 +26,6 @@ public final class ControlledAgentArtifactMutator {
 
     private static final String STALE_TOPOLOGY_METHOD = "sdkDefiningLoader";
     private static final String STALE_TOPOLOGY_METHOD_DESCRIPTOR = "()Ljava/lang/ClassLoader;";
-
-    private ControlledAgentArtifactMutator() {
-    }
 
     public static Path withoutPackagedExtension(Path source,
                                                 Path target) throws IOException {

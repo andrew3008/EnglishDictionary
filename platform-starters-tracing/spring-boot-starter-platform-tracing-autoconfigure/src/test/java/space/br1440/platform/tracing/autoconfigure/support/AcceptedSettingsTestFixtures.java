@@ -5,10 +5,10 @@ import space.br1440.platform.tracing.autoconfigure.control.settings.AcceptedSett
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.SettingsRevision;
 
-public final class AcceptedSettingsTestFixtures {
+import lombok.experimental.UtilityClass;
 
-    private AcceptedSettingsTestFixtures() {
-    }
+@UtilityClass
+public final class AcceptedSettingsTestFixtures {
 
     public static AcceptedSettings bootstrapAgentDefaults(long acceptedSequence,
                                                           String agentInstanceId,

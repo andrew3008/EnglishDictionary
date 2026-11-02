@@ -7,6 +7,9 @@ import javax.management.openmbean.CompositeData;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class DomainSnapshotEndpoints {
 
     public static DynamicMBean sampling(Supplier<CompositeData> snapshotSupplier) {

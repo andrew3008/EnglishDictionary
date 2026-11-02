@@ -32,7 +32,9 @@ import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWir
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
+import lombok.experimental.UtilityClass;
 
+@UtilityClass
 public final class ControlledAgentRuntimeProbe {
 
     private static final String IDENTITY_ENTRY = "META-INF/platform-tracing/javaagent-distribution.properties";
@@ -63,9 +65,6 @@ public final class ControlledAgentRuntimeProbe {
     public static final String SHUTDOWN_OK_MARKER = "CONTROLLED_AGENT_SHUTDOWN_OK";
 
     private static final String AGENT_OWNED_CLASS_MARKER = "io.opentelemetry.sdk.OpenTelemetrySdk";
-
-    private ControlledAgentRuntimeProbe() {
-    }
 
     public static void main(String[] arguments) throws IOException, JMException, InterruptedException {
         ProbeArguments probeArguments = ProbeArguments.parse(arguments);
@@ -617,10 +616,8 @@ public final class ControlledAgentRuntimeProbe {
         }
     }
 
+    @UtilityClass
     private static final class BootstrapDropPath {
-
-        private BootstrapDropPath() {
-        }
 
         static void verify() {
             Span span = GlobalOpenTelemetry.getTracer("bootstrap-policy-probe")

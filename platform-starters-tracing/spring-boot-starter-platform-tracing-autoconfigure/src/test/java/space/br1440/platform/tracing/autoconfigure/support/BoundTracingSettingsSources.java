@@ -13,11 +13,10 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
+import lombok.experimental.UtilityClass;
 
+@UtilityClass
 public final class BoundTracingSettingsSources {
-
-    private BoundTracingSettingsSources() {
-    }
 
     public static TracingSettingsSource sampling(boolean enabled,
                                                  Map<String, Double> routeRatios,

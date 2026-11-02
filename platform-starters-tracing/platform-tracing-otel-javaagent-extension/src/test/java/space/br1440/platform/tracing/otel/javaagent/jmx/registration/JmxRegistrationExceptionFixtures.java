@@ -1,9 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 
-public final class JmxRegistrationExceptionFixtures {
+import lombok.experimental.UtilityClass;
 
-    private JmxRegistrationExceptionFixtures() {
-    }
+@UtilityClass
+public final class JmxRegistrationExceptionFixtures {
 
     public static JmxRegistrationException rollbackIncomplete(String message, Throwable cause) {
         JmxRegistrationException failure = new JmxRegistrationException(message, cause);

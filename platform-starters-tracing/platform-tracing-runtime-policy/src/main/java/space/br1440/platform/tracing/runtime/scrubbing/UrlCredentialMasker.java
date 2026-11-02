@@ -4,19 +4,19 @@ import java.util.Objects;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
+import lombok.experimental.UtilityClass;
+
 /**
  * Маскирует credentials в URL внутри произвольного текста без декодирования URL: userinfo, значения
  * {@code key=value} в query и fragment целиком.
  */
+@UtilityClass
 public final class UrlCredentialMasker {
 
     private static final int MAX_SCAN_LENGTH = 4_096;
     private static final int MAX_PORT_DIGITS = 5;
     private static final String SCHEME_SEPARATOR = "://";
     private static final String MASK = "***";
-
-    private UrlCredentialMasker() {
-    }
 
     @Nullable
     public static String mask(@Nonnull String text) {

@@ -7,13 +7,13 @@ import java.util.Optional;
 
 import org.awaitility.core.ConditionTimeoutException;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class ExportedSpans {
 
     private static final Duration EXPORT_TIMEOUT = Duration.ofSeconds(20);
     private static final Duration EXPORT_POLL_INTERVAL = Duration.ofMillis(100);
-
-    private ExportedSpans() {
-    }
 
     static OtlpTraceCollector.ReceivedSpan awaitByName(OtlpTraceCollector collector, String spanName) {
         try {

@@ -17,10 +17,10 @@ import org.gradle.api.tasks.testing.Test;
 
 import space.br1440.platform.tracing.gradle.javaagent.VersionCatalogs;
 
-final class ControlledAgentVerification {
+import lombok.experimental.UtilityClass;
 
-    private ControlledAgentVerification() {
-    }
+@UtilityClass
+final class ControlledAgentVerification {
 
     static void register(Project project,
                          Provider<String> version,

@@ -5,6 +5,9 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.lang.ArchRule;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class TracingStartupContractHealthDependencyRules {
 
     static final String STARTUP_PACKAGE = "..autoconfigure.diagnostics.health.startup..";
@@ -12,9 +15,6 @@ final class TracingStartupContractHealthDependencyRules {
     static final String PRODUCTION_AUTOCONFIG_FQCN =
             "space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup."
                     + "TracingStartupContractHealthAutoConfiguration";
-
-    private TracingStartupContractHealthDependencyRules() {
-    }
 
     static ArchRule coreDependencyBoundary(String autoconfigFqcn) {
         return classes()

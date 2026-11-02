@@ -10,13 +10,13 @@ import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
 import javax.management.ObjectName;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class JmxCollisionPremainAgent {
 
     private static final String SETTINGS_STATUS_OBJECT_NAME =
             "space.br1440.platform.tracing:type=Control,name=PlatformSettingsStatus,role=Observation";
-
-    private JmxCollisionPremainAgent() {
-    }
 
     public static void premain(String arguments, Instrumentation instrumentation) throws Exception {
         ManagementFactory.getPlatformMBeanServer()

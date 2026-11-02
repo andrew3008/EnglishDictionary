@@ -18,13 +18,13 @@ import org.gradle.api.tasks.Delete;
 import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.TaskProvider;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class ControlledAgentPublication {
 
     static final String NON_LIBRARY_CATEGORY = "platform-controlled-javaagent";
     private static final String TEST_REPOSITORY_NAME = "testRepository";
-
-    private ControlledAgentPublication() {
-    }
 
     static TestPublication register(Project project, ControlledAgentAssembly.Artifacts artifacts) {
         configureOutgoingVariants(project, artifacts);

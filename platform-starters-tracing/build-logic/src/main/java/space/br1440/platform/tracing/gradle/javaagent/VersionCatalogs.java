@@ -5,10 +5,10 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.VersionCatalogsExtension;
 import org.gradle.api.provider.Provider;
 
-public final class VersionCatalogs {
+import lombok.experimental.UtilityClass;
 
-    private VersionCatalogs() {
-    }
+@UtilityClass
+public final class VersionCatalogs {
 
     public static Provider<String> requiredVersion(Project project, String alias) {
         return project.provider(() -> project.getExtensions()

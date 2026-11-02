@@ -2,10 +2,10 @@ package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport;
 
 import javax.management.MBeanServerConnection;
 
-public final class JmxReadExecutorTestFactory {
+import lombok.experimental.UtilityClass;
 
-    private JmxReadExecutorTestFactory() {
-    }
+@UtilityClass
+public final class JmxReadExecutorTestFactory {
 
     public static JmxReadExecutor withoutAgentInstanceVerification(MBeanServerConnection connection) {
         return new JmxReadExecutor(connection);

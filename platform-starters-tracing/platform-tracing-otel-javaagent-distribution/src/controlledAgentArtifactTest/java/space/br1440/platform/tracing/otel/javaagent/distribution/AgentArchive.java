@@ -20,13 +20,13 @@ import java.util.zip.ZipInputStream;
 
 import space.br1440.platform.common.util.StringUtils;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class AgentArchive {
 
     static final String EXTENSION_ENTRY = "extensions/platform-tracing-otel-javaagent-extension.jar";
     static final String IDENTITY_ENTRY = "META-INF/platform-tracing/javaagent-distribution.properties";
-
-    private AgentArchive() {
-    }
 
     static String requiredProperty(String name) {
         String value = System.getProperty(name);

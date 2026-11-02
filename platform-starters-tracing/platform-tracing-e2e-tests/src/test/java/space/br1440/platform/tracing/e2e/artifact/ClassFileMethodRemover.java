@@ -2,10 +2,10 @@ package space.br1440.platform.tracing.e2e.artifact;
 
 import java.nio.charset.StandardCharsets;
 
-final class ClassFileMethodRemover {
+import lombok.experimental.UtilityClass;
 
-    private ClassFileMethodRemover() {
-    }
+@UtilityClass
+final class ClassFileMethodRemover {
 
     static byte[] removeMethod(byte[] classFile, String methodName, String descriptor) {
         ConstantPool constantPool = parseConstantPool(classFile);

@@ -11,7 +11,9 @@ import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWir
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;
+import lombok.experimental.UtilityClass;
 
+@UtilityClass
 public final class InvalidExtensionConfigurationProbe {
 
     public static final String MAIN_REACHED_MARKER = "APPLICATION_MAIN_REACHED";
@@ -20,9 +22,6 @@ public final class InvalidExtensionConfigurationProbe {
     public static final String READINESS_ABSENT_MARKER = "INVALID_EXTENSION_CONFIGURATION_READINESS_ABSENT";
 
     private static final String PLATFORM_SAMPLER_CAPABILITY = "PLATFORM_SAMPLER_INSTALLED";
-
-    private InvalidExtensionConfigurationProbe() {
-    }
 
     public static void main(String[] arguments) throws Exception {
         String spanName = spanName(arguments);

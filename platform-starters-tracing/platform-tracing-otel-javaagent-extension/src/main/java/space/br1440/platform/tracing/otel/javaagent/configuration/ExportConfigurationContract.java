@@ -7,7 +7,9 @@ import space.br1440.platform.common.util.StringUtils;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;
+import lombok.experimental.UtilityClass;
 
+@UtilityClass
 public final class ExportConfigurationContract {
 
     private static final String TRACES_EXPORTER = "otel.traces.exporter";
@@ -16,9 +18,6 @@ public final class ExportConfigurationContract {
     private static final String TRACES_TIMEOUT = "otel.exporter.otlp.traces.timeout";
     private static final String OTLP_TIMEOUT = "otel.exporter.otlp.timeout";
     private static final Duration DEFAULT_OTLP_TIMEOUT = Duration.ofSeconds(10);
-
-    private ExportConfigurationContract() {
-    }
 
     public static void requireSupported(ConfigProperties config) {
         Objects.requireNonNull(config, "config");

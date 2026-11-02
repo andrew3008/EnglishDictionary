@@ -7,10 +7,10 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.TabularData;
 
-final class JmxValues {
+import lombok.experimental.UtilityClass;
 
-    private JmxValues() {
-    }
+@UtilityClass
+final class JmxValues {
 
     static CompositeData attribute(MBeanServer server, ObjectName name, String attribute, CompositeType expected) {
         Object raw;

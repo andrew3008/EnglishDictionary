@@ -11,7 +11,9 @@ import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWir
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;
+import lombok.experimental.UtilityClass;
 
+@UtilityClass
 public final class OtlpPartialSuccessProbe {
 
     public static final String PROBE_SPAN_NAME = "otlp-partial-success-span";
@@ -24,9 +26,6 @@ public final class OtlpPartialSuccessProbe {
     private static final String LIFECYCLE_FAILED = "FAILED";
 
     private static final Tracer TRACER = GlobalOpenTelemetry.getTracer("controlled-agent-otlp-partial-success-probe");
-
-    private OtlpPartialSuccessProbe() {
-    }
 
     public static void main(String[] arguments) throws InterruptedException {
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();

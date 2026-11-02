@@ -2,6 +2,9 @@ package space.br1440.platform.tracing.gradle;
 
 import java.lang.management.ManagementFactory;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class ManagedAgentJvmFlagsLauncherProbe {
 
     private static final String PROBE_PROPERTY_PREFIX = "MANAGED_AGENT_PROBE_PROPERTY ";
@@ -9,9 +12,6 @@ public final class ManagedAgentJvmFlagsLauncherProbe {
     private static final String[] MANAGED_SYSTEM_PROPERTIES = {
             "platform.tracing.controlled-agent.expected-sha256"
     };
-
-    private ManagedAgentJvmFlagsLauncherProbe() {
-    }
 
     public static void main(String[] arguments) {
         for (String property : MANAGED_SYSTEM_PROPERTIES) {

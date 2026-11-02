@@ -24,6 +24,9 @@ import javax.management.openmbean.OpenMBeanOperationInfo;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class ReadinessJmxTestFixtures {
 
     public static final String AGENT_INSTANCE_ID = "fe2c56ee-8f3d-4f43-b640-4bfc973d788c";
@@ -42,9 +45,6 @@ public final class ReadinessJmxTestFixtures {
             "PLATFORM_SAMPLER_INSTALLED",
             "SANITIZER_INSTALLED"
     );
-
-    private ReadinessJmxTestFixtures() {
-    }
 
     public static CompositeData readySnapshot() {
         return readySnapshot(AGENT_INSTANCE_ID, EVIDENCE_GENERATION, BATCH_ID);

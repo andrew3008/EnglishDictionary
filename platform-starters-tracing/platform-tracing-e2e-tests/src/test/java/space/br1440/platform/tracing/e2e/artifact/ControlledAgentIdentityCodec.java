@@ -8,6 +8,9 @@ import java.util.Properties;
 
 import space.br1440.platform.common.util.StringUtils;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class ControlledAgentIdentityCodec {
 
     private static final String[] REQUIRED_KEYS = {
@@ -21,9 +24,6 @@ final class ControlledAgentIdentityCodec {
             "extension.sha256",
             "minimum.java"
     };
-
-    private ControlledAgentIdentityCodec() {
-    }
 
     static Properties load(byte[] source) throws IOException {
         Properties identity = new Properties();

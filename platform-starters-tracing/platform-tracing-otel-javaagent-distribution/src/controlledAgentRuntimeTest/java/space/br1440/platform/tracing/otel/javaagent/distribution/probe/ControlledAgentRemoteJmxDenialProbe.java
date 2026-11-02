@@ -9,6 +9,9 @@ import javax.management.openmbean.CompositeData;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class ControlledAgentRemoteJmxDenialProbe {
 
     public static final String OK_PREFIX = "CONTROLLED_AGENT_REMOTE_JMX_DENIED_OK";
@@ -18,9 +21,6 @@ public final class ControlledAgentRemoteJmxDenialProbe {
     private static final Duration READINESS_POLL_INTERVAL = Duration.ofMillis(50);
     private static final String LIFECYCLE_READY = "READY";
     private static final String LIFECYCLE_FAILED = "FAILED";
-
-    private ControlledAgentRemoteJmxDenialProbe() {
-    }
 
     public static void main(String[] arguments) throws Exception {
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();

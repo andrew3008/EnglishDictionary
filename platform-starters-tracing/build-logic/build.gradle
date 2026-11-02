@@ -20,6 +20,11 @@ configurations {
 dependencies {
     implementation "com.gradleup.shadow:shadow-gradle-plugin:${libs.versions.shadow.gradle.plugin.get()}"
 
+    compileOnly "org.projectlombok:lombok:${libs.versions.lombok.get()}"
+    annotationProcessor "org.projectlombok:lombok:${libs.versions.lombok.get()}"
+    testCompileOnly "org.projectlombok:lombok:${libs.versions.lombok.get()}"
+    testAnnotationProcessor "org.projectlombok:lombok:${libs.versions.lombok.get()}"
+
     // Apache Ant используется плагином Shadow только во время сборки и не попадает в javaagent.
     // Ограничение фиксирует исправленную версию транзитивной зависимости для CVE-2026-78254.
     constraints { DependencyConstraintHandler constraintHandler ->

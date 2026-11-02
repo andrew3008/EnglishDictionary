@@ -9,10 +9,10 @@ import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder;
 
-final class SpanSpecBuilderSupport {
+import lombok.experimental.UtilityClass;
 
-    private SpanSpecBuilderSupport() {
-    }
+@UtilityClass
+final class SpanSpecBuilderSupport {
 
     static SpanSpecBuilder applyRelationship(SpanSpecBuilder builder,
                                              SpanRelationship relationship,

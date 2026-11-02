@@ -10,6 +10,9 @@ import com.tngtech.archunit.lang.ArchRule;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class ModuleTaxonomyArchRules {
 
     public static final ArchRule API_MAIN_NO_IMPLEMENTATION_DEPENDENCY = noClasses()
@@ -215,9 +218,6 @@ public final class ModuleTaxonomyArchRules {
             .should().accessField(PlatformAttributes.class, "PLATFORM_REMOTE_SERVICE")
             .allowEmptyShould(true)
             .because("platform.remote.service is agent telemetry, not MDC, snapshot or error-domain input");
-
-    private ModuleTaxonomyArchRules() {
-    }
 
     private static DescribedPredicate<JavaClass> internalPropagationType() {
         return new DescribedPredicate<>("be internal propagation infrastructure") {

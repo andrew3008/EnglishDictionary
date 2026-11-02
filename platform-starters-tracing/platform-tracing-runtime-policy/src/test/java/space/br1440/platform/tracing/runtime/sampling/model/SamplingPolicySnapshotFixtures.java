@@ -3,6 +3,8 @@ package space.br1440.platform.tracing.runtime.sampling.model;
 import java.util.List;
 import java.util.Set;
 
+import lombok.experimental.UtilityClass;
+
 /**
  * Тестовые фикстуры для {@link SamplingPolicySnapshot}.
  * <p>
@@ -10,10 +12,8 @@ import java.util.Set;
  * дефолтами (пустые force-values и route-ratios, {@code defaultRatio=1.0}) через полный
  * 5-аргументный конструктор. Живёт только в test sources — production surface остаётся минимальной.
  */
+@UtilityClass
 public final class SamplingPolicySnapshotFixtures {
-
-    private SamplingPolicySnapshotFixtures() {
-    }
 
     /** Снимок с дефолтами: {@code forceRecordValues=∅}, {@code routeRatios=∅}, {@code defaultRatio=1.0}. */
     public static SamplingPolicySnapshot snapshot(boolean enabled, List<String> droppedRoutes) {

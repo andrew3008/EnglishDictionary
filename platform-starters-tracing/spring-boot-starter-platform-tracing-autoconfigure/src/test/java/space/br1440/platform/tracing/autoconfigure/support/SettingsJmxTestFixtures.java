@@ -19,10 +19,10 @@ import javax.management.openmbean.SimpleType;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
-public final class SettingsJmxTestFixtures {
+import lombok.experimental.UtilityClass;
 
-    private SettingsJmxTestFixtures() {
-    }
+@UtilityClass
+public final class SettingsJmxTestFixtures {
 
     public static MBeanInfo statusInfo() {
         return statusInfo(false);

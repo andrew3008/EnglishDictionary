@@ -15,15 +15,15 @@ import java.util.concurrent.TimeUnit;
 
 import space.br1440.platform.tracing.otel.javaagent.distribution.probe.ControlledAgentRuntimeProbe;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 final class ControlledAgentChild {
 
     static final Duration WAIT_TIMEOUT = Duration.ofSeconds(45);
     static final Duration KILL_TIMEOUT = Duration.ofSeconds(10);
 
     private static final String OTLP_PROBE_API_CLASSPATH_PROPERTY = "platformTracing.otlpProbeApiClasspath";
-
-    private ControlledAgentChild() {
-    }
 
     static ChildProcessResult run(Path directory, String label, List<String> command) throws IOException, InterruptedException {
         return run(directory, label, command, Map.of());
