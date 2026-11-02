@@ -1,21 +1,23 @@
 package space.br1440.platform.tracing.otel.span.builder;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
+import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
+
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class DatabaseSpanBuilderIntegrationTest {
 
@@ -43,7 +45,7 @@ class DatabaseSpanBuilderIntegrationTest {
 
     @Test
     void databaseChild_insideActiveParent_isChildWithSemconvAttributes() {
-        try (SpanHandle parent = tracing.spans().operation("parent").start()) {
+        try (SpanHandle ignoredParent = tracing.spans().operation("parent").start()) {
             String parentTraceId = tracing.traceContext().traceId().orElseThrow();
             String parentSpanId = tracing.traceContext().spanId().orElseThrow();
             tracing.spans().transport().database()
@@ -53,7 +55,7 @@ class DatabaseSpanBuilderIntegrationTest {
                     .start()
                     .close();
 
-            SpanData child = findSpan("SELECT orders");
+            SpanData child = findSpan();
             assertThat(child.getTraceId()).isEqualTo(parentTraceId);
             assertThat(child.getParentSpanId()).isEqualTo(parentSpanId);
             assertThat(child.getKind()).isEqualTo(SpanKind.CLIENT);
@@ -73,7 +75,7 @@ class DatabaseSpanBuilderIntegrationTest {
                 .start()
                 .close();
 
-        SpanData span = findSpan("SELECT orders");
+        SpanData span = findSpan();
         assertThat(span.getParentSpanId()).isIn("", INVALID_SPAN_ID);
         assertThat(span.getKind()).isEqualTo(SpanKind.CLIENT);
         assertThat(span.getAttributes().get(key("db.system.name"))).isEqualTo("postgresql");
@@ -85,11 +87,11 @@ class DatabaseSpanBuilderIntegrationTest {
         return io.opentelemetry.api.common.AttributeKey.stringKey(name);
     }
 
-    private SpanData findSpan(String name) {
+    private SpanData findSpan() {
         List<SpanData> spans = exporter.getFinishedSpanItems();
         return spans.stream()
-                .filter(span -> name.equals(span.getName()))
+                .filter(span -> "SELECT orders".equals(span.getName()))
                 .findFirst()
-                .orElseThrow(() -> new AssertionError("Span not found: " + name));
+                .orElseThrow(() -> new AssertionError("Span not found: SELECT orders"));
     }
 }

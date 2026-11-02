@@ -1,5 +1,23 @@
 package space.br1440.platform.tracing.otel.span.builder;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
+import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.propagation.OtelTraceparentReaderImpl;
+import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
+import space.br1440.platform.tracing.otel.runtime.otel.SpanKinds;
+
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
@@ -7,21 +25,6 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.LinkData;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.span.RemoteSpanLink;
-import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.otel.propagation.OtelTraceparentReaderImpl;
-import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
-import space.br1440.platform.tracing.otel.runtime.otel.SpanKinds;
-import space.br1440.platform.tracing.api.span.SpanCategory;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class KafkaBatchSpanBuilderIntegrationTest {
 
@@ -98,7 +101,7 @@ class KafkaBatchSpanBuilderIntegrationTest {
     void batchInsideActiveParent_rootDoesNotBecomeChild() {
         RemoteSpanLink link = OtelTraceparentReaderImpl.INSTANCE.require(TRACEPARENT);
 
-        try (SpanHandle parent = traceOperations.spans().operation("parent").start()) {
+        try (SpanHandle ignoredParent = traceOperations.spans().operation("parent").start()) {
             traceOperations.spans()
                     .transport()
                     .kafka()
@@ -119,41 +122,53 @@ class KafkaBatchSpanBuilderIntegrationTest {
 
     @Test
     void childWithLinksRejectedBeforeExport() {
+        // given
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
 
-        assertThatThrownBy(() ->
-                traceOperations.spans()
-                        .transport()
-                        .kafka()
-                        .consumer()
-                        .batch("orders")
-                        .child()
-                        .linkedTo(link)
-                        .start())
+        // when
+        assertThatThrownBy(() -> {
+            try (SpanHandle ignored = traceOperations.spans()
+                    .transport()
+                    .kafka()
+                    .consumer()
+                    .batch("orders")
+                    .child()
+                    .linkedTo(link)
+                    .start()) {
+                fail("Expected CHILD with links to fail before starting a span");
+            }
+        })
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("CHILD");
 
+        // then
         assertThat(findBatchSpans()).isEmpty();
     }
 
     @Test
     void detachedWithLinksRejectedBeforeExport() {
+        // given
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
 
-        assertThatThrownBy(() ->
-                traceOperations.spans()
-                        .transport()
-                        .kafka()
-                        .consumer()
-                        .batch("orders")
-                        .detached()
-                        .linkedTo(link)
-                        .start())
+        // when
+        assertThatThrownBy(() -> {
+            try (SpanHandle ignored = traceOperations.spans()
+                    .transport()
+                    .kafka()
+                    .consumer()
+                    .batch("orders")
+                    .detached()
+                    .linkedTo(link)
+                    .start()) {
+                fail("Expected DETACHED with links to fail before starting a span");
+            }
+        })
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("DETACHED");
 
+        // then
         assertThat(findBatchSpans()).isEmpty();
     }
 

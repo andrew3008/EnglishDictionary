@@ -80,7 +80,7 @@ class SpanHandleLifecycleVerificationTest {
                     })
                     .toList();
 
-            HashSet<String> traceIds = new HashSet<String>();
+            HashSet<String> traceIds = new HashSet<>();
             for (Future<String> result : executor.invokeAll(tasks)) {
                 traceIds.add(result.get());
             }

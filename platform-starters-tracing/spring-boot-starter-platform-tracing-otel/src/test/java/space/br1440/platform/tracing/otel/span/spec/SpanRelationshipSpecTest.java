@@ -1,27 +1,30 @@
 package space.br1440.platform.tracing.otel.span.spec;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
+import space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec;
+import space.br1440.platform.tracing.api.span.spec.SpanSpec;
+import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
+import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
+
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.LinkData;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.RemoteSpanLink;
-import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec;
-import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Hard gate: {@link SpanRelationshipSpec} runtime relationship.
@@ -52,8 +55,8 @@ class SpanRelationshipSpecTest {
 
     @Test
     void childInsideActiveParent_inheritsParentSpanIdAndTraceId() {
-        try (SpanHandle parent = tracing.spans().operation("parent").start()) {
-            try (SpanHandle child = tracing.spans().operation("child").child().start()) {
+        try (SpanHandle ignoredParent = tracing.spans().operation("parent").start()) {
+            try (SpanHandle ignoredChild = tracing.spans().operation("child").child().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
             }
         }
@@ -66,8 +69,8 @@ class SpanRelationshipSpecTest {
 
     @Test
     void rootInsideActiveParent_hasInvalidParentAndIndependentTraceId() {
-        try (SpanHandle parent = tracing.spans().operation("parent").start()) {
-            try (SpanHandle root = tracing.spans().operation("job").root().start()) {
+        try (SpanHandle ignoredParent = tracing.spans().operation("parent").start()) {
+            try (SpanHandle ignoredRoot = tracing.spans().operation("job").root().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
             }
         }
@@ -80,8 +83,8 @@ class SpanRelationshipSpecTest {
 
     @Test
     void detachedInsideActiveParent_hasInvalidParentIndependentTraceIdAndNoLinks() {
-        try (SpanHandle parent = tracing.spans().operation("parent").start()) {
-            try (SpanHandle detached = tracing.spans().operation("orphan").detached().start()) {
+        try (SpanHandle ignoredParent = tracing.spans().operation("parent").start()) {
+            try (SpanHandle ignoredDetached = tracing.spans().operation("orphan").detached().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
             }
         }
@@ -107,10 +110,17 @@ class SpanRelationshipSpecTest {
 
     @Test
     void detachedWithLinks_failsBeforeSpanStart() {
+        // given
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
-        assertThatThrownBy(() ->
-                tracing.spans().operation("bad-detached").detached().linkedTo(link).start())
+
+        // when
+        assertThatThrownBy(() -> {
+            try (SpanHandle ignored = tracing.spans().operation("bad-detached").detached().linkedTo(link).start()) {
+                fail("Expected detached span with links to fail before starting a span");
+            }
+        })
+                // then
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("DETACHED");
         assertThat(exporter.getFinishedSpanItems()).isEmpty();
@@ -118,10 +128,17 @@ class SpanRelationshipSpecTest {
 
     @Test
     void childWithLinks_failsBeforeSpanStart() {
+        // given
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
-        assertThatThrownBy(() ->
-                tracing.spans().operation("bad-child").child().linkedTo(link).start())
+
+        // when
+        assertThatThrownBy(() -> {
+            try (SpanHandle ignored = tracing.spans().operation("bad-child").child().linkedTo(link).start()) {
+                fail("Expected child span with links to fail before starting a span");
+            }
+        })
+                // then
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("CHILD");
         assertThat(exporter.getFinishedSpanItems()).isEmpty();
@@ -143,10 +160,17 @@ class SpanRelationshipSpecTest {
 
     @Test
     void linkedToThenDetached_isInvalid() {
+        // given
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
-        assertThatThrownBy(() ->
-                tracing.spans().operation("bad-order").linkedTo(link).detached().start())
+
+        // when
+        assertThatThrownBy(() -> {
+            try (SpanHandle ignored = tracing.spans().operation("bad-order").linkedTo(link).detached().start()) {
+                fail("Expected linked detached span to fail before starting a span");
+            }
+        })
+                // then
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("DETACHED");
     }

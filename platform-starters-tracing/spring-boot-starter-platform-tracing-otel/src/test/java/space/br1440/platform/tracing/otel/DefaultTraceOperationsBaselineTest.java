@@ -1,6 +1,20 @@
 package space.br1440.platform.tracing.otel;
-import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
+import space.br1440.platform.tracing.api.span.spec.SpanSpec;
+import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
@@ -11,18 +25,6 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.LinkData;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.RemoteSpanLink;
-import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Slice 0A baseline characterization tests migrated to v3 {@code spans()} API (Slice 1B).
@@ -52,8 +54,8 @@ class DefaultTraceOperationsBaselineTest {
 
     @Test
     void childSpan_keepsActiveParent() {
-        try (SpanHandle ignored = tracing.spans().operation("parent").start()) {
-            try (SpanHandle ignored1 = tracing.spans().operation("child").child().start()) {
+        try (SpanHandle ignoredParent = tracing.spans().operation("parent").start()) {
+            try (SpanHandle ignoredChild = tracing.spans().operation("child").child().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
                 assertThat(tracing.traceContext().spanId()).isPresent();
             }
@@ -69,8 +71,8 @@ class DefaultTraceOperationsBaselineTest {
 
     @Test
     void defaultChildSpan_keepsActiveParent() {
-        try (SpanHandle ignored = tracing.spans().operation("parent").start()) {
-            try (SpanHandle ignored1 = tracing.spans().operation("child").start()) {
+        try (SpanHandle ignoredParent = tracing.spans().operation("parent").start()) {
+            try (SpanHandle ignoredChild = tracing.spans().operation("child").start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
             }
         }
@@ -85,9 +87,9 @@ class DefaultTraceOperationsBaselineTest {
 
     @Test
     void rootSpan_hasNoParent_evenInsideActiveParentScope() {
-        try (SpanHandle ignored = tracing.spans().operation("parent").start()) {
+        try (SpanHandle ignoredParent = tracing.spans().operation("parent").start()) {
             String parentTraceId = tracing.traceContext().traceId().orElseThrow();
-            try (SpanHandle ignored1 = tracing.spans().operation("job").root().start()) {
+            try (SpanHandle ignoredRoot = tracing.spans().operation("job").root().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
                 assertThat(tracing.traceContext().traceId()).isNotEqualTo(java.util.Optional.of(parentTraceId));
             }
@@ -104,9 +106,9 @@ class DefaultTraceOperationsBaselineTest {
 
     @Test
     void detachedSpan_hasNoParentAndNoLinks_evenInsideActiveParentScope() {
-        try (SpanHandle ignored = tracing.spans().operation("parent").start()) {
+        try (SpanHandle ignoredParent = tracing.spans().operation("parent").start()) {
             String parentTraceId = tracing.traceContext().traceId().orElseThrow();
-            try (SpanHandle ignored1 = tracing.spans().operation("orphan").detached().start()) {
+            try (SpanHandle ignoredDetached = tracing.spans().operation("orphan").detached().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
                 assertThat(tracing.traceContext().traceId()).isNotEqualTo(java.util.Optional.of(parentTraceId));
             }
@@ -132,7 +134,7 @@ class DefaultTraceOperationsBaselineTest {
                 .linkedTo(link1, link2)
                 .build();
 
-        try (SpanHandle scope = tracing.spans().fromSpec(spec).start()) {
+        try (SpanHandle ignored = tracing.spans().fromSpec(spec).start()) {
             assertThat(tracing.traceContext().spanId()).isPresent();
         }
 
@@ -151,7 +153,7 @@ class DefaultTraceOperationsBaselineTest {
         assertThat(tracing.traceContext().traceId()).isEmpty();
         assertThat(tracing.traceContext().spanId()).isEmpty();
 
-        try (SpanHandle scope = tracing.spans().operation("active").start()) {
+        try (SpanHandle ignored = tracing.spans().operation("active").start()) {
             assertThat(tracing.traceContext().traceId()).isPresent();
             assertThat(tracing.traceContext().spanId()).isPresent();
         }

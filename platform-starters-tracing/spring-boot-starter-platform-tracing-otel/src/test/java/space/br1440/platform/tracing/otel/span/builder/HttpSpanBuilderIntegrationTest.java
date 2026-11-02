@@ -1,21 +1,23 @@
 package space.br1440.platform.tracing.otel.span.builder;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
+import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
+
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class HttpSpanBuilderIntegrationTest {
 
@@ -43,7 +45,7 @@ class HttpSpanBuilderIntegrationTest {
 
     @Test
     void httpServerChild_insideActiveParent_isChildWithSemconvAttributes() {
-        try (SpanHandle parent = tracing.spans().operation("parent").start()) {
+        try (SpanHandle ignoredParent = tracing.spans().operation("parent").start()) {
             String parentTraceId = tracing.traceContext().traceId().orElseThrow();
             String parentSpanId = tracing.traceContext().spanId().orElseThrow();
             tracing.spans().transport().http().server()
