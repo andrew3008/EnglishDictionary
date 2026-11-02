@@ -87,7 +87,7 @@ class ExporterBoundaryRealPayloadTest {
     void otlpPayloadCarriesNoRawSecrets() {
         // given
         List<String> rendered = new CopyOnWriteArrayList<>();
-        try (ExporterLogCapture capture = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
+        try (ExporterLogCapture ignored = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
              ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
              SpanExporter exporter = safeExporter(OtlpJsonLoggingSpanExporter.create(), runtime)) {
 
@@ -108,7 +108,7 @@ class ExporterBoundaryRealPayloadTest {
     void loggingExporterRenderedOutputCarriesNoRawSecrets() {
         // given
         List<String> rendered = new CopyOnWriteArrayList<>();
-        try (ExporterLogCapture capture = new ExporterLogCapture(LoggingSpanExporter.class, rendered);
+        try (ExporterLogCapture ignored = new ExporterLogCapture(LoggingSpanExporter.class, rendered);
              ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(RULES);
              SpanExporter exporter = safeExporter(LoggingSpanExporter.create(), runtime)) {
 
@@ -163,7 +163,7 @@ class ExporterBoundaryRealPayloadTest {
     void realRecordExceptionIsAbsentFromTheSerializedJsonPayload() {
         // given
         List<String> rendered = new CopyOnWriteArrayList<>();
-        try (ExporterLogCapture capture = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
+        try (ExporterLogCapture ignored = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
              SpanExporter delegate = OtlpJsonLoggingSpanExporter.create()) {
             // when
             recordExceptionThrough(delegate);
@@ -221,7 +221,7 @@ class ExporterBoundaryRealPayloadTest {
     void exceptionUrlCredentialsAreMaskedInTheSerializedJsonPayload() {
         // given
         List<String> rendered = new CopyOnWriteArrayList<>();
-        try (ExporterLogCapture capture = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
+        try (ExporterLogCapture ignored = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
              SpanExporter delegate = OtlpJsonLoggingSpanExporter.create()) {
             // when
             recordUrlFailureThrough(delegate);
@@ -333,7 +333,7 @@ class ExporterBoundaryRealPayloadTest {
 
         // when
         try (runtime;
-             ExporterLogCapture capture = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
+             ExporterLogCapture ignored = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
              SdkTracerProvider provider = SdkTracerProvider.builder()
                      .addSpanProcessor(new ScrubbingSpanProcessor(runtime))
                      .addSpanProcessor(SimpleSpanProcessor.create(
@@ -393,7 +393,7 @@ class ExporterBoundaryRealPayloadTest {
 
         // when
         try (runtime;
-             ExporterLogCapture capture = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
+             ExporterLogCapture ignored = new ExporterLogCapture(OtlpJsonLoggingSpanExporter.class, rendered);
              SdkTracerProvider provider = SdkTracerProvider.builder()
                      .addSpanProcessor(new ScrubbingSpanProcessor(runtime))
                      .addSpanProcessor(SimpleSpanProcessor.create(
@@ -422,7 +422,9 @@ class ExporterBoundaryRealPayloadTest {
         for (JsonNode owner : List.of(span, event, span.path("links").path(0))) {
             assertThat(stringArrayAttribute(owner, "many")).containsExactly("***");
             assertThat(stringArrayAttribute(owner, "long")).containsExactly("***");
-            JsonNode numbers = attributeValue(owner, "numbers").path("arrayValue").path("values");
+            JsonNode numbersValue = attributeValue(owner, "numbers");
+            assertThat(numbersValue).isNotNull();
+            JsonNode numbers = numbersValue.path("arrayValue").path("values");
             assertThat(numbers.size()).isEqualTo(33);
             for (JsonNode number : numbers) {
                 assertThat(number.path("intValue").asLong()).isEqualTo(42L);
@@ -435,6 +437,7 @@ class ExporterBoundaryRealPayloadTest {
         assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
     }
 
+    @Nullable
     private static JsonNode attributeValue(JsonNode owner, String key) {
         for (JsonNode attribute : owner.path("attributes")) {
             if (attribute.path("key").asText().equals(key)) {

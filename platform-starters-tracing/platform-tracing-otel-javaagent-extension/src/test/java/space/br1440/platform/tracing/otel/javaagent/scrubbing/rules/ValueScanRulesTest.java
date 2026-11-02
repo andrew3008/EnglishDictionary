@@ -34,6 +34,8 @@ class ValueScanRulesTest {
             "Request failed\nContact ivan@example.com\nRetry later",
             "user{1}@example.com",
             "o'neil@example.com",
+            "$@example.com",
+            "^@example.com",
             "//***@example.com",
             "user@example.xn--p1ai"
     })

@@ -3,12 +3,10 @@ package space.br1440.platform.tracing.otel.javaagent.scrubbing.rules;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 
 /**
- * Правило обнаружения JWT-токенов формата {@code header.payload.signature} (base64url).
+ * Правило обнаружения JWT-токенов формата {@code header.payload.signature}.
  * <p>
- * Условие срабатывания — наличие префикса {@code eyJ}, характерного для base64url-кодированного
- * заголовка JWT. Проверяет строковые значения и элементы строковых массивов.
- * Действие — {@link ScrubbingDecision#drop}: усечение токена всё равно оставляет валидный
- * секрет, поэтому значение удаляется целиком.
+ * Действие — {@link ScrubbingDecision#drop}: усечение токена всё равно оставляет валидный секрет,
+ * поэтому значение удаляется целиком.
  */
 final class JwtRule extends AbstractValueScanRule {
 
