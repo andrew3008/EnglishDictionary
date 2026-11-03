@@ -2,9 +2,9 @@ package space.br1440.platform.tracing.autoconfigure.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
-
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
@@ -39,9 +39,9 @@ class ExceptionRecordingAutoConfigurationTest {
     }
 
     @Test
-    void defaultsDoNotReadOrPublishExceptionText() {
+    void defaultsPublishOrdinaryMessageWithoutStacktrace() {
         // given
-        CountingMessageException failure = new CountingMessageException("outer-secret", null);
+        CountingMessageException failure = new CountingMessageException("Connection refused", null);
 
         // when
         contextRunner.run(context -> {
@@ -56,30 +56,34 @@ class ExceptionRecordingAutoConfigurationTest {
 
                 // then
                 TracingProperties.ExceptionRecording properties = context.getBean(TracingProperties.class).getExceptionRecording();
-                assertThat(properties.isIncludeMessage()).isFalse();
+                assertThat(properties.isIncludeMessage()).isTrue();
                 assertThat(properties.isIncludeStacktrace()).isFalse();
                 SpanData finished = exporter.getFinishedSpanItems().getFirst();
                 assertThat(finished.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
-                assertThat(finished.getStatus().getDescription()).isEmpty();
+                assertThat(finished.getStatus().getDescription()).isEqualTo("Connection refused");
                 EventData event = finished.getEvents().getFirst();
                 assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_TYPE))
                         .isEqualTo(CountingMessageException.class.getName());
-                assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isNull();
+                assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isEqualTo("Connection refused");
                 assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE)).isNull();
-                assertThat(failure.messageReads).isZero();
+                assertThat(failure.messageReads).isEqualTo(1);
             }
         });
     }
 
-    @Test
-    void stacktraceOptInKeepsMessagesDisabledForEntireCauseChain() {
+    @ParameterizedTest
+    @CsvSource({"false,false", "false,true", "true,false", "true,true"})
+    void recordingPropertiesControlSanitizedTextAndMessageReads(boolean includeMessage, boolean includeStacktrace) {
         // given
-        CountingMessageException cause = new CountingMessageException("cause-secret", null);
-        CountingMessageException failure = new CountingMessageException("outer-secret", cause);
+        CountingMessageException cause = new CountingMessageException("password=cause-secret", null);
+        CountingMessageException failure = new CountingMessageException("token=outer-secret", cause);
 
         // when
         contextRunner
-                .withPropertyValues("platform.tracing.exception-recording.include-stacktrace=true")
+                .withPropertyValues(
+                        "platform.tracing.exception-recording.include-message=" + includeMessage,
+                        "platform.tracing.exception-recording.include-stacktrace=" + includeStacktrace
+                )
                 .run(context -> {
                     ExceptionRecorder recorder = context.getBean(ExceptionRecorder.class);
                     InMemorySpanExporter exporter = InMemorySpanExporter.create();
@@ -92,48 +96,56 @@ class ExceptionRecordingAutoConfigurationTest {
 
                         // then
                         SpanData finished = exporter.getFinishedSpanItems().getFirst();
-                        assertThat(finished.getStatus().getDescription()).isEmpty();
+                        assertThat(finished.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+                        assertThat(finished.getStatus().getDescription()).isEqualTo(includeMessage ? "<redacted>" : "");
                         EventData event = finished.getEvents().getFirst();
-                        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isNull();
-                        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE))
-                                .contains(CountingMessageException.class.getName(), "Caused by:")
-                                .doesNotContain("outer-secret", "cause-secret");
-                        assertThat(failure.messageReads).isZero();
-                        assertThat(cause.messageReads).isZero();
+                        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE))
+                                .isEqualTo(includeMessage ? "<redacted>" : null);
+                        String stack = event.getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE);
+                        if (includeStacktrace) {
+                            assertThat(stack)
+                                    .contains(CountingMessageException.class.getName(), "Caused by:")
+                                    .doesNotContain("outer-secret", "cause-secret");
+                            if (includeMessage) {
+                                assertThat(stack).contains(": <redacted>\n");
+                            } else {
+                                assertThat(stack).doesNotContain("<redacted>");
+                            }
+                        } else {
+                            assertThat(stack).isNull();
+                        }
+                        assertThat(failure.messageReads).isEqualTo(includeMessage ? 1 : 0);
+                        assertThat(cause.messageReads).isEqualTo(includeMessage && includeStacktrace ? 1 : 0);
                     }
                 });
     }
 
     @Test
-    void includeMessageAndStacktracePropertiesControlRecordedEvent() {
-        contextRunner
-                .withPropertyValues(
-                        "platform.tracing.exception-recording.include-message=true",
-                        "platform.tracing.exception-recording.include-stacktrace=true")
-                .run(context -> {
-                    // given
-                    ExceptionRecorder recorder = context.getBean(ExceptionRecorder.class);
+    void customRecorderOverridesDefaultWithoutReadingMessages() {
+        // given
+        ExceptionRecorder customRecorder = new ExceptionRecorder(new ExceptionRecordingPolicy(false, false));
+        CountingMessageException failure = new CountingMessageException("password=secret-canary", null);
 
+        // when
+        contextRunner
+                .withBean(ExceptionRecorder.class, () -> customRecorder)
+                .run(context -> {
                     InMemorySpanExporter exporter = InMemorySpanExporter.create();
                     try (SdkTracerProvider provider = SdkTracerProvider.builder()
                             .addSpanProcessor(SimpleSpanProcessor.create(exporter))
-                            .build()
-                    ) {
-                        Tracer tracer = provider.get("test");
-                        Span span = tracer.spanBuilder("op").startSpan();
-
-                        // when
-                        recorder.record(span, new IllegalStateException("boom"));
+                            .build()) {
+                        Span span = provider.get("test").spanBuilder("op").startSpan();
+                        context.getBean(ExceptionRecorder.class).record(span, failure);
                         span.end();
-                        List<SpanData> finished = exporter.getFinishedSpanItems();
 
                         // then
-                        assertThat(finished).hasSize(1);
-                        assertThat(finished.getFirst().getStatus().getDescription()).isEqualTo("boom");
-                        EventData event = finished.getFirst().getEvents().getFirst();
-                        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isEqualTo("boom");
-                        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE))
-                                .contains("IllegalStateException: boom");
+                        assertThat(context).hasSingleBean(ExceptionRecorder.class);
+                        assertThat(context.getBean(ExceptionRecorder.class)).isSameAs(customRecorder);
+                        assertThat(context).doesNotHaveBean("platformExceptionRecorder");
+                        SpanData finished = exporter.getFinishedSpanItems().getFirst();
+                        assertThat(finished.getStatus().getDescription()).isEmpty();
+                        assertThat(finished.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isNull();
+                        assertThat(failure.messageReads).isZero();
                     }
                 });
     }

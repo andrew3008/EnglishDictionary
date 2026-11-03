@@ -12,12 +12,12 @@ import space.br1440.platform.tracing.otel.javaagent.logging.event.AgentLogEventT
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.DiagnosticTextMaskingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.IpPrefixTruncator;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeOutcome;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ScrubbingKeyNormalizer;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.UrlCredentialMaskingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.ValueScanPolicy;
 
@@ -37,16 +37,19 @@ final class SpanAttributeInPlaceScrubber {
     private final ScrubbingCollapseState collapse;
     private final HmacSha256Digest digest;
     private final RateLimitedLogger log;
+    private final ScrubbingRuntime runtime;
     private final ScrubbingActionCounters actions = new ScrubbingActionCounters();
 
     SpanAttributeInPlaceScrubber(List<ExecutableRule> rules,
                                  ScrubbingCollapseState collapse,
                                  HmacSha256Digest digest,
-                                 RateLimitedLogger log) {
+                                 RateLimitedLogger log,
+                                 ScrubbingRuntime runtime) {
         this.rules = rules;
         this.collapse = collapse;
         this.digest = digest;
         this.log = log;
+        this.runtime = runtime;
     }
 
     void scrub(ReadWriteSpan span) {
@@ -67,6 +70,10 @@ final class SpanAttributeInPlaceScrubber {
                 }
 
                 String normalizedKey = ScrubbingKeyNormalizer.normalize(key.getKey());
+                if (!runtime.diagnosticAttributePermitted(normalizedKey, value)) {
+                    dropDiagnosticAttribute(span, key);
+                    return;
+                }
                 MergeOutcome outcome = MergeEngine.evaluateDetailed(rules, normalizedKey, value, key.getType());
                 if (outcome.skippedCircuitOpen() > 0L) {
                     actions.addSkippedCircuitOpen(outcome.skippedCircuitOpen());
@@ -82,8 +89,8 @@ final class SpanAttributeInPlaceScrubber {
                 }
 
                 if (decision.action() == ScrubbingAction.KEEP) {
-                    if (outcome.maskedValue() != null) {
-                        span.setAttribute(key.getKey(), outcome.maskedValue());
+                    if (outcome.maskedValue() != null
+                            && writeString(span, AttributeKey.stringKey(key.getKey()), outcome.maskedValue())) {
                         actions.recordMasked();
                     }
 
@@ -98,6 +105,23 @@ final class SpanAttributeInPlaceScrubber {
             applyFailClosedSnapshot(span, attributes);
             logFailure(ScrubbingLogEvent.SCRUB_PROCESSOR_CALLBACK_FAILED, t);
         }
+    }
+
+    private void dropDiagnosticAttribute(ReadWriteSpan span, AttributeKey<?> key) {
+        if (!"".equals(span.getAttribute(AttributeKey.stringKey(key.getKey())))) {
+            span.setAttribute(AttributeKey.stringKey(key.getKey()), "");
+            actions.recordDropped();
+        }
+    }
+
+    private boolean writeString(ReadWriteSpan span, AttributeKey<String> key, String value) {
+        if (!runtime.diagnosticAttributePermitted(ScrubbingKeyNormalizer.normalize(key.getKey()), value)) {
+            dropDiagnosticAttribute(span, key);
+            return false;
+        }
+
+        span.setAttribute(key, value);
+        return true;
     }
 
     private void logFailure(AgentLogEventType eventType, Throwable failure) {
@@ -160,6 +184,12 @@ final class SpanAttributeInPlaceScrubber {
     @SuppressWarnings("unchecked")
     private void apply(ReadWriteSpan span, AttributeKey<?> key, Object value, ScrubbingDecision decision) {
         AttributeType type = key.getType();
+        if (decision.action() == ScrubbingAction.DROP
+                && (ScrubbingRuntime.isDiagnosticAttribute(ScrubbingKeyNormalizer.normalize(key.getKey()))
+                || isDiagnosticDrop(decision))) {
+            dropDiagnosticAttribute(span, key);
+            return;
+        }
 
         boolean failClosed = (decision.action() == ScrubbingAction.MASK)
                 && ScrubbingDecision.SCRUBBING_FAILED_REASON.equals(decision.reason());
@@ -173,15 +203,9 @@ final class SpanAttributeInPlaceScrubber {
         }
 
         switch (type) {
-            case STRING -> span.setAttribute((AttributeKey<String>) key, transformString((String) value, decision));
+            case STRING -> writeString(span, (AttributeKey<String>) key, transformString((String) value, decision));
 
             case STRING_ARRAY -> {
-                if (isUrlDrop(decision)) {
-                    span.setAttribute((AttributeKey<List<String>>) key, List.of(""));
-                    actions.recordDropped();
-                    return;
-                }
-
                 if (ValueScanPolicy.isInputLimitMask(decision)) {
                     span.setAttribute((AttributeKey<List<String>>) key, List.of(MASK));
                     actions.recordMasked();
@@ -205,6 +229,10 @@ final class SpanAttributeInPlaceScrubber {
     }
 
     private void applyFailClosed(ReadWriteSpan span, AttributeKey<?> key, AttributeType type) {
+        if (ScrubbingRuntime.isDiagnosticAttribute(ScrubbingKeyNormalizer.normalize(key.getKey()))) {
+            dropDiagnosticAttribute(span, key);
+            return;
+        }
         if (writeFailClosedSentinel(span, key, type)) {
             actions.recordMasked();
         }
@@ -303,11 +331,7 @@ final class SpanAttributeInPlaceScrubber {
         switch (decision.action()) {
             case MASK, DROP, HASH -> {
                 actions.recordDropped();
-                if (isUrlDrop(decision)) {
-                    writeFailClosedSentinel(span, key, type);
-                } else {
-                    writeSentinel(span, key, value, type);
-                }
+                writeSentinel(span, key, value, type);
             }
 
             case TRUNCATE -> {
@@ -320,9 +344,9 @@ final class SpanAttributeInPlaceScrubber {
         }
     }
 
-    private static boolean isUrlDrop(ScrubbingDecision decision) {
+    private static boolean isDiagnosticDrop(ScrubbingDecision decision) {
         return decision.action() == ScrubbingAction.DROP
-                && (UrlCredentialMaskingRule.NAME.equals(decision.reason())
+                && (DiagnosticTextMaskingRule.NAME.equals(decision.reason())
                 || ScrubbingDecision.SCRUBBING_FAILED_REASON.equals(decision.reason()));
     }
 

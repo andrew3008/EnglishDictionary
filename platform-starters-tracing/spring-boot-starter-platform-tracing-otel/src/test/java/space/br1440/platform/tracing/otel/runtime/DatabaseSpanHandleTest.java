@@ -66,12 +66,12 @@ class DatabaseSpanHandleTest {
         assertThat(span.getAttributes().get(SemconvKeys.ERROR_TYPE)).isNotEqualTo(failure.getMessage());
         assertThat(span.getAttributes().get(SemconvKeys.PLATFORM_RESULT)).isEqualTo(SpanResult.FAILURE.value());
         assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
-        assertThat(span.getStatus().getDescription()).isEmpty();
+        assertThat(span.getStatus().getDescription()).isEqualTo("<redacted>");
         EventData event = span.getEvents().getFirst();
         assertThat(span.getEvents()).hasSize(1);
         assertThat(event.getName()).isEqualTo("exception");
         assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_TYPE)).isEqualTo(EXCEPTION_TYPE);
-        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isNull();
+        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isEqualTo("<redacted>");
         assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE)).isNull();
     }
 

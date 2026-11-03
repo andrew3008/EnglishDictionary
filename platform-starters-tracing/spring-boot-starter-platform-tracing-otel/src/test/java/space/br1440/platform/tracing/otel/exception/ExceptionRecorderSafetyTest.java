@@ -99,8 +99,8 @@ class ExceptionRecorderSafetyTest {
     @CsvSource({"false,false", "false,true", "true,false", "true,true"})
     void messagePolicyAppliesToStatusEventAndCauseHeaders(boolean includeMessage, boolean includeStack) {
         // given
-        CountingException cause = new CountingException("cause-secret", null);
-        CountingException exception = new CountingException("outer-secret", cause);
+        CountingException cause = new CountingException("password=cause-secret", null);
+        CountingException exception = new CountingException("token=outer-secret", cause);
         ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(includeMessage, includeStack));
         try (SdkTracerProvider provider = recordingProvider().build()) {
             Span span = provider.get("test").spanBuilder("privacy").startSpan();
@@ -115,8 +115,8 @@ class ExceptionRecorderSafetyTest {
             String message = event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE);
             String stack = event.getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE);
             assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
-            assertThat(data.getStatus().getDescription()).isEqualTo(includeMessage ? "outer-secret" : "");
-            assertThat(message).isEqualTo(includeMessage ? "outer-secret" : null);
+            assertThat(data.getStatus().getDescription()).isEqualTo(includeMessage ? "<redacted>" : "");
+            assertThat(message).isEqualTo(includeMessage ? "<redacted>" : null);
             assertThat(exception.messageReads).isEqualTo(includeMessage ? 1 : 0);
             assertThat(cause.messageReads).isEqualTo(includeMessage && includeStack ? 1 : 0);
             if (includeStack) {
@@ -124,10 +124,11 @@ class ExceptionRecorderSafetyTest {
                 assertThat(exception.stackReads).isEqualTo(1);
                 assertThat(cause.stackReads).isEqualTo(1);
                 if (includeMessage) {
-                    assertThat(stack).contains("outer-secret", "cause-secret");
+                    assertThat(stack).contains(": <redacted>\n", "Caused by: " + CountingException.class.getName() + ": <redacted>\n");
                 } else {
-                    assertThat(stack).doesNotContain("outer-secret", "cause-secret");
+                    assertThat(stack).doesNotContain("<redacted>");
                 }
+                assertThat(stack).doesNotContain("outer-secret", "cause-secret");
             } else {
                 assertThat(stack).isNull();
                 assertThat(exception.causeReads).isZero();

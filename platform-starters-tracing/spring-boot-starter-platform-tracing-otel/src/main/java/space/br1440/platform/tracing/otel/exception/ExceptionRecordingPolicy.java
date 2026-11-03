@@ -4,7 +4,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
 import space.br1440.platform.common.util.StringUtils;
-import space.br1440.platform.tracing.runtime.scrubbing.UrlCredentialMasker;
+import space.br1440.platform.tracing.runtime.scrubbing.DiagnosticTextSanitizer;
 
 public final class ExceptionRecordingPolicy {
 
@@ -31,7 +31,7 @@ public final class ExceptionRecordingPolicy {
 
     @Nonnull
     public static ExceptionRecordingPolicy secureDefault() {
-        return new ExceptionRecordingPolicy(false, false);
+        return new ExceptionRecordingPolicy(true, false);
     }
 
     @Nullable
@@ -63,7 +63,7 @@ public final class ExceptionRecordingPolicy {
             return null;
         }
 
-        String masked = UrlCredentialMasker.mask(message);
+        String masked = DiagnosticTextSanitizer.mask(message);
         if (StringUtils.isNullOrBlank(masked)) {
             return null;
         }

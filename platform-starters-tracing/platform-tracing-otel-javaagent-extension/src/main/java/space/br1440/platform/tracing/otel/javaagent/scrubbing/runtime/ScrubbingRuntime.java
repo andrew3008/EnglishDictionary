@@ -15,6 +15,7 @@ import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuntimeRule;
+import space.br1440.platform.tracing.runtime.scrubbing.DiagnosticTextSanitizer;
 
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 
@@ -30,6 +31,7 @@ public final class ScrubbingRuntime implements AutoCloseable {
     private final ScrubbingCollapseState collapseState = new ScrubbingCollapseState(lifecycleLog);
     private final ScrubbingBoundaryCounters boundaryCounters = new ScrubbingBoundaryCounters();
     private final ScrubbingInstallationBarrier installation = new ScrubbingInstallationBarrier();
+    private final AtomicInteger attributeValueLengthLimit = new AtomicInteger();
     private final URLClassLoader extensionClassLoader;
     private final Object extensionClassLoaderCloseMonitor = new Object();
     private boolean extensionClassLoaderClosed;
@@ -78,7 +80,7 @@ public final class ScrubbingRuntime implements AutoCloseable {
         }
 
         this.attributeScrubber = new SpanAttributeInPlaceScrubber(
-                policy.attributeExecutableRules(), collapseState, digest, log);
+                policy.attributeExecutableRules(), collapseState, digest, log, this);
     }
 
     public static ScrubbingRuntime disabled() {
@@ -279,6 +281,33 @@ public final class ScrubbingRuntime implements AutoCloseable {
 
     public void requireInstallationComplete() {
         installation.requireComplete();
+        if (attributeValueLengthLimit.get() == 0) {
+            throw new IllegalStateException("Actual SDK attribute value length limit is not bound");
+        }
+    }
+
+    public void bindAttributeValueLengthLimit(int limit) {
+        if (limit <= 0) {
+            throw new IllegalArgumentException("SDK attribute value length limit must be positive");
+        }
+
+        if (!attributeValueLengthLimit.compareAndSet(0, limit)) {
+            throw new IllegalStateException("SDK attribute value length limit is already bound");
+        }
+    }
+
+    public boolean diagnosticAttributePermitted(String normalizedKey, Object value) {
+        if (!isDiagnosticAttribute(normalizedKey)) {
+            return true;
+        }
+
+        int limit = attributeValueLengthLimit.get();
+        return value instanceof String text && !text.isEmpty() && limit > 0
+                && text.length() < limit && text.length() <= DiagnosticTextSanitizer.MAX_TEXT_LENGTH;
+    }
+
+    public static boolean isDiagnosticAttribute(String normalizedKey) {
+        return "exception.message".equals(normalizedKey) || "exception.stacktrace".equals(normalizedKey);
     }
 
     static ScrubbingRuntime create(List<RuntimeRule> rules, long policyVersion,

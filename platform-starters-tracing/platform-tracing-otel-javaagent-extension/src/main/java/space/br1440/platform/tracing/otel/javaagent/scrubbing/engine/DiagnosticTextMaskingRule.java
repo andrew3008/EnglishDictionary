@@ -1,16 +1,21 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.engine;
 
+import java.util.Set;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
-import space.br1440.platform.tracing.runtime.scrubbing.UrlCredentialMasker;
+import space.br1440.platform.tracing.runtime.scrubbing.DiagnosticTextSanitizer;
 
-public final class UrlCredentialMaskingRule implements SpanAttributeScrubbingRule {
+public final class DiagnosticTextMaskingRule implements SpanAttributeScrubbingRule {
 
-    public static final String NAME = "url-credentials";
+    public static final String NAME = "diagnostic-text";
     public static final int PRIORITY = 5;
+
+    private static final Set<String> DIAGNOSTIC_KEYS = Set.of(
+            "exception.message", "exception.stacktrace", "status.description"
+    );
 
     @Nonnull
     @Override
@@ -30,7 +35,7 @@ public final class UrlCredentialMaskingRule implements SpanAttributeScrubbingRul
 
     @Override
     public boolean isExcluded(@Nonnull String key) {
-        return !"exception.message".equals(key) && !"status.description".equals(key);
+        return !DIAGNOSTIC_KEYS.contains(key);
     }
 
     @Nonnull
@@ -54,6 +59,6 @@ public final class UrlCredentialMaskingRule implements SpanAttributeScrubbingRul
 
     @Nullable
     String mask(@Nonnull String value) {
-        return UrlCredentialMasker.mask(value);
+        return DiagnosticTextSanitizer.mask(value);
     }
 }

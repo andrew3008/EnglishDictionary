@@ -27,13 +27,14 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableR
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuntimeRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
-import space.br1440.platform.tracing.runtime.scrubbing.UrlCredentialMasker;
+import space.br1440.platform.tracing.runtime.scrubbing.DiagnosticTextSanitizer;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
+import io.opentelemetry.sdk.trace.SpanLimits;
 
 class ScrubbingRuntimeTest {
 
@@ -56,10 +57,11 @@ class ScrubbingRuntimeTest {
             }
         };
         List<RuntimeRule> rules = List.of(
-                runtimeRule(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create(), RuleOrigin.BUILT_IN),
+                runtimeRule(BuiltInSpanAttributeScrubbingRules.DIAGNOSTIC_TEXT.create(), RuleOrigin.BUILT_IN),
                 runtimeRule(lengthLimit, RuleOrigin.EXTERNAL_EXTENSION));
         try (ScrubbingRuntime runtime = ScrubbingRuntime.create(rules, 1L, null, false);
              SpanProcessorHarness harness = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {
+            runtime.bindAttributeValueLengthLimit(SpanLimits.getDefault().getMaxAttributeValueLength());
             Span span = harness.tracer().spanBuilder("url-with-length-limit").startSpan();
             span.setAttribute(key, "Failed https://service.example/?token=secret");
 
@@ -80,7 +82,7 @@ class ScrubbingRuntimeTest {
         // given
         AttributeKey<List<String>> key = AttributeKey.stringArrayKey("exception.message");
         try (ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
-                List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()));
+                List.of(BuiltInSpanAttributeScrubbingRules.DIAGNOSTIC_TEXT.create()));
              SpanProcessorHarness harness = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {
             Span span = harness.tracer().spanBuilder("unexpected-message-array").startSpan();
             span.setAttribute(key, Collections.nCopies(33, "https://user:secret@service.example/?token=secret"));
@@ -89,7 +91,9 @@ class ScrubbingRuntimeTest {
             span.end();
 
             // then
-            assertThat(harness.spans().getFirst().getAttributes().get(key)).containsExactly("");
+            assertThat(harness.spans().getFirst().getAttributes().get(key)).isNull();
+            assertThat(harness.spans().getFirst().getAttributes().get(AttributeKey.stringKey("exception.message")))
+                    .isEmpty();
             assertThat(runtime.droppedActions()).isEqualTo(1L);
             assertThat(runtime.maskedActions()).isZero();
             assertThat(runtime.failures()).isZero();
@@ -100,7 +104,7 @@ class ScrubbingRuntimeTest {
     void urlMaskingUsesExistingActionCounters() {
         // given
         try (ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
-                List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()));
+                List.of(BuiltInSpanAttributeScrubbingRules.DIAGNOSTIC_TEXT.create()));
              SpanProcessorHarness harness = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {
             Span masked = harness.tracer().spanBuilder("masked").startSpan();
             masked.setAttribute("exception.message", "Failed https://service.example/?token=secret");
@@ -134,18 +138,18 @@ class ScrubbingRuntimeTest {
         // given
         String input = "Failed https://service.example/?token=secret";
         try (ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
-                List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()));
+                List.of(BuiltInSpanAttributeScrubbingRules.DIAGNOSTIC_TEXT.create()));
              SpanProcessorHarness harness = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {
             Span span = harness.tracer().spanBuilder("url-helper-failure").startSpan();
             span.setAttribute("exception.message", input);
             span.setAttribute("detail", "safe detail");
 
             // when
-            try (MockedStatic<UrlCredentialMasker> masker = mockStatic(UrlCredentialMasker.class)) {
-                masker.when(() -> UrlCredentialMasker.mask(input))
+            try (MockedStatic<DiagnosticTextSanitizer> masker = mockStatic(DiagnosticTextSanitizer.class)) {
+                masker.when(() -> DiagnosticTextSanitizer.mask(input))
                         .thenThrow(new IllegalArgumentException("Simulated parser failure"));
                 runtime.scrubSpanAttributes((ReadWriteSpan) span);
-                masker.verify(() -> UrlCredentialMasker.mask(input));
+                masker.verify(() -> DiagnosticTextSanitizer.mask(input));
             }
             span.end();
 
@@ -246,7 +250,7 @@ class ScrubbingRuntimeTest {
 
     @Test
     @DisplayName("Installation barrier: requireComplete() throws until every acknowledgement is present")
-    void installationBarrierRequiresAllFourAcknowledgements() {
+    void installationBarrierRequiresAllAcknowledgementsAndActualLimit() {
         // given
         try (ScrubbingRuntime runtime = ScrubbingRuntime.create(
                 List.of(runtimeRule(new MatchEverythingRule(), RuleOrigin.BUILT_IN)),
@@ -279,6 +283,14 @@ class ScrubbingRuntimeTest {
 
             // when
             runtime.acknowledgeExportPathProtected();
+
+            // then
+            assertThatThrownBy(runtime::requireInstallationComplete)
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("Actual SDK attribute value length limit is not bound");
+
+            // when
+            runtime.bindAttributeValueLengthLimit(1000);
 
             // then
             runtime.requireInstallationComplete();

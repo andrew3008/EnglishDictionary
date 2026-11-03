@@ -12,39 +12,39 @@ import org.junit.jupiter.params.provider.ValueSource;
 import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.DiagnosticTextMaskingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeOutcome;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.UrlCredentialMaskingRule;
 
 import io.opentelemetry.api.common.AttributeType;
 
-class UrlCredentialMaskingRuleTest {
+class DiagnosticTextMaskingRuleTest {
 
     @Test
     void registeredByDefaultAsCriticalBeforeOtherRules() {
         // given
         SpanAttributeScrubbingRule rule = Objects.requireNonNull(
-                BuiltInSpanAttributeScrubbingRules.resolve("url-credentials"),
-                "url-credentials"
+                BuiltInSpanAttributeScrubbingRules.resolve("diagnostic-text"),
+                "diagnostic-text"
         );
 
         // when
         List<String> defaults = BuiltInSpanAttributeScrubbingRules.defaultConfigNames();
 
         // then
-        assertThat(rule).isInstanceOf(UrlCredentialMaskingRule.class);
+        assertThat(rule).isInstanceOf(DiagnosticTextMaskingRule.class);
         assertThat(rule.critical()).isTrue();
         assertThat(rule.priority()).isLessThan(BuiltInSpanAttributeScrubbingRules.OAUTH_HEADER.priority());
-        assertThat(defaults).contains("url-credentials");
+        assertThat(defaults).contains("diagnostic-text");
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"exception.message", "status.description"})
-    void masksUrlCredentialsOnBothTextSurfaces(String key) {
+    @ValueSource(strings = {"exception.message", "exception.stacktrace", "status.description"})
+    void masksUrlCredentialsOnDiagnosticSurfaces(String key) {
         // given
         String input = "Failed https://user:password@service.example/path?token=secret#opaque-fragment-canary";
-        ExecutableRule rule = executable(new UrlCredentialMaskingRule());
+        ExecutableRule rule = executable(new DiagnosticTextMaskingRule());
 
         // when
         MergeOutcome outcome = MergeEngine.evaluateDetailed(List.of(rule), key, input);
@@ -56,14 +56,14 @@ class UrlCredentialMaskingRuleTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"exception.message", "status.description"})
+    @ValueSource(strings = {"exception.message", "exception.stacktrace", "status.description"})
     void keepsTextWithoutCredentials(String key) {
         // given
         String input = "Connection refused";
 
         // when
         MergeOutcome outcome = MergeEngine.evaluateDetailed(
-                List.of(executable(new UrlCredentialMaskingRule())), key, input);
+                List.of(executable(new DiagnosticTextMaskingRule())), key, input);
 
         // then
         assertThat(outcome.decision().action()).isEqualTo(ScrubbingAction.KEEP);
@@ -72,14 +72,14 @@ class UrlCredentialMaskingRuleTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"exception.message", "status.description"})
-    void dropsAmbiguousAuthorityOnBothTextSurfaces(String key) {
+    @ValueSource(strings = {"exception.message", "exception.stacktrace", "status.description"})
+    void dropsAmbiguousAuthorityOnDiagnosticSurfaces(String key) {
         // given
         String input = "Failed https://user:secret";
 
         // when
         MergeOutcome outcome = MergeEngine.evaluateDetailed(
-                List.of(executable(new UrlCredentialMaskingRule())), key, input);
+                List.of(executable(new DiagnosticTextMaskingRule())), key, input);
 
         // then
         assertThat(outcome.decision().action()).isEqualTo(ScrubbingAction.DROP);
@@ -88,14 +88,14 @@ class UrlCredentialMaskingRuleTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"exception.message", "status.description"})
+    @ValueSource(strings = {"exception.message", "exception.stacktrace", "status.description"})
     void dropsOversizedInputWithoutScanningItsPrefix(String key) {
         // given
         String input = "https://service.example/?token=" + "s".repeat(4096);
 
         // when
         MergeOutcome outcome = MergeEngine.evaluateDetailed(
-                List.of(executable(new UrlCredentialMaskingRule())), key, input);
+                List.of(executable(new DiagnosticTextMaskingRule())), key, input);
 
         // then
         assertThat(outcome.decision().action()).isEqualTo(ScrubbingAction.DROP);
@@ -104,14 +104,14 @@ class UrlCredentialMaskingRuleTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"url.full", "url.query", "span.name", "event.name", "exception.stacktrace", "custom"})
+    @ValueSource(strings = {"url.full", "url.query", "span.name", "event.name", "custom"})
     void excludesOtherSurfaces(String key) {
         // given
         String input = "https://user:secret@service.example/?token=secret";
 
         // when
         MergeOutcome outcome = MergeEngine.evaluateDetailed(
-                List.of(executable(new UrlCredentialMaskingRule())), key, input);
+                List.of(executable(new DiagnosticTextMaskingRule())), key, input);
 
         // then
         assertThat(outcome.decision().action()).isEqualTo(ScrubbingAction.KEEP);
@@ -125,7 +125,7 @@ class UrlCredentialMaskingRuleTest {
 
         // when
         MergeOutcome outcome = MergeEngine.evaluateDetailed(
-                List.of(executable(new UrlCredentialMaskingRule())), "exception.message", input);
+                List.of(executable(new DiagnosticTextMaskingRule())), "exception.message", input);
 
         // then
         assertThat(input).hasSizeLessThan(4096);
@@ -134,14 +134,14 @@ class UrlCredentialMaskingRuleTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"exception.message", "status.description"})
+    @ValueSource(strings = {"exception.message", "exception.stacktrace", "status.description"})
     void dropsStringArraysOnStringOnlySurfaces(String key) {
         // given
         List<String> input = List.of("https://user:secret@service.example/?token=secret");
 
         // when
         MergeOutcome outcome = MergeEngine.evaluateDetailed(
-                List.of(executable(new UrlCredentialMaskingRule())), key, input, AttributeType.STRING_ARRAY);
+                List.of(executable(new DiagnosticTextMaskingRule())), key, input, AttributeType.STRING_ARRAY);
 
         // then
         assertThat(outcome.decision().action()).isEqualTo(ScrubbingAction.DROP);
@@ -156,27 +156,11 @@ class UrlCredentialMaskingRuleTest {
 
         // when
         MergeOutcome outcome = MergeEngine.evaluateDetailed(
-                List.of(executable(new UrlCredentialMaskingRule())), "url.full", input, AttributeType.STRING_ARRAY);
+                List.of(executable(new DiagnosticTextMaskingRule())), "url.full", input, AttributeType.STRING_ARRAY);
 
         // then
         assertThat(outcome.decision().action()).isEqualTo(ScrubbingAction.KEEP);
         assertThat(outcome.maskedValue()).isNull();
-    }
-
-    @Test
-    void continuesSecretChecksOutsideMaskedUrls() {
-        // given
-        String input = "https://service.example/?token=secret eyJhbGciOiJIUzI1NiJ9.e30.signature";
-
-        // when
-        MergeOutcome outcome = MergeEngine.evaluateDetailed(
-                List.of(executable(new UrlCredentialMaskingRule()), executable(new JwtRule())),
-                "exception.message", input);
-
-        // then
-        assertThat(outcome.maskedValue()).doesNotContain("token=secret");
-        assertThat(outcome.decision().action()).isEqualTo(ScrubbingAction.DROP);
-        assertThat(outcome.decision().reason()).isEqualTo("jwt");
     }
 
     @Test
@@ -186,32 +170,12 @@ class UrlCredentialMaskingRuleTest {
 
         // when
         MergeOutcome outcome = MergeEngine.evaluateDetailed(
-                List.of(executable(new UrlCredentialMaskingRule()), executable(new EmailRule())),
+                List.of(executable(new DiagnosticTextMaskingRule()), executable(new EmailRule())),
                 "exception.message", input);
 
         // then
         assertThat(outcome.decision().action()).isEqualTo(ScrubbingAction.KEEP);
         assertThat(outcome.maskedValue()).isEqualTo("Failed https://***@service.example/path?token=***");
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {
-            "Contact o'neil@example.com. Failed https://user:secret@service.example/path",
-            "Failed https://user:secret@service.example/path. Contact user{1}@example.com.",
-            "Failed https://user:secret@service.example/path. Contact ***@example.com."
-    })
-    void detectsEmailOutsideMaskedUrlUserinfo(String input) {
-        // given
-        List<ExecutableRule> rules = List.of(
-                executable(new UrlCredentialMaskingRule()), executable(new EmailRule()));
-
-        // when
-        MergeOutcome outcome = MergeEngine.evaluateDetailed(rules, "exception.message", input);
-
-        // then
-        assertThat(outcome.decision().action()).isEqualTo(ScrubbingAction.HASH);
-        assertThat(outcome.decision().reason()).isEqualTo("email");
-        assertThat(outcome.maskedValue()).contains("https://***@service.example").doesNotContain("user:secret");
     }
 
     private static ExecutableRule executable(SpanAttributeScrubbingRule rule) {

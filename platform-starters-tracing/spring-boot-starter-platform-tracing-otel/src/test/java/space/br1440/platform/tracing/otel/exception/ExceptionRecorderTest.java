@@ -44,28 +44,36 @@ class ExceptionRecorderTest {
     }
 
     @Test
-    void record_secureDefault_doesNotWriteMessageAndStacktrace_butSetsErrorTypeAndStatus() {
+    void record_secureDefault_redactsSensitiveMessageAndOmitsStacktrace() {
+        // given
         ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
+
+        // when
         runInSpan(() -> recorder.record(new IllegalStateException("SELECT * FROM users WHERE ssn='123'")));
 
+        // then
         SpanData span = exporter.getFinishedSpanItems().getFirst();
         assertThat(span.getAttributes().get(SemconvKeys.ERROR_TYPE)).isEqualTo("java.lang.IllegalStateException");
         assertThat(span.getAttributes().get(SemconvKeys.PLATFORM_RESULT)).isEqualTo("failure");
         assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
-        assertThat(span.getStatus().getDescription()).isEmpty();
+        assertThat(span.getStatus().getDescription()).isEqualTo("<redacted>");
 
         EventData event = span.getEvents().getFirst();
         assertThat(event.getName()).isEqualTo("exception");
         assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_TYPE)).isEqualTo("java.lang.IllegalStateException");
-        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isNull();
+        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isEqualTo("<redacted>");
         assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE)).isNull();
     }
 
     @Test
-    void record_withAllowedMessage_writesTruncatedMessageAndDescription() {
-        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, false));
+    void record_secureDefault_preservesOrdinaryMessageAndDescription() {
+        // given
+        ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
+
+        // when
         runInSpan(() -> recorder.record(new IllegalArgumentException("boom")));
 
+        // then
         SpanData span = exporter.getFinishedSpanItems().getFirst();
         assertThat(span.getStatus().getDescription()).isEqualTo("boom");
         assertThat(span.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isEqualTo("boom");
@@ -196,8 +204,8 @@ class ExceptionRecorderTest {
         assertThat(data.getAttributes().get(SemconvKeys.ERROR_TYPE)).isNotEqualTo(failure.getMessage());
         assertThat(data.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_TYPE))
                 .isEqualTo(IllegalStateException.class.getName());
-        assertThat(data.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isNull();
-        assertThat(data.getStatus().getDescription()).isEmpty();
+        assertThat(data.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isEqualTo("<redacted>");
+        assertThat(data.getStatus().getDescription()).isEqualTo("<redacted>");
     }
 
     @Test

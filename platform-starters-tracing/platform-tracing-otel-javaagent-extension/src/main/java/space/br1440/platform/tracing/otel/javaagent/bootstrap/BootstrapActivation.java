@@ -171,6 +171,9 @@ final class BootstrapActivation {
         AutoconfigureSession session = attempt.session();
         //noinspection resource -- runtime-регистрации принадлежат BootstrapResources, lifecycle hook — BootstrapCoordinator
         BootstrapResources resources = attempt.resources();
+        session.scrubbingRuntime().bindAttributeValueLengthLimit(
+                attempt.tracerProvider().getSpanLimits().getMaxAttributeValueLength()
+        );
         resources.push(PlatformPropagationGate.shared().bindAcceptedPolicy(session.policy()), "propagation-gate");
         resources.push(PlatformLogControl.shared().bindAcceptedPolicy(session.policy()), "log-control");
 

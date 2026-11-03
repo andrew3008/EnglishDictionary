@@ -3,12 +3,15 @@ package space.br1440.platform.tracing.autoconfigure;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
@@ -17,10 +20,14 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.TracingRuntimeDia
 import space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup.TracingStartupContractHealthAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.status.TracingStatusAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
+import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
+import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
 
+import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
+import io.opentelemetry.sdk.trace.data.SpanData;
 
 class ConfigurationEnabledRuntimeContractTest {
 
@@ -48,6 +55,32 @@ class ConfigurationEnabledRuntimeContractTest {
                 .withInitializer(ControlledAgentTestRuntime::initializeWithExporter)
                 .withPropertyValues("platform.tracing.enabled=true")
                 .run(context -> assertManualTracingOperational(context, "agent-enabled"));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"Connection refused, Connection refused", "password=runtime-secret-canary, <redacted>"})
+    void runtimeFallbackUsesSanitizedMessageDefault(String message, String expected) {
+        // given
+        ApplicationContextRunner configured = runtimeRunner
+                .withInitializer(ControlledAgentTestRuntime::initializeWithExporter);
+
+        // when
+        configured.run(context -> {
+            TraceOperations tracing = context.getBean(TraceOperations.class);
+            try (SpanHandle handle = tracing.spans().operation("fallback").start()) {
+                handle.recordException(new IllegalStateException(message));
+            }
+
+            // then
+            assertThat(context).doesNotHaveBean(ExceptionRecorder.class);
+            InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
+            assertThat(exporter.getFinishedSpanItems()).hasSize(1);
+            SpanData span = exporter.getFinishedSpanItems().getFirst();
+            assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+            assertThat(span.getStatus().getDescription()).isEqualTo(expected);
+            assertThat(span.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isEqualTo(expected);
+            assertThat(span.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE)).isNull();
+        });
     }
 
     @Test

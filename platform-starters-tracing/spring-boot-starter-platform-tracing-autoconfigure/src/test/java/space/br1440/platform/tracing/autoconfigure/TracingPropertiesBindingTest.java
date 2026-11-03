@@ -17,19 +17,24 @@ class TracingPropertiesBindingTest {
 
     @Test
     void bindsSpanAttributeValidationAndExceptionRecording() {
-        contextRunner
+        // given
+        ApplicationContextRunner configured = contextRunner
                 .withPropertyValues(
                         "platform.tracing.span-attributes.validation.level=DISABLED",
                         "platform.tracing.span-attributes.validation.disabled-reason=emergency",
-                        "platform.tracing.exception-recording.include-message=true",
-                        "platform.tracing.exception-recording.include-stacktrace=true")
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getSpanAttributes().getValidation().getLevel().name()).isEqualTo("DISABLED");
-                    assertThat(properties.getSpanAttributes().getValidation().getDisabledReason()).isEqualTo("emergency");
-                    assertThat(properties.getExceptionRecording().isIncludeMessage()).isTrue();
-                    assertThat(properties.getExceptionRecording().isIncludeStacktrace()).isTrue();
-                });
+                        "platform.tracing.exception-recording.include-message=false",
+                        "platform.tracing.exception-recording.include-stacktrace=true"
+                );
+
+        // when
+        configured.run(ctx -> {
+            // then
+            TracingProperties properties = ctx.getBean(TracingProperties.class);
+            assertThat(properties.getSpanAttributes().getValidation().getLevel().name()).isEqualTo("DISABLED");
+            assertThat(properties.getSpanAttributes().getValidation().getDisabledReason()).isEqualTo("emergency");
+            assertThat(properties.getExceptionRecording().isIncludeMessage()).isFalse();
+            assertThat(properties.getExceptionRecording().isIncludeStacktrace()).isTrue();
+        });
     }
 
     @Test

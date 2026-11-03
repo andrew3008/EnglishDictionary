@@ -18,9 +18,9 @@ import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
-import space.br1440.platform.tracing.runtime.scrubbing.UrlCredentialMasker;
+import space.br1440.platform.tracing.runtime.scrubbing.DiagnosticTextSanitizer;
 
-class UrlCredentialMaskingExecutionTest {
+class DiagnosticTextMaskingExecutionTest {
 
     @Test
     void subsequentRulesObserveOnlyMaskedText() {
@@ -44,7 +44,7 @@ class UrlCredentialMaskingExecutionTest {
 
         // when
         MergeOutcome outcome = MergeEngine.evaluateDetailed(
-                List.of(executable(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()), executable(observer)),
+                List.of(executable(BuiltInSpanAttributeScrubbingRules.DIAGNOSTIC_TEXT.create()), executable(observer)),
                 "exception.message", input);
 
         // then
@@ -58,11 +58,11 @@ class UrlCredentialMaskingExecutionTest {
     void helperFailureAndOpenBreakerDropOnlySupportedText() {
         // given
         String input = "https://service.example/?token=secret";
-        SpanAttributeScrubbingRule rule = BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create();
+        SpanAttributeScrubbingRule rule = BuiltInSpanAttributeScrubbingRules.DIAGNOSTIC_TEXT.create();
         RuleCircuitBreaker breaker = new RuleCircuitBreaker(rule.name(), 1, 60_000L, 60_000L);
         ExecutableRule executable = new ExecutableRule(rule, breaker);
-        try (MockedStatic<UrlCredentialMasker> masker = mockStatic(UrlCredentialMasker.class)) {
-            masker.when(() -> UrlCredentialMasker.mask(input))
+        try (MockedStatic<DiagnosticTextSanitizer> masker = mockStatic(DiagnosticTextSanitizer.class)) {
+            masker.when(() -> DiagnosticTextSanitizer.mask(input))
                     .thenThrow(new IllegalArgumentException("Simulated parser failure"));
 
             // when
@@ -83,7 +83,7 @@ class UrlCredentialMaskingExecutionTest {
             }
             assertThat(excluded.decision().action()).isEqualTo(ScrubbingAction.KEEP);
             assertThat(excluded.criticalFailures()).isZero();
-            masker.verify(() -> UrlCredentialMasker.mask(input));
+            masker.verify(() -> DiagnosticTextSanitizer.mask(input));
         }
     }
 
@@ -108,7 +108,7 @@ class UrlCredentialMaskingExecutionTest {
 
         // when
         MergeOutcome outcome = MergeEngine.evaluateDetailed(
-                List.of(executable(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()), executable(custom)),
+                List.of(executable(BuiltInSpanAttributeScrubbingRules.DIAGNOSTIC_TEXT.create()), executable(custom)),
                 "exception.message", "https://user:secret");
 
         // then
@@ -122,9 +122,9 @@ class UrlCredentialMaskingExecutionTest {
         // given
         String input = "https://service.example/?token=secret";
         LinkageError failure = new LinkageError("Simulated fatal helper failure");
-        ExecutableRule executable = executable(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create());
-        try (MockedStatic<UrlCredentialMasker> masker = mockStatic(UrlCredentialMasker.class)) {
-            masker.when(() -> UrlCredentialMasker.mask(input)).thenThrow(failure);
+        ExecutableRule executable = executable(BuiltInSpanAttributeScrubbingRules.DIAGNOSTIC_TEXT.create());
+        try (MockedStatic<DiagnosticTextSanitizer> masker = mockStatic(DiagnosticTextSanitizer.class)) {
+            masker.when(() -> DiagnosticTextSanitizer.mask(input)).thenThrow(failure);
 
             // when
             // then

@@ -68,7 +68,7 @@ class ExporterBoundaryRealPayloadTest {
             + "?token=***&mode=***#***";
 
     private static final List<SpanAttributeScrubbingRule> RULES = List.of(
-            BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create(),
+            BuiltInSpanAttributeScrubbingRules.DIAGNOSTIC_TEXT.create(),
             BuiltInSpanAttributeScrubbingRules.EMAIL.create(),
             BuiltInSpanAttributeScrubbingRules.PASSWORD_KEY.create()
     );
@@ -182,7 +182,7 @@ class ExporterBoundaryRealPayloadTest {
                 .contains("exception.type");
         assertThat(payload)
                 .doesNotContain(EMAIL_CANARY)
-                .doesNotContain("login failed");
+                .doesNotContain("login failed", "cause-native-canary", "suppressed-native-canary");
     }
 
     @Test
@@ -218,7 +218,7 @@ class ExporterBoundaryRealPayloadTest {
                 .contains("exception.type");
         assertThat(wire)
                 .doesNotContain(EMAIL_CANARY)
-                .doesNotContain("login failed");
+                .doesNotContain("login failed", "cause-native-canary", "suppressed-native-canary");
     }
 
     @Test
@@ -365,10 +365,7 @@ class ExporterBoundaryRealPayloadTest {
         assertThat(spans.size()).isEqualTo(1);
         JsonNode span = spans.path(0);
         assertThat(span.path("name").asText()).isEqualTo("url-text-drop");
-        JsonNode spanMessage = attributeValue(span, "exception.message");
-        assertThat(spanMessage).isNotNull();
-        assertThat(spanMessage.path("stringValue").isTextual()).isTrue();
-        assertThat(spanMessage.path("stringValue").asText()).isEmpty();
+        assertThat(attributeValue(span, "exception.message")).isNull();
         assertThat(span.path("status").path("code").asInt()).isEqualTo(2);
         assertThat(span.path("status").path("message").asText()).isEmpty();
         assertThat(span.path("events").size()).isEqualTo(1);
@@ -409,7 +406,7 @@ class ExporterBoundaryRealPayloadTest {
             }
         };
         ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(
-                List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()), List.of(lengthLimit), null);
+                List.of(BuiltInSpanAttributeScrubbingRules.DIAGNOSTIC_TEXT.create()), List.of(lengthLimit), null);
         InMemorySpanExporter delegate = InMemorySpanExporter.create();
         SpanExporter exporter = safeExporter(delegate, runtime);
         List<SpanData> finished;
@@ -621,7 +618,10 @@ class ExporterBoundaryRealPayloadTest {
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build()) {
             Span span = provider.get("test").spanBuilder("checkout").startSpan();
-            span.recordException(new IllegalStateException("login failed for " + EMAIL_CANARY));
+            IllegalStateException failure = new IllegalStateException("login failed for " + EMAIL_CANARY,
+                    new IllegalArgumentException("password=cause-native-canary"));
+            failure.addSuppressed(new IllegalStateException("Bearer suppressed-native-canary"));
+            span.recordException(failure);
             span.end();
             provider.forceFlush().join(10, TimeUnit.SECONDS);
         }

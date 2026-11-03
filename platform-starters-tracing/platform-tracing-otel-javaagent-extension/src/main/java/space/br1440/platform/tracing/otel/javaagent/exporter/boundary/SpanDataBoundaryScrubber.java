@@ -57,8 +57,7 @@ public final class SpanDataBoundaryScrubber {
         Attributes scrubbedAttributes;
         boolean attributesChanged;
         if (runtime.attributesVerified()) {
-            AttributesScrubber.Result attributesResult =
-                    AttributesScrubber.removeValueAttributeTrees(originalAttributes, runtime);
+            AttributesScrubber.Result attributesResult = AttributesScrubber.removeUnpublishableAttributes(originalAttributes, runtime);
             scrubbedAttributes = attributesResult.attributes();
             attributesChanged = attributesResult.changed();
         } else {

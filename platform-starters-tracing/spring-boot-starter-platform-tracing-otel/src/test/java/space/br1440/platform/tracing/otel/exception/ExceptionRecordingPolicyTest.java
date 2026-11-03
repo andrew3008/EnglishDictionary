@@ -11,6 +11,20 @@ class ExceptionRecordingPolicyTest {
 
     private static final StackTraceElement[] NO_FRAMES = new StackTraceElement[0];
 
+    @ParameterizedTest
+    @ValueSource(ints = {500, 511, 512, 600})
+    void detectsSensitiveAssignmentBeforeMessageTruncation(int prefixLength) {
+        // given
+        IllegalStateException exception = new IllegalStateException("x".repeat(prefixLength) + " password=secret-canary");
+        ExceptionRecordingPolicy policy = ExceptionRecordingPolicy.secureDefault();
+
+        // when
+        String message = policy.sanitizeOrNull(exception);
+
+        // then
+        assertThat(message).isEqualTo("<redacted>");
+    }
+
     @Test
     void masksUrlCredentialsBeforeMessageTruncation() {
         // given

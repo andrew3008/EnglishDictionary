@@ -84,9 +84,9 @@ public class TracingProperties {
 
         /**
          * Публиковать {@code exception.message} в exception-событии span'а.
-         * Сообщения могут содержать чувствительные данные; включение требует явной настройки.
+         * Перед публикацией проходит маскирование чувствительных данных.
          */
-        private boolean includeMessage = false;
+        private boolean includeMessage = true;
 
         /**
          * Публиковать stacktrace в exception-событии span'а.

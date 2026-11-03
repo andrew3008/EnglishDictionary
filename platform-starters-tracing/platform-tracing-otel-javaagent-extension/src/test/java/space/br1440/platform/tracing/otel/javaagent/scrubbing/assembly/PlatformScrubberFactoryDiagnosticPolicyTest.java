@@ -22,14 +22,15 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingR
 
 import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
 
-class PlatformScrubberFactoryUrlPolicyTest {
+class PlatformScrubberFactoryDiagnosticPolicyTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"password", "url-credentials,password", "password,url-credentials,url-credentials"})
+    @ValueSource(strings = {"password", "diagnostic-text,password", "password,diagnostic-text,diagnostic-text"})
     void configuredRulesCannotRemoveOrDuplicateMandatoryUrlPolicy(String configuredRules) {
         // given
         ExtensionConfig config = new ExtensionConfig(DefaultConfigProperties.createFromMap(Map.of(
-                ExtensionPropertyNames.SCRUBBING_BUILT_IN_RULES, configuredRules)));
+                ExtensionPropertyNames.SCRUBBING_BUILT_IN_RULES, configuredRules))
+        );
         String input = "Failed https://user:password@service.example/?token=secret";
         try (ScrubbingRuntime runtime = new PlatformScrubberFactory(List::of).buildRuntime(config)) {
             // when
@@ -47,7 +48,7 @@ class PlatformScrubberFactoryUrlPolicyTest {
             // then
             assertThat(runtime.attributeExecutableRules())
                     .extracting(rule -> rule.getRule().name())
-                    .containsExactly("url-credentials", "password");
+                    .containsExactly("diagnostic-text", "password");
             for (MergeOutcome outcome : List.of(message, status)) {
                 assertThat(outcome.decision().action()).isEqualTo(ScrubbingAction.KEEP);
                 assertThat(outcome.maskedValue()).isEqualTo("Failed https://***@service.example/?token=***");
@@ -79,10 +80,10 @@ class PlatformScrubberFactoryUrlPolicyTest {
             // then
             assertThat(runtime.attributeExecutableRules())
                     .extracting(rule -> rule.getRule().name())
-                    .containsExactly("url-credentials", "custom-keep");
+                    .containsExactly("diagnostic-text", "custom-keep");
             assertThat(runtime.builtInTextRules())
                     .extracting(rule -> rule.getRule().name())
-                    .containsExactly("url-credentials");
+                    .containsExactly("diagnostic-text");
         }
     }
 }

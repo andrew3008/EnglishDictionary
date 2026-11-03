@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 import org.springframework.core.Ordered;
 
@@ -143,6 +144,41 @@ class TracedAspectTest {
                 SpanResult.FAILURE.value()
         );
         assertThat(span.getEvents()).anyMatch(event -> event.getName().equals("exception"));
+        assertThat(span.getStatus().getDescription()).isEqualTo("expected error");
+        assertThat(span.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE))
+                .isEqualTo("expected error");
+        assertThat(span.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE)).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void defaultRecorderSanitizesCreatedAndActiveSpansWithoutReplacingFailure(
+            boolean activeSpan, OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+        // given
+        IllegalStateException failure = new IllegalStateException("password=aop-secret-canary");
+        Span parent = activeSpan ? sdk.getTracer("test").spanBuilder("active.parent").startSpan() : Span.getInvalid();
+        Throwable escaped;
+
+        // when
+        try (Scope ignored = parent.makeCurrent()) {
+            escaped = catchThrowable(() -> service.failWith(failure));
+        } finally {
+            parent.end();
+        }
+
+        // then
+        assertThat(escaped).isSameAs(failure);
+        assertThat(exporter.getFinishedSpanItems()).hasSize(1);
+        SpanData span = exporter.getFinishedSpanItems().getFirst();
+        assertThat(span.getName()).isEqualTo(activeSpan ? "active.parent" : "sample.failure");
+        assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+        assertThat(span.getStatus().getDescription()).isEqualTo("<redacted>");
+        assertThat(span.getEvents()).hasSize(1);
+        assertThat(span.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_TYPE))
+                .isEqualTo(IllegalStateException.class.getName());
+        assertThat(span.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE))
+                .isEqualTo("<redacted>");
+        assertThat(span.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE)).isNull();
     }
 
     @ParameterizedTest
@@ -294,6 +330,8 @@ class TracedAspectTest {
 
         void failing(String input);
 
+        void failWith(RuntimeException failure);
+
         void selfInvoke(long orderId);
     }
 
@@ -312,6 +350,12 @@ class TracedAspectTest {
         @Traced("sample.failing")
         public void failing(@TracedAttribute("input") String input) {
             throw new IllegalStateException("expected error");
+        }
+
+        @Override
+        @Traced("sample.failure")
+        public void failWith(RuntimeException failure) {
+            throw failure;
         }
 
         @Override

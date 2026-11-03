@@ -10,6 +10,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
 
+import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
+
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -64,6 +67,7 @@ public class PackagedTracingCertificationApplication {
             configServerScenario.verify(context);
             if ("URL_MASKING".equals(System.getProperty("platformTracing.packagedScenario"))) {
                 recordUrlFailure();
+                recordDiagnosticFailures(context.getBean(TraceOperations.class));
             }
         }
 
@@ -86,6 +90,33 @@ public class PackagedTracingCertificationApplication {
             span.setStatus(StatusCode.ERROR, message);
         } finally {
             span.end();
+        }
+    }
+
+    private static void recordDiagnosticFailures(TraceOperations tracing) {
+        Span nativeSpan = GlobalOpenTelemetry
+                .getTracer("packaged-diagnostic-masking")
+                .spanBuilder("packaged-native-failure")
+                .startSpan();
+        try {
+            IllegalArgumentException cause = new IllegalArgumentException("password=packaged-cause-canary");
+            IllegalStateException failure = new IllegalStateException("ssn='packaged-root-canary'", cause);
+            failure.addSuppressed(new IllegalStateException("Bearer packaged-suppressed-canary"));
+            nativeSpan.recordException(failure);
+            nativeSpan.setStatus(StatusCode.ERROR, failure.getMessage());
+            String incomplete = "x".repeat(63) + " email=packaged-cut-canary@example.com";
+            nativeSpan.setAttribute("exception.message", incomplete);
+            nativeSpan.addEvent("incomplete", Attributes.of(AttributeKey.stringKey("exception.message"), incomplete));
+        } finally {
+            nativeSpan.end();
+        }
+
+        try (SpanHandle span = tracing.spans().operation("packaged-facade-failure").start()) {
+            span.recordException(new IllegalStateException("Connection refused"));
+        }
+
+        try (SpanHandle span = tracing.spans().operation("packaged-sensitive-facade-failure").start()) {
+            span.recordException(new IllegalStateException("clientSecret=packaged-facade-canary"));
         }
     }
 }

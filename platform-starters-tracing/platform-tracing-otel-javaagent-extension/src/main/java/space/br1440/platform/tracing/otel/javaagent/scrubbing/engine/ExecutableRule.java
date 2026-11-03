@@ -28,7 +28,7 @@ public final class ExecutableRule {
     }
 
     RuleOutcome executeDetailed(String key, Object value, AttributeType type) {
-        if (rule instanceof UrlCredentialMaskingRule && rule.isExcluded(key)) {
+        if (rule instanceof DiagnosticTextMaskingRule && rule.isExcluded(key)) {
             return RuleOutcome.keep();
         }
 
@@ -60,8 +60,8 @@ public final class ExecutableRule {
     }
 
     private RuleOutcome evaluateRule(String key, Object value) {
-        if (rule instanceof UrlCredentialMaskingRule urlRule && value instanceof String text) {
-            String transformed = urlRule.mask(text);
+        if (rule instanceof DiagnosticTextMaskingRule textRule && value instanceof String text) {
+            String transformed = textRule.mask(text);
             if (transformed == null) {
                 return RuleOutcome.decision(ScrubbingDecision.drop(rule.name()));
             }
@@ -77,7 +77,7 @@ public final class ExecutableRule {
     }
 
     private RuleOutcome criticalFailure() {
-        ScrubbingDecision decision = rule instanceof UrlCredentialMaskingRule
+        ScrubbingDecision decision = rule instanceof DiagnosticTextMaskingRule
                 ? ScrubbingDecision.drop(ScrubbingDecision.SCRUBBING_FAILED_REASON)
                 : ScrubbingDecision.scrubbingFailed();
         return RuleOutcome.criticalFailure(decision);

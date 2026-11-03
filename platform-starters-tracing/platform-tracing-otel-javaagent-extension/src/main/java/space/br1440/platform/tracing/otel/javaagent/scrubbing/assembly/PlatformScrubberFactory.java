@@ -116,7 +116,7 @@ public final class PlatformScrubberFactory {
             addBuiltInRules(
                     builtIn,
                     seenBuiltInNames,
-                    List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.configName()),
+                    List.of(BuiltInSpanAttributeScrubbingRules.DIAGNOSTIC_TEXT.configName()),
                     SCRUBBING_BUILT_IN_RULES
             );
             List<RuntimeRule> merged = mergeRules(builtIn, bundledSpi, custom);

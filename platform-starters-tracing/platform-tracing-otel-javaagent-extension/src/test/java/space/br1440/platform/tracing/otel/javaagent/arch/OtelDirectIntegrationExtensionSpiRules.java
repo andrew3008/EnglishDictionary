@@ -1,8 +1,12 @@
 package space.br1440.platform.tracing.otel.javaagent.arch;
 
 import static com.tngtech.archunit.base.DescribedPredicate.not;
+import static com.tngtech.archunit.core.domain.JavaAccess.Predicates.target;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.equivalentTo;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.type;
+import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.name;
+import static com.tngtech.archunit.core.domain.properties.HasOwner.Predicates.With.owner;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.constructors;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
@@ -13,6 +17,7 @@ import com.tngtech.archunit.lang.CompositeArchRule;
 import io.opentelemetry.javaagent.extension.AgentListener;
 import io.opentelemetry.javaagent.tooling.LoggingCustomizer;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
+import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.internal.ExtendedSpanProcessor;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
@@ -88,6 +93,13 @@ public final class OtelDirectIntegrationExtensionSpiRules {
             .because("SdkTracerProviderConfigurer is forbidden in the secure Controlled Agent profile; "
                     + "it is applied after exporter/processor customization and can add a parallel "
                     + "unwrapped export path");
+
+    public static final ArchRule PRODUCTION_DOES_NOT_OVERRIDE_SDK_SPAN_LIMITS = noClasses()
+            .that().resideInAPackage("space.br1440.platform.tracing.otel.javaagent..")
+            .should().accessTargetWhere(target(owner(type(SdkTracerProviderBuilder.class)))
+                    .and(target(name("setSpanLimits"))))
+            .because("the pinned SDK autoconfiguration owns immutable span limits; "
+                    + "the extension binds the actual limit after SDK creation");
 
     public static final ArchRule BOOTSTRAP_DOES_NOT_DEPEND_ON_AGENT_TOOLING = CompositeArchRule.of(noClasses()
                     .that().resideInAPackage("space.br1440.platform.tracing.otel.javaagent.bootstrap..")

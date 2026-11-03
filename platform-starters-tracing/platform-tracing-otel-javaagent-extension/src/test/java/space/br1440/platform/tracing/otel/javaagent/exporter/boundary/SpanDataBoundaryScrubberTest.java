@@ -21,7 +21,7 @@ import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.exporter.ExporterTestSpans;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
-import space.br1440.platform.tracing.runtime.scrubbing.UrlCredentialMasker;
+import space.br1440.platform.tracing.runtime.scrubbing.DiagnosticTextSanitizer;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -247,7 +247,8 @@ class SpanDataBoundaryScrubberTest {
     void urlCredentialsAreMaskedInExceptionMessagesAndStatusDescriptions() {
         // given
         ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(
-                List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()));
+                List.of(BuiltInSpanAttributeScrubbingRules.DIAGNOSTIC_TEXT.create())
+        );
         AttributeKey<String> messageKey = AttributeKey.stringKey("exception.message");
         String message = "Request failed: https://operator:credential-canary@service.example/path"
                 + "?token=query-canary&mode=debug#opaque-fragment-canary; try again";
@@ -312,9 +313,9 @@ class SpanDataBoundaryScrubberTest {
                 .build();
 
         try (ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(
-                List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()));
-             MockedStatic<UrlCredentialMasker> masker = mockStatic(UrlCredentialMasker.class)) {
-            masker.when(() -> UrlCredentialMasker.mask(input))
+                List.of(BuiltInSpanAttributeScrubbingRules.DIAGNOSTIC_TEXT.create()));
+             MockedStatic<DiagnosticTextSanitizer> masker = mockStatic(DiagnosticTextSanitizer.class)) {
+            masker.when(() -> DiagnosticTextSanitizer.mask(input))
                     .thenThrow(new IllegalArgumentException("Simulated parser failure"));
 
             // when
@@ -347,7 +348,7 @@ class SpanDataBoundaryScrubberTest {
     void urlMaskingDoesNotChangeHttpAttributesOrOtherTextSurfaces() {
         // given
         ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(
-                List.of(BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create()));
+                List.of(BuiltInSpanAttributeScrubbingRules.DIAGNOSTIC_TEXT.create()));
         String url = "https://service.example/path?token=query-canary";
         AttributeKey<String> urlKey = AttributeKey.stringKey("url.full");
         AttributeKey<String> queryKey = AttributeKey.stringKey("url.query");
@@ -368,7 +369,7 @@ class SpanDataBoundaryScrubberTest {
     void urlMaskingDoesNotSuppressJwtProtectionForTheRestOfTheMessage() {
         // given
         ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(List.of(
-                BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create(),
+                BuiltInSpanAttributeScrubbingRules.DIAGNOSTIC_TEXT.create(),
                 BuiltInSpanAttributeScrubbingRules.JWT.create()));
         AttributeKey<String> messageKey = AttributeKey.stringKey("exception.message");
         String message = "https://service.example/path?token=query-canary "
@@ -383,8 +384,8 @@ class SpanDataBoundaryScrubberTest {
 
         // then
         assertThat(outcome.dropSpan()).isFalse();
-        assertThat(outcome.spanData().getEvents().getFirst().getAttributes().get(messageKey)).isNull();
-        assertThat(outcome.spanData().getStatus().getDescription()).isEmpty();
+        assertThat(outcome.spanData().getEvents().getFirst().getAttributes().get(messageKey)).isEqualTo("<redacted>");
+        assertThat(outcome.spanData().getStatus().getDescription()).isEqualTo("<redacted>");
         assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
     }
 

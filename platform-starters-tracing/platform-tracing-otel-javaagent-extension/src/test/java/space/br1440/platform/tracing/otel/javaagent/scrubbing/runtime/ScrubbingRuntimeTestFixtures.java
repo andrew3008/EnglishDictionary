@@ -11,6 +11,7 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.PriorityHar
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuntimeRule;
 
+import io.opentelemetry.sdk.trace.SpanLimits;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
@@ -32,7 +33,9 @@ public final class ScrubbingRuntimeTestFixtures {
         }
 
         List<RuntimeRule> sorted = PriorityHardening.sortAndClampRuntimeRules(tagged);
-        return ScrubbingRuntime.create(sorted, 1L, hmacKey, failFast);
+        ScrubbingRuntime runtime = ScrubbingRuntime.create(sorted, 1L, hmacKey, failFast);
+        runtime.bindAttributeValueLengthLimit(SpanLimits.getDefault().getMaxAttributeValueLength());
+        return runtime;
     }
 
     public static ScrubbingRuntime create(List<RuntimeRule> rules,

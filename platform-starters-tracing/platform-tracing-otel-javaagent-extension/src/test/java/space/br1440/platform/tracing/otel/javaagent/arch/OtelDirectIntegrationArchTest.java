@@ -1,11 +1,24 @@
 package space.br1440.platform.tracing.otel.javaagent.arch;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import org.junit.jupiter.api.Test;
+
+import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.EvaluationResult;
 
 import space.br1440.platform.tracing.test.arch.OtelDirectIntegrationRules;
+
+import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
+import io.opentelemetry.sdk.trace.SpanLimits;
 
 @AnalyzeClasses(
         packages = "space.br1440.platform.tracing.otel",
@@ -90,6 +103,51 @@ class OtelDirectIntegrationArchTest {
 
     @ArchTest
     @SuppressWarnings("unused")
+    static final ArchRule productionDoesNotOverrideSdkSpanLimits =
+            OtelDirectIntegrationExtensionSpiRules.PRODUCTION_DOES_NOT_OVERRIDE_SDK_SPAN_LIMITS;
+
+    @ArchTest
+    @SuppressWarnings("unused")
     static final ArchRule bootstrapDoesNotDependOnAgentTooling =
             OtelDirectIntegrationExtensionSpiRules.BOOTSTRAP_DOES_NOT_DEPEND_ON_AGENT_TOOLING;
+
+    @Test
+    void spanLimitRuleRejectsSetterCallsAndReferencesButIgnoresTextMention() {
+        // given
+        JavaClasses classes = new ClassFileImporter().importClasses(ForeignSpanLimitConfiguration.class);
+
+        // when
+        EvaluationResult result = productionDoesNotOverrideSdkSpanLimits.evaluate(classes);
+
+        // then
+        assertThat(result.getFailureReport().getDetails()).hasSize(4)
+                .anySatisfy(detail -> assertThat(detail).contains("constantLimit"))
+                .anySatisfy(detail -> assertThat(detail).contains("dynamicLimit"))
+                .anySatisfy(detail -> assertThat(detail).contains("constantReference"))
+                .anySatisfy(detail -> assertThat(detail).contains("dynamicReference"));
+    }
+
+    @SuppressWarnings("unused")
+    static final class ForeignSpanLimitConfiguration {
+
+        void constantLimit(SdkTracerProviderBuilder builder) {
+            builder.setSpanLimits(SpanLimits.getDefault());
+        }
+
+        void dynamicLimit(SdkTracerProviderBuilder builder, Supplier<SpanLimits> limits) {
+            builder.setSpanLimits(limits);
+        }
+
+        Function<SpanLimits, SdkTracerProviderBuilder> constantReference(SdkTracerProviderBuilder builder) {
+            return builder::setSpanLimits;
+        }
+
+        Function<Supplier<SpanLimits>, SdkTracerProviderBuilder> dynamicReference(SdkTracerProviderBuilder builder) {
+            return builder::setSpanLimits;
+        }
+
+        String methodNameMention() {
+            return "setSpanLimits";
+        }
+    }
 }

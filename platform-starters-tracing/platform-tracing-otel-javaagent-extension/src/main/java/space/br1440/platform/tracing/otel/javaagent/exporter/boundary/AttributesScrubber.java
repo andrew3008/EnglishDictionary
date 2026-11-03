@@ -47,7 +47,7 @@ final class AttributesScrubber {
         }
 
         if (rules.isEmpty()) {
-            return removeValueAttributeTrees(attributes, runtime);
+            return removeUnpublishableAttributes(attributes, runtime);
         }
 
         ScrubPass pass = new ScrubPass(runtime, rules, attributes);
@@ -60,13 +60,19 @@ final class AttributesScrubber {
         return new Result(pass.rebuild(), true, pass.criticalFailure());
     }
 
-    static Result removeValueAttributeTrees(Attributes attributes, ScrubbingRuntime runtime) {
+    static Result removeUnpublishableAttributes(Attributes attributes, ScrubbingRuntime runtime) {
         if (attributes.isEmpty()) {
             return new Result(attributes, false, false);
         }
 
         Set<String> valueAttributeNames = valueAttributeNames(attributes);
-        if (valueAttributeNames.isEmpty()) {
+        boolean hasRejectedDiagnostic = attributes.asMap().entrySet().stream()
+                .anyMatch(entry ->
+                        !runtime.diagnosticAttributePermitted(
+                                ScrubbingKeyNormalizer.normalize(entry.getKey().getKey()), entry.getValue()
+                        )
+                );
+        if (valueAttributeNames.isEmpty() && !hasRejectedDiagnostic) {
             return new Result(attributes, false, false);
         }
 
@@ -76,7 +82,9 @@ final class AttributesScrubber {
             AttributeKey<?> key = entry.getKey();
             if (valueAttributeNames.contains(key.getKey())) {
                 removed++;
-            } else {
+            } else if (runtime.diagnosticAttributePermitted(
+                    ScrubbingKeyNormalizer.normalize(key.getKey()), entry.getValue())
+            ) {
                 putTyped(builder, key, entry.getValue());
             }
         }
@@ -91,7 +99,11 @@ final class AttributesScrubber {
         }
 
         AttributesBuilder builder = Attributes.builder();
-        attributes.forEach((key, ignored) -> writeSentinel(builder, key));
+        attributes.forEach((key, ignored) -> {
+            if (!ScrubbingRuntime.isDiagnosticAttribute(ScrubbingKeyNormalizer.normalize(key.getKey()))) {
+                writeSentinel(builder, key);
+            }
+        });
         return builder.build();
     }
 
@@ -121,6 +133,10 @@ final class AttributesScrubber {
             }
 
             String normalizedKey = ScrubbingKeyNormalizer.normalize(key.getKey());
+            if (!runtime.diagnosticAttributePermitted(normalizedKey, value)) {
+                drop(key);
+                return;
+            }
             MergeOutcome outcome = MergeEngine.evaluateDetailed(rules, normalizedKey, value, key.getType());
             recordOutcome(outcome);
 
@@ -128,7 +144,7 @@ final class AttributesScrubber {
             ScrubbingAction action = decision.action();
             if (action == ScrubbingAction.KEEP) {
                 if (outcome.maskedValue() != null) {
-                    replace(key, outcome.maskedValue());
+                    replaceString(key, normalizedKey, value, outcome.maskedValue());
                 }
                 return;
             }
@@ -146,11 +162,7 @@ final class AttributesScrubber {
             if (type == AttributeType.STRING) {
                 String masked = (outcome.maskedValue() != null) ? outcome.maskedValue() : (String) value;
                 String transformed = transformString(masked, decision, runtime);
-                if (Objects.equals(transformed, value)) {
-                    return;
-                }
-
-                replace(key, transformed);
+                replaceString(key, normalizedKey, value, transformed);
                 return;
             }
 
@@ -159,6 +171,14 @@ final class AttributesScrubber {
                 replace(key, replacement);
             } else {
                 drop(key);
+            }
+        }
+
+        private void replaceString(AttributeKey<?> key, String normalizedKey, Object original, String transformed) {
+            if (!runtime.diagnosticAttributePermitted(normalizedKey, transformed)) {
+                drop(key);
+            } else if (!Objects.equals(transformed, original)) {
+                replace(key, transformed);
             }
         }
 
@@ -235,7 +255,7 @@ final class AttributesScrubber {
 
     @SuppressWarnings("unchecked")
     private static Object nonStringReplacement(AttributeKey<?> key, Object value,
-                                                ScrubbingDecision decision, ScrubbingRuntime runtime) {
+                                               ScrubbingDecision decision, ScrubbingRuntime runtime) {
         AttributeType type = key.getType();
         return switch (type) {
             case STRING_ARRAY -> {

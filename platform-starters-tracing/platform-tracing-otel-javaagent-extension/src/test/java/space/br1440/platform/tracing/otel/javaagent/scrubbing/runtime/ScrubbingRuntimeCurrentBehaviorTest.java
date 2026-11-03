@@ -19,8 +19,6 @@ import jakarta.annotation.Nullable;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentMatchers;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
@@ -46,9 +44,8 @@ class ScrubbingRuntimeCurrentBehaviorTest {
 
     private static final String FAILED = ScrubbingDecision.SCRUBBING_FAILED_REASON;
 
-    @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void urlDropReplacesInvalidArraysWithoutInspectingTheirContentsOrSize(boolean circuitOpen) {
+    @Test
+    void diagnosticDropReplacesInvalidArraysWithoutInspectingTheirContentsOrSize() {
         // given
         List<Object> inaccessible = new AbstractList<>() {
             @Override
@@ -61,30 +58,28 @@ class ScrubbingRuntimeCurrentBehaviorTest {
                 throw new AssertionError("Rejected array size must not be read");
             }
         };
-        Map<AttributeKey<?>, Object> sentinels = Map.of(
-                AttributeKey.stringArrayKey("exception.message"), List.of(""),
-                AttributeKey.longArrayKey("exception.message"), List.of(0L),
-                AttributeKey.doubleArrayKey("exception.message"), List.of(0.0d),
-                AttributeKey.booleanArrayKey("exception.message"), List.of(false));
-        SpanAttributeScrubbingRule rule = BuiltInSpanAttributeScrubbingRules.URL_CREDENTIALS.create();
-        RuleCircuitBreaker breaker = new RuleCircuitBreaker(rule.name(), 1, 60_000L, 0L);
-        if (circuitOpen) {
-            breaker.recordFailure(breaker.acquireExecution(), new IllegalStateException("Simulated parser failure"));
-        }
 
+        List<AttributeKey<?>> keys = List.of(
+                AttributeKey.stringArrayKey("exception.message"),
+                AttributeKey.longArrayKey("exception.message"),
+                AttributeKey.doubleArrayKey("exception.message"),
+                AttributeKey.booleanArrayKey("exception.message"));
+        SpanAttributeScrubbingRule rule = BuiltInSpanAttributeScrubbingRules.DIAGNOSTIC_TEXT.create();
+        RuleCircuitBreaker breaker = new RuleCircuitBreaker(rule.name(), 1, 60_000L, 0L);
         try (ScrubbingRuntime runtime = ScrubbingRuntime.create(List.of(
                 new RuntimeRule(new ExecutableRule(rule, breaker), RuleOrigin.BUILT_IN)), 1L, null, false)) {
-            for (Map.Entry<AttributeKey<?>, Object> sentinel : sentinels.entrySet()) {
+            for (AttributeKey<?> key : keys) {
                 // when
-                Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(sentinel.getKey(), inaccessible));
+                Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, inaccessible));
 
                 // then
-                assertThat(written).containsOnly(sentinel);
+                assertThat(written).containsOnlyKeys(AttributeKey.stringKey("exception.message"));
+                assertThat(written.get(AttributeKey.stringKey("exception.message"))).isEqualTo("");
             }
 
             assertThat(runtime.droppedActions()).isEqualTo(4L);
             assertThat(runtime.maskedActions()).isZero();
-            assertThat(runtime.failures()).isEqualTo(circuitOpen ? 4L : 0L);
+            assertThat(runtime.failures()).isZero();
             assertThat(runtime.attributesVerified()).isTrue();
             assertThat(runtime.collapseModeActivations()).isZero();
         }

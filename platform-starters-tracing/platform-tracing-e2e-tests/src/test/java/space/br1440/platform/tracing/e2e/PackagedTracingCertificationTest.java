@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -101,11 +101,10 @@ class PackagedTracingCertificationTest {
     }
 
     @ParameterizedTest
-    @NullSource
-    @ValueSource(strings = "password")
-    void packaged_agent_masks_exception_url_credentials_in_the_otlp_payload(String builtInRules) throws Exception {
+    @CsvSource({"default,1000", "password,1000", "password,64"})
+    void packaged_agent_masks_diagnostic_text_in_the_otlp_payload(String builtInRules, int attributeLimit) throws Exception {
         // given
-        String scenario = "url-credential-masking-" + (builtInRules == null ? "default" : "restricted");
+        String scenario = "diagnostic-masking-" + builtInRules + "-" + attributeLimit;
         List<String> payloads = new CopyOnWriteArrayList<>();
         HttpServer collector = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         collector.createContext("/v1/traces", exchange -> {
@@ -128,7 +127,8 @@ class PackagedTracingCertificationTest {
                     "http://127.0.0.1:" + collector.getAddress().getPort() + "/v1/traces"
             ));
 
-            if (builtInRules != null) {
+            properties.put("otel.span.attribute.value.length.limit", Integer.toString(attributeLimit));
+            if (!"default".equals(builtInRules)) {
                 properties.put("platform.tracing.javaagent.scrubbing.built-in-rules", builtInRules);
             }
 
@@ -149,9 +149,12 @@ class PackagedTracingCertificationTest {
         assertThat(payloads).isNotEmpty();
         String maskedMessage = "Request failed: https://***@service.example/path?token=***&mode=***#***";
         assertThat(String.join("\n", payloads))
-                .contains("packaged-url-failure", "exception.message", "exception.type")
-                .containsSubsequence(maskedMessage, maskedMessage)
-                .doesNotContain("packaged-user", "packaged-password-canary", "packaged-query-canary", "packaged-fragment-canary", "debug");
+                .contains("packaged-url-failure", "packaged-native-failure", "packaged-facade-failure",
+                        "packaged-sensitive-facade-failure", "exception.message", "exception.type",
+                        "java.lang.IllegalStateException", "Connection refused", "<redacted>", maskedMessage)
+                .doesNotContain("packaged-user", "packaged-password-canary", "packaged-query-canary",
+                        "packaged-fragment-canary", "debug", "packaged-cause-canary", "packaged-root-canary",
+                        "packaged-suppressed-canary", "packaged-facade-canary", "packaged-cut-canary", "x".repeat(63));
     }
 
     @Test
