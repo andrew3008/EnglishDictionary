@@ -1,9 +1,8 @@
 package space.br1440.platform.tracing.api.span.spec;
 
-import jakarta.annotation.Nonnull;
-
 import java.util.List;
 import java.util.Objects;
+import jakarta.annotation.Nonnull;
 
 public sealed interface SpanSpecAttributeValue permits
         SpanSpecAttributeValue.StringValue,
@@ -38,22 +37,22 @@ public sealed interface SpanSpecAttributeValue permits
 
     @Nonnull
     static SpanSpecAttributeValue stringList(@Nonnull List<String> values) {
-        return new StringListValue(copyStringList(values));
+        return new StringListValue(values);
     }
 
     @Nonnull
     static SpanSpecAttributeValue longList(@Nonnull List<Long> values) {
-        return new LongListValue(copyLongList(values));
+        return new LongListValue(values);
     }
 
     @Nonnull
     static SpanSpecAttributeValue doubleList(@Nonnull List<Double> values) {
-        return new DoubleListValue(copyDoubleList(values));
+        return new DoubleListValue(values);
     }
 
     @Nonnull
     static SpanSpecAttributeValue booleanList(@Nonnull List<Boolean> values) {
-        return new BooleanListValue(copyBooleanList(values));
+        return new BooleanListValue(values);
     }
 
     record StringValue(@Nonnull String value) implements SpanSpecAttributeValue {
@@ -73,69 +72,25 @@ public sealed interface SpanSpecAttributeValue permits
 
     record StringListValue(@Nonnull List<String> values) implements SpanSpecAttributeValue {
         public StringListValue {
-            Objects.requireNonNull(values, "values");
-        }
-
-        @Override
-        @Nonnull
-        public List<String> values() {
-            return List.copyOf(values);
+            values = List.copyOf(Objects.requireNonNull(values, "values"));
         }
     }
 
     record LongListValue(@Nonnull List<Long> values) implements SpanSpecAttributeValue {
         public LongListValue {
-            Objects.requireNonNull(values, "values");
-        }
-
-        @Override
-        @Nonnull
-        public List<Long> values() {
-            return List.copyOf(values);
+            values = List.copyOf(Objects.requireNonNull(values, "values"));
         }
     }
 
     record DoubleListValue(@Nonnull List<Double> values) implements SpanSpecAttributeValue {
         public DoubleListValue {
-            Objects.requireNonNull(values, "values");
-        }
-
-        @Override
-        @Nonnull
-        public List<Double> values() {
-            return List.copyOf(values);
+            values = List.copyOf(Objects.requireNonNull(values, "values"));
         }
     }
 
     record BooleanListValue(@Nonnull List<Boolean> values) implements SpanSpecAttributeValue {
         public BooleanListValue {
-            Objects.requireNonNull(values, "values");
+            values = List.copyOf(Objects.requireNonNull(values, "values"));
         }
-
-        @Override
-        @Nonnull
-        public List<Boolean> values() {
-            return List.copyOf(values);
-        }
-    }
-
-    private static List<String> copyStringList(@Nonnull List<String> values) {
-        Objects.requireNonNull(values, "values");
-        return List.copyOf(values.stream().peek(v -> Objects.requireNonNull(v, "list element")).toList());
-    }
-
-    private static List<Long> copyLongList(@Nonnull List<Long> values) {
-        Objects.requireNonNull(values, "values");
-        return List.copyOf(values.stream().peek(v -> Objects.requireNonNull(v, "list element")).toList());
-    }
-
-    private static List<Double> copyDoubleList(@Nonnull List<Double> values) {
-        Objects.requireNonNull(values, "values");
-        return List.copyOf(values.stream().peek(v -> Objects.requireNonNull(v, "list element")).toList());
-    }
-
-    private static List<Boolean> copyBooleanList(@Nonnull List<Boolean> values) {
-        Objects.requireNonNull(values, "values");
-        return List.copyOf(values.stream().peek(v -> Objects.requireNonNull(v, "list element")).toList());
     }
 }

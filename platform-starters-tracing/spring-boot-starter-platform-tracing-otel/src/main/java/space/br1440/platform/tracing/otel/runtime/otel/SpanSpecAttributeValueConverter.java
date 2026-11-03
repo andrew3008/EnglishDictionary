@@ -1,16 +1,17 @@
 package space.br1440.platform.tracing.otel.runtime.otel;
 
-import io.opentelemetry.api.common.AttributeKey;
-import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.api.common.AttributesBuilder;
-import jakarta.annotation.Nonnull;
-import lombok.experimental.UtilityClass;
-import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import jakarta.annotation.Nonnull;
+
+import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
+
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.common.AttributesBuilder;
+import lombok.experimental.UtilityClass;
 
 /**
  * Конвертирует OpenTelemetry {@code Attributes} обратно в платформенные {@link SpanSpecAttributeValue}.
@@ -52,9 +53,10 @@ public final class SpanSpecAttributeValueConverter {
             case SpanSpecAttributeValue.LongListValue llv -> builder.put(key, llv.values().stream().mapToLong(Long::longValue).toArray());
             case SpanSpecAttributeValue.DoubleListValue dlv -> builder.put(key, dlv.values().stream().mapToDouble(Double::doubleValue).toArray());
             case SpanSpecAttributeValue.BooleanListValue blv -> {
-                boolean[] values = new boolean[blv.values().size()];
-                for (int i = 0; i < blv.values().size(); i++) {
-                    values[i] = blv.values().get(i);
+                List<Boolean> source = blv.values();
+                boolean[] values = new boolean[source.size()];
+                for (int i = 0; i < source.size(); i++) {
+                    values[i] = source.get(i);
                 }
 
                 builder.put(key, values);
