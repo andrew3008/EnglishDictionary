@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -63,7 +64,8 @@ class TraceOperationsTestExtensionTest {
         assertThat(span.getEvents().getFirst().getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE)).isNull();
     }
 
-    static class BeforeEachParameterTest {
+    @Nested
+    class BeforeEachParameterTest {
 
         private TraceOperations tracing;
 
@@ -73,7 +75,6 @@ class TraceOperationsTestExtensionTest {
         }
 
         @Test
-        @ExtendWith(TraceOperationsTestExtension.class)
         void BeforeEach_receives_tracing_parameter(InMemorySpanExporter exporter) {
             assertThat(tracing).isNotNull();
             assertThat(exporter.getFinishedSpanItems()).isEmpty();

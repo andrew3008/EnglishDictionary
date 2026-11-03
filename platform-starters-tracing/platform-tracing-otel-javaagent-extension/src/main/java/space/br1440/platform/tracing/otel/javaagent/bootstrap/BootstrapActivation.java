@@ -171,6 +171,7 @@ final class BootstrapActivation {
         AutoconfigureSession session = attempt.session();
         //noinspection resource -- runtime-регистрации принадлежат BootstrapResources, lifecycle hook — BootstrapCoordinator
         BootstrapResources resources = attempt.resources();
+        //noinspection resource -- SdkTracerProvider принадлежит autoconfigure SDK и закрывается им, а не активацией
         session.scrubbingRuntime().bindAttributeValueLengthLimit(
                 attempt.tracerProvider().getSpanLimits().getMaxAttributeValueLength()
         );

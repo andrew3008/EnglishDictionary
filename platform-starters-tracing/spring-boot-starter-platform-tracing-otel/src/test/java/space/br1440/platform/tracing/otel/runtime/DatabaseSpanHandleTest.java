@@ -230,7 +230,7 @@ class DatabaseSpanHandleTest {
         DatabaseSpanHandle parent = startDatabase();
 
         // when
-        try (SpanHandle child = tracing.spans().operation("child").start()) {
+        try (SpanHandle ignored = tracing.spans().operation("child").start()) {
             parent.responseStatusCode("23505");
             parent.recordException(failure);
         }

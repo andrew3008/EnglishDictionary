@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class DiagnosticTextSanitizerTest {
@@ -155,19 +156,11 @@ class DiagnosticTextSanitizerTest {
     }
 
     @ParameterizedTest
+    @NullSource
     @ValueSource(strings = {"https:/user:CANARY@host", "https://user:CANARY", "https://?token=CANARY"})
-    void dropsAmbiguousUrls(String text) {
+    void dropsNullOrAmbiguousUrls(String text) {
         // when
         String result = DiagnosticTextSanitizer.mask(text);
-
-        // then
-        assertThat(result).isNull();
-    }
-
-    @Test
-    void dropsNull() {
-        // when
-        String result = DiagnosticTextSanitizer.mask(null);
 
         // then
         assertThat(result).isNull();
