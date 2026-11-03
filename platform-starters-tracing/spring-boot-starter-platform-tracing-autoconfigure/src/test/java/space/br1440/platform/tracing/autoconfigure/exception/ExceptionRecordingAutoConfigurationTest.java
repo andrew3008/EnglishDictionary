@@ -1,6 +1,8 @@
 package space.br1440.platform.tracing.autoconfigure.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -9,6 +11,9 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecordingPolicy;
 import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
@@ -79,7 +84,7 @@ class ExceptionRecordingAutoConfigurationTest {
         CountingMessageException failure = new CountingMessageException("token=outer-secret", cause);
 
         // when
-        contextRunner
+        stackRecordingRunner()
                 .withPropertyValues(
                         "platform.tracing.exception-recording.include-message=" + includeMessage,
                         "platform.tracing.exception-recording.include-stacktrace=" + includeStacktrace
@@ -123,7 +128,7 @@ class ExceptionRecordingAutoConfigurationTest {
     @Test
     void customRecorderOverridesDefaultWithoutReadingMessages() {
         // given
-        ExceptionRecorder customRecorder = new ExceptionRecorder(new ExceptionRecordingPolicy(false, false));
+        ExceptionRecorder customRecorder = new ExceptionRecorder(new ExceptionRecordingPolicy(false, false, 1_000));
         CountingMessageException failure = new CountingMessageException("password=secret-canary", null);
 
         // when
@@ -168,7 +173,7 @@ class ExceptionRecordingAutoConfigurationTest {
         outer.setStackTrace(frames);
 
         // when
-        contextRunner
+        stackRecordingRunner()
                 .withPropertyValues(
                         "platform.tracing.exception-recording.include-message=true",
                         "platform.tracing.exception-recording.include-stacktrace=true")
@@ -191,6 +196,16 @@ class ExceptionRecordingAutoConfigurationTest {
                         assertThat(stack).hasSizeLessThanOrEqualTo(1_000);
                     }
                 });
+    }
+
+    private ApplicationContextRunner stackRecordingRunner() {
+        TracingDeploymentDiagnostics diagnostics = mock(TracingDeploymentDiagnostics.class);
+        when(diagnostics.runtimeState()).thenReturn(AgentRuntimeState.AGENT_READY);
+        PlatformTracingJmxClient client = mock(PlatformTracingJmxClient.class);
+        when(client.requireSdkAttributeValueLengthLimit()).thenReturn(1_000);
+        return contextRunner
+                .withBean(TracingDeploymentDiagnostics.class, () -> diagnostics)
+                .withBean(PlatformTracingJmxClient.class, () -> client);
     }
 
     private static final class CountingMessageException extends RuntimeException {

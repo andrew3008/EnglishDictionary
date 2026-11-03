@@ -82,7 +82,11 @@ public final class ScrubbingJmxView {
                             JmxWireContract.FIELD_SCRUBBING_METRICS_VALUE
                     );
 
-                    return new ScrubbingValues(enabled, policyVersion, rulesLoaded, metrics);
+                    int sdkAttributeValueLengthLimit = JmxObservationCodec.getInt(
+                            composite,
+                            JmxWireContract.FIELD_SCRUBBING_OBSERVATION_SDK_ATTRIBUTE_VALUE_LENGTH_LIMIT
+                    );
+                    return new ScrubbingValues(enabled, sdkAttributeValueLengthLimit, policyVersion, rulesLoaded, metrics);
                 });
 
         return new ScrubbingObservation(agentInstanceId, values);

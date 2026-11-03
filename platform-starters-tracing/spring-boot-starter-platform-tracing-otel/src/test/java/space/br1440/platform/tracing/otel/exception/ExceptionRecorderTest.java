@@ -83,7 +83,7 @@ class ExceptionRecorderTest {
     @Test
     void record_masksUrlTextInEventStatusAndCauseHeaders() {
         // given
-        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true));
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000));
         IllegalStateException cause = new IllegalStateException("Cause https://host/?opaque-canary");
         cause.setStackTrace(new StackTraceElement[0]);
         IllegalStateException failure = new IllegalStateException(
@@ -112,7 +112,7 @@ class ExceptionRecorderTest {
     })
     void record_masksOpaqueUrlFragmentsInEventStatusAndStack(String message, String expected) {
         // given
-        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true));
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000));
         IllegalStateException failure = new IllegalStateException(message);
         failure.setStackTrace(new StackTraceElement[0]);
 
@@ -134,7 +134,7 @@ class ExceptionRecorderTest {
     @Test
     void record_dropsAmbiguousUrlTextAndKeepsExceptionIdentity() {
         // given
-        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true));
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000));
         IllegalStateException failure = new IllegalStateException("Failed https://user%3Asecret-canary%40host/");
         failure.setStackTrace(new StackTraceElement[0]);
 
@@ -227,7 +227,7 @@ class ExceptionRecorderTest {
     @Test
     void record_truncatedStack_keepsCauseWithinBudget() {
         // given
-        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true));
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000));
         IllegalStateException cause = new IllegalStateException("root-marker");
         cause.setStackTrace(new StackTraceElement[0]);
         IllegalStateException outer = new IllegalStateException("outer", cause);
@@ -252,13 +252,13 @@ class ExceptionRecorderTest {
                 .getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE);
         assertThat(stack).contains("root-marker");
         assertThat(stack).contains(BoundedExceptionStackRenderer.BUDGET_EXHAUSTED);
-        assertThat(stack).hasSizeLessThanOrEqualTo(BoundedExceptionStackRenderer.DEFAULT_CHARACTER_BUDGET);
+        assertThat(stack).hasSizeLessThan(1_000);
     }
 
     @Test
     void record_shortStack_recordsFrame() {
         // given
-        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true));
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000));
         IllegalStateException exception = new IllegalStateException("boom");
         exception.setStackTrace(new StackTraceElement[] {
                 new StackTraceElement("com.example.A", "method", "A.java", 1)

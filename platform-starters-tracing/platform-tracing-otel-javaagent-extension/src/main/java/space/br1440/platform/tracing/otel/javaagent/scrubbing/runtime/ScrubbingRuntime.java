@@ -296,6 +296,10 @@ public final class ScrubbingRuntime implements AutoCloseable {
         }
     }
 
+    public int attributeValueLengthLimit() {
+        return attributeValueLengthLimit.get();
+    }
+
     public boolean diagnosticAttributePermitted(String normalizedKey, Object value) {
         if (!isDiagnosticAttribute(normalizedKey)) {
             return true;

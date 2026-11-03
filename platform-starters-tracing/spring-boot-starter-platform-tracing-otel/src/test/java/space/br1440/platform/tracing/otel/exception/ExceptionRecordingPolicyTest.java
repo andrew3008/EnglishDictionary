@@ -31,7 +31,7 @@ class ExceptionRecordingPolicyTest {
         String userinfo = "user:" + "secret".repeat(100);
         IllegalStateException exception = new IllegalStateException(
                 "Failed https://" + userinfo + "@host/?token=value#fragment-canary");
-        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, false);
+        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, false, 1_000);
 
         // when
         String message = policy.sanitizeOrNull(exception);
@@ -47,7 +47,7 @@ class ExceptionRecordingPolicyTest {
         cause.setStackTrace(NO_FRAMES);
         IllegalStateException exception = new IllegalStateException("Failed https://user:password@host/", cause);
         exception.setStackTrace(NO_FRAMES);
-        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true);
+        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true, 1_000);
 
         // when
         String rendered = renderStack(policy, exception);
@@ -64,7 +64,7 @@ class ExceptionRecordingPolicyTest {
         // given
         IllegalStateException exception = new IllegalStateException("https://user:" + "s".repeat(4_096) + "@host/");
         exception.setStackTrace(NO_FRAMES);
-        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true);
+        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true, 1_000);
 
         // when
         String message = policy.sanitizeOrNull(exception);
@@ -80,7 +80,7 @@ class ExceptionRecordingPolicyTest {
     void omitsMessageWithTruncatedUserinfo() {
         // given
         IllegalStateException exception = new IllegalStateException("Failed https://user:secret");
-        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, false);
+        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, false, 1_000);
 
         // when
         String message = policy.sanitizeOrNull(exception);
@@ -96,7 +96,7 @@ class ExceptionRecordingPolicyTest {
         exception.setStackTrace(new StackTraceElement[] {
                 new StackTraceElement("com.example.A", "method", "A.java", 4)
         });
-        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true);
+        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true, 1_000);
 
         // when
         String rendered = renderStack(policy, exception);
@@ -107,7 +107,7 @@ class ExceptionRecordingPolicyTest {
                 java.lang.IllegalStateException: boom
                 \tat com.example.A.method(A.java:4)
                 """);
-        assertThat(rendered).hasSizeLessThanOrEqualTo(BoundedExceptionStackRenderer.DEFAULT_CHARACTER_BUDGET);
+        assertThat(rendered).hasSizeLessThan(1_000);
     }
 
     @Test
@@ -189,7 +189,7 @@ class ExceptionRecordingPolicyTest {
         first.initCause(second);
         first.setStackTrace(NO_FRAMES);
         second.setStackTrace(NO_FRAMES);
-        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true);
+        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true, 1_000);
 
         // when
         String rendered = renderStack(policy, first);
@@ -206,7 +206,7 @@ class ExceptionRecordingPolicyTest {
         IllegalStateException exception = new IllegalStateException("outer");
         exception.setStackTrace(NO_FRAMES);
         exception.addSuppressed(new SuppressedSecretException("suppressed-secret-value"));
-        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true);
+        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true, 1_000);
 
         // when
         String rendered = renderStack(policy, exception);
@@ -224,7 +224,7 @@ class ExceptionRecordingPolicyTest {
         String message = "a".repeat(600);
         IllegalStateException exception = new IllegalStateException(message);
         exception.setStackTrace(NO_FRAMES);
-        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true);
+        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true, 1_000);
 
         // when
         String rendered = renderStack(policy, exception);
@@ -241,7 +241,7 @@ class ExceptionRecordingPolicyTest {
         // given
         IllegalStateException exception = new IllegalStateException("boom");
         exception.setStackTrace(NO_FRAMES);
-        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(false, true);
+        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(false, true, 1_000);
 
         // when
         String rendered = policy.renderStack(exception, "boom");
@@ -255,11 +255,11 @@ class ExceptionRecordingPolicyTest {
     @Test
     void returnsNullWhenStackIsDisabledOrExceptionIsNull() {
         // given
-        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, false);
+        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, false, 1_000);
 
         // when
         String disabled = policy.renderStack(new IllegalStateException("boom"), null);
-        String absent = new ExceptionRecordingPolicy(true, true).renderStack(null, null);
+        String absent = new ExceptionRecordingPolicy(true, true, 1_000).renderStack(null, null);
 
         // then
         assertThat(disabled).isNull();
@@ -274,19 +274,19 @@ class ExceptionRecordingPolicyTest {
         // when
         assertThatThrownBy(() -> new ExceptionRecordingPolicy(true, true, budget))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("characterBudget must be positive");
+                .hasMessage("SDK attribute value length limit must be positive");
 
         // then
         assertThatThrownBy(() -> new ExceptionRecordingPolicy(true, true, -1))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("characterBudget must be positive");
+                .hasMessage("SDK attribute value length limit must be positive");
     }
 
     @ParameterizedTest
     @ValueSource(ints = {510, 511, 512})
     void truncationDoesNotSplitSurrogatePair(int prefixLength) {
         // given
-        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true);
+        ExceptionRecordingPolicy policy = new ExceptionRecordingPolicy(true, true, 1_000);
         IllegalStateException exception = new IllegalStateException("a".repeat(prefixLength) + "\uD83D\uDE80z");
 
         // when

@@ -30,7 +30,6 @@ final class BoundedExceptionStackRenderer {
 
     static final int MAX_FRAMES = 32;
     static final int MAX_CAUSED_BY_LEVELS = 10;
-    static final int DEFAULT_CHARACTER_BUDGET = 1_000;
     static final String BUDGET_EXHAUSTED = "... (character budget exhausted)";
     static final String FURTHER_CAUSES_OMITTED = "... (further causes omitted)";
 

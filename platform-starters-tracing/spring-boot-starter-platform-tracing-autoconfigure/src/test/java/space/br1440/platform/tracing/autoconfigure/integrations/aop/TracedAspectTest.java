@@ -187,7 +187,7 @@ class TracedAspectTest {
             FailingGetter getter, OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
         // given
         HostileException failure = new HostileException(getter);
-        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true));
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000));
         TraceOperations operations = new DefaultTraceOperations(
                 new OtelTracingRuntime(sdk, new SpanAttributeValidator(), recorder));
         HostileFailureService proxy = hostileService(operations, recorder, failure);
@@ -212,7 +212,7 @@ class TracedAspectTest {
             FailingGetter getter, OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
         // given
         HostileException failure = new HostileException(getter);
-        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true));
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000));
         HostileFailureService proxy = hostileService(tracing, recorder, failure);
         Span previous = Span.current();
         Span parent = sdk.getTracer("test").spanBuilder("active.parent").startSpan();

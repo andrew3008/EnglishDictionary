@@ -50,6 +50,7 @@ public final class ScrubbingObservationSource {
         values.put(JmxWireContract.FIELD_SCRUBBING_OBSERVATION_OWNER_PRESENT, snapshot.ownerPresent());
         values.put(JmxWireContract.FIELD_SCRUBBING_OBSERVATION_OWNER_GENERATION, state.generation());
         values.put(JmxWireContract.FIELD_SCRUBBING_OBSERVATION_SCRUBBING_ENABLED, snapshot.enabled());
+        values.put(JmxWireContract.FIELD_SCRUBBING_OBSERVATION_SDK_ATTRIBUTE_VALUE_LENGTH_LIMIT, snapshot.sdkAttributeValueLengthLimit());
         values.put(JmxWireContract.FIELD_SCRUBBING_OBSERVATION_POLICY_VERSION, snapshot.policyVersion());
         values.put(JmxWireContract.FIELD_SCRUBBING_OBSERVATION_RULES_LOADED, snapshot.rulesLoaded());
         values.put(JmxWireContract.FIELD_SCRUBBING_OBSERVATION_SCRUBBING_METRICS,
@@ -65,11 +66,12 @@ public final class ScrubbingObservationSource {
 
     private record ScrubbingSnapshot(boolean ownerPresent,
                                      boolean enabled,
+                                     int sdkAttributeValueLengthLimit,
                                      long policyVersion,
                                      long rulesLoaded,
                                      Map<String, Long> metrics) {
 
-        private static final ScrubbingSnapshot ABSENT = new ScrubbingSnapshot(false, false, 0L, 0L, Map.of());
+        private static final ScrubbingSnapshot ABSENT = new ScrubbingSnapshot(false, false, 0, 0L, 0L, Map.of());
 
         static ScrubbingSnapshot absent() {
             return ABSENT;
@@ -79,6 +81,7 @@ public final class ScrubbingObservationSource {
             return new ScrubbingSnapshot(
                     true,
                     runtime.enabled(),
+                    runtime.attributeValueLengthLimit(),
                     runtime.policyVersion(),
                     runtime.ruleCount(),
                     snapshotMetrics(runtime)

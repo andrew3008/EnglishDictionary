@@ -3,17 +3,20 @@ package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx;
 import java.lang.management.ManagementFactory;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Consumer;
 import javax.management.MBeanServer;
 
 import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.scrubbing.ScrubbingObservation;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.scrubbing.ScrubbingValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxDiagnosticSnapshot;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxReadExecutor;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 
 public final class PlatformTracingJmxClient {
 
     private final JmxReadExecutor executor;
+    private final AgentReadinessCoherenceGuard coherenceGuard;
     private final SamplingJmxView sampling;
     private final ScrubbingJmxView scrubbing;
     private final ValidationJmxView validation;
@@ -25,22 +28,10 @@ public final class PlatformTracingJmxClient {
         this(ManagementFactory.getPlatformMBeanServer(), coherenceGuard);
     }
 
-    PlatformTracingJmxClient(MBeanServer server) {
-        this(server, ignored -> {
-        });
-    }
-
     public PlatformTracingJmxClient(MBeanServer server,
                                     AgentReadinessCoherenceGuard coherenceGuard) {
-        this(
-                server,
-                Objects.requireNonNull(coherenceGuard, "coherenceGuard")::requirePinnedAgentInstanceId
-        );
-    }
-
-    private PlatformTracingJmxClient(MBeanServer server,
-                                     Consumer<String> agentInstanceIdVerifier) {
-        this.executor = new JmxReadExecutor(server, agentInstanceIdVerifier);
+        this.coherenceGuard = Objects.requireNonNull(coherenceGuard, "coherenceGuard");
+        this.executor = new JmxReadExecutor(server, coherenceGuard::requirePinnedAgentInstanceId);
 
         this.sampling = new SamplingJmxView(
                 executor,
@@ -79,6 +70,20 @@ public final class PlatformTracingJmxClient {
 
     public ScrubbingJmxView scrubbing() {
         return scrubbing;
+    }
+
+    public int requireSdkAttributeValueLengthLimit() {
+        return coherenceGuard.readCoherently(() -> {
+            ScrubbingObservation observation = scrubbing.observation()
+                    .orElseThrow(() -> new IllegalStateException("Actual SDK attribute value length limit is unavailable"));
+            if (!(observation.owner() instanceof JmxOwnerState.Present<ScrubbingValues> present)
+                    || !present.values().enabled()
+                    || present.values().sdkAttributeValueLengthLimit() <= 0) {
+                throw new IllegalStateException("Actual SDK attribute value length limit requires an active scrubbing owner and a positive value");
+            }
+
+            return present.values().sdkAttributeValueLengthLimit();
+        });
     }
 
     public ValidationJmxView validation() {

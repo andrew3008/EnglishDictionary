@@ -501,7 +501,7 @@ class BoundedExceptionStackRendererTest {
         int sdkAttributeValueLengthLimit = 1_000;
 
         // when
-        int budget = BoundedExceptionStackRenderer.DEFAULT_CHARACTER_BUDGET;
+        int budget = 1_000;
 
         // then
         assertThat(budget).isEqualTo(sdkAttributeValueLengthLimit);

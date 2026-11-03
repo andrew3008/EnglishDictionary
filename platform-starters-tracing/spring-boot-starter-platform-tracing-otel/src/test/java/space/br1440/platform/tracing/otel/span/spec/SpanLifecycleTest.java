@@ -214,7 +214,7 @@ class SpanLifecycleTest {
         OwningSpanScope owning = new OwningSpanScope(span, () -> {
             scopeCloses.incrementAndGet();
             activeScope.close();
-        }, new ExceptionRecorder(new ExceptionRecordingPolicy(true, true)));
+        }, new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000)));
         SpanHandle handle = SpanHandleImpl.wrap(owning);
 
         // when

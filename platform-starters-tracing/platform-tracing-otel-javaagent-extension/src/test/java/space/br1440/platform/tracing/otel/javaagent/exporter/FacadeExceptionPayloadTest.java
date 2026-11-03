@@ -57,7 +57,7 @@ class FacadeExceptionPayloadTest {
         IllegalStateException exception = new IllegalStateException(
                 "x".repeat(510) + " password=root-credential-canary", cause);
         exception.setStackTrace(new StackTraceElement[0]);
-        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true));
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000));
         List<String> rendered = new CopyOnWriteArrayList<>();
 
         // when
@@ -92,7 +92,7 @@ class FacadeExceptionPayloadTest {
         IllegalStateException exception = new IllegalStateException(
                 "outer https://user:outer-secret@service/?token=outer-query-secret", cause);
         exception.setStackTrace(new StackTraceElement[0]);
-        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(includeMessage, includeStack));
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(includeMessage, includeStack, 1_000));
         List<String> rendered = new CopyOnWriteArrayList<>();
 
         // when

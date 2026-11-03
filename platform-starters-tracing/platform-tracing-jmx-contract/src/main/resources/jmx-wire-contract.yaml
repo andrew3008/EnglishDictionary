@@ -314,6 +314,7 @@ openTypes:
       - { name: ownerPresent, type: boolean, required: true, nullable: false }
       - { name: ownerGeneration, type: long, required: true, nullable: false }
       - { name: scrubbingEnabled, type: boolean, required: true, nullable: false }
+      - { name: sdkAttributeValueLengthLimit, type: int, required: true, nullable: false }
       - { name: policyVersion, type: long, required: true, nullable: false }
       - { name: rulesLoaded, type: long, required: true, nullable: false }
       - { name: scrubbingMetrics, type: "tabular:scrubbingMetrics", required: true, nullable: false }

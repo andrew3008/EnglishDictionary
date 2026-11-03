@@ -39,7 +39,7 @@ class ExceptionRecorderSafetyTest {
     @ValueSource(strings = {"wrapped", "dropped", "ended", "invalid"})
     void nonRecordingSpansDoNotReadException(String state) {
         // given
-        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true));
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000));
         CountingException exception = new CountingException("private-message", null);
         Sampler sampler = state.equals("dropped") ? Sampler.alwaysOff() : Sampler.alwaysOn();
         try (SdkTracerProvider provider = recordingProvider().setSampler(sampler).build()) {
@@ -101,7 +101,7 @@ class ExceptionRecorderSafetyTest {
         // given
         CountingException cause = new CountingException("password=cause-secret", null);
         CountingException exception = new CountingException("token=outer-secret", cause);
-        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(includeMessage, includeStack));
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(includeMessage, includeStack, 1_000));
         try (SdkTracerProvider provider = recordingProvider().build()) {
             Span span = provider.get("test").spanBuilder("privacy").startSpan();
 
@@ -146,7 +146,7 @@ class ExceptionRecorderSafetyTest {
                 return super.getMessage() + "-" + messageReads;
             }
         };
-        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true));
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000));
         try (SdkTracerProvider provider = recordingProvider().build()) {
             Span span = provider.get("test").spanBuilder("once").startSpan();
 
@@ -174,7 +174,7 @@ class ExceptionRecorderSafetyTest {
                 throw fatal;
             }
         };
-        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true));
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000));
         try (SdkTracerProvider provider = recordingProvider().build()) {
             Span span = provider.get("test").spanBuilder("fatal").startSpan();
             try {
@@ -198,7 +198,7 @@ class ExceptionRecorderSafetyTest {
         cause.setStackTrace(new StackTraceElement[0]);
         IllegalStateException exception = new IllegalStateException("outer-message-".repeat(10), cause);
         exception.setStackTrace(new StackTraceElement[0]);
-        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true));
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000));
         try (SdkTracerProvider provider = recordingProvider().build()) {
             Span span = provider.get("test").spanBuilder("default-limit").startSpan();
             recorder.record(span, exception);

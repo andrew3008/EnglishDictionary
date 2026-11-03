@@ -9,29 +9,28 @@ import space.br1440.platform.tracing.runtime.scrubbing.DiagnosticTextSanitizer;
 public final class ExceptionRecordingPolicy {
 
     private static final int MAX_MESSAGE_LENGTH = 512;
+    private static final int MAX_STACK_TRACE_LENGTH = 4_096;
 
     private final boolean includeMessage;
 
-    private final boolean includeStackTrace;
-
+    @Nullable
     private final BoundedExceptionStackRenderer stackRenderer;
 
-    public ExceptionRecordingPolicy(boolean includeMessage, boolean includeStackTrace) {
-        this(includeMessage, includeStackTrace, BoundedExceptionStackRenderer.DEFAULT_CHARACTER_BUDGET);
-    }
+    public ExceptionRecordingPolicy(boolean includeMessage, boolean includeStackTrace, int sdkAttributeValueLengthLimit) {
+        if (includeStackTrace && sdkAttributeValueLengthLimit <= 0) {
+            throw new IllegalArgumentException("SDK attribute value length limit must be positive");
+        }
 
-    ExceptionRecordingPolicy(boolean includeMessage, boolean includeStackTrace, int characterBudget) {
         this.includeMessage = includeMessage;
-        this.includeStackTrace = includeStackTrace;
-        this.stackRenderer = new BoundedExceptionStackRenderer(
-                characterBudget,
-                this::sanitizeOrNull
-        );
+        this.stackRenderer = includeStackTrace && sdkAttributeValueLengthLimit > 1
+                ? new BoundedExceptionStackRenderer(
+                        Math.min(sdkAttributeValueLengthLimit - 1, MAX_STACK_TRACE_LENGTH), this::sanitizeOrNull)
+                : null;
     }
 
     @Nonnull
     public static ExceptionRecordingPolicy secureDefault() {
-        return new ExceptionRecordingPolicy(true, false);
+        return new ExceptionRecordingPolicy(true, false, 0);
     }
 
     @Nullable
@@ -45,7 +44,7 @@ public final class ExceptionRecordingPolicy {
 
     @Nullable
     String renderStack(@Nullable Throwable exception, @Nullable String rootMessage) {
-        if (!includeStackTrace || (exception == null)) {
+        if (stackRenderer == null || exception == null) {
             return null;
         }
 

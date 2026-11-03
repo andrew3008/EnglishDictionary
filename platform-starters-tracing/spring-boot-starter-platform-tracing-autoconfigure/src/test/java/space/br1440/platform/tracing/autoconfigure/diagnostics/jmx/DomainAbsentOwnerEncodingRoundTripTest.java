@@ -17,6 +17,7 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.export.Export
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorMetricsObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxMBeanRegistrationState;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationObservation;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
 import space.br1440.platform.tracing.autoconfigure.support.BoundTracingSettingsSources;
@@ -44,7 +45,7 @@ class DomainAbsentOwnerEncodingRoundTripTest {
 
     @BeforeEach
     void setUp() {
-        client = new PlatformTracingJmxClient(server);
+        client = new PlatformTracingJmxClient(server, mock(AgentReadinessCoherenceGuard.class));
     }
 
     @AfterEach

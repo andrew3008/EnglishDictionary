@@ -1,10 +1,10 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Modifier;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -15,6 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessCoherenceGuard;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.sampling.SamplingObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxDiagnosticSnapshot;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxMBeanRegistrationState;
@@ -35,7 +36,7 @@ class PlatformTracingJmxClientTest {
 
     @BeforeEach
     void setUp() {
-        client = new PlatformTracingJmxClient(server);
+        client = new PlatformTracingJmxClient(server, mock(AgentReadinessCoherenceGuard.class));
     }
 
     @AfterEach
@@ -89,25 +90,13 @@ class PlatformTracingJmxClientTest {
     }
 
     @Test
-    void constructorWithoutVerifierIsPackagePrivate() throws Exception {
+    void constructorsRequireCoherenceGuard() {
         // given
-        int serverConstructor = PlatformTracingJmxClient.class
-                .getDeclaredConstructor(MBeanServer.class)
-                .getModifiers();
+        Constructor<?>[] constructors = PlatformTracingJmxClient.class.getDeclaredConstructors();
 
-        // when
-        boolean serverConstructorHasPackageAccess = hasPackageAccess(serverConstructor);
-        boolean noArgumentConstructorExists = false;
-        for (Constructor<?> constructor : PlatformTracingJmxClient.class.getDeclaredConstructors()) {
-            if (constructor.getParameterCount() == 0) {
-                noArgumentConstructorExists = true;
-                break;
-            }
-        }
-
-        // then
-        assertThat(serverConstructorHasPackageAccess).isTrue();
-        assertThat(noArgumentConstructorExists).isFalse();
+        // when/then
+        assertThat(constructors).allSatisfy(constructor ->
+                assertThat(constructor.getParameterTypes()).contains(AgentReadinessCoherenceGuard.class));
     }
 
     @Test
@@ -151,9 +140,4 @@ class PlatformTracingJmxClientTest {
                 DomainObjectNames.SAMPLING);
     }
 
-    private static boolean hasPackageAccess(int modifiers) {
-        return !Modifier.isPublic(modifiers)
-                && !Modifier.isProtected(modifiers)
-                && !Modifier.isPrivate(modifiers);
-    }
 }

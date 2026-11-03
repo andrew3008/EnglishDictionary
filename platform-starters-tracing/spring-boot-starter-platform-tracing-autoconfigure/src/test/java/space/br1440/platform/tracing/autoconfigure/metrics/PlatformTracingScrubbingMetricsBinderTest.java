@@ -24,7 +24,7 @@ class PlatformTracingScrubbingMetricsBinderTest {
 
     @Test
     void presentOwnerMapsKnownWireKeysAndDefaultsMissingKeysToZero() {
-        ScrubbingValues values = new ScrubbingValues(true, 3L, 12L,
+        ScrubbingValues values = new ScrubbingValues(true, 1_000, 3L, 12L,
                 Map.of(
                         JmxWireContract.KEY_SCRUBBING_METRICS_DROP, 5L,
                         JmxWireContract.KEY_SCRUBBING_METRICS_HASH, 2L
@@ -44,7 +44,7 @@ class PlatformTracingScrubbingMetricsBinderTest {
     @Test
     void skippedCircuitOpenCounterReachesMicrometerKeySpace() {
         // given
-        ScrubbingValues values = new ScrubbingValues(true, 3L, 12L, Map.of(
+        ScrubbingValues values = new ScrubbingValues(true, 1_000, 3L, 12L, Map.of(
                 JmxWireContract.KEY_SCRUBBING_METRICS_SKIPPED_CIRCUIT_OPEN, 4L));
         JmxOwnerState<ScrubbingValues> present = new JmxOwnerState.Present<>(values, 1L);
 
@@ -58,7 +58,7 @@ class PlatformTracingScrubbingMetricsBinderTest {
 
     @Test
     void collapseCountersReachMicrometerAsCumulativeKeys() {
-        ScrubbingValues values = new ScrubbingValues(true, 3L, 12L,
+        ScrubbingValues values = new ScrubbingValues(true, 1_000, 3L, 12L,
                 Map.of(
                         JmxWireContract.KEY_SCRUBBING_METRICS_COLLAPSE_MODE_ACTIVATIONS, 1L,
                         JmxWireContract.KEY_SCRUBBING_METRICS_COLLAPSED_SPANS, 7L));

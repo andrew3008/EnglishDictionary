@@ -148,7 +148,7 @@ class OwningSpanScopeTest {
         };
         Span span = tracerProvider.get("test").spanBuilder("fatal-message-getter").startSpan();
         OwningSpanScope owning = new OwningSpanScope(span, span.makeCurrent(),
-                new ExceptionRecorder(new ExceptionRecordingPolicy(true, true)));
+                new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000)));
 
         // when
         try (owning) {

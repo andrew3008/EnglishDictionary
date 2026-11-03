@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.autoconfigure.exception;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -8,7 +9,10 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPropertyNames;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecordingPolicy;
 
@@ -22,12 +26,25 @@ public class ExceptionRecordingAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public ExceptionRecorder platformExceptionRecorder(TracingProperties properties) {
+    public ExceptionRecorder platformExceptionRecorder(TracingProperties properties,
+                                                       ObjectProvider<TracingDeploymentDiagnostics> deploymentDiagnostics,
+                                                       ObjectProvider<PlatformTracingJmxClient> jmxClient) {
         TracingProperties.ExceptionRecording recording = properties.getExceptionRecording();
+        int sdkLimit = 0;
+        if (recording.isIncludeStacktrace()) {
+            if (deploymentDiagnostics.getObject().runtimeState() != AgentRuntimeState.AGENT_READY) {
+                throw new IllegalStateException("Exception stack recording requires a ready Controlled Platform Agent");
+            }
+
+            sdkLimit = jmxClient.getObject().requireSdkAttributeValueLengthLimit();
+        }
+
         ExceptionRecordingPolicy recordingPolicy = new ExceptionRecordingPolicy(
                 recording.isIncludeMessage(),
-                recording.isIncludeStacktrace()
+                recording.isIncludeStacktrace(),
+                sdkLimit
         );
+
         return new ExceptionRecorder(recordingPolicy);
     }
 }
