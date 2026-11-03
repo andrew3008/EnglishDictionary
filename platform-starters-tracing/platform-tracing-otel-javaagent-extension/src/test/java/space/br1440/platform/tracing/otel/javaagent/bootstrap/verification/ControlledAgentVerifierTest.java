@@ -171,7 +171,9 @@ class ControlledAgentVerifierTest {
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {" ", "simple", "none", "PLATFORM", " platform ", "secret-provider-value"})
+    @ValueSource(strings = {
+            " ", "simple", "none", "platform", "SPACE.BR1440.PLATFORM", " space.br1440.platform ", "secret-provider-value"
+    })
     void missingOrNonCanonicalLoggingPropertyFailsWithFixedMessage(String loggingProvider) throws IOException {
         // given
         Path agent = controlledAgent("extension".getBytes(StandardCharsets.UTF_8));
@@ -185,7 +187,7 @@ class ControlledAgentVerifierTest {
         // then
         assertThat(failure.code()).isEqualTo(VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING);
         assertThat(failure).hasMessage(
-                "Controlled agent requires system property otel.javaagent.logging=platform");
+                "Controlled agent requires system property otel.javaagent.logging=space.br1440.platform");
     }
 
     @Test
@@ -337,7 +339,7 @@ class ControlledAgentVerifierTest {
                                                                           Path agent,
                                                                           ClassLoader extensionLoader,
                                                                           ClassLoader sdkLoader) {
-        return environment(expectedSha256, "platform", agent, extensionLoader, sdkLoader);
+        return environment(expectedSha256, "space.br1440.platform", agent, extensionLoader, sdkLoader);
     }
 
     private static ControlledAgentVerifier.RuntimeEnvironment environment(String expectedSha256,

@@ -61,7 +61,7 @@ class PlatformTracingJibExtensionFunctionalTest extends FunctionalTestSupport {
         assertThat(entrypoint)
                 .startsWith("java", CONSUMER_JVM_FLAG, "-javaagent:" + IMAGE_AGENT_PATH,
                         "-Dplatform.tracing.controlled-agent.expected-sha256=" + pinnedSha256(),
-                        "-Dotel.javaagent.logging=platform")
+                        "-Dotel.javaagent.logging=space.br1440.platform")
                 .contains("-cp", "example.Main");
         assertThat(entrypoint.stream().filter(token -> token.startsWith("-javaagent:")).toList()).hasSize(1);
         assertThat(entrypoint).noneMatch(token -> token.startsWith("-Dcom.sun.management") || token.equals("-XX:+ManagementServer"));
@@ -90,7 +90,7 @@ class PlatformTracingJibExtensionFunctionalTest extends FunctionalTestSupport {
         assertThat(image.entrypoint())
                 .startsWith("java", "-javaagent:" + IMAGE_AGENT_PATH,
                         "-Dplatform.tracing.controlled-agent.expected-sha256=" + pinnedSha256(),
-                        "-Dotel.javaagent.logging=platform");
+                        "-Dotel.javaagent.logging=space.br1440.platform");
         assertThat(image.fileInLayers(IMAGE_AGENT_PATH).orElseThrow()).isEqualTo(Files.readAllBytes(CONTROLLED_AGENT_JAR));
         assertThat(image.layerContaining(IMAGE_AGENT_PATH)).isEqualTo(image.layers().getLast());
         assertThat(Sha256Digest.hexOf(writeLayerFile(project, image))).isEqualTo(pinnedSha256());
@@ -188,7 +188,7 @@ class PlatformTracingJibExtensionFunctionalTest extends FunctionalTestSupport {
                 .filter(token -> token.startsWith("-javaagent:"))
                 .toList();
         assertThat(agents).containsExactly("-javaagent:" + IMAGE_AGENT_PATH);
-        assertThat(image.entrypoint()).containsOnlyOnce("-Dotel.javaagent.logging=platform");
+        assertThat(image.entrypoint()).containsOnlyOnce("-Dotel.javaagent.logging=space.br1440.platform");
         String expectedShaPrefix = "-Dplatform.tracing.controlled-agent.expected-sha256=";
         String expectedSha = image.entrypoint().stream()
                 .filter(token -> token.startsWith(expectedShaPrefix))
@@ -253,7 +253,7 @@ class PlatformTracingJibExtensionFunctionalTest extends FunctionalTestSupport {
             "-Dotel.propagators",
             "-Dotel.javaagent.configuration-file=/app/resources/otel.properties",
             "-Dotel.javaagent.extensions=/app/ext.jar",
-            "-Dotel.javaagent.logging=platform",
+            "-Dotel.javaagent.logging=space.br1440.platform",
             "-Dotel.javaagent.logging=simple",
             "-Dplatform.tracing.controlled-agent.expected-sha256=0000"
     })

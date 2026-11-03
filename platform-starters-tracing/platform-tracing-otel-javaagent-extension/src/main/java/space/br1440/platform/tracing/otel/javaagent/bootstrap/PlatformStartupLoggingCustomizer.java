@@ -30,7 +30,7 @@ public final class PlatformStartupLoggingCustomizer implements LoggingCustomizer
 
     @Override
     public String name() {
-        return "platform";
+        return "space.br1440.platform";
     }
 
     @Override

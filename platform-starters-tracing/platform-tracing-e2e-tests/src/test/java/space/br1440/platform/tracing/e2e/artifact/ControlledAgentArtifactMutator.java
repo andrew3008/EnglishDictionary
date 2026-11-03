@@ -56,8 +56,7 @@ public final class ControlledAgentArtifactMutator {
                 || providers.contains(POST_SDK_FAILURE_LISTENER)) {
             throw new IllegalArgumentException("Expected exactly one platform listener and no failure fixture");
         }
-        String mergedDescriptor = descriptor + (descriptor.endsWith("\n") ? "" : "\n")
-                + POST_SDK_FAILURE_LISTENER + "\n";
+        String mergedDescriptor = descriptor + (descriptor.endsWith("\n") ? "" : "\n") + POST_SDK_FAILURE_LISTENER + "\n";
         nested.entries().put(AGENT_LISTENER_DESCRIPTOR, mergedDescriptor.getBytes(StandardCharsets.UTF_8));
 
         byte[] mutatedExtension = JarArchive.write(nested);

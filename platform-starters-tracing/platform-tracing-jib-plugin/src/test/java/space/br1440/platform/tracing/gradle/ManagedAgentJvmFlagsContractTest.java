@@ -21,7 +21,7 @@ class ManagedAgentJvmFlagsContractTest {
         assertThat(arguments).containsExactly(
                 "-javaagent:/agent.jar",
                 "-Dplatform.tracing.controlled-agent.expected-sha256=deadbeef",
-                "-Dotel.javaagent.logging=platform"
+                "-Dotel.javaagent.logging=space.br1440.platform"
         );
     }
 

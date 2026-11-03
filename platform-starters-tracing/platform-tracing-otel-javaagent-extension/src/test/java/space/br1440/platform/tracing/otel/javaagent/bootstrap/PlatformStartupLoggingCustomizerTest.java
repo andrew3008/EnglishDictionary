@@ -24,8 +24,12 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFa
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceConfigurationError;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
@@ -38,7 +42,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
@@ -50,6 +56,7 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTra
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrarTestSupport;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingTestSupport;
 import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
@@ -85,7 +92,7 @@ class PlatformStartupLoggingCustomizerTest {
         String name = customizer.name();
 
         // then
-        assertThat(name).isEqualTo("platform");
+        assertThat(name).isEqualTo("space.br1440.platform");
         assertThat(logs.events()).isEmpty();
     }
 
@@ -158,6 +165,144 @@ class PlatformStartupLoggingCustomizerTest {
     }
 
     @Test
+    void init_propagates_provider_supplier_failure_without_coordinator_lookup() {
+        // given
+        ServiceConfigurationError failure = new ServiceConfigurationError("Logging provider discovery failed");
+        AtomicInteger coordinatorLookups = new AtomicInteger();
+        AtomicInteger providerLookups = new AtomicInteger();
+        PlatformStartupLoggingCustomizer customizer = new PlatformStartupLoggingCustomizer(
+                () -> {
+                    coordinatorLookups.incrementAndGet();
+                    throw new AssertionError("Unexpected coordinator lookup");
+                },
+                () -> {
+                    providerLookups.incrementAndGet();
+                    throw failure;
+                }
+        );
+
+        // when
+        Throwable outcome = catchThrowable(customizer::init);
+
+        // then
+        assertThat(outcome).isSameAs(failure);
+        assertThat(coordinatorLookups).hasValue(0);
+        assertThat(providerLookups).hasValue(1);
+        assertThat(logs.events()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void init_propagates_lazy_discovery_failure_before_initializing_simple(boolean discoverSimple) {
+        // given
+        ServiceConfigurationError failure = new ServiceConfigurationError("Lazy logging provider discovery failed");
+        LoggingCustomizer simple = namedProvider("simple");
+        AtomicInteger coordinatorLookups = new AtomicInteger();
+        Iterable<LoggingCustomizer> providers = () -> new Iterator<>() {
+            private boolean delivered;
+
+            @Override
+            public boolean hasNext() {
+                if (!discoverSimple || delivered) {
+                    throw failure;
+                }
+
+                return true;
+            }
+
+            @Override
+            public LoggingCustomizer next() {
+                delivered = true;
+                return simple;
+            }
+        };
+        PlatformStartupLoggingCustomizer customizer = new PlatformStartupLoggingCustomizer(
+                () -> {
+                    coordinatorLookups.incrementAndGet();
+                    throw new AssertionError("Unexpected coordinator lookup");
+                },
+                () -> providers
+        );
+
+        // when
+        Throwable outcome = catchThrowable(customizer::init);
+
+        // then
+        assertThat(outcome).isSameAs(failure);
+        assertThat(coordinatorLookups).hasValue(0);
+        if (discoverSimple) {
+            verify(simple).name();
+        } else {
+            verify(simple, never()).name();
+        }
+        verify(simple, never()).init();
+        verify(simple, never()).onStartupFailure(any());
+        assertThat(logs.events()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @MethodSource("simpleInitFailures")
+    void simple_init_failure_reaches_new_callback_without_prepare_or_fallback(Throwable failure) {
+        // given
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        int initialMBeanCount = server.getMBeanCount();
+        ScrubbingRuntime runtime = mock(ScrubbingRuntime.class);
+        BootstrapCoordinator coordinator = coordinator().server(server).scrubberFactory(factory(runtime)).build();
+        LoggingCustomizer simple = namedProvider("simple");
+        LoggingCustomizer other = namedProvider("none");
+        doThrow(failure).when(simple).init();
+        AtomicInteger coordinatorLookups = new AtomicInteger();
+        PlatformStartupLoggingCustomizer customizer = new PlatformStartupLoggingCustomizer(
+                () -> {
+                    coordinatorLookups.incrementAndGet();
+                    return coordinator;
+                },
+                () -> List.of(simple, other)
+        );
+
+        try (coordinator) {
+            // when
+            Throwable initOutcome = catchThrowable(customizer::init);
+
+            // then
+            assertThat(initOutcome).isSameAs(failure);
+            assertThat(coordinatorLookups).hasValue(0);
+            verify(simple).init();
+            verify(other, never()).init();
+            verify(simple, never()).onStartupFailure(any());
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.NEW);
+            assertThat(server.getMBeanCount()).isEqualTo(initialMBeanCount);
+            assertThat(logs.events()).isEmpty();
+
+            // when
+            Throwable callbackOutcome = catchThrowable(() -> customizer.onStartupFailure(initOutcome));
+
+            // then
+            if (failure instanceof LinkageError) {
+                assertThat(callbackOutcome).isSameAs(failure);
+            } else {
+                assertThat(callbackOutcome).isNull();
+            }
+            assertThat(coordinatorLookups).hasValue(1);
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.NEW);
+            assertThat(coordinator.diagnosticSnapshot().failure()).isNull();
+            assertThat(server.getMBeanCount()).isEqualTo(initialMBeanCount);
+            assertThatDiagnosticMBean(server).isNotRegistered();
+            CapturedLogEvent summary = startupSummary();
+            assertThat(summary.errorType()).isEqualTo(failure.getClass().getName());
+            assertThat(summary.fields())
+                    .containsEntry("lifecycle", "NEW")
+                    .doesNotContainKeys("failureCode", "primaryFailureCode");
+            assertThat(logs.rendered()).doesNotContain("simple-init-secret");
+            verify(simple).init();
+            verify(simple, never()).onStartupFailure(any());
+            verify(other, never()).init();
+            verify(other, never()).onStartupFailure(any());
+            verifyNoInteractions(runtime);
+        }
+    }
+
+    @Test
     void prepared_startup_failure_publishes_failed_diagnostic_and_one_error_summary() {
         // given
         MBeanServer server = MBeanServerFactory.newMBeanServer();
@@ -185,6 +330,57 @@ class PlatformStartupLoggingCustomizerTest {
                 assertThat(event.eventName()).isEqualTo(BootstrapLogEvent.BOOTSTRAP_PHASE_FAILED.name());
                 assertThat(event.level()).isEqualTo(AgentLogLevel.WARN);
             });
+            verify(runtime).close();
+        }
+
+        verify(runtime).close();
+    }
+
+    @Test
+    void repeated_startup_callback_keeps_terminal_failure_and_emits_each_cause() {
+        // given
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        ScrubbingRuntime runtime = mock(ScrubbingRuntime.class);
+        BootstrapCoordinator coordinator = coordinator().server(server).scrubberFactory(factory(runtime)).build();
+        ConfigurationException first = new ConfigurationException("First startup failure");
+        IllegalStateException second = new IllegalStateException("Repeated startup failure");
+
+        try (coordinator) {
+            coordinator.prepare(config());
+            PlatformStartupLoggingCustomizer customizer = customizer(coordinator);
+
+            // when
+            customizer.onStartupFailure(first);
+            BootstrapDiagnosticSnapshot diagnostics = coordinator.diagnosticSnapshot();
+            ExtensionReadinessWireSnapshot failed = coordinator.currentWire();
+            customizer.onStartupFailure(second);
+
+            // then
+            assertThat(diagnostics.state()).isEqualTo(BootstrapState.FAILED);
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+            assertThat(coordinator.diagnosticSnapshot().failure()).isSameAs(diagnostics.failure());
+            assertThat(diagnostics.failure().cause()).isSameAs(first);
+            assertThat(diagnostics.failure().primaryCode()).isEqualTo(AGENT_STARTUP_FAILED);
+            assertThat(diagnostics.failure().effectiveCode()).isEqualTo(AGENT_STARTUP_FAILED);
+            assertThat(coordinator.currentWire()).isSameAs(failed);
+            assertThatDiagnosticMBean(server).isFailedWith(AGENT_STARTUP_FAILED);
+            assertThat(first.getSuppressed()).isEmpty();
+            assertThat(second.getSuppressed()).isEmpty();
+            List<CapturedLogEvent> summaries = logs.events().stream()
+                    .filter(event -> BootstrapLogEvent.STARTUP_FAILED.name().equals(event.eventName()))
+                    .toList();
+            assertThat(summaries).hasSize(2).allSatisfy(summary -> {
+                assertThat(summary.level()).isEqualTo(AgentLogLevel.ERROR);
+                assertThat(summary.eventCode()).isEqualTo(AgentEventCode.BOOT_STARTUP_FAILED);
+                assertThat(summary.fields())
+                        .containsEntry("lifecycle", "FAILED")
+                        .containsEntry("failureCode", AGENT_STARTUP_FAILED)
+                        .containsEntry("primaryFailureCode", AGENT_STARTUP_FAILED);
+            });
+            assertThat(summaries).extracting(CapturedLogEvent::errorType)
+                    .containsExactly(ConfigurationException.class.getName(), IllegalStateException.class.getName());
+            assertThat(logs.events()).filteredOn(event ->
+                    BootstrapLogEvent.BOOTSTRAP_PHASE_FAILED.name().equals(event.eventName())).hasSize(1);
             verify(runtime).close();
         }
 
@@ -559,6 +755,78 @@ class PlatformStartupLoggingCustomizerTest {
     }
 
     @Test
+    void ordinary_summary_sink_failure_returns_without_retry_or_cause_replacement() throws Exception {
+        // given
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        BootstrapCoordinator coordinator = coordinator().server(server).build();
+        ConfigurationException cause = new ConfigurationException("Original startup failure");
+        IOException sinkFailure = new IOException("Summary delivery failed");
+        OutputStream sink = mock(OutputStream.class);
+        doThrow(sinkFailure).when(sink).write(any(byte[].class));
+        logs.close();
+
+        try (coordinator; AutoCloseable ignored = AgentLoggingTestSupport.install(sink)) {
+            AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.INFO);
+
+            // when
+            Throwable outcome = catchThrowable(() -> customizer(coordinator).onStartupFailure(cause));
+
+            // then
+            assertThat(outcome).isNull();
+            assertThat(cause.getSuppressed()).isEmpty();
+            assertThat(cause.getCause()).isNull();
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.NEW);
+            assertThat(coordinator.diagnosticSnapshot().failure()).isNull();
+            assertThatDiagnosticMBean(server).isNotRegistered();
+            verify(sink).write(any(byte[].class));
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("startupAndLoggingFailures")
+    void fatal_summary_preserves_original_and_secondary_priority(Throwable cause,
+                                                                Error deliveryFailure,
+                                                                Error loggingFailure,
+                                                                Throwable expected) throws Exception {
+        // given
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        BootstrapCoordinator coordinator = coordinator().server(server).build();
+        PlatformStartupLoggingCustomizer customizer = new PlatformStartupLoggingCustomizer(
+                () -> {
+                    if (deliveryFailure != null) {
+                        throw deliveryFailure;
+                    }
+
+                    return coordinator;
+                },
+                List::of
+        );
+        OutputStream sink = mock(OutputStream.class);
+        doThrow(loggingFailure).when(sink).write(any(byte[].class));
+        logs.close();
+
+        try (coordinator; AutoCloseable ignored = AgentLoggingTestSupport.install(sink)) {
+            AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.INFO);
+
+            // when
+            Throwable outcome = catchThrowable(() -> customizer.onStartupFailure(cause));
+
+            // then
+            assertThat(outcome).isSameAs(expected);
+            if (deliveryFailure == null) {
+                assertThat(cause.getSuppressed()).containsExactly(loggingFailure);
+            } else {
+                assertThat(cause.getSuppressed()).containsExactly(deliveryFailure, loggingFailure);
+            }
+            assertThat(cause.getCause()).isNull();
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.NEW);
+            assertThat(coordinator.diagnosticSnapshot().failure()).isNull();
+            assertThatDiagnosticMBean(server).isNotRegistered();
+            verify(sink).write(any(byte[].class));
+        }
+    }
+
+    @Test
     void simulated_original_vm_error_before_prepare_propagates_after_summary() {
         // given
         MBeanServer server = MBeanServerFactory.newMBeanServer();
@@ -668,6 +936,32 @@ class PlatformStartupLoggingCustomizerTest {
         return Stream.of(
                 new IllegalStateException("Scrubbing cleanup failed"),
                 new AssertionError("Scrubbing cleanup assertion failed")
+        );
+    }
+
+    private static Stream<Throwable> simpleInitFailures() {
+        return Stream.of(
+                new IllegalStateException("simple-init-secret"),
+                new LinkageError("simple-init-secret")
+        );
+    }
+
+    private static Stream<Arguments> startupAndLoggingFailures() {
+        LinkageError originalFatal = new LinkageError("Original startup linkage failed");
+        LinkageError loggingAfterOriginalFatal = new LinkageError("Summary linkage failed");
+        ConfigurationException ordinary = new ConfigurationException("Original startup failure");
+        LinkageError loggingAfterOrdinary = new LinkageError("Summary linkage failed");
+        ConfigurationException ordinaryWithDelivery = new ConfigurationException("Original startup failure");
+        ExceptionInInitializerError deliveryAfterOrdinary = new ExceptionInInitializerError("Holder initialization failed");
+        LinkageError loggingAfterDelivery = new LinkageError("Summary linkage failed");
+        LinkageError originalWithDelivery = new LinkageError("Original startup linkage failed");
+        ExceptionInInitializerError deliveryAfterOriginalFatal = new ExceptionInInitializerError("Holder initialization failed");
+        LinkageError loggingAfterBothFatal = new LinkageError("Summary linkage failed");
+        return Stream.of(
+                Arguments.of(originalFatal, null, loggingAfterOriginalFatal, originalFatal),
+                Arguments.of(ordinary, null, loggingAfterOrdinary, loggingAfterOrdinary),
+                Arguments.of(ordinaryWithDelivery, deliveryAfterOrdinary, loggingAfterDelivery, loggingAfterDelivery),
+                Arguments.of(originalWithDelivery, deliveryAfterOriginalFatal, loggingAfterBothFatal, originalWithDelivery)
         );
     }
 }

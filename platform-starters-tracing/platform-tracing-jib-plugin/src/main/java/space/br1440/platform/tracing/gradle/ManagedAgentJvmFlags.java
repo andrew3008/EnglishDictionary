@@ -13,7 +13,7 @@ final class ManagedAgentJvmFlags {
         return List.of(
                 "-javaagent:" + javaAgentPath,
                 "-D" + EXPECTED_SHA256_PROPERTY + "=" + expectedSha256,
-                "-Dotel.javaagent.logging=platform"
+                "-Dotel.javaagent.logging=space.br1440.platform"
         );
     }
 }

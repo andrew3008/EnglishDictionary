@@ -35,7 +35,7 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
     private static final String UPSTREAM_COORDINATE_PREFIX = "io.opentelemetry.javaagent:opentelemetry-javaagent:";
     private static final String BOOTSTRAP_LOADER_LABEL = "bootstrap";
     private static final String LOGGING_PROPERTY = "otel.javaagent.logging";
-    private static final String PLATFORM_LOGGING = "platform";
+    private static final String PLATFORM_LOGGING = "space.br1440.platform";
 
     private final RuntimeEnvironment environment;
 
@@ -98,7 +98,7 @@ final class ControlledAgentVerifier implements ExtensionRuntimeVerifier {
         if (!PLATFORM_LOGGING.equals(environment.systemProperty(LOGGING_PROPERTY))) {
             throw new VerificationException(
                     VerificationFailureCode.DISTRIBUTION_EVIDENCE_MISSING,
-                    "Controlled agent requires system property otel.javaagent.logging=platform"
+                    "Controlled agent requires system property otel.javaagent.logging=space.br1440.platform"
             );
         }
     }

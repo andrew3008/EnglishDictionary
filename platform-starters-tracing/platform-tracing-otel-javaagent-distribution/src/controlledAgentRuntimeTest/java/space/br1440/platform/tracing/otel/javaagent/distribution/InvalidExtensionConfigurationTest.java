@@ -25,7 +25,7 @@ import space.br1440.platform.tracing.otel.javaagent.distribution.probe.InvalidEx
 class InvalidExtensionConfigurationTest {
 
     private static final String EXPECTED_AGENT_SHA256_OPTION_PREFIX = "-Dplatform.tracing.controlled-agent.expected-sha256=";
-    private static final String PLATFORM_LOGGING_OPTION = "-Dotel.javaagent.logging=platform";
+    private static final String PLATFORM_LOGGING_OPTION = "-Dotel.javaagent.logging=space.br1440.platform";
     private static final String SAMPLER_ARGUMENT_CANARY = "sampler-arg-must-not-appear-7f31";
 
     @TempDir
@@ -104,7 +104,8 @@ class InvalidExtensionConfigurationTest {
             if (!logging.isEmpty()) {
                 command.add(1, "-Dotel.javaagent.logging=" + logging);
             }
-            Map<String, String> environment = environmentOnly ? Map.of("OTEL_JAVAAGENT_LOGGING", "platform") : Map.of();
+            Map<String, String> environment = environmentOnly
+                    ? Map.of("OTEL_JAVAAGENT_LOGGING", "space.br1440.platform") : Map.of();
 
             // when
             ChildProcessResult result = ControlledAgentChild.run(

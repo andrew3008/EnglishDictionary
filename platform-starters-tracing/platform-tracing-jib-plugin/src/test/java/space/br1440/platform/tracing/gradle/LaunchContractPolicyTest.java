@@ -75,7 +75,7 @@ class LaunchContractPolicyTest {
             "-Dotel.propagators",
             "-Dotel.javaagent.configuration-file=/app/otel.properties",
             "-Dotel.javaagent.extensions=/app/ext.jar",
-            "-Dotel.javaagent.logging=platform",
+            "-Dotel.javaagent.logging=space.br1440.platform",
             "-Dotel.javaagent.logging=simple",
             "-Dotel.sdk.disabled=true",
             "-Dplatform.tracing.controlled-agent.expected-sha256=0000",
@@ -202,7 +202,7 @@ class LaunchContractPolicyTest {
                 "-Xms32m",
                 "-javaagent:/opt/platform-tracing/agent.jar",
                 "-Dplatform.tracing.controlled-agent.expected-sha256=" + SHA256,
-                "-Dotel.javaagent.logging=platform",
+                "-Dotel.javaagent.logging=space.br1440.platform",
                 "-cp",
                 "@/app/jib-classpath-file",
                 "example.Main"
