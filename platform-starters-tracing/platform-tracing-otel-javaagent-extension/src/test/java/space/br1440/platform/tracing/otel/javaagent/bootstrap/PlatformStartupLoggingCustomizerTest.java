@@ -886,6 +886,7 @@ class PlatformStartupLoggingCustomizerTest {
             assertThatDiagnosticMBean(server).isNotRegistered();
             assertThat(startupSummary().errorType()).isEqualTo(InterruptedException.class.getName());
         } finally {
+            //noinspection ResultOfMethodCallIgnored -- очищаем флаг, чтобы не влиять на следующие тесты
             Thread.interrupted();
         }
     }
@@ -914,6 +915,7 @@ class PlatformStartupLoggingCustomizerTest {
 
     private static PlatformScrubberFactory factory(ScrubbingRuntime runtime) {
         PlatformScrubberFactory factory = mock(PlatformScrubberFactory.class);
+        //noinspection resource -- настройка Mockito не создаёт ресурс; runtime закрывает координатор
         doReturn(runtime).when(factory).buildRuntime(any());
         return factory;
     }
