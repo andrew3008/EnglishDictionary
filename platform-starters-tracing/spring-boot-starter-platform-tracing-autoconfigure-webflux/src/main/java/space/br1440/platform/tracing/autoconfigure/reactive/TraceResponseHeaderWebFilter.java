@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.springframework.http.HttpStatusCode;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
@@ -31,6 +32,7 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
     private final TraceOperations traceOperations;
     private final TracingProperties properties;
     private final InboundTraceControlExtractor traceControlExtractor;
+    private final AtomicBoolean headerReadFailureLogged = new AtomicBoolean();
     private final AtomicBoolean traceContextFailureLogged = new AtomicBoolean();
     private final AtomicBoolean requestAttributeFailureLogged = new AtomicBoolean();
     private final AtomicBoolean resultAttributeFailureLogged = new AtomicBoolean();
@@ -46,10 +48,10 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
     @Override
     @NonNull
     public Mono<Void> filter(@NonNull ServerWebExchange exchange, @NonNull WebFilterChain chain) {
-        final String incomingRequestId = exchange.getRequest().getHeaders().getFirst(PlatformHeaders.X_REQUEST_ID);
+        final String incomingRequestId = readHeader(exchange, PlatformHeaders.X_REQUEST_ID);
         final String requestId = RequestIdSupport.resolve(incomingRequestId);
-        final String rawForceTrace = exchange.getRequest().getHeaders().getFirst(PlatformHeaders.X_TRACE_ON);
-        final String rawQaTrace = exchange.getRequest().getHeaders().getFirst(PlatformHeaders.X_QA_TRACE);
+        final String rawForceTrace = readHeader(exchange, PlatformHeaders.X_TRACE_ON);
+        final String rawQaTrace = readHeader(exchange, PlatformHeaders.X_QA_TRACE);
 
         final InboundTraceControl traceControl = traceControlExtractor.fromHeaders(rawForceTrace, rawQaTrace, null);
         final String correlationId = resolveInboundCorrelationId(exchange);
@@ -89,16 +91,10 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
                     OtelReactorContextPropagation.detachEndedCurrentContext();
                 })
                 .contextWrite(context -> {
-                    ReactiveIdentityContextPropagation.IdentityState currentState = context
-                            .<ReactiveIdentityContextPropagation.IdentityState>getOrEmpty(ReactiveIdentityContextPropagation.KEY)
-                            .orElse(ReactiveIdentityContextPropagation.EMPTY);
-
                     Context written = context.put(
                             ReactiveIdentityContextPropagation.KEY,
-                            currentState
-                                    .withRequestId(requestId)
-                                    .withTraceControl(traceControl.forceTrace(), traceControl.qaTrace())
-                                    .withCorrelationId(correlationId)
+                            new ReactiveIdentityContextPropagation.IdentityState(
+                                    requestId, correlationId, traceControl.forceTrace(), traceControl.qaTrace())
                     );
 
                     Object otelSnapshot = OtelReactorContextPropagation.snapshotRecordingContext();
@@ -110,14 +106,30 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
                 });
     }
 
+    @Nullable
+    private String readHeader(ServerWebExchange exchange, String name) {
+        try {
+            return exchange.getRequest().getHeaders().getFirst(name);
+        } catch (RuntimeException failure) {
+            warnOnce(headerReadFailureLogged, "Failed to read an inbound tracing header: {}", failure);
+            return null;
+        }
+    }
+
+    @Nullable
     private String resolveInboundCorrelationId(ServerWebExchange exchange) {
         if (!properties.getPropagation().getCorrelation().isAcceptInbound()) {
             return null;
         }
 
-        return CorrelationIdSupport.resolveInbound(
-                exchange.getRequest().getHeaders().get(PlatformHeaders.X_CORRELATION_ID)
-        );
+        try {
+            return CorrelationIdSupport.resolveInbound(
+                    exchange.getRequest().getHeaders().get(PlatformHeaders.X_CORRELATION_ID)
+            );
+        } catch (RuntimeException failure) {
+            warnOnce(headerReadFailureLogged, "Failed to read an inbound tracing header: {}", failure);
+            return null;
+        }
     }
 
     private void applyHttpServerResult(PlatformOwnedServerHttpResponse response, boolean failed) {

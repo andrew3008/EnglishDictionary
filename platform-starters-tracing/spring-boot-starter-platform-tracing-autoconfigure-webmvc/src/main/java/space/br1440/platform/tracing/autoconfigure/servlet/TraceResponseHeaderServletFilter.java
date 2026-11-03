@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import space.br1440.platform.tracing.api.TraceOperations;
@@ -36,6 +37,7 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
     private final TracingProperties properties;
     private final RequestIdentityBoundarySupport identityBoundary;
     private final InboundTraceControlExtractor traceControlExtractor;
+    private final AtomicBoolean headerReadFailureLogged = new AtomicBoolean();
     private final AtomicBoolean traceContextFailureLogged = new AtomicBoolean();
     private final AtomicBoolean requestAttributeFailureLogged = new AtomicBoolean();
     private final AtomicBoolean resultAttributeFailureLogged = new AtomicBoolean();
@@ -56,10 +58,10 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
         final Optional<String> capturedTraceId = safeCurrentTraceId();
 
-        final String incomingRequestId = request.getHeader(PlatformHeaders.X_REQUEST_ID);
+        final String incomingRequestId = readHeader(request, PlatformHeaders.X_REQUEST_ID);
         final String requestId = RequestIdSupport.resolve(incomingRequestId);
-        final String rawForceTrace = request.getHeader(PlatformHeaders.X_TRACE_ON);
-        final String rawQaTrace = request.getHeader(PlatformHeaders.X_QA_TRACE);
+        final String rawForceTrace = readHeader(request, PlatformHeaders.X_TRACE_ON);
+        final String rawQaTrace = readHeader(request, PlatformHeaders.X_QA_TRACE);
 
         final InboundTraceControl traceControl = traceControlExtractor.fromHeaders(rawForceTrace, rawQaTrace, null);
 
@@ -125,18 +127,28 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
             return () -> { };
         }
 
-        String correlationId = CorrelationIdSupport.resolveInbound(headerValues(request, PlatformHeaders.X_CORRELATION_ID));
+        String correlationId = CorrelationIdSupport.resolveInbound(readCorrelationHeaders(request));
         return (correlationId == null) ? () -> { } : identityBoundary.openCorrelationScope(correlationId);
     }
 
-    @SuppressWarnings("SameParameterValue")
-    private static List<String> headerValues(HttpServletRequest request, String name) {
-        Enumeration<String> values = request.getHeaders(name);
-        if (values == null) {
-            return Collections.emptyList();
+    @Nullable
+    private String readHeader(HttpServletRequest request, String name) {
+        try {
+            return request.getHeader(name);
+        } catch (RuntimeException failure) {
+            warnOnce(headerReadFailureLogged, "Failed to read an inbound tracing header: {}", failure);
+            return null;
         }
+    }
 
-        return Collections.list(values);
+    private List<String> readCorrelationHeaders(HttpServletRequest request) {
+        try {
+            Enumeration<String> values = request.getHeaders(PlatformHeaders.X_CORRELATION_ID);
+            return (values == null) ? List.of() : Collections.list(values);
+        } catch (RuntimeException failure) {
+            warnOnce(headerReadFailureLogged, "Failed to read an inbound tracing header: {}", failure);
+            return List.of();
+        }
     }
 
     private Optional<String> safeCurrentTraceId() {

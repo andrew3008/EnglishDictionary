@@ -45,16 +45,8 @@ final class ReactiveIdentityContextPropagation implements SmartInitializingSingl
 
     record IdentityState(String requestId, String correlationId, boolean forceTrace, boolean qaTrace) {
 
-        IdentityState withRequestId(String value) {
-            return new IdentityState(value, correlationId, forceTrace, qaTrace);
-        }
-
         IdentityState withCorrelationId(String value) {
             return new IdentityState(requestId, value, forceTrace, qaTrace);
-        }
-
-        IdentityState withTraceControl(boolean forceTraceValue, boolean qaTraceValue) {
-            return new IdentityState(requestId, correlationId, forceTraceValue, qaTraceValue);
         }
     }
 
