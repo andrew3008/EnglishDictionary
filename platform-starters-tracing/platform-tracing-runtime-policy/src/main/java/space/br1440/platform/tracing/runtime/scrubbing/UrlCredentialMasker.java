@@ -16,6 +16,7 @@ public final class UrlCredentialMasker {
     private static final String URL_SEPARATORS = ",;'";
     private static final String ENCLOSING_OPENERS = "([{'\"";
     private static final String ENCLOSING_CLOSERS = ")]}'\"";
+    private static final String OPAQUE_KEY_CHARACTERS = "%:/?";
 
     @Nullable
     public static String mask(@Nonnull String text) {
@@ -84,7 +85,7 @@ public final class UrlCredentialMasker {
     }
 
     private static int candidateEnd(String text, int authorityStart) {
-        Part part = Part.AUTHORITY;
+        Section section = Section.AUTHORITY;
         for (int index = authorityStart; index < text.length(); index++) {
             char c = text.charAt(index);
             if (isTextDelimiter(c)) {
@@ -93,22 +94,22 @@ public final class UrlCredentialMasker {
 
             if (text.startsWith(SCHEME_SEPARATOR, index)) {
                 int nextStart = schemeStart(text, authorityStart, index);
-                if (startsNextUrl(text, part, authorityStart, nextStart)) {
+                if (startsNextUrl(text, section, authorityStart, nextStart)) {
                     return (URL_SEPARATORS.indexOf(text.charAt(nextStart - 1)) >= 0) ? nextStart - 1 : nextStart;
                 }
             }
 
-            part = part.next(c);
+            section = section.next(c);
         }
 
         return text.length();
     }
 
-    private static boolean startsNextUrl(String text, Part part, int authorityStart, int nextStart) {
-        return switch (part) {
+    private static boolean startsNextUrl(String text, Section section, int authorityStart, int nextStart) {
+        return switch (section) {
             case AUTHORITY -> isHostAndPort(text, authorityStart, nextStart);
             case PATH -> true;
-            case PARAMETERS -> false;
+            case QUERY_OR_FRAGMENT -> false;
         };
     }
 
@@ -141,12 +142,13 @@ public final class UrlCredentialMasker {
     private static boolean maskUrl(String text, int authorityStart, int urlEnd, MaskedText result) {
         int authorityEnd = indexOfAny(text, authorityStart, urlEnd, "/?#");
         int userinfoEnd = userinfoEnd(text, authorityStart, authorityEnd);
-        int hostStart = (userinfoEnd >= 0) ? (userinfoEnd + 1) : authorityStart;
+        boolean hasUserinfo = (userinfoEnd >= 0);
+        int hostStart = hasUserinfo ? (userinfoEnd + 1) : authorityStart;
         if (!isHostAndPort(text, hostStart, authorityEnd)) {
             return false;
         }
 
-        if ((userinfoEnd >= 0) && !result.mask(authorityStart, userinfoEnd)) {
+        if (hasUserinfo && !result.mask(authorityStart, userinfoEnd)) {
             return false;
         }
 
@@ -171,7 +173,7 @@ public final class UrlCredentialMasker {
             }
 
             int parameterEnd = indexOfAny(text, separator + 1, end, "&#");
-            if (!result.mask(valueStart(text, separator + 1, parameterEnd), parameterEnd)) {
+            if (!result.mask(secretStart(text, separator + 1, parameterEnd), parameterEnd)) {
                 return false;
             }
             separator = parameterEnd;
@@ -179,9 +181,9 @@ public final class UrlCredentialMasker {
         return true;
     }
 
-    private static int valueStart(String text, int parameterStart, int parameterEnd) {
+    private static int secretStart(String text, int parameterStart, int parameterEnd) {
         int equals = indexOfAny(text, parameterStart, parameterEnd, "=");
-        boolean plainKey = (indexOfAny(text, parameterStart, equals, "%:/?") == equals);
+        boolean plainKey = (indexOfAny(text, parameterStart, equals, OPAQUE_KEY_CHARACTERS) == equals);
         return ((equals < parameterEnd) && plainKey) ? (equals + 1) : parameterStart;
     }
 
@@ -281,14 +283,14 @@ public final class UrlCredentialMasker {
         return (c == ',') || (c == '.') || (c == ';') || (c == ':') || (c == '\'');
     }
 
-    private enum Part {
+    private enum Section {
         AUTHORITY,
         PATH,
-        PARAMETERS;
+        QUERY_OR_FRAGMENT;
 
-        private Part next(char c) {
-            if ((this == PARAMETERS) || (c == '#') || (c == '?')) {
-                return PARAMETERS;
+        private Section next(char c) {
+            if ((this == QUERY_OR_FRAGMENT) || (c == '#') || (c == '?')) {
+                return QUERY_OR_FRAGMENT;
             }
 
             return ((c == '/') && (this == AUTHORITY)) ? PATH : this;

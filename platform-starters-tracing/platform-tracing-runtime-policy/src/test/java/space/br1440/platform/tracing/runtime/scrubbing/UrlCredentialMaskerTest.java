@@ -32,6 +32,8 @@ class UrlCredentialMaskerTest {
                 Arguments.of("https://user:secret@host/path", "https://***@host/path"),
                 Arguments.of("http://user@host/", "http://***@host/"),
                 Arguments.of("https://user:first@second@host/", "https://***@host/"),
+                Arguments.of("http://h/user:pass@http://evil.com", "http://h/user:pass@http://evil.com"),
+                Arguments.of("http://h/user:pass@http://u:secret@evil.com", "http://h/user:pass@http://***@evil.com"),
                 Arguments.of("https://host/?token=secret&limit=20", "https://host/?token=***&limit=***"),
                 Arguments.of("https://host/?flag&empty=&token=a=b=c&&other=z", "https://host/?***&empty=&token=***&&other=***"),
                 Arguments.of("https://host/?=secret", "https://host/?=***"),
