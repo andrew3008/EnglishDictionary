@@ -7,7 +7,6 @@ import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 
 import io.micrometer.context.ThreadLocalAccessor;
-import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 
@@ -31,11 +30,6 @@ final class OtelContextThreadLocalAccessor implements ThreadLocalAccessor<Contex
             return null;
         }
 
-        Span span = Span.fromContext(current);
-        if (!span.getSpanContext().isValid() || !span.isRecording()) {
-            return null;
-        }
-
         return current;
     }
 
@@ -46,8 +40,7 @@ final class OtelContextThreadLocalAccessor implements ThreadLocalAccessor<Contex
 
     @Override
     public void setValue() {
-        Span current = Span.current();
-        if (current.getSpanContext().isValid() && current.isRecording()) {
+        if (Context.current() != Context.root()) {
             scopes.get().push(Scope.noop());
             return;
         }

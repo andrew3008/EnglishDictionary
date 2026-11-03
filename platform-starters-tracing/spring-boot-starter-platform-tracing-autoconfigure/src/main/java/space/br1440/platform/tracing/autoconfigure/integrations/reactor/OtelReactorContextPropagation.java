@@ -7,7 +7,6 @@ import org.springframework.beans.factory.SmartInitializingSingleton;
 
 import io.micrometer.context.ContextRegistry;
 import io.micrometer.context.ThreadLocalAccessor;
-import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 
 public final class OtelReactorContextPropagation implements SmartInitializingSingleton, DisposableBean {
@@ -35,33 +34,6 @@ public final class OtelReactorContextPropagation implements SmartInitializingSin
         }
 
         accessor.clearScopes();
-    }
-
-    public static Object reactorContextKey() {
-        return OtelContextThreadLocalAccessor.KEY;
-    }
-
-    public static Object snapshotRecordingContext() {
-        Context current = Context.current();
-        if (current == Context.root()) {
-            return null;
-        }
-
-        Span span = Span.fromContext(current);
-        if (!span.getSpanContext().isValid() || !span.isRecording()) {
-            return null;
-        }
-
-        return current;
-    }
-
-    public static void detachEndedCurrentContext() {
-        Span span = Span.current();
-        if (!span.getSpanContext().isValid() || span.isRecording()) {
-            return;
-        }
-
-        Context.root().makeCurrent();
     }
 
     private static boolean alreadyRegistered(ContextRegistry registry) {

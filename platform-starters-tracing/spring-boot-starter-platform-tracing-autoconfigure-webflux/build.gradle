@@ -10,6 +10,25 @@ platformJavaLibrary {
     bomProjectPath = ':spring-boot-starter-platform-bom'
 }
 
+configurations {
+    controlledAgentUnderTest {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+}
+
+sourceSets {
+    controlledWebFluxHarness {
+        java.srcDir 'src/controlledWebFluxHarness/java'
+    }
+
+    controlledWebFluxHarnessTest {
+        java.srcDir 'src/controlledWebFluxHarnessTest/java'
+        compileClasspath += sourceSets.test.compileClasspath + sourceSets.controlledWebFluxHarness.output
+        runtimeClasspath += sourceSets.test.runtimeClasspath + sourceSets.controlledWebFluxHarness.output
+    }
+}
+
 dependencies {
     api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure')
     api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
@@ -41,4 +60,25 @@ dependencies {
     testImplementation 'jakarta.servlet:jakarta.servlet-api'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    controlledAgentUnderTest project(
+            path: ':platform-starters-tracing:platform-tracing-otel-javaagent-distribution',
+            configuration: 'controlledAgentElements'
+    )
+    controlledWebFluxHarnessImplementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-webflux')
+    controlledWebFluxHarnessImplementation 'org.springframework.boot:spring-boot-starter-actuator'
+}
+
+tasks.register('controlledWebFluxHarnessTest', Test) {
+    group = 'verification'
+    description = 'Controlled WebFlux runtime for Reactor context propagation.'
+
+    testClassesDirs = sourceSets.controlledWebFluxHarnessTest.output.classesDirs
+    classpath = sourceSets.controlledWebFluxHarnessTest.runtimeClasspath
+
+    def harnessRuntime = sourceSets.controlledWebFluxHarness.runtimeClasspath
+    inputs.files(harnessRuntime).withPropertyName('harnessRuntime').withNormalizer(ClasspathNormalizer)
+
+    platformSystemProperties.singleFile('platform.tracing.controlledAgent', configurations.controlledAgentUnderTest)
+    platformSystemProperties.value('platform.tracing.webfluxHarness.classpath', providers.provider { harnessRuntime.asPath })
 }

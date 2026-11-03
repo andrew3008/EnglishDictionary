@@ -16,7 +16,6 @@ import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.integrations.reactor.OtelReactorContextPropagation;
 import space.br1440.platform.tracing.runtime.propagation.CorrelationIdSupport;
 import space.br1440.platform.tracing.runtime.propagation.RequestIdSupport;
 
@@ -24,7 +23,6 @@ import io.opentelemetry.api.trace.Span;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
-import reactor.util.context.Context;
 
 @Slf4j
 public class TraceResponseHeaderWebFilter implements WebFilter {
@@ -86,24 +84,13 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
 
                     return chain.filter(filteredExchange);
                 })
-                .doFinally(signal -> {
-                    applyHttpServerResult(wrapped, signal == SignalType.ON_ERROR);
-                    OtelReactorContextPropagation.detachEndedCurrentContext();
-                })
-                .contextWrite(context -> {
-                    Context written = context.put(
-                            ReactiveIdentityContextPropagation.KEY,
-                            new ReactiveIdentityContextPropagation.IdentityState(
-                                    requestId, correlationId, traceControl.forceTrace(), traceControl.qaTrace())
-                    );
-
-                    Object otelSnapshot = OtelReactorContextPropagation.snapshotRecordingContext();
-                    if (otelSnapshot != null) {
-                        written = written.put(OtelReactorContextPropagation.reactorContextKey(), otelSnapshot);
-                    }
-
-                    return written;
-                });
+                .doFinally(signal -> applyHttpServerResult(wrapped, signal == SignalType.ON_ERROR))
+                .contextWrite(context -> context.put(
+                        ReactiveIdentityContextPropagation.KEY,
+                        new ReactiveIdentityContextPropagation.IdentityState(
+                                requestId, correlationId, traceControl.forceTrace(), traceControl.qaTrace()
+                        )
+                ));
     }
 
     @Nullable
