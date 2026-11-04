@@ -93,6 +93,7 @@ final class FailureHandler {
         SecondaryFailures secondary = new SecondaryFailures(admission.failure().cause(), cause);
         secondary.noteFatal(admission.projectionFailure());
 
+        //noinspection resource -- resources закрываются через capture: отказ close входит в протокол завершения
         Throwable resourcesCleanupFailure = context.resources() == null
                 ? null
                 : BootstrapCleanupFailures.capture(context.resources()::close);

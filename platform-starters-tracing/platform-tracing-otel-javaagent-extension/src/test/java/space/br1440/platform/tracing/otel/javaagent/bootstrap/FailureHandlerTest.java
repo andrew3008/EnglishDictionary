@@ -106,6 +106,7 @@ class FailureHandlerTest {
     void missing_preparation_under_held_monitor_is_not_a_monitor_violation() {
         // given
         Fixture fixture = preparedFixture();
+        //noinspection resource -- beginActivation возвращает mock-сессию фикстуры, закрытие ей не принадлежит
         fixture.lifecycle().beginActivation();
 
         // when
@@ -118,6 +119,7 @@ class FailureHandlerTest {
     void startup_failure_from_active_changes_nothing() {
         // given
         Fixture fixture = preparedFixture();
+        //noinspection resource -- beginActivation возвращает mock-сессию фикстуры, закрытие ей не принадлежит
         fixture.lifecycle().beginActivation();
         fixture.lifecycle().attachResources(new BootstrapResources());
         fixture.lifecycle().commitActive();
@@ -154,7 +156,7 @@ class FailureHandlerTest {
         return new Fixture(
                 lifecycle,
                 transitions,
-                new FailureHandler(lifecycle, transitions, () -> registrations.incrementAndGet()),
+                new FailureHandler(lifecycle, transitions, registrations::incrementAndGet),
                 session,
                 evidence,
                 registrations

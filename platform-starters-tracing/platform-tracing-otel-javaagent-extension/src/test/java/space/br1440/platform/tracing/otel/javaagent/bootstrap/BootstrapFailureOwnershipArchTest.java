@@ -540,9 +540,9 @@ class BootstrapFailureOwnershipArchTest {
         assertViolation(
                 classes,
                 result,
+                FailureHandler.class,
                 TerminalFailureAccessFixture.class,
-                TerminalFailureAccessFixture.class.getName(),
-                FailureHandler.class
+                TerminalFailureAccessFixture.class.getName()
         );
     }
 
@@ -562,10 +562,16 @@ class BootstrapFailureOwnershipArchTest {
         assertViolation(
                 classes,
                 result,
-                TerminalFailureAccessFixture.class,
-                TerminalFailureAccessFixture.class.getName(),
                 FailureHandler.class,
-                BootstrapActivation.class
+                TerminalFailureAccessFixture.class,
+                TerminalFailureAccessFixture.class.getName()
+        );
+        assertViolation(
+                classes,
+                result,
+                BootstrapActivation.class,
+                TerminalFailureAccessFixture.class,
+                TerminalFailureAccessFixture.class.getName()
         );
     }
 
@@ -994,18 +1000,6 @@ class BootstrapFailureOwnershipArchTest {
                                         String expectedOrigin) {
         assertThat(classes.contain(fixture)).isTrue();
         assertThat(belongToAnyOf(allowedOwner).test(classes.get(fixture))).isFalse();
-        assertThat(result.hasViolation()).isTrue();
-        assertThat(String.join("\n", result.getFailureReport().getDetails()))
-                .contains(expectedOrigin);
-    }
-
-    private static void assertViolation(JavaClasses classes,
-                                        EvaluationResult result,
-                                        Class<?> fixture,
-                                        String expectedOrigin,
-                                        Class<?>... allowedOwners) {
-        assertThat(classes.contain(fixture)).isTrue();
-        assertThat(belongToAnyOf(allowedOwners).test(classes.get(fixture))).isFalse();
         assertThat(result.hasViolation()).isTrue();
         assertThat(String.join("\n", result.getFailureReport().getDetails()))
                 .contains(expectedOrigin);
