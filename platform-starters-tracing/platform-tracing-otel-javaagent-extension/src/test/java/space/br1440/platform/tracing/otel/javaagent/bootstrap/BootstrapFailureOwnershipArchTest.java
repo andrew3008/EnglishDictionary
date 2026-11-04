@@ -72,6 +72,14 @@ class BootstrapFailureOwnershipArchTest {
             targetIs(BootstrapLogEvent.class, "BOOTSTRAP_PHASE_FAILED");
     private static final DescribedPredicate<JavaAccess<?>> OPERATION_REJECTION_EVENT_ACCESS =
             targetIs(BootstrapLogEvent.class, "BOOTSTRAP_OPERATION_REJECTED");
+    private static final DescribedPredicate<JavaAccess<?>> TERMINAL_STARTUP_ACCESS =
+            targetIs(BootstrapTerminalTransitions.class, "terminalizeStartup");
+    private static final DescribedPredicate<JavaAccess<?>> MISSING_PREPARATION_TRANSITION_ACCESS =
+            targetIs(BootstrapTerminalTransitions.class, "recordMissingPreparation");
+    private static final DescribedPredicate<JavaAccess<?>> ESCALATE_ACCESS =
+            targetIs(BootstrapTerminalTransitions.class, "escalate");
+    private static final DescribedPredicate<JavaAccess<?>> TERMINALIZE_ACCESS =
+            targetIs(BootstrapTerminalTransitions.class, "terminalize");
 
     @ArchTest
     @SuppressWarnings("unused")
@@ -175,6 +183,37 @@ class BootstrapFailureOwnershipArchTest {
                 BootstrapCoordinator.class,
                 DIAGNOSTIC_REGISTRATION_ACCESS
         );
+        assertThat(result.getFailureReport().getDetails()).isEmpty();
+    }
+
+    @ArchTest
+    @SuppressWarnings("unused")
+    static void only_failure_handler_can_enter_terminal_transitions(JavaClasses classes) {
+        // given
+        ArchRule rule = terminalEntryRule();
+
+        // when
+        EvaluationResult result = rule.evaluate(classes);
+
+        // then
+        assertAllowedProductionAccessExists(classes, FailureHandler.class, TERMINAL_STARTUP_ACCESS);
+        assertAllowedProductionAccessExists(classes, FailureHandler.class, MISSING_PREPARATION_TRANSITION_ACCESS);
+        assertAllowedProductionAccessExists(classes, FailureHandler.class, ESCALATE_ACCESS);
+        assertThat(result.getFailureReport().getDetails()).isEmpty();
+    }
+
+    @ArchTest
+    @SuppressWarnings("unused")
+    static void only_failure_handler_and_activation_can_terminalize(JavaClasses classes) {
+        // given
+        ArchRule rule = terminalRecordRule();
+
+        // when
+        EvaluationResult result = rule.evaluate(classes);
+
+        // then
+        assertAllowedProductionAccessExists(classes, FailureHandler.class, TERMINALIZE_ACCESS);
+        assertAllowedProductionAccessExists(classes, BootstrapActivation.class, TERMINALIZE_ACCESS);
         assertThat(result.getFailureReport().getDetails()).isEmpty();
     }
 
@@ -486,6 +525,51 @@ class BootstrapFailureOwnershipArchTest {
     }
 
     @Test
+    void terminal_entry_rule_detects_direct_call_origin() {
+        // given
+        ArchRule rule = terminalEntryRule();
+        JavaClasses classes = importFixture(
+                TerminalFailureAccessFixture.class,
+                BootstrapTerminalTransitions.class
+        );
+
+        // when
+        EvaluationResult result = rule.evaluate(classes);
+
+        // then
+        assertViolation(
+                classes,
+                result,
+                TerminalFailureAccessFixture.class,
+                TerminalFailureAccessFixture.class.getName(),
+                FailureHandler.class
+        );
+    }
+
+    @Test
+    void terminal_record_rule_detects_direct_call_origin() {
+        // given
+        ArchRule rule = terminalRecordRule();
+        JavaClasses classes = importFixture(
+                TerminalFailureAccessFixture.class,
+                BootstrapTerminalTransitions.class
+        );
+
+        // when
+        EvaluationResult result = rule.evaluate(classes);
+
+        // then
+        assertViolation(
+                classes,
+                result,
+                TerminalFailureAccessFixture.class,
+                TerminalFailureAccessFixture.class.getName(),
+                FailureHandler.class,
+                BootstrapActivation.class
+        );
+    }
+
+    @Test
     void close_ownership_rule_detects_direct_call_origin() {
         // given
         ArchRule rule = closeOwnershipRule();
@@ -749,6 +833,23 @@ class BootstrapFailureOwnershipArchTest {
         );
     }
 
+    private static ArchRule terminalEntryRule() {
+        return onlyOwners(
+                TERMINAL_STARTUP_ACCESS
+                        .or(MISSING_PREPARATION_TRANSITION_ACCESS)
+                        .or(ESCALATE_ACCESS),
+                FailureHandler.class
+        );
+    }
+
+    private static ArchRule terminalRecordRule() {
+        return onlyOwners(
+                TERMINALIZE_ACCESS,
+                FailureHandler.class,
+                BootstrapActivation.class
+        );
+    }
+
     private static ArchRule closeOwnershipRule() {
         return onlyOwner(
                 BootstrapCoordinator.class,
@@ -814,10 +915,29 @@ class BootstrapFailureOwnershipArchTest {
     }
 
     private static ArchRule onlyOwner(Class<?> owner, DescribedPredicate<JavaAccess<?>> access) {
+        return onlyOwners(access, owner);
+    }
+
+    private static ArchRule onlyOwners(DescribedPredicate<JavaAccess<?>> access, Class<?>... owners) {
         return noClasses()
-                .that(not(belongToAnyOf(owner)))
+                .that(not(belongToAnyOf(owners)))
                 .should().accessTargetWhere(access)
-                .because(owner.getSimpleName() + " is the single owner of the guarded bootstrap transition");
+                .because(ownershipReason(owners));
+    }
+
+    private static String ownershipReason(Class<?>... owners) {
+        if (owners.length == 1) {
+            return owners[0].getSimpleName() + " is the single owner of the guarded bootstrap transition";
+        }
+
+        StringBuilder names = new StringBuilder();
+        for (int index = 0; index < owners.length; index++) {
+            if (index > 0) {
+                names.append(index == owners.length - 1 ? " and " : ", ");
+            }
+            names.append(owners[index].getSimpleName());
+        }
+        return names + " are the owners of the guarded bootstrap transition";
     }
 
     private static DescribedPredicate<JavaAccess<?>> targetIs(Class<?> owner, String name) {
@@ -874,6 +994,18 @@ class BootstrapFailureOwnershipArchTest {
                                         String expectedOrigin) {
         assertThat(classes.contain(fixture)).isTrue();
         assertThat(belongToAnyOf(allowedOwner).test(classes.get(fixture))).isFalse();
+        assertThat(result.hasViolation()).isTrue();
+        assertThat(String.join("\n", result.getFailureReport().getDetails()))
+                .contains(expectedOrigin);
+    }
+
+    private static void assertViolation(JavaClasses classes,
+                                        EvaluationResult result,
+                                        Class<?> fixture,
+                                        String expectedOrigin,
+                                        Class<?>... allowedOwners) {
+        assertThat(classes.contain(fixture)).isTrue();
+        assertThat(belongToAnyOf(allowedOwners).test(classes.get(fixture))).isFalse();
         assertThat(result.hasViolation()).isTrue();
         assertThat(String.join("\n", result.getFailureReport().getDetails()))
                 .contains(expectedOrigin);
@@ -1009,6 +1141,24 @@ final class BootstrapFailureConstructorReferenceFixture {
 
     static BootstrapFailureFactory factory() {
         return BootstrapFailure::new;
+    }
+}
+
+@SuppressWarnings("unused")
+final class TerminalFailureAccessFixture {
+
+    private TerminalFailureAccessFixture() {
+    }
+
+    static void access(BootstrapTerminalTransitions transitions, ExtensionRuntimeEvidence evidence) {
+        transitions.recordMissingPreparation(evidence);
+        transitions.terminalize(
+                FailureSite.startup(),
+                "x",
+                new IllegalStateException(),
+                BatchIds.NONE,
+                evidence
+        );
     }
 }
 

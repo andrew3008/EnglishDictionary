@@ -58,6 +58,15 @@ public final class BootstrapCleanupFailures {
         }
     }
 
+    public static Throwable capture(Runnable closeAction) {
+        try {
+            closeAction.run();
+            return null;
+        } catch (RuntimeException | Error failure) {
+            return failure;
+        }
+    }
+
     public static Throwable withResourceLabel(String resourceLabel, Throwable failure) {
         if (failure instanceof Error || failure instanceof BootstrapResourceCleanupException) {
             return failure;

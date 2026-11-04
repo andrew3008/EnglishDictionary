@@ -1,12 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.AGENT_STARTUP_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.CONFIGURATION_INITIALIZATION_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.DIAGNOSTIC_MBEAN_REGISTRATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
@@ -24,7 +20,6 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.ConfigurationP
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationException;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxMutationRegistrationAssessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
@@ -47,6 +42,7 @@ final class BootstrapCoordinator implements AutoCloseable {
     private final PlatformExtensionReadiness readiness;
     private final AgentInstanceId agentInstanceId;
     private final BootstrapTerminalTransitions terminalTransitions;
+    private final FailureHandler failures;
     private final AutoconfigureSessionFactory sessionFactory;
     private final ExtensionRuntimeVerifier runtimeVerifier;
     private final BootstrapActivation activation;
@@ -81,6 +77,7 @@ final class BootstrapCoordinator implements AutoCloseable {
         this.agentInstanceId = jmxRegistrar.agentInstanceId();
         this.journal = new BootstrapReadinessJournal(lifecycle.monitor(), readiness, agentInstanceId);
         this.terminalTransitions = new BootstrapTerminalTransitions(lifecycle, journal);
+        this.failures = new FailureHandler(lifecycle, terminalTransitions, this::registerDiagnosticReadiness);
         this.sessionFactory = new AutoconfigureSessionFactory(scrubberFactory, remoteJmxAssessorFactory);
         this.runtimeVerifier = Objects.requireNonNull(runtimeVerifier, "runtimeVerifier");
         this.activation = new BootstrapActivation(
@@ -111,7 +108,7 @@ final class BootstrapCoordinator implements AutoCloseable {
         try {
             journal.publishInitializing();
         } catch (RuntimeException | Error publicationFailure) {
-            throw new BootstrapException(handleFailure(
+            throw new BootstrapException(failures.handle(
                     FailureSite.prepareReadinessPublication(),
                     BootstrapFailureCodes.classify(publicationFailure, CONFIGURATION_INITIALIZATION_FAILED),
                     publicationFailure,
@@ -124,7 +121,7 @@ final class BootstrapCoordinator implements AutoCloseable {
         try {
             registerDiagnosticReadiness();
         } catch (RuntimeException | Error registrationFailure) {
-            throw new BootstrapException(handleFailure(
+            throw new BootstrapException(failures.handle(
                     FailureSite.prepareDiagnosticRegistration(),
                     DIAGNOSTIC_MBEAN_REGISTRATION_FAILED,
                     registrationFailure,
@@ -136,7 +133,7 @@ final class BootstrapCoordinator implements AutoCloseable {
         try {
             lifecycle.completePrepare(prepared);
         } catch (RuntimeException | Error completionFailure) {
-            throw new BootstrapException(handleFailure(
+            throw new BootstrapException(failures.handle(
                     FailureSite.prepareConfiguration(),
                     BootstrapFailureCodes.classify(completionFailure, CONFIGURATION_INITIALIZATION_FAILED),
                     completionFailure,
@@ -166,7 +163,7 @@ final class BootstrapCoordinator implements AutoCloseable {
     private BootstrapFailure handlePreparationFailure(Throwable failure) {
         ExtensionRuntimeEvidence evidence = unavailableEvidence();
         return switch (failure) {
-            case VerificationException verification -> handleFailure(
+            case VerificationException verification -> failures.handle(
                     FailureSite.prepareConfiguration(),
                     verification.code().name(),
                     verification,
@@ -174,7 +171,7 @@ final class BootstrapCoordinator implements AutoCloseable {
                     evidence
             );
 
-            case SanitizerBootstrapException sanitizer when sanitizer.propertyName() != null -> handleFailure(
+            case SanitizerBootstrapException sanitizer when sanitizer.propertyName() != null -> failures.handle(
                     FailureSite.prepareValidation(sanitizer.propertyName()),
                     sanitizer.code(),
                     sanitizer,
@@ -182,7 +179,7 @@ final class BootstrapCoordinator implements AutoCloseable {
                     evidence
             );
 
-            case ConfigurationPropertyException property -> handleFailure(
+            case ConfigurationPropertyException property -> failures.handle(
                     FailureSite.prepareValidation(property.propertyName()),
                     CONFIGURATION_INITIALIZATION_FAILED,
                     property.failure(),
@@ -190,7 +187,7 @@ final class BootstrapCoordinator implements AutoCloseable {
                     evidence
             );
 
-            default -> handleFailure(
+            default -> failures.handle(
                     FailureSite.prepareConfiguration(),
                     BootstrapFailureCodes.classify(failure, CONFIGURATION_INITIALIZATION_FAILED),
                     failure,
@@ -214,7 +211,7 @@ final class BootstrapCoordinator implements AutoCloseable {
         try {
             return action.get();
         } catch (RuntimeException | Error failure) {
-            throw new BootstrapException(handleFailure(
+            throw new BootstrapException(failures.handle(
                     site,
                     BootstrapFailureCodes.classify(failure, step.failureCode()),
                     failure,
@@ -227,20 +224,9 @@ final class BootstrapCoordinator implements AutoCloseable {
     void activate(SdkTracerProvider tracerProvider) {
         Objects.requireNonNull(tracerProvider, "tracerProvider");
 
-        ExtensionRuntimeEvidence unavailableEvidence = unavailableEvidence();
-        Optional<FailureAdmission> missingPreparation = terminalTransitions.recordMissingPreparation(unavailableEvidence);
+        Optional<BootstrapFailure> missingPreparation = failures.handleMissingPreparation(unavailableEvidence());
         if (missingPreparation.isPresent()) {
-            FailureAdmission admission = missingPreparation.get();
-            throw new BootstrapException(completeFailure(new FailureContext(
-                    FailureSite.activation("activate"),
-                    PLATFORM_ACP_NOT_EXECUTED,
-                    admission.failure().cause(),
-                    admission,
-                    null,
-                    null,
-                    BatchIds.NONE,
-                    unavailableEvidence
-            )));
+            throw new BootstrapException(missingPreparation.get());
         }
 
         Optional<FailureContext> activationFailure;
@@ -252,32 +238,13 @@ final class BootstrapCoordinator implements AutoCloseable {
         }
 
         if (activationFailure.isPresent()) {
-            FailureContext failure = activationFailure.get();
-            requireLifecycleMonitorNotHeld(failure.cause());
-            throw new BootstrapException(completeFailure(failure));
+            throw new BootstrapException(failures.complete(activationFailure.get()));
         }
     }
 
     void onStartupFailure(Throwable cause) {
         Objects.requireNonNull(cause, "cause");
-        requireLifecycleMonitorNotHeld(cause);
-
-        ExtensionRuntimeEvidence evidence = currentEvidence();
-        Optional<FailureAdmission> admission = terminalTransitions.terminalizeStartup(cause, evidence);
-        if (admission.isEmpty()) {
-            return;
-        }
-
-        completeFailure(new FailureContext(
-                FailureSite.startup(),
-                AGENT_STARTUP_FAILED,
-                cause,
-                admission.get(),
-                null,
-                null,
-                BatchIds.NONE,
-                evidence
-        ));
+        failures.handleStartup(cause, currentEvidence());
     }
 
     ExtensionReadinessWireSnapshot currentWire() {
@@ -393,9 +360,14 @@ final class BootstrapCoordinator implements AutoCloseable {
         }
 
         BootstrapResources resources = context.resources();
-        Throwable runtimeCleanupFailure = resources == null
-                ? closePreparedSession(context.session())
-                : closeActivationResources(resources);
+        Throwable runtimeCleanupFailure;
+        if (resources != null) {
+            runtimeCleanupFailure = BootstrapCleanupFailures.capture(resources::close);
+        } else {
+            //noinspection resource -- session закрывается через capture в этом методе
+            AutoconfigureSession session = context.session();
+            runtimeCleanupFailure = session == null ? null : BootstrapCleanupFailures.capture(session::close);
+        }
         if (runtimeCleanupFailure != null) {
             cleanupFailure = BootstrapCleanupFailures.aggregate(cleanupFailure, runtimeCleanupFailure);
         }
@@ -435,116 +407,6 @@ final class BootstrapCoordinator implements AutoCloseable {
         }
     }
 
-    private BootstrapFailure handleFailure(FailureSite site,
-                                           String failureCode,
-                                           Throwable cause,
-                                           AutoconfigureSession ownedSession,
-                                           ExtensionRuntimeEvidence evidence) {
-        requireLifecycleMonitorNotHeld(cause);
-        FailureAdmission admission = terminalTransitions.terminalize(site, failureCode, cause, BatchIds.NONE, evidence);
-        return completeFailure(new FailureContext(
-                site,
-                failureCode,
-                cause,
-                admission,
-                ownedSession,
-                null,
-                BatchIds.NONE,
-                evidence
-        ));
-    }
-
-    private BootstrapFailure completeFailure(FailureContext context) {
-        FailureAdmission admission = context.admission();
-        Throwable cause = context.cause();
-        SecondaryFailures secondary = new SecondaryFailures(admission.failure().cause(), cause);
-        secondary.noteFatal(admission.projectionFailure());
-
-        Throwable resourcesCleanupFailure = closeActivationResources(context.resources());
-        //noinspection resource -- сессия принадлежит completeFailure: её закрывает closePreparedSession
-        Throwable sessionCleanupFailure = closePreparedSession(
-                context.ownedSession() != null ? context.ownedSession() : admission.claimedSession()
-        );
-
-        Throwable cleanupFailure = BootstrapCleanupFailures.aggregate(resourcesCleanupFailure, sessionCleanupFailure);
-        secondary.noteFatal(cleanupFailure);
-
-        boolean rollbackIncomplete = cleanupFailure != null || JmxRegistrationException.rollbackIncompleteIn(cause);
-        secondary.suppress(admission.projectionFailure());
-        secondary.suppress(cleanupFailure);
-
-        FailureAdmission escalation = null;
-        Throwable escalationCause = cleanupFailure == null ? cause : cleanupFailure;
-        if (rollbackIncomplete) {
-            escalation = terminalTransitions.escalate(
-                    context.site().phase(),
-                    escalationCause,
-                    context.batchId(),
-                    context.evidence()
-            );
-            secondary.record(escalation.projectionFailure());
-        }
-
-        if (admission.recorded()) {
-            try {
-                registerDiagnosticReadiness();
-            } catch (RuntimeException | Error registrationFailure) {
-                secondary.record(registrationFailure);
-            }
-        }
-
-        logFailure(context, escalation, escalationCause, secondary);
-        if (secondary.firstFatal() != null) {
-            BootstrapCleanupFailures.rethrow(secondary.firstFatal());
-        }
-
-        if (escalation != null && escalation.kind() != FailureAdmission.Kind.REJECTED) {
-            return escalation.failure();
-        }
-
-        return admission.failure();
-    }
-
-    private static void logFailure(FailureContext context,
-                                   FailureAdmission escalation,
-                                   Throwable escalationCause,
-                                   SecondaryFailures secondary) {
-        FailureSite site = context.site();
-        Throwable cause = context.cause();
-        FailureAdmission admission = context.admission();
-        List<Runnable> emissions = new ArrayList<>(3);
-        if (cause instanceof RemoteJmxRegistrationDeniedException denied) {
-            emissions.add(() -> BootstrapFailureLog.remoteJmxDenied(denied.denial()));
-        }
-
-        if (admission.recorded()) {
-            emissions.add(() -> BootstrapFailureLog.phaseFailed(site, admission.failure()));
-        } else {
-            emissions.add(() -> BootstrapFailureLog.rejected(site, context.failureCode(), cause));
-        }
-
-        if (escalation != null) {
-            switch (escalation.kind()) {
-                case RECORDED -> emissions.add(() -> BootstrapFailureLog.escalated(escalation.failure(), escalationCause));
-                case REJECTED -> emissions.add(() -> BootstrapFailureLog.rejected(escalation.failure()));
-                case ALREADY_FAILED -> {
-                    // незавершённый rollback уже зафиксирован и залогирован его владельцем
-                }
-            }
-        }
-
-        for (Runnable emission : emissions) {
-            try {
-                emission.run();
-            } catch (RuntimeException | Error loggingFailure) {
-                secondary.record(loggingFailure);
-                if (PlatformThrowables.isFatal(loggingFailure)) {
-                    break;
-                }
-            }
-        }
-    }
-
     private void logAdmissionRejection(BootstrapAdmissionRejectedException rejection) {
         if (Thread.holdsLock(lifecycle.monitor())) {
             return;
@@ -555,16 +417,6 @@ final class BootstrapCoordinator implements AutoCloseable {
         } catch (RuntimeException | Error loggingFailure) {
             PlatformThrowables.propagateIfFatal(loggingFailure);
             BootstrapCleanupFailures.suppressPreservingPrimary(rejection, loggingFailure);
-        }
-    }
-
-    private void requireLifecycleMonitorNotHeld(Throwable failure) {
-        if (Thread.holdsLock(lifecycle.monitor())) {
-            IllegalMonitorStateException violation = new IllegalMonitorStateException(
-                    "Bootstrap failure handling must run outside the bootstrap lifecycle monitor"
-            );
-            violation.addSuppressed(failure);
-            throw violation;
         }
     }
 
@@ -581,32 +433,6 @@ final class BootstrapCoordinator implements AutoCloseable {
 
     private ExtensionRuntimeEvidence unavailableEvidence() {
         return ExtensionRuntimeEvidence.unavailable(readiness.snapshot().extensionVersion());
-    }
-
-    private static Throwable closeActivationResources(BootstrapResources resources) {
-        if (resources == null) {
-            return null;
-        }
-
-        try {
-            resources.close();
-            return null;
-        } catch (RuntimeException | Error failure) {
-            return failure;
-        }
-    }
-
-    private static Throwable closePreparedSession(AutoconfigureSession session) {
-        if (session == null) {
-            return null;
-        }
-
-        try {
-            session.close();
-            return null;
-        } catch (RuntimeException | Error failure) {
-            return failure;
-        }
     }
 
     private static void rethrowIfPresent(Throwable failure) {

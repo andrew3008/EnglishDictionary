@@ -381,7 +381,7 @@ final class BootstrapLifecycleState {
 
     /**
      * Фиксирует первый отказ и в той же критической секции изымает session, ещё не переданную ни
-     * close-flight, ни стеку activation: её release принадлежит вызывающему completeFailure.
+     * close-flight, ни стеку activation: её release принадлежит FailureHandler.complete.
      */
     private FailureAdmission record(BootstrapFailure next) {
         failure = next;
