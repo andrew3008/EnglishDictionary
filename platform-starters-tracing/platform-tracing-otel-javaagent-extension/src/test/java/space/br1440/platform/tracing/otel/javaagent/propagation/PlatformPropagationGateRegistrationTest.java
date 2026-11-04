@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.fail;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
@@ -16,7 +17,11 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class PlatformPropagationGateRegistrationTest {
+
+    @RegisterExtension
+    final AgentLogCapture settingsLogs = new AgentLogCapture();
 
     @Test
     void bindCloseRestoresPreviousAndStaleCloseDoesNotClearNewerBinding() throws Exception {
@@ -57,7 +62,8 @@ class PlatformPropagationGateRegistrationTest {
         TracingSettingsSource policyB = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(), true, Map.of(), 0.9d);
 
         AutoCloseable token1 = gate.bindAcceptedPolicy(policyA);
-        // when/then
+        // when
+        // then
         assertThatThrownBy(() -> {
             try (AutoCloseable ignored = gate.bindAcceptedPolicy(policyB)) {
                 fail("registration opened");
@@ -72,7 +78,8 @@ class PlatformPropagationGateRegistrationTest {
     void nullPolicyFailsWithoutOpeningRegistration() throws Exception {
         // given
         PlatformPropagationGate gate = new PlatformPropagationGate();
-        // when/then
+        // when
+        // then
         assertThatThrownBy(() -> {
             try (AutoCloseable ignored = gate.bindAcceptedPolicy(null)) {
                 fail("registration opened");

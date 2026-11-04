@@ -3,10 +3,10 @@ package space.br1440.platform.tracing.otel.javaagent.control;
 import java.util.Map;
 import java.util.UUID;
 
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateAttempt;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
@@ -18,9 +18,9 @@ public final class AcceptedPolicyTestFixtures {
 
     public static final AgentInstanceId AGENT_INSTANCE_ID = AgentInstanceId.parse("00000000-0000-0000-0000-000000000001");
 
-    public static TracingSettingsStore bootstrapAgentDefaultsStore(AgentInstanceId agentInstanceId,
-                                                                   TracingSettings policy) {
-        return new TracingSettingsStore(agentInstanceId, policy);
+    public static TracingSettingsUpdater bootstrapUpdater(AgentInstanceId agentInstanceId,
+                                                          TracingSettings policy) {
+        return new TracingSettingsUpdater(agentInstanceId, policy, level -> { });
     }
 
     static TracingSettings policy(double samplingRatio) {

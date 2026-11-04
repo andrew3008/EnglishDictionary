@@ -9,7 +9,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
@@ -22,21 +21,19 @@ class TracingSettingsUpdaterAuthorityTest {
 
     private static final AgentInstanceId AGENT_INSTANCE_ID = AgentInstanceId.parse("00000000-0000-0000-0000-000000000101");
 
-    private TracingSettingsStore store;
     private TracingSettingsUpdater updater;
     private TracingSettings initial;
 
     @BeforeEach
     void setUp() {
         initial = settings(0.25d, true);
-        store = new TracingSettingsStore(AGENT_INSTANCE_ID, initial);
-        updater = new TracingSettingsUpdater(store, level -> { });
+        updater = new TracingSettingsUpdater(AGENT_INSTANCE_ID, initial, level -> { });
     }
 
     @Test
     void configServerCommitsSameValuesWhenAuthorityChanges() {
         // given
-        TracingSettingsRevision before = store.current();
+        TracingSettingsRevision before = updater.current();
 
         // when
         SettingsUpdateResult result = updater.apply(
@@ -56,7 +53,7 @@ class TracingSettingsUpdaterAuthorityTest {
         // given
         SettingsUpdateResult applied = updater.apply(
                 attempt(SettingsWriter.CONFIG_SERVER, 1L),
-                store.current().base(),
+                updater.current().base(),
                 initial
         );
 
@@ -78,7 +75,7 @@ class TracingSettingsUpdaterAuthorityTest {
         // given
         SettingsUpdateResult configServer = updater.apply(
                 attempt(SettingsWriter.CONFIG_SERVER, 1L),
-                store.current().base(),
+                updater.current().base(),
                 initial
         );
         TracingSettings candidate = settings(0.75d, true);
@@ -102,7 +99,7 @@ class TracingSettingsUpdaterAuthorityTest {
         // given
         SettingsUpdateResult configServer = updater.apply(
                 attempt(SettingsWriter.CONFIG_SERVER, 1L),
-                store.current().base(),
+                updater.current().base(),
                 initial
         );
 
@@ -129,7 +126,7 @@ class TracingSettingsUpdaterAuthorityTest {
     @Test
     void actuatorEmptyDiffOverBootstrapIsApplied() {
         // given
-        TracingSettingsRevision before = store.current();
+        TracingSettingsRevision before = updater.current();
 
         // when
         SettingsUpdateResult result = updater.apply(
@@ -147,7 +144,7 @@ class TracingSettingsUpdaterAuthorityTest {
     @Test
     void actuatorRejectsCandidateThatChangesTwoLeaves() {
         // given
-        TracingSettingsRevision before = store.current();
+        TracingSettingsRevision before = updater.current();
         TracingSettings candidate = settings(0.75d, false);
 
         // when
@@ -161,13 +158,13 @@ class TracingSettingsUpdaterAuthorityTest {
         assertThat(result.outcome()).isEqualTo(SettingsUpdateStatus.REJECTED);
         assertThat(result.messageCode()).isEqualTo(SettingsRejectionReason.INVALID_VALUE);
         assertThat(result.accepted()).isSameAs(before);
-        assertThat(store.current()).isSameAs(before);
+        assertThat(updater.current()).isSameAs(before);
     }
 
     @Test
     void nonAppliedOutcomesDoNotChangeAcceptedMetadata() {
         // given
-        TracingSettingsRevision accepted = store.current();
+        TracingSettingsRevision accepted = updater.current();
         SettingsRevision staleBase = new SettingsRevision(
                 AGENT_INSTANCE_ID,
                 accepted.acceptedSequence() + 1L
@@ -189,7 +186,7 @@ class TracingSettingsUpdaterAuthorityTest {
         assertThat(stale.accepted()).isSameAs(accepted);
         assertThat(rejected.accepted()).isSameAs(accepted);
         assertThat(failed.accepted()).isSameAs(accepted);
-        assertThat(store.current()).isSameAs(accepted);
+        assertThat(updater.current()).isSameAs(accepted);
     }
 
     private static SettingsUpdateAttempt attempt(SettingsWriter writer, long ordinal) {

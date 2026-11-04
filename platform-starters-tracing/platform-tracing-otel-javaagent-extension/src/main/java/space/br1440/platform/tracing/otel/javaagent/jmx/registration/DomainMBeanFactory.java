@@ -39,7 +39,7 @@ final class DomainMBeanFactory {
 
         List<MBeanBatchRegistrar.Registration> registrations = List.of(
                 MBeanBatchRegistrar.Registration.dynamic(DomainObjectNames.SETTINGS_STATUS,
-                        new PlatformSettingsStatusMBean(acceptedPolicy.updater())
+                        new PlatformSettingsStatusMBean(acceptedPolicy::current)
                 ),
 
                 MBeanBatchRegistrar.Registration.dynamic(

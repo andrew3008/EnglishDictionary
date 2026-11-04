@@ -12,10 +12,6 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsRejectionReason;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 
@@ -61,11 +57,11 @@ class ControlPlaneBoundaryArchTest {
 
     @ArchTest
     @SuppressWarnings("unused")
-    static final ArchRule settingsDoesNotDependOnUpdate =
+    static final ArchRule statusDoesNotDependOnUpdater =
             noClasses()
-                    .that().resideInAPackage(SETTINGS)
-                    .should().dependOnClassesThat().resideInAPackage(UPDATE)
-                    .because("update orchestration depends on settings storage, not the reverse");
+                    .that().haveSimpleName("PlatformSettingsStatusMBean")
+                    .should().dependOnClassesThat().areAssignableTo(TracingSettingsUpdater.class)
+                    .because("status must have read-only access to accepted settings");
 
     @ArchTest
     @SuppressWarnings("unused")
@@ -77,16 +73,12 @@ class ControlPlaneBoundaryArchTest {
 
     @ArchTest
     @SuppressWarnings("unused")
-    static final ArchRule onlyUpdaterCommitsSettings =
+    static final ArchRule onlyMutationAdapterCallsCommandApi =
             noClasses()
-                    .that().areNotAssignableTo(TracingSettingsUpdater.class)
-                    .should().callMethod(
-                            TracingSettingsStore.class,
-                            "commit",
-                            SettingsRevision.class,
-                            TracingSettings.class,
-                            SettingsSourceAuthority.class)
-                    .because("TracingSettingsUpdater is the single settings mutation authority");
+                    .that().doNotHaveFullyQualifiedName(WRITER)
+                    .and().areNotAssignableTo(TracingSettingsUpdater.class)
+                    .should().callMethodWhere(targetsTracingSettingsUpdater())
+                    .because("all settings commands must pass through the mutation adapter");
 
     @ArchTest
     @SuppressWarnings("unused")

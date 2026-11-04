@@ -8,12 +8,19 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class AcceptedPolicyAccessTest {
+
+    @RegisterExtension
+    final AgentLogCapture settingsLogs = new AgentLogCapture();
 
     @Test
     void allCategoryALeavesArePublishedThroughOneAcceptedEnvelope() {
@@ -25,7 +32,8 @@ class AcceptedPolicyAccessTest {
                 0.2d);
         TracingSettingsRevision initial = access.current();
 
-        // when/then
+        // when
+        // then
         assertThat(AcceptedPolicyMutationAccess.applySampling(access, false, 0.3d, Map.of("/orders", 0.4d)))
                 .isEqualTo(SettingsUpdateStatus.APPLIED);
         assertThat(AcceptedPolicyMutationAccess.applyValidation(access, SpanAttributeValidationLevel.ERROR))
@@ -53,9 +61,12 @@ class AcceptedPolicyAccessTest {
     void unchangedAndRejectedCandidatesDoNotPublishNewState() {
         // given
         TracingSettingsSource access = TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random());
+        assertThat(AcceptedPolicyMutationAccess.applyExporter(access, access.current().exporterEnabled()))
+                .isEqualTo(SettingsUpdateStatus.APPLIED);
         TracingSettingsRevision initial = access.current();
 
-        // when/then
+        // when
+        // then
         assertThat(AcceptedPolicyMutationAccess.applyExporter(access, initial.exporterEnabled()))
                 .isEqualTo(SettingsUpdateStatus.UNCHANGED);
         assertThat(access.current()).isSameAs(initial);
@@ -80,7 +91,8 @@ class AcceptedPolicyAccessTest {
                 Map.of("/orders", 0.4d),
                 0.2d);
 
-        // when/then
+        // when
+        // then
         assertThatThrownBy(() -> access.current().samplingRouteRatios().put("/payments", 0.5d))
                 .isInstanceOf(UnsupportedOperationException.class);
     }

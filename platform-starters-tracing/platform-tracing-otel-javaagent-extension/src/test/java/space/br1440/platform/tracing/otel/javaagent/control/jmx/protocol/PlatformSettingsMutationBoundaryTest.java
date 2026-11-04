@@ -16,7 +16,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
@@ -25,13 +24,12 @@ import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel
 
 final class PlatformSettingsMutationBoundaryTest {
 
-    private TracingSettingsStore store;
+    private TracingSettingsUpdater updater;
     private MBeanServer server;
 
     @BeforeEach
     void setUp() throws Exception {
-        store = JmxSettingsMutationFixtures.store();
-        TracingSettingsUpdater updater = new TracingSettingsUpdater(store, level -> { });
+        updater = JmxSettingsMutationFixtures.updater();
         server = MBeanServerFactory.createMBeanServer();
         server.registerMBean(
                 new PlatformSettingsMutationMBean(updater),
@@ -46,7 +44,7 @@ final class PlatformSettingsMutationBoundaryTest {
     @Test
     void appliesCompleteSnapshotAndRejectsStaleOrMalformedInput() throws Exception {
         // given
-        String agentInstanceId = store.current().agentInstanceId().toString();
+        String agentInstanceId = updater.current().agentInstanceId().toString();
         TracingSettings candidate = JmxSettingsMutationFixtures.settings(0.25d);
 
         // when
@@ -68,7 +66,7 @@ final class PlatformSettingsMutationBoundaryTest {
         assertThat(applied.get(
                 JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_ACCEPTED_SEQUENCE))
                 .isEqualTo(1L);
-        assertThat(store.current().policy()).isEqualTo(candidate);
+        assertThat(updater.current().policy()).isEqualTo(candidate);
         assertThat(stale.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_OUTCOME))
                 .isEqualTo("STALE");
         assertThat(stale.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_MESSAGE_CODE))
@@ -77,14 +75,14 @@ final class PlatformSettingsMutationBoundaryTest {
                 .isEqualTo("REJECTED");
         assertThat(malformed.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_MESSAGE_CODE))
                 .isEqualTo("TYPE_MISMATCH");
-        assertThat(store.current().acceptedSequence()).isEqualTo(1L);
+        assertThat(updater.current().acceptedSequence()).isEqualTo(1L);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"BOOTSTRAP", "FOO"})
     void rejectsUnsupportedWriterWithoutChangingAcceptedState(String writer) throws Exception {
         // given
-        TracingSettingsRevision acceptedBefore = store.current();
+        TracingSettingsRevision acceptedBefore = updater.current();
         CompositeData request = JmxSettingsMutationFixtures.request(
                 acceptedBefore.agentInstanceId().toString(),
                 acceptedBefore.acceptedSequence(),
@@ -101,13 +99,13 @@ final class PlatformSettingsMutationBoundaryTest {
                 .isEqualTo("REJECTED");
         assertThat(response.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_MESSAGE_CODE))
                 .isEqualTo("INVALID_VALUE");
-        assertThat(store.current()).isSameAs(acceptedBefore);
+        assertThat(updater.current()).isSameAs(acceptedBefore);
     }
 
     @Test
     void rejectsMismatchedAgentInstanceWithoutChangingAcceptedState() throws Exception {
         // given
-        TracingSettingsRevision acceptedBefore = store.current();
+        TracingSettingsRevision acceptedBefore = updater.current();
         CompositeData request = JmxSettingsMutationFixtures.request(
                 "00000000-0000-0000-0000-000000000002",
                 acceptedBefore.acceptedSequence(),
@@ -124,7 +122,7 @@ final class PlatformSettingsMutationBoundaryTest {
                 .isEqualTo("AGENT_INSTANCE_MISMATCH");
         assertThat(rejected.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_AGENT_INSTANCE_ID))
                 .isEqualTo(acceptedBefore.agentInstanceId().toString());
-        assertThat(store.current()).isSameAs(acceptedBefore);
+        assertThat(updater.current()).isSameAs(acceptedBefore);
     }
 
     @Test
@@ -132,7 +130,7 @@ final class PlatformSettingsMutationBoundaryTest {
         // given
         TracingSettings configServerCandidate = maximumPolicy(0.25d);
         TracingSettings actuatorCandidate = maximumPolicy(0.5d);
-        String agentInstanceId = store.current().agentInstanceId().toString();
+        String agentInstanceId = updater.current().agentInstanceId().toString();
 
         // when
         CompositeData configServerResponse = invoke(JmxSettingsMutationFixtures.request(
@@ -155,14 +153,14 @@ final class PlatformSettingsMutationBoundaryTest {
                 .isEqualTo("APPLIED");
         assertThat(actuatorResponse.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_OUTCOME))
                 .isEqualTo("APPLIED");
-        assertThat(store.current().acceptedSequence()).isEqualTo(2L);
-        assertThat(store.current().policy()).isEqualTo(actuatorCandidate);
+        assertThat(updater.current().acceptedSequence()).isEqualTo(2L);
+        assertThat(updater.current().policy()).isEqualTo(actuatorCandidate);
     }
 
     @Test
     void rejectsRequestExceedingLogicalByteBudget() throws Exception {
         // given
-        TracingSettingsRevision acceptedBefore = store.current();
+        TracingSettingsRevision acceptedBefore = updater.current();
         CompositeData request = JmxSettingsMutationFixtures.request(
                 acceptedBefore.agentInstanceId().toString(),
                 acceptedBefore.acceptedSequence(),
@@ -179,7 +177,7 @@ final class PlatformSettingsMutationBoundaryTest {
                 .isEqualTo("REJECTED");
         assertThat(response.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_MESSAGE_CODE))
                 .isEqualTo("LIMIT_EXCEEDED");
-        assertThat(store.current()).isSameAs(acceptedBefore);
+        assertThat(updater.current()).isSameAs(acceptedBefore);
     }
 
     private static TracingSettings maximumPolicy(double ratio) {

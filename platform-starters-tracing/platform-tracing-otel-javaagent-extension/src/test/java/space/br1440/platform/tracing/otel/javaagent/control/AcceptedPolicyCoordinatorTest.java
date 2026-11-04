@@ -3,13 +3,11 @@ package space.br1440.platform.tracing.otel.javaagent.control;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Field;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
@@ -32,10 +30,9 @@ class AcceptedPolicyCoordinatorTest {
     @Test
     void exposesAllApplyOutcomesWithoutHiddenRetry() throws Exception {
         // given
-        TracingSettingsStore store = store();
-        TracingSettingsUpdater updater = new TracingSettingsUpdater(store, level -> { });
+        TracingSettingsUpdater updater = updater();
 
-        SettingsRevision initialBase = store.current().base();
+        SettingsRevision initialBase = updater.current().base();
 
         // when
         SettingsUpdateResult applied = updater.apply(
@@ -53,10 +50,10 @@ class AcceptedPolicyCoordinatorTest {
         SettingsUpdateResult rejected = updater.rejectBeforeApply(SettingsRejectionReason.INVALID_VALUE);
 
         SettingsUpdateAttempt failedAttempt = AcceptedPolicyTestFixtures.attempt(5L);
-        setAcceptedSequence(store, Long.MAX_VALUE);
+        setAcceptedSequence(updater, Long.MAX_VALUE);
         SettingsUpdateResult failed = updater.apply(
                 failedAttempt,
-                store.current().base(),
+                updater.current().base(),
                 AcceptedPolicyTestFixtures.policy(0.4d));
 
         // then
@@ -74,7 +71,7 @@ class AcceptedPolicyCoordinatorTest {
         assertThat(rejected.accepted()).isSameAs(applied.accepted());
         assertThat(failed.outcome()).isEqualTo(SettingsUpdateStatus.FAILED);
         assertThat(failed.messageCode()).isEqualTo(SettingsRejectionReason.INTERNAL_FAILURE);
-        assertThat(failed.accepted()).isSameAs(store.current());
+        assertThat(failed.accepted()).isSameAs(updater.current());
         assertThat(capture.events())
                 .filteredOn(event -> event.throwableDigest() != null)
                 .singleElement()
@@ -89,28 +86,27 @@ class AcceptedPolicyCoordinatorTest {
     @Test
     void samePolicyWithConfigServerAuthorityIsApplied() {
         // given
-        TracingSettingsStore store = store();
-        TracingSettingsUpdater updater = new TracingSettingsUpdater(store, level -> { });
-        TracingSettings policy = store.current().policy();
+        TracingSettingsUpdater updater = updater();
+        TracingSettings policy = updater.current().policy();
 
         // when
         SettingsUpdateResult applied = updater.apply(
                 AcceptedPolicyTestFixtures.attempt(1L),
-                store.current().base(),
+                updater.current().base(),
                 policy);
 
         // then
         assertThat(applied.outcome()).isEqualTo(SettingsUpdateStatus.APPLIED);
         assertThat(applied.accepted().acceptedSequence()).isEqualTo(1L);
         assertThat(applied.accepted().policy()).isEqualTo(policy);
-        assertThat(store.current().sourceAuthority()).isEqualTo(SettingsSourceAuthority.CONFIG_SERVER);
+        assertThat(updater.current().sourceAuthority()).isEqualTo(SettingsSourceAuthority.CONFIG_SERVER);
     }
 
     @Test
     void agentInstanceMismatchIsReportedSeparately() {
         // given
-        TracingSettingsStore store = store();
-        TracingSettingsUpdater updater = new TracingSettingsUpdater(store, level -> { });
+        TracingSettingsUpdater updater = updater();
+        TracingSettingsRevision before = updater.current();
 
         // when
         SettingsUpdateResult result = updater.apply(
@@ -124,25 +120,26 @@ class AcceptedPolicyCoordinatorTest {
         // then
         assertThat(result.outcome()).isEqualTo(SettingsUpdateStatus.REJECTED);
         assertThat(result.messageCode()).isEqualTo(SettingsRejectionReason.AGENT_INSTANCE_MISMATCH);
-        assertThat(store.current().acceptedSequence()).isZero();
+        assertThat(result.accepted()).isSameAs(before);
+        assertThat(updater.current()).isSameAs(before);
     }
 
-    private static TracingSettingsStore store() {
-        return AcceptedPolicyTestFixtures.bootstrapAgentDefaultsStore(
+    private static TracingSettingsUpdater updater() {
+        return AcceptedPolicyTestFixtures.bootstrapUpdater(
                 AcceptedPolicyTestFixtures.AGENT_INSTANCE_ID,
                 AcceptedPolicyTestFixtures.policy(0.1d)
         );
     }
 
-    @SuppressWarnings({"unchecked", "SameParameterValue"})
-    private static void setAcceptedSequence(TracingSettingsStore store,
+    @SuppressWarnings("SameParameterValue")
+    private static void setAcceptedSequence(TracingSettingsUpdater updater,
                                             long acceptedSequence) throws Exception {
-        Field currentField = TracingSettingsStore.class.getDeclaredField("current");
+        Field currentField = TracingSettingsUpdater.class.getDeclaredField("current");
         currentField.setAccessible(true);
 
-        AtomicReference<TracingSettingsRevision> current = (AtomicReference<TracingSettingsRevision>) currentField.get(store);
-        TracingSettingsRevision previous = current.get();
-        current.set(
+        TracingSettingsRevision previous = updater.current();
+        currentField.set(
+                updater,
                 new TracingSettingsRevision(
                         previous.agentInstanceId(),
                         acceptedSequence,

@@ -12,6 +12,7 @@ import java.util.Set;
 import jakarta.annotation.Nonnull;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -25,12 +26,17 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Setti
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
 @ResourceLock(Resources.SYSTEM_PROPERTIES)
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class TracingSettingsSourceStartupTest {
+
+    @RegisterExtension
+    final AgentLogCapture settingsLogs = new AgentLogCapture();
 
     private static final AgentInstanceId AGENT_INSTANCE_ID =
             AgentInstanceId.parse("00000000-0000-0000-0000-000000000001");
@@ -91,6 +97,7 @@ class TracingSettingsSourceStartupTest {
         assertThat(source.current().traceControlHeadersEnabled()).isTrue();
         assertThat(source.current().policy().diagnosticsLogLevel()).isEqualTo(AgentLogLevel.INFO);
         assertThat(source.current().sourceAuthority()).isEqualTo(SettingsSourceAuthority.BOOTSTRAP);
+        assertThat(source.current().acceptedSequence()).isZero();
     }
 
     @Test

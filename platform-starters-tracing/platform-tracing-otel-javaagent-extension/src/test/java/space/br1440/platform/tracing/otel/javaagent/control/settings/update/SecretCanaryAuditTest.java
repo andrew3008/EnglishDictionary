@@ -10,7 +10,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyTestFixtures;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
@@ -30,17 +29,16 @@ class SecretCanaryAuditTest {
         // given
         TracingSettings initial = settings(Map.of());
         TracingSettings candidate = settings(Map.of(CANARY_ROUTE, 0.25d));
-        TracingSettingsStore store = AcceptedPolicyTestFixtures.bootstrapAgentDefaultsStore(
+        TracingSettingsUpdater updater = AcceptedPolicyTestFixtures.bootstrapUpdater(
                 AcceptedPolicyTestFixtures.AGENT_INSTANCE_ID,
                 initial
         );
-        TracingSettingsUpdater updater = new TracingSettingsUpdater(store, level -> { });
         String attemptId = UUID.randomUUID().toString();
 
         // when
         SettingsUpdateResult result = updater.apply(
                 new SettingsUpdateAttempt(attemptId, SettingsWriter.CONFIG_SERVER),
-                store.current().base(),
+                updater.current().base(),
                 candidate
         );
 

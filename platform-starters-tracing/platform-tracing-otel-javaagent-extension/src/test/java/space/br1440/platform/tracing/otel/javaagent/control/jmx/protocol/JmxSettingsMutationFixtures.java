@@ -11,8 +11,8 @@ import javax.management.openmbean.SimpleType;
 import javax.management.openmbean.TabularDataSupport;
 
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyTestFixtures;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
@@ -24,8 +24,8 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 final class JmxSettingsMutationFixtures {
 
-    static TracingSettingsStore store() {
-        return AcceptedPolicyTestFixtures.bootstrapAgentDefaultsStore(
+    static TracingSettingsUpdater updater() {
+        return AcceptedPolicyTestFixtures.bootstrapUpdater(
                 AgentInstanceId.parse("00000000-0000-0000-0000-000000000001"),
                 settings(1.0d)
         );
@@ -45,13 +45,11 @@ final class JmxSettingsMutationFixtures {
         return request(agentInstanceId, sequence, policy, attemptId, "CONFIG_SERVER");
     }
 
-    static CompositeData request(
-            String agentInstanceId,
-            long sequence,
-            TracingSettings policy,
-            String attemptId,
-            String writer
-    ) throws OpenDataException {
+    static CompositeData request(String agentInstanceId,
+                                 long sequence,
+                                 TracingSettings policy,
+                                 String attemptId,
+                                 String writer) throws OpenDataException {
         TabularDataSupport routes = new TabularDataSupport(JmxOpenTypes.ROUTE_RATIOS);
         for (Map.Entry<String, Double> route : policy.samplingRouteRatios().entrySet()) {
             Map<String, Object> row = new LinkedHashMap<>();

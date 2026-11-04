@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.otel.javaagent.control.settings.model;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.TreeMap;
 
@@ -14,7 +13,7 @@ import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel
 
 public record TracingSettings(boolean samplingEnabled,
                               double samplingRatio,
-                              NavigableMap<String, Double> samplingRouteRatios,
+                              Map<String, Double> samplingRouteRatios,
                               SpanAttributeValidationLevel validationLevel,
                               boolean exporterEnabled,
                               boolean traceControlHeadersEnabled,
@@ -38,7 +37,7 @@ public record TracingSettings(boolean samplingEnabled,
         return new TracingSettings(
                 samplingEnabled,
                 samplingRatio,
-                normalizeRouteRatios(samplingRouteRatios),
+                samplingRouteRatios,
                 validationLevel,
                 exporterEnabled,
                 traceControlHeadersEnabled,
@@ -57,7 +56,7 @@ public record TracingSettings(boolean samplingEnabled,
         return (ratio == 0.0d) ? 0.0d : ratio;
     }
 
-    private static NavigableMap<String, Double> normalizeRouteRatios(Map<String, Double> routeRatios) {
+    private static Map<String, Double> normalizeRouteRatios(Map<String, Double> routeRatios) {
         Objects.requireNonNull(routeRatios, "routeRatios");
 
         if (routeRatios.size() > JmxWireContract.MAX_ROUTE_ENTRIES) {
@@ -67,7 +66,7 @@ public record TracingSettings(boolean samplingEnabled,
             );
         }
 
-        NavigableMap<String, Double> normalized = new TreeMap<>();
+        Map<String, Double> normalized = new TreeMap<>();
         for (Map.Entry<String, Double> entry : routeRatios.entrySet()) {
             String routePrefix = requireRoutePrefix(entry.getKey());
             Double ratio = Objects.requireNonNull(entry.getValue(), "route ratio");
@@ -77,7 +76,7 @@ public record TracingSettings(boolean samplingEnabled,
             );
         }
 
-        return Collections.unmodifiableNavigableMap(normalized);
+        return Collections.unmodifiableMap(normalized);
     }
 
     private static String requireRoutePrefix(String routePrefix) {

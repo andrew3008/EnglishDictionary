@@ -143,7 +143,7 @@ class AgentToSpringWireCodecParityTest {
     private static AcceptedSettings roundTrip(TracingSettingsRevision envelope) {
         TracingSettingsUpdater updater = mock(TracingSettingsUpdater.class);
         when(updater.current()).thenReturn(envelope);
-        PlatformSettingsStatusMBean status = new PlatformSettingsStatusMBean(updater);
+        PlatformSettingsStatusMBean status = new PlatformSettingsStatusMBean(updater::current);
         try {
             CompositeData wire = (CompositeData) status.getAttribute(
                     JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT);

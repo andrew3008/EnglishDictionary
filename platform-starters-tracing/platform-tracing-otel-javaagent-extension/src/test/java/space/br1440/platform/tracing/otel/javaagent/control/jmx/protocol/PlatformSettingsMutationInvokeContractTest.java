@@ -18,20 +18,18 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 
 final class PlatformSettingsMutationInvokeContractTest {
 
-    private TracingSettingsStore store;
+    private TracingSettingsUpdater updater;
     private MBeanServer server;
 
     @BeforeEach
     void setUp() throws Exception {
-        store = JmxSettingsMutationFixtures.store();
-        TracingSettingsUpdater updater = new TracingSettingsUpdater(store, level -> { });
+        updater = JmxSettingsMutationFixtures.updater();
         server = MBeanServerFactory.createMBeanServer();
         server.registerMBean(
                 new PlatformSettingsMutationMBean(updater),
@@ -145,8 +143,8 @@ final class PlatformSettingsMutationInvokeContractTest {
 
     private CompositeData validRequest() throws Exception {
         return JmxSettingsMutationFixtures.request(
-                store.current().agentInstanceId().toString(),
-                store.current().acceptedSequence(),
+                updater.current().agentInstanceId().toString(),
+                updater.current().acceptedSequence(),
                 JmxSettingsMutationFixtures.settings(0.5d),
                 UUID.randomUUID().toString());
     }

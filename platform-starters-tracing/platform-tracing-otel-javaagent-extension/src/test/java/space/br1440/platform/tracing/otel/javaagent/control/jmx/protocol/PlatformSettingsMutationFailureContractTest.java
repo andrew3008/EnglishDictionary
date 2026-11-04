@@ -23,7 +23,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsRejectionReason;
@@ -47,8 +46,7 @@ final class PlatformSettingsMutationFailureContractTest {
         // given
         String maliciousAttemptId = "invalid\r\nforged-log-line-" + "x".repeat(1024);
         CompositeData request = wireRequest(maliciousAttemptId);
-        TracingSettingsStore store = JmxSettingsMutationFixtures.store();
-        TracingSettingsUpdater updater = spy(updater(store));
+        TracingSettingsUpdater updater = spy(JmxSettingsMutationFixtures.updater());
         JmxControlOpenTypeCodec codec = mock(JmxControlOpenTypeCodec.class);
         RuntimeException decodeFailure = new IllegalStateException("decode failed");
         CompositeData encodedFailure = mock(CompositeData.class);
@@ -61,7 +59,7 @@ final class PlatformSettingsMutationFailureContractTest {
 
         // then
         assertThat(response).isSameAs(encodedFailure);
-        assertThat(store.current().acceptedSequence()).isZero();
+        assertThat(updater.current().acceptedSequence()).isZero();
         verify(updater).failBeforeApply(SettingsRejectionReason.INTERNAL_FAILURE);
         assertThat(warnEvents()).singleElement().satisfies(event -> {
             assertThat(event.eventCode()).isEqualTo(AgentEventCode.CTRL_WRITER);
@@ -77,8 +75,7 @@ final class PlatformSettingsMutationFailureContractTest {
         // given
         String attemptId = UUID.randomUUID().toString();
         CompositeData request = wireRequest(attemptId);
-        TracingSettingsStore store = JmxSettingsMutationFixtures.store();
-        TracingSettingsUpdater updater = updater(store);
+        TracingSettingsUpdater updater = JmxSettingsMutationFixtures.updater();
         JmxControlOpenTypeCodec codec = mock(JmxControlOpenTypeCodec.class);
         CompositeData encodedRejection = mock(CompositeData.class);
         JmxControlDecodeException rejection = new JmxControlDecodeException(
@@ -95,7 +92,7 @@ final class PlatformSettingsMutationFailureContractTest {
 
         // then
         assertThat(response).isSameAs(encodedRejection);
-        assertThat(store.current().acceptedSequence()).isZero();
+        assertThat(updater.current().acceptedSequence()).isZero();
         assertThat(capture.events())
                 .extracting(CapturedLogEvent::eventName)
                 .contains("JMX_SETTINGS_POLICY_REJECTED")
@@ -105,14 +102,13 @@ final class PlatformSettingsMutationFailureContractTest {
     @Test
     void applyFailureDoesNotExposeForeignThrowable() throws Exception {
         // given
-        TracingSettingsStore store = JmxSettingsMutationFixtures.store();
         TracingSettingsUpdater updater = mock(TracingSettingsUpdater.class);
         JmxControlOpenTypeCodec codec = mock(JmxControlOpenTypeCodec.class);
         CompositeData request = wireRequest(UUID.randomUUID().toString());
         SettingsUpdateAttempt attempt = attempt();
         DecodedSettingsUpdate decoded = new DecodedSettingsUpdate(
                 attempt,
-                store.current().base(),
+                JmxSettingsMutationFixtures.updater().current().base(),
                 JmxSettingsMutationFixtures.settings(0.25d));
         RuntimeException applyFailure = new ForeignProviderFailure("foreign apply failure");
         when(codec.decode(request)).thenReturn(decoded);
@@ -140,15 +136,14 @@ final class PlatformSettingsMutationFailureContractTest {
     @Test
     void responseEncodingFailurePreservesAppliedStateAndNeutralizesThrowable() throws Exception {
         // given
-        TracingSettingsStore store = JmxSettingsMutationFixtures.store();
-        TracingSettingsUpdater updater = spy(updater(store));
+        TracingSettingsUpdater updater = spy(JmxSettingsMutationFixtures.updater());
         JmxControlOpenTypeCodec codec = mock(JmxControlOpenTypeCodec.class);
         CompositeData request = wireRequest(UUID.randomUUID().toString());
         SettingsUpdateAttempt attempt = attempt();
         TracingSettings candidate = JmxSettingsMutationFixtures.settings(0.25d);
         DecodedSettingsUpdate decoded = new DecodedSettingsUpdate(
                 attempt,
-                store.current().base(),
+                updater.current().base(),
                 candidate);
         RuntimeException encodeFailure = new IllegalStateException("encode failed");
         when(codec.decode(request)).thenReturn(decoded);
@@ -166,8 +161,8 @@ final class PlatformSettingsMutationFailureContractTest {
                 thrown,
                 encodeFailure,
                 "JMX_CONTROL_RESPONSE_ENCODING_FAILED: Settings snapshot response encoding failed");
-        assertThat(store.current().acceptedSequence()).isEqualTo(1L);
-        assertThat(store.current().policy()).isEqualTo(candidate);
+        assertThat(updater.current().acceptedSequence()).isEqualTo(1L);
+        assertThat(updater.current().policy()).isEqualTo(candidate);
         verify(updater, never()).failBeforeApply(any());
         assertThat(warnEvents()).singleElement().satisfies(event -> {
             assertThat(event.eventCode()).isEqualTo(AgentEventCode.CTRL_WRITER);
@@ -181,8 +176,7 @@ final class PlatformSettingsMutationFailureContractTest {
         // given
         String wireAttemptId = "not-a-canonical-id";
         CompositeData request = wireRequest(wireAttemptId);
-        TracingSettingsStore store = JmxSettingsMutationFixtures.store();
-        TracingSettingsUpdater updater = updater(store);
+        TracingSettingsUpdater updater = JmxSettingsMutationFixtures.updater();
         JmxControlOpenTypeCodec codec = mock(JmxControlOpenTypeCodec.class);
         RuntimeException decodeFailure = new IllegalStateException("decode failed");
         RuntimeException encodeFailure = new IllegalArgumentException("failure response encode failed");
@@ -201,7 +195,7 @@ final class PlatformSettingsMutationFailureContractTest {
                 thrown,
                 encodeFailure,
                 "JMX_CONTROL_PRE_APPLY_ENCODING_FAILED: Pre-apply settings response encoding failed");
-        assertThat(store.current().acceptedSequence()).isZero();
+        assertThat(updater.current().acceptedSequence()).isZero();
         assertThat(warnEvents()).hasSize(2)
                 .allSatisfy(event -> assertThat(event.fields())
                         .containsEntry("attemptId", "<unavailable>"));
@@ -249,10 +243,6 @@ final class PlatformSettingsMutationFailureContractTest {
                 type,
                 new String[]{JmxWireContract.FIELD_APPLY_SNAPSHOT_REQUEST_ATTEMPT_ID},
                 new Object[]{attemptId});
-    }
-
-    private static TracingSettingsUpdater updater(TracingSettingsStore store) {
-        return new TracingSettingsUpdater(store, level -> { });
     }
 
     private static SettingsUpdateAttempt attempt() {

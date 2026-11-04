@@ -4,18 +4,15 @@ import static java.util.Objects.requireNonNull;
 
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitOutcome;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitResult;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.PolicyLeaf;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ControlPlaneLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
@@ -25,33 +22,29 @@ public final class TracingSettingsUpdater {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(TracingSettingsUpdater.class);
 
-    private final Supplier<TracingSettingsRevision> current;
-    private final SettingsCommit settingsCommit;
+    private volatile TracingSettingsRevision current;
     private final Consumer<AgentLogLevel> diagnosticsLevelApplier;
     private final Object updateMonitor = new Object();
 
-    public TracingSettingsUpdater(TracingSettingsStore store, Consumer<AgentLogLevel> diagnosticsLevelApplier) {
-        TracingSettingsStore requiredStore = requireNonNull(store, "store");
-        this.current = requiredStore::current;
-        this.settingsCommit = requiredStore::commit;
+    public TracingSettingsUpdater(AgentInstanceId agentInstanceId,
+                                  TracingSettings initialPolicy,
+                                  Consumer<AgentLogLevel> diagnosticsLevelApplier) {
         this.diagnosticsLevelApplier = requireNonNull(diagnosticsLevelApplier, "diagnosticsLevelApplier");
-    }
-
-    TracingSettingsUpdater(Supplier<TracingSettingsRevision> current,
-                           SettingsCommit settingsCommit,
-                           Consumer<AgentLogLevel> diagnosticsLevelApplier) {
-        this.current = requireNonNull(current, "current");
-        this.settingsCommit = requireNonNull(settingsCommit, "settingsCommit");
-        this.diagnosticsLevelApplier = requireNonNull(diagnosticsLevelApplier, "diagnosticsLevelApplier");
+        this.current = new TracingSettingsRevision(
+                agentInstanceId,
+                0L,
+                initialPolicy,
+                SettingsSourceAuthority.BOOTSTRAP
+        );
     }
 
     public TracingSettingsRevision current() {
-        return current.get();
+        return current;
     }
 
     public void projectDiagnosticsLevel() {
         synchronized (updateMonitor) {
-            diagnosticsLevelApplier.accept(current.get().policy().diagnosticsLogLevel());
+            diagnosticsLevelApplier.accept(current.policy().diagnosticsLogLevel());
         }
     }
 
@@ -74,6 +67,7 @@ public final class TracingSettingsUpdater {
             }
 
             if (decision.outcome() == SettingsUpdateStatus.APPLIED) {
+                current = decision.accepted();
                 applyDiagnosticsLevel(attempt, decision.accepted());
             }
 
@@ -93,7 +87,7 @@ public final class TracingSettingsUpdater {
     private Decision decide(SettingsUpdateAttempt attempt,
                             SettingsRevision expectedBase,
                             TracingSettings candidate) {
-        TracingSettingsRevision witnessed = current.get();
+        TracingSettingsRevision witnessed = current;
 
         if (!witnessed.agentInstanceId().equals(expectedBase.agentInstanceId())) {
             return new Decision(
@@ -123,23 +117,13 @@ public final class TracingSettingsUpdater {
             return new Decision(SettingsUpdateStatus.UNCHANGED, witnessed, SettingsRejectionReason.NONE, changed);
         }
 
-        SettingsCommitResult commit = commit(expectedBase, candidate, writer.authority());
-        if (commit.outcome() != SettingsCommitOutcome.APPLIED) {
-            return new Decision(
-                    SettingsUpdateStatus.FAILED,
-                    witnessed,
-                    SettingsRejectionReason.INTERNAL_FAILURE,
-                    changed
-            );
-        }
-
-        return new Decision(SettingsUpdateStatus.APPLIED, commit.accepted(), SettingsRejectionReason.NONE, changed);
-    }
-
-    private SettingsCommitResult commit(SettingsRevision expectedBase,
-                                        TracingSettings candidate,
-                                        SettingsSourceAuthority authority) {
-        return settingsCommit.commit(expectedBase, candidate, authority);
+        TracingSettingsRevision next = new TracingSettingsRevision(
+                witnessed.agentInstanceId(),
+                Math.incrementExact(witnessed.acceptedSequence()),
+                candidate,
+                writer.authority()
+        );
+        return new Decision(SettingsUpdateStatus.APPLIED, next, SettingsRejectionReason.NONE, changed);
     }
 
     private void applyDiagnosticsLevel(SettingsUpdateAttempt attempt, TracingSettingsRevision accepted) {
@@ -153,7 +137,7 @@ public final class TracingSettingsUpdater {
     }
 
     private SettingsUpdateResult terminal(SettingsUpdateStatus status, SettingsRejectionReason reason) {
-        return result(status, current.get(), reason);
+        return result(status, current, reason);
     }
 
     private static SettingsRejectionReason requireRejectionReason(SettingsRejectionReason reason) {
@@ -196,13 +180,6 @@ public final class TracingSettingsUpdater {
                                                TracingSettingsRevision accepted,
                                                SettingsRejectionReason reason) {
         return new SettingsUpdateResult(status, accepted, reason);
-    }
-
-    @FunctionalInterface
-    interface SettingsCommit {
-        SettingsCommitResult commit(SettingsRevision expectedBase,
-                                    TracingSettings candidate,
-                                    SettingsSourceAuthority authority);
     }
 
     private record Decision(SettingsUpdateStatus outcome,

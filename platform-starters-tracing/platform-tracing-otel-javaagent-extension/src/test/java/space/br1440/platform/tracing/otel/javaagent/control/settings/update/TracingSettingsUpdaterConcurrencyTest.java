@@ -10,41 +10,49 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyTestFixtures;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class TracingSettingsUpdaterConcurrencyTest {
+
+    @RegisterExtension
+    final AgentLogCapture settingsLogs = new AgentLogCapture();
 
     private static final int ROUND_COUNT = 100;
     private static final AgentInstanceId AGENT_INSTANCE_ID = AgentInstanceId.parse("00000000-0000-0000-0000-000000000042");
 
     @Test
+    @SuppressWarnings("resource")
     void concurrentApplyHasOneWinnerAndNoUnchangedAfterApplied() throws Exception {
         // given
-        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
             for (int round = 0; round < ROUND_COUNT; round++) {
                 long ordinalBase = (long) round * 3L;
                 TracingSettings baseline = policy(0.10d);
-                TracingSettingsStore store =
-                        AcceptedPolicyTestFixtures.bootstrapAgentDefaultsStore(AGENT_INSTANCE_ID, baseline);
-                TracingSettingsUpdater updater = new TracingSettingsUpdater(store, level -> { });
+                TracingSettingsUpdater updater =
+                        AcceptedPolicyTestFixtures.bootstrapUpdater(AGENT_INSTANCE_ID, baseline);
                 SettingsUpdateResult initial = updater.apply(
                         attempt(ordinalBase + 1L),
-                        store.current().base(),
+                        updater.current().base(),
                         baseline
                 );
                 assertThat(initial.outcome()).isEqualTo(SettingsUpdateStatus.APPLIED);
-                assertThat(store.current().sourceAuthority()).isEqualTo(SettingsSourceAuthority.CONFIG_SERVER);
+                assertThat(updater.current().sourceAuthority()).isEqualTo(SettingsSourceAuthority.CONFIG_SERVER);
 
                 SettingsRevision expectedBase = initial.accepted().base();
                 CyclicBarrier barrier = new CyclicBarrier(2);
@@ -68,8 +76,8 @@ class TracingSettingsUpdaterConcurrencyTest {
                 // when
                 Future<SettingsUpdateResult> unchangedFuture = executor.submit(unchangedCall);
                 Future<SettingsUpdateResult> appliedFuture = executor.submit(appliedCall);
-                SettingsUpdateResult unchangedCandidate = unchangedFuture.get();
-                SettingsUpdateResult appliedCandidate = appliedFuture.get();
+                SettingsUpdateResult unchangedCandidate = unchangedFuture.get(30L, TimeUnit.SECONDS);
+                SettingsUpdateResult appliedCandidate = appliedFuture.get(30L, TimeUnit.SECONDS);
                 List<SettingsUpdateResult> results = List.of(unchangedCandidate, appliedCandidate);
 
                 // then
@@ -83,24 +91,28 @@ class TracingSettingsUpdaterConcurrencyTest {
                 assertThat(results)
                         .filteredOn(result -> result.outcome() == SettingsUpdateStatus.UNCHANGED)
                         .allMatch(result -> result.accepted().acceptedSequence() == expectedBase.acceptedSequence());
-                assertThat(store.current().acceptedSequence()).isEqualTo(expectedBase.acceptedSequence() + 1L);
+                assertThat(updater.current().acceptedSequence()).isEqualTo(expectedBase.acceptedSequence() + 1L);
             }
+        } finally {
+            executor.shutdownNow();
+            assertThat(executor.awaitTermination(10L, TimeUnit.SECONDS)).isTrue();
         }
     }
 
     @Test
+    @SuppressWarnings("resource")
     void concurrentChangedCandidatesHaveExactlyOneAppliedWinner() throws Exception {
         // given
-        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
             for (int round = 0; round < ROUND_COUNT; round++) {
                 long ordinalBase = (long) round * 3L;
                 TracingSettings baseline = policy(0.10d);
-                TracingSettingsStore store =
-                        AcceptedPolicyTestFixtures.bootstrapAgentDefaultsStore(AGENT_INSTANCE_ID, baseline);
-                TracingSettingsUpdater updater = new TracingSettingsUpdater(store, level -> { });
+                TracingSettingsUpdater updater =
+                        AcceptedPolicyTestFixtures.bootstrapUpdater(AGENT_INSTANCE_ID, baseline);
                 SettingsUpdateResult initial = updater.apply(
                         attempt(ordinalBase + 1L),
-                        store.current().base(),
+                        updater.current().base(),
                         baseline
                 );
                 assertThat(initial.outcome()).isEqualTo(SettingsUpdateStatus.APPLIED);
@@ -127,7 +139,7 @@ class TracingSettingsUpdaterConcurrencyTest {
                 // when
                 Future<SettingsUpdateResult> firstFuture = executor.submit(firstChangedCall);
                 Future<SettingsUpdateResult> secondFuture = executor.submit(secondChangedCall);
-                List<SettingsUpdateResult> results = List.of(firstFuture.get(), secondFuture.get());
+                List<SettingsUpdateResult> results = List.of(firstFuture.get(30L, TimeUnit.SECONDS), secondFuture.get(30L, TimeUnit.SECONDS));
 
                 // then
                 assertThat(results)
@@ -136,8 +148,11 @@ class TracingSettingsUpdaterConcurrencyTest {
                 assertThat(results)
                         .filteredOn(result -> result.outcome() == SettingsUpdateStatus.STALE)
                         .hasSize(1);
-                assertThat(store.current().acceptedSequence()).isEqualTo(expectedBase.acceptedSequence() + 1L);
+                assertThat(updater.current().acceptedSequence()).isEqualTo(expectedBase.acceptedSequence() + 1L);
             }
+        } finally {
+            executor.shutdownNow();
+            assertThat(executor.awaitTermination(10L, TimeUnit.SECONDS)).isTrue();
         }
     }
 
@@ -146,7 +161,7 @@ class TracingSettingsUpdaterConcurrencyTest {
                                                            SettingsUpdateAttempt attempt,
                                                            SettingsRevision expectedBase,
                                                            TracingSettings candidate) throws Exception {
-        barrier.await();
+        barrier.await(10L, TimeUnit.SECONDS);
         return updater.apply(attempt, expectedBase, candidate);
     }
 

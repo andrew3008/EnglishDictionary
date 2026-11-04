@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsRejectionReason;
@@ -35,26 +34,26 @@ class InvalidDiagnosticsLogLevelRejectionTest {
     void invalid_jmx_log_level_rejects_the_apply_and_keeps_effective_level() throws Exception {
         // given
         String rawLevel = "verbose";
-        TracingSettingsStore store = JmxSettingsMutationFixtures.store();
-        TracingSettingsUpdater updater = new TracingSettingsUpdater(store, level -> { });
+        TracingSettingsUpdater updater = JmxSettingsMutationFixtures.updater();
         TracingSettings debug = TracingSettings.of(
-                store.current().policy().samplingEnabled(),
-                store.current().policy().samplingRatio(),
-                store.current().policy().samplingRouteRatios(),
-                store.current().policy().validationLevel(),
-                store.current().policy().exporterEnabled(),
-                store.current().policy().traceControlHeadersEnabled(),
+                updater.current().policy().samplingEnabled(),
+                updater.current().policy().samplingRatio(),
+                updater.current().policy().samplingRouteRatios(),
+                updater.current().policy().validationLevel(),
+                updater.current().policy().exporterEnabled(),
+                updater.current().policy().traceControlHeadersEnabled(),
                 AgentLogLevel.DEBUG
         );
-        updater.apply(attempt(), store.current().base(), debug);
+        updater.apply(attempt(), updater.current().base(), debug);
         AgentLogLevel effectiveBefore = AgentLoggingRuntime.shared().effectiveLevel();
-        long sequenceBefore = store.current().acceptedSequence();
+        long sequenceBefore = updater.current().acceptedSequence();
         CompositeData request = withDiagnosticsLogLevel(
                 JmxSettingsMutationFixtures.request(
-                        store.current().agentInstanceId().toString(),
-                        store.current().acceptedSequence(),
-                        store.current().policy(),
-                        UUID.randomUUID().toString()),
+                        updater.current().agentInstanceId().toString(),
+                        updater.current().acceptedSequence(),
+                        updater.current().policy(),
+                        UUID.randomUUID().toString()
+                ),
                 rawLevel
         );
         PlatformSettingsMutationMBean writer = new PlatformSettingsMutationMBean(updater);
@@ -73,8 +72,8 @@ class InvalidDiagnosticsLogLevelRejectionTest {
                 .isEqualTo(SettingsRejectionReason.INVALID_DIAGNOSTICS_LOG_LEVEL.name());
         assertThat((String[]) response.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_VIOLATION_CODES))
                 .containsExactly(SettingsRejectionReason.INVALID_DIAGNOSTICS_LOG_LEVEL.name());
-        assertThat(store.current().acceptedSequence()).isEqualTo(sequenceBefore);
-        assertThat(store.current().policy().diagnosticsLogLevel()).isEqualTo(AgentLogLevel.DEBUG);
+        assertThat(updater.current().acceptedSequence()).isEqualTo(sequenceBefore);
+        assertThat(updater.current().policy().diagnosticsLogLevel()).isEqualTo(AgentLogLevel.DEBUG);
         assertThat(AgentLoggingRuntime.shared().effectiveLevel()).isEqualTo(effectiveBefore);
         assertThat(response.toString()).doesNotContain(rawLevel);
         assertThat(capture.events())

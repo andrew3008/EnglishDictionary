@@ -12,6 +12,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
@@ -19,11 +21,13 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 
-/**
- * Проверяет one-shot expected-base семантику runtime sampling updates.
- */
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class SamplerRuntimeUpdateConcurrencyTest {
+
+    @RegisterExtension
+    final AgentLogCapture settingsLogs = new AgentLogCapture();
 
     @Test
     void acceptedSequenceEqualsSuccessfulCommitsWithoutHiddenRetry() throws Exception {

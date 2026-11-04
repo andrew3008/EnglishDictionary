@@ -13,6 +13,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
@@ -20,6 +22,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAcc
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
 import space.br1440.platform.tracing.test.assertions.SamplingAssertions;
 import space.br1440.platform.tracing.test.harness.SamplerHarness;
@@ -27,12 +30,11 @@ import space.br1440.platform.tracing.test.harness.SamplerHarness;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 
-/**
- * Characterization: читатели sampling видят consistent snapshot после runtime update.
- *
- * <p>Дополняет {@link SamplerRuntimeUpdateConcurrencyTest} проверкой изменения decision/reason.
- */
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class SamplingRuntimeUpdateCharacterizationTest {
+
+    @RegisterExtension
+    final AgentLogCapture settingsLogs = new AgentLogCapture();
 
     private static final String ROUTE_PATH = "/api/v1/orders";
     private static final double INITIAL_ROUTE_RATIO = 1.0d;

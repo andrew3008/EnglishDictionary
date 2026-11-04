@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.AttributeNotFoundException;
@@ -24,7 +25,6 @@ import javax.management.openmbean.TabularData;
 import javax.management.openmbean.TabularDataSupport;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxOpenTypes;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
@@ -37,10 +37,10 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
     private static final String SNAPSHOT_ATTRIBUTE = JmxWireContract.ATTRIBUTE_SETTINGS_STATUS_ACCEPTED_POLICY_SNAPSHOT;
     private static final MBeanInfo INFO = buildMBeanInfo();
 
-    private final TracingSettingsUpdater updater;
+    private final Supplier<TracingSettingsRevision> current;
 
-    public PlatformSettingsStatusMBean(TracingSettingsUpdater updater) {
-        this.updater = Objects.requireNonNull(updater, "updater");
+    public PlatformSettingsStatusMBean(Supplier<TracingSettingsRevision> current) {
+        this.current = Objects.requireNonNull(current, "current");
     }
 
     @Override
@@ -109,7 +109,7 @@ public final class PlatformSettingsStatusMBean implements DynamicMBean {
     }
 
     private CompositeData snapshot() {
-        return encode(updater.current());
+        return encode(current.get());
     }
 
     private static CompositeData encode(TracingSettingsRevision accepted) {

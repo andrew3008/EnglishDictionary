@@ -10,9 +10,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitOutcome;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitResult;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
@@ -35,35 +32,24 @@ class TracingSettingsUpdaterResolvedEventTest {
     void eachOutcomeUsesItsOwnFixedLevelEvent() {
         // given
         TracingSettings initial = settings(0.5d, true);
-        TracingSettingsStore store = new TracingSettingsStore(AGENT_INSTANCE_ID, initial);
-        TracingSettingsUpdater updater = new TracingSettingsUpdater(store, level -> { });
+        TracingSettingsUpdater updater = new TracingSettingsUpdater(AGENT_INSTANCE_ID, initial, level -> { });
         TracingSettings applied = settings(0.2d, true);
 
         // when
-        updater.apply(attempt(), store.current().base(), applied);
-        updater.apply(attempt(), store.current().base(), applied);
-        updater.apply(attempt(), staleBase(store.current()), applied);
+        updater.apply(attempt(), updater.current().base(), applied);
+        updater.apply(attempt(), updater.current().base(), applied);
+        updater.apply(attempt(), staleBase(updater.current()), applied);
         updater.apply(
                 new SettingsUpdateAttempt(UUID.randomUUID().toString(), SettingsWriter.ACTUATOR),
-                store.current().base(),
+                updater.current().base(),
                 settings(0.1d, false)
         );
-        TracingSettingsRevision failedBase = store.current();
-        new TracingSettingsUpdater(
-                store::current,
-                (expected, candidate, authority) -> new SettingsCommitResult(
-                        SettingsCommitOutcome.STALE,
-                        failedBase
-                ),
-                level -> { }
-        ).apply(attempt(), failedBase.base(), settings(0.1d, true));
 
         // then
         assertResolved(ControlPlaneLogEvent.TRACING_SETTINGS_UPDATE_APPLIED, "APPLIED");
         assertResolved(ControlPlaneLogEvent.TRACING_SETTINGS_UPDATE_UNCHANGED, "UNCHANGED");
         assertResolved(ControlPlaneLogEvent.TRACING_SETTINGS_UPDATE_REJECTED, "STALE");
         assertResolved(ControlPlaneLogEvent.TRACING_SETTINGS_UPDATE_REJECTED, "REJECTED");
-        assertResolved(ControlPlaneLogEvent.TRACING_SETTINGS_UPDATE_COMMIT_FAILED, "FAILED");
     }
 
     private void assertResolved(AgentLogEventType eventType, String outcome) {

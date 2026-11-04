@@ -5,9 +5,11 @@ import static space.br1440.platform.tracing.otel.javaagent.control.TracingSettin
 
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
@@ -15,12 +17,15 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 
 @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class DiagnosticsLogLevelProjectionTest {
+
+    @RegisterExtension
+    final AgentLogCapture capture = new AgentLogCapture();
 
     @Test
     void applied_diagnostics_level_matches_effective_level() {
@@ -43,7 +48,7 @@ class DiagnosticsLogLevelProjectionTest {
     }
 
     @Test
-    void concurrent_applies_keep_effective_level_equal_to_the_store() throws Exception {
+    void concurrent_applies_keep_effective_level_equal_to_the_accepted_revision() throws Exception {
         // given
         TracingSettingsSource source = boundDefaults(AgentInstanceId.random());
         AgentLogLevel[] levels = {AgentLogLevel.DEBUG, AgentLogLevel.WARN};
@@ -59,8 +64,15 @@ class DiagnosticsLogLevelProjectionTest {
             left.start();
             right.start();
             start.countDown();
-            left.join();
-            right.join();
+            try {
+                left.join(10_000L);
+                right.join(10_000L);
+                assertThat(left.isAlive()).isFalse();
+                assertThat(right.isAlive()).isFalse();
+            } finally {
+                left.interrupt();
+                right.interrupt();
+            }
 
             // then
             assertThat(leftFailure.get()).isNull();
@@ -77,7 +89,7 @@ class DiagnosticsLogLevelProjectionTest {
                                       AtomicReference<Throwable> failure) {
         Thread thread = new Thread(() -> {
             try {
-                start.await();
+                assertThat(start.await(10L, TimeUnit.SECONDS)).isTrue();
                 source.updater().apply(
                         attempt(),
                         witnessed.base(),

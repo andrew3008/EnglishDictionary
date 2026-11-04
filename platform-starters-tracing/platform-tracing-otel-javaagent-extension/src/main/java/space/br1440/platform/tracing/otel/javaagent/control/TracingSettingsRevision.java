@@ -1,6 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.control;
 
-import java.util.NavigableMap;
+import java.util.Map;
 import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsRevision;
@@ -36,7 +36,7 @@ public record TracingSettingsRevision(AgentInstanceId agentInstanceId,
         return policy.samplingRatio();
     }
 
-    public NavigableMap<String, Double> samplingRouteRatios() {
+    public Map<String, Double> samplingRouteRatios() {
         return policy.samplingRouteRatios();
     }
 

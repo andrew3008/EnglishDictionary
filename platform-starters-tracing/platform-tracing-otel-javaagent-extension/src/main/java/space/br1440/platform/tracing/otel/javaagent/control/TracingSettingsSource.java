@@ -10,7 +10,6 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.ControlSetting
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
@@ -24,12 +23,14 @@ public final class TracingSettingsSource {
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(TracingSettingsSource.class);
     private static final TracingSettings DEFAULT_POLICY = createDefaultPolicy();
 
-    private final TracingSettingsStore store;
     private final TracingSettingsUpdater updater;
 
-    private TracingSettingsSource(TracingSettingsStore store) {
-        this.store = Objects.requireNonNull(store, "store");
-        this.updater = new TracingSettingsUpdater(store, AgentLoggingRuntime.shared()::applyLevel);
+    private TracingSettingsSource(AgentInstanceId agentInstanceId, TracingSettings initialPolicy) {
+        this.updater = new TracingSettingsUpdater(
+                agentInstanceId,
+                initialPolicy,
+                AgentLoggingRuntime.shared()::applyLevel
+        );
     }
 
     public static TracingSettings defaultPolicy() {
@@ -67,11 +68,7 @@ public final class TracingSettingsSource {
     }
 
     public TracingSettingsRevision current() {
-        return store.current();
-    }
-
-    public TracingSettingsStore store() {
-        return store;
+        return updater.current();
     }
 
     public TracingSettingsUpdater updater() {
@@ -97,8 +94,7 @@ public final class TracingSettingsSource {
                 controlSettings.diagnosticsLogLevel()
         );
 
-        TracingSettingsStore store = new TracingSettingsStore(agentInstanceId, settings);
-        return new TracingSettingsSource(store);
+        return new TracingSettingsSource(agentInstanceId, settings);
     }
 
     private static Map<String, Double> parseRouteRatios(Map<String, String> source) {

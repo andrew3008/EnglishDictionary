@@ -40,6 +40,8 @@ import javax.management.MBeanServerFactory;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
@@ -51,12 +53,13 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPrope
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
@@ -65,7 +68,11 @@ import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
 @ExtendWith(AutoConfiguredSdkIsolationExtension.class)
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class BootstrapCoordinatorPrepareTest {
+
+    @RegisterExtension
+    final AgentLogCapture settingsLogs = new AgentLogCapture();
 
     private static final String SECOND_SDK_BUILD = "SECOND_SDK_BUILD";
     private static final String REENTRANT_OR_OUT_OF_ORDER = "REENTRANT_OR_OUT_OF_ORDER";
@@ -292,18 +299,19 @@ class BootstrapCoordinatorPrepareTest {
         try (BootstrapCoordinator coordinator = coordinator().build()) {
             coordinator.prepare(config());
 
-            // when/then
+            // when
+            // then
             assertBootstrapFailure(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
         }
     }
 
     @Test
-    void second_prepare_rejection_preserves_original_updated_policy_store() {
+    void second_prepare_rejection_preserves_original_updated_policy_owner() {
         // given
         try (BootstrapCoordinator coordinator = coordinator().build()) {
             AutoconfigureSession originalSession = coordinator.prepare(config());
             TracingSettingsSource originalSource = originalSession.policy();
-            TracingSettingsStore originalStore = originalSource.store();
+            TracingSettingsUpdater originalUpdater = originalSource.updater();
             AgentInstanceId originalAgentInstanceId = originalSource.current().agentInstanceId();
 
             assertThat(AcceptedPolicyMutationAccess.applyValidation(
@@ -320,7 +328,7 @@ class BootstrapCoordinatorPrepareTest {
             // then
             assertThat(retainedSession).isSameAs(originalSession);
             assertThat(retainedSession.policy()).isSameAs(originalSource);
-            assertThat(retainedSession.policy().store()).isSameAs(originalStore);
+            assertThat(retainedSession.policy().updater()).isSameAs(originalUpdater);
             assertThat(retainedSession.agentInstanceId()).isEqualTo(originalAgentInstanceId);
             assertThat(retainedSession.policy().current()).isSameAs(acceptedRevision);
             assertThat(retainedSession.policy().current().agentInstanceId()).isEqualTo(originalAgentInstanceId);

@@ -8,6 +8,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
@@ -15,6 +17,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
 import space.br1440.platform.tracing.test.harness.InboundTraceControls;
 
@@ -23,7 +26,11 @@ import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapSetter;
 
 @DisplayName("TraceControlPropagator: extract в Context; outbound inject — intentional no-op")
+@ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class TraceControlPropagatorTest {
+
+    @RegisterExtension
+    final AgentLogCapture settingsLogs = new AgentLogCapture();
 
     private final TraceControlPropagator propagator = new TraceControlPropagator();
 
@@ -113,7 +120,8 @@ class TraceControlPropagatorTest {
             inbound.put("X-Request-Id", "req-1");
             Context input = Context.root();
 
-            // when/then
+            // when
+            // then
             AtomicInteger getterCalls = new AtomicInteger();
             TextMapGetter<Map<String, String>> countingGetter = (carrier, key) -> {
                 getterCalls.incrementAndGet();
@@ -135,7 +143,8 @@ class TraceControlPropagatorTest {
             AcceptedPolicyMutationAccess.applyTraceControlHeaders(policy, false);
             TraceControlPropagator gated = new TraceControlPropagator(gate);
 
-            // when/then
+            // when
+            // then
             assertThat(gated.fields()).containsExactlyInAnyOrder("X-Trace-On", "X-QA-Trace", "X-Request-Id");
         }
     }

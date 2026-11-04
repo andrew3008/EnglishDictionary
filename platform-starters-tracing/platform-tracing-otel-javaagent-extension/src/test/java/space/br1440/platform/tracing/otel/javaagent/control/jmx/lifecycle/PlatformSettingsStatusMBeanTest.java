@@ -18,7 +18,6 @@ import javax.management.openmbean.TabularData;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyTestFixtures;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsWriter;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
@@ -40,7 +39,7 @@ class PlatformSettingsStatusMBeanTest {
         TracingSettingsUpdater updater = updater(
                 new AgentInstanceId(UUID.randomUUID()),
                 settings(1.0d, Map.of()));
-        PlatformSettingsStatusMBean mBean = new PlatformSettingsStatusMBean(updater);
+        PlatformSettingsStatusMBean mBean = new PlatformSettingsStatusMBean(updater::current);
 
         // when
         MBeanInfo info = mBean.getMBeanInfo();
@@ -71,7 +70,7 @@ class PlatformSettingsStatusMBeanTest {
         TracingSettingsUpdater updater = mock(TracingSettingsUpdater.class);
         RuntimeException captureFailure = new ForeignStatusFailure("foreign status failure");
         when(updater.current()).thenThrow(captureFailure);
-        PlatformSettingsStatusMBean mBean = new PlatformSettingsStatusMBean(updater);
+        PlatformSettingsStatusMBean mBean = new PlatformSettingsStatusMBean(updater::current);
 
         // when
         MBeanException thrown = catchThrowableOfType(
@@ -96,14 +95,13 @@ class PlatformSettingsStatusMBeanTest {
         AgentInstanceId agentInstanceId = new AgentInstanceId(UUID.randomUUID());
         TracingSettings initial = settings(1.0d, Map.of());
         TracingSettings candidate = settings(0.25d, Map.of("/orders", 0.5d));
-        TracingSettingsStore store = AcceptedPolicyTestFixtures.bootstrapAgentDefaultsStore(agentInstanceId, initial);
-        TracingSettingsUpdater updater = new TracingSettingsUpdater(store, level -> { });
+        TracingSettingsUpdater updater = AcceptedPolicyTestFixtures.bootstrapUpdater(agentInstanceId, initial);
         SettingsUpdateAttempt attempt = new SettingsUpdateAttempt(
                 UUID.randomUUID().toString(),
                 SettingsWriter.CONFIG_SERVER
         );
-        SettingsUpdateResult update = updater.apply(attempt, store.current().base(), candidate);
-        PlatformSettingsStatusMBean mBean = new PlatformSettingsStatusMBean(updater);
+        SettingsUpdateResult update = updater.apply(attempt, updater.current().base(), candidate);
+        PlatformSettingsStatusMBean mBean = new PlatformSettingsStatusMBean(updater::current);
 
         // when
         CompositeData snapshot = (CompositeData) mBean.getAttribute(
@@ -155,10 +153,7 @@ class PlatformSettingsStatusMBeanTest {
 
     private static TracingSettingsUpdater updater(AgentInstanceId agentInstanceId,
                                                   TracingSettings settings) {
-        return new TracingSettingsUpdater(
-                AcceptedPolicyTestFixtures.bootstrapAgentDefaultsStore(agentInstanceId, settings),
-                level -> { }
-        );
+        return AcceptedPolicyTestFixtures.bootstrapUpdater(agentInstanceId, settings);
     }
 
     private static TracingSettings settings(double samplingRatio,

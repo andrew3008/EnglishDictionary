@@ -16,7 +16,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsRejectionReason;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
@@ -35,8 +34,8 @@ final class RuntimePolicyRejectionTest {
     @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, -0.001d, 1.0001d})
     void rejectsInvalidSamplingRatioWithoutChangingAcceptedState(double invalidRatio) throws Exception {
         // given
-        TracingSettingsStore store = JmxSettingsMutationFixtures.store();
-        TracingSettingsRevision acceptedBefore = store.current();
+        TracingSettingsUpdater updater = JmxSettingsMutationFixtures.updater();
+        TracingSettingsRevision acceptedBefore = updater.current();
         String attemptId = UUID.randomUUID().toString();
         CompositeData validRequest = JmxSettingsMutationFixtures.request(
                 acceptedBefore.agentInstanceId().toString(),
@@ -48,7 +47,7 @@ final class RuntimePolicyRejectionTest {
                 JmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_RATIO,
                 invalidRatio
         );
-        PlatformSettingsMutationMBean writer = writer(store);
+        PlatformSettingsMutationMBean writer = writer(updater);
 
         // when
         CompositeData response = invoke(writer, request);
@@ -56,7 +55,7 @@ final class RuntimePolicyRejectionTest {
         // then
         assertRejected(
                 response,
-                store,
+                updater,
                 acceptedBefore,
                 SettingsRejectionReason.INVALID_SAMPLING_RATIO,
                 JmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_RATIO,
@@ -69,8 +68,8 @@ final class RuntimePolicyRejectionTest {
     void rejectsInvalidRouteRatioWithoutExposingRoutePrefix() throws Exception {
         // given
         String routePrefix = "https://user:secret@example.test/private?token=route-canary";
-        TracingSettingsStore store = JmxSettingsMutationFixtures.store();
-        TracingSettingsRevision acceptedBefore = store.current();
+        TracingSettingsUpdater updater = JmxSettingsMutationFixtures.updater();
+        TracingSettingsRevision acceptedBefore = updater.current();
         String attemptId = UUID.randomUUID().toString();
         CompositeData validRequest = JmxSettingsMutationFixtures.request(
                 acceptedBefore.agentInstanceId().toString(),
@@ -87,7 +86,7 @@ final class RuntimePolicyRejectionTest {
                 validRequest,
                 JmxWireContract.FIELD_RUNTIME_POLICY_SAMPLING_ROUTE_RATIOS,
                 routes);
-        PlatformSettingsMutationMBean writer = writer(store);
+        PlatformSettingsMutationMBean writer = writer(updater);
 
         // when
         CompositeData response = invoke(writer, request);
@@ -95,7 +94,7 @@ final class RuntimePolicyRejectionTest {
         // then
         assertRejected(
                 response,
-                store,
+                updater,
                 acceptedBefore,
                 SettingsRejectionReason.INVALID_ROUTE_RATIO,
                 JmxWireContract.FIELD_ROUTE_RATIO_RATIO,
@@ -109,8 +108,8 @@ final class RuntimePolicyRejectionTest {
     @ValueSource(strings = {"error", "STRICT"})
     void rejectsNonCanonicalValidationLevelWithoutChangingAcceptedState(String invalidLevel) throws Exception {
         // given
-        TracingSettingsStore store = JmxSettingsMutationFixtures.store();
-        TracingSettingsRevision acceptedBefore = store.current();
+        TracingSettingsUpdater updater = JmxSettingsMutationFixtures.updater();
+        TracingSettingsRevision acceptedBefore = updater.current();
         String attemptId = UUID.randomUUID().toString();
         CompositeData validRequest = JmxSettingsMutationFixtures.request(
                 acceptedBefore.agentInstanceId().toString(),
@@ -121,7 +120,7 @@ final class RuntimePolicyRejectionTest {
                 validRequest,
                 JmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_LEVEL,
                 invalidLevel);
-        PlatformSettingsMutationMBean writer = writer(store);
+        PlatformSettingsMutationMBean writer = writer(updater);
 
         // when
         CompositeData response = invoke(writer, request);
@@ -129,7 +128,7 @@ final class RuntimePolicyRejectionTest {
         // then
         assertRejected(
                 response,
-                store,
+                updater,
                 acceptedBefore,
                 SettingsRejectionReason.INVALID_VALIDATION_LEVEL,
                 JmxWireContract.FIELD_RUNTIME_POLICY_VALIDATION_LEVEL,
@@ -139,7 +138,7 @@ final class RuntimePolicyRejectionTest {
     }
 
     private void assertRejected(CompositeData response,
-                                TracingSettingsStore store,
+                                TracingSettingsUpdater updater,
                                 TracingSettingsRevision acceptedBefore,
                                 SettingsRejectionReason expectedReason,
                                 String expectedPropertyName,
@@ -153,7 +152,7 @@ final class RuntimePolicyRejectionTest {
                 .containsExactly(expectedReason.name());
         assertThat(response.get(JmxWireContract.FIELD_APPLY_SNAPSHOT_RESPONSE_ACCEPTED_SEQUENCE))
                 .isEqualTo(acceptedBefore.acceptedSequence());
-        assertThat(store.current()).isSameAs(acceptedBefore);
+        assertThat(updater.current()).isSameAs(acceptedBefore);
         assertThat(response.toString()).doesNotContain(rawValues);
         assertThat(capture.events())
                 .filteredOn(event -> "JMX_SETTINGS_POLICY_REJECTED".equals(event.eventName()))
@@ -170,9 +169,8 @@ final class RuntimePolicyRejectionTest {
         assertThat(capture.rendered()).doesNotContain(rawValues);
     }
 
-    private static PlatformSettingsMutationMBean writer(TracingSettingsStore store) {
-        return new PlatformSettingsMutationMBean(new TracingSettingsUpdater(store, level -> {
-        }));
+    private static PlatformSettingsMutationMBean writer(TracingSettingsUpdater updater) {
+        return new PlatformSettingsMutationMBean(updater);
     }
 
     private static CompositeData invoke(PlatformSettingsMutationMBean writer, CompositeData request) throws Exception {
