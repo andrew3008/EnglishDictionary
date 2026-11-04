@@ -52,29 +52,29 @@ class SamplingRuntimeUpdateCharacterizationTest {
         // given
         TracingSettingsSource settings = TracingSettingsSourceTestFixtures.boundSampling(
                 AgentInstanceId.random(), true, Map.of(), INITIAL_ROUTE_RATIO);
-        CompositeSampler sampler = new CompositeSampler(
+        try (CompositeSampler sampler = new CompositeSampler(
                 settings,
                 CategoryBSamplingAccess.snapshot(List.of(), List.of("on"))
-        );
+        )) {
+            // when
+            SamplingResult globalResult = sampleRoute(sampler);
 
-        // when: глобальный ratio ещё не переопределён для маршрута
-        SamplingResult globalResult = sampleRoute(sampler);
+            // then
+            SamplingAssertions.assertSamplingReason(globalResult, PlatformSamplingReasons.GLOBAL_RATIO);
 
-        // then
-        SamplingAssertions.assertSamplingReason(globalResult, PlatformSamplingReasons.GLOBAL_RATIO);
+            // when
+            AcceptedPolicyMutationAccess.applySampling(
+                    settings,
+                    true,
+                    INITIAL_ROUTE_RATIO,
+                    Map.of(ROUTE_PATH, DROPPED_ROUTE_RATIO)
+            );
+            SamplingResult routeDropResult = sampleRoute(sampler);
 
-        // when: применяется route-specific override, отключающий выборку для маршрута
-        AcceptedPolicyMutationAccess.applySampling(
-                settings,
-                true,
-                INITIAL_ROUTE_RATIO,
-                Map.of(ROUTE_PATH, DROPPED_ROUTE_RATIO)
-        );
-        SamplingResult routeDropResult = sampleRoute(sampler);
-
-        // then
-        SamplerDecisionAssert.assertThat(routeDropResult).isDrop();
-        SamplingAssertions.assertSamplingReason(routeDropResult, PlatformSamplingReasons.ROUTE_RATIO_DROP);
+            // then
+            SamplerDecisionAssert.assertThat(routeDropResult).isDrop();
+            SamplingAssertions.assertSamplingReason(routeDropResult, PlatformSamplingReasons.ROUTE_RATIO_DROP);
+        }
     }
 
     @Test
@@ -83,27 +83,30 @@ class SamplingRuntimeUpdateCharacterizationTest {
         TracingSettingsSource settings = TracingSettingsSourceTestFixtures.boundSampling(
                 AgentInstanceId.random(), true, Map.of(), INITIAL_GLOBAL_RATIO);
 
-        CompositeSampler sampler = new CompositeSampler(
-                settings,
-                CategoryBSamplingAccess.snapshot(List.of(), List.of("on"))
-        );
-
         CountDownLatch start = new CountDownLatch(1);
         CountDownLatch writerDone = new CountDownLatch(1);
         AtomicBoolean stopReader = new AtomicBoolean(false);
         AtomicReference<String> violation = new AtomicReference<>();
 
         // when
-        try (ExecutorService pool = Executors.newFixedThreadPool(READER_WRITER_POOL_SIZE)) {
-            pool.submit(() -> runRatioWriter(settings, start, writerDone));
-            pool.submit(() -> runRatioReader(settings, sampler, start, stopReader, violation));
+        try (CompositeSampler sampler = new CompositeSampler(
+                settings,
+                CategoryBSamplingAccess.snapshot(List.of(), List.of("on"))
+        ); ExecutorService pool = Executors.newFixedThreadPool(READER_WRITER_POOL_SIZE)) {
+            try {
+                pool.submit(() -> runRatioWriter(settings, start, writerDone));
+                pool.submit(() -> runRatioReader(settings, sampler, start, stopReader, violation));
 
-            start.countDown();
-            assertThat(writerDone.await(WRITER_TIMEOUT.toSeconds(), TimeUnit.SECONDS)).isTrue();
+                start.countDown();
+                assertThat(writerDone.await(WRITER_TIMEOUT.toSeconds(), TimeUnit.SECONDS)).isTrue();
 
-            stopReader.set(true);
-            pool.shutdown();
-            assertThat(pool.awaitTermination(POOL_SHUTDOWN_TIMEOUT.toSeconds(), TimeUnit.SECONDS)).isTrue();
+                stopReader.set(true);
+                pool.shutdown();
+                assertThat(pool.awaitTermination(POOL_SHUTDOWN_TIMEOUT.toSeconds(), TimeUnit.SECONDS)).isTrue();
+            } finally {
+                stopReader.set(true);
+                pool.shutdownNow();
+            }
         }
 
         // then
