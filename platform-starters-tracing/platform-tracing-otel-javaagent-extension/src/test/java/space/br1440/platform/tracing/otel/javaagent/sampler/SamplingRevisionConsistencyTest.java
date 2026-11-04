@@ -42,64 +42,70 @@ class SamplingRevisionConsistencyTest {
     void eachDecisionReadsExactlyOneAcceptedRevision() {
         // given
         TracingSettingsSource source = spy(source());
-        CompositeSampler sampler = sampler(source);
-        clearInvocations(source);
+        try (CompositeSampler sampler = sampler(source)) {
+            clearInvocations(source);
 
-        // when
-        SamplingResult result = sample(sampler);
+            // when
+            SamplingResult result = sample(sampler);
 
-        // then
-        verify(source, times(1)).current();
-        assertThat(result.getDecision()).isEqualTo(SamplingDecision.DROP);
-        assertThat(result.getAttributes().get(REASON)).isEqualTo("route_ratio_drop");
+            // then
+            verify(source, times(1)).current();
+            assertThat(result.getDecision()).isEqualTo(SamplingDecision.DROP);
+            assertThat(result.getAttributes().get(REASON)).isEqualTo("route_ratio_drop");
+        }
     }
 
     @Test
     void concurrentPublicationNeverMixesRouteAndDefaultRatioAndKeepsCounters() throws Exception {
         // given
         TracingSettingsSource source = source();
-        CompositeSampler sampler = sampler(source);
         CountDownLatch start = new CountDownLatch(1);
         CountDownLatch firstRead = new CountDownLatch(1);
         int decisions = 20000;
-        ExecutorService pool = Executors.newFixedThreadPool(2);
-        try {
-            Future<?> writer = pool.submit(() -> {
-                await(start);
-                await(firstRead);
-                for (int i = 0; i < 200; i++) {
-                    TracingSettingsRevision previous = source.current();
-                    TracingSettings current = previous.policy();
-                    boolean routeEnabled = (i & 1) != 0;
-                    TracingSettings candidate = TracingSettings.of(true, routeEnabled ? 1.0 : 0.0,
-                            routeEnabled ? Map.of("/x", 0.0) : Map.of(), current.validationLevel(),
-                            current.exporterEnabled(), current.traceControlHeadersEnabled(), current.diagnosticsLogLevel());
-                    assertThat(source.updater().apply(new SettingsUpdateAttempt(UUID.randomUUID().toString(),
-                            SettingsWriter.CONFIG_SERVER), previous.base(), candidate).outcome())
-                            .isEqualTo(SettingsUpdateStatus.APPLIED);
-                }
-            });
-            Future<?> reader = pool.submit(() -> {
-                await(start);
-                for (int i = 0; i < decisions; i++) {
-                    SamplingResult result = sample(sampler);
-                    firstRead.countDown();
-                    assertThat(result.getDecision()).isEqualTo(SamplingDecision.DROP);
-                    assertThat(result.getAttributes().get(REASON)).isIn("route_ratio_drop", "global_ratio_drop");
-                }
-            });
 
-            // when
-            start.countDown();
-            reader.get(20, TimeUnit.SECONDS);
-            writer.get(20, TimeUnit.SECONDS);
+        try (CompositeSampler sampler = sampler(source)) {
 
-            // then
-            assertThat(sampler.getDecisionCounts().values().stream().mapToLong(Long::longValue).sum()).isEqualTo(decisions);
-            assertThat(source.current().acceptedSequence()).isEqualTo(200);
-        } finally {
-            pool.shutdownNow();
-            assertThat(pool.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+            @SuppressWarnings("resource")
+            ExecutorService pool = Executors.newFixedThreadPool(2);
+            try {
+                Future<?> writer = pool.submit(() -> {
+                    await(start);
+                    await(firstRead);
+                    for (int i = 0; i < 200; i++) {
+                        TracingSettingsRevision previous = source.current();
+                        TracingSettings current = previous.policy();
+                        boolean routeEnabled = (i & 1) != 0;
+                        TracingSettings candidate = TracingSettings.of(true, routeEnabled ? 1.0 : 0.0,
+                                routeEnabled ? Map.of("/x", 0.0) : Map.of(), current.validationLevel(),
+                                current.exporterEnabled(), current.traceControlHeadersEnabled(), current.diagnosticsLogLevel());
+                        assertThat(source.updater().apply(new SettingsUpdateAttempt(UUID.randomUUID().toString(),
+                                SettingsWriter.CONFIG_SERVER), previous.base(), candidate).outcome())
+                                .isEqualTo(SettingsUpdateStatus.APPLIED);
+                    }
+                });
+
+                Future<?> reader = pool.submit(() -> {
+                    await(start);
+                    for (int i = 0; i < decisions; i++) {
+                        SamplingResult result = sample(sampler);
+                        firstRead.countDown();
+                        assertThat(result.getDecision()).isEqualTo(SamplingDecision.DROP);
+                        assertThat(result.getAttributes().get(REASON)).isIn("route_ratio_drop", "global_ratio_drop");
+                    }
+                });
+
+                // when
+                start.countDown();
+                reader.get(20, TimeUnit.SECONDS);
+                writer.get(20, TimeUnit.SECONDS);
+
+                // then
+                assertThat(sampler.getDecisionCounts().values().stream().mapToLong(Long::longValue).sum()).isEqualTo(decisions);
+                assertThat(source.current().acceptedSequence()).isEqualTo(200);
+            } finally {
+                pool.shutdownNow();
+                assertThat(pool.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+            }
         }
     }
 

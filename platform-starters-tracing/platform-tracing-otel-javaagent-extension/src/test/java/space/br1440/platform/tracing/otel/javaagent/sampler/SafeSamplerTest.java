@@ -205,6 +205,7 @@ class SafeSamplerTest {
     }
 
     @Test
+    @SuppressWarnings("DataFlowIssue")
     void nullTraceIdRemainsAnExplicitSdkEntryPrecondition() {
         // given
         CompositeSampler core = fractionalCore();

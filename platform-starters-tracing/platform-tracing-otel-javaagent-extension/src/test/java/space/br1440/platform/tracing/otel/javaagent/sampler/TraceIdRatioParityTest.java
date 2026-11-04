@@ -28,19 +28,20 @@ class TraceIdRatioParityTest {
         SamplingStartupRules rules = SamplingStartupRules.create(List.of(), List.of());
         Random random = new Random(1440);
         for (double ratio : new double[] {0.0001, 0.1, 0.5, 0.99}) {
-            Sampler upstream = Sampler.traceIdRatioBased(ratio);
-            for (int i = 0; i < 1000; i++) {
-                String id = "0000000000000001" + String.format("%016x", random.nextLong());
-                SamplingPolicyRequest request = new SamplingPolicyRequest(null, id, null, false, ParentContextState.ABSENT);
+            try (Sampler upstream = Sampler.traceIdRatioBased(ratio)) {
+                for (int i = 0; i < 1000; i++) {
+                    String id = "0000000000000001" + String.format("%016x", random.nextLong());
+                    SamplingPolicyRequest request = new SamplingPolicyRequest(null, id, null, false, ParentContextState.ABSENT);
 
-                // when
-                SamplingOutcome actual = SamplingPolicyEvaluator.evaluate(request, true, Map.of(), ratio, rules);
-                SamplingDecision reference = upstream.shouldSample(Context.root(), id, "test", SpanKind.INTERNAL,
-                        Attributes.empty(), List.of()).getDecision();
+                    // when
+                    SamplingOutcome actual = SamplingPolicyEvaluator.evaluate(request, true, Map.of(), ratio, rules);
+                    SamplingDecision reference = upstream.shouldSample(Context.root(), id, "test", SpanKind.INTERNAL,
+                            Attributes.empty(), List.of()).getDecision();
 
-                // then
-                assertThat(actual.sampled()).as("ratio=%s traceId=%s", ratio, id)
-                        .isEqualTo(reference == SamplingDecision.RECORD_AND_SAMPLE);
+                    // then
+                    assertThat(actual.sampled()).as("ratio=%s traceId=%s", ratio, id)
+                            .isEqualTo(reference == SamplingDecision.RECORD_AND_SAMPLE);
+                }
             }
         }
     }
@@ -51,14 +52,16 @@ class TraceIdRatioParityTest {
         String id = "00000000000000017fffffffffffffff";
         SamplingPolicyRequest request = new SamplingPolicyRequest(null, id, null, false, ParentContextState.ABSENT);
 
-        // when
-        SamplingOutcome actual = SamplingPolicyEvaluator.evaluate(request, true, Map.of(), 1,
-                SamplingStartupRules.create(List.of(), List.of()));
-        SamplingDecision reference = Sampler.traceIdRatioBased(1).shouldSample(Context.root(), id, "test",
-                SpanKind.INTERNAL, Attributes.empty(), List.of()).getDecision();
+        try (Sampler upstream = Sampler.traceIdRatioBased(1)) {
+            // when
+            SamplingOutcome actual = SamplingPolicyEvaluator.evaluate(request, true, Map.of(), 1,
+                    SamplingStartupRules.create(List.of(), List.of()));
+            SamplingDecision reference = upstream.shouldSample(Context.root(), id, "test",
+                    SpanKind.INTERNAL, Attributes.empty(), List.of()).getDecision();
 
-        // then
-        assertThat(actual).isEqualTo(SamplingOutcome.DEFAULT_SAMPLE);
-        assertThat(reference).isEqualTo(SamplingDecision.DROP);
+            // then
+            assertThat(actual).isEqualTo(SamplingOutcome.DEFAULT_SAMPLE);
+            assertThat(reference).isEqualTo(SamplingDecision.DROP);
+        }
     }
 }

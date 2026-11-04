@@ -56,7 +56,9 @@ dependencies {
     collisionAgentCompileOnly "org.projectlombok:lombok:${libs.versions.lombok.get()}"
     collisionAgentAnnotationProcessor "org.projectlombok:lombok:${libs.versions.lombok.get()}"
 
-    postSdkFailureListenerCompileOnly "io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api:${libs.versions.bom.otelextension.get()}"
+    postSdkFailureListenerCompileOnly("io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api:${libs.versions.bom.otelextension.get()}") {
+        transitive = false
+    }
     postSdkFailureListenerCompileOnly "io.opentelemetry:opentelemetry-sdk-extension-autoconfigure:${libs.versions.bom.opentelemetry.get()}"
 
     dualSdkImplementation 'io.opentelemetry:opentelemetry-sdk'
