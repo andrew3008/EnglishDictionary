@@ -190,17 +190,20 @@ class BootstrapCoordinatorActivationTest {
         when(session.evidence()).thenThrow(prologueFailure);
 
         // when
-        Optional<BootstrapActivation.ActivationFailure> outcome = activation.activate(mock(SdkTracerProvider.class), () -> {
+        Optional<FailureContext> outcome = activation.activate(mock(SdkTracerProvider.class), () -> {
         });
 
         // then
         assertThat(outcome).isPresent();
-        BootstrapActivation.ActivationFailure activationFailure = outcome.orElseThrow();
+
+        FailureContext activationFailure = outcome.orElseThrow();
         assertThat(activationFailure.site().subphase()).isEqualTo("activation-prologue");
         assertThat(activationFailure.cause()).isSameAs(prologueFailure);
         assertThat(activationFailure.admission().kind()).isEqualTo(FailureAdmission.Kind.RECORDED);
         assertThat(activationFailure.admission().claimedSession()).isNull();
+        assertThat(activationFailure.ownedSession()).isNull();
         assertThat(activationFailure.resources()).isNotNull();
+
         BootstrapFailure failure = activationFailure.admission().failure();
         assertThat(failure.primaryCode()).isEqualTo(ACTIVATION_FAILED);
         assertThat(failure.effectiveCode()).isEqualTo(ACTIVATION_FAILED);

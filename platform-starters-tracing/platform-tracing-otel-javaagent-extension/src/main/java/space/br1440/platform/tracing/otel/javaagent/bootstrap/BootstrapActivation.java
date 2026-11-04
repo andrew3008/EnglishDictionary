@@ -48,13 +48,13 @@ final class BootstrapActivation {
         this.terminalTransitions = Objects.requireNonNull(terminalTransitions, "terminalTransitions");
     }
 
-    Optional<ActivationFailure> activate(SdkTracerProvider tracerProvider, Runnable installLifecycleShutdownHook) {
+    Optional<FailureContext> activate(SdkTracerProvider tracerProvider, Runnable installLifecycleShutdownHook) {
         Objects.requireNonNull(tracerProvider, "tracerProvider");
         Objects.requireNonNull(installLifecycleShutdownHook, "installLifecycleShutdownHook");
 
         ActivationAttempt attempt = null;
         BootstrapResources resources = null;
-        ActivationFailure failure = null;
+        FailureContext failure = null;
         ExtensionRuntimeEvidence fallbackEvidence = journal.current().evidence();
         synchronized (lifecycle.monitor()) {
             AutoconfigureSession session = lifecycle.beginActivation();
@@ -88,7 +88,7 @@ final class BootstrapActivation {
         return Optional.empty();
     }
 
-    private ActivationFailure runPhases(ActivationAttempt attempt) {
+    private FailureContext runPhases(ActivationAttempt attempt) {
         try {
             requireSessionSampler(attempt);
             assessRemoteJmx(attempt);
@@ -107,15 +107,15 @@ final class BootstrapActivation {
         }
     }
 
-    private ActivationFailure recordFailure(String subphase,
-                                            String failureCode,
-                                            Throwable cause,
-                                            BootstrapResources resources,
-                                            String batchId,
-                                            ExtensionRuntimeEvidence evidence) {
+    private FailureContext recordFailure(String subphase,
+                                         String failureCode,
+                                         Throwable cause,
+                                         BootstrapResources resources,
+                                         String batchId,
+                                         ExtensionRuntimeEvidence evidence) {
         FailureSite site = FailureSite.activation(subphase);
         FailureAdmission admission = terminalTransitions.terminalize(site, failureCode, cause, batchId, evidence);
-        return new ActivationFailure(site, failureCode, cause, admission, resources, batchId, evidence);
+        return new FailureContext(site, failureCode, cause, admission, null, resources, batchId, evidence);
     }
 
     private static void requireSessionSampler(ActivationAttempt attempt) {
@@ -227,24 +227,6 @@ final class BootstrapActivation {
 
         String subphase() {
             return subphase;
-        }
-    }
-
-    record ActivationFailure(FailureSite site,
-                             String failureCode,
-                             Throwable cause,
-                             FailureAdmission admission,
-                             BootstrapResources resources,
-                             String batchId,
-                             ExtensionRuntimeEvidence evidence) {
-
-        ActivationFailure {
-            Objects.requireNonNull(site, "site");
-            Objects.requireNonNull(failureCode, "failureCode");
-            Objects.requireNonNull(cause, "cause");
-            Objects.requireNonNull(admission, "admission");
-            Objects.requireNonNull(batchId, "batchId");
-            Objects.requireNonNull(evidence, "evidence");
         }
     }
 
