@@ -279,6 +279,7 @@ class BootstrapCoordinatorStartupFailureTest {
 
     private static PlatformScrubberFactory factory(ScrubbingRuntime runtime) {
         PlatformScrubberFactory factory = mock(PlatformScrubberFactory.class);
+        //noinspection resource -- stubbing не создаёт runtime; его закрывает AutoconfigureSession
         doReturn(runtime).when(factory).buildRuntime(any());
         return factory;
     }

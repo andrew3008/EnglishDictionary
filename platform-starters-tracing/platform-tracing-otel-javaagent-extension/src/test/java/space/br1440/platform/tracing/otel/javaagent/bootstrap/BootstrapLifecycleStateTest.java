@@ -469,21 +469,22 @@ class BootstrapLifecycleStateTest {
 
         // when
         Optional<FailureAdmission> beforePrepare = lifecycle.failPrepared("AGENT_STARTUP_FAILED", "startup", earlyFailure);
-        AutoconfigureSession session = preparedSession(lifecycle);
-        Optional<FailureAdmission> prepared = lifecycle.failPrepared(
-                "AGENT_STARTUP_FAILED",
-                "startup",
-                new IllegalStateException("Startup failure after prepare")
-        );
+        try (AutoconfigureSession session = preparedSession(lifecycle)) {
+            Optional<FailureAdmission> prepared = lifecycle.failPrepared(
+                    "AGENT_STARTUP_FAILED",
+                    "startup",
+                    new IllegalStateException("Startup failure after prepare")
+            );
 
-        // then
-        assertThat(beforePrepare).isEmpty();
-        assertThat(prepared).hasValueSatisfying(admission -> {
-            assertThat(admission.kind()).isEqualTo(FailureAdmission.Kind.RECORDED);
-            assertThat(admission.claimedSession()).isSameAs(session);
-            assertThat(admission.failure().phase()).isEqualTo("startup");
-        });
-        assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
+            // then
+            assertThat(beforePrepare).isEmpty();
+            assertThat(prepared).hasValueSatisfying(admission -> {
+                assertThat(admission.kind()).isEqualTo(FailureAdmission.Kind.RECORDED);
+                assertThat(admission.claimedSession()).isSameAs(session);
+                assertThat(admission.failure().phase()).isEqualTo("startup");
+            });
+            assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
+        }
     }
 
     @Test
@@ -510,22 +511,23 @@ class BootstrapLifecycleStateTest {
     void commitActive_is_admitted_only_from_activating_state() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-        preparedSession(lifecycle);
+        try (AutoconfigureSession session = preparedSession(lifecycle)) {
 
-        // when
-        Throwable fromPrepared = catchThrowable(lifecycle::commitActive);
-        lifecycle.beginActivation();
-        lifecycle.commitActive();
-        Throwable fromActive = catchThrowable(lifecycle::commitActive);
+            // when
+            Throwable fromPrepared = catchThrowable(lifecycle::commitActive);
+            assertThat(lifecycle.beginActivation()).isSameAs(session);
+            lifecycle.commitActive();
+            Throwable fromActive = catchThrowable(lifecycle::commitActive);
 
-        // then
-        assertThat(fromPrepared)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Bootstrap activation cannot commit from state PREPARED");
-        assertThat(fromActive)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Bootstrap activation cannot commit from state ACTIVE");
-        assertThat(lifecycle.state()).isEqualTo(BootstrapState.ACTIVE);
+            // then
+            assertThat(fromPrepared)
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("Bootstrap activation cannot commit from state PREPARED");
+            assertThat(fromActive)
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("Bootstrap activation cannot commit from state ACTIVE");
+            assertThat(lifecycle.state()).isEqualTo(BootstrapState.ACTIVE);
+        }
     }
 
     @Test

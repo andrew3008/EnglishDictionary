@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorAssert.assertThatCoordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_INITIALIZING;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertAdmissionRejection;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchAdmissionRejection;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchBootstrapFailure;
@@ -308,7 +309,7 @@ class BootstrapCoordinatorPrepareTest {
             coordinator.prepare(config());
 
             // when/then
-            catchAdmissionRejection(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
+            assertAdmissionRejection(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
         }
     }
 
@@ -329,7 +330,7 @@ class BootstrapCoordinatorPrepareTest {
             assertThat(acceptedRevision.acceptedSequence()).isEqualTo(1L);
 
             // when
-            catchAdmissionRejection(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
+            assertAdmissionRejection(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
             AutoconfigureSession retainedSession = coordinator.session();
 
             // then
@@ -350,7 +351,7 @@ class BootstrapCoordinatorPrepareTest {
             AutoconfigureSession originalSession = coordinator.prepare(config());
 
             // when
-            catchAdmissionRejection(
+            assertAdmissionRejection(
                     () -> coordinator.prepare(config(Map.of(ExtensionPropertyNames.SAMPLING_RATIO, "0.42"))),
                     SECOND_SDK_BUILD
             );
@@ -384,7 +385,7 @@ class BootstrapCoordinatorPrepareTest {
                 long evidenceGeneration = coordinator.currentWire().evidenceGeneration();
 
                 // when
-                catchAdmissionRejection(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
+                assertAdmissionRejection(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
 
                 // then
                 assertThatCoordinator(coordinator).isActiveAndReady();
@@ -433,7 +434,7 @@ class BootstrapCoordinatorPrepareTest {
         AtomicReference<BootstrapState> nestedState = new AtomicReference<>();
         MBeanServer server = MBeanServerFactory.newMBeanServer();
         ExtensionRuntimeVerifier verifier = extensionVersion -> {
-            catchAdmissionRejection(
+            assertAdmissionRejection(
                     () -> {
                         //noinspection resource — повторный prepare отказывает до выдачи сессии; владение остаётся у координатора
                         coordinatorReference.get().prepare(configuration);
@@ -505,7 +506,7 @@ class BootstrapCoordinatorPrepareTest {
 
         try (SdkTracerProvider tracerProvider = SdkTracerProvider.builder().build()) {
             ExtensionRuntimeVerifier verifier = extensionVersion -> {
-                catchAdmissionRejection(
+                assertAdmissionRejection(
                         () -> coordinatorReference.get().activate(tracerProvider),
                         REENTRANT_OR_OUT_OF_ORDER
                 );

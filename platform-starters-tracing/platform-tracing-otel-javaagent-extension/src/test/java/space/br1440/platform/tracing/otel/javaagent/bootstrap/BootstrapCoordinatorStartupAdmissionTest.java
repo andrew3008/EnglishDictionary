@@ -9,7 +9,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
@@ -295,7 +295,7 @@ class BootstrapCoordinatorStartupAdmissionTest {
             }
             case FAILED -> {
                 coordinator.prepare(config());
-                catchBootstrapFailure(() -> coordinator.execute(STEP, () -> {
+                assertBootstrapFailure(() -> coordinator.execute(STEP, () -> {
                     throw new IllegalStateException("Platform customizer failed");
                 }), STEP.failureCode());
             }

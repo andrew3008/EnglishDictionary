@@ -101,9 +101,9 @@ class BootstrapLifecycleAdmissionMatrixTest {
             assertThat(recorded.failure().effectiveCode()).isEqualTo(AGENT_STARTUP_FAILED);
             assertThat(recorded.failure().phase()).isEqualTo(phase);
             assertThat(recorded.failure().cause()).isSameAs(cause);
+            assertThat(fixture.lifecycle().failure()).isSameAs(recorded.failure());
         });
         assertThat(fixture.lifecycle().state()).isEqualTo(BootstrapState.FAILED);
-        assertThat(fixture.lifecycle().failure()).isSameAs(admission.get().failure());
     }
 
     private static Stream<AdmissionCase> beginPrepareCases() {

@@ -70,6 +70,12 @@ final class BootstrapCoordinatorTestSupport {
         return failure;
     }
 
+    static void assertAdmissionRejection(ThrowingCallable call, String expectedCode) {
+        assertThat(catchAdmissionRejection(call, expectedCode).primaryCode())
+                .as("rejection code")
+                .isEqualTo(expectedCode);
+    }
+
     static BootstrapAdmissionRejectedException catchAdmissionRejection(ThrowingCallable call, String expectedCode) {
         Throwable thrown = catchThrowable(call);
         assertThat(thrown).as("BootstrapAdmissionRejectedException with code %s", expectedCode)

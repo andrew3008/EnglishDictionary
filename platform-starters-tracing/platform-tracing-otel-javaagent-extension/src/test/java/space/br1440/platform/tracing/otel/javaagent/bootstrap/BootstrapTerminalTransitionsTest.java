@@ -806,7 +806,7 @@ class BootstrapTerminalTransitionsTest {
         when(session.evidence()).thenReturn(evidence);
         lifecycle.beginPrepare();
         lifecycle.completePrepare(session);
-        lifecycle.beginActivation();
+        assertThat(lifecycle.beginActivation()).isSameAs(session);
         lifecycle.attachResources(new BootstrapResources());
         lifecycle.commitActive();
         return new Fixture(lifecycle, journal, transitions, readiness, evidence);

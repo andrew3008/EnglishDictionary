@@ -13,8 +13,8 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_READY;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.acknowledgeScrubbingExcept;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertAdmissionRejection;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchAdmissionRejection;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
@@ -86,7 +86,7 @@ class BootstrapCoordinatorActivationTest {
                 assertThat(coordinator.currentWire().agentInstanceId()).isEqualTo(agentInstanceId);
 
                 // when
-                catchAdmissionRejection(() -> coordinator.activate(tracerProvider), DUPLICATE_ACTIVATION);
+                assertAdmissionRejection(() -> coordinator.activate(tracerProvider), DUPLICATE_ACTIVATION);
 
                 // then
                 assertThatCoordinator(coordinator).isActiveAndReady();

@@ -1,10 +1,10 @@
 package space.br1440.platform.tracing.otel.javaagent.resilience;
 
-import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
+
+import org.junit.jupiter.api.Test;
 
 /**
  * Контракт {@link PlatformThrowables#propagateIfFatal}: фатальные ошибки пробрасываются,
@@ -36,14 +36,17 @@ class PlatformThrowablesTest {
     @Test
     void interruptedException_restores_interrupt_flag() {
         // given
-        Thread.interrupted();
-        // when
-        PlatformThrowables.propagateIfFatal(new InterruptedException("cancel"));
-        // then
-        assertThat(Thread.currentThread().isInterrupted())
-                .as("Флаг прерывания должен быть восстановлен, чтобы не потерять сигнал")
-                .isTrue();
-        Thread.interrupted();
+        clearInterruptFlag();
+        try {
+            // when
+            PlatformThrowables.propagateIfFatal(new InterruptedException("cancel"));
+            // then
+            assertThat(Thread.currentThread().isInterrupted())
+                    .as("Флаг прерывания должен быть восстановлен, чтобы не потерять сигнал")
+                    .isTrue();
+        } finally {
+            clearInterruptFlag();
+        }
     }
 
     @Test
@@ -109,7 +112,7 @@ class PlatformThrowablesTest {
     @Test
     void firstFatalInCauseChain_restores_interrupt_for_direct_InterruptedException() {
         // given
-        Thread.interrupted();
+        clearInterruptFlag();
         InterruptedException interrupted = new InterruptedException("cancel");
 
         try {
@@ -120,14 +123,14 @@ class PlatformThrowablesTest {
             assertThat(selected).isNull();
             assertThat(Thread.currentThread().isInterrupted()).isTrue();
         } finally {
-            Thread.interrupted();
+            clearInterruptFlag();
         }
     }
 
     @Test
     void firstFatalInCauseChain_restores_interrupt_for_wrapped_InterruptedException() {
         // given
-        Thread.interrupted();
+        clearInterruptFlag();
         IllegalStateException wrapper = new IllegalStateException(
                 "Startup interrupted", new InterruptedException("cancel"));
 
@@ -139,7 +142,7 @@ class PlatformThrowablesTest {
             assertThat(selected).isNull();
             assertThat(Thread.currentThread().isInterrupted()).isTrue();
         } finally {
-            Thread.interrupted();
+            clearInterruptFlag();
         }
     }
 
@@ -211,6 +214,12 @@ class PlatformThrowablesTest {
         // then
         assertThat(selected).isSameAs(accessorFailure);
         assertThat(catchThrowable(() -> PlatformThrowables.propagateFatalCauseChain(failure))).isSameAs(accessorFailure);
+    }
+
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    private static void clearInterruptFlag() {
+        // Сбрасываем флаг между тестами; предыдущее значение здесь не требуется.
+        Thread.interrupted();
     }
 
     private static Throwable wrapToDepth(Throwable fatal, int depth) {

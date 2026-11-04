@@ -603,7 +603,7 @@ final class BootstrapCoordinator implements AutoCloseable {
     }
 
     private static Throwable firstFatal(Throwable selectedFatal, Throwable candidate) {
-        if (selectedFatal != null || candidate == null || !PlatformThrowables.isFatal(candidate)) {
+        if (selectedFatal != null || !PlatformThrowables.isFatal(candidate)) {
             return selectedFatal;
         }
 

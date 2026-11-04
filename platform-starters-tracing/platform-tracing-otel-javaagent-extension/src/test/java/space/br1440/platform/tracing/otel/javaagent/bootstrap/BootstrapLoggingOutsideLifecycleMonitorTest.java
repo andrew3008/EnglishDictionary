@@ -6,8 +6,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchAdmissionRejection;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertAdmissionRejection;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
@@ -80,7 +80,7 @@ class BootstrapLoggingOutsideLifecycleMonitorTest {
 
             // when
             try (AutoCloseable ignored = install(sink)) {
-                catchBootstrapFailure(() -> coordinator.execute(STEP, () -> {
+                assertBootstrapFailure(() -> coordinator.execute(STEP, () -> {
                     throw new IllegalStateException("Platform customizer failed");
                 }), FAILED_ROLLBACK_INCOMPLETE);
             }
@@ -104,9 +104,9 @@ class BootstrapLoggingOutsideLifecycleMonitorTest {
             // when
             try (SdkTracerProvider tracerProvider = providerFor(session);
                  AutoCloseable ignored = install(sink)) {
-                catchAdmissionRejection(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
+                assertAdmissionRejection(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
                 coordinator.activate(tracerProvider);
-                catchAdmissionRejection(() -> coordinator.activate(tracerProvider), DUPLICATE_ACTIVATION);
+                assertAdmissionRejection(() -> coordinator.activate(tracerProvider), DUPLICATE_ACTIVATION);
             }
 
             // then
@@ -187,7 +187,7 @@ class BootstrapLoggingOutsideLifecycleMonitorTest {
             try (SdkTracerProvider tracerProvider = providerFor(session);
                  AutoCloseable ignored = install(sink)) {
                 providerReference.set(tracerProvider);
-                catchBootstrapFailure(() -> coordinator.activate(tracerProvider), DUPLICATE_ACTIVATION);
+                assertBootstrapFailure(() -> coordinator.activate(tracerProvider), DUPLICATE_ACTIVATION);
             }
 
             // then
