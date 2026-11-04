@@ -38,6 +38,20 @@ class BootstrapReadinessJournalTest {
     }
 
     @Test
+    void readyPublicationRequiresLifecycleMonitor() {
+        // given
+        PlatformExtensionReadiness readiness = PlatformExtensionReadiness.forCurrentExtension();
+        BootstrapReadinessJournal journal = new BootstrapReadinessJournal(monitor, readiness, AGENT_INSTANCE_ID);
+
+        // when
+        // then
+        assertThatThrownBy(() -> journal.publishReady(null))
+                .isInstanceOf(IllegalMonitorStateException.class)
+                .hasMessage("READY readiness publication requires the bootstrap lifecycle monitor");
+        assertThat(journal.current().lifecycle()).isEqualTo(PlatformExtensionLifecycle.INITIALIZING.name());
+    }
+
+    @Test
     void repeatedFailurePairPreservesFirstFailedGeneration() {
         // given
         PlatformExtensionReadiness readiness = PlatformExtensionReadiness.forCurrentExtension();
@@ -100,13 +114,15 @@ class BootstrapReadinessJournalTest {
         }
 
         BootstrapReadinessJournal journal = new BootstrapReadinessJournal(monitor, readiness, AGENT_INSTANCE_ID);
-        journal.publishReady(ExtensionReadinessWireSnapshot.ready(
-                readiness.completeInitialization(),
-                FOREIGN_AGENT_INSTANCE_ID.toString(),
-                "foreign-batch",
-                7L,
-                evidence(readiness, "foreign")
-        ));
+        synchronized (monitor) {
+            journal.publishReady(ExtensionReadinessWireSnapshot.ready(
+                    readiness.completeInitialization(),
+                    FOREIGN_AGENT_INSTANCE_ID.toString(),
+                    "foreign-batch",
+                    7L,
+                    evidence(readiness, "foreign")
+            ));
+        }
 
         // when
         ExtensionReadinessWireSnapshot failed;

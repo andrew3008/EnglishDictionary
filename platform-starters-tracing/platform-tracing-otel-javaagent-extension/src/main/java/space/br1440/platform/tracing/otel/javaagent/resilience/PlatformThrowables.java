@@ -7,10 +7,6 @@ public final class PlatformThrowables {
 
     private static final int MAX_CAUSE_CHAIN_DEPTH = 16;
 
-    /**
-     * Единственный предикат fatal-отказа платформы: VME, {@link ThreadDeath}, {@link LinkageError}.
-     * {@link AssertionError} и прочие {@link Error} fatal не являются.
-     */
     @SuppressWarnings({"removal"})
     public static boolean isFatal(Throwable t) {
         return t instanceof VirtualMachineError
@@ -27,17 +23,13 @@ public final class PlatformThrowables {
         }
     }
 
-    /**
-     * Возвращает первый fatal-узел ограниченной cause-цепочки тем же экземпляром или {@code null}.
-     * На каждом посещённом {@link InterruptedException} восстанавливает interrupt flag.
-     * Ordinary-отказ {@code getCause()} завершает обход; fatal-отказ {@code getCause()} возвращается как результат.
-     */
     public static Throwable firstFatalInCauseChain(Throwable failure) {
         Throwable current = failure;
         for (int depth = 0; current != null && depth < MAX_CAUSE_CHAIN_DEPTH; depth++) {
             if (current instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
+
             if (isFatal(current)) {
                 return current;
             }
@@ -48,6 +40,7 @@ public final class PlatformThrowables {
             } catch (RuntimeException | Error accessorFailure) {
                 return isFatal(accessorFailure) ? accessorFailure : null;
             }
+
             if (next == current) {
                 return null;
             }

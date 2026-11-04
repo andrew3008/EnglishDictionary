@@ -38,7 +38,6 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 final class BootstrapCoordinator implements AutoCloseable {
 
     private static final String SHUTDOWN_HOOK_THREAD_NAME = "platform-tracing-bootstrap-shutdown";
-    private static final String NO_BATCH_ID = "";
 
     private final BootstrapLifecycleState lifecycle;
     private final BootstrapReadinessJournal journal;
@@ -240,7 +239,7 @@ final class BootstrapCoordinator implements AutoCloseable {
                     admission,
                     null,
                     null,
-                    NO_BATCH_ID,
+                    BatchIds.NONE,
                     unavailableEvidence
             ));
         }
@@ -290,7 +289,7 @@ final class BootstrapCoordinator implements AutoCloseable {
                 admission.get(),
                 null,
                 null,
-                NO_BATCH_ID,
+                BatchIds.NONE,
                 evidence
         );
     }
@@ -458,19 +457,10 @@ final class BootstrapCoordinator implements AutoCloseable {
                                     AutoconfigureSession locallyOwned,
                                     ExtensionRuntimeEvidence evidence) {
         requireLifecycleMonitorNotHeld(cause);
-        FailureAdmission admission = terminalTransitions.terminalize(site, failureCode, cause, NO_BATCH_ID, evidence);
-        return finish(site, failureCode, cause, admission, locallyOwned, null, NO_BATCH_ID, evidence);
+        FailureAdmission admission = terminalTransitions.terminalize(site, failureCode, cause, BatchIds.NONE, evidence);
+        return finish(site, failureCode, cause, admission, locallyOwned, null, BatchIds.NONE, evidence);
     }
 
-    /**
-     * Завершает settlement вне монитора lifecycle.
-     *
-     * <p>Порядок: release ресурсов (ровно один источник session: локальная {@code locallyOwned} или
-     * изъятая admission), best-effort прикрепление secondary к записанной cause, эскалация
-     * незавершённого rollback, регистрация diagnostic MBean при {@code RECORDED}, логирование.
-     * Fatal исходной операции имеет приоритет; иначе пробрасывается первый наблюдённый fatal
-     * secondary. Нефатальный исход возвращается как записанный отказ.
-     */
     private BootstrapFailure finish(FailureSite site,
                                     String failureCode,
                                     Throwable cause,
@@ -525,10 +515,6 @@ final class BootstrapCoordinator implements AutoCloseable {
         return admission.failure();
     }
 
-    /**
-     * Не более одной попытки на событие; после fatal отказа logger последующие события того же
-     * settlement не эмитируются.
-     */
     private static Throwable logSettlement(FailureSite site,
                                            String failureCode,
                                            Throwable cause,
@@ -575,7 +561,6 @@ final class BootstrapCoordinator implements AutoCloseable {
     }
 
     private void logAdmissionRejection(BootstrapAdmissionRejectedException rejection) {
-        // под внешней секцией lifecycle отказ отражает failure-лог внешней операции после выхода из монитора
         if (Thread.holdsLock(lifecycle.monitor())) {
             return;
         }

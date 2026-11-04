@@ -26,6 +26,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
@@ -747,13 +749,7 @@ class BootstrapTerminalTransitionsTest {
                 readiness,
                 agentInstanceId
         );
-        journal.publishReady(ExtensionReadinessWireSnapshot.ready(
-                (PlatformExtensionReadinessSnapshot.Ready) readiness.snapshot(),
-                agentInstanceId.toString(),
-                BATCH_ID,
-                READY_EVIDENCE_GENERATION,
-                evidence
-        ));
+        publishReady(lifecycle, journal, readiness, agentInstanceId, evidence);
         return activeFixture(lifecycle, journal, readiness, evidence);
     }
 
@@ -776,14 +772,24 @@ class BootstrapTerminalTransitionsTest {
                 readiness,
                 agentInstanceId
         ));
-        journal.publishReady(ExtensionReadinessWireSnapshot.ready(
-                (PlatformExtensionReadinessSnapshot.Ready) readiness.snapshot(),
-                agentInstanceId.toString(),
-                BATCH_ID,
-                READY_EVIDENCE_GENERATION,
-                evidence
-        ));
+        publishReady(lifecycle, journal, readiness, agentInstanceId, evidence);
         return activeFixture(lifecycle, journal, readiness, evidence);
+    }
+
+    private static void publishReady(BootstrapLifecycleState lifecycle,
+                                     BootstrapReadinessJournal journal,
+                                     PlatformExtensionReadiness readiness,
+                                     AgentInstanceId agentInstanceId,
+                                     ExtensionRuntimeEvidence evidence) {
+        synchronized (lifecycle.monitor()) {
+            journal.publishReady(ExtensionReadinessWireSnapshot.ready(
+                    (PlatformExtensionReadinessSnapshot.Ready) readiness.snapshot(),
+                    agentInstanceId.toString(),
+                    BATCH_ID,
+                    READY_EVIDENCE_GENERATION,
+                    evidence
+            ));
+        }
     }
 
     private static Fixture activeFixture(BootstrapLifecycleState lifecycle, BootstrapReadinessJournal journal) {
@@ -796,6 +802,12 @@ class BootstrapTerminalTransitionsTest {
                                          PlatformExtensionReadiness readiness,
                                          ExtensionRuntimeEvidence evidence) {
         BootstrapTerminalTransitions transitions = new BootstrapTerminalTransitions(lifecycle, journal);
+        AutoconfigureSession session = mock(AutoconfigureSession.class);
+        when(session.evidence()).thenReturn(evidence);
+        lifecycle.beginPrepare();
+        lifecycle.completePrepare(session);
+        lifecycle.beginActivation();
+        lifecycle.attachResources(new BootstrapResources());
         lifecycle.commitActive();
         return new Fixture(lifecycle, journal, transitions, readiness, evidence);
     }

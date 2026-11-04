@@ -1,6 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
@@ -27,12 +29,16 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFa
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
 import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSnapshotAssertions.failureOf;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
@@ -387,5 +393,70 @@ class BootstrapCoordinatorActivationTest {
 
             assertThat(poller.isAlive()).as("snapshot-poller terminated").isFalse();
         }
+    }
+
+    @Test
+    void close_during_activation_waits_for_activation_and_leaves_no_runtime_registrations() throws Exception {
+        // given
+        CountDownLatch samplingRegistrationEntered = new CountDownLatch(1);
+        CountDownLatch releaseSamplingRegistration = new CountDownLatch(1);
+        CountDownLatch closeStarted = new CountDownLatch(1);
+        MBeanServer server = serverBlockingOnSampling(samplingRegistrationEntered, releaseSamplingRegistration);
+
+        try (BootstrapCoordinator coordinator = coordinator().server(server).build()) {
+            AutoconfigureSession session = coordinator.prepare(config());
+            satisfyReadinessBarrier(session);
+
+            try (SdkTracerProvider tracerProvider = providerFor(session)) {
+                FutureTask<Void> activation = new FutureTask<>(() -> coordinator.activate(tracerProvider), null);
+                FutureTask<Void> close = new FutureTask<>(() -> {
+                    closeStarted.countDown();
+                    coordinator.close();
+                }, null);
+                Thread.ofPlatform().daemon().name("bootstrap-activation-close-race").start(activation);
+                assertThat(samplingRegistrationEntered.await(5, TimeUnit.SECONDS)).isTrue();
+
+                // when
+                Thread.ofPlatform().daemon().name("bootstrap-close-activation-race").start(close);
+                assertThat(closeStarted.await(5, TimeUnit.SECONDS)).isTrue();
+
+                // then
+                assertThatThrownBy(() -> close.get(250, TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+                releaseSamplingRegistration.countDown();
+                assertThatCode(() -> activation.get(5, TimeUnit.SECONDS)).doesNotThrowAnyException();
+                assertThatCode(() -> close.get(5, TimeUnit.SECONDS)).doesNotThrowAnyException();
+            }
+
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.CLOSED);
+            assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isFalse();
+            assertThatDiagnosticMBean(server).isNotRegistered();
+        } finally {
+            releaseSamplingRegistration.countDown();
+        }
+    }
+
+    private static MBeanServer serverBlockingOnSampling(CountDownLatch entered, CountDownLatch release) {
+        MBeanServer delegate = MBeanServerFactory.newMBeanServer();
+        return (MBeanServer) Proxy.newProxyInstance(
+                BootstrapCoordinatorActivationTest.class.getClassLoader(),
+                new Class<?>[] {MBeanServer.class},
+                (proxy, method, arguments) -> {
+                    if ("registerMBean".equals(method.getName())
+                            && arguments != null
+                            && arguments.length == 2
+                            && DomainObjectNames.SAMPLING.equals(arguments[1])) {
+                        entered.countDown();
+                        if (!release.await(5, TimeUnit.SECONDS)) {
+                            throw new AssertionError("Sampling MBean registration was not released");
+                        }
+                    }
+
+                    try {
+                        return method.invoke(delegate, arguments);
+                    } catch (InvocationTargetException failure) {
+                        throw failure.getCause();
+                    }
+                }
+        );
     }
 }

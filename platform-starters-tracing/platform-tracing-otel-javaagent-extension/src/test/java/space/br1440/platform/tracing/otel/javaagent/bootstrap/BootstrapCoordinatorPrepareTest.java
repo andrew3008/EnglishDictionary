@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.awaitility.Awaitility.await;
@@ -628,6 +629,30 @@ class BootstrapCoordinatorPrepareTest {
         } finally {
             continuePrepare.countDown();
         }
+    }
+
+    @Test
+    void reentrant_close_during_prepare_is_rejected_and_prepare_ownership_is_released() {
+        // given
+        AtomicReference<BootstrapCoordinator> coordinatorReference = new AtomicReference<>();
+        BootstrapCoordinator coordinator = coordinator()
+                .verifier(extensionVersion -> {
+                    coordinatorReference.get().close();
+                    return RuntimeEvidenceTestFixtures.evidence(extensionVersion);
+                })
+                .build();
+        coordinatorReference.set(coordinator);
+
+        // when
+        Throwable thrown = catchThrowable(() -> coordinator.prepare(config()));
+
+        // then
+        assertThat(thrown).isInstanceOf(BootstrapException.class);
+        assertThat(((BootstrapException) thrown).failure().cause())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Bootstrap close cannot run reentrantly during preparation");
+        assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+        assertThatCode(coordinator::close).doesNotThrowAnyException();
     }
 
     @Test

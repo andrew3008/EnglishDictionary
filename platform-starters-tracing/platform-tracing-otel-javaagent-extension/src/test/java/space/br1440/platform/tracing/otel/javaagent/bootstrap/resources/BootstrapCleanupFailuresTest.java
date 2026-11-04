@@ -381,6 +381,41 @@ class BootstrapCleanupFailuresTest {
         assertThat(resourceLabel).isEqualTo("unknown");
     }
 
+    @Test
+    void resourceLabelPropagatesOnlyFatalCauseAccessorFailure() {
+        // given
+        LinkageError accessorFailure = new LinkageError("Fatal cause inspection failure");
+        ThrowingCauseException fatalAccessor = new ThrowingCauseException("Fatal accessor failure", () -> accessorFailure);
+        ThrowingCauseException ordinaryAccessor = new ThrowingCauseException(
+                "Ordinary accessor failure",
+                () -> new IllegalStateException("Cause inspection failed")
+        );
+
+        // when
+        Throwable fatalOutcome = catchThrowable(() -> BootstrapCleanupFailures.resourceLabel(fatalAccessor));
+        String ordinaryLabel = BootstrapCleanupFailures.resourceLabel(ordinaryAccessor);
+
+        // then
+        assertThat(fatalOutcome).isSameAs(accessorFailure);
+        assertThat(ordinaryLabel).isEqualTo("unknown");
+    }
+
+    @Test
+    void rethrowWrapsCheckedFailureInsteadOfCastingIt() {
+        // given
+        Exception checked = new Exception("Checked cleanup failure");
+
+        // when
+        Throwable outcome = catchThrowable(() -> BootstrapCleanupFailures.rethrow(checked));
+
+        // then
+        assertThat(outcome)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Checked failure cannot be rethrown by bootstrap cleanup")
+                .cause()
+                .isSameAs(checked);
+    }
+
     private static Stream<Arguments> promotionOrders() {
         return Stream.of(
                 Arguments.of("assertion then linkage", true),

@@ -163,6 +163,10 @@ final class BootstrapLifecycleState {
 
     void commitActive() {
         synchronized (monitor) {
+            if (state != BootstrapState.ACTIVATING) {
+                throw new IllegalStateException("Bootstrap activation cannot commit from state " + state);
+            }
+
             this.state = BootstrapState.ACTIVE;
         }
     }
@@ -219,7 +223,7 @@ final class BootstrapLifecycleState {
         }
     }
 
-    BootstrapFailure classifyCloseFailure(CloseContext context, Throwable cleanupFailure) {
+    static BootstrapFailure classifyCloseFailure(CloseContext context, Throwable cleanupFailure) {
         Objects.requireNonNull(context, "context");
         Objects.requireNonNull(cleanupFailure, "cleanupFailure");
 

@@ -35,7 +35,6 @@ final class BootstrapActivation {
     private static final int INSTALLATION_PROTOCOL_VERSION = 1;
     private static final long INITIAL_EVIDENCE_GENERATION = 1L;
     private static final String PROLOGUE_SUBPHASE = "activation-prologue";
-    private static final String NO_BATCH_ID = "";
 
     private final BootstrapLifecycleState lifecycle;
     private final BootstrapReadinessJournal journal;
@@ -71,7 +70,7 @@ final class BootstrapActivation {
                         BootstrapFailureCodes.classify(cause, ACTIVATION_FAILED),
                         cause,
                         resources,
-                        NO_BATCH_ID,
+                        BatchIds.NONE,
                         fallbackEvidence
                 );
             }
@@ -257,7 +256,7 @@ final class BootstrapActivation {
         private final ExtensionRuntimeEvidence evidence;
 
         private ActivationPhase phase = ActivationPhase.SAMPLER_POSTCONDITION;
-        private String batchId = NO_BATCH_ID;
+        private String batchId = BatchIds.NONE;
         private ExtensionReadinessWireSnapshot ready;
 
         ActivationAttempt(AutoconfigureSession session,

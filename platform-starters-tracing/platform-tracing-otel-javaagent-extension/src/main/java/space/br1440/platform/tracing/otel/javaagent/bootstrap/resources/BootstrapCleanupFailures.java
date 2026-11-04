@@ -48,11 +48,14 @@ public final class BootstrapCleanupFailures {
     }
 
     public static void rethrow(Throwable failure) {
-        if (failure instanceof Error error) {
-            throw error;
+        switch (Objects.requireNonNull(failure, "failure")) {
+            case Error error -> throw error;
+            case RuntimeException runtimeFailure -> throw runtimeFailure;
+            default -> throw new IllegalStateException(
+                    "Checked failure cannot be rethrown by bootstrap cleanup",
+                    failure
+            );
         }
-
-        throw (RuntimeException) failure;
     }
 
     public static Throwable withResourceLabel(String resourceLabel, Throwable failure) {
@@ -71,7 +74,7 @@ public final class BootstrapCleanupFailures {
                 return cleanupFailure.resourceLabel();
             }
 
-            current = current.getCause();
+            current = causeOf(current);
         }
 
         return UNKNOWN_RESOURCE_LABEL;
@@ -138,6 +141,18 @@ public final class BootstrapCleanupFailures {
         }
 
         return complete ? Reach.ABSENT : Reach.UNKNOWN;
+    }
+
+    private static Throwable causeOf(Throwable failure) {
+        try {
+            return failure.getCause();
+        } catch (RuntimeException | Error accessorFailure) {
+            if (PlatformThrowables.isFatal(accessorFailure)) {
+                throw accessorFailure;
+            }
+
+            return null;
+        }
     }
 
     private enum Reach {

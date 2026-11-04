@@ -39,7 +39,7 @@ final class BootstrapTerminalTransitions {
     Optional<FailureAdmission> terminalizeStartup(Throwable cause, ExtensionRuntimeEvidence evidence) {
         synchronized (lifecycle.monitor()) {
             return lifecycle.failPrepared(AGENT_STARTUP_FAILED, FailureSite.startup().phase(), cause)
-                    .map(admission -> project(admission, "", evidence));
+                    .map(admission -> project(admission, BatchIds.NONE, evidence));
         }
     }
 
@@ -50,7 +50,7 @@ final class BootstrapTerminalTransitions {
 
         synchronized (lifecycle.monitor()) {
             return lifecycle.recordMissingPreparation(cause)
-                    .map(admission -> project(admission, "", evidence));
+                    .map(admission -> project(admission, BatchIds.NONE, evidence));
         }
     }
 
@@ -69,7 +69,7 @@ final class BootstrapTerminalTransitions {
         Objects.requireNonNull(cleanupFailure, "cleanupFailure");
 
         synchronized (lifecycle.monitor()) {
-            BootstrapFailure classified = lifecycle.classifyCloseFailure(context, cleanupFailure);
+            BootstrapFailure classified = BootstrapLifecycleState.classifyCloseFailure(context, cleanupFailure);
             publishCurrentFailure(classified);
         }
     }
