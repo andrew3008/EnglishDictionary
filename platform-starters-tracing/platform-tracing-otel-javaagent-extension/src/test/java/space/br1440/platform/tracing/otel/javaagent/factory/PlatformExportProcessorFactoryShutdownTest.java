@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.factory;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -13,7 +14,9 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
@@ -54,8 +57,7 @@ class PlatformExportProcessorFactoryShutdownTest {
 
         try (stock) {
             // when
-            SpanProcessor replacement =
-                    factory.maybeReplaceExportProcessor(stock, config(Map.of()));
+            SpanProcessor replacement = factory.maybeReplaceExportProcessor(stock, config(Map.of()));
 
             try (replacement) {
                 // then
@@ -192,6 +194,42 @@ class PlatformExportProcessorFactoryShutdownTest {
                     });
         } finally {
             replacement.shutdown().join(1, TimeUnit.SECONDS);
+        }
+    }
+
+    @Test
+    void registrationFailureShutsDownTheUnpublishedReplacement() {
+        // given
+        PlatformTracingMBeanRegistrar registrar = spy(new PlatformTracingMBeanRegistrar(AgentInstanceId.random()));
+        PlatformExportProcessorFactory factory = factory(registrar);
+        AtomicInteger shutdowns = new AtomicInteger();
+        AtomicReference<PlatformDropOldestExportSpanProcessor> created = new AtomicReference<>();
+        IllegalStateException marker = new IllegalStateException("registration failed");
+        doAnswer(invocation -> {
+            created.set(invocation.getArgument(0));
+            throw marker;
+        }).when(registrar).setExportProcessor(any());
+        SpanExporter captured = factory.captureExporter(
+                exporter(shutdowns), TracingSettingsSourceTestFixtures.boundDefaults(AgentInstanceId.random()));
+        try (BatchSpanProcessor stock = BatchSpanProcessor.builder(captured).build()) {
+            try {
+                // when
+                Throwable failure = catchThrowable(() -> factory.maybeReplaceExportProcessor(stock, config(Map.of())));
+
+                // then
+                assertThat(failure).isSameAs(marker);
+                assertThat(created.get()).isNotNull();
+                Awaitility.await().atMost(2, TimeUnit.SECONDS).untilAsserted(() -> {
+                    assertThat(created.get().metricsSnapshot().lifecycleState()).isEqualTo("TERMINATED");
+                    assertThat(shutdowns).hasValue(1);
+                });
+                assertThat(registrar.extensionReadiness().snapshot().has(
+                        PlatformExtensionCapability.EXPORT_PATH_PROTECTED)).isFalse();
+            } finally {
+                if (created.get() != null) {
+                    created.get().shutdown().join(3, TimeUnit.SECONDS);
+                }
+            }
         }
     }
 

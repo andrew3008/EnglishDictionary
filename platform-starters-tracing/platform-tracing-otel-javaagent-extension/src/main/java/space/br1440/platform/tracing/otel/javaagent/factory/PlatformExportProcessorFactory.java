@@ -89,13 +89,28 @@ public final class PlatformExportProcessorFactory {
     public SpanProcessor maybeReplaceExportProcessor(SpanProcessor processor,
                                                      ConfigProperties config) {
         scrubbingRuntime.acknowledgeExportModeResolved();
-        SpanProcessor exportProcessor = selectExportProcessor(processor, config);
-        markExportPathProtected();
-        return exportProcessor;
+        PlatformDropOldestExportSpanProcessor replacement = selectExportProcessor(processor, config);
+        try {
+            jmxRegistrar.setExportProcessor(replacement);
+            markExportPathProtected();
+            log.log(ExportPipelineLogEvent.DROP_OLDEST_EXPORT_PROCESSOR_ENABLED,fields -> fields
+                    .putLong(AgentLogField.COUNT, replacement.metricsSnapshot().queueCapacity()));
+            return replacement;
+        } catch (Throwable failure) {
+            try {
+                replacement.shutdown();
+            } catch (Throwable cleanupFailure) {
+                if (cleanupFailure != failure) {
+                    failure.addSuppressed(cleanupFailure);
+                }
+            }
+
+            throw failure;
+        }
     }
 
-    private SpanProcessor selectExportProcessor(SpanProcessor processor,
-                                                ConfigProperties config) {
+    private PlatformDropOldestExportSpanProcessor selectExportProcessor(SpanProcessor processor,
+                                                                        ConfigProperties config) {
         if (capturedExporters.size() != 1) {
             throw new IllegalStateException(
                     "Expected exactly one captured span exporter, found " + capturedExporters.size()
@@ -130,10 +145,7 @@ public final class PlatformExportProcessorFactory {
         }
 
         PlatformDropOldestExportSpanProcessor replacement = replacementBuilder.build();
-        jmxRegistrar.setExportProcessor(replacement);
-        log.log(ExportPipelineLogEvent.DROP_OLDEST_EXPORT_PROCESSOR_ENABLED,
-                fields -> fields.putLong(AgentLogField.COUNT, replacement.metricsSnapshot().queueCapacity()));
-
+        stockExporter.replacement = replacement;
         return replacement;
     }
 
@@ -145,6 +157,7 @@ public final class PlatformExportProcessorFactory {
     private static final class ReplacementAwareSpanExporter implements SpanExporter {
         private final SafeSpanExporter delegate;
         private final AtomicBoolean suppressReplacementShutdown = new AtomicBoolean();
+        private volatile PlatformDropOldestExportSpanProcessor replacement;
 
         private ReplacementAwareSpanExporter(SafeSpanExporter delegate) {
             this.delegate = delegate;
@@ -174,7 +187,8 @@ public final class PlatformExportProcessorFactory {
                 return CompletableResultCode.ofSuccess();
             }
 
-            return delegate.shutdown();
+            PlatformDropOldestExportSpanProcessor owner = replacement;
+            return (owner == null) ? delegate.shutdown() : owner.shutdown();
         }
     }
 }

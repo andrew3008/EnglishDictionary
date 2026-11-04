@@ -3,6 +3,8 @@ package space.br1440.platform.tracing.otel.javaagent.processor.dropoldest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -139,30 +141,43 @@ class ExportBufferDelegatePendingTest {
     void admitAndFlushDoNotWakeTheWorkerWhileDelegateIsPending() throws InterruptedException {
         // given
         AtomicInteger clockReads = new AtomicInteger();
+        AtomicReference<CountDownLatch> clockReadSignal = new AtomicReference<>();
         ExportBuffer buffer = new ExportBuffer(4, 1, new DropOldestExportMetrics(), () -> {
             clockReads.incrementAndGet();
+            CountDownLatch signal = clockReadSignal.get();
+            if (signal != null) {
+                signal.countDown();
+            }
             return System.nanoTime();
         });
         buffer.admit(spanData());
         SpanQueue.Batch timedOut = awaitBatch(buffer);
         buffer.completeExport(timedOut, false, true);
+        CountDownLatch workerAtClock = new CountDownLatch(1);
+        clockReadSignal.set(workerAtClock);
         Thread waiter = new Thread(() -> buffer.awaitNextAction(SCHEDULE_DELAY_NANOS, System.nanoTime()));
         waiter.start();
-        awaitTimedWaiting(waiter);
-        int readsBefore = clockReads.get();
 
-        // when
-        for (int index = 0; index < 100; index++) {
-            buffer.admit(spanData());
+        try {
+            assertThat(workerAtClock.await(3, TimeUnit.SECONDS)).isTrue();
+            // Захват блокировки подтверждает, что worker перешёл к ожиданию.
+            buffer.snapshot();
+            int readsBefore = clockReads.get();
+
+            // when
+            for (int index = 0; index < 100; index++) {
+                buffer.admit(spanData());
+            }
+            CompletableResultCode flush = buffer.requestFlush();
+
+            // then
+            assertThat(waiter.join(Duration.ofMillis(200))).isFalse();
+            assertThat(clockReads).hasValue(readsBefore);
+            assertThat(flush.isDone()).isFalse();
+        } finally {
+            buffer.releaseDelegate();
+            assertThat(waiter.join(Duration.ofSeconds(3))).isTrue();
         }
-        CompletableResultCode flush = buffer.requestFlush();
-        awaitTimedWaiting(waiter);
-
-        // then
-        assertThat(clockReads).hasValue(readsBefore);
-        assertThat(flush.isDone()).isFalse();
-        buffer.releaseDelegate();
-        assertThat(waiter.join(Duration.ofSeconds(3))).isTrue();
     }
 
     @Test
@@ -185,10 +200,21 @@ class ExportBufferDelegatePendingTest {
         );
     }
 
-    private static void awaitTimedWaiting(Thread thread) throws InterruptedException {
-        while (thread.getState() != Thread.State.TIMED_WAITING) {
-            Thread.sleep(1L);
-        }
+    @Test
+    void emptyFlushDoesNotReopenAnEarlierTimedOutBatch() {
+        // given
+        ExportBuffer buffer = new ExportBuffer(4, 1, new DropOldestExportMetrics());
+        buffer.admit(spanData());
+        SpanQueue.Batch timedOut = awaitBatch(buffer);
+        buffer.completeExport(timedOut, false, true);
+
+        // when
+        CompletableResultCode flush = buffer.requestFlush();
+
+        // then
+        assertThat(flush.isSuccess()).isTrue();
+        buffer.releaseDelegate();
+        assertThat(flush.isSuccess()).isTrue();
     }
 
     private static SpanQueue.Batch awaitBatch(ExportBuffer buffer) {

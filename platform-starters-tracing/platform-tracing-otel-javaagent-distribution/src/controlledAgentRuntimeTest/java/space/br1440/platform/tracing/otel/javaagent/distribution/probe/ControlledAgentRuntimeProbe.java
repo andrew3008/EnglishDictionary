@@ -84,12 +84,34 @@ public final class ControlledAgentRuntimeProbe {
             BootstrapDropPath.verify();
         }
 
+        verifyExportWorkerOwnership();
         verifyProcessValidationState(server, agentInstanceId);
         installShutdownObserver(server);
 
         System.out.printf("CONTROLLED_AGENT_PROBE_OK version=%s schema=%s capabilities=%d%n",
                 probeArguments.version(), JmxWireContract.SCHEMA_ID,
                 JmxWireContract.REQUIRED_CAPABILITIES.size());
+    }
+
+    private static void verifyExportWorkerOwnership() throws InterruptedException {
+        MonotonicDeadline deadline = MonotonicDeadline.after(Duration.ofSeconds(3));
+        while (deadline.hasRemaining()) {
+            if (exportWorkerCount("platform-tracing-drop-oldest-exporter") == 1
+                    && exportWorkerCount("BatchSpanProcessor_WorkerThread") == 0) {
+                return;
+            }
+
+            Thread.sleep(READINESS_POLL_INTERVAL);
+        }
+
+        throw new IllegalStateException("Expected one platform export worker and no stock BSP worker");
+    }
+
+    private static long exportWorkerCount(String name) {
+        return Thread.getAllStackTraces().keySet().stream()
+                .filter(Thread::isAlive)
+                .filter(thread -> name.equals(thread.getName()))
+                .count();
     }
 
     private static void installShutdownObserver(MBeanServer server) {
@@ -103,7 +125,9 @@ public final class ControlledAgentRuntimeProbe {
     private static void awaitReadinessWithdrawal(MBeanServer server) {
         MonotonicDeadline deadline = MonotonicDeadline.after(SHUTDOWN_OBSERVER_TIMEOUT);
         while (deadline.hasRemaining()) {
-            if (!server.isRegistered(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME)) {
+            if (!server.isRegistered(JmxWireContract.EXTENSION_READINESS_OBJECT_NAME)
+                    && exportWorkerCount("platform-tracing-drop-oldest-exporter") == 0
+                    && exportWorkerCount("BatchSpanProcessor_WorkerThread") == 0) {
                 System.out.println(SHUTDOWN_OK_MARKER);
                 return;
             }
@@ -116,7 +140,7 @@ public final class ControlledAgentRuntimeProbe {
             }
         }
 
-        throw new IllegalStateException("Readiness MBean remained registered after shutdown");
+        throw new IllegalStateException("Readiness MBean or export worker remained active after shutdown");
     }
 
     private static void verifyHermeticLaunch(Path controlledAgent, ProbeMode mode) throws IOException {

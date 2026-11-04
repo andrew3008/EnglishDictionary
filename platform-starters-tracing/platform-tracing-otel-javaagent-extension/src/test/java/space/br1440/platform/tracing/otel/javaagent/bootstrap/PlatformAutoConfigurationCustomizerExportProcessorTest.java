@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
 
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -228,6 +229,33 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
         }
 
         assertThat(server.isRegistered(DomainObjectNames.EXTENSION_READINESS)).isFalse();
+    }
+
+    @Test
+    void failureInLaterCustomizerClosesTheReplacementThroughUpstreamCleanup() {
+        // given
+        AtomicReference<PlatformDropOldestExportSpanProcessor> replacement = new AtomicReference<>();
+        AutoConfiguredOpenTelemetrySdkBuilder builder = baseBuilder();
+        newProvider().customize(builder);
+        IllegalStateException marker = new IllegalStateException("later processor customizer failed");
+        builder.addSpanProcessorCustomizer((processor, config) -> {
+            replacement.set((PlatformDropOldestExportSpanProcessor) processor);
+            throw marker;
+        });
+        try {
+            // when
+            Throwable failure = catchThrowable(builder::build);
+
+            // then
+            assertThat(failure).hasRootCause(marker);
+            assertThat(replacement.get()).isNotNull();
+            Awaitility.await().atMost(3, TimeUnit.SECONDS).untilAsserted(() ->
+                    assertThat(replacement.get().metricsSnapshot().lifecycleState()).isEqualTo("TERMINATED"));
+        } finally {
+            if (replacement.get() != null) {
+                replacement.get().shutdown().join(3, TimeUnit.SECONDS);
+            }
+        }
     }
 
     @SuppressWarnings("SameParameterValue")
