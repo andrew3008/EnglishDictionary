@@ -428,7 +428,7 @@ final class BootstrapCoordinator implements AutoCloseable {
 
     private ExtensionRuntimeEvidence currentEvidence() {
         ExtensionRuntimeEvidence evidence = lifecycle.currentEvidence();
-        return evidence == null ? unavailableEvidence() : evidence;
+        return (evidence == null) ? unavailableEvidence() : evidence;
     }
 
     private ExtensionRuntimeEvidence unavailableEvidence() {
