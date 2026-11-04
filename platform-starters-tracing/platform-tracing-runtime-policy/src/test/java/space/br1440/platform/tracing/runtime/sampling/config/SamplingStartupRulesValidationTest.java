@@ -9,9 +9,9 @@ import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.runtime.sampling.properties.SamplingPolicyPropertiesValidator;
+import space.br1440.platform.tracing.runtime.sampling.model.SamplingStartupRules;
 
-class SamplingPolicyPropertiesValidatorTest {
+class SamplingStartupRulesValidationTest {
 
     @Test
     void acceptsValidProductionInput() {
@@ -21,7 +21,7 @@ class SamplingPolicyPropertiesValidatorTest {
 
         // when
         // then
-        assertThatCode(() -> SamplingPolicyPropertiesValidator.validate(droppedRoutes, forceRecordValues))
+        assertThatCode(() -> SamplingStartupRules.create(droppedRoutes, forceRecordValues))
                 .doesNotThrowAnyException();
     }
 
@@ -33,11 +33,11 @@ class SamplingPolicyPropertiesValidatorTest {
 
         // when
         // then
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(null, forceRecordValues))
+        assertThatThrownBy(() -> SamplingStartupRules.create(null, forceRecordValues))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("droppedRoutes");
 
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(droppedRoutes, null))
+        assertThatThrownBy(() -> SamplingStartupRules.create(droppedRoutes, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("forceRecordValues");
     }
@@ -50,11 +50,11 @@ class SamplingPolicyPropertiesValidatorTest {
 
         // when
         // then
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(nullPath, List.of()))
+        assertThatThrownBy(() -> SamplingStartupRules.create(nullPath, List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Drop path must not be null or blank");
 
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(List.of("   "), List.of()))
+        assertThatThrownBy(() -> SamplingStartupRules.create(List.of("   "), List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Drop path must not be null or blank");
     }
@@ -66,7 +66,7 @@ class SamplingPolicyPropertiesValidatorTest {
 
         // when
         // then
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(droppedRoutes, List.of()))
+        assertThatThrownBy(() -> SamplingStartupRules.create(droppedRoutes, List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Drop path must start with /");
     }
@@ -76,14 +76,14 @@ class SamplingPolicyPropertiesValidatorTest {
         // given
         List<String> droppedRoutes = IntStream.rangeClosed(
                         0,
-                        SamplingPolicyPropertiesValidator.MAX_DROP_PATHS
+                        SamplingStartupRules.MAX_DROP_PATHS
                 )
                 .mapToObj(index -> "/path-" + index)
                 .toList();
 
         // when
         // then
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(droppedRoutes, List.of()))
+        assertThatThrownBy(() -> SamplingStartupRules.create(droppedRoutes, List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Too many drop paths configured");
     }
@@ -96,11 +96,11 @@ class SamplingPolicyPropertiesValidatorTest {
 
         // when
         // then
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(List.of(), nullValue))
+        assertThatThrownBy(() -> SamplingStartupRules.create(List.of(), nullValue))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Force record value must not be null or blank");
 
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(List.of(), List.of("   ")))
+        assertThatThrownBy(() -> SamplingStartupRules.create(List.of(), List.of("   ")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Force record value must not be null or blank");
     }
@@ -108,11 +108,11 @@ class SamplingPolicyPropertiesValidatorTest {
     @Test
     void rejectsTooLongForceRecordValue() {
         // given
-        String value = "x".repeat(SamplingPolicyPropertiesValidator.MAX_FORCE_VALUE_LENGTH + 1);
+        String value = "x".repeat(SamplingStartupRules.MAX_FORCE_VALUE_LENGTH + 1);
 
         // when
         // then
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(List.of(), List.of(value)))
+        assertThatThrownBy(() -> SamplingStartupRules.create(List.of(), List.of(value)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Force record value too long");
     }
@@ -122,14 +122,14 @@ class SamplingPolicyPropertiesValidatorTest {
         // given
         List<String> forceRecordValues = IntStream.rangeClosed(
                         0,
-                        SamplingPolicyPropertiesValidator.MAX_FORCE_VALUES
+                        SamplingStartupRules.MAX_FORCE_VALUES
                 )
                 .mapToObj(index -> "value-" + index)
                 .toList();
 
         // when
         // then
-        assertThatThrownBy(() -> SamplingPolicyPropertiesValidator.validate(List.of(), forceRecordValues))
+        assertThatThrownBy(() -> SamplingStartupRules.create(List.of(), forceRecordValues))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Too many force record values");
     }

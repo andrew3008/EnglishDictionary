@@ -5,8 +5,7 @@ import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
 import space.br1440.platform.tracing.runtime.sampling.model.ParentContextState;
-import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyDecision;
-import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyDecisionType;
+import space.br1440.platform.tracing.runtime.sampling.model.SamplingOutcome;
 import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyRequest;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -23,7 +22,6 @@ final class SamplingPolicyOtelAdapter {
 
     private static final AttributeKey<String> SAMPLING_REASON_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_SAMPLING_REASON);
     private static final AttributeKey<String> URL_PATH_KEY = AttributeKey.stringKey("url.path");
-    private static final SamplingResult FALLBACK_DROP = SamplingResult.create(SamplingDecision.DROP);
     private static final SamplingResult KILL_SWITCH_DROP = SamplingResult.create(SamplingDecision.DROP);
 
     private static final SamplingResult DROP_HARD = SamplingResult.create(
@@ -71,6 +69,8 @@ final class SamplingPolicyOtelAdapter {
             Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.GLOBAL_RATIO)
     );
 
+    private static final String[] METRIC_KEYS = createMetricKeys();
+
     static SamplingPolicyRequest toRequest(Context parentContext,
                                            String traceId,
                                            Attributes attributes) {
@@ -82,39 +82,32 @@ final class SamplingPolicyOtelAdapter {
         return new SamplingPolicyRequest(urlPath, traceId, forceValue, qaTrace, parentState);
     }
 
-    static SamplingResult toSamplingResult(SamplingPolicyDecision decision) {
-        if (decision.decisionType() == SamplingPolicyDecisionType.ABSTAIN) {
-            return FALLBACK_DROP;
-        }
-
-        if (decision.decisionType() == SamplingPolicyDecisionType.RECORD_ONLY) {
-            return SamplingResult.create(
-                    SamplingDecision.RECORD_ONLY,
-                    Attributes.of(SAMPLING_REASON_KEY, decision.reason().reasonCode())
-            );
-        }
-
-        return switch (decision.reason()) {
+    static SamplingResult toSamplingResult(SamplingOutcome outcome) {
+        return switch (outcome) {
             case KILL_SWITCH -> KILL_SWITCH_DROP;
             case HARD_DROP -> DROP_HARD;
             case FORCE_HEADER -> SAMPLE_FORCE_HEADER;
             case QA_TRACE -> SAMPLE_QA_TRACE;
-            case PARENT_DECISION -> SAMPLE_PARENT;
+            case PARENT_SAMPLED -> SAMPLE_PARENT;
             case PARENT_DROP -> DROP_PARENT;
-            case ROUTE_RATIO -> ROUTE_RATIO_SAMPLE;
-            case ROUTE_RATIO_DROP -> DROP_ROUTE_RATIO;
-            case DEFAULT_RATIO -> DEFAULT_RATIO_SAMPLE;
-            case DEFAULT_RATIO_DROP -> DROP_DEFAULT_RATIO;
-            case NO_MATCH -> FALLBACK_DROP;
+            case ROUTE_SAMPLE -> ROUTE_RATIO_SAMPLE;
+            case ROUTE_DROP -> DROP_ROUTE_RATIO;
+            case DEFAULT_SAMPLE -> DEFAULT_RATIO_SAMPLE;
+            case DEFAULT_DROP -> DROP_DEFAULT_RATIO;
         };
     }
 
-    static String metricReasonCode(SamplingPolicyDecision decision) {
-        if (decision.decisionType() == SamplingPolicyDecisionType.ABSTAIN) {
-            return PlatformSamplingReasons.FALLBACK_DROP;
+    private static String[] createMetricKeys() {
+        SamplingOutcome[] outcomes = SamplingOutcome.values();
+        String[] keys = new String[outcomes.length];
+        for (SamplingOutcome outcome : outcomes) {
+            keys[outcome.ordinal()] = toSamplingResult(outcome).getDecision().name() + ":" + outcome.reasonCode();
         }
+        return keys;
+    }
 
-        return decision.reason().reasonCode();
+    static String metricKey(SamplingOutcome outcome) {
+        return METRIC_KEYS[outcome.ordinal()];
     }
 
     private static ParentContextState resolveParentState(Context parentContext) {

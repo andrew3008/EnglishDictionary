@@ -2,17 +2,25 @@ package space.br1440.platform.tracing.otel.javaagent.sampler;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
+import space.br1440.platform.tracing.runtime.sampling.model.SamplingStartupRules;
 import space.br1440.platform.tracing.test.harness.SamplerHarness;
 
 import io.opentelemetry.api.common.Attributes;
@@ -155,6 +163,65 @@ class SafeSamplerTest {
         // then
         assertThat(afterOpen.getDecision()).isEqualTo(SamplingDecision.DROP);
         assertThat(delegateCalls.get()).isEqualTo(5);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0000000000000000zzzzzzzzzzzzzzzz", "0000000000000000fffffffffffffffff"})
+    void malformedNumericTraceIdFailsClosedWithoutPolicyCounter(String traceId) {
+        // given
+        CompositeSampler core = fractionalCore();
+        TracingDiagnostics diagnostics = new TracingDiagnostics();
+        SafeSampler safe = new SafeSampler(core, diagnostics);
+
+        // when
+        SamplingResult result = safe.shouldSample(Context.root(), traceId, "test", SpanKind.SERVER,
+                Attributes.empty(), List.of());
+
+        // then
+        assertThat(result.getDecision()).isEqualTo(SamplingDecision.DROP);
+        assertThat(result.getAttributes().isEmpty()).isTrue();
+        assertThat(core.getDecisionCounts()).isEmpty();
+        assertThat(diagnostics.getSamplerFailures()).isEqualTo(1);
+        assertThat(samplerEvent().errorType()).isEqualTo(NumberFormatException.class.getName());
+    }
+
+    @ParameterizedTest
+    @EmptySource
+    @ValueSource(strings = "0000000000000000000000000000001")
+    void shortTraceIdUsesDefensivePolicyDrop(String traceId) {
+        // given
+        CompositeSampler core = fractionalCore();
+        TracingDiagnostics diagnostics = new TracingDiagnostics();
+        SafeSampler safe = new SafeSampler(core, diagnostics);
+
+        // when
+        SamplingResult result = safe.shouldSample(Context.root(), traceId, "test", SpanKind.SERVER,
+                Attributes.empty(), List.of());
+
+        // then
+        assertThat(result.getDecision()).isEqualTo(SamplingDecision.DROP);
+        assertThat(core.getDecisionCount("DROP", "global_ratio_drop")).isEqualTo(1);
+        assertThat(diagnostics.getSamplerFailures()).isZero();
+    }
+
+    @Test
+    void nullTraceIdRemainsAnExplicitSdkEntryPrecondition() {
+        // given
+        CompositeSampler core = fractionalCore();
+        SafeSampler safe = new SafeSampler(core, new TracingDiagnostics());
+
+        // when
+        Throwable failure = catchThrowable(() -> safe.shouldSample(
+                Context.root(), null, "test", SpanKind.SERVER, Attributes.empty(), List.of()));
+
+        // then
+        assertThat(failure).isInstanceOf(NullPointerException.class);
+        assertThat(core.getDecisionCounts()).isEmpty();
+    }
+
+    private static CompositeSampler fractionalCore() {
+        return new CompositeSampler(TracingSettingsSourceTestFixtures.boundSampling(
+                AgentInstanceId.random(), true, Map.of(), 0.5), SamplingStartupRules.create(List.of(), List.of()));
     }
 
     private CapturedLogEvent samplerEvent() {

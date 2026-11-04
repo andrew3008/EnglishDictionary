@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.e2e;
 
+import java.io.IOException;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -56,7 +58,7 @@ public class PackagedTracingCertificationApplication {
         System.out.println(APPLICATION_READY_TOKEN);
     }
 
-    public static void main(String[] arguments) {
+    public static void main(String[] arguments) throws IOException {
         PackagedConfigServerScenario configServerScenario = PackagedConfigServerScenario.fromSystemProperties();
         SpringApplication application = new SpringApplication(PackagedTracingCertificationApplication.class);
         application.setWebApplicationType(WebApplicationType.NONE);
@@ -65,6 +67,11 @@ public class PackagedTracingCertificationApplication {
 
         try (ConfigurableApplicationContext context = application.run(arguments)) {
             configServerScenario.verify(context);
+
+            if ("SAMPLING".equals(System.getProperty("platformTracing.packagedScenario"))) {
+                PackagedSamplingScenario.verify(context);
+            }
+
             if ("URL_MASKING".equals(System.getProperty("platformTracing.packagedScenario"))) {
                 recordUrlFailure();
                 recordDiagnosticFailures(context.getBean(TraceOperations.class));

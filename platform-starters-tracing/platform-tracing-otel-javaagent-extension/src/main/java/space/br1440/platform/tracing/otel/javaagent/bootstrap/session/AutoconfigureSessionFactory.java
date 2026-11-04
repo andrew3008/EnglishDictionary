@@ -21,8 +21,7 @@ import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
-import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicySnapshot;
-import space.br1440.platform.tracing.runtime.sampling.properties.SamplingPolicySnapshotFactory;
+import space.br1440.platform.tracing.runtime.sampling.model.SamplingStartupRules;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;
@@ -66,7 +65,7 @@ public final class AutoconfigureSessionFactory {
         }
 
         TracingSettingsSource policy = TracingSettingsSource.fromStartup(extensionConfig, agentInstanceId);
-        CompositeSampler core = new CompositeSampler(policy, categoryBOverrides(extensionConfig.sampling()));
+        CompositeSampler core = new CompositeSampler(policy, startupRules(extensionConfig.sampling()));
         SafeSampler sampler = SafeSampler.protect(core);
         ScrubbingRuntime scrubbingRuntime = scrubberFactory.buildRuntime(extensionConfig);
         try {
@@ -102,8 +101,8 @@ public final class AutoconfigureSessionFactory {
         }
     }
 
-    private static SamplingPolicySnapshot categoryBOverrides(SamplingExtensionConfig sampling) {
-        return SamplingPolicySnapshotFactory.create(
+    private static SamplingStartupRules startupRules(SamplingExtensionConfig sampling) {
+        return SamplingStartupRules.create(
                 sampling.dropPaths(),
                 sampling.forceRecordValues()
         );

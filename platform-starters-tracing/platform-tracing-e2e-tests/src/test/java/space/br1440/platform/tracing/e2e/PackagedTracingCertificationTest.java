@@ -34,6 +34,9 @@ import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.e2e.artifact.ControlledAgentArtifactMutator;
 
+import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.trace.v1.Span;
+
 class PackagedTracingCertificationTest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -98,6 +101,73 @@ class PackagedTracingCertificationTest {
                 .doesNotContain("Unable to load extension")
                 .doesNotContain("Failed to load extension")
                 .doesNotContain("FATAL");
+    }
+
+    @Test
+    void packaged_agent_preserves_sampling_order_reasons_and_runtime_updates() throws Exception {
+        // given
+        List<byte[]> payloads = new CopyOnWriteArrayList<>();
+        HttpServer collector = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        collector.createContext("/v1/traces", exchange -> {
+            try (InputStream input = exchange.getRequestBody()) {
+                payloads.add(input.readAllBytes());
+            }
+            exchange.sendResponseHeaders(200, 0);
+            exchange.close();
+        });
+        collector.start();
+
+        PackagedProcessLauncher.ProcessResult result;
+        try {
+            Map<String, String> properties = new LinkedHashMap<>();
+            properties.put("platformTracing.packagedScenario", "SAMPLING");
+            properties.put("platform.environment", "LOCAL");
+            properties.put("platform.tracing.exporter.enabled", "true");
+            properties.put("platform.tracing.sampling.ratio", "0");
+            properties.put("platform.tracing.sampling.route-ratios", "/api=0,/api/keep=1");
+            properties.put("platform.tracing.javaagent.sampling.drop-paths", "/drop");
+            properties.put("platform.tracing.javaagent.sampling.force-record-values", "on");
+            properties.put("otel.exporter.otlp.traces.protocol", "http/protobuf");
+            properties.put("otel.exporter.otlp.traces.compression", "none");
+            properties.put("otel.exporter.otlp.traces.endpoint",
+                    "http://127.0.0.1:" + collector.getAddress().getPort() + "/v1/traces");
+
+            // when
+            result = launcher.launch(controlledRequest("sampling-core", applicationBootJar, controlledAgent,
+                    ControlledAgentArtifactMutator.sha256(controlledAgent), properties));
+        } finally {
+            collector.stop(0);
+        }
+
+        // then
+        assertSuccessful(result, "sampling-core");
+        assertThat(result.stdout()).contains(PackagedSamplingScenario.SUCCESS_TOKEN);
+        Map<String, String> reasons = new LinkedHashMap<>();
+        for (byte[] payload : payloads) {
+            for (var resource : ExportTraceServiceRequest.parseFrom(payload).getResourceSpansList()) {
+                for (var scope : resource.getScopeSpansList()) {
+                    for (Span span : scope.getSpansList()) {
+                        String caseId = samplingAttribute(span, "sampling.case");
+                        if (caseId != null) {
+                            assertThat(reasons.put(caseId, samplingAttribute(span, "platform.sampling.reason"))).isNull();
+                        }
+                    }
+                }
+            }
+        }
+
+        assertThat(reasons).containsExactlyInAnyOrderEntriesOf(Map.of(
+                "sampling-force", "force_header",
+                "sampling-qa", "qa_trace",
+                "sampling-route-keep", "route_ratio",
+                "sampling-parent-force", "force_header",
+                "sampling-updated-default", "global_ratio"
+        ));
+    }
+
+    private static String samplingAttribute(Span span, String key) {
+        return span.getAttributesList().stream().filter(attribute -> attribute.getKey().equals(key))
+                .map(attribute -> attribute.getValue().getStringValue()).findFirst().orElse(null);
     }
 
     @ParameterizedTest

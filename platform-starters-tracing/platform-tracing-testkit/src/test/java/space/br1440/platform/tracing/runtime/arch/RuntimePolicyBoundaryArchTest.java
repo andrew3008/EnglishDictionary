@@ -30,11 +30,6 @@ class RuntimePolicyBoundaryArchTest {
 
     @ArchTest
     @SuppressWarnings("unused")
-    static final ArchRule productionChainAccessIsRestricted =
-            ModuleTaxonomyArchRules.PRODUCTION_CHAIN_ACCESS_RESTRICTED;
-
-    @ArchTest
-    @SuppressWarnings("unused")
     static final ArchRule controlImplementationsRemainInRuntimePolicy =
             ModuleTaxonomyArchRules.CONTROL_IMPLS_ONLY_IN_RUNTIME_POLICY;
 

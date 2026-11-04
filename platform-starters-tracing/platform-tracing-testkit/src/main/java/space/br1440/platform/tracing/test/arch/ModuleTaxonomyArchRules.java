@@ -159,14 +159,6 @@ public final class ModuleTaxonomyArchRules {
                     "..runtime.sampling.properties..")
             .because("the sampling model must not depend on policy, engine or configuration layers");
 
-    public static final ArchRule PRODUCTION_CHAIN_ACCESS_RESTRICTED = classes()
-            .that().haveFullyQualifiedName(
-                    "space.br1440.platform.tracing.runtime.sampling.policy.ProductionSamplingPolicyChain")
-            .should().onlyHaveDependentClassesThat().resideInAnyPackage(
-                    "..runtime.sampling.policy..",
-                    "..runtime.sampling.engine..")
-            .because("the production policy chain is an internal engine integration type");
-
     public static final ArchRule CONTROL_IMPLS_ONLY_IN_RUNTIME_POLICY = classes()
             .that().implement("space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy")
             .or().implement("space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher")

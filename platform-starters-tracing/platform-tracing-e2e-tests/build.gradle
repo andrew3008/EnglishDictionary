@@ -67,6 +67,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation 'io.opentelemetry.proto:opentelemetry-proto'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

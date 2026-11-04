@@ -1,36 +1,35 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
-import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
-
-import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
-
-import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
-import io.opentelemetry.sdk.trace.samplers.SamplingResult;
-import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
-import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyDecision;
-import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyDecisionType;
-import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyRequest;
-import space.br1440.platform.tracing.test.assertions.SamplingAssertions;
-import space.br1440.platform.tracing.test.harness.SamplerHarness;
-import space.br1440.platform.tracing.test.harness.SamplingContextFactory;
-import space.br1440.platform.tracing.test.harness.SamplingDecisionCase;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
+import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourceTestFixtures;
+import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
+import space.br1440.platform.tracing.runtime.sampling.model.SamplingOutcome;
+import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyRequest;
+import space.br1440.platform.tracing.runtime.sampling.policy.SamplingPolicyEvaluator;
+import space.br1440.platform.tracing.test.assertions.SamplingAssertions;
+import space.br1440.platform.tracing.test.harness.SamplerHarness;
+import space.br1440.platform.tracing.test.harness.SamplingContextFactory;
+import space.br1440.platform.tracing.test.harness.SamplingDecisionCase;
 
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
+import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
 final class SamplingCharacterizationSupport {
 
     static void assertCharacterizedCase(SamplingDecisionCase c) {
+        // given
         TracingSettingsSource holder = TracingSettingsSourceTestFixtures.boundSampling(AgentInstanceId.random(),
                 c.enabled(),
                 c.routeRatios(),
@@ -47,8 +46,10 @@ final class SamplingCharacterizationSupport {
             harness.putStringAttribute("url.path", c.urlPath());
         }
 
+        // when
         SamplingResult result = harness.sample();
 
+        // then
         SamplingAssertions.assertDecision(result, c.expectedDecision());
         SamplingAssertions.assertSamplingReason(result, c.expectedReason());
 
@@ -56,26 +57,20 @@ final class SamplingCharacterizationSupport {
                 .as("JMX decision:reasonCode counter for case %s", c.caseId())
                 .isEqualTo(1L);
 
-        assertRuleOwnership(sampler, c);
+        assertRuleOwnership(c);
     }
 
-    private static void assertRuleOwnership(CompositeSampler sampler, SamplingDecisionCase c) {
+    private static void assertRuleOwnership(SamplingDecisionCase c) {
         SamplingPolicyRequest request = SamplingPolicyOtelAdapter.toRequest(
                 c.parentContext(),
                 c.traceId(),
                 c.urlPath() == null
                         ? Attributes.empty()
                         : Attributes.builder().put("url.path", c.urlPath()).build());
-        SamplingPolicyDecision decision = sampler.policyEngine().evaluate(
-                request,
-                sampler.acceptedPolicy().current().samplingEnabled(),
-                sampler.acceptedPolicy().current().samplingRouteRatios(),
-                sampler.acceptedPolicy().current().samplingRatio(),
-                sampler.categoryBOverrides());
-
-        String actualWinningRule = decision.decisionType() == SamplingPolicyDecisionType.ABSTAIN
-                ? null
-                : decision.winningRule();
+        SamplingOutcome decision = SamplingPolicyEvaluator.evaluate(
+                request, c.enabled(), c.routeRatios(), c.defaultRatio(),
+                CategoryBSamplingAccess.snapshot(c.droppedRoutes(), c.forceRecordValues()));
+        String actualWinningRule = decision.winningRule();
         assertThat(actualWinningRule)
                 .as("winning rule for case %s", c.caseId())
                 .isEqualTo(c.expectedWinningRule());

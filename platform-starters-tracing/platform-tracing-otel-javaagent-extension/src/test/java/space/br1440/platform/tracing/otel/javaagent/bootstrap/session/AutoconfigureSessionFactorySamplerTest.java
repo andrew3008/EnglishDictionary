@@ -60,12 +60,13 @@ class AutoconfigureSessionFactorySamplerTest {
             assertThat(sampler).isExactlyInstanceOf(SafeSampler.class);
             assertThat(core).isExactlyInstanceOf(CompositeSampler.class);
             assertThat(core.acceptedPolicy()).isSameAs(session.policy());
-            assertThat(core.categoryBOverrides().getDroppedRoutes())
-                    .containsExactlyElementsOf(session.extensionConfig().sampling().dropPaths());
-            assertThat(core.categoryBOverrides().getForceRecordValues())
-                    .containsExactlyInAnyOrderElementsOf(session.extensionConfig().sampling().forceRecordValues());
-            assertThat(core.categoryBOverrides().getRouteRatioMap()).isEmpty();
-            assertThat(core.categoryBOverrides().getDefaultRatio()).isEqualTo(1.0d);
+            assertThat(SamplerHarness.of(sampler).putStringAttribute("url.path", "/session-drop/check")
+                    .sample().getDecision()).isEqualTo(SamplingDecision.DROP);
+            Context forceContext = Context.root().with(PlatformTraceContextKeys.TRACE_CONTROL,
+                    new DefaultInboundTraceControlExtractor().fromHeaders("session-force", null, null));
+            SamplingResult forced = SamplerHarness.of(sampler).parentContext(forceContext).sample();
+            assertThat(forced.getAttributes().get(AttributeKey.stringKey("platform.sampling.reason")))
+                    .isEqualTo(PlatformSamplingReasons.FORCE_HEADER);
             assertThat(session.evidence()).isSameAs(evidence);
             verify(registrar).setCompositeSampler(same(core));
         }
@@ -112,7 +113,8 @@ class AutoconfigureSessionFactorySamplerTest {
         AgentInstanceId foreignAgentInstanceId = AgentInstanceId.random();
         AutoconfigureSessionFactory factory = factory();
 
-        // when/then
+        // when
+        // then
         assertThatThrownBy(() -> {
             try (AutoconfigureSession session = factory.create(
                     DefaultConfigProperties.createFromMap(Map.of("otel.traces.sampler", "always_off")),

@@ -11,32 +11,29 @@ import java.util.concurrent.atomic.LongAdder;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.runtime.sampling.engine.SamplingPolicyEngine;
-import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyDecision;
+import space.br1440.platform.tracing.runtime.sampling.model.SamplingOutcome;
 import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyRequest;
-import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicySnapshot;
+import space.br1440.platform.tracing.runtime.sampling.model.SamplingStartupRules;
+import space.br1440.platform.tracing.runtime.sampling.policy.SamplingPolicyEvaluator;
 
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.trace.data.LinkData;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
-import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
 import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 import lombok.NonNull;
 
 public final class CompositeSampler implements Sampler {
 
     private final TracingSettingsSource acceptedPolicy;
-    private final SamplingPolicyEngine policyEngine;
-    private final SamplingPolicySnapshot categoryBOverrides;
+    private final SamplingStartupRules startupRules;
 
     private final ConcurrentHashMap<String, LongAdder> decisionCounters = new ConcurrentHashMap<>();
 
-    public CompositeSampler(TracingSettingsSource acceptedPolicy, SamplingPolicySnapshot categoryBOverrides) {
+    public CompositeSampler(TracingSettingsSource acceptedPolicy, SamplingStartupRules startupRules) {
         this.acceptedPolicy = Objects.requireNonNull(acceptedPolicy, "acceptedPolicy");
-        this.categoryBOverrides = Objects.requireNonNull(categoryBOverrides, "categoryBOverrides");
-        this.policyEngine = SamplingPolicyEngine.productionEngine();
+        this.startupRules = Objects.requireNonNull(startupRules, "startupRules");
     }
 
     @Override
@@ -48,20 +45,19 @@ public final class CompositeSampler implements Sampler {
                 parentContext, traceId, attributes
         );
 
-        SamplingPolicyDecision decision = policyEngine.evaluate(
+        SamplingOutcome decision = SamplingPolicyEvaluator.evaluate(
                 request,
                 policy.samplingEnabled(),
                 policy.samplingRouteRatios(),
                 policy.samplingRatio(),
-                categoryBOverrides
+                startupRules
         );
         SamplingResult result = SamplingPolicyOtelAdapter.toSamplingResult(decision);
-        recordDecision(result.getDecision(), SamplingPolicyOtelAdapter.metricReasonCode(decision));
+        recordDecision(SamplingPolicyOtelAdapter.metricKey(decision));
         return result;
     }
 
-    private void recordDecision(SamplingDecision decision, String reason) {
-        String key = decision.name() + ":" + reason;
+    private void recordDecision(String key) {
         decisionCounters.computeIfAbsent(key, k -> new LongAdder()).increment();
     }
 
@@ -81,14 +77,6 @@ public final class CompositeSampler implements Sampler {
 
     public TracingSettingsSource acceptedPolicy() {
         return acceptedPolicy;
-    }
-
-    public SamplingPolicySnapshot categoryBOverrides() {
-        return categoryBOverrides;
-    }
-
-    public SamplingPolicyEngine policyEngine() {
-        return policyEngine;
     }
 
     public long getDecisionCount(String decision, String reason) {
