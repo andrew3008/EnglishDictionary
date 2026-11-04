@@ -19,6 +19,8 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
+import javax.management.ObjectName;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,12 +54,19 @@ class PackagedTracingCertificationTest {
             "space/br1440/platform/tracing/otel/javaagent/bootstrap/BootstrapAutoConfigurationCustomizerProvider.class";
     private static final String CUSTOMIZER_PROVIDER_SERVICE_ENTRY =
             "META-INF/services/io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider";
+    private static final String POST_READY_LISTENER_THROWN_MARKER = "FATAL_AFTER_READY_LISTENER_THROWN";
+    private static final String POST_READY_FAILURE_TYPE =
+            "space.br1440.platform.tracing.e2e.startup.PostReadyLinkageFailure";
+    private static final String POST_READY_PROBE_RESULT_PREFIX = "POST_READY_FAILURE_PROBE ";
+    private static final String POST_READY_PROBE_MBEAN_PREFIX = "POST_READY_FAILURE_PROBE_MBEAN ";
+    private static final String AGENT_START_FAILURE_MARKER = "ERROR io.opentelemetry.javaagent.OpenTelemetryAgent";
 
     private Path controlledAgent;
     private Path applicationBootJar;
     private Path dualSdkApplicationBootJar;
     private Path collisionAgent;
     private Path postSdkFailureListener;
+    private Path postReadyFailureProbe;
     private Path evidenceDirectory;
     private PackagedProcessLauncher launcher;
 
@@ -68,6 +77,7 @@ class PackagedTracingCertificationTest {
         dualSdkApplicationBootJar = requiredFile("platformTracing.dualSdkApplicationBootJar");
         collisionAgent = requiredFile("platformTracing.collisionAgentJar");
         postSdkFailureListener = requiredFile("platformTracing.postSdkFailureListenerJar");
+        postReadyFailureProbe = requiredFile("platformTracing.postReadyFailureProbeJar");
         evidenceDirectory = Path.of(requiredProperty("platformTracing.evidenceDirectory"))
                 .toAbsolutePath()
                 .normalize();
@@ -393,6 +403,59 @@ class PackagedTracingCertificationTest {
         assertThat(fixtureAgentSha).isNotEqualTo(sourceAgentSha);
         assertThat(ControlledAgentArtifactMutator.identity(fixtureAgent).getProperty("extension.sha256"))
                 .isEqualTo(fixtureExtensionSha);
+    }
+
+    @Test
+    void fatal_listener_failure_after_ready_escapes_agent_start_and_keeps_platform_active() throws Exception {
+        // given
+        Path fixtureAgent = ControlledAgentArtifactMutator.withFatalAfterReadyListener(
+                controlledAgent,
+                evidenceDirectory.resolve("fixture-agent-post-ready-fatal-listener.jar"),
+                postSdkFailureListener
+        );
+        Map<String, String> probeProperties = Map.of(
+                "platform.tracing.e2e.readiness-object-name",
+                JmxWireContract.EXTENSION_READINESS_OBJECT_NAME.getCanonicalName(),
+                "platform.tracing.e2e.readiness-attribute",
+                JmxWireContract.ATTRIBUTE_EXTENSION_READINESS_READINESS_SNAPSHOT,
+                "platform.tracing.e2e.readiness-lifecycle-field",
+                JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE
+        );
+        PackagedProcessLauncher.LaunchRequest request = controlledRequest(
+                "post-ready-fatal-listener", postReadyFailureProbe, fixtureAgent,
+                ControlledAgentArtifactMutator.sha256(fixtureAgent), probeProperties);
+
+        // when
+        PackagedProcessLauncher.ProcessResult result = launcher.launch(request);
+
+        // then
+        assertThat(result.stdout().lines().filter(POST_READY_LISTENER_THROWN_MARKER::equals))
+                .as("post-READY listener must fail exactly once; stdout=%s", result.stdout())
+                .containsExactly(POST_READY_LISTENER_THROWN_MARKER);
+        JsonNode summary = assertStartupFailureSummary(result);
+        assertThat(summary.path("fields").path("lifecycle").asText()).isEqualTo("ACTIVE");
+        assertThat(summary.path("fields").has("failureCode")).isFalse();
+        assertThat(summary.path("error_type").asText()).isEqualTo(POST_READY_FAILURE_TYPE);
+        assertThat(result.stderr().lines().filter(line -> line.contains("\"event_name\":\"EXTENSION_INSTALLED\"")))
+                .hasSize(1);
+        assertThat(result.stderr()).contains(AGENT_START_FAILURE_MARKER);
+        assertThat(result.stdout().lines().filter(line -> line.startsWith(POST_READY_PROBE_RESULT_PREFIX)))
+                .as("probe must observe the escaped instance and READY wire; stdout=%s", result.stdout())
+                .containsExactly(POST_READY_PROBE_RESULT_PREFIX + "identity=SAME lifecycle=READY");
+        assertThat(result.stdout().lines()
+                .filter(line -> line.startsWith(POST_READY_PROBE_MBEAN_PREFIX))
+                .map(line -> line.substring(POST_READY_PROBE_MBEAN_PREFIX.length())))
+                .containsAll(Stream.of(
+                                JmxWireContract.EXTENSION_READINESS_OBJECT_NAME,
+                                JmxWireContract.SAMPLING_OBSERVATION_OBJECT_NAME,
+                                JmxWireContract.SCRUBBING_OBSERVATION_OBJECT_NAME,
+                                JmxWireContract.VALIDATION_OBSERVATION_OBJECT_NAME,
+                                JmxWireContract.EXPORT_OBSERVATION_OBJECT_NAME,
+                                JmxWireContract.PROCESSOR_METRICS_OBSERVATION_OBJECT_NAME,
+                                JmxWireContract.DIAGNOSTICS_OBSERVATION_OBJECT_NAME,
+                                JmxWireContract.SETTINGS_STATUS_OBJECT_NAME)
+                        .map(ObjectName::getCanonicalName)
+                        .toList());
     }
 
     @Test

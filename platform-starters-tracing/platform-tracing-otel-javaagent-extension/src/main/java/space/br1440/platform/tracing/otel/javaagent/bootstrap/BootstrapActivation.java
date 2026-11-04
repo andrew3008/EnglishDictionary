@@ -4,6 +4,7 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFa
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_SAMPLER_REPLACED;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
@@ -33,6 +34,8 @@ final class BootstrapActivation {
     private static final String INSTALLATION_PROFILE = "platform-agent-secure-v1";
     private static final int INSTALLATION_PROTOCOL_VERSION = 1;
     private static final long INITIAL_EVIDENCE_GENERATION = 1L;
+    private static final String PROLOGUE_SUBPHASE = "activation-prologue";
+    private static final String NO_BATCH_ID = "";
 
     private final BootstrapLifecycleState lifecycle;
     private final BootstrapReadinessJournal journal;
@@ -46,7 +49,7 @@ final class BootstrapActivation {
         this.terminalTransitions = Objects.requireNonNull(terminalTransitions, "terminalTransitions");
     }
 
-    void activate(SdkTracerProvider tracerProvider, Runnable installLifecycleShutdownHook) {
+    Optional<ActivationFailure> activate(SdkTracerProvider tracerProvider, Runnable installLifecycleShutdownHook) {
         Objects.requireNonNull(tracerProvider, "tracerProvider");
         Objects.requireNonNull(installLifecycleShutdownHook, "installLifecycleShutdownHook");
 
@@ -63,7 +66,14 @@ final class BootstrapActivation {
                 installLifecycleShutdownHook.run();
                 attempt = new ActivationAttempt(session, resources, tracerProvider);
             } catch (RuntimeException | Error cause) {
-                failure = recordPrologueFailure(cause, fallbackEvidence);
+                failure = recordFailure(
+                        PROLOGUE_SUBPHASE,
+                        BootstrapFailureCodes.classify(cause, ACTIVATION_FAILED),
+                        cause,
+                        resources,
+                        NO_BATCH_ID,
+                        fallbackEvidence
+                );
             }
 
             if (failure == null) {
@@ -71,27 +81,12 @@ final class BootstrapActivation {
             }
         }
 
-        if (failure == null) {
-            return;
+        if (failure != null) {
+            return Optional.of(failure);
         }
 
-        String batchId = attempt == null ? "" : attempt.batchId();
-        ExtensionRuntimeEvidence evidence = attempt == null ? fallbackEvidence : attempt.evidence();
-        throw terminalTransitions.completeActivationFailure(
-                failure.classified(),
-                resources,
-                failure.cause(),
-                failure.sectionFailure(),
-                batchId,
-                evidence
-        );
-    }
-
-    private ActivationFailure recordPrologueFailure(Throwable cause, ExtensionRuntimeEvidence evidence) {
-        String failureCode = cause instanceof LinkageError
-                ? VerificationFailureCode.EXTENSION_LINKAGE_ERROR.name()
-                : ACTIVATION_FAILED;
-        return recordFailure(failureCode, "activation-prologue", cause, "", evidence);
+        emitInstalled(attempt.ready());
+        return Optional.empty();
     }
 
     private ActivationFailure runPhases(ActivationAttempt attempt) {
@@ -102,37 +97,26 @@ final class BootstrapActivation {
             publishReady(attempt);
             return null;
         } catch (RuntimeException | Error cause) {
-            return recordFailure(attempt, cause);
-        }
-    }
-
-    private ActivationFailure recordFailure(ActivationAttempt attempt, Throwable cause) {
-        return recordFailure(
-                failureCodeOf(attempt, cause),
-                attempt.phase().subphase(),
-                cause,
-                attempt.batchId(),
-                attempt.evidence()
-        );
-    }
-
-    private ActivationFailure recordFailure(String failureCode,
-                                             String subphase,
-                                             Throwable cause,
-                                             String batchId,
-                                             ExtensionRuntimeEvidence evidence) {
-        try {
-            BootstrapException classified = terminalTransitions.recordActivationFailure(
-                    failureCode,
-                    subphase,
+            return recordFailure(
+                    attempt.phase().subphase(),
+                    failureCodeOf(attempt, cause),
                     cause,
-                    batchId,
-                    evidence
+                    attempt.resources(),
+                    attempt.batchId(),
+                    attempt.evidence()
             );
-            return ActivationFailure.classified(classified, cause);
-        } catch (RuntimeException | Error sectionFailure) {
-            return ActivationFailure.unclassified(cause, sectionFailure);
         }
+    }
+
+    private ActivationFailure recordFailure(String subphase,
+                                            String failureCode,
+                                            Throwable cause,
+                                            BootstrapResources resources,
+                                            String batchId,
+                                            ExtensionRuntimeEvidence evidence) {
+        FailureSite site = FailureSite.activation(subphase);
+        FailureAdmission admission = terminalTransitions.terminalize(site, failureCode, cause, batchId, evidence);
+        return new ActivationFailure(site, failureCode, cause, admission, resources, batchId, evidence);
     }
 
     private static void requireSessionSampler(ActivationAttempt attempt) {
@@ -157,10 +141,6 @@ final class BootstrapActivation {
             return;
         }
 
-        log.log(BootstrapLogEvent.REMOTE_JMX_MUTATION_REGISTRATION_DENIED, fields -> fields
-                .putString(AgentLogField.FAILURE_CODE, assessment.failureCode().name())
-                .putString(AgentLogField.REMEDIATION, assessment.remediation())
-                .putString(AgentLogField.OFFENDING_ARGUMENTS, String.join(",", assessment.offendingArguments())));
         throw new RemoteJmxRegistrationDeniedException(assessment);
     }
 
@@ -202,9 +182,9 @@ final class BootstrapActivation {
                 INITIAL_EVIDENCE_GENERATION,
                 attempt.evidence()
         );
-        journal.publishReady(ready);
         lifecycle.commitActive();
-        emitInstalled(ready);
+        journal.publishReady(ready);
+        attempt.recordReady(ready);
     }
 
     private static String failureCodeOf(ActivationAttempt attempt, Throwable failure) {
@@ -212,6 +192,7 @@ final class BootstrapActivation {
             case LinkageError ignored -> VerificationFailureCode.EXTENSION_LINKAGE_ERROR.name();
             case RemoteJmxRegistrationDeniedException denied -> denied.failureCode().name();
             case JmxRegistrationException registration when (registration.failureCode() != null) -> registration.failureCode();
+            case BootstrapAdmissionRejectedException rejection -> rejection.primaryCode();
             default -> attempt.phase().failureCode();
         };
     }
@@ -250,20 +231,25 @@ final class BootstrapActivation {
         }
     }
 
-    private record ActivationFailure(BootstrapException classified, Throwable cause, Throwable sectionFailure) {
+    record ActivationFailure(FailureSite site,
+                             String failureCode,
+                             Throwable cause,
+                             FailureAdmission admission,
+                             BootstrapResources resources,
+                             String batchId,
+                             ExtensionRuntimeEvidence evidence) {
 
-        static ActivationFailure classified(BootstrapException classified, Throwable cause) {
-            return new ActivationFailure(Objects.requireNonNull(classified, "classified"), cause, null);
-        }
-
-        static ActivationFailure unclassified(Throwable cause, Throwable sectionFailure) {
-            return new ActivationFailure(null, cause, Objects.requireNonNull(sectionFailure, "sectionFailure"));
+        ActivationFailure {
+            Objects.requireNonNull(site, "site");
+            Objects.requireNonNull(failureCode, "failureCode");
+            Objects.requireNonNull(cause, "cause");
+            Objects.requireNonNull(admission, "admission");
+            Objects.requireNonNull(batchId, "batchId");
+            Objects.requireNonNull(evidence, "evidence");
         }
     }
 
     private static final class ActivationAttempt {
-
-        private static final String NO_BATCH_ID = "";
 
         private final AutoconfigureSession session;
         private final BootstrapResources resources;
@@ -272,6 +258,7 @@ final class BootstrapActivation {
 
         private ActivationPhase phase = ActivationPhase.SAMPLER_POSTCONDITION;
         private String batchId = NO_BATCH_ID;
+        private ExtensionReadinessWireSnapshot ready;
 
         ActivationAttempt(AutoconfigureSession session,
                           BootstrapResources resources,
@@ -288,6 +275,18 @@ final class BootstrapActivation {
 
         void recordRuntimeRegistration(UUID registeredBatchId) {
             this.batchId = Objects.requireNonNull(registeredBatchId, "registeredBatchId").toString();
+        }
+
+        void recordReady(ExtensionReadinessWireSnapshot published) {
+            this.ready = Objects.requireNonNull(published, "published");
+        }
+
+        ExtensionReadinessWireSnapshot ready() {
+            if (ready == null) {
+                throw new IllegalStateException("Activation completed without READY publication");
+            }
+
+            return ready;
         }
 
         AutoconfigureSession session() {

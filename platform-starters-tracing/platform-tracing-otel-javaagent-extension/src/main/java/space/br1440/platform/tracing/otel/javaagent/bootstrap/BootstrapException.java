@@ -15,7 +15,7 @@ final class BootstrapException extends RuntimeException {
         return failure;
     }
 
-    private static String message(BootstrapFailure failure) {
+    static String message(BootstrapFailure failure) {
         Objects.requireNonNull(failure, "failure");
 
         String baseMessage = "Platform bootstrap failure [%s] during phase '%s'"

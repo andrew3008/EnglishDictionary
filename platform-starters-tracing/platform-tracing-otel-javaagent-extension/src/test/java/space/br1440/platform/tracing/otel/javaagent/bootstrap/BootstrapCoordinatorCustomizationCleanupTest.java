@@ -49,7 +49,8 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingR
 @Timeout(value = 20, threadMode = Timeout.ThreadMode.SAME_THREAD)
 class BootstrapCoordinatorCustomizationCleanupTest {
 
-    private static final String CUSTOMIZATION_FAILED = "SPAN_PROCESSOR_INITIALIZATION_FAILED";
+    private static final CustomizationStep STEP = CustomizationStep.SPAN_PROCESSOR_INITIALIZATION;
+    private static final String CUSTOMIZATION_FAILED = STEP.failureCode();
     private static final long WAIT_SECONDS = 5L;
 
     @Test
@@ -64,7 +65,7 @@ class BootstrapCoordinatorCustomizationCleanupTest {
             AutoconfigureSession session = coordinator.prepare(config());
 
             // when
-            BootstrapException failure = catchBootstrapFailure(() -> coordinator.execute(CUSTOMIZATION_FAILED, () -> {
+            BootstrapException failure = catchBootstrapFailure(() -> coordinator.execute(STEP, () -> {
                 throw cause;
             }), CUSTOMIZATION_FAILED);
 
@@ -95,7 +96,7 @@ class BootstrapCoordinatorCustomizationCleanupTest {
             AutoconfigureSession session = coordinator.prepare(config());
 
             // when
-            BootstrapException failure = catchBootstrapFailure(() -> coordinator.execute(CUSTOMIZATION_FAILED, () -> {
+            BootstrapException failure = catchBootstrapFailure(() -> coordinator.execute(STEP, () -> {
                 throw cause;
             }), FAILED_ROLLBACK_INCOMPLETE);
 
@@ -129,17 +130,18 @@ class BootstrapCoordinatorCustomizationCleanupTest {
             doThrow(publicationFailure).when(readiness).fail(anyString(), anyString());
 
             // when
-            Throwable outcome = catchThrowable(() -> coordinator.execute(CUSTOMIZATION_FAILED, () -> {
+            Throwable outcome = catchThrowable(() -> coordinator.execute(STEP, () -> {
                 throw cause;
             }));
 
             // then
-            assertThat(outcome).isNotNull();
-            assertThat(BootstrapCleanupFailures.contains(outcome, publicationFailure)).isTrue();
+            assertThat(outcome).isInstanceOf(BootstrapException.class);
+            assertThat(outcome.getCause()).isSameAs(cause);
+            assertThat(cause.getSuppressed()).containsExactly(publicationFailure);
             assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
             verify(runtime).close();
             BootstrapException sticky = catchBootstrapFailure(
-                    () -> coordinator.execute(CUSTOMIZATION_FAILED, () -> null), CUSTOMIZATION_FAILED
+                    () -> coordinator.execute(STEP, () -> null), CUSTOMIZATION_FAILED
             );
             assertThat(sticky.getCause()).isSameAs(cause);
             assertThatCode(coordinator::close).doesNotThrowAnyException();
@@ -164,7 +166,7 @@ class BootstrapCoordinatorCustomizationCleanupTest {
             doThrow(publicationFailure).when(readiness).fail(anyString(), anyString());
 
             // when
-            Throwable outcome = catchThrowable(() -> coordinator.execute(CUSTOMIZATION_FAILED, () -> {
+            Throwable outcome = catchThrowable(() -> coordinator.execute(STEP, () -> {
                 throw cause;
             }));
 
@@ -197,14 +199,14 @@ class BootstrapCoordinatorCustomizationCleanupTest {
             doThrow(publicationFailure).when(readiness).fail(anyString(), anyString());
 
             // when
-            Throwable outcome = catchThrowable(() -> coordinator.execute(CUSTOMIZATION_FAILED, () -> {
+            Throwable outcome = catchThrowable(() -> coordinator.execute(STEP, () -> {
                 throw cause;
             }));
 
             // then
             assertThat(outcome).isNotNull();
             BootstrapException sticky = catchBootstrapFailure(
-                    () -> coordinator.execute(CUSTOMIZATION_FAILED, () -> null), FAILED_ROLLBACK_INCOMPLETE
+                    () -> coordinator.execute(STEP, () -> null), FAILED_ROLLBACK_INCOMPLETE
             );
             assertThat(sticky.getCause()).isSameAs(cause);
             assertThat(sticky.failure().primaryCode()).isEqualTo(CUSTOMIZATION_FAILED);
@@ -234,7 +236,7 @@ class BootstrapCoordinatorCustomizationCleanupTest {
             coordinator.prepare(config());
 
             // when
-            Throwable outcome = catchThrowable(() -> coordinator.execute(CUSTOMIZATION_FAILED, () -> {
+            Throwable outcome = catchThrowable(() -> coordinator.execute(STEP, () -> {
                 throw cause;
             }));
 
@@ -259,7 +261,7 @@ class BootstrapCoordinatorCustomizationCleanupTest {
             coordinator.prepare(config());
 
             // when
-            Throwable outcome = catchThrowable(() -> coordinator.execute(CUSTOMIZATION_FAILED, () -> {
+            Throwable outcome = catchThrowable(() -> coordinator.execute(STEP, () -> {
                 throw cause;
             }));
 
@@ -274,6 +276,36 @@ class BootstrapCoordinatorCustomizationCleanupTest {
     }
 
     @Test
+    void throwing_cause_accessor_keeps_session_release_and_selected_fatal_after_publication_failure() {
+        // given
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        PlatformExtensionReadiness readiness = spy(PlatformExtensionReadiness.forCurrentExtension());
+        ScrubbingRuntime runtime = mock(ScrubbingRuntime.class);
+        CauseInspectionFailingError cause = new CauseInspectionFailingError("Customizer linkage failed");
+        IllegalStateException publicationFailure = new IllegalStateException("Failure publication failed");
+        BootstrapCoordinator coordinator = coordinatorWithReadiness(server, readiness, runtime);
+
+        try (coordinator) {
+            coordinator.prepare(config());
+            doThrow(publicationFailure).when(readiness).fail(anyString(), anyString());
+
+            // when
+            Throwable outcome = catchThrowable(() -> coordinator.execute(STEP, () -> {
+                throw cause;
+            }));
+
+            // then
+            assertThat(outcome).isSameAs(cause);
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+            assertThat(coordinator.diagnosticSnapshot().failure().cause()).isSameAs(cause);
+            verify(runtime).close();
+            assertThatCode(coordinator::close).doesNotThrowAnyException();
+            verify(runtime).close();
+        }
+
+        assertThatDiagnosticMBean(server).isNotRegistered();
+    }
+    @Test
     void close_winning_customization_race_keeps_sole_session_ownership() throws Exception {
         // given
         MBeanServer server = MBeanServerFactory.newMBeanServer();
@@ -284,7 +316,7 @@ class BootstrapCoordinatorCustomizationCleanupTest {
         BootstrapCoordinator coordinator = coordinator().server(server).scrubberFactory(factory(runtime)).build();
         coordinator.prepare(config());
         FutureTask<Throwable> customization = new FutureTask<>(() -> catchThrowable(
-                () -> coordinator.execute(CUSTOMIZATION_FAILED, () -> {
+                () -> coordinator.execute(STEP, () -> {
                     customizerEntered.countDown();
                     await(failCustomizer);
                     throw cause;
@@ -334,7 +366,7 @@ class BootstrapCoordinatorCustomizationCleanupTest {
         BootstrapCoordinator coordinator = coordinator().server(server).scrubberFactory(factory(runtime)).build();
         coordinator.prepare(config());
         FutureTask<Throwable> customization = new FutureTask<>(() -> catchThrowable(
-                () -> coordinator.execute(CUSTOMIZATION_FAILED, () -> {
+                () -> coordinator.execute(STEP, () -> {
                     throw cause;
                 })
         ));
@@ -392,6 +424,18 @@ class BootstrapCoordinatorCustomizationCleanupTest {
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
             throw new AssertionError("Interrupted while waiting for test synchronization", interrupted);
+        }
+    }
+
+    private static final class CauseInspectionFailingError extends LinkageError {
+
+        private CauseInspectionFailingError(String message) {
+            super(message);
+        }
+
+        @Override
+        public synchronized Throwable getCause() {
+            throw new IllegalStateException("Cause inspection failed");
         }
     }
 }

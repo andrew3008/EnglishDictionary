@@ -70,6 +70,16 @@ final class BootstrapCoordinatorTestSupport {
         return failure;
     }
 
+    static BootstrapAdmissionRejectedException catchAdmissionRejection(ThrowingCallable call, String expectedCode) {
+        Throwable thrown = catchThrowable(call);
+        assertThat(thrown).as("BootstrapAdmissionRejectedException with code %s", expectedCode)
+                .isInstanceOf(BootstrapAdmissionRejectedException.class);
+        BootstrapAdmissionRejectedException rejection = (BootstrapAdmissionRejectedException) thrown;
+        assertThat(rejection.primaryCode()).as("rejection code").isEqualTo(expectedCode);
+        assertThat(rejection.failure().effectiveCode()).as("rejection code").isEqualTo(expectedCode);
+        return rejection;
+    }
+
     static void registerForeignReadinessMBean(MBeanServer server) throws JMException {
         server.registerMBean(new Timer(), DomainObjectNames.EXTENSION_READINESS);
     }

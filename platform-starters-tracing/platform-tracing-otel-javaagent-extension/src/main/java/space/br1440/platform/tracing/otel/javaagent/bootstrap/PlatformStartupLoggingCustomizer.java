@@ -60,25 +60,23 @@ public final class PlatformStartupLoggingCustomizer implements LoggingCustomizer
 
     @Override
     public void onStartupFailure(Throwable cause) {
+        // Первый наблюдённый fatal выбирается в порядке: исходный cause, доставка в coordinator, summary-лог.
+        Throwable fatal = PlatformThrowables.firstFatalInCauseChain(cause);
         BootstrapCoordinator coordinator = null;
         try {
-            try {
-                coordinator = coordinatorSupplier.get();
-                coordinator.onStartupFailure(cause);
-            } catch (RuntimeException | Error failure) {
-                retainSecondary(cause, failure);
-            }
-        } finally {
-            try {
-                try {
-                    emitStartupFailure(coordinator, cause);
-                } catch (RuntimeException | Error loggingFailure) {
-                    retainSecondary(cause, loggingFailure);
-                }
-            } finally {
-                propagateFatalFailure(cause);
-            }
+            coordinator = coordinatorSupplier.get();
+            coordinator.onStartupFailure(cause);
+        } catch (RuntimeException | Error deliveryFailure) {
+            fatal = retainSecondary(cause, deliveryFailure, fatal);
         }
+
+        try {
+            emitStartupFailure(coordinator, cause);
+        } catch (RuntimeException | Error loggingFailure) {
+            fatal = retainSecondary(cause, loggingFailure, fatal);
+        }
+
+        PlatformThrowables.propagateIfFatal(fatal);
     }
 
     private static void emitStartupFailure(BootstrapCoordinator coordinator, Throwable cause) {
@@ -97,21 +95,22 @@ public final class PlatformStartupLoggingCustomizer implements LoggingCustomizer
         });
     }
 
-    private static void retainSecondary(Throwable primary, Throwable secondary) {
+    /**
+     * Присоединяет secondary к исходному cause best-effort и возвращает выбранный fatal, ничего не бросая.
+     * Cause-цепочка secondary обходится всегда, чтобы восстановить interrupt flag даже при уже выбранном fatal.
+     */
+    private static Throwable retainSecondary(Throwable primary, Throwable secondary, Throwable selectedFatal) {
+        Throwable fatal = firstFatal(selectedFatal, PlatformThrowables.firstFatalInCauseChain(secondary));
         try {
             BootstrapCleanupFailures.suppressPreservingPrimary(primary, secondary);
         } catch (RuntimeException | Error suppressionFailure) {
-            propagateFatalFailure(suppressionFailure);
-        } finally {
-            propagateFatalFailure(secondary);
+            fatal = firstFatal(fatal, PlatformThrowables.firstFatalInCauseChain(suppressionFailure));
         }
+
+        return fatal;
     }
 
-    private static void propagateFatalFailure(Throwable failure) {
-        try {
-            PlatformThrowables.propagateFatalCauseChain(failure);
-        } catch (RuntimeException | Error inspectionFailure) {
-            PlatformThrowables.propagateIfFatal(inspectionFailure);
-        }
+    private static Throwable firstFatal(Throwable selected, Throwable candidate) {
+        return selected != null ? selected : candidate;
     }
 }

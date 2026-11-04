@@ -55,7 +55,7 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
         customizer.addPropertiesSupplier(defaultsProvider::supply);
 
         customizer.addPropertiesCustomizer(config -> {
-            bootstrap.execute("TRACE_PIPELINE_ATTESTATION_FAILED", () -> {
+            bootstrap.execute(CustomizationStep.TRACE_PIPELINE_ATTESTATION, () -> {
                 TracePipelineSpiVerifier.verify(PLATFORM_EXTENSION_ORDER, getClass());
                 return null;
             });
@@ -71,11 +71,11 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
             bootstrap.prepare(config);
             ResourceValidationMode validationMode = bootstrap.session().extensionConfig().resource().validationMode();
             Resource customized = bootstrap.execute(
-                    "RESOURCE_INITIALIZATION_FAILED",
+                    CustomizationStep.RESOURCE_INITIALIZATION,
                     () -> resourceCustomizer.customize(existing, config, validationMode)
             );
 
-            bootstrap.execute("SENDER_SPI_INSTALLATION_FAILED", () -> {
+            bootstrap.execute(CustomizationStep.SENDER_SPI_INSTALLATION, () -> {
                 ObservingSenderPreference.install();
                 return null;
             });
@@ -84,7 +84,7 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
         });
 
         customizer.addPropagatorCustomizer((propagator, config) ->
-                bootstrap.execute("PROPAGATION_INITIALIZATION_FAILED", () -> {
+                bootstrap.execute(CustomizationStep.PROPAGATION_INITIALIZATION, () -> {
                     AutoconfigureSession session = bootstrap.session();
                     TextMapPropagator customized = baggageCustomizer.apply(propagator, session.extensionConfig().baggage());
 
@@ -98,7 +98,7 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
                 }));
 
         customizer.addTracerProviderCustomizer((builder, config) ->
-                bootstrap.execute("SPAN_PROCESSOR_INITIALIZATION_FAILED", () -> {
+                bootstrap.execute(CustomizationStep.SPAN_PROCESSOR_INITIALIZATION, () -> {
                     AutoconfigureSession session = bootstrap.session();
                     builder.setSampler(session.sampler());
                     return session.spanProcessorFactory().registerSpanProcessors(
@@ -107,7 +107,7 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
                 }));
 
         customizer.addSpanExporterCustomizer((exporter, config) ->
-                bootstrap.execute("EXPORTER_INITIALIZATION_FAILED", () -> {
+                bootstrap.execute(CustomizationStep.EXPORTER_INITIALIZATION, () -> {
                     AutoconfigureSession session = bootstrap.session();
                     SpanExporter limited = OtlpRequestSizeCustomizer.customize(exporter, config);
                     try {
@@ -127,7 +127,7 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
                 }));
 
         customizer.addSpanProcessorCustomizer((processor, config) ->
-                bootstrap.execute("EXPORT_PROCESSOR_INITIALIZATION_FAILED", () -> {
+                bootstrap.execute(CustomizationStep.EXPORT_PROCESSOR_INITIALIZATION, () -> {
                     AutoconfigureSession session = bootstrap.session();
                     return session.exportProcessorFactory().maybeReplaceExportProcessor(
                             processor, config

@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class BootstrapResourcesOrderTest {
 
@@ -85,6 +87,84 @@ class BootstrapResourcesOrderTest {
         assertThatThrownBy(resources::close).isSameAs(sharedFailure);
     }
 
+    @ParameterizedTest(name = "assertion closes first: {0}")
+    @ValueSource(booleans = {true, false})
+    void linkageErrorBecomesRootOverAssertionErrorInEitherLifoOrder(boolean assertionClosesFirst) {
+        // given
+        AssertionError assertion = new AssertionError("simulated assertion cleanup failure");
+        LinkageError linkage = new LinkageError("simulated linkage cleanup failure");
+        //noinspection resource — close() вызывается в тесте повторно и обязан бросить тот же отказ
+        BootstrapResources resources = new BootstrapResources();
+        resources.push(() -> {
+            throw assertionClosesFirst ? linkage : assertion;
+        }, "bottom");
+        resources.push(() -> {
+            throw assertionClosesFirst ? assertion : linkage;
+        }, "top");
+
+        // when
+        Throwable failure = catchThrowable(resources::close);
+
+        // then
+        assertThat(failure).isSameAs(linkage);
+        assertThat(linkage.getSuppressed()).containsExactly(assertion);
+        assertThatThrownBy(resources::close).isSameAs(linkage);
+    }
+
+    @Test
+    void fatalCauseAccessorOfFirstFailureDoesNotStopRemainingCleanup() {
+        // given
+        List<String> closeOrder = new ArrayList<>();
+        LinkageError accessorFailure = new LinkageError("simulated fatal cause inspection failure");
+        OutOfMemoryError originalFatal = new ThrowingCauseOutOfMemoryError(accessorFailure);
+        //noinspection resource — close() вызывается в тесте повторно и обязан бросить тот же отказ
+        BootstrapResources resources = new BootstrapResources();
+        resources.push(() -> closeOrder.add("bottom"), "bottom");
+        resources.push(() -> {
+            closeOrder.add("middle");
+            throw new IllegalStateException("simulated middle cleanup failure");
+        }, "middle");
+        resources.push(() -> {
+            closeOrder.add("top");
+            throw originalFatal;
+        }, "top");
+
+        // when
+        Throwable failure = catchThrowable(resources::close);
+
+        // then
+        assertThat(closeOrder).containsExactly("top", "middle", "bottom");
+        assertThat(failure).isSameAs(originalFatal);
+        assertThatThrownBy(resources::close).isSameAs(originalFatal);
+    }
+
+    @Test
+    void ordinaryCauseAccessorOfFirstFailureDoesNotStopRemainingCleanup() {
+        // given
+        List<String> closeOrder = new ArrayList<>();
+        LinkageError laterFatal = new LinkageError("simulated later fatal cleanup failure");
+        //noinspection resource — close() вызывается в тесте повторно и обязан бросить тот же отказ
+        BootstrapResources resources = new BootstrapResources();
+        resources.push(() -> closeOrder.add("bottom"), "bottom");
+        resources.push(() -> {
+            closeOrder.add("middle");
+            throw laterFatal;
+        }, "middle");
+        resources.push(() -> {
+            closeOrder.add("top");
+            throw new ThrowingCauseException();
+        }, "top");
+
+        // when
+        Throwable failure = catchThrowable(resources::close);
+
+        // then
+        assertThat(closeOrder).containsExactly("top", "middle", "bottom");
+        assertThat(failure).isSameAs(laterFatal);
+        assertThat(laterFatal.getSuppressed()).isEmpty();
+        assertThatThrownBy(resources::close).isSameAs(laterFatal);
+    }
+
     @Test
     void repeatedCloseAfterFailureRethrowsSameInstance() {
         // given
@@ -112,5 +192,32 @@ class BootstrapResourcesOrderTest {
 
         // then
         assertThatCode(resources::close).doesNotThrowAnyException();
+    }
+
+    private static final class ThrowingCauseOutOfMemoryError extends OutOfMemoryError {
+
+        private final transient LinkageError accessorFailure;
+
+        private ThrowingCauseOutOfMemoryError(LinkageError accessorFailure) {
+            super("simulated original fatal cleanup failure");
+            this.accessorFailure = accessorFailure;
+        }
+
+        @Override
+        public synchronized Throwable getCause() {
+            throw accessorFailure;
+        }
+    }
+
+    private static final class ThrowingCauseException extends IllegalStateException {
+
+        private ThrowingCauseException() {
+            super("simulated cleanup failure with broken cause accessor");
+        }
+
+        @Override
+        public synchronized Throwable getCause() {
+            throw new IllegalStateException("simulated cause inspection failure");
+        }
     }
 }

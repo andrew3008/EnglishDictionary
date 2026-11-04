@@ -27,34 +27,51 @@ class AutoconfigureSessionFactoryCleanupTest {
     void create_promotes_cleanup_error_over_preparation_failure() {
         // given
         RuntimeException preparationFailure = new IllegalStateException("Preparation failed");
-        Error cleanupFailure = new AssertionError("Cleanup failed");
-        PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
+        Error cleanupFailure = new LinkageError("Cleanup failed");
         ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
-        when(scrubberFactory.buildRuntime(any(ExtensionConfig.class))).thenReturn(scrubbingRuntime);
         doThrow(cleanupFailure).when(scrubbingRuntime).close();
-        AutoconfigureSessionFactory factory = new AutoconfigureSessionFactory(
-                scrubberFactory,
-                ignored -> {
-                    throw preparationFailure;
-                }
-        );
-        AgentInstanceId agentInstanceId = AgentInstanceId.random();
 
         // when
-        Throwable thrown = catchThrowable(() -> {
-            try (AutoconfigureSession session = factory.create(
-                    DefaultConfigProperties.createFromMap(Map.of("otel.traces.sampler", "always_off")),
-                    new PlatformTracingMBeanRegistrar(agentInstanceId),
-                    agentInstanceId,
-                    evidence()
-            )) {
-                throw new AssertionError("create returned a session: " + session);
-            }
-        });
+        Throwable thrown = createFailure(scrubbingRuntime, preparationFailure);
 
         // then
         assertThat(thrown).isSameAs(cleanupFailure);
         assertThat(thrown.getSuppressed()).containsExactly(preparationFailure);
+        verify(scrubbingRuntime).close();
+    }
+
+    @Test
+    void create_does_not_promote_assertion_cleanup_failure_over_preparation_failure() {
+        // given
+        RuntimeException preparationFailure = new IllegalStateException("Preparation failed");
+        Error cleanupFailure = new AssertionError("Cleanup assertion failed");
+        ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
+        doThrow(cleanupFailure).when(scrubbingRuntime).close();
+
+        // when
+        Throwable thrown = createFailure(scrubbingRuntime, preparationFailure);
+
+        // then
+        assertThat(thrown).isSameAs(preparationFailure);
+        assertThat(thrown.getSuppressed()).containsExactly(cleanupFailure);
+        verify(scrubbingRuntime).close();
+    }
+
+    @Test
+    void create_keeps_original_fatal_when_its_cause_accessor_fails_during_cleanup_aggregation() {
+        // given
+        LinkageError accessorFailure = new LinkageError("Cause inspection failed");
+        OutOfMemoryError originalFatal = new ThrowingCauseOutOfMemoryError(accessorFailure);
+        RuntimeException cleanupFailure = new IllegalStateException("Cleanup failed");
+        ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
+        doThrow(cleanupFailure).when(scrubbingRuntime).close();
+
+        // when
+        Throwable thrown = createFailure(scrubbingRuntime, originalFatal);
+
+        // then
+        assertThat(thrown).isSameAs(originalFatal);
+        assertThat(thrown.getSuppressed()).isEmpty();
         verify(scrubbingRuntime).close();
     }
 
@@ -92,6 +109,32 @@ class AutoconfigureSessionFactoryCleanupTest {
         verify(scrubbingRuntime).close();
     }
 
+    private static Throwable createFailure(ScrubbingRuntime scrubbingRuntime, Throwable preparationFailure) {
+        PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
+        when(scrubberFactory.buildRuntime(any(ExtensionConfig.class))).thenReturn(scrubbingRuntime);
+        AutoconfigureSessionFactory factory = new AutoconfigureSessionFactory(
+                scrubberFactory,
+                ignored -> {
+                    if (preparationFailure instanceof Error error) {
+                        throw error;
+                    }
+                    throw (RuntimeException) preparationFailure;
+                }
+        );
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
+
+        return catchThrowable(() -> {
+            try (AutoconfigureSession session = factory.create(
+                    DefaultConfigProperties.createFromMap(Map.of("otel.traces.sampler", "always_off")),
+                    new PlatformTracingMBeanRegistrar(agentInstanceId),
+                    agentInstanceId,
+                    evidence()
+            )) {
+                throw new AssertionError("create returned a session: " + session);
+            }
+        });
+    }
+
     private static ExtensionRuntimeEvidence evidence() {
         return new ExtensionRuntimeEvidence(
                 "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
@@ -100,5 +143,20 @@ class AutoconfigureSessionFactoryCleanupTest {
                 "extension-loader",
                 "sdk-loader"
         );
+    }
+
+    private static final class ThrowingCauseOutOfMemoryError extends OutOfMemoryError {
+
+        private final transient LinkageError accessorFailure;
+
+        private ThrowingCauseOutOfMemoryError(LinkageError accessorFailure) {
+            super("Original fatal preparation failure");
+            this.accessorFailure = accessorFailure;
+        }
+
+        @Override
+        public synchronized Throwable getCause() {
+            throw accessorFailure;
+        }
     }
 }

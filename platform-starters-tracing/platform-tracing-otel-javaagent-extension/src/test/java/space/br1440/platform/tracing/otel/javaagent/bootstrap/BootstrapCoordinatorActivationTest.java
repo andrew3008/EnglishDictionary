@@ -12,6 +12,7 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_READY;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.acknowledgeScrubbingExcept;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchAdmissionRejection;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
@@ -27,6 +28,7 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticR
 import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSnapshotAssertions.failureOf;
 
 import java.util.EnumSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CountDownLatch;
@@ -78,7 +80,7 @@ class BootstrapCoordinatorActivationTest {
                 assertThat(coordinator.currentWire().agentInstanceId()).isEqualTo(agentInstanceId);
 
                 // when
-                assertBootstrapFailure(() -> coordinator.activate(tracerProvider), DUPLICATE_ACTIVATION);
+                catchAdmissionRejection(() -> coordinator.activate(tracerProvider), DUPLICATE_ACTIVATION);
 
                 // then
                 assertThatCoordinator(coordinator).isActiveAndReady();
@@ -182,12 +184,18 @@ class BootstrapCoordinatorActivationTest {
         when(session.evidence()).thenThrow(prologueFailure);
 
         // when
-        Throwable thrown = catchThrowable(() -> activation.activate(mock(SdkTracerProvider.class), () -> {
-        }));
+        Optional<BootstrapActivation.ActivationFailure> outcome = activation.activate(mock(SdkTracerProvider.class), () -> {
+        });
 
         // then
-        assertThat(thrown).isInstanceOf(BootstrapException.class);
-        BootstrapFailure failure = ((BootstrapException) thrown).failure();
+        assertThat(outcome).isPresent();
+        BootstrapActivation.ActivationFailure activationFailure = outcome.orElseThrow();
+        assertThat(activationFailure.site().subphase()).isEqualTo("activation-prologue");
+        assertThat(activationFailure.cause()).isSameAs(prologueFailure);
+        assertThat(activationFailure.admission().kind()).isEqualTo(FailureAdmission.Kind.RECORDED);
+        assertThat(activationFailure.admission().claimedSession()).isNull();
+        assertThat(activationFailure.resources()).isNotNull();
+        BootstrapFailure failure = activationFailure.admission().failure();
         assertThat(failure.primaryCode()).isEqualTo(ACTIVATION_FAILED);
         assertThat(failure.effectiveCode()).isEqualTo(ACTIVATION_FAILED);
         assertThat(failure.cause()).isSameAs(prologueFailure);
@@ -345,7 +353,8 @@ class BootstrapCoordinatorActivationTest {
             CountDownLatch firstObservation = new CountDownLatch(1);
             Thread poller = new Thread(() -> {
                 while (pollerRunning.get()) {
-                    observedPairs.add(coordinator.state().name() + "/" + coordinator.currentWire().lifecycle());
+                    String wire = coordinator.currentWire().lifecycle();
+                    observedPairs.add(wire + "/" + coordinator.state().name());
                     firstObservation.countDown();
                 }
             }, "snapshot-poller");
@@ -364,12 +373,11 @@ class BootstrapCoordinatorActivationTest {
 
                 // then
                 assertThat(observedPairs)
-                        .contains("PREPARED/INITIALIZING")
+                        .contains("INITIALIZING/PREPARED")
                         .isSubsetOf(
-                                "PREPARED/INITIALIZING",
-                                "ACTIVATING/INITIALIZING",
-                                "ACTIVATING/READY",
-                                "ACTIVE/READY"
+                                "INITIALIZING/PREPARED",
+                                "INITIALIZING/ACTIVE",
+                                "READY/ACTIVE"
                         );
                 assertThatCoordinator(coordinator).isActiveAndReady();
             } finally {

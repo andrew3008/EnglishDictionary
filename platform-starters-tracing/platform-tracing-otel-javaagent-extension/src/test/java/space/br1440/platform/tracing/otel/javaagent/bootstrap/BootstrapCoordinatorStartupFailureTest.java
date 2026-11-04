@@ -42,7 +42,8 @@ import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;
 @ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 class BootstrapCoordinatorStartupFailureTest {
 
-    private static final String CUSTOMIZATION_FAILED = "SPAN_PROCESSOR_INITIALIZATION_FAILED";
+    private static final CustomizationStep STEP = CustomizationStep.SPAN_PROCESSOR_INITIALIZATION;
+    private static final String CUSTOMIZATION_FAILED = STEP.failureCode();
 
     @Test
     void startup_failure_releases_session_once_and_retains_failed_diagnostics_until_close() {
@@ -68,7 +69,7 @@ class BootstrapCoordinatorStartupFailureTest {
             assertThat(server.isRegistered(DomainObjectNames.EXPORT)).isFalse();
             assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isFalse();
             assertThat(server.isRegistered(DomainObjectNames.SCRUBBING)).isFalse();
-            assertThat(stickyFailure(coordinator, AGENT_STARTUP_FAILED).getCause()).isSameAs(cause);
+            assertThat(stickyFailure(coordinator, AGENT_STARTUP_FAILED).cause()).isSameAs(cause);
             verify(runtime).close();
             assertThatCode(coordinator::close).doesNotThrowAnyException();
             assertThatDiagnosticMBean(server).isNotRegistered();
@@ -91,22 +92,21 @@ class BootstrapCoordinatorStartupFailureTest {
             coordinator.prepare(config());
 
             // when
-            BootstrapException failure = catchBootstrapFailure(
-                    () -> coordinator.onStartupFailure(cause), FAILED_ROLLBACK_INCOMPLETE
-            );
+            Throwable outcome = catchThrowable(() -> coordinator.onStartupFailure(cause));
             ExtensionReadinessWireSnapshot failed = coordinator.currentWire();
-            coordinator.onStartupFailure(failure);
+            coordinator.onStartupFailure(new ConfigurationException("Repeated startup failure"));
             coordinator.onStartupFailure(new ConfigurationException("Another startup failure"));
 
             // then
-            assertThat(failure.getCause()).isSameAs(cause);
-            assertThat(failure.failure().primaryCode()).isEqualTo(AGENT_STARTUP_FAILED);
-            assertThat(failure.failure().phase()).isEqualTo("startup");
+            assertThat(outcome).isNull();
+            BootstrapFailure failure = stickyFailure(coordinator, FAILED_ROLLBACK_INCOMPLETE);
+            assertThat(failure.cause()).isSameAs(cause);
+            assertThat(failure.primaryCode()).isEqualTo(AGENT_STARTUP_FAILED);
+            assertThat(failure.phase()).isEqualTo("startup");
             assertThat(cause.getSuppressed()).containsExactly(cleanupFailure);
             assertThat(coordinator.currentWire()).isSameAs(failed);
             assertThatDiagnosticMBean(server).isFailedWith(FAILED_ROLLBACK_INCOMPLETE)
                     .hasSnapshotEntry(JmxWireContract.FIELD_READINESS_SNAPSHOT_PRIMARY_FAILURE_CODE, AGENT_STARTUP_FAILED);
-            assertThat(stickyFailure(coordinator, FAILED_ROLLBACK_INCOMPLETE).getCause()).isSameAs(cause);
             verify(runtime).close();
             assertThatCode(coordinator::close).doesNotThrowAnyException();
             assertThatDiagnosticMBean(server).isNotRegistered();
@@ -134,12 +134,12 @@ class BootstrapCoordinatorStartupFailureTest {
             Throwable outcome = catchThrowable(() -> coordinator.onStartupFailure(cause));
 
             // then
-            assertThat(outcome).isSameAs(publicationFailure);
+            assertThat(outcome).isNull();
             assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
             assertThat(coordinator.currentWire()).isSameAs(initializing);
             assertThatDiagnosticMBean(server).isRegistered();
             assertThat(cause.getSuppressed()).containsExactly(publicationFailure);
-            assertThat(stickyFailure(coordinator, AGENT_STARTUP_FAILED).getCause()).isSameAs(cause);
+            assertThat(stickyFailure(coordinator, AGENT_STARTUP_FAILED).cause()).isSameAs(cause);
             verify(runtime).close();
         }
 
@@ -157,7 +157,7 @@ class BootstrapCoordinatorStartupFailureTest {
 
         try (coordinator) {
             coordinator.prepare(config());
-            BootstrapException classified = catchBootstrapFailure(() -> coordinator.execute(CUSTOMIZATION_FAILED, () -> {
+            BootstrapException classified = catchBootstrapFailure(() -> coordinator.execute(STEP, () -> {
                 throw cause;
             }), CUSTOMIZATION_FAILED);
             ExtensionReadinessWireSnapshot failed = coordinator.currentWire();
@@ -167,7 +167,7 @@ class BootstrapCoordinatorStartupFailureTest {
 
             // then
             assertThat(coordinator.currentWire()).isSameAs(failed);
-            assertThat(stickyFailure(coordinator, CUSTOMIZATION_FAILED).getCause()).isSameAs(cause);
+            assertThat(stickyFailure(coordinator, CUSTOMIZATION_FAILED).cause()).isSameAs(cause);
             assertThat(cause.getSuppressed()).isEmpty();
             assertThatDiagnosticMBean(server).isFailedWith(CUSTOMIZATION_FAILED);
             verify(runtime).close();
@@ -233,7 +233,7 @@ class BootstrapCoordinatorStartupFailureTest {
 
             // then
             assertThat(outcome).isSameAs(cause);
-            assertThat(stickyFailure(coordinator, AGENT_STARTUP_FAILED).getCause()).isSameAs(cause);
+            assertThat(stickyFailure(coordinator, AGENT_STARTUP_FAILED).cause()).isSameAs(cause);
             assertThatDiagnosticMBean(server).isFailedWith(AGENT_STARTUP_FAILED);
             verify(runtime).close();
         }
@@ -260,9 +260,9 @@ class BootstrapCoordinatorStartupFailureTest {
             // then
             assertThat(outcome).isSameAs(cleanupFailure);
             assertThat(BootstrapCleanupFailures.contains(cause, cleanupFailure)).isTrue();
-            BootstrapException sticky = stickyFailure(coordinator, FAILED_ROLLBACK_INCOMPLETE);
-            assertThat(sticky.getCause()).isSameAs(cause);
-            assertThat(sticky.failure().primaryCode()).isEqualTo(AGENT_STARTUP_FAILED);
+            BootstrapFailure sticky = stickyFailure(coordinator, FAILED_ROLLBACK_INCOMPLETE);
+            assertThat(sticky.cause()).isSameAs(cause);
+            assertThat(sticky.primaryCode()).isEqualTo(AGENT_STARTUP_FAILED);
             assertThatDiagnosticMBean(server).isFailedWith(FAILED_ROLLBACK_INCOMPLETE);
             verify(runtime).close();
         }
@@ -270,8 +270,11 @@ class BootstrapCoordinatorStartupFailureTest {
         verify(runtime).close();
     }
 
-    private static BootstrapException stickyFailure(BootstrapCoordinator coordinator, String code) {
-        return catchBootstrapFailure(() -> coordinator.execute("after-startup-failure", () -> null), code);
+    private static BootstrapFailure stickyFailure(BootstrapCoordinator coordinator, String effectiveCode) {
+        BootstrapFailure failure = coordinator.diagnosticSnapshot().failure();
+        assertThat(failure).isNotNull();
+        assertThat(failure.effectiveCode()).isEqualTo(effectiveCode);
+        return failure;
     }
 
     private static PlatformScrubberFactory factory(ScrubbingRuntime runtime) {

@@ -1,5 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.VerificationFailureCode;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
+
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
@@ -29,4 +32,16 @@ final class BootstrapFailureCodes {
 
     static final String BOOTSTRAP_TERMINAL = "BOOTSTRAP_TERMINAL";
 
+    /**
+     * Классифицирует отказ допущенной операции. Отказ в допуске вложенного вызова, прервавший внешнюю
+     * операцию, сохраняет свой код.
+     */
+    static String classify(Throwable failure, String fallbackCode) {
+        return switch (failure) {
+            case LinkageError ignored -> VerificationFailureCode.EXTENSION_LINKAGE_ERROR.name();
+            case SanitizerBootstrapException sanitizer -> sanitizer.code();
+            case BootstrapAdmissionRejectedException rejection -> rejection.primaryCode();
+            default -> fallbackCode;
+        };
+    }
 }

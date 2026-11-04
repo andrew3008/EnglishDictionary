@@ -27,6 +27,7 @@ import javax.management.timer.Timer;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
@@ -35,6 +36,7 @@ import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationException;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
@@ -56,7 +58,7 @@ class BootstrapCoordinatorCustomizationTest {
         try (coordinator) {
             // when
             BootstrapException failure = catchBootstrapFailure(
-                    () -> coordinator.execute(SanitizerBootstrapException.TRACE_PIPELINE_ATTESTATION_FAILED, () -> {
+                    () -> coordinator.execute(CustomizationStep.TRACE_PIPELINE_ATTESTATION, () -> {
                         throw attestationFailure;
                     }),
                     SanitizerBootstrapException.TRACE_PIPELINE_ATTESTATION_FAILED
@@ -82,7 +84,7 @@ class BootstrapCoordinatorCustomizationTest {
 
         try (coordinator) {
             // when
-            assertThatThrownBy(() -> coordinator.execute(SanitizerBootstrapException.TRACE_PIPELINE_ATTESTATION_FAILED, () -> {
+            assertThatThrownBy(() -> coordinator.execute(CustomizationStep.TRACE_PIPELINE_ATTESTATION, () -> {
                 throw linkageFailure;
             })).isSameAs(linkageFailure);
 
@@ -104,7 +106,7 @@ class BootstrapCoordinatorCustomizationTest {
 
             // when
             assertBootstrapFailure(
-                    () -> coordinator.execute(EXPORTER_INITIALIZATION_FAILED, () -> {
+                    () -> coordinator.execute(CustomizationStep.EXPORTER_INITIALIZATION, () -> {
                         throw new SanitizerBootstrapException(
                                 SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER,
                                 "Foreign SafeSpanExporter is not protected by the session scrubbing runtime "
@@ -136,7 +138,7 @@ class BootstrapCoordinatorCustomizationTest {
 
             // when
             BootstrapException failure = catchBootstrapFailure(
-                    () -> coordinator.execute(SPAN_PROCESSOR_INITIALIZATION_FAILED, () -> {
+                    () -> coordinator.execute(CustomizationStep.SPAN_PROCESSOR_INITIALIZATION, () -> {
                         throw customizerFailure;
                     }),
                     SPAN_PROCESSOR_INITIALIZATION_FAILED
@@ -156,6 +158,37 @@ class BootstrapCoordinatorCustomizationTest {
         }
 
         assertThatDiagnosticMBean(server).isNotRegistered();
+    }
+
+    @Test
+    @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
+    void customization_failure_records_customization_phase_and_step_subphase() {
+        // given
+        IllegalStateException customizerFailure = new IllegalStateException("simulated exporter customizer failure");
+
+        try (AgentLogCapture logs = AgentLogCapture.installed();
+             BootstrapCoordinator coordinator = coordinator().server(MBeanServerFactory.newMBeanServer()).build()) {
+            coordinator.prepare(config());
+
+            // when
+            BootstrapException failure = catchBootstrapFailure(
+                    () -> coordinator.execute(CustomizationStep.EXPORTER_INITIALIZATION, () -> {
+                        throw customizerFailure;
+                    }),
+                    EXPORTER_INITIALIZATION_FAILED
+            );
+
+            // then
+            assertThat(failure.failure().phase()).isEqualTo("customization");
+            assertThat(coordinator.diagnosticSnapshot().failure().phase()).isEqualTo("customization");
+            assertThat(logs.events())
+                    .filteredOn(event -> "BOOTSTRAP_PHASE_FAILED".equals(event.eventName()))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.fields())
+                            .containsEntry("failureCode", EXPORTER_INITIALIZATION_FAILED)
+                            .containsEntry("phase", "customization")
+                            .containsEntry("subphase", "exporter-initialization"));
+        }
     }
 
     @Test
@@ -204,7 +237,7 @@ class BootstrapCoordinatorCustomizationTest {
                 .registrar(registrar)
                 .build()) {
             // when
-            assertThatThrownBy(() -> coordinator.execute(SPAN_PROCESSOR_INITIALIZATION_FAILED, () -> {
+            assertThatThrownBy(() -> coordinator.execute(CustomizationStep.SPAN_PROCESSOR_INITIALIZATION, () -> {
                 throw customizationFailure;
             })).isSameAs(diagnosticFailure);
 
@@ -235,7 +268,7 @@ class BootstrapCoordinatorCustomizationTest {
 
             // when
             BootstrapException failure = catchBootstrapFailure(
-                    () -> coordinator.execute(SPAN_PROCESSOR_INITIALIZATION_FAILED, () -> {
+                    () -> coordinator.execute(CustomizationStep.SPAN_PROCESSOR_INITIALIZATION, () -> {
                         throw customizerFailure;
                     }),
                     SPAN_PROCESSOR_INITIALIZATION_FAILED
