@@ -9,7 +9,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.JvmShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.ShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
@@ -32,24 +31,18 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
 final class BootstrapCoordinator implements AutoCloseable {
 
-    private static final String SHUTDOWN_HOOK_THREAD_NAME = "platform-tracing-bootstrap-shutdown";
-
     private final BootstrapLifecycleState lifecycle;
     private final BootstrapReadinessJournal journal;
     private final DiagnosticReadinessHandle diagnosticHandle;
-    private final ShutdownHookRegistry hookRegistry;
     private final PlatformTracingMBeanRegistrar jmxRegistrar;
     private final PlatformExtensionReadiness readiness;
     private final AgentInstanceId agentInstanceId;
-    private final BootstrapTerminalTransitions terminalTransitions;
     private final FailureHandler failures;
     private final AutoconfigureSessionFactory sessionFactory;
     private final ExtensionRuntimeVerifier runtimeVerifier;
     private final BootstrapActivation activation;
-    private final Object preparationOwnershipMonitor = new Object();
-
-    private boolean lifecycleShutdownHookInstalled;
-    private Thread preparationOwner;
+    private final PreparationGate preparationGate;
+    private final BootstrapCloser closer;
 
     static BootstrapCoordinator createDefault() {
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
@@ -71,12 +64,11 @@ final class BootstrapCoordinator implements AutoCloseable {
                          DiagnosticReadinessHandle diagnosticHandle) {
         this.lifecycle = new BootstrapLifecycleState();
         this.diagnosticHandle = Objects.requireNonNull(diagnosticHandle, "diagnosticHandle");
-        this.hookRegistry = Objects.requireNonNull(hookRegistry, "hookRegistry");
         this.jmxRegistrar = Objects.requireNonNull(jmxRegistrar, "jmxRegistrar");
         this.readiness = jmxRegistrar.extensionReadiness();
         this.agentInstanceId = jmxRegistrar.agentInstanceId();
         this.journal = new BootstrapReadinessJournal(lifecycle.monitor(), readiness, agentInstanceId);
-        this.terminalTransitions = new BootstrapTerminalTransitions(lifecycle, journal);
+        BootstrapTerminalTransitions terminalTransitions = new BootstrapTerminalTransitions(lifecycle, journal);
         this.failures = new FailureHandler(lifecycle, terminalTransitions, this::registerDiagnosticReadiness);
         this.sessionFactory = new AutoconfigureSessionFactory(scrubberFactory, remoteJmxAssessorFactory);
         this.runtimeVerifier = Objects.requireNonNull(runtimeVerifier, "runtimeVerifier");
@@ -85,13 +77,21 @@ final class BootstrapCoordinator implements AutoCloseable {
                 journal,
                 terminalTransitions
         );
+        this.preparationGate = new PreparationGate(lifecycle);
+        this.closer = new BootstrapCloser(
+                lifecycle,
+                terminalTransitions,
+                this.diagnosticHandle,
+                hookRegistry,
+                preparationGate
+        );
     }
 
     AutoconfigureSession prepare(ConfigProperties config) {
         Objects.requireNonNull(config, "config");
 
         try {
-            acquirePreparationOwnership();
+            preparationGate.enter();
         } catch (BootstrapAdmissionRejectedException rejection) {
             logAdmissionRejection(rejection);
             throw rejection;
@@ -100,7 +100,7 @@ final class BootstrapCoordinator implements AutoCloseable {
         try {
             return prepareAsOwner(config);
         } finally {
-            releasePreparationOwnership();
+            preparationGate.leave();
         }
     }
 
@@ -231,7 +231,7 @@ final class BootstrapCoordinator implements AutoCloseable {
 
         Optional<FailureContext> activationFailure;
         try {
-            activationFailure = activation.activate(tracerProvider, this::installLifecycleShutdownHook);
+            activationFailure = activation.activate(tracerProvider, closer::installShutdownHook);
         } catch (BootstrapAdmissionRejectedException rejection) {
             logAdmissionRejection(rejection);
             throw rejection;
@@ -261,150 +261,7 @@ final class BootstrapCoordinator implements AutoCloseable {
 
     @Override
     public void close() {
-        BootstrapLifecycleState.CloseAcquisition acquisition = acquireCloseAfterPreparation();
-        if (acquisition.reentrant()) {
-            return;
-        }
-
-        if (!acquisition.owner()) {
-            rethrowIfPresent(acquisition.awaitOutcome());
-            return;
-        }
-
-        Throwable outcome = null;
-        try {
-            outcome = closeAsOwner(acquisition.context());
-        } catch (RuntimeException | Error unexpectedFailure) {
-            outcome = unexpectedFailure;
-        } finally {
-            lifecycle.completeClose(acquisition.flight(), outcome);
-        }
-
-        rethrowIfPresent(outcome);
-    }
-
-    private void acquirePreparationOwnership() {
-        synchronized (preparationOwnershipMonitor) {
-            lifecycle.beginPrepare();
-            preparationOwner = Thread.currentThread();
-        }
-    }
-
-    private void releasePreparationOwnership() {
-        synchronized (preparationOwnershipMonitor) {
-            if (preparationOwner != Thread.currentThread()) {
-                throw new IllegalMonitorStateException(
-                        "Bootstrap preparation ownership can only be released by its owner"
-                );
-            }
-
-            preparationOwner = null;
-            preparationOwnershipMonitor.notifyAll();
-        }
-    }
-
-    private BootstrapLifecycleState.CloseAcquisition acquireCloseAfterPreparation() {
-        boolean interrupted = false;
-        try {
-            synchronized (preparationOwnershipMonitor) {
-                if (preparationOwner == Thread.currentThread()) {
-                    throw new IllegalStateException(
-                            "Bootstrap close cannot run reentrantly during preparation"
-                    );
-                }
-
-                while (preparationOwner != null) {
-                    try {
-                        preparationOwnershipMonitor.wait();
-                    } catch (InterruptedException ignored) {
-                        interrupted = true;
-                    }
-                }
-
-                return lifecycle.acquireClose();
-            }
-        } finally {
-            if (interrupted) {
-                Thread.currentThread().interrupt();
-            }
-        }
-    }
-
-    private Throwable closeAsOwner(BootstrapLifecycleState.CloseContext context) {
-        Throwable cleanupFailure = null;
-        Throwable priorPublicationFailure = null;
-        boolean failureSnapshotPublished = false;
-
-        try {
-            diagnosticHandle.close();
-        } catch (RuntimeException | Error withdrawalFailure) {
-            cleanupFailure = BootstrapCleanupFailures.withResourceLabel(
-                    "diagnostic-readiness",
-                    withdrawalFailure
-            );
-            try {
-                terminalTransitions.publishCloseFailureSnapshot(context, cleanupFailure);
-                failureSnapshotPublished = true;
-            } catch (RuntimeException | Error publicationFailure) {
-                priorPublicationFailure = publicationFailure;
-            }
-        }
-
-        if (cleanupFailure != null && !failureSnapshotPublished) {
-            return terminalTransitions.completeCloseFailure(
-                    context,
-                    cleanupFailure,
-                    priorPublicationFailure,
-                    false
-            );
-        }
-
-        BootstrapResources resources = context.resources();
-        Throwable runtimeCleanupFailure;
-        if (resources != null) {
-            runtimeCleanupFailure = BootstrapCleanupFailures.capture(resources::close);
-        } else {
-            //noinspection resource -- session закрывается через capture в этом методе
-            AutoconfigureSession session = context.session();
-            runtimeCleanupFailure = session == null ? null : BootstrapCleanupFailures.capture(session::close);
-        }
-        if (runtimeCleanupFailure != null) {
-            cleanupFailure = BootstrapCleanupFailures.aggregate(cleanupFailure, runtimeCleanupFailure);
-        }
-
-        if (cleanupFailure == null) {
-            lifecycle.markClosed();
-            return null;
-        }
-
-        return terminalTransitions.completeCloseFailure(
-                context,
-                cleanupFailure,
-                priorPublicationFailure,
-                failureSnapshotPublished
-        );
-    }
-
-    private void installLifecycleShutdownHook() {
-        if (!Thread.holdsLock(lifecycle.monitor())) {
-            throw new IllegalMonitorStateException(
-                    "Lifecycle shutdown hook installation requires the bootstrap lifecycle monitor"
-            );
-        }
-
-        if (lifecycleShutdownHookInstalled) {
-            return;
-        }
-
-        hookRegistry.register(SHUTDOWN_HOOK_THREAD_NAME, this::closeFromShutdownHook);
-        lifecycleShutdownHookInstalled = true;
-    }
-
-    private void closeFromShutdownHook() {
-        try {
-            close();
-        } catch (RuntimeException | Error ignored) {
-        }
+        closer.close();
     }
 
     private void logAdmissionRejection(BootstrapAdmissionRejectedException rejection) {
@@ -433,11 +290,5 @@ final class BootstrapCoordinator implements AutoCloseable {
 
     private ExtensionRuntimeEvidence unavailableEvidence() {
         return ExtensionRuntimeEvidence.unavailable(readiness.snapshot().extensionVersion());
-    }
-
-    private static void rethrowIfPresent(Throwable failure) {
-        if (failure != null) {
-            BootstrapCleanupFailures.rethrow(failure);
-        }
     }
 }

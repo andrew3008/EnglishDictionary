@@ -54,6 +54,8 @@ class BootstrapFailureOwnershipArchTest {
             targetIs(BootstrapFailure.class, CONSTRUCTOR_NAME);
     private static final DescribedPredicate<JavaAccess<?>> DIAGNOSTIC_REGISTRATION_ACCESS =
             targetIs(DiagnosticReadinessHandle.class, "registerIfAbsent");
+    private static final DescribedPredicate<JavaAccess<?>> LIFECYCLE_BEGIN_PREPARE_ACCESS =
+            targetIs(BootstrapLifecycleState.class, "beginPrepare");
     private static final DescribedPredicate<JavaAccess<?>> LIFECYCLE_CLOSE_ACQUISITION_ACCESS =
             targetIs(BootstrapLifecycleState.class, "acquireClose");
     private static final DescribedPredicate<JavaAccess<?>> LIFECYCLE_CLOSE_COMPLETION_ACCESS =
@@ -219,34 +221,32 @@ class BootstrapFailureOwnershipArchTest {
 
     @ArchTest
     @SuppressWarnings("unused")
-    static void only_coordinator_can_orchestrate_lifecycle_close(JavaClasses classes) {
+    static void only_preparation_gate_can_admit_prepare_and_close(JavaClasses classes) {
         // given
-        ArchRule rule = closeOwnershipRule();
+        ArchRule rule = preparationGateRule();
 
         // when
         EvaluationResult result = rule.evaluate(classes);
 
         // then
-        assertAllowedProductionAccessExists(
-                classes,
-                BootstrapCoordinator.class,
-                LIFECYCLE_CLOSE_ACQUISITION_ACCESS
-        );
-        assertAllowedProductionAccessExists(
-                classes,
-                BootstrapCoordinator.class,
-                LIFECYCLE_CLOSE_COMPLETION_ACCESS
-        );
-        assertAllowedProductionAccessExists(
-                classes,
-                BootstrapCoordinator.class,
-                LIFECYCLE_MARK_CLOSED_ACCESS
-        );
-        assertAllowedProductionAccessExists(
-                classes,
-                BootstrapCoordinator.class,
-                DIAGNOSTIC_CLOSE_ACCESS
-        );
+        assertAllowedProductionAccessExists(classes, PreparationGate.class, LIFECYCLE_BEGIN_PREPARE_ACCESS);
+        assertAllowedProductionAccessExists(classes, PreparationGate.class, LIFECYCLE_CLOSE_ACQUISITION_ACCESS);
+        assertThat(result.getFailureReport().getDetails()).isEmpty();
+    }
+
+    @ArchTest
+    @SuppressWarnings("unused")
+    static void only_closer_can_orchestrate_lifecycle_close(JavaClasses classes) {
+        // given
+        ArchRule rule = closeOrchestrationRule();
+
+        // when
+        EvaluationResult result = rule.evaluate(classes);
+
+        // then
+        assertAllowedProductionAccessExists(classes, BootstrapCloser.class, LIFECYCLE_CLOSE_COMPLETION_ACCESS);
+        assertAllowedProductionAccessExists(classes, BootstrapCloser.class, LIFECYCLE_MARK_CLOSED_ACCESS);
+        assertAllowedProductionAccessExists(classes, BootstrapCloser.class, DIAGNOSTIC_CLOSE_ACCESS);
         assertThat(classes.get(BootstrapLifecycleState.class).getFields())
                 .anySatisfy(field -> assertThat(field.getRawType()
                         .isEquivalentTo(BootstrapLifecycleState.CloseFlight.class)).isTrue());
@@ -255,7 +255,7 @@ class BootstrapFailureOwnershipArchTest {
 
     @ArchTest
     @SuppressWarnings("unused")
-    static void only_coordinator_can_register_the_process_lifetime_hook(JavaClasses classes) {
+    static void only_closer_can_register_the_process_lifetime_hook(JavaClasses classes) {
         // given
         ArchRule rule = shutdownHookRegistrationRule();
 
@@ -263,7 +263,7 @@ class BootstrapFailureOwnershipArchTest {
         EvaluationResult result = rule.evaluate(classes);
 
         // then
-        assertCoordinatorRegistersShutdownHookOnce(classes);
+        assertCloserRegistersShutdownHookOnce(classes);
         assertThat(result.getFailureReport().getDetails()).isEmpty();
     }
 
@@ -576,9 +576,31 @@ class BootstrapFailureOwnershipArchTest {
     }
 
     @Test
-    void close_ownership_rule_detects_direct_call_origin() {
+    void preparation_gate_rule_detects_direct_call_origin() {
         // given
-        ArchRule rule = closeOwnershipRule();
+        ArchRule rule = preparationGateRule();
+        JavaClasses classes = importFixture(
+                CloseOrchestrationAccessFixture.class,
+                BootstrapLifecycleState.class
+        );
+
+        // when
+        EvaluationResult result = rule.evaluate(classes);
+
+        // then
+        assertViolation(
+                classes,
+                result,
+                PreparationGate.class,
+                CloseOrchestrationAccessFixture.class,
+                CloseOrchestrationAccessFixture.class.getName()
+        );
+    }
+
+    @Test
+    void close_orchestration_rule_detects_direct_call_origin() {
+        // given
+        ArchRule rule = closeOrchestrationRule();
         JavaClasses classes = new ClassFileImporter().importClasses(
                 CloseOrchestrationAccessFixture.class,
                 BootstrapLifecycleState.class,
@@ -592,7 +614,7 @@ class BootstrapFailureOwnershipArchTest {
         assertViolation(
                 classes,
                 result,
-                BootstrapCoordinator.class,
+                BootstrapCloser.class,
                 CloseOrchestrationAccessFixture.class,
                 CloseOrchestrationAccessFixture.class.getName()
         );
@@ -614,7 +636,7 @@ class BootstrapFailureOwnershipArchTest {
         assertViolation(
                 classes,
                 result,
-                BootstrapCoordinator.class,
+                BootstrapCloser.class,
                 ShutdownHookRegistrationFixture.class,
                 ShutdownHookRegistrationFixture.class.getName()
         );
@@ -856,11 +878,17 @@ class BootstrapFailureOwnershipArchTest {
         );
     }
 
-    private static ArchRule closeOwnershipRule() {
+    private static ArchRule preparationGateRule() {
         return onlyOwner(
-                BootstrapCoordinator.class,
-                LIFECYCLE_CLOSE_ACQUISITION_ACCESS
-                        .or(LIFECYCLE_CLOSE_COMPLETION_ACCESS)
+                PreparationGate.class,
+                LIFECYCLE_BEGIN_PREPARE_ACCESS.or(LIFECYCLE_CLOSE_ACQUISITION_ACCESS)
+        );
+    }
+
+    private static ArchRule closeOrchestrationRule() {
+        return onlyOwner(
+                BootstrapCloser.class,
+                LIFECYCLE_CLOSE_COMPLETION_ACCESS
                         .or(LIFECYCLE_MARK_CLOSED_ACCESS)
                         .or(DIAGNOSTIC_CLOSE_ACCESS)
         );
@@ -868,7 +896,7 @@ class BootstrapFailureOwnershipArchTest {
 
     private static ArchRule shutdownHookRegistrationRule() {
         return onlyOwner(
-                BootstrapCoordinator.class,
+                BootstrapCloser.class,
                 SHUTDOWN_HOOK_REGISTRATION_ACCESS
         );
     }
@@ -973,14 +1001,14 @@ class BootstrapFailureOwnershipArchTest {
                 .isTrue();
     }
 
-    private static void assertCoordinatorRegistersShutdownHookOnce(JavaClasses classes) {
+    private static void assertCloserRegistersShutdownHookOnce(JavaClasses classes) {
         assertThat(classes.stream()
                 .flatMap(javaClass -> javaClass.getAccessesFromSelf().stream())
-                .filter(access -> belongToAnyOf(BootstrapCoordinator.class).test(access.getOriginOwner()))
+                .filter(access -> belongToAnyOf(BootstrapCloser.class).test(access.getOriginOwner()))
                 .filter(SHUTDOWN_HOOK_REGISTRATION_ACCESS)
                 .count())
                 .as("production access count from %s to %s",
-                        BootstrapCoordinator.class.getName(),
+                        BootstrapCloser.class.getName(),
                         SHUTDOWN_HOOK_REGISTRATION_ACCESS.getDescription())
                 .isEqualTo(1L);
     }
