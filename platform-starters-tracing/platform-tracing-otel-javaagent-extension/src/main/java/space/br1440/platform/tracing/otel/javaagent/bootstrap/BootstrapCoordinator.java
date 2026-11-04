@@ -384,8 +384,6 @@ final class BootstrapCoordinator implements AutoCloseable {
         }
 
         if (cleanupFailure != null && !failureSnapshotPublished) {
-            // Без снятого READY и без FAILED-fence teardown оставил бы READY над остановленным runtime;
-            // ресурсы удерживает CloseContext завершённого close-flight до выхода JVM.
             return terminalTransitions.completeCloseFailure(
                     context,
                     cleanupFailure,
