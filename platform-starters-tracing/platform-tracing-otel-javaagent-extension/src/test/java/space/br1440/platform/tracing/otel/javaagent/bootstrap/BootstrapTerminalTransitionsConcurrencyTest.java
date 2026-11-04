@@ -268,7 +268,7 @@ class BootstrapTerminalTransitionsConcurrencyTest {
             // then
             assertThat(nestedOutcome.get())
                     .isInstanceOf(IllegalMonitorStateException.class)
-                    .hasMessage("Bootstrap failure settlement must run outside the bootstrap lifecycle monitor");
+                    .hasMessage("Bootstrap failure handling must run outside the bootstrap lifecycle monitor");
             assertThat(nestedOutcome.get().getSuppressed()).containsExactly(customizationFailure);
             assertThat(stateAfterNested).hasValue(BootstrapState.ACTIVATING);
             assertThat(bootstrapCoordinator.state()).isEqualTo(BootstrapState.ACTIVE);

@@ -810,7 +810,7 @@ class BootstrapFailureOwnershipArchTest {
         return noMethods()
                 .should().haveRawReturnType(BootstrapException.class)
                 .orShould().haveRawReturnType(BootstrapAdmissionRejectedException.class)
-                .because("bootstrap failures are thrown at the settlement boundary, not returned for a caller to throw");
+                .because("bootstrap failures are thrown at the handling boundary, not returned for a caller to throw");
     }
 
     private static ArchRule onlyOwner(Class<?> owner, DescribedPredicate<JavaAccess<?>> access) {

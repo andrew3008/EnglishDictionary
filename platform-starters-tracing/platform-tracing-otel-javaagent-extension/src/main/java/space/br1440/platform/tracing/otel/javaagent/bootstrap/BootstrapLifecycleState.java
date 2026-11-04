@@ -276,10 +276,6 @@ final class BootstrapLifecycleState {
                 && BootstrapCleanupFailures.contains(failure.cause(), cleanupFailure);
     }
 
-    /**
-     * Эскалирует отказ до {@code FAILED_ROLLBACK_INCOMPLETE}. Throwable-граф не инспектируется:
-     * прикрепление cleanup failure к cause выполняет settlement после release.
-     */
     FailureAdmission escalateRollbackIncomplete(String phase, Throwable cleanupFailure) {
         Objects.requireNonNull(phase, "phase");
         Objects.requireNonNull(cleanupFailure, "cleanupFailure");
@@ -385,7 +381,7 @@ final class BootstrapLifecycleState {
 
     /**
      * Фиксирует первый отказ и в той же критической секции изымает session, ещё не переданную ни
-     * close-flight, ни стеку activation: её release принадлежит вызывающему settlement.
+     * close-flight, ни стеку activation: её release принадлежит вызывающему completeFailure.
      */
     private FailureAdmission record(BootstrapFailure next) {
         failure = next;

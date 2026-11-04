@@ -20,10 +20,6 @@ final class BootstrapTerminalTransitions {
         this.journal = Objects.requireNonNull(journal, "journal");
     }
 
-    /**
-     * Записывает отказ и в той же критической секции публикует {@code FAILED}. Отказ публикации не
-     * бросается и не прикрепляется к cause: граф инспектирует settlement после release.
-     */
     FailureAdmission terminalize(FailureSite site,
                                  String failureCode,
                                  Throwable cause,
@@ -81,7 +77,7 @@ final class BootstrapTerminalTransitions {
         Objects.requireNonNull(context, "context");
         Objects.requireNonNull(cleanupFailure, "cleanupFailure");
 
-        BootstrapFailure settledFailure;
+        BootstrapFailure recordedFailure;
         Throwable finalPublicationFailure = null;
         Throwable baseOutcome;
         synchronized (lifecycle.monitor()) {
@@ -99,21 +95,21 @@ final class BootstrapTerminalTransitions {
                 }
             }
 
-            settledFailure = lifecycle.recordCloseFailure(context, cleanupFailure);
+            recordedFailure = lifecycle.recordCloseFailure(context, cleanupFailure);
             if (priorPublicationFailure != null) {
                 BootstrapCleanupFailures.suppressPreservingPrimary(
-                        settledFailure.cause(),
+                        recordedFailure.cause(),
                         priorPublicationFailure
                 );
             }
 
             if (!failureSnapshotPublished) {
                 try {
-                    publishCurrentFailure(settledFailure);
+                    publishCurrentFailure(recordedFailure);
                 } catch (RuntimeException | Error publicationFailure) {
                     finalPublicationFailure = publicationFailure;
                     BootstrapCleanupFailures.suppressPreservingPrimary(
-                            settledFailure.cause(),
+                            recordedFailure.cause(),
                             publicationFailure
                     );
                 }
@@ -124,7 +120,7 @@ final class BootstrapTerminalTransitions {
         }
 
         try {
-            BootstrapFailureLog.closeFailed(settledFailure, baseOutcome);
+            BootstrapFailureLog.closeFailed(recordedFailure, baseOutcome);
             return baseOutcome;
         } catch (RuntimeException | Error loggerFailure) {
             synchronized (lifecycle.monitor()) {

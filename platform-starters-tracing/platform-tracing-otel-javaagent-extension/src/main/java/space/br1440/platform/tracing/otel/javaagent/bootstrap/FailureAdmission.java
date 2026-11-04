@@ -4,13 +4,6 @@ import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 
-/**
- * Результат terminal transition lifecycle.
- *
- * <p>{@code claimedSession} передаёт вызывающему владение session, изъятой из lifecycle в той же
- * критической секции, что и запись отказа. {@code projectionFailure} — отказ best-effort публикации
- * {@code FAILED} в wire; lifecycle о нём не знает, его добавляют transitions.
- */
 record FailureAdmission(Kind kind,
                         BootstrapFailure failure,
                         AutoconfigureSession claimedSession,
@@ -46,11 +39,8 @@ record FailureAdmission(Kind kind,
     }
 
     enum Kind {
-        /** Отказ записан этим вызовом; вызывающий владеет settlement. */
         RECORDED,
-        /** Sticky-отказ уже записан; новый cause не заменяет его, cleanup lifecycle не выполняется. */
         ALREADY_FAILED,
-        /** Lifecycle закрывается или закрыт; состояние не меняется, failure не записан. */
         REJECTED
     }
 }

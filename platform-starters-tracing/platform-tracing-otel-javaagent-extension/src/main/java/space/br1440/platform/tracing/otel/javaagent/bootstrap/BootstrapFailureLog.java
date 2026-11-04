@@ -65,9 +65,9 @@ final class BootstrapFailureLog {
         );
     }
 
-    static void closeFailed(BootstrapFailure settled, Throwable outcome) {
+    static void closeFailed(BootstrapFailure failure, Throwable outcome) {
         log.log(BootstrapLogEvent.BOOTSTRAP_PHASE_FAILED, fields -> fields
-                .putString(AgentLogField.FAILURE_CODE, settled.effectiveCode())
+                .putString(AgentLogField.FAILURE_CODE, failure.effectiveCode())
                 .putString(AgentLogField.PHASE, CLOSE_PHASE)
                 .putString(AgentLogField.SUBPHASE, CLOSE_PHASE)
                 .putString(AgentLogField.RESOURCE_LABEL, BootstrapCleanupFailures.resourceLabel(outcome))

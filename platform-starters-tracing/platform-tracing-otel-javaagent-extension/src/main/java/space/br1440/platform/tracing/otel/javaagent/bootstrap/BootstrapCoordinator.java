@@ -107,10 +107,6 @@ final class BootstrapCoordinator implements AutoCloseable {
         }
     }
 
-    /**
-     * Любой выход из допущенного prepare завершается {@code PREPARED} или settlement в {@code FAILED};
-     * локально владеемая prepared session закрывается settlement.
-     */
     private AutoconfigureSession prepareAsOwner(ConfigProperties config) {
         try {
             journal.publishInitializing();
@@ -444,7 +440,7 @@ final class BootstrapCoordinator implements AutoCloseable {
     private BootstrapFailure handleFailure(FailureSite site,
                                            String failureCode,
                                            Throwable cause,
-                                           AutoconfigureSession locallyOwned,
+                                           AutoconfigureSession ownedSession,
                                            ExtensionRuntimeEvidence evidence) {
         requireLifecycleMonitorNotHeld(cause);
         FailureAdmission admission = terminalTransitions.terminalize(site, failureCode, cause, BatchIds.NONE, evidence);
@@ -453,7 +449,7 @@ final class BootstrapCoordinator implements AutoCloseable {
                 failureCode,
                 cause,
                 admission,
-                locallyOwned,
+                ownedSession,
                 null,
                 BatchIds.NONE,
                 evidence
@@ -467,7 +463,7 @@ final class BootstrapCoordinator implements AutoCloseable {
         secondary.noteFatal(admission.projectionFailure());
 
         Throwable resourcesCleanupFailure = closeActivationResources(context.resources());
-        //noinspection resource -- session принадлежит settlement: её закрывает closePreparedSession
+        //noinspection resource -- сессия принадлежит completeFailure: её закрывает closePreparedSession
         Throwable sessionCleanupFailure = closePreparedSession(
                 context.ownedSession() != null ? context.ownedSession() : admission.claimedSession()
         );
@@ -567,7 +563,7 @@ final class BootstrapCoordinator implements AutoCloseable {
     private void requireLifecycleMonitorNotHeld(Throwable failure) {
         if (Thread.holdsLock(lifecycle.monitor())) {
             IllegalMonitorStateException violation = new IllegalMonitorStateException(
-                    "Bootstrap failure settlement must run outside the bootstrap lifecycle monitor"
+                    "Bootstrap failure handling must run outside the bootstrap lifecycle monitor"
             );
             violation.addSuppressed(failure);
             throw violation;

@@ -48,7 +48,7 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
 @ExtendWith(AutoConfiguredSdkIsolationExtension.class)
 @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
-class BootstrapCoordinatorActivationSettlementTest {
+class BootstrapCoordinatorActivationFailureTest {
 
     @Test
     void fatal_activation_cause_wins_over_fatal_cleanup_and_keeps_cleanup_attached() {
@@ -339,7 +339,7 @@ class BootstrapCoordinatorActivationSettlementTest {
         try {
             coordinator.close();
         } catch (Throwable ignored) {
-            // повторное закрытие после settlement не должно подменять отказ теста
+            // повторное закрытие после обработки отказа не должно подменять отказ теста
         }
     }
 
