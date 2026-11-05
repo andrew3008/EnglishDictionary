@@ -25,9 +25,21 @@ class PlatformTracingMetricsTest {
         assertThat(registry.find(PlatformTracingMetrics.SPANS_STARTED).counters())
                 .hasSize(SpanCategory.values().length)
                 .allSatisfy(counter -> assertThat(counter.count()).isZero());
-        assertThat(registry.find(PlatformTracingMetrics.EXCEPTIONS_RECORDED).counter()).isNotNull();
         assertThat(registry.find(PlatformTracingMetrics.SCOPE_CLOSED_TOTAL).counter()).isNotNull();
         assertThat(registry.find(PlatformTracingMetrics.SCOPE_DOUBLE_CLOSE_TOTAL).counter()).isNotNull();
+        assertThat(registry.getMeters()).hasSize(SpanCategory.values().length + 2);
+    }
+
+    @Test
+    void constructorDoesNotRegisterExceptionCounter() {
+        // given
+        MeterRegistry registry = new SimpleMeterRegistry();
+
+        // when
+        new PlatformTracingMetrics(registry);
+
+        // then
+        assertThat(registry.find("platform_tracing_exceptions_recorded_total").meters()).isEmpty();
     }
 
     @Test
@@ -47,19 +59,6 @@ class PlatformTracingMetricsTest {
                 .tag("category", SpanCategory.DATABASE.value())
                 .counter())
                 .count()).isEqualTo(1.0);
-    }
-
-    @Test
-    void incrementsExceptionCounter() {
-        MeterRegistry registry = new SimpleMeterRegistry();
-        PlatformTracingMetrics metrics = new PlatformTracingMetrics(registry);
-
-        metrics.incrementExceptionsRecorded();
-        metrics.incrementExceptionsRecorded();
-
-        assertThat(Objects.requireNonNull(registry.find(PlatformTracingMetrics.EXCEPTIONS_RECORDED)
-                .counter())
-                .count()).isEqualTo(2.0);
     }
 
     @Test

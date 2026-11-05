@@ -31,7 +31,6 @@ import space.br1440.platform.errorhandling.mvc.internal.MdcAwareTaskDecorator;
 import space.br1440.platform.errorhandling.mvc.internal.ProblemResponseFactory;
 import space.br1440.platform.errorhandling.mvc.observability.ExceptionObservabilityHook;
 import space.br1440.platform.errorhandling.mvc.observability.MicrometerExceptionMetricsRecorder;
-import space.br1440.platform.errorhandling.mvc.observability.OtelExceptionRecorder;
 import space.br1440.platform.errorhandling.properties.ErrorHandlingProperties;
 import space.br1440.platform.errorhandling.model.RequestContext;
 import space.br1440.platform.errorhandling.model.mapping.ErrorEntryToDtoMapper;
@@ -98,13 +97,6 @@ public class ErrorHandlingMvcAutoConfiguration {
                 observabilityHooks,
                 tracingRequestContextSupplierProvider.getIfAvailable()
         );
-    }
-
-    @Bean
-    @ConditionalOnClass(name = "io.opentelemetry.api.trace.Span")
-    @ConditionalOnMissingBean(OtelExceptionRecorder.class)
-    public ExceptionObservabilityHook otelExceptionRecorder() {
-        return new OtelExceptionRecorder();
     }
 
     @Bean

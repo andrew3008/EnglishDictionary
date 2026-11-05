@@ -41,8 +41,8 @@ class ValidationStartupErrorPolicyTest {
                     assertThat(event.eventCode()).isEqualTo(AgentEventCode.VALID_MISSING_ATTRIBUTES);
                     assertThat(event.message()).isEqualTo("Required span attributes are missing");
                     assertThat(event.fields())
-                            .containsEntry("count", "2")
-                            .containsEntry("missingKeys", PlatformAttributes.PLATFORM_TYPE + "," + PlatformAttributes.PLATFORM_RESULT);
+                            .containsEntry("count", "1")
+                            .containsEntry("missingKeys", PlatformAttributes.PLATFORM_TYPE);
                     assertThat(event.fields().toString()).doesNotContain("customer-secret-span-name");
                 });
     }

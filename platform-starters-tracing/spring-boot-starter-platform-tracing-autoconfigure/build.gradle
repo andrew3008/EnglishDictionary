@@ -73,6 +73,7 @@ dependencies {
     compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
     compileOnly 'org.springframework.kafka:spring-kafka'
     compileOnly 'org.springframework.cloud:spring-cloud-context'
+    compileOnly project(':platform-starters-error-handling:spring-boot-starter-platform-error-handling-mvc')
     compileOnly 'org.projectlombok:lombok'
 
     annotationProcessor 'org.projectlombok:lombok'
@@ -85,6 +86,7 @@ dependencies {
     testImplementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webmvc')
     testImplementation project(':platform-starters-tracing:platform-tracing-testkit')
     testImplementation project(':platform-starters-tracing:platform-tracing-otel-javaagent-extension')
+    testImplementation project(':platform-starters-error-handling:spring-boot-starter-platform-error-handling-mvc')
     testImplementation 'com.tngtech.archunit:archunit-junit5'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-web'

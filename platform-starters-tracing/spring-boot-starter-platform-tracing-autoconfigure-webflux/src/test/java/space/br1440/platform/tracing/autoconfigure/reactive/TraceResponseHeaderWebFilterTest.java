@@ -1,14 +1,20 @@
 package space.br1440.platform.tracing.autoconfigure.reactive;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
@@ -18,7 +24,6 @@ import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
-import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
@@ -27,6 +32,7 @@ import space.br1440.platform.tracing.runtime.propagation.control.DefaultInboundT
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
@@ -34,11 +40,15 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 class TraceResponseHeaderWebFilterTest {
 
     private static final String TRACE_ID = "0af7651916cd43dd8448eb211c80319c";
+    private static final String OUTCOME_REQUEST_ID = "req-outcome";
     private static final AttributeKey<String> RESULT_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT);
+    private static final AttributeKey<String> REQUEST_ID_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_REQUEST_ID);
+    private static final AttributeKey<String> ERROR_TYPE_KEY = AttributeKey.stringKey("error.type");
 
     @BeforeAll
     static void enableAutomaticContextPropagation() {
@@ -214,53 +224,110 @@ class TraceResponseHeaderWebFilterTest {
         assertThat(exchange.getResponse().getHeaders().get(PlatformHeaders.X_TRACE_ID)).containsExactly(TRACE_ID);
     }
 
-    @Test
-    void writesSuccessResultOnCurrentSpanAfterSuccessfulChain() {
-        // given/when
-        SpanData data = runFilterWithCurrentSpan(ignored -> Mono.empty());
-
-        // then
-        assertThat(data.getAttributes().get(RESULT_KEY)).isEqualTo(SpanResult.SUCCESS.value());
-    }
-
-    @Test
-    void writesFailureResultOnCurrentSpanWhenStatusIsClientError() {
-        // given/when
-        SpanData data = runFilterWithCurrentSpan(current -> {
-            current.getResponse().setStatusCode(HttpStatus.BAD_REQUEST);
-            return Mono.empty();
-        });
-
-        // then
-        assertThat(data.getAttributes().get(RESULT_KEY)).isEqualTo(SpanResult.FAILURE.value());
-    }
-
-    @Test
-    void writesFailureResultOnCurrentSpanWhenChainErrors() {
-        // given/when
-        SpanData data = runFilterWithCurrentSpan(ignored -> Mono.error(new IllegalStateException("boom")));
-
-        // then
-        assertThat(data.getAttributes().get(RESULT_KEY)).isEqualTo(SpanResult.FAILURE.value());
-    }
-
-    private static SpanData runFilterWithCurrentSpan(WebFilterChain chain) {
+    @ParameterizedTest
+    @EnumSource(value = HttpStatus.class, names = {"OK", "BAD_REQUEST", "INTERNAL_SERVER_ERROR"})
+    void doesNotWriteHttpOutcomeOnCurrentSpan(HttpStatus status) {
+        // given
         TraceResponseHeaderWebFilter filter = filterWith(traceOperationsWithoutTraceId());
-        MockServerWebExchange exchange = exchangeFor("/result");
+        MockServerWebExchange exchange = exchangeFor("/outcome", PlatformHeaders.X_REQUEST_ID, OUTCOME_REQUEST_ID);
+        WebFilterChain chain = current -> {
+            current.getResponse().setStatusCode(status);
+            return Mono.empty();
+        };
 
+        // when
+        SpanData data = runWithCurrentSpan(() -> filter.filter(exchange, chain).block());
+
+        // then
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(status);
+        assertNoHttpOutcome(data);
+    }
+
+    @Test
+    void doesNotWriteHttpOutcomeWhenChainErrors() {
+        // given
+        TraceResponseHeaderWebFilter filter = filterWith(traceOperationsWithoutTraceId());
+        MockServerWebExchange exchange = exchangeFor("/outcome", PlatformHeaders.X_REQUEST_ID, OUTCOME_REQUEST_ID);
+        WebFilterChain chain = ignored -> Mono.error(new IllegalStateException("boom"));
+
+        // when
+        SpanData data = runWithCurrentSpan(() -> assertThatThrownBy(() -> filter.filter(exchange, chain).block())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("boom"));
+
+        // then
+        assertNoHttpOutcome(data);
+    }
+
+    @Test
+    void doesNotWriteHttpOutcomeWhenSubscriptionIsCancelled() {
+        // given
+        TraceResponseHeaderWebFilter filter = filterWith(traceOperationsWithoutTraceId());
+        MockServerWebExchange exchange = exchangeFor("/outcome", PlatformHeaders.X_REQUEST_ID, OUTCOME_REQUEST_ID);
+        AtomicBoolean cancelled = new AtomicBoolean();
+        WebFilterChain chain = ignored -> Mono.<Void>never().doOnCancel(() -> cancelled.set(true));
+
+        // when
+        SpanData data = runWithCurrentSpan(() -> filter.filter(exchange, chain).subscribe().dispose());
+
+        // then
+        assertThat(cancelled).isTrue();
+        assertNoHttpOutcome(data);
+    }
+
+    @Test
+    void keepsIdentityContextAndHeadersAcrossPublishOn() {
+        withReactiveIdentityPropagation(runtime -> {
+            // given
+            TraceResponseHeaderWebFilter filter = filterWith(traceOperationsWithTraceId());
+            MockServerWebExchange exchange = exchangeFor("/publish-on", PlatformHeaders.X_REQUEST_ID, "request-async");
+            AtomicReference<String> contextRequestId = new AtomicReference<>();
+            AtomicReference<Optional<String>> boundRequestId = new AtomicReference<>();
+            WebFilterChain chain = ignored -> Mono.just("payload")
+                    .publishOn(Schedulers.parallel())
+                    .doOnNext(value -> boundRequestId.set(runtime.currentRequestId()))
+                    .flatMap(value -> Mono.deferContextual(context -> {
+                        ReactiveIdentityContextPropagation.IdentityState state =
+                                context.get(ReactiveIdentityContextPropagation.KEY);
+                        contextRequestId.set(state.requestId());
+                        return Mono.empty();
+                    }))
+                    .then();
+
+            // when
+            filter.filter(exchange, chain).block(Duration.ofSeconds(5));
+            exchange.getResponse().setComplete().block(Duration.ofSeconds(5));
+
+            // then
+            assertThat(contextRequestId).hasValue("request-async");
+            assertThat(boundRequestId.get()).contains("request-async");
+            assertThat(exchange.getResponse().getHeaders().getFirst(PlatformHeaders.X_REQUEST_ID))
+                    .isEqualTo("request-async");
+            assertThat(exchange.getResponse().getHeaders().get(PlatformHeaders.X_TRACE_ID)).containsExactly(TRACE_ID);
+            assertThat(runtime.currentRequestId()).isEmpty();
+        });
+    }
+
+    private static SpanData runWithCurrentSpan(Runnable execution) {
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
         try (SdkTracerProvider provider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build()) {
             Span span = provider.get("test").spanBuilder("http.server").startSpan();
             try (Scope ignored = span.makeCurrent()) {
-                filter.filter(exchange, chain)
-                        .onErrorResume(error -> Mono.empty())
-                        .block();
+                execution.run();
             }
             span.end();
             return exporter.getFinishedSpanItems().getFirst();
         }
+    }
+
+    private static void assertNoHttpOutcome(SpanData data) {
+        assertThat(data.getAttributes().get(REQUEST_ID_KEY)).isEqualTo(OUTCOME_REQUEST_ID);
+        assertThat(data.getAttributes().get(RESULT_KEY)).isNull();
+        assertThat(data.getAttributes().get(ERROR_TYPE_KEY)).isNull();
+        assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.UNSET);
+        assertThat(data.getEvents()).isEmpty();
     }
 
     private static void withReactiveIdentityPropagation(Consumer<TracingRuntime> scenario) {

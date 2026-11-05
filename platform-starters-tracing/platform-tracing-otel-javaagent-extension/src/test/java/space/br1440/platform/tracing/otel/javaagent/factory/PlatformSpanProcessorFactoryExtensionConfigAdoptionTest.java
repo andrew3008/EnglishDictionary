@@ -365,7 +365,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             AttributeKey<String> typeKey = AttributeKey.stringKey(PlatformAttributes.PLATFORM_TYPE);
             AttributeKey<String> resultKey = AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT);
             assertThat(withoutResultData.getAttributes().get(missingKey))
-                    .isEqualTo(PlatformAttributes.PLATFORM_TYPE + "," + PlatformAttributes.PLATFORM_RESULT);
+                    .isEqualTo(PlatformAttributes.PLATFORM_TYPE);
             assertThat(withResultData.getAttributes().get(missingKey))
                     .isEqualTo(PlatformAttributes.PLATFORM_TYPE);
             assertThat(withoutResultData.getAttributes().get(typeKey)).isEqualTo("http_server");

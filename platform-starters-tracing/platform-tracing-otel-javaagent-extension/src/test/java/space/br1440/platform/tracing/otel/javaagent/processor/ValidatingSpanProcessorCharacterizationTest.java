@@ -49,11 +49,7 @@ class ValidatingSpanProcessorCharacterizationTest {
             tracer.spanBuilder("op").startSpan().end();
 
             SpanData data = h.exporter().getFinishedSpanItems().getFirst();
-            ValidationAssertions.assertMissingRecorded(
-                    data,
-                    PlatformAttributes.PLATFORM_TYPE,
-                    PlatformAttributes.PLATFORM_RESULT
-            );
+            ValidationAssertions.assertMissingRecorded(data, PlatformAttributes.PLATFORM_TYPE);
             // then
             assertThat(data.getName()).isEqualTo("op");
         }

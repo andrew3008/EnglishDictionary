@@ -8,7 +8,6 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
 
@@ -36,8 +35,11 @@ import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 class ExceptionRecorderSafetyTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"wrapped", "dropped", "ended", "invalid"})
-    void nonRecordingSpansDoNotReadException(String state) {
+    @CsvSource({
+            "wrapped, false", "dropped, false", "ended, false", "invalid, false",
+            "wrapped, true", "dropped, true", "ended, true", "invalid, true"
+    })
+    void nonRecordingSpansDoNotReadException(String state, boolean eventOnly) {
         // given
         ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000));
         CountingException exception = new CountingException("private-message", null);
@@ -55,7 +57,11 @@ class ExceptionRecorderSafetyTest {
             }
 
             // when
-            recorder.record(span, exception);
+            if (eventOnly) {
+                recorder.recordEvent(span, exception);
+            } else {
+                recorder.record(span, exception);
+            }
 
             // then
             assertThat(span.isRecording()).isFalse();
@@ -185,6 +191,68 @@ class ExceptionRecorderSafetyTest {
                 SpanData data = ((ReadableSpan) span).toSpanData();
                 assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
                 assertThat(data.getAttributes().get(SemconvKeys.PLATFORM_RESULT)).isEqualTo("failure");
+            } finally {
+                span.end();
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"false,false", "false,true", "true,false", "true,true"})
+    void eventOnlyPathAppliesMessagePolicyWithoutStatusWrites(boolean includeMessage, boolean includeStack) {
+        // given
+        CountingException cause = new CountingException("password=cause-secret", null);
+        CountingException exception = new CountingException("token=outer-secret", cause);
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(includeMessage, includeStack, 1_000));
+        try (SdkTracerProvider provider = recordingProvider().build()) {
+            Span span = provider.get("test").spanBuilder("privacy-event-only").startSpan();
+
+            // when
+            recorder.recordEvent(span, exception);
+            span.end();
+
+            // then
+            SpanData data = ((ReadableSpan) span).toSpanData();
+            EventData event = data.getEvents().getFirst();
+            String stack = event.getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE);
+            assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.UNSET);
+            assertThat(data.getStatus().getDescription()).isEmpty();
+            assertThat(data.getAttributes().get(SemconvKeys.ERROR_TYPE)).isNull();
+            assertThat(data.getAttributes().get(SemconvKeys.PLATFORM_RESULT)).isNull();
+            assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isEqualTo(includeMessage ? "<redacted>" : null);
+            assertThat(exception.messageReads).isEqualTo(includeMessage ? 1 : 0);
+            assertThat(cause.messageReads).isEqualTo(includeMessage && includeStack ? 1 : 0);
+            if (includeStack) {
+                assertThat(stack).contains("Caused by:").doesNotContain("outer-secret", "cause-secret");
+            } else {
+                assertThat(stack).isNull();
+                assertThat(exception.causeReads).isZero();
+            }
+        }
+    }
+
+    @Test
+    void eventOnlyFatalExtractionErrorIsNotSwallowed() {
+        // given
+        LinkageError fatal = new LinkageError("fatal sentinel");
+        Throwable exception = new IllegalStateException() {
+            @Override
+            public String getMessage() {
+                throw fatal;
+            }
+        };
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000));
+        try (SdkTracerProvider provider = recordingProvider().build()) {
+            Span span = provider.get("test").spanBuilder("fatal-event-only").startSpan();
+            try {
+                // when
+                assertThatThrownBy(() -> recorder.recordEvent(span, exception)).isSameAs(fatal);
+
+                // then
+                SpanData data = ((ReadableSpan) span).toSpanData();
+                assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.UNSET);
+                assertThat(data.getAttributes().get(SemconvKeys.PLATFORM_RESULT)).isNull();
+                assertThat(data.getEvents()).isEmpty();
             } finally {
                 span.end();
             }

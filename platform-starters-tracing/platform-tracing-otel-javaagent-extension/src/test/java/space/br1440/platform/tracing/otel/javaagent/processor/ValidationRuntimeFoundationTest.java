@@ -50,8 +50,8 @@ class ValidationRuntimeFoundationTest {
             tracer.spanBuilder("op").startSpan().end();
             ValidationAssertions.assertMissingRecorded(
                     h.exporter().getFinishedSpanItems().getFirst(),
-                    PlatformAttributes.PLATFORM_TYPE,
-                    PlatformAttributes.PLATFORM_RESULT);
+                    PlatformAttributes.PLATFORM_TYPE
+            );
         }
 
         assertThat(AcceptedPolicyMutationAccess.applyValidation(access, SpanAttributeValidationLevel.DISABLED))
@@ -91,8 +91,8 @@ class ValidationRuntimeFoundationTest {
             assertThat(h.exporter().getFinishedSpanItems()).hasSize(1);
             ValidationAssertions.assertMissingRecorded(
                     h.exporter().getFinishedSpanItems().getFirst(),
-                    PlatformAttributes.PLATFORM_TYPE,
-                    PlatformAttributes.PLATFORM_RESULT);
+                    PlatformAttributes.PLATFORM_TYPE
+            );
         }
     }
 

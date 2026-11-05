@@ -9,6 +9,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import io.opentelemetry.api.common.AttributeKey;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -77,17 +79,17 @@ class TracedAspectTest {
 
         assertThat(span.getName()).isEqualTo("sample.process");
         assertThat(span.getAttributes().asMap()).containsEntry(
-                io.opentelemetry.api.common.AttributeKey.stringKey(PlatformAttributes.PLATFORM_TYPE),
+                AttributeKey.stringKey(PlatformAttributes.PLATFORM_TYPE),
                 SpanCategory.INTERNAL.value()
         );
         assertThat(span.getAttributes().asMap()).containsEntry(
-                io.opentelemetry.api.common.AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT),
-                SpanResult.SUCCESS.value()
-        );
-        assertThat(span.getAttributes().asMap()).containsEntry(
-                io.opentelemetry.api.common.AttributeKey.stringKey("orderId"),
+                AttributeKey.stringKey("orderId"),
                 "42"
         );
+        assertThat(span.getAttributes().get(
+                AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT)
+        )).isNull();
+        assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.UNSET);
     }
 
     @Test
@@ -152,8 +154,9 @@ class TracedAspectTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    void defaultRecorderSanitizesCreatedAndActiveSpansWithoutReplacingFailure(
-            boolean activeSpan, OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void defaultRecorderSanitizesCreatedAndActiveSpansWithoutReplacingFailure(boolean activeSpan,
+                                                                              OpenTelemetrySdk sdk,
+                                                                              InMemorySpanExporter exporter) {
         // given
         IllegalStateException failure = new IllegalStateException("password=aop-secret-canary");
         Span parent = activeSpan ? sdk.getTracer("test").spanBuilder("active.parent").startSpan() : Span.getInvalid();
@@ -171,6 +174,12 @@ class TracedAspectTest {
         assertThat(exporter.getFinishedSpanItems()).hasSize(1);
         SpanData span = exporter.getFinishedSpanItems().getFirst();
         assertThat(span.getName()).isEqualTo(activeSpan ? "active.parent" : "sample.failure");
+        if (activeSpan) {
+            assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.UNSET);
+            assertThat(span.getAttributes().get(SemconvKeys.PLATFORM_RESULT)).isNull();
+            assertThat(span.getEvents()).isEmpty();
+            return;
+        }
         assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
         assertThat(span.getStatus().getDescription()).isEqualTo("<redacted>");
         assertThat(span.getEvents()).hasSize(1);
@@ -183,14 +192,16 @@ class TracedAspectTest {
 
     @ParameterizedTest
     @EnumSource(FailingGetter.class)
-    void createdSpanPreservesOriginalFailureWhenDiagnosticGetterThrows(
-            FailingGetter getter, OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void createdSpanPreservesOriginalFailureWhenDiagnosticGetterThrows(FailingGetter getter,
+                                                                       OpenTelemetrySdk sdk,
+                                                                       InMemorySpanExporter exporter) {
         // given
         HostileException failure = new HostileException(getter);
         ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000));
         TraceOperations operations = new DefaultTraceOperations(
-                new OtelTracingRuntime(sdk, new SpanAttributeValidator(), recorder));
-        HostileFailureService proxy = hostileService(operations, recorder, failure);
+                new OtelTracingRuntime(sdk, new SpanAttributeValidator(), recorder)
+        );
+        HostileFailureService proxy = hostileService(operations, failure);
         Span previous = Span.current();
 
         // when
@@ -208,12 +219,12 @@ class TracedAspectTest {
 
     @ParameterizedTest
     @EnumSource(FailingGetter.class)
-    void activeSpanPreservesOriginalFailureWhenDiagnosticGetterThrows(
-            FailingGetter getter, OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void activeSpanPreservesOriginalFailureWhenDiagnosticGetterThrows(FailingGetter getter,
+                                                                      OpenTelemetrySdk sdk,
+                                                                      InMemorySpanExporter exporter) {
         // given
         HostileException failure = new HostileException(getter);
-        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000));
-        HostileFailureService proxy = hostileService(tracing, recorder, failure);
+        HostileFailureService proxy = hostileService(tracing, failure);
         Span previous = Span.current();
         Span parent = sdk.getTracer("test").spanBuilder("active.parent").startSpan();
         Throwable escaped;
@@ -231,18 +242,19 @@ class TracedAspectTest {
         }
 
         assertThat(escaped).isSameAs(failure);
-        assertThat(failure.failedGetterCalls).isPositive();
+        assertThat(failure.failedGetterCalls).isZero();
         assertThat(Span.current()).isSameAs(previous);
         assertThat(exporter.getFinishedSpanItems()).hasSize(1);
         SpanData span = exporter.getFinishedSpanItems().getFirst();
         assertThat(span.getName()).isEqualTo("active.parent");
-        assertRecordedFailure(span, failure);
+        assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.UNSET);
+        assertThat(span.getAttributes().get(SemconvKeys.PLATFORM_RESULT)).isNull();
+        assertThat(span.getEvents()).isEmpty();
     }
 
-    private static HostileFailureService hostileService(
-            TraceOperations operations, ExceptionRecorder recorder, HostileException failure) {
+    private static HostileFailureService hostileService(TraceOperations operations, HostileException failure) {
         AspectJProxyFactory factory = new AspectJProxyFactory(new HostileFailureService(failure));
-        factory.addAspect(new TracedAspect(operations, recorder));
+        factory.addAspect(new TracedAspect(operations));
         return factory.getProxy();
     }
 
@@ -256,10 +268,6 @@ class TracedAspectTest {
                 .isEqualTo(failure.getClass().getName());
     }
 
-    /**
-     * При наличии активного span'а дочерний не создаётся, активный обогащается
-     * атрибутами {@code @TracedAttribute} и {@code platform.traced.method}.
-     */
     @Test
     void doesNotCreateChildSpanWhenParentActive(InMemorySpanExporter exporter) {
         // given
@@ -297,10 +305,6 @@ class TracedAspectTest {
         assertThat(exporter.getFinishedSpanItems()).isEmpty();
     }
 
-    /**
-     * Characterization: синхронный AOP-lifecycle закрывает span при возврате future,
-     * а не при его completion — основание для ArchUnit-запрета.
-     */
     @Test
     void closesSpanBeforeCompletableFutureCompletes(InMemorySpanExporter exporter) throws Exception {
         // given
@@ -391,7 +395,9 @@ class TracedAspectTest {
     }
 
     enum FailingGetter {
-        MESSAGE, CAUSE, STACK
+        MESSAGE,
+        CAUSE,
+        STACK
     }
 
     private static final class HostileException extends RuntimeException {

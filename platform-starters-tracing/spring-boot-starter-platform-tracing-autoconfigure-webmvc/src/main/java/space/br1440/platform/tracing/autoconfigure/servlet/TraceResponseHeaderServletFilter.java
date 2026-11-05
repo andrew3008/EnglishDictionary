@@ -21,7 +21,6 @@ import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
-import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.runtime.propagation.CorrelationIdSupport;
@@ -40,7 +39,6 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
     private final AtomicBoolean headerReadFailureLogged = new AtomicBoolean();
     private final AtomicBoolean traceContextFailureLogged = new AtomicBoolean();
     private final AtomicBoolean requestAttributeFailureLogged = new AtomicBoolean();
-    private final AtomicBoolean resultAttributeFailureLogged = new AtomicBoolean();
 
     public TraceResponseHeaderServletFilter(TraceOperations traceOperations,
                                             TracingProperties properties,
@@ -71,54 +69,26 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
         }
         capturedTraceId.ifPresent(wrapped::protectTraceId);
 
-        Throwable failure = null;
         try (CorrelationScope ignored = identityBoundary.openRequestScope(requestId, traceControl.forceTrace(), traceControl.qaTrace());
              CorrelationScope ignoredCorrelation = openInboundCorrelationScope(request)) {
-            try {
-                Span span = Span.current();
-                if (span.getSpanContext().isValid()) {
-                    span.setAttribute(PlatformAttributes.PLATFORM_REQUEST_ID, requestId);
-                }
-            } catch (RuntimeException attributeFailure) {
-                warnOnce(
-                        requestAttributeFailureLogged,
-                        "Failed to set the request id span attribute: {}",
-                        attributeFailure
-                );
-            }
+            setRequestIdAttribute(requestId);
 
             if (!response.isCommitted()) {
                 wrapped.installCanonical();
             }
 
-            try {
-                filterChain.doFilter(request, wrapped);
-            } catch (ServletException | IOException | RuntimeException | Error ex) {
-                failure = ex;
-                throw ex;
-            }
-        } finally {
-            applyHttpServerResult(wrapped, failure);
+            filterChain.doFilter(request, wrapped);
         }
     }
 
-    private void applyHttpServerResult(HttpServletResponse response, Throwable failure) {
+    private void setRequestIdAttribute(String requestId) {
         try {
             Span span = Span.current();
-            if (!span.getSpanContext().isValid()) {
-                return;
+            if (span.getSpanContext().isValid()) {
+                span.setAttribute(PlatformAttributes.PLATFORM_REQUEST_ID, requestId);
             }
-
-            SpanResult result = (failure != null || response.getStatus() >= 400)
-                    ? SpanResult.FAILURE
-                    : SpanResult.SUCCESS;
-            span.setAttribute(PlatformAttributes.PLATFORM_RESULT, result.value());
-        } catch (RuntimeException resultFailure) {
-            warnOnce(
-                    resultAttributeFailureLogged,
-                    "Failed to set the HTTP server result span attribute: {}",
-                    resultFailure
-            );
+        } catch (RuntimeException attributeFailure) {
+            warnOnce(requestAttributeFailureLogged, "Failed to set the request id span attribute: {}", attributeFailure);
         }
     }
 

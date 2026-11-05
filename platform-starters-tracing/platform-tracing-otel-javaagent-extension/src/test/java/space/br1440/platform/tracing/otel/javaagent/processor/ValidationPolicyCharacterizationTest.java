@@ -59,9 +59,7 @@ class ValidationPolicyCharacterizationTest {
             SpanData data = h.exporter().getFinishedSpanItems().getFirst();
 
             if (c.expectMissingAttribute()) {
-                ValidationAssertions.assertMissingRecorded(
-                        data, PlatformAttributes.PLATFORM_TYPE, PlatformAttributes.PLATFORM_RESULT
-                );
+                ValidationAssertions.assertMissingRecorded(data, PlatformAttributes.PLATFORM_TYPE);
             } else {
                 ValidationAssertions.assertMissingAbsent(data);
             }

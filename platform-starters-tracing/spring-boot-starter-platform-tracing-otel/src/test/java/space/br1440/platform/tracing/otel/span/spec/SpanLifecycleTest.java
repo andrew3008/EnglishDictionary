@@ -163,6 +163,52 @@ class SpanLifecycleTest {
     }
 
     @Test
+    void interleavedDuplicateThrowable_notDoubleRecorded() {
+        // given
+        IllegalStateException first = new IllegalStateException("first");
+        IllegalStateException second = new IllegalStateException("second");
+
+        // when
+        try (SpanHandle handle = tracing.spans().operation("interleaved").start()) {
+            handle.recordException(first);
+            handle.recordException(second);
+            handle.recordException(first);
+        }
+
+        // then
+        assertThat(exporter.getFinishedSpanItems().getFirst().getEvents()).hasSize(2);
+    }
+
+    @Test
+    void wrapperAndCause_areRecordedSeparately() {
+        // given
+        IllegalStateException cause = new IllegalStateException("cause");
+        IllegalStateException wrapper = new IllegalStateException("wrapper", cause);
+
+        // when
+        try (SpanHandle handle = tracing.spans().operation("wrapper").start()) {
+            handle.recordException(wrapper);
+            handle.recordException(cause);
+        }
+
+        // then
+        assertThat(exporter.getFinishedSpanItems().getFirst().getEvents()).hasSize(2);
+    }
+
+    @Test
+    void recordAfterClose_doesNotAddEvent() {
+        // given
+        SpanHandle handle = tracing.spans().operation("closed").start();
+        handle.close();
+
+        // when
+        handle.recordException(new IllegalStateException("late"));
+
+        // then
+        assertThat(exporter.getFinishedSpanItems().getFirst().getEvents()).isEmpty();
+    }
+
+    @Test
     void nestedSpans_closeInLifoOrder() {
         tracing.spans().operation("outer").run(() ->
                 tracing.spans().operation("inner").run(() -> {

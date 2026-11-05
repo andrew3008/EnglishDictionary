@@ -275,6 +275,112 @@ class ExceptionRecorderTest {
                 .contains("com.example.A.method");
     }
 
+    @Test
+    void recordEvent_addsSanitizedEventOnly() {
+        // given
+        ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
+        Span span = tracer.spanBuilder("server").startSpan();
+
+        // when
+        recorder.recordEvent(span, new IllegalStateException("boom"));
+        span.end();
+
+        // then
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
+        assertThat(data.getEvents()).singleElement().satisfies(event -> {
+            assertThat(event.getName()).isEqualTo("exception");
+            assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_TYPE))
+                    .isEqualTo(IllegalStateException.class.getName());
+            assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isEqualTo("boom");
+            assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE)).isNull();
+        });
+        assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.UNSET);
+        assertThat(data.getStatus().getDescription()).isEmpty();
+        assertThat(data.getAttributes().get(SemconvKeys.ERROR_TYPE)).isNull();
+        assertThat(data.getAttributes().get(SemconvKeys.PLATFORM_RESULT)).isNull();
+    }
+
+    @Test
+    void recordEvent_doesNotOverrideAgentErrorStatus() {
+        // given
+        ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
+        Span span = tracer.spanBuilder("server").startSpan();
+        span.setStatus(StatusCode.ERROR);
+        span.setAttribute(SemconvKeys.ERROR_TYPE, "500");
+
+        // when
+        recorder.recordEvent(span, new IllegalStateException("boom"));
+        span.end();
+
+        // then
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
+        assertThat(data.getEvents()).hasSize(1);
+        assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+        assertThat(data.getStatus().getDescription()).isEmpty();
+        assertThat(data.getAttributes().get(SemconvKeys.ERROR_TYPE)).isEqualTo("500");
+        assertThat(data.getAttributes().get(SemconvKeys.PLATFORM_RESULT)).isNull();
+    }
+
+    @Test
+    void recordEvent_keepsExistingStatusDescription() {
+        // given
+        ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
+        Span span = tracer.spanBuilder("server").startSpan();
+        span.setStatus(StatusCode.ERROR, "agent-description");
+
+        // when
+        recorder.recordEvent(span, new IllegalStateException("boom"));
+        span.end();
+
+        // then
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
+        assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+        assertThat(data.getStatus().getDescription()).isEqualTo("agent-description");
+    }
+
+    @Test
+    void recordEvent_appliesRecordingPolicyToEvent() {
+        // given
+        ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionRecordingPolicy(true, true, 1_000));
+        IllegalStateException failure = new IllegalStateException(
+                "Failed HTTPS://user:password-canary@host/?token=query-canary#fragment-canary");
+        failure.setStackTrace(new StackTraceElement[0]);
+        Span span = tracer.spanBuilder("server").startSpan();
+
+        // when
+        recorder.recordEvent(span, failure);
+        span.end();
+
+        // then
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
+        String expected = "Failed HTTPS://***@host/?token=***#***";
+        EventData event = data.getEvents().getFirst();
+        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_MESSAGE)).isEqualTo(expected);
+        assertThat(event.getAttributes().get(SemconvKeys.EXCEPTION_STACKTRACE))
+                .contains(expected)
+                .doesNotContain("password-canary", "query-canary", "fragment-canary");
+        assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.UNSET);
+        assertThat(data.getStatus().getDescription()).isEmpty();
+    }
+
+    @Test
+    void recordEvent_withNullArguments_andInvalidSpan_doNotThrow() {
+        // given
+        ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
+        Span span = tracer.spanBuilder("server").startSpan();
+
+        // when
+        recorder.recordEvent(null, new IllegalStateException("x"));
+        recorder.recordEvent(Span.getInvalid(), new IllegalStateException("x"));
+        recorder.recordEvent(span, null);
+        span.end();
+
+        // then
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
+        assertThat(data.getEvents()).isEmpty();
+        assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.UNSET);
+    }
+
     private void runInSpan(Runnable body) {
         Span span = tracer.spanBuilder("op").startSpan();
         try (Scope ignored = span.makeCurrent()) {

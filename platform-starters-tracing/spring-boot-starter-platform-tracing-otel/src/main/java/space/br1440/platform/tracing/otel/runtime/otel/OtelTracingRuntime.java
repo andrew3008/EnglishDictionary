@@ -146,11 +146,6 @@ public final class OtelTracingRuntime implements TracingRuntime {
 
 
     @Override
-    public void recordException(@Nonnull SpanHandle span, @Nullable Throwable throwable) {
-        Objects.requireNonNull(span, "span").recordException(throwable);
-    }
-
-    @Override
     @Nonnull
     public TracingState state() {
         return ImmutableTracingState.enabled();

@@ -17,7 +17,6 @@ dependencies {
     compileOnly 'org.springframework.boot:spring-boot-starter-security'
 
     compileOnly 'io.micrometer:micrometer-core'
-    compileOnly 'io.opentelemetry:opentelemetry-api'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -33,7 +32,6 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-web'
 
     testImplementation 'io.micrometer:micrometer-core'
-    testImplementation 'io.opentelemetry:opentelemetry-api'
 
     testImplementation "net.bytebuddy:byte-buddy:${libs.versions.byte.buddy.get()}"
 

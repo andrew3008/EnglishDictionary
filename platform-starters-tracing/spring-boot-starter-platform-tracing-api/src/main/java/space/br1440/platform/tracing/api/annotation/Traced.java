@@ -14,6 +14,8 @@ import java.lang.annotation.Target;
  * <b>Create / enrich.</b> Если активного valid span нет, создаётся INTERNAL-операционный span через
  * {@code spans().operation(name)}. Если активный span есть, child не создаётся: на текущий span
  * пишутся {@code platform.traced.method} и атрибуты параметров с {@link TracedAttribute}.
+ * Исключение при этом не записывается: его обрабатывает владелец активного span. Сырой parent
+ * без собственного error handling запись от {@code @Traced} не получает.
  * <p>
  * <b>Ограничения.</b> Эффект только на публичных не-{@code final} методах Spring-бинов при внешнем
  * вызове (self-invocation — silent no-op). Не применяется к методам, возвращающим

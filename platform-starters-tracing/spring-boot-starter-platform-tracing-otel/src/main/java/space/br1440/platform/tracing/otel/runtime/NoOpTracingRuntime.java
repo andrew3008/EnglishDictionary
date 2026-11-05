@@ -4,7 +4,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 
 import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.context.CorrelationScope;
@@ -101,11 +100,6 @@ public final class NoOpTracingRuntime implements TracingRuntime {
     @Nonnull
     public TraceControlBoundaryState currentTraceControlBoundary() {
         return identityStorage.traceControlBoundary();
-    }
-
-    @Override
-    public void recordException(@Nonnull SpanHandle span, @Nullable Throwable throwable) {
-        Objects.requireNonNull(span, "span");
     }
 
     @Override

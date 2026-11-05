@@ -46,8 +46,7 @@ class TraceResponseHeaderWebFilterFailureLogTest {
     );
     private static final List<String> WARN_MESSAGES = List.of(
             "Failed to read the current trace id: java.lang.IllegalStateException",
-            "Failed to set the request id span attribute: java.lang.IllegalStateException",
-            "Failed to set the HTTP server result span attribute: java.lang.IllegalStateException"
+            "Failed to set the request id span attribute: java.lang.IllegalStateException"
     );
 
     private Logger logger;
@@ -98,13 +97,13 @@ class TraceResponseHeaderWebFilterFailureLogTest {
         assertThat(appender.list)
                 .extracting(ILoggingEvent::getLevel)
                 .containsOnly(Level.WARN)
-                .hasSize(6);
+                .hasSize(4);
 
         assertThat(appender.list)
                 .extracting(ILoggingEvent::getFormattedMessage)
                 .containsExactlyElementsOf(List.of(
-                        WARN_MESSAGES.get(0), WARN_MESSAGES.get(1), WARN_MESSAGES.get(2),
-                        WARN_MESSAGES.get(0), WARN_MESSAGES.get(1), WARN_MESSAGES.get(2)
+                        WARN_MESSAGES.get(0), WARN_MESSAGES.get(1),
+                        WARN_MESSAGES.get(0), WARN_MESSAGES.get(1)
                 ))
                 .allSatisfy(message -> assertThat(message).doesNotContain(SECRET));
 

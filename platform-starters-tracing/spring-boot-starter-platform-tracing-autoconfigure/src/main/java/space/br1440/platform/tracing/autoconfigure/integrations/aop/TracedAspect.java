@@ -17,9 +17,7 @@ import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.annotation.Traced;
 import space.br1440.platform.tracing.api.annotation.TracedAttribute;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 
 import io.opentelemetry.api.trace.Span;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +30,8 @@ import lombok.extern.slf4j.Slf4j;
  * try-with-resources на выходе из метода.
  * <p>
  * <b>Enrich-path.</b> При активном span child не создаётся: пишутся {@code platform.traced.method}
- * и {@link TracedAttribute}.
+ * и {@link TracedAttribute}. Исключение borrowed-path не записывает: его обрабатывает владелец
+ * активного span. Сырой parent без собственного error handling запись от {@code @Traced} не получает.
  * <p>
  * <b>Ordering.</b> {@link Ordered#HIGHEST_PRECEDENCE}{@code + 1} — span охватывает
  * Kafka request-identity aspect и transaction advice с дефолтным {@link Ordered#LOWEST_PRECEDENCE}.
@@ -49,15 +48,9 @@ public class TracedAspect implements Ordered {
     public static final int ORDER = (Ordered.HIGHEST_PRECEDENCE + 1);
 
     private final TraceOperations traceOperations;
-    private final ExceptionRecorder exceptionRecorder;
 
     public TracedAspect(TraceOperations traceOperations) {
-        this(traceOperations, ExceptionRecorder.secureDefault());
-    }
-
-    public TracedAspect(TraceOperations traceOperations, ExceptionRecorder exceptionRecorder) {
         this.traceOperations = traceOperations;
-        this.exceptionRecorder = (exceptionRecorder == null) ? ExceptionRecorder.secureDefault() : exceptionRecorder;
     }
 
     @Override
@@ -85,9 +78,7 @@ public class TracedAspect implements Ordered {
             applyParameterAttributesToSpan(Span.current(), method, joinPoint.getArgs());
 
             try {
-                Object result = joinPoint.proceed();
-                Span.current().setAttribute(PlatformAttributes.PLATFORM_RESULT, SpanResult.SUCCESS.value());
-                return result;
+                return joinPoint.proceed();
             } catch (Throwable t) {
                 try {
                     handle.recordException(t);
@@ -111,18 +102,7 @@ public class TracedAspect implements Ordered {
                     spanName, attrError.getMessage());
         }
 
-        try {
-            return joinPoint.proceed();
-        } catch (Throwable t) {
-            try {
-                exceptionRecorder.record(Span.current(), t);
-            } catch (RuntimeException tracingError) {
-                log.warn("Failed to record exception on active span via @Traced('{}'): {}",
-                        spanName, tracingError.getMessage());
-            }
-
-            throw t;
-        }
+        return joinPoint.proceed();
     }
 
     private static boolean hasActiveSpan() {

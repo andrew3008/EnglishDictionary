@@ -12,7 +12,8 @@ import java.util.Set;
 public final class SpanHandleImpl implements SpanHandle {
 
     private final OwningSpanScope scope;
-    private final Set<Throwable> recordedThrowables = Collections.newSetFromMap(new IdentityHashMap<>());
+    private Set<Throwable> recordedThrowables;
+    private boolean closed;
 
     private SpanHandleImpl(@Nonnull OwningSpanScope scope) {
         this.scope = scope;
@@ -25,11 +26,22 @@ public final class SpanHandleImpl implements SpanHandle {
 
     @Override
     public void recordException(@Nullable Throwable throwable) {
-        if (throwable == null) {
+        if (throwable == null || closed) {
             return;
         }
 
-        if (!recordedThrowables.add(throwable)) {
+        if (!scope.isRecording()) {
+            scope.recordException(throwable);
+            return;
+        }
+
+        Set<Throwable> recorded = recordedThrowables;
+        if (recorded == null) {
+            recorded = Collections.newSetFromMap(new IdentityHashMap<>());
+            recordedThrowables = recorded;
+        }
+
+        if (!recorded.add(throwable)) {
             return;
         }
 
@@ -38,6 +50,11 @@ public final class SpanHandleImpl implements SpanHandle {
 
     @Override
     public void close() {
-        scope.close();
+        closed = true;
+        try {
+            scope.close();
+        } finally {
+            recordedThrowables = null;
+        }
     }
 }

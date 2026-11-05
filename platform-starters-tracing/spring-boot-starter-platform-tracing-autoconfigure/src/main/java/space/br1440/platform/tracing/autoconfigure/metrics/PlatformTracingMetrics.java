@@ -11,7 +11,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 public class PlatformTracingMetrics {
 
     public static final String SPANS_STARTED = "platform_tracing_spans_started_total";
-    public static final String EXCEPTIONS_RECORDED = "platform_tracing_exceptions_recorded_total";
 
     /**
      * Счётчик корректных закрытий {@code span handle.close()} (включая идемпотентные повторные
@@ -31,7 +30,6 @@ public class PlatformTracingMetrics {
     public static final String SCOPE_DOUBLE_CLOSE_TOTAL = "platform_tracing_scope_double_close_total";
 
     private final EnumMap<SpanCategory, Counter> spansStartedCounters;
-    private final Counter exceptionsRecordedCounter;
     private final Counter scopeClosedCounter;
     private final Counter scopeDoubleCloseCounter;
 
@@ -47,10 +45,6 @@ public class PlatformTracingMetrics {
             spansStartedCounters.put(category, counter);
         }
 
-        exceptionsRecordedCounter = Counter.builder(EXCEPTIONS_RECORDED)
-                .description("Number of exceptions recorded on spans via the platform facade")
-                .register(meterRegistry);
-
         scopeClosedCounter = Counter.builder(SCOPE_CLOSED_TOTAL)
                 .description("Number of span handles closed correctly (first close)")
                 .register(meterRegistry);
@@ -62,10 +56,6 @@ public class PlatformTracingMetrics {
 
     public void incrementSpansStarted(SpanCategory category) {
         spansStartedCounters.get(Objects.requireNonNull(category, "category")).increment();
-    }
-
-    public void incrementExceptionsRecorded() {
-        exceptionsRecordedCounter.increment();
     }
 
     public void incrementScopeClosed() {

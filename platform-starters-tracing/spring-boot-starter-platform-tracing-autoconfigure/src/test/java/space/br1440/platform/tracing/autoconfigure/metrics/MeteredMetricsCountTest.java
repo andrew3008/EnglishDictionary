@@ -13,18 +13,24 @@ import org.springframework.context.annotation.Configuration;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.api.span.spec.DatabaseSpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.channel.TracingControlChannelAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.TracingRuntimeDiagnosticsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
+import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
+import io.opentelemetry.sdk.trace.data.SpanData;
 
 class MeteredMetricsCountTest {
+
+    private static final String REMOVED_EXCEPTION_COUNTER = "platform_tracing_exceptions_recorded_total";
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
@@ -72,24 +78,58 @@ class MeteredMetricsCountTest {
     }
 
     @Test
-    void recordException_incrementsExceptionsRecorded() {
+    void recordException_reachesRealHandleWithoutExceptionCounter() {
         contextRunner.run(context -> {
             // given
             MeterRegistry registry = context.getBean(MeterRegistry.class);
             TraceOperations tracing = context.getBean(TraceOperations.class);
+            InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
+            IllegalStateException failure = new IllegalStateException("boom");
 
             // when
             SpanHandle handle = tracing.spans().operation("failing-op").start();
-            handle.recordException(new IllegalStateException("boom"));
+            handle.recordException(failure);
+            handle.recordException(failure);
             handle.close();
 
             // then
-            assertThat(registry.get(PlatformTracingMetrics.EXCEPTIONS_RECORDED)
-                    .counter()
-                    .count()).isEqualTo(1.0);
-
+            SpanData span = exporter.getFinishedSpanItems().getFirst();
+            assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+            assertThat(span.getEvents()).hasSize(1);
+            assertThat(registry.find(REMOVED_EXCEPTION_COUNTER).meters()).isEmpty();
             assertThat(registry.get(PlatformTracingMetrics.SPANS_STARTED)
                     .tag("category", SpanCategory.INTERNAL.value())
+                    .counter()
+                    .count()).isEqualTo(1.0);
+        });
+    }
+
+    @Test
+    void databaseHandle_reachesConsumerWithoutWrapper() {
+        contextRunner.run(context -> {
+            // given
+            MeterRegistry registry = context.getBean(MeterRegistry.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
+            InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
+
+            // when
+            DatabaseSpanHandle handle = tracing.spans().transport().database()
+                    .system("postgresql")
+                    .operation("SELECT")
+                    .collection("orders")
+                    .start();
+            handle.responseStatusCode("23505");
+            handle.recordException(new IllegalStateException("duplicate key"));
+            handle.close();
+
+            // then
+            SpanData span = exporter.getFinishedSpanItems().getFirst();
+            assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+            assertThat(span.getAttributes().get(SemconvKeys.ERROR_TYPE)).isEqualTo("23505");
+            assertThat(span.getEvents()).hasSize(1);
+            assertThat(registry.find(REMOVED_EXCEPTION_COUNTER).meters()).isEmpty();
+            assertThat(registry.get(PlatformTracingMetrics.SPANS_STARTED)
+                    .tag("category", SpanCategory.DATABASE.value())
                     .counter()
                     .count()).isEqualTo(1.0);
         });

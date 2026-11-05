@@ -93,7 +93,7 @@ class DatabaseSpanHandleTest {
     }
 
     @Test
-    void statusCodeWithoutException_writesStatusCodeAndClosesAsSuccess() {
+    void statusCodeWithoutException_writesStatusCodeAndLeavesResultUnset() {
         // given
         DatabaseSpanHandle handle = startDatabase();
 
@@ -105,8 +105,8 @@ class DatabaseSpanHandleTest {
         SpanData span = finishedSpan();
         assertThat(span.getAttributes().get(SemconvKeys.DB_RESPONSE_STATUS_CODE)).isEqualTo("00000");
         assertThat(span.getAttributes().get(SemconvKeys.ERROR_TYPE)).isNull();
-        assertThat(span.getAttributes().get(SemconvKeys.PLATFORM_RESULT)).isEqualTo(SpanResult.SUCCESS.value());
-        assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.OK);
+        assertThat(span.getAttributes().get(SemconvKeys.PLATFORM_RESULT)).isNull();
+        assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.UNSET);
         assertThat(span.getEvents()).isEmpty();
     }
 
