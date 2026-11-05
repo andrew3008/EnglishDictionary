@@ -60,6 +60,7 @@ class PackagedTracingCertificationTest {
     private static final String POST_READY_PROBE_RESULT_PREFIX = "POST_READY_FAILURE_PROBE ";
     private static final String POST_READY_PROBE_MBEAN_PREFIX = "POST_READY_FAILURE_PROBE_MBEAN ";
     private static final String AGENT_START_FAILURE_MARKER = "ERROR io.opentelemetry.javaagent.OpenTelemetryAgent";
+    private static final String BOOTSTRAP_PACKAGE_PATH = "space/br1440/platform/tracing/otel/javaagent/bootstrap/";
 
     private Path controlledAgent;
     private Path applicationBootJar;
@@ -403,6 +404,58 @@ class PackagedTracingCertificationTest {
         assertThat(fixtureAgentSha).isNotEqualTo(sourceAgentSha);
         assertThat(ControlledAgentArtifactMutator.identity(fixtureAgent).getProperty("extension.sha256"))
                 .isEqualTo(fixtureExtensionSha);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+            "secondary-failures," + BOOTSTRAP_PACKAGE_PATH + "SecondaryFailures.class,SecondaryFailures",
+            "failure-context," + BOOTSTRAP_PACKAGE_PATH + "FailureContext.class,FailureContext",
+            "bootstrap-failure-log," + BOOTSTRAP_PACKAGE_PATH + "BootstrapFailureLog.class,BootstrapFailureLog",
+            "bootstrap-cleanup-failures," + BOOTSTRAP_PACKAGE_PATH + "resources/BootstrapCleanupFailures.class,"
+                    + "BootstrapCleanupFailures"
+    })
+    void missing_failure_path_class_does_not_mask_startup_failure_summary(String label,
+                                                                           String extensionEntry,
+                                                                           String className) throws Exception {
+        // given
+        String scenario = "missing-" + label;
+        Path withListener = ControlledAgentArtifactMutator.withFailingBeforeActivationListener(
+                controlledAgent,
+                evidenceDirectory.resolve("fixture-agent-" + scenario + "-listener.jar"),
+                postSdkFailureListener
+        );
+        Path fixtureAgent = ControlledAgentArtifactMutator.withoutExtensionEntry(
+                withListener,
+                evidenceDirectory.resolve("fixture-agent-" + scenario + ".jar"),
+                extensionEntry
+        );
+        PackagedProcessLauncher.LaunchRequest request = controlledRequest(
+                scenario,
+                applicationBootJar,
+                fixtureAgent,
+                ControlledAgentArtifactMutator.sha256(fixtureAgent),
+                Map.of()
+        );
+
+        // when
+        PackagedProcessLauncher.ProcessResult result = launcher.launch(request);
+
+        // then
+        assertFailure(scenario, result, "EXTENSION_FAILED", "AGENT_STARTUP_FAILED", "FAILED");
+        JsonNode summary = assertStartupFailureSummary(result);
+        assertThat(summary.path("fields").path("lifecycle").asText()).isEqualTo("FAILED");
+        assertThat(summary.path("fields").path("failureCode").asText()).isEqualTo("AGENT_STARTUP_FAILED");
+        assertThat(summary.path("error_type").asText())
+                .as("исходная причина listener не вытеснена NoClassDefFoundError")
+                .isNotBlank()
+                .doesNotContain("NoClassDefFoundError");
+        assertThat(result.stderr())
+                .contains(AGENT_START_FAILURE_MARKER)
+                .contains("NoClassDefFoundError")
+                .contains(className);
+        assertThat(result.combinedOutput())
+                .doesNotContain("\"event_name\":\"EXTENSION_INSTALLED\"")
+                .doesNotContain(PackagedTracingCertificationApplication.APPLICATION_READY_TOKEN);
     }
 
     @Test
