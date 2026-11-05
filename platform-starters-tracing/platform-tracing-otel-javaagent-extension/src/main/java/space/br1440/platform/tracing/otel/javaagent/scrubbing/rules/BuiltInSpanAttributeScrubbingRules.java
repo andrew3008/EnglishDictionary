@@ -5,6 +5,7 @@ import java.util.Locale;
 
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.DiagnosticTextMaskingRule;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ScrubbingValueTransformer;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +24,7 @@ public enum BuiltInSpanAttributeScrubbingRules {
     HARDWARE_IDENTITY("hardware-identity", 110, false),
     USER_IDENTITY("user-identity", 120, false),
     EMAIL("email", 130, false),
-    IP_ADDRESS("ip-address", 140, false);
+    IP_ADDRESS(ScrubbingValueTransformer.IP_ADDRESS_REASON, 140, false);
 
     private final String configName;
     private final int priority;

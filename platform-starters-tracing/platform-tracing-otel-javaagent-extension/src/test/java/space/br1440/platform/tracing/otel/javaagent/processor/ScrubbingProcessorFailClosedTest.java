@@ -13,7 +13,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
-import io.opentelemetry.sdk.trace.data.SpanData;
 import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
@@ -37,9 +36,7 @@ class ScrubbingProcessorFailClosedTest {
                 .put(secondKey, "second-raw-secret")
                 .build();
         ReadWriteSpan span = mock(ReadWriteSpan.class);
-        SpanData spanData = mock(SpanData.class);
-        when(span.toSpanData()).thenReturn(spanData);
-        when(spanData.getAttributes()).thenReturn(snapshot);
+        when(span.getAttributes()).thenReturn(snapshot);
 
         AtomicBoolean failFirstMutation = new AtomicBoolean(true);
         doAnswer(invocation -> {
@@ -57,12 +54,13 @@ class ScrubbingProcessorFailClosedTest {
             // when
             processor.onEnding(span);
 
+            // then
             verify(span).setAttribute(firstKey, FAILED);
             verify(span).setAttribute(secondKey, FAILED);
-            // then
             assertThat(snapshot.get(firstKey)).isEqualTo("first-raw-secret");
             assertThat(snapshot.get(secondKey)).isEqualTo("second-raw-secret");
             assertThat(runtime.failures()).isEqualTo(1);
+            assertThat(runtime.maskedActions()).isEqualTo(2L);
             assertThat(runtime.attributesVerified())
                     .as("частично применённый collapse не даёт гарантии — сессия обязана перейти в "
                             + "collapse-режим на exporter-boundary")
@@ -76,9 +74,7 @@ class ScrubbingProcessorFailClosedTest {
         AttributeKey<String> key = AttributeKey.stringKey("only.secret");
         Attributes snapshot = Attributes.builder().put(key, "raw-secret").build();
         ReadWriteSpan span = mock(ReadWriteSpan.class);
-        SpanData spanData = mock(SpanData.class);
-        when(span.toSpanData()).thenReturn(spanData);
-        when(spanData.getAttributes()).thenReturn(snapshot);
+        when(span.getAttributes()).thenReturn(snapshot);
 
         doAnswer(invocation -> {
             throw new IllegalStateException("synthetic mutation failure");
@@ -99,6 +95,7 @@ class ScrubbingProcessorFailClosedTest {
                     .as("переход режима считается один раз")
                     .isEqualTo(1L);
             assertThat(runtime.failures()).isGreaterThanOrEqualTo(2L);
+            assertThat(runtime.maskedActions()).isZero();
         }
     }
 
@@ -106,7 +103,7 @@ class ScrubbingProcessorFailClosedTest {
     void unavailable_snapshot_also_degrades_the_session() {
         // given
         ReadWriteSpan span = mock(ReadWriteSpan.class);
-        when(span.toSpanData()).thenThrow(new IllegalStateException("snapshot unavailable"));
+        when(span.getAttributes()).thenThrow(new IllegalStateException("snapshot unavailable"));
 
         ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
                 List.of(new MaskEveryStringRule()));

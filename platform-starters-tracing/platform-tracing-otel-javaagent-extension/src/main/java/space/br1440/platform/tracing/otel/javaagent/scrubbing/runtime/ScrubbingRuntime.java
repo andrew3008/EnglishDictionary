@@ -8,15 +8,19 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.function.UnaryOperator;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.ScrubbingLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeOutcome;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuntimeRule;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ScrubbingValueTransformer;
 import space.br1440.platform.tracing.runtime.scrubbing.DiagnosticTextSanitizer;
 
+import io.opentelemetry.api.common.AttributeType;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 
 public final class ScrubbingRuntime implements AutoCloseable {
@@ -28,6 +32,7 @@ public final class ScrubbingRuntime implements AutoCloseable {
     private final ScrubbingPolicy policy;
     private final boolean hasHmacKey;
     private final HmacSha256Digest digest;
+    private final UnaryOperator<String> hashFunction;
     private final ScrubbingCollapseState collapseState = new ScrubbingCollapseState(lifecycleLog);
     private final ScrubbingBoundaryCounters boundaryCounters = new ScrubbingBoundaryCounters();
     private final ScrubbingInstallationBarrier installation = new ScrubbingInstallationBarrier();
@@ -79,8 +84,10 @@ public final class ScrubbingRuntime implements AutoCloseable {
             this.digest = null;
         }
 
+        this.hashFunction = (digest == null) ? null : digest::hashHex;
         this.attributeScrubber = new SpanAttributeInPlaceScrubber(
-                policy.attributeExecutableRules(), collapseState, digest, log, this);
+                policy.attributeExecutableRules(), collapseState, log, this
+        );
     }
 
     public static ScrubbingRuntime disabled() {
@@ -123,6 +130,10 @@ public final class ScrubbingRuntime implements AutoCloseable {
         return digest.hashHex(value);
     }
 
+    public ScrubbingValueTransformer.Result transformAttribute(AttributeType type, Object value, MergeOutcome outcome) {
+        return ScrubbingValueTransformer.transform(type, value, outcome, hashFunction);
+    }
+
     public void scrubSpanAttributes(ReadWriteSpan span) {
         if (!enabled) {
             return;
@@ -135,6 +146,11 @@ public final class ScrubbingRuntime implements AutoCloseable {
         attributeScrubber.scrub(span);
     }
 
+    /**
+     * Счётчики действий учитывают успешно применённое подавление или изменение атрибута.
+     * Массив считается одним атрибутом; KEEP и неуспешная запись не учитываются.
+     * DROP обозначает логическое подавление: live SDK сохраняет ключ с безопасным значением.
+     */
     public long droppedActions() {
         return attributeScrubber.droppedActions();
     }

@@ -49,4 +49,22 @@ class ScrubbingPackageStructureArchTest {
                             SCRUBBING + ".rules..",
                             SCRUBBING + ".loader..")
                     .because("engine — общее ядро правил и не должен знать о фазах сборки или сессии");
+
+    @ArchTest
+    @SuppressWarnings("unused")
+    static final ArchRule valueTransformationDoesNotOwnSideEffects =
+            noClasses()
+                    .that().haveNameMatching(".*\\.ScrubbingValueTransformer(\\$.*)?")
+                    .should().dependOnClassesThat().resideInAnyPackage(
+                            SCRUBBING + ".runtime..",
+                            SCRUBBING + ".circuitbreaker..",
+                            "space.br1440.platform.tracing.otel.javaagent.logging..",
+                            "java.util.logging..",
+                            "org.slf4j..",
+                            "org.apache.logging..",
+                            "io.micrometer..",
+                            "io.opentelemetry.api.trace..",
+                            "io.opentelemetry.api.metrics..",
+                            "io.opentelemetry.sdk..")
+                    .because("преобразование значения не владеет сессией, записью SDK, логированием и счётчиками");
 }

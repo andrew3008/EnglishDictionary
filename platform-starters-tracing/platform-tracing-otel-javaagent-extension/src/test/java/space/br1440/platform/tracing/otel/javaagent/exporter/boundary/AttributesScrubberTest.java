@@ -420,6 +420,25 @@ class AttributesScrubberTest {
         assertThat(result.attributes()).isEqualTo(Attributes.empty());
     }
 
+    @Test
+    void diagnosticMaskingOfMalformedNumericValuePreservesTheDeclaredType() {
+        // given
+        AttributeKey<Long> key = AttributeKey.longKey("status.description");
+        String raw = "Request failed: https://service.example/?token=raw-token-canary";
+        Attributes input = attributesWithValue(key, raw);
+        try (ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(
+                List.of(BuiltInSpanAttributeScrubbingRules.DIAGNOSTIC_TEXT.create()))) {
+            // when
+            AttributesScrubber.Result result = AttributesScrubber.scrub(input, runtime);
+
+            // then
+            assertThat(result.changed()).isTrue();
+            assertThat(result.attributes().get(key)).isEqualTo(0L);
+            assertThat(result.attributes().get(AttributeKey.stringKey(key.getKey()))).isNull();
+            assertThat(result.criticalFailure()).isFalse();
+        }
+    }
+
     private static Attributes attributesWithValue(AttributeKey<?> key, Object value) {
         Attributes attributes = mock(Attributes.class);
         doAnswer(invocation -> {

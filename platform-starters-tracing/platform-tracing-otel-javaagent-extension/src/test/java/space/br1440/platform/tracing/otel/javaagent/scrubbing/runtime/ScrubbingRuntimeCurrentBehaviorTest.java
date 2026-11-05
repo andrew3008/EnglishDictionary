@@ -36,7 +36,6 @@ import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.Value;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
-import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 
@@ -86,8 +85,8 @@ class ScrubbingRuntimeCurrentBehaviorTest {
     }
 
     @Test
-    @DisplayName("текущее поведение: MASK/DROP/HASH числа и boolean увеличивают droppedActions")
-    void numericAndBooleanActionsIncrementDroppedActions() {
+    @DisplayName("MASK/HASH числа и boolean учитываются как маскирование, DROP — как подавление атрибута")
+    void numericAndBooleanActionsCountTheAppliedEffect() {
         // given
         AttributeKey<Long> longKey = AttributeKey.longKey("geo.lat");
         AttributeKey<Double> doubleKey = AttributeKey.doubleKey("geo.lon");
@@ -103,21 +102,21 @@ class ScrubbingRuntimeCurrentBehaviorTest {
 
             // then
             assertThat(masked.get(longKey)).isEqualTo(0L);
-            assertThat(maskedRuntime.droppedActions()).isEqualTo(1);
-            assertThat(maskedRuntime.maskedActions()).isZero();
+            assertThat(maskedRuntime.droppedActions()).isZero();
+            assertThat(maskedRuntime.maskedActions()).isEqualTo(1);
             assertThat(droppedValues.get(doubleKey)).isEqualTo(0.0d);
             assertThat(hashedValues.get(booleanKey)).isEqualTo(false);
             assertThat(dropped.droppedActions()).isEqualTo(1);
             assertThat(dropped.maskedActions()).isZero();
-            assertThat(hashed.droppedActions()).isEqualTo(1);
+            assertThat(hashed.droppedActions()).isZero();
             assertThat(hashed.hashMissingKey()).isZero();
-            assertThat(hashed.maskedActions()).isZero();
+            assertThat(hashed.maskedActions()).isEqualTo(1);
         }
     }
 
     @Test
-    @DisplayName("текущее поведение: массив чисел сохраняет длину при MASK")
-    void numericArrayMaskKeepsLength() {
+    @DisplayName("Маскирование массива сохраняет допустимую длину и учитывает один атрибут")
+    void numericArrayMaskKeepsLengthAndCountsOneAttribute() {
         // given
         AttributeKey<List<Long>> key = AttributeKey.longArrayKey("geo.parts");
 
@@ -127,13 +126,13 @@ class ScrubbingRuntimeCurrentBehaviorTest {
 
             // then
             assertThat(written.get(key)).isEqualTo(List.of(0L, 0L, 0L));
-            assertThat(runtime.droppedActions()).isEqualTo(1);
-            assertThat(runtime.maskedActions()).isZero();
+            assertThat(runtime.droppedActions()).isZero();
+            assertThat(runtime.maskedActions()).isEqualTo(1);
         }
     }
 
     @Test
-    @DisplayName("текущее поведение: TRUNCATE для числа и boolean оставляет значение")
+    @DisplayName("TRUNCATE для числа и boolean оставляет значение")
     void truncateOnNumericAndBooleanKeepsTheValue() {
         // given
         AttributeKey<Long> longKey = AttributeKey.longKey("client.address");
@@ -152,7 +151,7 @@ class ScrubbingRuntimeCurrentBehaviorTest {
     }
 
     @Test
-    @DisplayName("текущее поведение: HASH строки без ключа возвращает маску и считает оба счётчика")
+    @DisplayName("HASH строки без ключа возвращает маску и считает оба счётчика")
     void hashWithoutKeyMasksAndCountsBoth() {
         // given
         AttributeKey<String> key = AttributeKey.stringKey("user.email");
@@ -170,8 +169,8 @@ class ScrubbingRuntimeCurrentBehaviorTest {
     }
 
     @Test
-    @DisplayName("TRUNCATE сохраняет короткое значение и увеличивает truncatedActions")
-    void shortTruncateStillIncrementsTruncatedActions() {
+    @DisplayName("TRUNCATE без изменения значения не записывает атрибут и не увеличивает счётчик")
+    void unchangedTruncateDoesNotWriteOrCountAnAction() {
         // given
         AttributeKey<String> key = AttributeKey.stringKey("note");
 
@@ -180,13 +179,13 @@ class ScrubbingRuntimeCurrentBehaviorTest {
             Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, "short"));
 
             // then
-            assertThat(written.get(key)).isEqualTo("short");
-            assertThat(runtime.truncatedActions()).isEqualTo(1);
+            assertThat(written).isEmpty();
+            assertThat(runtime.truncatedActions()).isZero();
         }
     }
 
     @Test
-    @DisplayName("текущее поведение: неудачное усечение IP возвращает маску и увеличивает failures")
+    @DisplayName("неудачное усечение IP возвращает маску и увеличивает failures")
     void failedIpTruncationMasksAndCountsFailure() {
         // given
         AttributeKey<String> key = AttributeKey.stringKey("client.address");
@@ -197,13 +196,14 @@ class ScrubbingRuntimeCurrentBehaviorTest {
 
             // then
             assertThat(written.get(key)).isEqualTo("***");
-            assertThat(runtime.truncatedActions()).isEqualTo(1);
+            assertThat(runtime.truncatedActions()).isZero();
+            assertThat(runtime.maskedActions()).isEqualTo(1);
             assertThat(runtime.failures()).isEqualTo(1);
         }
     }
 
     @Test
-    @DisplayName("текущее поведение: fail-closed схлопывает массив до одного sentinel")
+    @DisplayName("fail-closed схлопывает массив до одного sentinel")
     void failClosedCollapsesArrayToOneElement() {
         // given
         AttributeKey<List<Long>> key = AttributeKey.longArrayKey("secret.parts");
@@ -220,7 +220,7 @@ class ScrubbingRuntimeCurrentBehaviorTest {
     }
 
     @Test
-    @DisplayName("текущее поведение: AttributeType.VALUE не изменяется")
+    @DisplayName("AttributeType.VALUE не изменяется")
     void valueAttributeIsLeftUntouched() {
         // given
         AttributeKey<Value<?>> key = AttributeKey.valueKey("payload");
@@ -256,10 +256,12 @@ class ScrubbingRuntimeCurrentBehaviorTest {
 
             // then
             assertThat(valueSnapshot.get(typedKey)).isEqualTo("secret");
+            assertThat(valueOrigin.getAttributes().asMap()).isEqualTo(valueSnapshot.asMap());
             assertThat(valueOrigin.getAttribute(valueKey)).isEqualTo(Value.of("secret"));
             assertThat(valueOrigin.getAttribute(typedKey)).isNull();
 
             assertThat(nativeSnapshot.get(typedKey)).isEqualTo("secret");
+            assertThat(nativeOrigin.getAttributes().asMap()).isEqualTo(nativeSnapshot.asMap());
             assertThat(nativeOrigin.getAttribute(valueKey)).isNull();
             assertThat(nativeOrigin.getAttribute(typedKey)).isEqualTo("secret");
 
@@ -322,14 +324,14 @@ class ScrubbingRuntimeCurrentBehaviorTest {
             assertThat(runtime.failures()).isEqualTo(1L);
             assertThat(runtime.attributesVerified()).isFalse();
             assertThat(runtime.collapseModeActivations()).isEqualTo(1L);
-            assertThat(runtime.maskedActions()).isEqualTo(2L);
+            assertThat(runtime.maskedActions()).isEqualTo(1L);
 
             span.end();
         }
     }
 
     @Test
-    @DisplayName("текущее поведение: null внутри STRING_ARRAY сохраняется на своей позиции")
+    @DisplayName("null внутри STRING_ARRAY сохраняется на своей позиции")
     void stringArrayKeepsNullElement() {
         // given
         AttributeKey<List<String>> key = AttributeKey.stringArrayKey("tags");
@@ -341,12 +343,12 @@ class ScrubbingRuntimeCurrentBehaviorTest {
 
             // then
             assertThat(written.get(key)).isEqualTo(Arrays.asList("***", null, "***"));
-            assertThat(runtime.maskedActions()).isEqualTo(2);
+            assertThat(runtime.maskedActions()).isEqualTo(1);
         }
     }
 
     @Test
-    @DisplayName("текущее поведение: DROP строки пишет пустую строку и оставляет атрибут")
+    @DisplayName("DROP строки пишет пустую строку и оставляет атрибут")
     void dropStringWritesEmptyAndKeepsTheAttribute() {
         // given
         AttributeKey<String> key = AttributeKey.stringKey("user.email");
@@ -363,7 +365,7 @@ class ScrubbingRuntimeCurrentBehaviorTest {
     }
 
     @Test
-    @DisplayName("текущее поведение: исключение переписывает весь исходный снимок")
+    @DisplayName("исключение переписывает весь исходный снимок")
     void mutationFailureRewritesTheWholeSnapshot() {
         // given
         AttributeKey<String> first = AttributeKey.stringKey("first.secret");
@@ -381,12 +383,12 @@ class ScrubbingRuntimeCurrentBehaviorTest {
             assertThat(runtime.failures()).isEqualTo(1);
             assertThat(runtime.attributesVerified()).isFalse();
             assertThat(runtime.collapseModeActivations()).isEqualTo(1);
-            assertThat(runtime.maskedActions()).isEqualTo(3);
+            assertThat(runtime.maskedActions()).isEqualTo(2);
         }
     }
 
     @Test
-    @DisplayName("текущее поведение: недоступный снимок не трогает атрибуты и включает collapse")
+    @DisplayName("недоступный снимок не трогает атрибуты и включает collapse")
     void unavailableSnapshotLeavesAttributesAndCollapses() {
         // given
         AttributeKey<String> key = AttributeKey.stringKey("user.email");
@@ -406,7 +408,7 @@ class ScrubbingRuntimeCurrentBehaviorTest {
     }
 
     @Test
-    @DisplayName("текущее поведение: фатальная ошибка всплывает после fail-closed снимка")
+    @DisplayName("фатальная ошибка всплывает после fail-closed снимка")
     void fatalMutationFailureCollapsesBeforeItPropagates() {
         // given
         AttributeKey<String> key = AttributeKey.stringKey("user.email");
@@ -429,12 +431,12 @@ class ScrubbingRuntimeCurrentBehaviorTest {
             assertThat(runtime.failures()).isEqualTo(1);
             assertThat(runtime.attributesVerified()).isFalse();
             assertThat(runtime.collapseModeActivations()).isEqualTo(1);
-            assertThat(runtime.maskedActions()).isEqualTo(2);
+            assertThat(runtime.maskedActions()).isEqualTo(1);
         }
     }
 
     @Test
-    @DisplayName("текущее поведение: повторный markAttributesUnverified не увеличивает collapse")
+    @DisplayName("повторный markAttributesUnverified не увеличивает collapse")
     void repeatedUnverifiedMarkKeepsCollapseActivationsAtOne() {
         // given
         try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.keep())) {
@@ -447,6 +449,96 @@ class ScrubbingRuntimeCurrentBehaviorTest {
             assertThat(runtime.attributesVerified()).isFalse();
             assertThat(runtime.collapseModeActivations()).isEqualTo(1);
             assertThat(runtime.collapsedSpans()).isEqualTo(1);
+        }
+    }
+
+    @Test
+    void alreadyMaskedScalarAndNumericSentinelDoNotWriteOrCountAgain() {
+        // given
+        AttributeKey<String> text = AttributeKey.stringKey("text.secret");
+        AttributeKey<Long> number = AttributeKey.longKey("number.secret");
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.mask("test"))) {
+            // when
+            Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(text, "***", number, 0L));
+
+            // then
+            assertThat(written).isEmpty();
+            assertThat(runtime.maskedActions()).isZero();
+            assertThat(runtime.failures()).isZero();
+        }
+    }
+
+    @Test
+    void malformedArrayFromKeyBasedHashIsMaskedWithoutHashingItsSafePrefix() {
+        // given
+        AttributeKey<List<String>> key = AttributeKey.stringArrayKey("user.identity");
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.hash("test"))) {
+            // when
+            Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, List.of("raw-secret", 42L)));
+
+            // then
+            assertThat(written.get(key)).isEqualTo(List.of("***"));
+            assertThat(runtime.maskedActions()).isEqualTo(1L);
+            assertThat(runtime.hashedActions()).isZero();
+            assertThat(runtime.failures()).isEqualTo(1L);
+            assertThat(runtime.attributesVerified()).isTrue();
+        }
+    }
+
+    @Test
+    void oversizedArrayFromKeyBasedHashIsRejectedWithoutReadingElements() {
+        // given
+        AttributeKey<List<String>> key = AttributeKey.stringArrayKey("user.identity");
+        List<String> inaccessible = new AbstractList<>() {
+            @Override
+            public String get(int index) {
+                throw new AssertionError("Oversized array elements must not be read");
+            }
+
+            @Override
+            public int size() {
+                return 33;
+            }
+        };
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.hash("test"))) {
+            // when
+            Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, inaccessible));
+
+            // then
+            assertThat(written.get(key)).isEqualTo(List.of("***"));
+            assertThat(runtime.maskedActions()).isEqualTo(1L);
+            assertThat(runtime.hashedActions()).isZero();
+            assertThat(runtime.failures()).isZero();
+            assertThat(runtime.attributesVerified()).isTrue();
+        }
+    }
+
+    @Test
+    void inaccessibleArraySizeCollapsesAndCountsOnlyTheSuccessfulFallbackWrite() {
+        // given
+        AttributeKey<List<String>> key = AttributeKey.stringArrayKey("user.identity");
+        List<String> inaccessible = new AbstractList<>() {
+            @Override
+            public String get(int index) {
+                throw new AssertionError("Array elements must not be read");
+            }
+
+            @Override
+            public int size() {
+                throw new IllegalStateException("Array size unavailable");
+            }
+        };
+        try (ScrubbingRuntime runtime = runtime(ScrubbingDecision.hash("test"))) {
+            // when
+            Map<AttributeKey<?>, Object> written = scrub(runtime, attributes(key, inaccessible));
+
+            // then
+            assertThat(written.get(key)).isEqualTo(List.of(FAILED));
+            assertThat(runtime.maskedActions()).isEqualTo(1L);
+            assertThat(runtime.hashedActions()).isZero();
+            assertThat(runtime.failures()).isEqualTo(1L);
+            assertThat(runtime.attributesVerified()).isFalse();
+            assertThat(runtime.collapseModeActivations()).isEqualTo(1L);
         }
     }
 
@@ -530,11 +622,9 @@ class ScrubbingRuntimeCurrentBehaviorTest {
                               Throwable setAttributeFailure, Map<AttributeKey<?>, Object> written) {
         ReadWriteSpan span = mock(ReadWriteSpan.class);
         if (snapshotUnavailable) {
-            when(span.toSpanData()).thenThrow(new IllegalStateException("snapshot unavailable"));
+            when(span.getAttributes()).thenThrow(new IllegalStateException("snapshot unavailable"));
         } else {
-            SpanData spanData = mock(SpanData.class);
-            when(spanData.getAttributes()).thenReturn(snapshot);
-            when(span.toSpanData()).thenReturn(spanData);
+            when(span.getAttributes()).thenReturn(snapshot);
         }
 
         boolean[] failed = {false};

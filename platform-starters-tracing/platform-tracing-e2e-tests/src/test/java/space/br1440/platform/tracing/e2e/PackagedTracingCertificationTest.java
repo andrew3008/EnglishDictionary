@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -19,6 +20,8 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +38,8 @@ import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWir
 import space.br1440.platform.tracing.e2e.artifact.ControlledAgentArtifactMutator;
 
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.common.v1.AnyValue;
+import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.trace.v1.Span;
 
 class PackagedTracingCertificationTest {
@@ -225,6 +230,94 @@ class PackagedTracingCertificationTest {
                 .doesNotContain("packaged-user", "packaged-password-canary", "packaged-query-canary",
                         "packaged-fragment-canary", "debug", "packaged-cause-canary", "packaged-root-canary",
                         "packaged-suppressed-canary", "packaged-facade-canary", "packaged-cut-canary", "x".repeat(63));
+    }
+
+    @Test
+    void packaged_agent_applies_bounded_key_based_hash_once_on_each_attribute_surface() throws Exception {
+        // given
+        List<byte[]> payloads = new CopyOnWriteArrayList<>();
+        HttpServer collector = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        collector.createContext("/v1/traces", exchange -> {
+            try (InputStream input = exchange.getRequestBody()) {
+                payloads.add(input.readAllBytes());
+            }
+            exchange.sendResponseHeaders(200, 0);
+            exchange.close();
+        });
+        collector.start();
+        PackagedProcessLauncher.ProcessResult result;
+        try {
+            Map<String, String> properties = new LinkedHashMap<>();
+            properties.put("platformTracing.packagedScenario", "SCRUBBING_HMAC");
+            properties.put("platform.tracing.exporter.enabled", "true");
+            properties.put("platform.tracing.sampling.ratio", "1.0");
+            properties.put("platform.tracing.javaagent.scrubbing.built-in-rules", "user-identity");
+            properties.put("platform.tracing.scrubbing.hmac-key", PackagedScrubbingHmacScenario.HMAC_KEY);
+            properties.put("otel.exporter.otlp.traces.protocol", "http/protobuf");
+            properties.put("otel.exporter.otlp.traces.compression", "none");
+            properties.put("otel.exporter.otlp.traces.endpoint",
+                    "http://127.0.0.1:" + collector.getAddress().getPort() + "/v1/traces");
+
+            // when
+            result = launcher.launch(controlledRequest("scrubbing-hmac", applicationBootJar, controlledAgent,
+                    ControlledAgentArtifactMutator.sha256(controlledAgent), properties));
+        } finally {
+            collector.stop(0);
+        }
+
+        // then
+        assertSuccessful(result, "scrubbing-hmac");
+        List<Span> spans = new ArrayList<>();
+        for (byte[] payload : payloads) {
+            ExportTraceServiceRequest request = ExportTraceServiceRequest.parseFrom(payload);
+            assertThat(request.toString()).doesNotContain(
+                    PackagedScrubbingHmacScenario.IDENTITY, PackagedScrubbingHmacScenario.SECOND_IDENTITY);
+            request.getResourceSpansList().stream()
+                    .flatMap(resource -> resource.getScopeSpansList().stream())
+                    .flatMap(scope -> scope.getSpansList().stream())
+                    .filter(span -> PackagedScrubbingHmacScenario.SPAN_NAME.equals(span.getName()))
+                    .forEach(spans::add);
+        }
+        assertThat(spans).hasSize(1);
+        Span span = spans.getFirst();
+        assertPackagedHmacAttributes(span.getAttributesList());
+        assertThat(span.getEventsCount()).isEqualTo(1);
+        assertPackagedHmacAttributes(span.getEvents(0).getAttributesList());
+        assertThat(span.getLinksCount()).isEqualTo(1);
+        assertPackagedHmacAttributes(span.getLinks(0).getAttributesList());
+        assertThat(HexFormat.of().formatHex(span.getLinks(0).getSpanId().toByteArray()))
+                .isEqualTo("000000000000abcd");
+    }
+
+    private static void assertPackagedHmacAttributes(List<KeyValue> attributes) throws Exception {
+        String expected = packagedHmac(PackagedScrubbingHmacScenario.IDENTITY);
+        String secondExpected = packagedHmac(PackagedScrubbingHmacScenario.SECOND_IDENTITY);
+        AnyValue scalar = packagedAttribute(attributes, PackagedScrubbingHmacScenario.SCALAR_KEY);
+        assertThat(scalar.getValueCase()).isEqualTo(AnyValue.ValueCase.STRING_VALUE);
+        assertThat(scalar.getStringValue()).isEqualTo(expected);
+        AnyValue array = packagedAttribute(attributes, PackagedScrubbingHmacScenario.ARRAY_KEY);
+        assertThat(array.getValueCase()).isEqualTo(AnyValue.ValueCase.ARRAY_VALUE);
+        assertThat(array.getArrayValue().getValuesList()).extracting(AnyValue::getStringValue)
+                .containsExactly(expected, secondExpected);
+        AnyValue oversized = packagedAttribute(attributes, PackagedScrubbingHmacScenario.OVERSIZED_KEY);
+        assertThat(oversized.getValueCase()).isEqualTo(AnyValue.ValueCase.ARRAY_VALUE);
+        assertThat(oversized.getArrayValue().getValuesList()).extracting(AnyValue::getStringValue)
+                .containsExactly("***");
+        assertThat(packagedAttribute(attributes, PackagedScrubbingHmacScenario.NUMERIC_KEY).getValueCase())
+                .isEqualTo(AnyValue.ValueCase.INT_VALUE);
+        assertThat(packagedAttribute(attributes, PackagedScrubbingHmacScenario.NUMERIC_KEY).getIntValue()).isZero();
+        assertThat(packagedAttribute(attributes, "safe.count").getIntValue()).isEqualTo(73L);
+    }
+
+    private static AnyValue packagedAttribute(List<KeyValue> attributes, String key) {
+        return attributes.stream().filter(attribute -> attribute.getKey().equals(key))
+                .map(KeyValue::getValue).findFirst().orElseThrow();
+    }
+
+    private static String packagedHmac(String value) throws Exception {
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(PackagedScrubbingHmacScenario.HMAC_KEY.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        return HexFormat.of().formatHex(mac.doFinal(value.getBytes(StandardCharsets.UTF_8)));
     }
 
     @Test

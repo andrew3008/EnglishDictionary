@@ -40,7 +40,7 @@ class ScrubbingRuntimeTest {
 
     @ParameterizedTest
     @ValueSource(ints = {-1, 512})
-    void urlMaskingSurvivesSubsequentTruncateWithoutLengthChange(int maximumLength) {
+    void urlMaskingCountsMaskInsteadOfUnchangedSubsequentTruncate(int maximumLength) {
         // given
         AttributeKey<String> key = AttributeKey.stringKey("exception.message");
         SpanAttributeScrubbingRule lengthLimit = new SpanAttributeScrubbingRule() {
@@ -71,8 +71,8 @@ class ScrubbingRuntimeTest {
             // then
             assertThat(harness.spans().getFirst().getAttributes().get(key))
                     .isEqualTo("Failed https://service.example/?token=***");
-            assertThat(runtime.truncatedActions()).isEqualTo(1L);
-            assertThat(runtime.maskedActions()).isZero();
+            assertThat(runtime.truncatedActions()).isZero();
+            assertThat(runtime.maskedActions()).isEqualTo(1L);
             assertThat(runtime.failures()).isZero();
         }
     }

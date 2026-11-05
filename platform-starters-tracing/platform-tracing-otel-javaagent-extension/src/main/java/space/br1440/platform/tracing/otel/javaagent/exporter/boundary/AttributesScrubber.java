@@ -1,11 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.exporter.boundary;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import space.br1440.platform.common.util.MapUtils;
@@ -13,12 +11,10 @@ import space.br1440.platform.common.util.SetUtils;
 import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.IpPrefixTruncator;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeOutcome;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ScrubbingKeyNormalizer;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.ValueScanPolicy;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ScrubbingValueTransformer;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -31,10 +27,6 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 final class AttributesScrubber {
 
-    private static final String MASK = "***";
-    private static final long SENTINEL_LONG = 0L;
-    private static final double SENTINEL_DOUBLE = 0.0d;
-    private static final boolean SENTINEL_BOOLEAN = Boolean.FALSE;
     private static final Value<String> VALUE_SENTINEL = Value.of(ScrubbingDecision.SCRUBBING_FAILED_REASON);
 
     record Result(Attributes attributes, boolean changed, boolean criticalFailure) {
@@ -101,7 +93,11 @@ final class AttributesScrubber {
         AttributesBuilder builder = Attributes.builder();
         attributes.forEach((key, ignored) -> {
             if (!ScrubbingRuntime.isDiagnosticAttribute(ScrubbingKeyNormalizer.normalize(key.getKey()))) {
-                writeSentinel(builder, key);
+                Object value = (key.getType() == AttributeType.VALUE)
+                        ? VALUE_SENTINEL
+                        : ScrubbingValueTransformer.failClosedValue(key.getType());
+
+                putTyped(builder, key, value);
             }
         });
         return builder.build();
@@ -140,45 +136,16 @@ final class AttributesScrubber {
             MergeOutcome outcome = MergeEngine.evaluateDetailed(rules, normalizedKey, value, key.getType());
             recordOutcome(outcome);
 
-            ScrubbingDecision decision = outcome.decision();
-            ScrubbingAction action = decision.action();
-            if (action == ScrubbingAction.KEEP) {
-                if (outcome.maskedValue() != null) {
-                    replaceString(key, normalizedKey, value, outcome.maskedValue());
-                }
+            ScrubbingValueTransformer.Result result = runtime.transformAttribute(key.getType(), value, outcome);
+            if (result.action() == ScrubbingAction.KEEP) {
                 return;
             }
 
-            AttributeType type = key.getType();
-            if (action == ScrubbingAction.DROP) {
+            if (result.action() == ScrubbingAction.DROP
+                    || !runtime.diagnosticAttributePermitted(normalizedKey, result.value())) {
                 drop(key);
-                return;
-            }
-
-            if (action == ScrubbingAction.TRUNCATE && isNumericOrBoolean(type)) {
-                return;
-            }
-
-            if (type == AttributeType.STRING) {
-                String masked = (outcome.maskedValue() != null) ? outcome.maskedValue() : (String) value;
-                String transformed = transformString(masked, decision, runtime);
-                replaceString(key, normalizedKey, value, transformed);
-                return;
-            }
-
-            Object replacement = nonStringReplacement(key, value, decision, runtime);
-            if (replacement != null) {
-                replace(key, replacement);
             } else {
-                drop(key);
-            }
-        }
-
-        private void replaceString(AttributeKey<?> key, String normalizedKey, Object original, String transformed) {
-            if (!runtime.diagnosticAttributePermitted(normalizedKey, transformed)) {
-                drop(key);
-            } else if (!Objects.equals(transformed, original)) {
-                replace(key, transformed);
+                replace(key, result.value());
             }
         }
 
@@ -246,90 +213,8 @@ final class AttributesScrubber {
         return names;
     }
 
-    private static boolean isNumericOrBoolean(AttributeType type) {
-        return switch (type) {
-            case LONG, DOUBLE, BOOLEAN, LONG_ARRAY, DOUBLE_ARRAY, BOOLEAN_ARRAY -> true;
-            default -> false;
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Object nonStringReplacement(AttributeKey<?> key, Object value,
-                                               ScrubbingDecision decision, ScrubbingRuntime runtime) {
-        AttributeType type = key.getType();
-        return switch (type) {
-            case STRING_ARRAY -> {
-                if (ValueScanPolicy.isInputLimitMask(decision)) {
-                    yield List.of(MASK);
-                }
-
-                List<String> in = (List<String>) value;
-                yield in.stream().map(v -> transformString(v, decision, runtime)).toList();
-            }
-            case LONG -> SENTINEL_LONG;
-            case DOUBLE -> SENTINEL_DOUBLE;
-            case BOOLEAN -> SENTINEL_BOOLEAN;
-            case LONG_ARRAY -> Collections.nCopies(((List<?>) value).size(), SENTINEL_LONG);
-            case DOUBLE_ARRAY -> Collections.nCopies(((List<?>) value).size(), SENTINEL_DOUBLE);
-            case BOOLEAN_ARRAY -> Collections.nCopies(((List<?>) value).size(), SENTINEL_BOOLEAN);
-            default -> null;
-        };
-    }
-
     @SuppressWarnings("unchecked")
     private static void putTyped(AttributesBuilder builder, AttributeKey<?> key, Object value) {
-        switch (key.getType()) {
-            case STRING -> builder.put((AttributeKey<String>) key, (String) value);
-            case STRING_ARRAY, LONG_ARRAY, DOUBLE_ARRAY, BOOLEAN_ARRAY ->
-                    builder.put((AttributeKey<List<String>>) key, (List<String>) value);
-            case LONG -> builder.put((AttributeKey<Long>) key, (Long) value);
-            case DOUBLE -> builder.put((AttributeKey<Double>) key, (Double) value);
-            case BOOLEAN -> builder.put((AttributeKey<Boolean>) key, (Boolean) value);
-            case VALUE -> builder.put((AttributeKey<Value<?>>) key, (Value<?>) value);
-            default -> {
-            }
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void writeSentinel(AttributesBuilder builder, AttributeKey<?> key) {
-        switch (key.getType()) {
-            case STRING -> builder.put((AttributeKey<String>) key, ScrubbingDecision.SCRUBBING_FAILED_REASON);
-            case STRING_ARRAY -> builder.put((AttributeKey<List<String>>) key, List.of(ScrubbingDecision.SCRUBBING_FAILED_REASON));
-            case LONG -> builder.put((AttributeKey<Long>) key, SENTINEL_LONG);
-            case DOUBLE -> builder.put((AttributeKey<Double>) key, SENTINEL_DOUBLE);
-            case BOOLEAN -> builder.put((AttributeKey<Boolean>) key, SENTINEL_BOOLEAN);
-            case LONG_ARRAY -> builder.put((AttributeKey<List<Long>>) key, List.of(SENTINEL_LONG));
-            case DOUBLE_ARRAY -> builder.put((AttributeKey<List<Double>>) key, List.of(SENTINEL_DOUBLE));
-            case BOOLEAN_ARRAY -> builder.put((AttributeKey<List<Boolean>>) key, List.of(SENTINEL_BOOLEAN));
-            case VALUE -> builder.put((AttributeKey<Value<?>>) key, VALUE_SENTINEL);
-
-            default -> {
-            }
-        }
-    }
-
-    private static String transformString(String value, ScrubbingDecision decision, ScrubbingRuntime runtime) {
-        if (value == null) {
-            return null;
-        }
-
-        return switch (decision.action()) {
-            case MASK -> MASK;
-            case DROP -> "";
-            case HASH -> runtime.hasHmacKey() ? runtime.hmacHex(value) : MASK;
-            case TRUNCATE -> transformTruncate(value, decision);
-            default -> value;
-        };
-    }
-
-    private static String transformTruncate(String value, ScrubbingDecision decision) {
-        if (BuiltInSpanAttributeScrubbingRules.IP_ADDRESS.configName().equals(decision.reason())) {
-            String truncated = IpPrefixTruncator.truncate(value);
-            return (truncated != null) ? truncated : MASK;
-        }
-
-        int max = decision.maxLength();
-        return (max >= 0 && value.length() > max) ? value.substring(0, max) : value;
+        builder.put((AttributeKey<Object>) key, value);
     }
 }

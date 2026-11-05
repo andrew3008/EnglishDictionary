@@ -76,6 +76,10 @@ public class PackagedTracingCertificationApplication {
                 recordUrlFailure();
                 recordDiagnosticFailures(context.getBean(TraceOperations.class));
             }
+
+            if ("SCRUBBING_HMAC".equals(System.getProperty("platformTracing.packagedScenario"))) {
+                PackagedScrubbingHmacScenario.record();
+            }
         }
 
         System.out.println(PROCESS_OK_TOKEN);

@@ -1,7 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.LongAdder;
 
@@ -14,12 +12,11 @@ import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.DiagnosticTextMaskingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.IpPrefixTruncator;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeOutcome;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ScrubbingKeyNormalizer;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.ValueScanPolicy;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ScrubbingValueTransformer;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ScrubbingValueTransformer.Result;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.AttributeType;
@@ -28,26 +25,24 @@ import io.opentelemetry.sdk.trace.ReadWriteSpan;
 
 final class SpanAttributeInPlaceScrubber {
 
-    private static final String MASK = "***";
-    private static final long SENTINEL_LONG = 0L;
-    private static final double SENTINEL_DOUBLE = 0.0d;
-    private static final boolean SENTINEL_BOOLEAN = Boolean.FALSE;
-
     private final List<ExecutableRule> rules;
     private final ScrubbingCollapseState collapse;
-    private final HmacSha256Digest digest;
     private final RateLimitedLogger log;
     private final ScrubbingRuntime runtime;
-    private final ScrubbingActionCounters actions = new ScrubbingActionCounters();
+    private final LongAdder dropped = new LongAdder();
+    private final LongAdder hashed = new LongAdder();
+    private final LongAdder masked = new LongAdder();
+    private final LongAdder truncated = new LongAdder();
+    private final LongAdder failures = new LongAdder();
+    private final LongAdder hashMissingKey = new LongAdder();
+    private final LongAdder skippedCircuitOpen = new LongAdder();
 
     SpanAttributeInPlaceScrubber(List<ExecutableRule> rules,
                                  ScrubbingCollapseState collapse,
-                                 HmacSha256Digest digest,
                                  RateLimitedLogger log,
                                  ScrubbingRuntime runtime) {
         this.rules = rules;
         this.collapse = collapse;
-        this.digest = digest;
         this.log = log;
         this.runtime = runtime;
     }
@@ -55,73 +50,104 @@ final class SpanAttributeInPlaceScrubber {
     void scrub(ReadWriteSpan span) {
         Attributes attributes;
         try {
-            attributes = span.toSpanData().getAttributes();
+            attributes = span.getAttributes();
         } catch (Throwable t) {
-            actions.recordFailure();
+            failures.increment();
             collapse.markAttributesUnverified();
             logFailure(ScrubbingLogEvent.SCRUB_PROCESSOR_SNAPSHOT_UNAVAILABLE, t);
             return;
         }
 
         try {
-            attributes.forEach((key, value) -> {
-                if (boundaryOwned(span, key)) {
-                    return;
-                }
-
-                String normalizedKey = ScrubbingKeyNormalizer.normalize(key.getKey());
-                if (!runtime.diagnosticAttributePermitted(normalizedKey, value)) {
-                    dropDiagnosticAttribute(span, key);
-                    return;
-                }
-                MergeOutcome outcome = MergeEngine.evaluateDetailed(rules, normalizedKey, value, key.getType());
-                if (outcome.skippedCircuitOpen() > 0L) {
-                    actions.addSkippedCircuitOpen(outcome.skippedCircuitOpen());
-                }
-
-                if (outcome.nonCriticalFailures() > 0L) {
-                    actions.addFailures(outcome.nonCriticalFailures());
-                }
-
-                ScrubbingDecision decision = outcome.decision();
-                if (decision.action() == ScrubbingAction.DROP && outcome.criticalFailures() > 0L) {
-                    actions.addFailures(outcome.criticalFailures());
-                }
-
-                if (decision.action() == ScrubbingAction.KEEP) {
-                    if (outcome.maskedValue() != null
-                            && writeString(span, AttributeKey.stringKey(key.getKey()), outcome.maskedValue())) {
-                        actions.recordMasked();
-                    }
-
-                    return;
-                }
-
-                apply(span, key, (outcome.maskedValue() != null) ? outcome.maskedValue() : value, decision);
-            });
+            attributes.forEach((key, value) -> scrubAttribute(span, key, value));
         } catch (Throwable t) {
-            actions.recordFailure();
+            failures.increment();
             collapse.markAttributesUnverified();
             applyFailClosedSnapshot(span, attributes);
             logFailure(ScrubbingLogEvent.SCRUB_PROCESSOR_CALLBACK_FAILED, t);
         }
     }
 
-    private void dropDiagnosticAttribute(ReadWriteSpan span, AttributeKey<?> key) {
-        if (!"".equals(span.getAttribute(AttributeKey.stringKey(key.getKey())))) {
-            span.setAttribute(AttributeKey.stringKey(key.getKey()), "");
-            actions.recordDropped();
+    private void scrubAttribute(ReadWriteSpan span, AttributeKey<?> key, Object value) {
+        if (boundaryOwned(span, key)) {
+            return;
+        }
+
+        String normalizedKey = ScrubbingKeyNormalizer.normalize(key.getKey());
+        if (!runtime.diagnosticAttributePermitted(normalizedKey, value)) {
+            dropDiagnosticAttribute(span, key);
+            return;
+        }
+
+        MergeOutcome outcome = MergeEngine.evaluateDetailed(rules, normalizedKey, value, key.getType());
+        if (outcome.skippedCircuitOpen() > 0L) {
+            skippedCircuitOpen.add(outcome.skippedCircuitOpen());
+        }
+        long ruleFailures = outcome.nonCriticalFailures() + outcome.criticalFailures();
+        if (ruleFailures > 0L) {
+            failures.add(ruleFailures);
+        }
+
+        ScrubbingDecision decision = outcome.decision();
+        if (decision.action() == ScrubbingAction.DROP
+                && (ScrubbingRuntime.isDiagnosticAttribute(normalizedKey) || isDiagnosticDrop(decision))) {
+            dropDiagnosticAttribute(span, key);
+            return;
+        }
+
+        if (decision.action() == ScrubbingAction.MASK
+                && ScrubbingDecision.SCRUBBING_FAILED_REASON.equals(decision.reason())) {
+            if (outcome.criticalFailures() == 0L) {
+                failures.increment();
+            }
+            log.log(ScrubbingLogEvent.SCRUBBING_FAIL_CLOSED_MASK_APPLIED,
+                    fields -> fields.putString(AgentLogField.ATTRIBUTE, key.getKey()));
+            applyFailClosed(span, key);
+            return;
+        }
+
+        Result result = runtime.transformAttribute(key.getType(), value, outcome);
+        if (result.action() == ScrubbingAction.KEEP) {
+            return;
+        }
+
+        Object replacement = result.action() == ScrubbingAction.DROP
+                ? ScrubbingValueTransformer.dropValue(key.getType(), value)
+                : result.value();
+        if (!runtime.diagnosticAttributePermitted(normalizedKey, replacement)) {
+            dropDiagnosticAttribute(span, key);
+            return;
+        }
+
+        write(span, key, replacement);
+        recordApplied(result);
+    }
+
+    private void recordApplied(Result result) {
+        switch (result.action()) {
+            case DROP -> dropped.increment();
+            case MASK -> masked.increment();
+            case HASH -> hashed.increment();
+            case TRUNCATE -> truncated.increment();
+            case KEEP -> { }
+        }
+        switch (result.fallback()) {
+            case MISSING_HMAC_KEY -> hashMissingKey.increment();
+            case INVALID_IP -> {
+                failures.increment();
+                log.log(ScrubbingLogEvent.IP_PREFIX_TRUNCATION_FALLBACK_TO_FULL_MASK,
+                        fields -> fields.putString(AgentLogField.REASON, ScrubbingValueTransformer.IP_ADDRESS_REASON));
+            }
+            case MALFORMED_INPUT -> failures.increment();
+            default -> { }
         }
     }
 
-    private boolean writeString(ReadWriteSpan span, AttributeKey<String> key, String value) {
-        if (!runtime.diagnosticAttributePermitted(ScrubbingKeyNormalizer.normalize(key.getKey()), value)) {
-            dropDiagnosticAttribute(span, key);
-            return false;
+    private void dropDiagnosticAttribute(ReadWriteSpan span, AttributeKey<?> key) {
+        if (!"".equals(span.getAttribute(AttributeKey.stringKey(key.getKey())))) {
+            span.setAttribute(AttributeKey.stringKey(key.getKey()), "");
+            dropped.increment();
         }
-
-        span.setAttribute(key, value);
-        return true;
     }
 
     private void logFailure(AgentLogEventType eventType, Throwable failure) {
@@ -130,31 +156,31 @@ final class SpanAttributeInPlaceScrubber {
     }
 
     long droppedActions() {
-        return actions.dropped.sum();
+        return dropped.sum();
     }
 
     long hashedActions() {
-        return actions.hashed.sum();
+        return hashed.sum();
     }
 
     long maskedActions() {
-        return actions.masked.sum();
+        return masked.sum();
     }
 
     long truncatedActions() {
-        return actions.truncated.sum();
+        return truncated.sum();
     }
 
     long failures() {
-        return actions.failures.sum();
+        return failures.sum();
     }
 
     long hashMissingKey() {
-        return actions.hashMissingKey.sum();
+        return hashMissingKey.sum();
     }
 
     long skippedCircuitOpen() {
-        return actions.skippedCircuitOpen.sum();
+        return skippedCircuitOpen.sum();
     }
 
     private static boolean boundaryOwned(ReadWriteSpan span, AttributeKey<?> snapshotKey) {
@@ -173,251 +199,30 @@ final class SpanAttributeInPlaceScrubber {
             }
 
             try {
-                applyFailClosed(span, key, key.getType());
+                applyFailClosed(span, key);
             } catch (Throwable t) {
-                actions.recordFailure();
+                failures.increment();
                 logFailure(ScrubbingLogEvent.SCRUB_PROCESSOR_COLLAPSE_FAILED, t);
             }
         });
     }
 
-    @SuppressWarnings("unchecked")
-    private void apply(ReadWriteSpan span, AttributeKey<?> key, Object value, ScrubbingDecision decision) {
-        AttributeType type = key.getType();
-        if (decision.action() == ScrubbingAction.DROP
-                && (ScrubbingRuntime.isDiagnosticAttribute(ScrubbingKeyNormalizer.normalize(key.getKey()))
-                || isDiagnosticDrop(decision))) {
-            dropDiagnosticAttribute(span, key);
-            return;
-        }
-
-        boolean failClosed = (decision.action() == ScrubbingAction.MASK)
-                && ScrubbingDecision.SCRUBBING_FAILED_REASON.equals(decision.reason());
-
-        if (failClosed) {
-            actions.recordFailure();
-            log.log(ScrubbingLogEvent.SCRUBBING_FAIL_CLOSED_MASK_APPLIED,
-                    fields -> fields.putString(AgentLogField.ATTRIBUTE, key.getKey()));
-            applyFailClosed(span, key, type);
-            return;
-        }
-
-        switch (type) {
-            case STRING -> writeString(span, (AttributeKey<String>) key, transformString((String) value, decision));
-
-            case STRING_ARRAY -> {
-                if (ValueScanPolicy.isInputLimitMask(decision)) {
-                    span.setAttribute((AttributeKey<List<String>>) key, List.of(MASK));
-                    actions.recordMasked();
-                    return;
-                }
-
-                List<String> in = (List<String>) value;
-                List<String> out = new ArrayList<>(in.size());
-                for (String element : in) {
-                    out.add(transformString(element, decision));
-                }
-
-                span.setAttribute((AttributeKey<List<String>>) key, out);
-            }
-
-            case LONG, DOUBLE, BOOLEAN, LONG_ARRAY, DOUBLE_ARRAY, BOOLEAN_ARRAY ->
-                    applyNonString(span, key, value, decision, type);
-
-            default -> applyFailClosed(span, key, type);
-        }
-    }
-
-    private void applyFailClosed(ReadWriteSpan span, AttributeKey<?> key, AttributeType type) {
+    private void applyFailClosed(ReadWriteSpan span, AttributeKey<?> key) {
         if (ScrubbingRuntime.isDiagnosticAttribute(ScrubbingKeyNormalizer.normalize(key.getKey()))) {
             dropDiagnosticAttribute(span, key);
-            return;
-        }
-        if (writeFailClosedSentinel(span, key, type)) {
-            actions.recordMasked();
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private boolean writeFailClosedSentinel(ReadWriteSpan span, AttributeKey<?> key, AttributeType type) {
-        switch (type) {
-            case STRING -> span.setAttribute(
-                    (AttributeKey<String>) key,
-                    ScrubbingDecision.SCRUBBING_FAILED_REASON
-            );
-
-            case STRING_ARRAY -> span.setAttribute(
-                    (AttributeKey<List<String>>) key,
-                    List.of(ScrubbingDecision.SCRUBBING_FAILED_REASON)
-            );
-
-            case LONG -> span.setAttribute((AttributeKey<Long>) key, SENTINEL_LONG);
-            case DOUBLE -> span.setAttribute((AttributeKey<Double>) key, SENTINEL_DOUBLE);
-            case BOOLEAN -> span.setAttribute((AttributeKey<Boolean>) key, SENTINEL_BOOLEAN);
-            case LONG_ARRAY -> span.setAttribute((AttributeKey<List<Long>>) key, List.of(SENTINEL_LONG));
-            case DOUBLE_ARRAY -> span.setAttribute((AttributeKey<List<Double>>) key, List.of(SENTINEL_DOUBLE));
-            case BOOLEAN_ARRAY -> span.setAttribute((AttributeKey<List<Boolean>>) key, List.of(SENTINEL_BOOLEAN));
-
-            default -> {
-                log.log(ScrubbingLogEvent.UNSUPPORTED_SPAN_ATTRIBUTE_TYPE,
-                        fields -> fields.putString(AgentLogField.TYPE, type.name()));
-                collapse.markAttributesUnverified();
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private String transformString(String value, ScrubbingDecision decision) {
-        if (value == null) {
-            return null;
-        }
-
-        switch (decision.action()) {
-            case MASK -> {
-                actions.recordMasked();
-                return MASK;
-            }
-
-            case DROP -> {
-                actions.recordDropped();
-                return "";
-            }
-
-            case HASH -> {
-                if (digest == null) {
-                    actions.recordHashMissingKey();
-                    actions.recordMasked();
-                    return MASK;
-                }
-                actions.recordHashed();
-                return digest.hashHex(value);
-            }
-
-            case TRUNCATE -> {
-                return transformTruncate(value, decision);
-            }
-
-            default -> {
-                return value;
-            }
-        }
-    }
-
-    private String transformTruncate(String value, ScrubbingDecision decision) {
-        actions.recordTruncated();
-        if (BuiltInSpanAttributeScrubbingRules.IP_ADDRESS.configName().equals(decision.reason())) {
-            String truncated = IpPrefixTruncator.truncate(value);
-            if (truncated == null) {
-                actions.recordFailure();
-                log.log(ScrubbingLogEvent.IP_PREFIX_TRUNCATION_FALLBACK_TO_FULL_MASK,
-                        fields -> fields.putString(AgentLogField.REASON, decision.reason()));
-                return MASK;
-            }
-            return truncated;
-        }
-
-        int max = decision.maxLength();
-        if (max >= 0 && value.length() > max) {
-            return value.substring(0, max);
-        }
-
-        return value;
-    }
-
-    private void applyNonString(ReadWriteSpan span, AttributeKey<?> key, Object value,
-                                ScrubbingDecision decision, AttributeType type) {
-        switch (decision.action()) {
-            case MASK, DROP, HASH -> {
-                actions.recordDropped();
-                writeSentinel(span, key, value, type);
-            }
-
-            case TRUNCATE -> {
-                // KEEP-эквивалент для чисел/boolean
-            }
-
-            default -> {
-                // KEEP сюда не попадает
-            }
+        } else {
+            write(span, key, ScrubbingValueTransformer.failClosedValue(key.getType()));
+            masked.increment();
         }
     }
 
     private static boolean isDiagnosticDrop(ScrubbingDecision decision) {
-        return decision.action() == ScrubbingAction.DROP
-                && (DiagnosticTextMaskingRule.NAME.equals(decision.reason())
-                || ScrubbingDecision.SCRUBBING_FAILED_REASON.equals(decision.reason()));
+        return DiagnosticTextMaskingRule.NAME.equals(decision.reason())
+                || ScrubbingDecision.SCRUBBING_FAILED_REASON.equals(decision.reason());
     }
 
     @SuppressWarnings("unchecked")
-    private void writeSentinel(ReadWriteSpan span, AttributeKey<?> key, Object value, AttributeType type) {
-        switch (type) {
-            case LONG -> span.setAttribute((AttributeKey<Long>) key, SENTINEL_LONG);
-            case DOUBLE -> span.setAttribute((AttributeKey<Double>) key, SENTINEL_DOUBLE);
-            case BOOLEAN -> span.setAttribute((AttributeKey<Boolean>) key, SENTINEL_BOOLEAN);
-
-            case LONG_ARRAY -> span.setAttribute(
-                    (AttributeKey<List<Long>>) key,
-                    Collections.nCopies(((List<?>) value).size(), SENTINEL_LONG)
-            );
-
-            case DOUBLE_ARRAY -> span.setAttribute(
-                    (AttributeKey<List<Double>>) key,
-                    Collections.nCopies(((List<?>) value).size(), SENTINEL_DOUBLE)
-            );
-
-            case BOOLEAN_ARRAY -> span.setAttribute(
-                    (AttributeKey<List<Boolean>>) key,
-                    Collections.nCopies(((List<?>) value).size(), SENTINEL_BOOLEAN)
-            );
-
-            default -> {
-                // строковые типы здесь не обрабатываются
-            }
-        }
-    }
-
-    private static final class ScrubbingActionCounters {
-
-        private final LongAdder dropped = new LongAdder();
-        private final LongAdder hashed = new LongAdder();
-        private final LongAdder masked = new LongAdder();
-        private final LongAdder truncated = new LongAdder();
-        private final LongAdder failures = new LongAdder();
-        private final LongAdder hashMissingKey = new LongAdder();
-        private final LongAdder skippedCircuitOpen = new LongAdder();
-
-        private void recordDropped() {
-            dropped.increment();
-        }
-
-        private void recordHashed() {
-            hashed.increment();
-        }
-
-        private void recordMasked() {
-            masked.increment();
-        }
-
-        private void recordTruncated() {
-            truncated.increment();
-        }
-
-        private void recordFailure() {
-            failures.increment();
-        }
-
-        private void addFailures(long count) {
-            failures.add(count);
-        }
-
-        private void recordHashMissingKey() {
-            hashMissingKey.increment();
-        }
-
-        private void addSkippedCircuitOpen(long count) {
-            skippedCircuitOpen.add(count);
-        }
+    private static void write(ReadWriteSpan span, AttributeKey<?> key, Object value) {
+        span.setAttribute((AttributeKey<Object>) key, value);
     }
 }

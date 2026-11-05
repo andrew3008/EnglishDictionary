@@ -2,9 +2,13 @@ package space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.stream.Stream;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -13,6 +17,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
+import space.br1440.platform.tracing.otel.javaagent.exporter.boundary.BoundaryTestSupport;
+import space.br1440.platform.tracing.otel.javaagent.exporter.boundary.SpanBoundaryOutcome;
+import space.br1440.platform.tracing.otel.javaagent.exporter.boundary.SpanDataBoundaryScrubber;
 import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
@@ -20,6 +27,14 @@ import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
+import io.opentelemetry.api.trace.TraceFlags;
+import io.opentelemetry.api.trace.TraceState;
+import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.SpanLimits;
+import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 
 class ValueScanRuntimeTest {
 
@@ -49,7 +64,7 @@ class ValueScanRuntimeTest {
             assertThat(output.get(scalarKey)).isEqualTo(runtime.hmacHex(message));
             assertThat(output.get(arrayKey)).containsExactly(
                     runtime.hmacHex(values.getFirst()), runtime.hmacHex(values.getLast()));
-            assertThat(runtime.hashedActions()).isEqualTo(3L);
+            assertThat(runtime.hashedActions()).isEqualTo(2L);
             assertThat(runtime.maskedActions()).isZero();
             assertThat(runtime.failures()).isZero();
             assertThat(runtime.attributesVerified()).isTrue();
@@ -57,7 +72,7 @@ class ValueScanRuntimeTest {
     }
 
     @Test
-    void missingHmacKeyMasksEveryArrayElementAndCountsTheFallback() {
+    void missingHmacKeyMasksEveryArrayElementAndCountsOneAttributeFallback() {
         // given
         AttributeKey<List<String>> key = AttributeKey.stringArrayKey("custom.values");
         try (ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(List.of(EMAIL));
@@ -70,8 +85,8 @@ class ValueScanRuntimeTest {
 
             // then
             assertThat(harness.spans().getFirst().getAttributes().get(key)).containsExactly("***", "***");
-            assertThat(runtime.maskedActions()).isEqualTo(2L);
-            assertThat(runtime.hashMissingKey()).isEqualTo(2L);
+            assertThat(runtime.maskedActions()).isEqualTo(1L);
+            assertThat(runtime.hashMissingKey()).isEqualTo(1L);
             assertThat(runtime.hashedActions()).isZero();
             assertThat(runtime.failures()).isZero();
         }
@@ -96,7 +111,7 @@ class ValueScanRuntimeTest {
             Attributes output = harness.spans().getFirst().getAttributes();
             assertThat(output.get(scalarKey)).isEmpty();
             assertThat(output.get(arrayKey)).containsExactly("", "");
-            assertThat(runtime.droppedActions()).isEqualTo(3L);
+            assertThat(runtime.droppedActions()).isEqualTo(2L);
             assertThat(runtime.hashedActions()).isZero();
             assertThat(runtime.maskedActions()).isZero();
             assertThat(runtime.failures()).isZero();
@@ -187,6 +202,134 @@ class ValueScanRuntimeTest {
             assertThat(runtime.hashedActions()).isZero();
             assertThat(runtime.failures()).isZero();
         }
+    }
+
+    @ParameterizedTest
+    @MethodSource("keyBasedOversizedArrays")
+    void keyBasedHashWithoutValueScanRulesStillEnforcesArrayBudgets(List<String> values) {
+        // given
+        AttributeKey<List<String>> key = AttributeKey.stringArrayKey("user.preferred_username");
+        try (ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
+                List.of(BuiltInSpanAttributeScrubbingRules.USER_IDENTITY.create()), MaskedSecret.of("test-key"), false);
+             SpanProcessorHarness harness = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {
+            Span span = harness.tracer().spanBuilder("key-based-array-budget").setAttribute(key, values).startSpan();
+
+            // when
+            span.end();
+
+            // then
+            assertThat(harness.spans().getFirst().getAttributes().get(key)).containsExactly("***");
+            assertThat(runtime.maskedActions()).isEqualTo(1L);
+            assertThat(runtime.hashedActions()).isZero();
+            assertThat(runtime.failures()).isZero();
+            assertThat(runtime.attributesVerified()).isTrue();
+        }
+    }
+
+    @Test
+    void keyBasedHashWithoutValueScanRulesStillEnforcesScalarBudget() {
+        // given
+        AttributeKey<String> key = AttributeKey.stringKey("user.preferred_username");
+        try (ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
+                List.of(BuiltInSpanAttributeScrubbingRules.USER_IDENTITY.create()), MaskedSecret.of("test-key"), false);
+             SpanProcessorHarness harness = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {
+            Span span = harness.tracer().spanBuilder("key-based-scalar-budget")
+                    .setAttribute(key, "x".repeat(4097)).startSpan();
+
+            // when
+            span.end();
+
+            // then
+            assertThat(harness.spans().getFirst().getAttributes().get(key)).isEqualTo("***");
+            assertThat(runtime.maskedActions()).isEqualTo(1L);
+            assertThat(runtime.hashedActions()).isZero();
+            assertThat(runtime.failures()).isZero();
+            assertThat(runtime.attributesVerified()).isTrue();
+        }
+    }
+
+    @Test
+    void keyBasedHashAcceptsArrayAtBothBudgetBoundaries() {
+        // given
+        AttributeKey<List<String>> key = AttributeKey.stringArrayKey("user.preferred_username");
+        String element = "x".repeat(128);
+        try (ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
+                List.of(BuiltInSpanAttributeScrubbingRules.USER_IDENTITY.create()), MaskedSecret.of("test-key"), false);
+             SpanProcessorHarness harness = SpanProcessorHarness.of(new ScrubbingSpanProcessor(runtime))) {
+            Span span = harness.tracer().spanBuilder("key-based-array-boundary")
+                    .setAttribute(key, Collections.nCopies(32, element)).startSpan();
+
+            // when
+            span.end();
+
+            // then
+            assertThat(harness.spans().getFirst().getAttributes().get(key))
+                    .containsExactlyElementsOf(Collections.nCopies(32, runtime.hmacHex(element)));
+            assertThat(runtime.hashedActions()).isEqualTo(1L);
+            assertThat(runtime.maskedActions()).isZero();
+            assertThat(runtime.failures()).isZero();
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 17, 64})
+    void sdkLimitsNativeDigestWhileBoundaryKeepsTheSingleHashOfAdmittedEventAndLinkValues(int limit)
+            throws Exception {
+        // given
+        AttributeKey<String> key = AttributeKey.stringKey("user.preferred_username");
+        String raw = "secret-identity-canary-".repeat(8);
+        String admitted = raw.substring(0, limit);
+        String hmacKey = "short-limit-test-key";
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(hmacKey.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        String expected = HexFormat.of().formatHex(mac.doFinal(admitted.getBytes(StandardCharsets.UTF_8)));
+        SpanContext linkContext = SpanContext.create(
+                "0123456789abcdef0123456789abcdef", "0123456789abcdef",
+                TraceFlags.getSampled(), TraceState.getDefault());
+        Attributes source = Attributes.of(key, raw);
+        InMemorySpanExporter capture = InMemorySpanExporter.create();
+        try (ScrubbingRuntime runtime = BoundaryTestSupport.runtimeOf(
+                List.of(BuiltInSpanAttributeScrubbingRules.USER_IDENTITY.create()), List.of(), hmacKey, limit);
+             SdkTracerProvider provider = SdkTracerProvider.builder()
+                     .setSpanLimits(SpanLimits.builder().setMaxAttributeValueLength(limit).build())
+                     .addSpanProcessor(new ScrubbingSpanProcessor(runtime))
+                     .addSpanProcessor(SimpleSpanProcessor.create(capture))
+                     .build()) {
+            Span span = provider.get("short-sdk-limit").spanBuilder("identity")
+                    .setAllAttributes(source).addLink(linkContext, source).startSpan();
+            span.addEvent("identity", source);
+
+            // when
+            span.end();
+            assertThat(capture.getFinishedSpanItems()).hasSize(1);
+            SpanData stored = capture.getFinishedSpanItems().getFirst();
+            SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(stored);
+
+            // then
+            assertThat(outcome.dropSpan()).isFalse();
+            // SDK ограничивает запись в live span; экспортное представление не проходит через SDK повторно.
+            String nativeDigest = expected.substring(0, Math.min(limit, expected.length()));
+            assertThat(stored.getAttributes().get(key)).isEqualTo(nativeDigest).doesNotContain(admitted);
+            assertThat(stored.getEvents()).hasSize(1);
+            assertThat(stored.getLinks()).hasSize(1);
+            assertThat(stored.getEvents().getFirst().getAttributes().get(key)).isEqualTo(admitted);
+            assertThat(stored.getLinks().getFirst().getAttributes().get(key)).isEqualTo(admitted);
+            assertThat(outcome.spanData().getAttributes().get(key)).isEqualTo(nativeDigest);
+            assertThat(outcome.spanData().getEvents().getFirst().getAttributes().get(key))
+                    .isEqualTo(expected).doesNotContain(admitted);
+            assertThat(outcome.spanData().getLinks().getFirst().getAttributes().get(key))
+                    .isEqualTo(expected).doesNotContain(admitted);
+            assertThat(runtime.hashedActions()).isEqualTo(1L);
+            assertThat(runtime.maskedActions()).isZero();
+            assertThat(runtime.failures()).isZero();
+            assertThat(runtime.boundaryMetrics().eventsScrubbed()).isEqualTo(1L);
+            assertThat(runtime.boundaryMetrics().linksScrubbed()).isEqualTo(1L);
+            assertThat(runtime.attributeValueLengthLimit()).isEqualTo(limit);
+        }
+    }
+
+    private static Stream<List<String>> keyBasedOversizedArrays() {
+        return Stream.of(Collections.nCopies(33, "raw-secret"), List.of("x".repeat(4096), "y"));
     }
 
     private static Stream<List<String>> oversizedArrays() {
