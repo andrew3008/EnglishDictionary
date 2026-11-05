@@ -52,59 +52,49 @@ final class BootstrapActivation {
         Objects.requireNonNull(tracerProvider, "tracerProvider");
         Objects.requireNonNull(installLifecycleShutdownHook, "installLifecycleShutdownHook");
 
-        ActivationAttempt attempt = null;
-        BootstrapResources resources = null;
-        FailureContext failure = null;
+        BootstrapResources resources = new BootstrapResources();
         ExtensionRuntimeEvidence fallbackEvidence = journal.current().evidence();
+        ExtensionReadinessWireSnapshot ready;
         synchronized (lifecycle.monitor()) {
             AutoconfigureSession session = lifecycle.beginActivation();
+            ActivationAttempt attempt;
             try {
-                resources = new BootstrapResources();
                 resources.push(session, "autoconfigure-session");
                 lifecycle.attachResources(resources);
                 installLifecycleShutdownHook.run();
                 attempt = new ActivationAttempt(session, resources, tracerProvider);
             } catch (RuntimeException | Error cause) {
-                failure = recordFailure(
+                return Optional.of(recordFailure(
                         PROLOGUE_SUBPHASE,
                         BootstrapFailureCodes.classify(cause, ACTIVATION_FAILED),
                         cause,
                         resources,
                         BatchIds.NONE,
                         fallbackEvidence
-                );
+                ));
             }
 
-            if (failure == null) {
-                failure = runPhases(attempt);
+            try {
+                requireSessionSampler(attempt);
+                assessRemoteJmx(attempt);
+                bindRuntime(attempt);
+                publishReady(attempt);
+            } catch (RuntimeException | Error cause) {
+                return Optional.of(recordFailure(
+                        attempt.phase().subphase(),
+                        failureCodeOf(attempt, cause),
+                        cause,
+                        attempt.resources(),
+                        attempt.batchId(),
+                        attempt.evidence()
+                ));
             }
+
+            ready = attempt.ready();
         }
 
-        if (failure != null) {
-            return Optional.of(failure);
-        }
-
-        emitInstalled(attempt.ready());
+        emitInstalled(ready);
         return Optional.empty();
-    }
-
-    private FailureContext runPhases(ActivationAttempt attempt) {
-        try {
-            requireSessionSampler(attempt);
-            assessRemoteJmx(attempt);
-            bindRuntime(attempt);
-            publishReady(attempt);
-            return null;
-        } catch (RuntimeException | Error cause) {
-            return recordFailure(
-                    attempt.phase().subphase(),
-                    failureCodeOf(attempt, cause),
-                    cause,
-                    attempt.resources(),
-                    attempt.batchId(),
-                    attempt.evidence()
-            );
-        }
     }
 
     private FailureContext recordFailure(String subphase,

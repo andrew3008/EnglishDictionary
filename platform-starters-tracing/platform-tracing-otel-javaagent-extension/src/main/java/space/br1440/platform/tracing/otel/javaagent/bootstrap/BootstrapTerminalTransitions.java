@@ -78,21 +78,11 @@ final class BootstrapTerminalTransitions {
         Objects.requireNonNull(cleanupFailure, "cleanupFailure");
 
         BootstrapFailure recordedFailure;
-        Throwable finalPublicationFailure = null;
         Throwable baseOutcome;
         synchronized (lifecycle.monitor()) {
             if (priorPublicationFailure == null
                     && lifecycle.closeFailureAlreadyRecorded(cleanupFailure)) {
-                try {
-                    publishCurrentFailure(lifecycle.failure());
-                    return cleanupFailure;
-                } catch (RuntimeException | Error publicationFailure) {
-                    BootstrapCleanupFailures.suppressPreservingPrimary(
-                            lifecycle.failure().cause(),
-                            publicationFailure
-                    );
-                    return BootstrapCleanupFailures.aggregate(cleanupFailure, publicationFailure);
-                }
+                return BootstrapCleanupFailures.aggregate(cleanupFailure, publishCapturing(lifecycle.failure()));
             }
 
             recordedFailure = lifecycle.recordCloseFailure(context, cleanupFailure);
@@ -103,18 +93,7 @@ final class BootstrapTerminalTransitions {
                 );
             }
 
-            if (!failureSnapshotPublished) {
-                try {
-                    publishCurrentFailure(recordedFailure);
-                } catch (RuntimeException | Error publicationFailure) {
-                    finalPublicationFailure = publicationFailure;
-                    BootstrapCleanupFailures.suppressPreservingPrimary(
-                            recordedFailure.cause(),
-                            publicationFailure
-                    );
-                }
-            }
-
+            Throwable finalPublicationFailure = failureSnapshotPublished ? null : publishCapturing(recordedFailure);
             baseOutcome = BootstrapCleanupFailures.aggregate(cleanupFailure, priorPublicationFailure);
             baseOutcome = BootstrapCleanupFailures.aggregate(baseOutcome, finalPublicationFailure);
         }
@@ -146,6 +125,16 @@ final class BootstrapTerminalTransitions {
             return admission;
         } catch (RuntimeException | Error projectionFailure) {
             return admission.withProjectionFailure(projectionFailure);
+        }
+    }
+
+    private Throwable publishCapturing(BootstrapFailure failure) {
+        try {
+            publishCurrentFailure(failure);
+            return null;
+        } catch (RuntimeException | Error publicationFailure) {
+            BootstrapCleanupFailures.suppressPreservingPrimary(failure.cause(), publicationFailure);
+            return publicationFailure;
         }
     }
 
