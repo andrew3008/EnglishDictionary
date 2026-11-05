@@ -76,6 +76,7 @@ final class BootstrapCoordinator implements AutoCloseable {
         this.readiness = jmxRegistrar.extensionReadiness();
         this.agentInstanceId = jmxRegistrar.agentInstanceId();
         this.journal = new BootstrapReadinessJournal(lifecycle.monitor(), readiness, agentInstanceId);
+
         BootstrapTerminalTransitions terminalTransitions = new BootstrapTerminalTransitions(lifecycle, journal);
         this.failures = new FailureHandler(lifecycle, terminalTransitions, this::registerDiagnosticReadiness);
         this.sessionFactory = new AutoconfigureSessionFactory(scrubberFactory, remoteJmxAssessorFactory);
