@@ -25,9 +25,9 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.recordingReadinessRegistration;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.satisfyReadinessBarrier;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.CONFIGURATION_INITIALIZATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.DIAGNOSTIC_MBEAN_REGISTRATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.CONFIGURATION_INITIALIZATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.DIAGNOSTIC_MBEAN_REGISTRATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
 
 import java.time.Duration;
@@ -52,6 +52,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapAdmissionRejectedException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.ExtensionRuntimeVerifier;

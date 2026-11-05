@@ -1,10 +1,14 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.AGENT_STARTUP_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.AGENT_STARTUP_FAILED;
 
 import java.util.Objects;
 import java.util.Optional;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureLog;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureAdmission;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureSite;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
@@ -59,7 +63,7 @@ final class BootstrapTerminalTransitions {
         }
     }
 
-    void publishCloseFailureSnapshot(BootstrapLifecycleState.CloseContext context,
+    void publishCloseFailureSnapshot(CloseOperation.CloseContext context,
                                      Throwable cleanupFailure) {
         Objects.requireNonNull(context, "context");
         Objects.requireNonNull(cleanupFailure, "cleanupFailure");
@@ -70,7 +74,7 @@ final class BootstrapTerminalTransitions {
         }
     }
 
-    Throwable completeCloseFailure(BootstrapLifecycleState.CloseContext context,
+    Throwable completeCloseFailure(CloseOperation.CloseContext context,
                                    Throwable cleanupFailure,
                                    Throwable priorPublicationFailure,
                                    boolean failureSnapshotPublished) {

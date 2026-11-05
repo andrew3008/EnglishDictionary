@@ -33,7 +33,7 @@ final class PreparationGate {
         }
     }
 
-    BootstrapLifecycleState.CloseAcquisition acquireCloseWhenIdle() {
+    CloseOperation.CloseAcquisition acquireCloseWhenIdle() {
         boolean interrupted = false;
         try {
             synchronized (monitor) {

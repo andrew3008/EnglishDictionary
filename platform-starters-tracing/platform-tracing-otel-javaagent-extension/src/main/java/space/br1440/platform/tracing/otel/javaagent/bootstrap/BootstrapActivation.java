@@ -1,12 +1,18 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.ACTIVATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_SAMPLER_REPLACED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.ACTIVATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.PLATFORM_SAMPLER_REPLACED;
 
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapAdmissionRejectedException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureAdmission;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureContext;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureSite;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.RemoteJmxRegistrationDeniedException;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.VerificationFailureCode;
@@ -78,7 +84,7 @@ final class BootstrapActivation {
                 requireSessionSampler(attempt);
                 assessRemoteJmx(attempt);
                 bindRuntime(attempt);
-                publishReady(attempt);
+                ready = publishReady(attempt);
             } catch (RuntimeException | Error cause) {
                 return Optional.of(recordFailure(
                         attempt.phase().subphase(),
@@ -89,8 +95,6 @@ final class BootstrapActivation {
                         attempt.evidence()
                 ));
             }
-
-            ready = attempt.ready();
         }
 
         emitInstalled(ready);
@@ -152,7 +156,7 @@ final class BootstrapActivation {
         resources.push(runtimeRegistration, "runtime-jmx-controls");
     }
 
-    private void publishReady(ActivationAttempt attempt) {
+    private ExtensionReadinessWireSnapshot publishReady(ActivationAttempt attempt) {
         attempt.enter(ActivationPhase.READINESS_PUBLICATION);
 
         //noinspection resource -- сессия принадлежит попытке активации, закрывает её BootstrapResources
@@ -173,7 +177,7 @@ final class BootstrapActivation {
         );
         lifecycle.commitActive();
         journal.publishReady(ready);
-        attempt.recordReady(ready);
+        return ready;
     }
 
     private static String failureCodeOf(ActivationAttempt attempt, Throwable failure) {
@@ -229,7 +233,6 @@ final class BootstrapActivation {
 
         private ActivationPhase phase = ActivationPhase.SAMPLER_POSTCONDITION;
         private String batchId = BatchIds.NONE;
-        private ExtensionReadinessWireSnapshot ready;
 
         ActivationAttempt(AutoconfigureSession session,
                           BootstrapResources resources,
@@ -246,18 +249,6 @@ final class BootstrapActivation {
 
         void recordRuntimeRegistration(UUID registeredBatchId) {
             this.batchId = Objects.requireNonNull(registeredBatchId, "registeredBatchId").toString();
-        }
-
-        void recordReady(ExtensionReadinessWireSnapshot published) {
-            this.ready = Objects.requireNonNull(published, "published");
-        }
-
-        ExtensionReadinessWireSnapshot ready() {
-            if (ready == null) {
-                throw new IllegalStateException("Activation completed without READY publication");
-            }
-
-            return ready;
         }
 
         AutoconfigureSession session() {

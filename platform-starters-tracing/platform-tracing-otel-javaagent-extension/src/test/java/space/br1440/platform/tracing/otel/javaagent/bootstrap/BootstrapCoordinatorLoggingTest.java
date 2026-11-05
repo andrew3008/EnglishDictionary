@@ -19,9 +19,9 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.registerForeignReadinessMBean;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.satisfyReadinessBarrier;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.CONFIGURATION_INITIALIZATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.DUPLICATE_ACTIVATION;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_SAMPLER_REPLACED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.CONFIGURATION_INITIALIZATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.DUPLICATE_ACTIVATION;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.PLATFORM_SAMPLER_REPLACED;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -34,6 +34,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapAdmissionRejectedException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.ShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;

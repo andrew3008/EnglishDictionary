@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.bootstrap;
+package space.br1440.platform.tracing.otel.javaagent.bootstrap.failure;
 
 import java.util.Objects;
 
@@ -6,7 +6,7 @@ import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.Bootstra
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
 
-record FailureContext(FailureSite site,
+public record FailureContext(FailureSite site,
                       String failureCode,
                       Throwable cause,
                       FailureAdmission admission,
@@ -15,7 +15,7 @@ record FailureContext(FailureSite site,
                       String batchId,
                       ExtensionRuntimeEvidence evidence) {
 
-    FailureContext {
+    public FailureContext {
         Objects.requireNonNull(site, "site");
         Objects.requireNonNull(failureCode, "failureCode");
         Objects.requireNonNull(cause, "cause");

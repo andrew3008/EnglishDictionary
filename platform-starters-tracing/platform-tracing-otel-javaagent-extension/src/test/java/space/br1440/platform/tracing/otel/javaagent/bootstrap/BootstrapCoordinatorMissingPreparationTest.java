@@ -14,7 +14,7 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.registerForeignReadinessMBean;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
 
 import java.io.OutputStream;
@@ -28,6 +28,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.CustomizationStep;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationException;

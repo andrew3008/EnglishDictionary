@@ -1,15 +1,15 @@
-package space.br1440.platform.tracing.otel.javaagent.bootstrap;
+package space.br1440.platform.tracing.otel.javaagent.bootstrap.failure;
 
 import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 
-record FailureAdmission(Kind kind,
+public record FailureAdmission(Kind kind,
                         BootstrapFailure failure,
                         AutoconfigureSession claimedSession,
                         Throwable projectionFailure) {
 
-    FailureAdmission {
+    public FailureAdmission {
         Objects.requireNonNull(kind, "kind");
         Objects.requireNonNull(failure, "failure");
         if (kind != Kind.RECORDED && (claimedSession != null || projectionFailure != null)) {
@@ -17,28 +17,28 @@ record FailureAdmission(Kind kind,
         }
     }
 
-    static FailureAdmission recorded(BootstrapFailure failure, AutoconfigureSession claimedSession) {
+    public static FailureAdmission recorded(BootstrapFailure failure, AutoconfigureSession claimedSession) {
         return new FailureAdmission(Kind.RECORDED, failure, claimedSession, null);
     }
 
-    static FailureAdmission alreadyFailed(BootstrapFailure stickyFailure) {
+    public static FailureAdmission alreadyFailed(BootstrapFailure stickyFailure) {
         return new FailureAdmission(Kind.ALREADY_FAILED, stickyFailure, null, null);
     }
 
-    static FailureAdmission rejected(BootstrapFailure unrecordedFailure) {
+    public static FailureAdmission rejected(BootstrapFailure unrecordedFailure) {
         return new FailureAdmission(Kind.REJECTED, unrecordedFailure, null, null);
     }
 
-    FailureAdmission withProjectionFailure(Throwable failedProjection) {
+    public FailureAdmission withProjectionFailure(Throwable failedProjection) {
         Objects.requireNonNull(failedProjection, "failedProjection");
         return new FailureAdmission(kind, failure, claimedSession, failedProjection);
     }
 
-    boolean recorded() {
+    public boolean recorded() {
         return kind == Kind.RECORDED;
     }
 
-    enum Kind {
+    public enum Kind {
         RECORDED,
         ALREADY_FAILED,
         REJECTED

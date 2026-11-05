@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import java.util.Objects;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;

@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.bootstrap;
+package space.br1440.platform.tracing.otel.javaagent.bootstrap.failure;
 
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxRegistrationAssessment;
@@ -6,13 +6,7 @@ import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
-/**
- * Единственный эмиттер диагностики отказов bootstrap.
- *
- * <p>Вызывается только вне монитора lifecycle, после release, escalation и регистрации diagnostic
- * MBean. Отказ logger не перехватывается: выбор fatal-кандидата принадлежит вызывающему.
- */
-final class BootstrapFailureLog {
+public final class BootstrapFailureLog {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(BootstrapFailureLog.class);
 
@@ -21,7 +15,7 @@ final class BootstrapFailureLog {
     private BootstrapFailureLog() {
     }
 
-    static void phaseFailed(FailureSite site, BootstrapFailure recorded) {
+    public static void phaseFailed(FailureSite site, BootstrapFailure recorded) {
         emit(
                 BootstrapLogEvent.BOOTSTRAP_PHASE_FAILED,
                 recorded.effectiveCode(),
@@ -32,7 +26,7 @@ final class BootstrapFailureLog {
         );
     }
 
-    static void escalated(BootstrapFailure escalation, Throwable cleanupFailure) {
+    public static void escalated(BootstrapFailure escalation, Throwable cleanupFailure) {
         emit(
                 BootstrapLogEvent.BOOTSTRAP_PHASE_FAILED,
                 escalation.effectiveCode(),
@@ -43,7 +37,7 @@ final class BootstrapFailureLog {
         );
     }
 
-    static void rejected(FailureSite site, String failureCode, Throwable cause) {
+    public static void rejected(FailureSite site, String failureCode, Throwable cause) {
         emit(
                 BootstrapLogEvent.BOOTSTRAP_OPERATION_REJECTED,
                 failureCode,
@@ -54,7 +48,7 @@ final class BootstrapFailureLog {
         );
     }
 
-    static void rejected(BootstrapFailure rejection) {
+    public static void rejected(BootstrapFailure rejection) {
         emit(
                 BootstrapLogEvent.BOOTSTRAP_OPERATION_REJECTED,
                 rejection.primaryCode(),
@@ -65,7 +59,7 @@ final class BootstrapFailureLog {
         );
     }
 
-    static void closeFailed(BootstrapFailure failure, Throwable outcome) {
+    public static void closeFailed(BootstrapFailure failure, Throwable outcome) {
         log.log(BootstrapLogEvent.BOOTSTRAP_PHASE_FAILED, fields -> fields
                 .putString(AgentLogField.FAILURE_CODE, failure.effectiveCode())
                 .putString(AgentLogField.PHASE, CLOSE_PHASE)
@@ -74,7 +68,7 @@ final class BootstrapFailureLog {
                 .cause(outcome));
     }
 
-    static void remoteJmxDenied(RemoteJmxRegistrationAssessment denial) {
+    public static void remoteJmxDenied(RemoteJmxRegistrationAssessment denial) {
         log.log(BootstrapLogEvent.REMOTE_JMX_MUTATION_REGISTRATION_DENIED, fields -> fields
                 .putString(AgentLogField.FAILURE_CODE, denial.failureCode().name())
                 .putString(AgentLogField.REMEDIATION, denial.remediation())

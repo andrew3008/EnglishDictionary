@@ -1,17 +1,20 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.BOOTSTRAP_TERMINAL;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.DUPLICATE_ACTIVATION;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.REENTRANT_OR_OUT_OF_ORDER;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.SECOND_SDK_BUILD;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.SHUTDOWN_CLEANUP_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.BOOTSTRAP_TERMINAL;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.DUPLICATE_ACTIVATION;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.REENTRANT_OR_OUT_OF_ORDER;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.SECOND_SDK_BUILD;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.SHUTDOWN_CLEANUP_FAILED;
 
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapAdmissionRejectedException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureAdmission;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
@@ -29,7 +32,7 @@ final class BootstrapLifecycleState {
     private ExtensionRuntimeEvidence evidence;
     private BootstrapFailure failure;
     private BootstrapResources resources;
-    private CloseFlight closeFlight;
+    private CloseOperation closeOperation;
 
     Object monitor() {
         return monitor;
@@ -180,14 +183,14 @@ final class BootstrapLifecycleState {
         }
     }
 
-    CloseAcquisition acquireClose() {
+    CloseOperation.CloseAcquisition acquireClose() {
         synchronized (monitor) {
-            if (closeFlight != null) {
-                if (closeFlight.ownedByCurrentThread() && closeFlight.inProgress()) {
-                    return CloseAcquisition.reentrant(closeFlight);
+            if (closeOperation != null) {
+                if (closeOperation.ownedByCurrentThread() && closeOperation.inProgress()) {
+                    return CloseOperation.CloseAcquisition.reentrant(closeOperation);
                 }
 
-                return CloseAcquisition.follower(closeFlight);
+                return CloseOperation.CloseAcquisition.follower(closeOperation);
             }
 
             if (state != BootstrapState.FAILED) {
@@ -196,23 +199,23 @@ final class BootstrapLifecycleState {
 
             BootstrapResources owned = resources;
             resources = null;
-            CloseContext context = new CloseContext(failure, owned, session);
+            CloseOperation.CloseContext context = new CloseOperation.CloseContext(failure, owned, session);
             session = null;
-            closeFlight = new CloseFlight(Thread.currentThread(), context);
-            return CloseAcquisition.owner(closeFlight);
+            closeOperation = new CloseOperation(Thread.currentThread(), context);
+            return CloseOperation.CloseAcquisition.owner(closeOperation);
         }
     }
 
-    void completeClose(CloseFlight flight, Throwable outcome) {
-        Objects.requireNonNull(flight, "flight");
+    void completeClose(CloseOperation operation, Throwable outcome) {
+        Objects.requireNonNull(operation, "operation");
 
         synchronized (monitor) {
-            if (closeFlight != flight) {
-                throw new IllegalStateException("Bootstrap close flight is not owned by this lifecycle");
+            if (closeOperation != operation) {
+                throw new IllegalStateException("Bootstrap close is not owned by this lifecycle");
             }
         }
 
-        flight.complete(outcome);
+        operation.complete(outcome);
     }
 
     void markClosed() {
@@ -223,7 +226,7 @@ final class BootstrapLifecycleState {
         }
     }
 
-    static BootstrapFailure classifyCloseFailure(CloseContext context, Throwable cleanupFailure) {
+    static BootstrapFailure classifyCloseFailure(CloseOperation.CloseContext context, Throwable cleanupFailure) {
         Objects.requireNonNull(context, "context");
         Objects.requireNonNull(cleanupFailure, "cleanupFailure");
 
@@ -245,7 +248,7 @@ final class BootstrapLifecycleState {
         );
     }
 
-    BootstrapFailure recordCloseFailure(CloseContext context, Throwable cleanupFailure) {
+    BootstrapFailure recordCloseFailure(CloseOperation.CloseContext context, Throwable cleanupFailure) {
         Objects.requireNonNull(context, "context");
         Objects.requireNonNull(cleanupFailure, "cleanupFailure");
         requireMonitorHeld("Close failure recording");
@@ -381,14 +384,14 @@ final class BootstrapLifecycleState {
 
     /**
      * Фиксирует первый отказ и в той же критической секции изымает session, ещё не переданную ни
-     * close-flight, ни стеку activation: её release принадлежит FailureHandler.complete.
+     * close-operation, ни стеку activation: её release принадлежит FailureHandler.complete.
      */
     private FailureAdmission record(BootstrapFailure next) {
         failure = next;
         state = BootstrapState.FAILED;
 
         AutoconfigureSession claimed = null;
-        if (closeFlight == null && resources == null) {
+        if (closeOperation == null && resources == null) {
             claimed = session;
             session = null;
         }
@@ -406,93 +409,5 @@ final class BootstrapLifecycleState {
 
     private static BootstrapFailure reject(String code, String phase, String message) {
         return new BootstrapFailure(code, code, phase, new IllegalStateException(message));
-    }
-
-    record CloseContext(BootstrapFailure failureBeforeClose,
-                        BootstrapResources resources,
-                        AutoconfigureSession session) {
-    }
-
-    record CloseAcquisition(boolean owner, boolean reentrant, CloseFlight flight) {
-
-        CloseAcquisition {
-            Objects.requireNonNull(flight, "flight");
-        }
-
-        static CloseAcquisition owner(CloseFlight flight) {
-            return new CloseAcquisition(true, false, flight);
-        }
-
-        static CloseAcquisition follower(CloseFlight flight) {
-            return new CloseAcquisition(false, false, flight);
-        }
-
-        static CloseAcquisition reentrant(CloseFlight flight) {
-            return new CloseAcquisition(false, true, flight);
-        }
-
-        CloseContext context() {
-            return flight.context();
-        }
-
-        Throwable awaitOutcome() {
-            return flight.awaitOutcome();
-        }
-    }
-
-    static final class CloseFlight {
-
-        private final Thread owner;
-        private final CloseContext context;
-        private final CountDownLatch completion = new CountDownLatch(1);
-
-        private volatile Throwable outcome;
-
-        private CloseFlight(Thread owner, CloseContext context) {
-            this.owner = Objects.requireNonNull(owner, "owner");
-            this.context = Objects.requireNonNull(context, "context");
-        }
-
-        CloseContext context() {
-            return context;
-        }
-
-        private boolean ownedByCurrentThread() {
-            return owner == Thread.currentThread();
-        }
-
-        private boolean inProgress() {
-            return completion.getCount() != 0L;
-        }
-
-        private void complete(Throwable completedOutcome) {
-            if (!ownedByCurrentThread()) {
-                throw new IllegalStateException("Only the bootstrap close owner can complete the close flight");
-            }
-            if (!inProgress()) {
-                throw new IllegalStateException("Bootstrap close flight is already complete");
-            }
-
-            outcome = completedOutcome;
-            completion.countDown();
-        }
-
-        private Throwable awaitOutcome() {
-            boolean interrupted = false;
-            while (true) {
-                try {
-                    completion.await();
-                    break;
-                } catch (InterruptedException ignored) {
-                    interrupted = true;
-                }
-            }
-
-            if (interrupted) {
-                Thread.currentThread().interrupt();
-            }
-
-            return outcome;
-        }
     }
 }

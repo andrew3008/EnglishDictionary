@@ -13,9 +13,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.ACTIVATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.SHUTDOWN_CLEANUP_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.ACTIVATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.SHUTDOWN_CLEANUP_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSnapshotAssertions.failureOf;
 
 import java.io.IOException;
@@ -25,6 +25,10 @@ import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.CustomizationStep;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureAdmission;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureSite;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
@@ -140,7 +144,7 @@ class BootstrapTerminalTransitionsTest {
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixture(lifecycle);
         IllegalStateException cleanupFailure = new IllegalStateException("Diagnostic readiness cleanup failed");
-        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition acquisition = lifecycle.acquireClose();
 
         // when
         fixture.transitions().publishCloseFailureSnapshot(acquisition.context(), cleanupFailure);
@@ -151,10 +155,10 @@ class BootstrapTerminalTransitionsTest {
                 null,
                 true
         );
-        lifecycle.completeClose(acquisition.flight(), outcome);
+        lifecycle.completeClose(acquisition.operation(), outcome);
 
         // then
-        assertThat(acquisition.owner()).isTrue();
+        assertThat(acquisition.role()).isEqualTo(CloseOperation.Role.OWNER);
         assertThat(outcome).isSameAs(cleanupFailure);
         assertThat(lifecycle.failure().cause()).isSameAs(cleanupFailure);
         assertThat(lifecycle.failure().primaryCode()).isEqualTo(SHUTDOWN_CLEANUP_FAILED);
@@ -205,7 +209,7 @@ class BootstrapTerminalTransitionsTest {
         BootstrapCleanupFailures.suppressPreservingPrimary(activationFailure, cleanupFailure);
         lifecycle.escalateRollbackIncomplete("activate", cleanupFailure);
         assertThat(fixture.journal().current().failureCode()).isEqualTo(ACTIVATION_FAILED);
-        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition acquisition = lifecycle.acquireClose();
 
         // when
         Throwable outcome;
@@ -216,7 +220,7 @@ class BootstrapTerminalTransitionsTest {
                     null,
                     false
             );
-            lifecycle.completeClose(acquisition.flight(), outcome);
+            lifecycle.completeClose(acquisition.operation(), outcome);
 
             // then
             assertThat(logs.events())
@@ -249,7 +253,7 @@ class BootstrapTerminalTransitionsTest {
                 eq(BATCH_ID),
                 same(fixture.evidence())
         );
-        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition acquisition = lifecycle.acquireClose();
 
         // when
         Throwable outcome;
@@ -260,7 +264,7 @@ class BootstrapTerminalTransitionsTest {
                     null,
                     false
             );
-            lifecycle.completeClose(acquisition.flight(), outcome);
+            lifecycle.completeClose(acquisition.operation(), outcome);
 
             // then
             assertThat(logs.events())
@@ -278,7 +282,7 @@ class BootstrapTerminalTransitionsTest {
     }
 
     @Test
-    void final_runtime_publication_failure_keeps_cleanup_as_lifecycle_and_flight_root() {
+    void final_runtime_publication_failure_keeps_cleanup_as_lifecycle_and_operation_root() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithMockJournal(lifecycle);
@@ -303,7 +307,7 @@ class BootstrapTerminalTransitionsTest {
     }
 
     @Test
-    void final_publication_error_is_secondary_in_lifecycle_and_root_in_flight() {
+    void final_publication_error_is_secondary_in_lifecycle_and_root_in_operation() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithMockJournal(lifecycle);
@@ -330,7 +334,7 @@ class BootstrapTerminalTransitionsTest {
     }
 
     @Test
-    void early_publication_error_is_secondary_in_lifecycle_and_root_in_flight() {
+    void early_publication_error_is_secondary_in_lifecycle_and_root_in_operation() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithMockJournal(lifecycle);
@@ -537,7 +541,7 @@ class BootstrapTerminalTransitionsTest {
     }
 
     @Test
-    void shutdown_log_delivery_failure_preserves_cleanup_outcome_and_completes_flight() throws Exception {
+    void shutdown_log_delivery_failure_preserves_cleanup_outcome_and_completes_operation() throws Exception {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithMockJournal(lifecycle);
@@ -562,7 +566,7 @@ class BootstrapTerminalTransitionsTest {
     }
 
     @Test
-    void fatal_shutdown_logging_failure_becomes_secondary_then_flight_root_without_retry() throws Exception {
+    void fatal_shutdown_logging_failure_becomes_secondary_then_operation_root_without_retry() throws Exception {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithMockJournal(lifecycle);
@@ -632,9 +636,9 @@ class BootstrapTerminalTransitionsTest {
         BootstrapReadinessJournal journal = mock(BootstrapReadinessJournal.class);
         Fixture fixture = activeFixture(lifecycle, journal);
         lifecycle.requireOperable("customization");
-        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition acquisition = lifecycle.acquireClose();
         lifecycle.markClosed();
-        lifecycle.completeClose(acquisition.flight(), null);
+        lifecycle.completeClose(acquisition.operation(), null);
         IllegalStateException operationFailure = new IllegalStateException("Customization failed after close");
 
         // when
@@ -647,7 +651,7 @@ class BootstrapTerminalTransitionsTest {
         );
 
         // then
-        assertThat(acquisition.owner()).isTrue();
+        assertThat(acquisition.role()).isEqualTo(CloseOperation.Role.OWNER);
         assertThat(rejection.kind()).isEqualTo(FailureAdmission.Kind.REJECTED);
         assertThat(rejection.failure().primaryCode()).isEqualTo(STEP.failureCode());
         assertThat(rejection.failure().effectiveCode()).isEqualTo(STEP.failureCode());
@@ -669,7 +673,7 @@ class BootstrapTerminalTransitionsTest {
         BootstrapReadinessJournal journal = mock(BootstrapReadinessJournal.class);
         Fixture fixture = activeFixture(lifecycle, journal);
         lifecycle.requireOperable("customization");
-        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition acquisition = lifecycle.acquireClose();
         IllegalStateException operationFailure = new IllegalStateException("Customization failed during close");
 
         // when
@@ -682,7 +686,7 @@ class BootstrapTerminalTransitionsTest {
         );
 
         // then
-        assertThat(acquisition.owner()).isTrue();
+        assertThat(acquisition.role()).isEqualTo(CloseOperation.Role.OWNER);
         assertThat(rejection.kind()).isEqualTo(FailureAdmission.Kind.REJECTED);
         assertThat(rejection.failure().primaryCode()).isEqualTo(STEP.failureCode());
         assertThat(rejection.failure().effectiveCode()).isEqualTo(STEP.failureCode());
@@ -696,32 +700,30 @@ class BootstrapTerminalTransitionsTest {
                 .hasMessage("Bootstrap failure is not recorded");
         verifyNoInteractions(journal);
         lifecycle.markClosed();
-        lifecycle.completeClose(acquisition.flight(), null);
+        lifecycle.completeClose(acquisition.operation(), null);
     }
 
     private static CloseResult completeCloseFailure(Fixture fixture,
                                                     Throwable cleanupFailure,
                                                     Throwable priorPublicationFailure) {
-        BootstrapLifecycleState.CloseAcquisition acquisition = fixture.lifecycle().acquireClose();
-        assertThat(acquisition.owner()).isTrue();
-        assertThat(acquisition.reentrant()).isFalse();
+        CloseOperation.CloseAcquisition acquisition = fixture.lifecycle().acquireClose();
+        assertThat(acquisition.role()).isEqualTo(CloseOperation.Role.OWNER);
         Throwable outcome = fixture.transitions().completeCloseFailure(
                 acquisition.context(),
                 cleanupFailure,
                 priorPublicationFailure,
                 false
         );
-        fixture.lifecycle().completeClose(acquisition.flight(), outcome);
+        fixture.lifecycle().completeClose(acquisition.operation(), outcome);
         return new CloseResult(acquisition, outcome);
     }
 
     private static void assertFollowerReplays(BootstrapLifecycleState lifecycle,
-                                              BootstrapLifecycleState.CloseAcquisition owner,
+                                              CloseOperation.CloseAcquisition owner,
                                               Throwable outcome) {
-        BootstrapLifecycleState.CloseAcquisition follower = lifecycle.acquireClose();
-        assertThat(follower.owner()).isFalse();
-        assertThat(follower.reentrant()).isFalse();
-        assertThat(follower.flight()).isSameAs(owner.flight());
+        CloseOperation.CloseAcquisition follower = lifecycle.acquireClose();
+        assertThat(follower.role()).isEqualTo(CloseOperation.Role.FOLLOWER);
+        assertThat(follower.operation()).isSameAs(owner.operation());
         assertThat(follower.awaitOutcome()).isSameAs(outcome);
     }
 
@@ -841,7 +843,7 @@ class BootstrapTerminalTransitionsTest {
         return readiness;
     }
 
-    private record CloseResult(BootstrapLifecycleState.CloseAcquisition acquisition, Throwable outcome) {
+    private record CloseResult(CloseOperation.CloseAcquisition acquisition, Throwable outcome) {
     }
 
     private record Fixture(BootstrapLifecycleState lifecycle,

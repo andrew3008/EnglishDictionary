@@ -14,6 +14,7 @@ import javax.management.MBeanServer;
 import org.junit.jupiter.api.Test;
 
 import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.AccessTarget;
 import com.tngtech.archunit.core.domain.JavaAccess;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -23,6 +24,13 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.EvaluationResult;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapAdmissionRejectedException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureLog;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureAdmission;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureContext;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureSite;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.JvmShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.ShutdownHookRegistry;
@@ -52,6 +60,18 @@ class BootstrapFailureOwnershipArchTest {
             targetIs(PlatformExtensionReadiness.class, "fail");
     private static final DescribedPredicate<JavaAccess<?>> FAILURE_CONSTRUCTION_ACCESS =
             targetIs(BootstrapFailure.class, CONSTRUCTOR_NAME);
+    private static final DescribedPredicate<JavaAccess<?>> ADMISSION_CONSTRUCTION_ACCESS =
+            targetIs(FailureAdmission.class, CONSTRUCTOR_NAME);
+    private static final DescribedPredicate<JavaAccess<?>> ADMISSION_RECORDED_ACCESS =
+            callWithArity(FailureAdmission.class, "recorded", 2);
+    private static final DescribedPredicate<JavaAccess<?>> ADMISSION_ALREADY_FAILED_ACCESS =
+            callWithArity(FailureAdmission.class, "alreadyFailed", 1);
+    private static final DescribedPredicate<JavaAccess<?>> ADMISSION_REJECTED_ACCESS =
+            callWithArity(FailureAdmission.class, "rejected", 1);
+    private static final DescribedPredicate<JavaAccess<?>> ADMISSION_PROJECTION_ACCESS =
+            callWithArity(FailureAdmission.class, "withProjectionFailure", 1);
+    private static final DescribedPredicate<JavaAccess<?>> FAILURE_CONTEXT_CONSTRUCTION_ACCESS =
+            targetIs(FailureContext.class, CONSTRUCTOR_NAME);
     private static final DescribedPredicate<JavaAccess<?>> DIAGNOSTIC_REGISTRATION_ACCESS =
             targetIs(DiagnosticReadinessHandle.class, "registerIfAbsent");
     private static final DescribedPredicate<JavaAccess<?>> LIFECYCLE_BEGIN_PREPARE_ACCESS =
@@ -60,6 +80,18 @@ class BootstrapFailureOwnershipArchTest {
             targetIs(BootstrapLifecycleState.class, "acquireClose");
     private static final DescribedPredicate<JavaAccess<?>> LIFECYCLE_CLOSE_COMPLETION_ACCESS =
             targetIs(BootstrapLifecycleState.class, "completeClose");
+    private static final DescribedPredicate<JavaAccess<?>> CLOSE_OPERATION_CONSTRUCTION_ACCESS =
+            targetIs(CloseOperation.class, CONSTRUCTOR_NAME);
+    private static final DescribedPredicate<JavaAccess<?>> CLOSE_CONTEXT_CONSTRUCTION_ACCESS =
+            targetIs(CloseOperation.CloseContext.class, CONSTRUCTOR_NAME);
+    private static final DescribedPredicate<JavaAccess<?>> CLOSE_ACQUISITION_CONSTRUCTION_ACCESS =
+            targetIs(CloseOperation.CloseAcquisition.class, CONSTRUCTOR_NAME);
+    private static final DescribedPredicate<JavaAccess<?>> CLOSE_OPERATION_COMPLETION_ACCESS =
+            targetIs(CloseOperation.class, "complete");
+    private static final DescribedPredicate<JavaAccess<?>> CLOSE_OPERATION_AWAIT_ACCESS =
+            targetIs(CloseOperation.class, "awaitOutcome");
+    private static final DescribedPredicate<JavaAccess<?>> CLOSE_ACQUISITION_AWAIT_ACCESS =
+            targetIs(CloseOperation.CloseAcquisition.class, "awaitOutcome");
     private static final DescribedPredicate<JavaAccess<?>> LIFECYCLE_MARK_CLOSED_ACCESS =
             targetIs(BootstrapLifecycleState.class, "markClosed");
     private static final DescribedPredicate<JavaAccess<?>> DIAGNOSTIC_CLOSE_ACCESS =
@@ -172,6 +204,40 @@ class BootstrapFailureOwnershipArchTest {
 
     @ArchTest
     @SuppressWarnings("unused")
+    static void only_named_owners_construct_failure_admission_and_context(JavaClasses classes) {
+        // given
+        // конструктор FailureAdmission вызывают его фабрики; recorded() — аксессор записи, не фабрика
+        ArchRule admissionConstruction = admissionConstructionRule();
+        ArchRule admissionFactories = admissionFactoryRule();
+        ArchRule admissionProjection = admissionProjectionRule();
+        ArchRule contextConstruction = failureContextConstructionRule();
+
+        // when
+        EvaluationResult admissionConstructionResult = admissionConstruction.evaluate(classes);
+        EvaluationResult admissionFactoriesResult = admissionFactories.evaluate(classes);
+        EvaluationResult admissionProjectionResult = admissionProjection.evaluate(classes);
+        EvaluationResult contextConstructionResult = contextConstruction.evaluate(classes);
+
+        // then
+        assertAllowedProductionAccessExists(classes, FailureAdmission.class, ADMISSION_CONSTRUCTION_ACCESS);
+        assertAllowedProductionAccessExists(classes, BootstrapLifecycleState.class, ADMISSION_RECORDED_ACCESS);
+        assertAllowedProductionAccessExists(classes, BootstrapLifecycleState.class, ADMISSION_ALREADY_FAILED_ACCESS);
+        assertAllowedProductionAccessExists(classes, BootstrapLifecycleState.class, ADMISSION_REJECTED_ACCESS);
+        assertAllowedProductionAccessExists(
+                classes,
+                BootstrapTerminalTransitions.class,
+                ADMISSION_PROJECTION_ACCESS
+        );
+        assertAllowedProductionAccessExists(classes, FailureHandler.class, FAILURE_CONTEXT_CONSTRUCTION_ACCESS);
+        assertAllowedProductionAccessExists(classes, BootstrapActivation.class, FAILURE_CONTEXT_CONSTRUCTION_ACCESS);
+        assertThat(admissionConstructionResult.getFailureReport().getDetails()).isEmpty();
+        assertThat(admissionFactoriesResult.getFailureReport().getDetails()).isEmpty();
+        assertThat(admissionProjectionResult.getFailureReport().getDetails()).isEmpty();
+        assertThat(contextConstructionResult.getFailureReport().getDetails()).isEmpty();
+    }
+
+    @ArchTest
+    @SuppressWarnings("unused")
     static void only_coordinator_can_register_diagnostic_readiness(JavaClasses classes) {
         // given
         ArchRule rule = diagnosticRegistrationRule();
@@ -249,8 +315,45 @@ class BootstrapFailureOwnershipArchTest {
         assertAllowedProductionAccessExists(classes, BootstrapCloser.class, DIAGNOSTIC_CLOSE_ACCESS);
         assertThat(classes.get(BootstrapLifecycleState.class).getFields())
                 .anySatisfy(field -> assertThat(field.getRawType()
-                        .isEquivalentTo(BootstrapLifecycleState.CloseFlight.class)).isTrue());
+                        .isEquivalentTo(CloseOperation.class)).isTrue());
         assertThat(result.getFailureReport().getDetails()).isEmpty();
+    }
+
+    @ArchTest
+    @SuppressWarnings("unused")
+    static void only_lifecycle_can_construct_and_complete_close_operation(JavaClasses classes) {
+        // given
+        // конструктор CloseAcquisition вызывают его фабрики
+        ArchRule construction = closeOperationConstructionRule();
+        ArchRule acquisitionConstruction = closeAcquisitionConstructionRule();
+        ArchRule awaitOperation = closeOperationAwaitRule();
+        ArchRule awaitAcquisition = closeAcquisitionAwaitRule();
+
+        // when
+        EvaluationResult constructionResult = construction.evaluate(classes);
+        EvaluationResult acquisitionResult = acquisitionConstruction.evaluate(classes);
+        EvaluationResult awaitOperationResult = awaitOperation.evaluate(classes);
+        EvaluationResult awaitAcquisitionResult = awaitAcquisition.evaluate(classes);
+
+        // then
+        assertAllowedProductionAccessExists(classes, BootstrapLifecycleState.class, CLOSE_OPERATION_CONSTRUCTION_ACCESS);
+        assertAllowedProductionAccessExists(classes, BootstrapLifecycleState.class, CLOSE_CONTEXT_CONSTRUCTION_ACCESS);
+        assertAllowedProductionAccessExists(classes, BootstrapLifecycleState.class, CLOSE_OPERATION_COMPLETION_ACCESS);
+        assertAllowedProductionAccessExists(
+                classes,
+                CloseOperation.CloseAcquisition.class,
+                CLOSE_ACQUISITION_CONSTRUCTION_ACCESS
+        );
+        assertAllowedProductionAccessExists(
+                classes,
+                CloseOperation.CloseAcquisition.class,
+                CLOSE_OPERATION_AWAIT_ACCESS
+        );
+        assertAllowedProductionAccessExists(classes, BootstrapCloser.class, CLOSE_ACQUISITION_AWAIT_ACCESS);
+        assertThat(constructionResult.getFailureReport().getDetails()).isEmpty();
+        assertThat(acquisitionResult.getFailureReport().getDetails()).isEmpty();
+        assertThat(awaitOperationResult.getFailureReport().getDetails()).isEmpty();
+        assertThat(awaitAcquisitionResult.getFailureReport().getDetails()).isEmpty();
     }
 
     @ArchTest
@@ -499,6 +602,94 @@ class BootstrapFailureOwnershipArchTest {
                 BootstrapLifecycleState.class,
                 BootstrapFailureConstructorReferenceFixture.class,
                 BootstrapFailureConstructorReferenceFixture.class.getName()
+        );
+    }
+
+    @Test
+    void admission_constructor_rule_detects_direct_construction_origin() {
+        // given
+        ArchRule rule = admissionConstructionRule();
+        JavaClasses classes = importFixture(
+                FailureAdmissionConstructorFixture.class,
+                FailureAdmission.class
+        );
+
+        // when
+        EvaluationResult result = rule.evaluate(classes);
+
+        // then
+        assertViolation(
+                classes,
+                result,
+                FailureAdmission.class,
+                FailureAdmissionConstructorFixture.class,
+                FailureAdmissionConstructorFixture.class.getName()
+        );
+    }
+
+    @Test
+    void admission_factory_rule_detects_direct_call_origin() {
+        // given
+        ArchRule rule = admissionFactoryRule();
+        JavaClasses classes = importFixture(
+                FailureAdmissionFactoryFixture.class,
+                FailureAdmission.class
+        );
+
+        // when
+        EvaluationResult result = rule.evaluate(classes);
+
+        // then
+        assertViolation(
+                classes,
+                result,
+                BootstrapLifecycleState.class,
+                FailureAdmissionFactoryFixture.class,
+                FailureAdmissionFactoryFixture.class.getName()
+        );
+    }
+
+    @Test
+    void admission_projection_rule_detects_direct_call_origin() {
+        // given
+        ArchRule rule = admissionProjectionRule();
+        JavaClasses classes = importFixture(
+                FailureAdmissionProjectionFixture.class,
+                FailureAdmission.class
+        );
+
+        // when
+        EvaluationResult result = rule.evaluate(classes);
+
+        // then
+        assertViolation(
+                classes,
+                result,
+                BootstrapTerminalTransitions.class,
+                FailureAdmissionProjectionFixture.class,
+                FailureAdmissionProjectionFixture.class.getName()
+        );
+    }
+
+    @Test
+    void failure_context_constructor_rule_detects_direct_construction_origin() {
+        // given
+        ArchRule rule = failureContextConstructionRule();
+        JavaClasses classes = importFixture(
+                FailureContextConstructorFixture.class,
+                FailureContext.class
+        );
+
+        // when
+        EvaluationResult result = rule.evaluate(classes);
+
+        // then
+        assertViolation(
+                classes,
+                result,
+                FailureHandler.class,
+                FailureContextConstructorFixture.class,
+                FailureContextConstructorFixture.class.getName()
         );
     }
 
@@ -854,6 +1045,29 @@ class BootstrapFailureOwnershipArchTest {
         );
     }
 
+    private static ArchRule admissionConstructionRule() {
+        return onlyOwner(FailureAdmission.class, ADMISSION_CONSTRUCTION_ACCESS);
+    }
+
+    private static ArchRule admissionFactoryRule() {
+        return onlyOwner(
+                BootstrapLifecycleState.class,
+                ADMISSION_RECORDED_ACCESS.or(ADMISSION_ALREADY_FAILED_ACCESS).or(ADMISSION_REJECTED_ACCESS)
+        );
+    }
+
+    private static ArchRule admissionProjectionRule() {
+        return onlyOwner(BootstrapTerminalTransitions.class, ADMISSION_PROJECTION_ACCESS);
+    }
+
+    private static ArchRule failureContextConstructionRule() {
+        return onlyOwners(
+                FAILURE_CONTEXT_CONSTRUCTION_ACCESS,
+                FailureHandler.class,
+                BootstrapActivation.class
+        );
+    }
+
     private static ArchRule diagnosticRegistrationRule() {
         return onlyOwner(
                 BootstrapCoordinator.class,
@@ -882,6 +1096,36 @@ class BootstrapFailureOwnershipArchTest {
         return onlyOwner(
                 PreparationGate.class,
                 LIFECYCLE_BEGIN_PREPARE_ACCESS.or(LIFECYCLE_CLOSE_ACQUISITION_ACCESS)
+        );
+    }
+
+    private static ArchRule closeOperationConstructionRule() {
+        return onlyOwner(
+                BootstrapLifecycleState.class,
+                CLOSE_OPERATION_CONSTRUCTION_ACCESS
+                        .or(CLOSE_CONTEXT_CONSTRUCTION_ACCESS)
+                        .or(CLOSE_OPERATION_COMPLETION_ACCESS)
+        );
+    }
+
+    private static ArchRule closeAcquisitionConstructionRule() {
+        return onlyOwner(
+                CloseOperation.CloseAcquisition.class,
+                CLOSE_ACQUISITION_CONSTRUCTION_ACCESS
+        );
+    }
+
+    private static ArchRule closeOperationAwaitRule() {
+        return onlyOwner(
+                CloseOperation.CloseAcquisition.class,
+                CLOSE_OPERATION_AWAIT_ACCESS
+        );
+    }
+
+    private static ArchRule closeAcquisitionAwaitRule() {
+        return onlyOwner(
+                BootstrapCloser.class,
+                CLOSE_ACQUISITION_AWAIT_ACCESS
         );
     }
 
@@ -981,6 +1225,23 @@ class BootstrapFailureOwnershipArchTest {
             public boolean test(JavaAccess<?> access) {
                 return owner.getName().equals(access.getTargetOwner().getName())
                         && name.equals(access.getTarget().getName());
+            }
+        };
+    }
+
+    private static DescribedPredicate<JavaAccess<?>> callWithArity(Class<?> owner, String name, int arity) {
+        return new DescribedPredicate<>("call %s.%s/%d", owner.getName(), name, arity) {
+
+            @Override
+            public boolean test(JavaAccess<?> access) {
+                if (!owner.getName().equals(access.getTargetOwner().getName())
+                        || !name.equals(access.getTarget().getName())) {
+                    return false;
+                }
+                if (!(access.getTarget() instanceof AccessTarget.CodeUnitAccessTarget codeUnit)) {
+                    return false;
+                }
+                return codeUnit.getRawParameterTypes().size() == arity;
             }
         };
     }
@@ -1203,10 +1464,10 @@ final class CloseOrchestrationAccessFixture {
     }
 
     static void close(BootstrapLifecycleState lifecycle, DiagnosticReadinessHandle diagnosticHandle) {
-        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition acquisition = lifecycle.acquireClose();
         diagnosticHandle.close();
         lifecycle.markClosed();
-        lifecycle.completeClose(acquisition.flight(), null);
+        lifecycle.completeClose(acquisition.operation(), null);
     }
 }
 
@@ -1293,5 +1554,60 @@ final class BootstrapExceptionFactoryFixture {
 
     static BootstrapAdmissionRejectedException rejection(BootstrapFailure failure) {
         return new BootstrapAdmissionRejectedException(failure);
+    }
+}
+
+@SuppressWarnings("unused")
+final class FailureAdmissionConstructorFixture {
+
+    private FailureAdmissionConstructorFixture() {
+    }
+
+    static FailureAdmission construct(BootstrapFailure failure) {
+        return new FailureAdmission(FailureAdmission.Kind.REJECTED, failure, null, null);
+    }
+}
+
+@SuppressWarnings("unused")
+final class FailureAdmissionFactoryFixture {
+
+    private FailureAdmissionFactoryFixture() {
+    }
+
+    static FailureAdmission admit(BootstrapFailure failure) {
+        return FailureAdmission.rejected(failure);
+    }
+}
+
+@SuppressWarnings("unused")
+final class FailureAdmissionProjectionFixture {
+
+    private FailureAdmissionProjectionFixture() {
+    }
+
+    static FailureAdmission project(FailureAdmission admission, Throwable failure) {
+        return admission.withProjectionFailure(failure);
+    }
+}
+
+@SuppressWarnings("unused")
+final class FailureContextConstructorFixture {
+
+    private FailureContextConstructorFixture() {
+    }
+
+    static FailureContext construct(FailureSite site,
+                                    FailureAdmission admission,
+                                    ExtensionRuntimeEvidence evidence) {
+        return new FailureContext(
+                site,
+                "FIXTURE",
+                new IllegalStateException("failure context fixture"),
+                admission,
+                null,
+                null,
+                "fixture-batch",
+                evidence
+        );
     }
 }

@@ -1,13 +1,19 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.AGENT_STARTUP_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.AGENT_STARTUP_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureLog;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureAdmission;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureContext;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureSite;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.RemoteJmxRegistrationDeniedException;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;

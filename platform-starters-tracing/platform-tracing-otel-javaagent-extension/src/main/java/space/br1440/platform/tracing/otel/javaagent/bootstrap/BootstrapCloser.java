@@ -32,26 +32,28 @@ final class BootstrapCloser {
     }
 
     void close() {
-        BootstrapLifecycleState.CloseAcquisition acquisition = preparationGate.acquireCloseWhenIdle();
-        if (acquisition.reentrant()) {
-            return;
-        }
+        CloseOperation.CloseAcquisition acquisition = preparationGate.acquireCloseWhenIdle();
+        switch (acquisition.role()) {
+            case REENTRANT -> {
+            }
 
-        if (!acquisition.owner()) {
-            rethrowIfPresent(acquisition.awaitOutcome());
-            return;
-        }
+            case FOLLOWER -> {
+                rethrowIfPresent(acquisition.awaitOutcome());
+            }
 
-        Throwable outcome = null;
-        try {
-            outcome = closeAsOwner(acquisition.context());
-        } catch (RuntimeException | Error unexpectedFailure) {
-            outcome = unexpectedFailure;
-        } finally {
-            lifecycle.completeClose(acquisition.flight(), outcome);
-        }
+            case OWNER -> {
+                Throwable outcome = null;
+                try {
+                    outcome = closeAsOwner(acquisition.context());
+                } catch (RuntimeException | Error unexpectedFailure) {
+                    outcome = unexpectedFailure;
+                } finally {
+                    lifecycle.completeClose(acquisition.operation(), outcome);
+                }
 
-        rethrowIfPresent(outcome);
+                rethrowIfPresent(outcome);
+            }
+        }
     }
 
     void installShutdownHook() {
@@ -69,7 +71,7 @@ final class BootstrapCloser {
         shutdownHookInstalled = true;
     }
 
-    private Throwable closeAsOwner(BootstrapLifecycleState.CloseContext context) {
+    private Throwable closeAsOwner(CloseOperation.CloseContext context) {
         Throwable cleanupFailure = null;
         Throwable priorPublicationFailure = null;
         boolean failureSnapshotPublished = false;

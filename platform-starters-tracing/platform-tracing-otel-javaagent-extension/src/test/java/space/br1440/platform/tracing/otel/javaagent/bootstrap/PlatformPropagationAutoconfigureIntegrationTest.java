@@ -18,6 +18,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.configuration.OtelSdkPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.configuration.PropagatorConfigurationContract;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;

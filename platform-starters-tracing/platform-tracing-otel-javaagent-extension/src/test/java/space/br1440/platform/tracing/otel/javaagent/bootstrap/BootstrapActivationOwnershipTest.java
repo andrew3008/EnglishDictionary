@@ -9,12 +9,15 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.ACTIVATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.DUPLICATE_ACTIVATION;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.ACTIVATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.DUPLICATE_ACTIVATION;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapAdmissionRejectedException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureAdmission;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureSite;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
@@ -37,8 +40,8 @@ class BootstrapActivationOwnershipTest {
 
         // when
         FailureAdmission admission = recordFailure(fixture, cause);
-        BootstrapLifecycleState.CloseAcquisition close = fixture.lifecycle().acquireClose();
-        fixture.lifecycle().completeClose(close.flight(), null);
+        CloseOperation.CloseAcquisition close = fixture.lifecycle().acquireClose();
+        fixture.lifecycle().completeClose(close.operation(), null);
 
         // then
         assertThat(admission.kind()).isEqualTo(FailureAdmission.Kind.RECORDED);
@@ -64,9 +67,9 @@ class BootstrapActivationOwnershipTest {
 
         // when
         FailureAdmission admission = recordFailure(fixture, cause);
-        BootstrapLifecycleState.CloseAcquisition close = fixture.lifecycle().acquireClose();
+        CloseOperation.CloseAcquisition close = fixture.lifecycle().acquireClose();
         close.context().resources().close();
-        fixture.lifecycle().completeClose(close.flight(), null);
+        fixture.lifecycle().completeClose(close.operation(), null);
 
         // then
         assertThat(admission.kind()).isEqualTo(FailureAdmission.Kind.RECORDED);

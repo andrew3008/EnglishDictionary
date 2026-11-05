@@ -24,6 +24,8 @@ import javax.management.timer.Timer;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 
 import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapAdmissionRejectedException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.ShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.ExtensionRuntimeVerifier;

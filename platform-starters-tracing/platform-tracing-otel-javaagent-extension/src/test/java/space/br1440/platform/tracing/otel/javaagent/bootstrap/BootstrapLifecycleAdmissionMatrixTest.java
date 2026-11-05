@@ -3,8 +3,8 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Mockito.mock;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.AGENT_STARTUP_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.AGENT_STARTUP_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
 
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -13,6 +13,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapAdmissionRejectedException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureAdmission;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureSite;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 
 class BootstrapLifecycleAdmissionMatrixTest {
@@ -161,9 +166,9 @@ class BootstrapLifecycleAdmissionMatrixTest {
             }
             case CLOSING -> lifecycle.acquireClose();
             case CLOSED -> {
-                BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+                CloseOperation.CloseAcquisition acquisition = lifecycle.acquireClose();
                 lifecycle.markClosed();
-                lifecycle.completeClose(acquisition.flight(), null);
+                lifecycle.completeClose(acquisition.operation(), null);
             }
         }
 

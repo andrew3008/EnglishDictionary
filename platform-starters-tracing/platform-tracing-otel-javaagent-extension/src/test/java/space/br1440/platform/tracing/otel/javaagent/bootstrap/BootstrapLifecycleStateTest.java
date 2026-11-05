@@ -5,9 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.REENTRANT_OR_OUT_OF_ORDER;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.REENTRANT_OR_OUT_OF_ORDER;
 
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
@@ -19,6 +19,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapAdmissionRejectedException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureAdmission;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
@@ -141,9 +145,9 @@ class BootstrapLifecycleStateTest {
     void rollbackEscalationFromClosedIsRejectedWithoutStateChange() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition acquisition = lifecycle.acquireClose();
         lifecycle.markClosed();
-        lifecycle.completeClose(acquisition.flight(), null);
+        lifecycle.completeClose(acquisition.operation(), null);
         IllegalStateException cleanupFailure = new IllegalStateException("Late cleanup failure");
 
         // when
@@ -163,13 +167,13 @@ class BootstrapLifecycleStateTest {
     void failureDuringCloseIsRejectedWithoutStateChange() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition acquisition = lifecycle.acquireClose();
         IllegalStateException cause = new IllegalStateException("Late customization failure");
 
         // when
         FailureAdmission admission = lifecycle.fail("LATE_FAILURE", "customization", cause);
         lifecycle.markClosed();
-        lifecycle.completeClose(acquisition.flight(), null);
+        lifecycle.completeClose(acquisition.operation(), null);
 
         // then
         assertThat(admission.kind()).isEqualTo(FailureAdmission.Kind.REJECTED);
@@ -191,19 +195,17 @@ class BootstrapLifecycleStateTest {
         FailureAdmission admission = lifecycle.fail("ACTIVATION_FAILED", "activate", primaryCause);
 
         // when
-        BootstrapLifecycleState.CloseAcquisition first = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition first = lifecycle.acquireClose();
         lifecycle.markClosed();
-        lifecycle.completeClose(first.flight(), cleanupFailure);
-        BootstrapLifecycleState.CloseAcquisition repeated = lifecycle.acquireClose();
+        lifecycle.completeClose(first.operation(), cleanupFailure);
+        CloseOperation.CloseAcquisition repeated = lifecycle.acquireClose();
 
         // then
         assertThat(admission.claimedSession()).isNull();
-        assertThat(first.owner()).isTrue();
-        assertThat(first.reentrant()).isFalse();
+        assertThat(first.role()).isEqualTo(CloseOperation.Role.OWNER);
         assertThat(first.context().resources()).isSameAs(resources);
         assertThat(first.context().failureBeforeClose()).isSameAs(lifecycle.failure());
-        assertThat(repeated.owner()).isFalse();
-        assertThat(repeated.reentrant()).isFalse();
+        assertThat(repeated.role()).isEqualTo(CloseOperation.Role.FOLLOWER);
         assertThat(repeated.awaitOutcome()).isSameAs(cleanupFailure);
         assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
         assertThat(lifecycle.failure().primaryCode()).isEqualTo("ACTIVATION_FAILED");
@@ -212,16 +214,16 @@ class BootstrapLifecycleStateTest {
     }
 
     @Test
-    void closeFlightSharesExactOutcomeWithFollowerAndCompletedReplay() throws InterruptedException {
+    void closeOperationSharesExactOutcomeWithFollowerAndCompletedReplay() throws InterruptedException {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-        BootstrapLifecycleState.CloseAcquisition owner = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition owner = lifecycle.acquireClose();
         IllegalStateException closeFailure = new IllegalStateException("Close failure");
-        AtomicReference<BootstrapLifecycleState.CloseAcquisition> followerAcquisition = new AtomicReference<>();
+        AtomicReference<CloseOperation.CloseAcquisition> followerAcquisition = new AtomicReference<>();
         AtomicReference<Throwable> followerOutcome = new AtomicReference<>();
         CountDownLatch followerAcquired = new CountDownLatch(1);
         Thread follower = new Thread(() -> {
-            BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+            CloseOperation.CloseAcquisition acquisition = lifecycle.acquireClose();
             followerAcquisition.set(acquisition);
             followerAcquired.countDown();
             followerOutcome.set(acquisition.awaitOutcome());
@@ -232,40 +234,37 @@ class BootstrapLifecycleStateTest {
         follower.start();
         try {
             assertThat(followerAcquired.await(5, TimeUnit.SECONDS)).isTrue();
-            assertThat(followerAcquisition.get().owner()).isFalse();
-            assertThat(followerAcquisition.get().reentrant()).isFalse();
+            assertThat(followerAcquisition.get().role()).isEqualTo(CloseOperation.Role.FOLLOWER);
         } finally {
-            lifecycle.completeClose(owner.flight(), closeFailure);
+            lifecycle.completeClose(owner.operation(), closeFailure);
             follower.join(TimeUnit.SECONDS.toMillis(5));
         }
-        BootstrapLifecycleState.CloseAcquisition replay = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition replay = lifecycle.acquireClose();
 
         // then
         assertThat(follower.isAlive()).isFalse();
         assertThat(owner.awaitOutcome()).isSameAs(closeFailure);
         assertThat(followerOutcome.get()).isSameAs(closeFailure);
-        assertThat(replay.owner()).isFalse();
-        assertThat(replay.reentrant()).isFalse();
+        assertThat(replay.role()).isEqualTo(CloseOperation.Role.FOLLOWER);
         assertThat(replay.awaitOutcome()).isSameAs(closeFailure);
     }
 
     @Test
-    void closeOwnerReentrancyDoesNotWaitForItsOwnFlight() {
+    void closeOwnerReentrancyDoesNotWaitForItsOwnOperation() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-        BootstrapLifecycleState.CloseAcquisition owner = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition owner = lifecycle.acquireClose();
 
         // when
-        BootstrapLifecycleState.CloseAcquisition reentrant = lifecycle.acquireClose();
-        lifecycle.completeClose(owner.flight(), null);
-        BootstrapLifecycleState.CloseAcquisition replay = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition reentrant = lifecycle.acquireClose();
+        lifecycle.completeClose(owner.operation(), null);
+        CloseOperation.CloseAcquisition replay = lifecycle.acquireClose();
 
         // then
-        assertThat(owner.owner()).isTrue();
-        assertThat(reentrant.owner()).isFalse();
-        assertThat(reentrant.reentrant()).isTrue();
-        assertThat(reentrant.flight()).isSameAs(owner.flight());
-        assertThat(replay.reentrant()).isFalse();
+        assertThat(owner.role()).isEqualTo(CloseOperation.Role.OWNER);
+        assertThat(reentrant.role()).isEqualTo(CloseOperation.Role.REENTRANT);
+        assertThat(reentrant.operation()).isSameAs(owner.operation());
+        assertThat(replay.role()).isNotEqualTo(CloseOperation.Role.REENTRANT);
         assertThat(replay.awaitOutcome()).isNull();
     }
 
@@ -273,14 +272,14 @@ class BootstrapLifecycleStateTest {
     void interruptedFollowerWaitsForOutcomeAndRestoresInterruptFlag() throws InterruptedException {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-        BootstrapLifecycleState.CloseAcquisition owner = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition owner = lifecycle.acquireClose();
         IllegalStateException closeFailure = new IllegalStateException("Close failure");
         AtomicReference<Throwable> followerOutcome = new AtomicReference<>();
         AtomicBoolean interruptRestored = new AtomicBoolean();
         CountDownLatch awaitingOutcome = new CountDownLatch(1);
         CountDownLatch followerFinished = new CountDownLatch(1);
         Thread follower = new Thread(() -> {
-            BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+            CloseOperation.CloseAcquisition acquisition = lifecycle.acquireClose();
             Thread.currentThread().interrupt();
             awaitingOutcome.countDown();
             try {
@@ -298,7 +297,7 @@ class BootstrapLifecycleStateTest {
             assertThat(awaitingOutcome.await(5, TimeUnit.SECONDS)).isTrue();
             assertThat(followerFinished.getCount()).isEqualTo(1L);
         } finally {
-            lifecycle.completeClose(owner.flight(), closeFailure);
+            lifecycle.completeClose(owner.operation(), closeFailure);
             follower.join(TimeUnit.SECONDS.toMillis(5));
         }
 
@@ -335,9 +334,9 @@ class BootstrapLifecycleStateTest {
     void completePrepareAfterCloseRejectsAdmissionWithoutBindingSession() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition acquisition = lifecycle.acquireClose();
         lifecycle.markClosed();
-        lifecycle.completeClose(acquisition.flight(), null);
+        lifecycle.completeClose(acquisition.operation(), null);
 
         try (AutoconfigureSession session = mock(AutoconfigureSession.class)) {
             // when
@@ -398,8 +397,8 @@ class BootstrapLifecycleStateTest {
         // when
         FailureAdmission recorded = lifecycle.fail("CUSTOMIZATION_FAILED", "customization", customizationFailure);
         FailureAdmission repeated = lifecycle.fail("REPEATED_FAILURE", "customization", new IllegalStateException("Repeated"));
-        BootstrapLifecycleState.CloseAcquisition close = lifecycle.acquireClose();
-        lifecycle.completeClose(close.flight(), null);
+        CloseOperation.CloseAcquisition close = lifecycle.acquireClose();
+        lifecycle.completeClose(close.operation(), null);
 
         // then
         assertThat(recorded.claimedSession()).isSameAs(session);
@@ -418,9 +417,9 @@ class BootstrapLifecycleStateTest {
         IllegalStateException customizationFailure = new IllegalStateException("Customization failed");
 
         // when
-        BootstrapLifecycleState.CloseAcquisition close = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition close = lifecycle.acquireClose();
         FailureAdmission admission = lifecycle.fail("CUSTOMIZATION_FAILED", "customization", customizationFailure);
-        lifecycle.completeClose(close.flight(), null);
+        lifecycle.completeClose(close.operation(), null);
 
         // then
         assertThat(close.context().session()).isSameAs(session);
@@ -448,9 +447,9 @@ class BootstrapLifecycleStateTest {
                 "activate",
                 new IllegalStateException("Activation failed")
         );
-        BootstrapLifecycleState.CloseAcquisition close = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition close = lifecycle.acquireClose();
         resources.close();
-        lifecycle.completeClose(close.flight(), null);
+        lifecycle.completeClose(close.operation(), null);
 
         // then
         assertThat(admission.kind()).isEqualTo(FailureAdmission.Kind.RECORDED);

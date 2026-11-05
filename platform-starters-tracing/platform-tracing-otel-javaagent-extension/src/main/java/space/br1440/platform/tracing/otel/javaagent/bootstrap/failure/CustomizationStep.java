@@ -1,11 +1,8 @@
-package space.br1440.platform.tracing.otel.javaagent.bootstrap;
+package space.br1440.platform.tracing.otel.javaagent.bootstrap.failure;
 
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
 
-/**
- * Шаг customization autoconfigure SDK: wire-код отказа по умолчанию и subphase диагностики.
- */
-enum CustomizationStep {
+public enum CustomizationStep {
 
     TRACE_PIPELINE_ATTESTATION(
             SanitizerBootstrapException.TRACE_PIPELINE_ATTESTATION_FAILED,
@@ -26,7 +23,7 @@ enum CustomizationStep {
         this.subphase = subphase;
     }
 
-    String failureCode() {
+    public String failureCode() {
         return failureCode;
     }
 

@@ -409,8 +409,8 @@ class PackagedTracingCertificationTest {
     @ParameterizedTest(name = "{0}")
     @CsvSource({
             "secondary-failures," + BOOTSTRAP_PACKAGE_PATH + "SecondaryFailures.class,SecondaryFailures",
-            "failure-context," + BOOTSTRAP_PACKAGE_PATH + "FailureContext.class,FailureContext",
-            "bootstrap-failure-log," + BOOTSTRAP_PACKAGE_PATH + "BootstrapFailureLog.class,BootstrapFailureLog",
+            "failure-context," + BOOTSTRAP_PACKAGE_PATH + "failure/FailureContext.class,FailureContext",
+            "bootstrap-failure-log," + BOOTSTRAP_PACKAGE_PATH + "failure/BootstrapFailureLog.class,BootstrapFailureLog",
             "bootstrap-cleanup-failures," + BOOTSTRAP_PACKAGE_PATH + "resources/BootstrapCleanupFailures.class,"
                     + "BootstrapCleanupFailures"
     })

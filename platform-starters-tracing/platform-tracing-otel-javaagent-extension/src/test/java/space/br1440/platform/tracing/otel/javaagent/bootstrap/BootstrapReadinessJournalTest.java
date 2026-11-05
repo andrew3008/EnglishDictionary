@@ -6,6 +6,7 @@ import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSn
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
@@ -15,10 +16,8 @@ import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionR
 
 class BootstrapReadinessJournalTest {
 
-    private static final AgentInstanceId AGENT_INSTANCE_ID =
-            AgentInstanceId.parse("00000000-0000-0000-0000-000000000001");
-    private static final AgentInstanceId FOREIGN_AGENT_INSTANCE_ID =
-            AgentInstanceId.parse("00000000-0000-0000-0000-000000000002");
+    private static final AgentInstanceId AGENT_INSTANCE_ID = AgentInstanceId.parse("00000000-0000-0000-0000-000000000001");
+    private static final AgentInstanceId FOREIGN_AGENT_INSTANCE_ID = AgentInstanceId.parse("00000000-0000-0000-0000-000000000002");
 
     private final Object monitor = new Object();
 

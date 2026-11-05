@@ -1,12 +1,8 @@
-package space.br1440.platform.tracing.otel.javaagent.bootstrap;
+package space.br1440.platform.tracing.otel.javaagent.bootstrap.failure;
 
 import java.util.Objects;
 
-/**
- * Место отказа bootstrap: {@code phase} записывается в {@link BootstrapFailure} и служит phase
- * эскалации, {@code subphase} и {@code propertyName} используются только диагностикой.
- */
-final class FailureSite {
+public final class FailureSite {
 
     private static final String PREPARE_PHASE = "prepare";
     private static final String CUSTOMIZATION_PHASE = "customization";
@@ -23,15 +19,15 @@ final class FailureSite {
         this.propertyName = propertyName;
     }
 
-    static FailureSite prepareReadinessPublication() {
+    public static FailureSite prepareReadinessPublication() {
         return new FailureSite(PREPARE_PHASE, "readiness-publication", null);
     }
 
-    static FailureSite prepareConfiguration() {
+    public static FailureSite prepareConfiguration() {
         return new FailureSite(PREPARE_PHASE, "configuration-initialization", null);
     }
 
-    static FailureSite prepareValidation(String propertyName) {
+    public static FailureSite prepareValidation(String propertyName) {
         return new FailureSite(
                 PREPARE_PHASE,
                 "configuration-validation",
@@ -39,27 +35,27 @@ final class FailureSite {
         );
     }
 
-    static FailureSite prepareDiagnosticRegistration() {
+    public static FailureSite prepareDiagnosticRegistration() {
         return new FailureSite(PREPARE_PHASE, "diagnostic-registration", null);
     }
 
-    static FailureSite customization(CustomizationStep step) {
+    public static FailureSite customization(CustomizationStep step) {
         return new FailureSite(CUSTOMIZATION_PHASE, Objects.requireNonNull(step, "step").subphase(), null);
     }
 
-    static FailureSite startup() {
+    public static FailureSite startup() {
         return new FailureSite(STARTUP_PHASE, STARTUP_PHASE, null);
     }
 
-    static FailureSite activation(String subphase) {
+    public static FailureSite activation(String subphase) {
         return new FailureSite(ACTIVATE_PHASE, subphase, null);
     }
 
-    String phase() {
+    public String phase() {
         return phase;
     }
 
-    String subphase() {
+    public String subphase() {
         return subphase;
     }
 

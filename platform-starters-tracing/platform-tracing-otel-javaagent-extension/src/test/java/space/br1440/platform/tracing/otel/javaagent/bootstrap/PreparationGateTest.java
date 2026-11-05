@@ -38,8 +38,8 @@ class PreparationGateTest {
         gate.enter();
 
         AtomicBoolean interruptedAfterAcquisition = new AtomicBoolean();
-        FutureTask<BootstrapLifecycleState.CloseAcquisition> acquire = new FutureTask<>(() -> {
-            BootstrapLifecycleState.CloseAcquisition acquisition = gate.acquireCloseWhenIdle();
+        FutureTask<CloseOperation.CloseAcquisition> acquire = new FutureTask<>(() -> {
+            CloseOperation.CloseAcquisition acquisition = gate.acquireCloseWhenIdle();
             interruptedAfterAcquisition.set(Thread.currentThread().isInterrupted());
             return acquisition;
         });
@@ -55,7 +55,7 @@ class PreparationGateTest {
         gate.leave();
 
         // then
-        assertThat(acquire.get(5, TimeUnit.SECONDS).owner()).isTrue();
+        assertThat(acquire.get(5, TimeUnit.SECONDS).role()).isEqualTo(CloseOperation.Role.OWNER);
         assertThat(interruptedAfterAcquisition).isTrue();
         assertThat(lifecycle.state()).isEqualTo(BootstrapState.CLOSING);
     }

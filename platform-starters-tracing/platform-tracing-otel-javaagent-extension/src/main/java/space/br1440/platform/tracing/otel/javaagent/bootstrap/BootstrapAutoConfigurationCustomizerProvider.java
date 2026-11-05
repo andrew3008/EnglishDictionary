@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.CustomizationStep;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.SamplerConfigurationContract;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.TracePipelineSpiVerifier;

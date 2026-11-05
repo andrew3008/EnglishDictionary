@@ -4,6 +4,7 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.function.Supplier;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
