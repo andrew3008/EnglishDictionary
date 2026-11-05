@@ -446,9 +446,11 @@ class PackagedTracingCertificationTest {
         assertThat(summary.path("fields").path("lifecycle").asText()).isEqualTo("FAILED");
         assertThat(summary.path("fields").path("failureCode").asText()).isEqualTo("AGENT_STARTUP_FAILED");
         assertThat(summary.path("error_type").asText())
-                .as("исходная причина listener не вытеснена NoClassDefFoundError")
-                .isNotBlank()
-                .doesNotContain("NoClassDefFoundError");
+                .as("тип исходной причины listener")
+                .isEqualTo("java.lang.IllegalStateException");
+        assertThat(summary.path("error_stacktrace").asText())
+                .as("кадр исходной причины listener")
+                .contains("FailingBeforeActivationAgentListener.afterAgent");
         assertThat(result.stderr())
                 .contains(AGENT_START_FAILURE_MARKER)
                 .contains("NoClassDefFoundError")
