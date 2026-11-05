@@ -12,6 +12,8 @@ import lombok.experimental.UtilityClass;
 public final class PreSdkLaunchContract {
 
     static final String EXCEPTION_SIGNAL_PREVIEW = "otel.semconv.exception.signal.preview";
+    private static final String EXCEPTION_SIGNAL_PREVIEW_ENV =
+            EXCEPTION_SIGNAL_PREVIEW.toUpperCase(Locale.ROOT).replace('-', '_').replace('.', '_');
 
     public static void requireSupported() {
         requireSupported(EarlyInitAgentConfig.get()::getString, System::getProperty, System::getenv);
@@ -29,7 +31,7 @@ public final class PreSdkLaunchContract {
                                                 Function<String, String> environment) {
         String value = systemProperties.apply(EXCEPTION_SIGNAL_PREVIEW);
         if (value == null) {
-            value = environment.apply(toEnvName(EXCEPTION_SIGNAL_PREVIEW));
+            value = environment.apply(EXCEPTION_SIGNAL_PREVIEW_ENV);
         }
 
         if (!StringUtils.isNullOrEmpty(value)) {
@@ -45,7 +47,4 @@ public final class PreSdkLaunchContract {
         }
     }
 
-    private static String toEnvName(String propertyName) {
-        return propertyName.toUpperCase(Locale.ROOT).replace('-', '_').replace('.', '_');
-    }
 }

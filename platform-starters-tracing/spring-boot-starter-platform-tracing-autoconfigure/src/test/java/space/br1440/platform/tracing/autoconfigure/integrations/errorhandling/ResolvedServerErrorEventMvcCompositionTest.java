@@ -18,7 +18,6 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.server.ResponseStatusException;
 
 import space.br1440.platform.errorhandling.autoconfigure.ErrorHandlingCoreAutoConfiguration;
@@ -72,7 +71,7 @@ class ResolvedServerErrorEventMvcCompositionTest {
         contextRunner.run(context -> {
             // given
             assertThat(context).hasSingleBean(GlobalExceptionHandler.class);
-            MockMvc mockMvc = MockMvcBuilders.webAppContextSetup((WebApplicationContext) context.getSourceApplicationContext()).build();
+            MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context.getSourceApplicationContext()).build();
 
             // when
             ServerCall call = perform(mockMvc, "/failures/unknown");
@@ -97,7 +96,7 @@ class ResolvedServerErrorEventMvcCompositionTest {
     void resolvedServiceUnavailableAddsSingleEvent() {
         contextRunner.run(context -> {
             // given
-            MockMvc mockMvc = MockMvcBuilders.webAppContextSetup((WebApplicationContext) context.getSourceApplicationContext()).build();
+            MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context.getSourceApplicationContext()).build();
 
             // when
             ServerCall call = perform(mockMvc, "/failures/unavailable");
@@ -113,7 +112,7 @@ class ResolvedServerErrorEventMvcCompositionTest {
     void resolvedClientErrorAddsNoEvent() {
         contextRunner.run(context -> {
             // given
-            MockMvc mockMvc = MockMvcBuilders.webAppContextSetup((WebApplicationContext) context.getSourceApplicationContext()).build();
+            MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context.getSourceApplicationContext()).build();
 
             // when
             ServerCall call = perform(mockMvc, "/failures/bad-request");
@@ -130,7 +129,7 @@ class ResolvedServerErrorEventMvcCompositionTest {
     void successfulRequestAddsNoEvent() {
         contextRunner.run(context -> {
             // given
-            MockMvc mockMvc = MockMvcBuilders.webAppContextSetup((WebApplicationContext) context.getSourceApplicationContext()).build();
+            MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context.getSourceApplicationContext()).build();
 
             // when
             ServerCall call = perform(mockMvc, "/failures/ok");
@@ -146,7 +145,7 @@ class ResolvedServerErrorEventMvcCompositionTest {
     void tracingDisabledKeepsErrorResponseWithoutEvent() {
         contextRunner.withPropertyValues("platform.tracing.enabled=false").run(context -> {
             // given
-            MockMvc mockMvc = MockMvcBuilders.webAppContextSetup((WebApplicationContext) context.getSourceApplicationContext()).build();
+            MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context.getSourceApplicationContext()).build();
 
             // when
             ServerCall call = perform(mockMvc, "/failures/unknown");

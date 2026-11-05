@@ -31,12 +31,12 @@ class MeteredTracingRuntimeTest {
         MeteredTracingRuntime runtime = new MeteredTracingRuntime(delegate, metrics);
 
         // when
-        SpanHandle database = runtime.startSpan(SpanSpec.builder("orders").category(SpanCategory.DATABASE).build());
-        SpanHandle internal = runtime.startSpan(SpanSpec.builder("op").category(SpanCategory.INTERNAL).build());
-
-        // then
-        assertThat(database).isSameAs(databaseHandle);
-        assertThat(internal).isSameAs(plainHandle);
+        try (SpanHandle database = runtime.startSpan(SpanSpec.builder("orders").category(SpanCategory.DATABASE).build());
+             SpanHandle internal = runtime.startSpan(SpanSpec.builder("op").category(SpanCategory.INTERNAL).build())) {
+            // then
+            assertThat(database).isSameAs(databaseHandle);
+            assertThat(internal).isSameAs(plainHandle);
+        }
         assertThat(startedCount(SpanCategory.DATABASE)).isEqualTo(1.0);
         assertThat(startedCount(SpanCategory.INTERNAL)).isEqualTo(1.0);
     }
@@ -51,10 +51,11 @@ class MeteredTracingRuntimeTest {
         IllegalStateException failure = new IllegalStateException("duplicate key");
 
         // when
-        SpanHandle handle = runtime.startSpan(SpanSpec.builder("orders").category(SpanCategory.DATABASE).build());
-        ((DatabaseSpanHandle) handle).responseStatusCode("23505");
-        handle.recordException(failure);
-        handle.recordException(null);
+        try (SpanHandle handle = runtime.startSpan(SpanSpec.builder("orders").category(SpanCategory.DATABASE).build())) {
+            ((DatabaseSpanHandle) handle).responseStatusCode("23505");
+            handle.recordException(failure);
+            handle.recordException(null);
+        }
 
         // then
         verify(databaseHandle).responseStatusCode("23505");
