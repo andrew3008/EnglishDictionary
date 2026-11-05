@@ -65,7 +65,7 @@ class OwningSpanScopeTest {
     }
 
     @Test
-    void closeWithoutDeclaredResult_writesSuccess() {
+    void closeWithoutDeclaredResult_writesNoResult() {
         // given
         Span span = tracerProvider.get("test").spanBuilder("implicit-success").startSpan();
         Scope scope = span.makeCurrent();
@@ -78,8 +78,9 @@ class OwningSpanScopeTest {
         // then
         assertThat(exporter.getFinishedSpanItems()).hasSize(1);
         SpanData data = exporter.getFinishedSpanItems().getFirst();
-        assertThat(data.getAttributes().get(RESULT_KEY)).isEqualTo(SpanResult.SUCCESS.value());
-        assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.OK);
+        assertThat(data.getAttributes().get(RESULT_KEY)).isNull();
+        assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.UNSET);
+        assertThat(data.hasEnded()).isTrue();
     }
 
     @Test
@@ -95,8 +96,8 @@ class OwningSpanScopeTest {
 
         // then
         SpanData data = exporter.getFinishedSpanItems().getFirst();
-        assertThat(data.getAttributes().get(RESULT_KEY)).isEqualTo(SpanResult.SUCCESS.value());
-        assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.OK);
+        assertThat(data.getAttributes().get(RESULT_KEY)).isNull();
+        assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.UNSET);
         assertThat(data.getEvents()).isEmpty();
     }
 

@@ -50,12 +50,28 @@ public final class ExceptionRecorder {
         span.setAttribute(SemconvKeys.PLATFORM_RESULT, SpanResult.FAILURE.value());
         span.setStatus(StatusCode.ERROR);
 
+        String safeMessage = addExceptionEvent(span, exception, type);
+        if (safeMessage != null) {
+            span.setStatus(StatusCode.ERROR, safeMessage);
+        }
+    }
+
+    public void recordEvent(@Nullable Span span, @Nullable Throwable exception) {
+        if (span == null || exception == null || !span.isRecording()) {
+            return;
+        }
+
+        addExceptionEvent(span, exception, exception.getClass().getName());
+    }
+
+    @Nullable
+    private String addExceptionEvent(@Nonnull Span span, @Nonnull Throwable exception, @Nonnull String type) {
         AttributesBuilder event = Attributes.builder().put(SemconvKeys.EXCEPTION_TYPE, type);
+        String safeMessage = null;
         try {
-            String safeMessage = recordingPolicy.sanitizeOrNull(exception);
+            safeMessage = recordingPolicy.sanitizeOrNull(exception);
             if (safeMessage != null) {
                 event.put(SemconvKeys.EXCEPTION_MESSAGE, safeMessage);
-                span.setStatus(StatusCode.ERROR, safeMessage);
             }
 
             String stack = recordingPolicy.renderStack(exception, safeMessage);
@@ -67,6 +83,7 @@ public final class ExceptionRecorder {
         }
 
         span.addEvent(EXCEPTION_EVENT_NAME, event.build());
+        return safeMessage;
     }
 
     @Nonnull

@@ -53,9 +53,7 @@ class ValidatingSpanProcessorTest {
             SpanData data = h.exporter().getFinishedSpanItems().getFirst();
             String missing = data.getAttributes().get(AttributeKey.stringKey("platform.validation.missing"));
             // then
-            assertThat(missing)
-                    .contains(PlatformAttributes.PLATFORM_TYPE)
-                    .contains(PlatformAttributes.PLATFORM_RESULT);
+            assertThat(missing).isEqualTo(PlatformAttributes.PLATFORM_TYPE);
         }
     }
 
@@ -65,7 +63,6 @@ class ValidatingSpanProcessorTest {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(warnLevel(), Resource.empty())) {
             // when
             h.tracer("test").spanBuilder("op")
-                    .setAttribute(PlatformAttributes.PLATFORM_TYPE, "HTTP")
                     .startSpan()
                     .end();
 
@@ -77,7 +74,7 @@ class ValidatingSpanProcessorTest {
             // then
             assertThat(event.fields())
                     .containsEntry("count", "1")
-                    .containsEntry("missingKeys", PlatformAttributes.PLATFORM_RESULT);
+                    .containsEntry("missingKeys", PlatformAttributes.PLATFORM_TYPE);
         }
     }
 
@@ -88,6 +85,21 @@ class ValidatingSpanProcessorTest {
             h.tracer("test").spanBuilder("op")
                     .setAttribute(PlatformAttributes.PLATFORM_TYPE, "HTTP")
                     .setAttribute(PlatformAttributes.PLATFORM_RESULT, "success")
+                    // when
+                    .startSpan().end();
+
+            Attributes attrs = h.exporter().getFinishedSpanItems().getFirst().getAttributes();
+            // then
+            assertThat(attrs.get(AttributeKey.stringKey("platform.validation.missing"))).isNull();
+        }
+    }
+
+    @Test
+    void does_not_record_violation_when_only_span_type_is_set() {
+        // given
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(warnLevel(), Resource.empty())) {
+            h.tracer("test").spanBuilder("op")
+                    .setAttribute(PlatformAttributes.PLATFORM_TYPE, "HTTP")
                     // when
                     .startSpan().end();
 
@@ -212,8 +224,8 @@ class ValidatingSpanProcessorTest {
             String missing = h.exporter().getFinishedSpanItems().getFirst().getAttributes()
                     .get(AttributeKey.stringKey("platform.validation.missing"));
             // then
-            assertThat(missing).isEqualTo(PlatformAttributes.PLATFORM_RESULT);
-            assertThat(validator.getValidationViolationsTotal()).isEqualTo(1L);
+            assertThat(missing).isNull();
+            assertThat(validator.getValidationViolationsTotal()).isZero();
         }
     }
 
@@ -252,9 +264,7 @@ class ValidatingSpanProcessorTest {
             SpanData data = h.exporter().getFinishedSpanItems().getFirst();
             String missing = data.getAttributes().get(AttributeKey.stringKey("platform.validation.missing"));
             // then
-            assertThat(missing)
-                    .contains(PlatformAttributes.PLATFORM_TYPE)
-                    .contains(PlatformAttributes.PLATFORM_RESULT);
+            assertThat(missing).isEqualTo(PlatformAttributes.PLATFORM_TYPE);
         }
     }
 }

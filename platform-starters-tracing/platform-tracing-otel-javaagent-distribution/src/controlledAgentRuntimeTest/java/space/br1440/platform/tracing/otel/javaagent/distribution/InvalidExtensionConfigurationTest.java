@@ -27,6 +27,8 @@ class InvalidExtensionConfigurationTest {
     private static final String EXPECTED_AGENT_SHA256_OPTION_PREFIX = "-Dplatform.tracing.controlled-agent.expected-sha256=";
     private static final String PLATFORM_LOGGING_OPTION = "-Dotel.javaagent.logging=space.br1440.platform";
     private static final String SAMPLER_ARGUMENT_CANARY = "sampler-arg-must-not-appear-7f31";
+    private static final String EXCEPTION_SIGNAL_PREVIEW = "otel.semconv.exception.signal.preview";
+    private static final String EXCEPTION_SIGNAL_PREVIEW_ENV = "OTEL_SEMCONV_EXCEPTION_SIGNAL_PREVIEW";
 
     @TempDir
     Path temporaryDirectory;
@@ -366,6 +368,76 @@ class InvalidExtensionConfigurationTest {
                     .doesNotContain(InvalidExtensionConfigurationProbe.RESULT_PREFIX + " lifecycle=");
             assertThat(result.stderr()).doesNotContain(spanName);
             assertThat(collector.receivedSpans()).isEmpty();
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource(nullValues = "NULL", value = {
+            "logs,     NULL",
+            "logs/dup, NULL",
+            "NULL,     logs"
+    })
+    void exception_signal_preview_stops_agent_before_sdk_initialization(String systemValue, String environmentValue)
+            throws IOException, InterruptedException, URISyntaxException {
+        // given
+        AgentTestFixture fixture = AgentTestFixture.load();
+        String spanName = "extension-configuration-exception-signal-" + UUID.randomUUID();
+        List<String> options = (systemValue == null) ? List.of() : List.of("-D" + EXCEPTION_SIGNAL_PREVIEW + "=" + systemValue);
+        Map<String, String> environment = (environmentValue == null)
+                ? Map.of() : Map.of(EXCEPTION_SIGNAL_PREVIEW_ENV, environmentValue);
+
+        try (OtlpTraceCollector collector = OtlpTraceCollector.startAcceptingAllSpans()) {
+            // when
+            ChildProcessResult result = run(
+                    fixture,
+                    "extension-configuration-exception-signal",
+                    collector.otlpEndpoint(),
+                    spanName,
+                    false,
+                    options,
+                    environment
+            );
+
+            // then
+            result.assertCompletedSuccessfully();
+            assertThat(result.stdout()).contains(InvalidExtensionConfigurationProbe.MAIN_REACHED_MARKER);
+            result.assertStartupFailureSummary();
+            assertThat(result.stderr())
+                    .doesNotContain("OpenTelemetry Javaagent failed to start")
+                    .doesNotContain("\tat ");
+            assertThat(result.stdout()).contains(InvalidExtensionConfigurationProbe.READINESS_ABSENT_MARKER)
+                    .doesNotContain(spanName)
+                    .doesNotContain(InvalidExtensionConfigurationProbe.RESULT_PREFIX + " lifecycle=");
+            assertThat(result.stderr()).doesNotContain(spanName);
+            assertThat(collector.receivedSpans()).isEmpty();
+        }
+    }
+
+    @Test
+    void empty_exception_signal_system_property_takes_precedence_over_environment()
+            throws IOException, InterruptedException, URISyntaxException {
+        // given
+        AgentTestFixture fixture = AgentTestFixture.load();
+        String spanName = "exception-signal-property-precedence-" + UUID.randomUUID();
+
+        try (OtlpTraceCollector collector = OtlpTraceCollector.startAcceptingAllSpans()) {
+            // when
+            ChildProcessResult result = run(
+                    fixture,
+                    "exception-signal-property-precedence",
+                    collector.otlpEndpoint(),
+                    spanName,
+                    false,
+                    List.of("-D" + EXCEPTION_SIGNAL_PREVIEW + "="),
+                    Map.of(EXCEPTION_SIGNAL_PREVIEW_ENV, "logs")
+            );
+
+            // then
+            result.assertCompletedSuccessfully();
+            assertReadiness(result, "READY", "", spanName);
+            assertThat(collector.receivedSpans())
+                    .extracting(OtlpTraceCollector.ReceivedSpan::name)
+                    .contains(spanName);
         }
     }
 

@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.otel.runtime;
 
 import java.util.Optional;
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 
 import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.context.CorrelationScope;
@@ -41,8 +40,6 @@ public interface TracingRuntime {
 
     @Nonnull
     TraceControlBoundaryState currentTraceControlBoundary();
-
-    void recordException(@Nonnull SpanHandle span, @Nullable Throwable throwable);
 
     @Nonnull
     TracingState state();

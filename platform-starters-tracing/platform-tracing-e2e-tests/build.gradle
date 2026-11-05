@@ -146,6 +146,17 @@ def postSdkFailureListenerJar = tasks.register('postSdkFailureListenerJar', Jar)
     from sourceSets.postSdkFailureListener.output
 }
 
+def postReadyFailureProbeJar = tasks.register('postReadyFailureProbeJar', Jar) {
+    group = 'verification'
+    archiveFileName = 'platform-tracing-post-ready-failure-probe.jar'
+    from(sourceSets.postSdkFailureListener.output) {
+        include 'space/br1440/platform/tracing/e2e/startup/PostReadyFailureProbe.class'
+    }
+    manifest {
+        attributes 'Main-Class': 'space.br1440.platform.tracing.e2e.startup.PostReadyFailureProbe'
+    }
+}
+
 abstract class PackagedProcessArguments implements CommandLineArgumentProvider {
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
@@ -167,6 +178,10 @@ abstract class PackagedProcessArguments implements CommandLineArgumentProvider {
     @PathSensitive(PathSensitivity.NONE)
     abstract RegularFileProperty getPostSdkFailureListenerJar()
 
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getPostReadyFailureProbeJar()
+
     @Override
     Iterable<String> asArguments() {
         [
@@ -174,7 +189,8 @@ abstract class PackagedProcessArguments implements CommandLineArgumentProvider {
                 '-DplatformTracing.applicationBootJar=' + applicationBootJar.get().asFile.absolutePath,
                 '-DplatformTracing.dualSdkApplicationBootJar=' + dualSdkApplicationBootJar.get().asFile.absolutePath,
                 '-DplatformTracing.collisionAgentJar=' + collisionAgentJar.get().asFile.absolutePath,
-                '-DplatformTracing.postSdkFailureListenerJar=' + postSdkFailureListenerJar.get().asFile.absolutePath
+                '-DplatformTracing.postSdkFailureListenerJar=' + postSdkFailureListenerJar.get().asFile.absolutePath,
+                '-DplatformTracing.postReadyFailureProbeJar=' + postReadyFailureProbeJar.get().asFile.absolutePath
         ]
     }
 }
@@ -185,6 +201,7 @@ tasks.named('test', Test) {
     dependsOn dualSdkBootJar
     dependsOn collisionAgentJar
     dependsOn postSdkFailureListenerJar
+    dependsOn postReadyFailureProbeJar
 
     def arguments = objects.newInstance(PackagedProcessArguments)
     arguments.controlledAgentJar.fileProvider(providers.provider {
@@ -203,10 +220,14 @@ tasks.named('test', Test) {
     Provider<RegularFile> packagedPostSdkFailureListenerJar = postSdkFailureListenerJar
             .flatMap { Jar jar -> jar.archiveFile } as Provider<RegularFile>
 
+    Provider<RegularFile> packagedPostReadyFailureProbeJar = postReadyFailureProbeJar
+            .flatMap { Jar jar -> jar.archiveFile } as Provider<RegularFile>
+
     arguments.applicationBootJar.set(packagedApplicationBootJar)
     arguments.dualSdkApplicationBootJar.set(packagedDualSdkBootJar)
     arguments.collisionAgentJar.set(packagedCollisionAgentJar)
     arguments.postSdkFailureListenerJar.set(packagedPostSdkFailureListenerJar)
+    arguments.postReadyFailureProbeJar.set(packagedPostReadyFailureProbeJar)
     jvmArgumentProviders.add(arguments)
 
     systemProperty 'platformTracing.buildInfoFixtureVersion', buildInfoFixtureVersion

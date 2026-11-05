@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap.resources;
 
 import java.util.Objects;
 
-public interface Registration extends AutoCloseable {
+interface Registration extends AutoCloseable {
 
     @Override
     void close();

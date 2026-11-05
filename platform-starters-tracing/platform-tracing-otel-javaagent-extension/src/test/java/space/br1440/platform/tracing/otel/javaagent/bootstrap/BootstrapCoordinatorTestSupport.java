@@ -24,6 +24,8 @@ import javax.management.timer.Timer;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 
 import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapAdmissionRejectedException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.ShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.ExtensionRuntimeVerifier;
@@ -68,6 +70,22 @@ final class BootstrapCoordinatorTestSupport {
         BootstrapException failure = (BootstrapException) thrown;
         assertThat(failure.failure().effectiveCode()).as("failure code").isEqualTo(expectedCode);
         return failure;
+    }
+
+    static void assertAdmissionRejection(ThrowingCallable call, String expectedCode) {
+        assertThat(catchAdmissionRejection(call, expectedCode).primaryCode())
+                .as("rejection code")
+                .isEqualTo(expectedCode);
+    }
+
+    static BootstrapAdmissionRejectedException catchAdmissionRejection(ThrowingCallable call, String expectedCode) {
+        Throwable thrown = catchThrowable(call);
+        assertThat(thrown).as("BootstrapAdmissionRejectedException with code %s", expectedCode)
+                .isInstanceOf(BootstrapAdmissionRejectedException.class);
+        BootstrapAdmissionRejectedException rejection = (BootstrapAdmissionRejectedException) thrown;
+        assertThat(rejection.primaryCode()).as("rejection code").isEqualTo(expectedCode);
+        assertThat(rejection.failure().effectiveCode()).as("rejection code").isEqualTo(expectedCode);
+        return rejection;
     }
 
     static void registerForeignReadinessMBean(MBeanServer server) throws JMException {

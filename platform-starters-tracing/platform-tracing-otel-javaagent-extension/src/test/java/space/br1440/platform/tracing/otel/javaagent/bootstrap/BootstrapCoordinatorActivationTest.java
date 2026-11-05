@@ -1,6 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
@@ -11,6 +13,7 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_READY;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.acknowledgeScrubbingExcept;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertAdmissionRejection;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
@@ -20,17 +23,22 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.registerForeignReadinessMBean;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.satisfyReadinessBarrier;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.ACTIVATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.DIAGNOSTIC_MBEAN_REGISTRATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_SAMPLER_REPLACED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.ACTIVATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.DIAGNOSTIC_MBEAN_REGISTRATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.PLATFORM_SAMPLER_REPLACED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
 import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSnapshotAssertions.failureOf;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.util.EnumSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
@@ -44,6 +52,10 @@ import org.junit.jupiter.params.provider.EnumSource;
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.CapturingShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.ScrubbingAcknowledgement;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureAdmission;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureContext;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.ShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
@@ -78,7 +90,7 @@ class BootstrapCoordinatorActivationTest {
                 assertThat(coordinator.currentWire().agentInstanceId()).isEqualTo(agentInstanceId);
 
                 // when
-                assertBootstrapFailure(() -> coordinator.activate(tracerProvider), DUPLICATE_ACTIVATION);
+                assertAdmissionRejection(() -> coordinator.activate(tracerProvider), DUPLICATE_ACTIVATION);
 
                 // then
                 assertThatCoordinator(coordinator).isActiveAndReady();
@@ -182,12 +194,21 @@ class BootstrapCoordinatorActivationTest {
         when(session.evidence()).thenThrow(prologueFailure);
 
         // when
-        Throwable thrown = catchThrowable(() -> activation.activate(mock(SdkTracerProvider.class), () -> {
-        }));
+        Optional<FailureContext> outcome = activation.activate(mock(SdkTracerProvider.class), () -> {
+        });
 
         // then
-        assertThat(thrown).isInstanceOf(BootstrapException.class);
-        BootstrapFailure failure = ((BootstrapException) thrown).failure();
+        assertThat(outcome).isPresent();
+
+        FailureContext activationFailure = outcome.orElseThrow();
+        assertThat(activationFailure.site().subphase()).isEqualTo("activation-prologue");
+        assertThat(activationFailure.cause()).isSameAs(prologueFailure);
+        assertThat(activationFailure.admission().kind()).isEqualTo(FailureAdmission.Kind.RECORDED);
+        assertThat(activationFailure.admission().claimedSession()).isNull();
+        assertThat(activationFailure.ownedSession()).isNull();
+        assertThat(activationFailure.resources()).isNotNull();
+
+        BootstrapFailure failure = activationFailure.admission().failure();
         assertThat(failure.primaryCode()).isEqualTo(ACTIVATION_FAILED);
         assertThat(failure.effectiveCode()).isEqualTo(ACTIVATION_FAILED);
         assertThat(failure.cause()).isSameAs(prologueFailure);
@@ -345,7 +366,8 @@ class BootstrapCoordinatorActivationTest {
             CountDownLatch firstObservation = new CountDownLatch(1);
             Thread poller = new Thread(() -> {
                 while (pollerRunning.get()) {
-                    observedPairs.add(coordinator.state().name() + "/" + coordinator.currentWire().lifecycle());
+                    String wire = coordinator.currentWire().lifecycle();
+                    observedPairs.add(wire + "/" + coordinator.state().name());
                     firstObservation.countDown();
                 }
             }, "snapshot-poller");
@@ -364,12 +386,11 @@ class BootstrapCoordinatorActivationTest {
 
                 // then
                 assertThat(observedPairs)
-                        .contains("PREPARED/INITIALIZING")
+                        .contains("INITIALIZING/PREPARED")
                         .isSubsetOf(
-                                "PREPARED/INITIALIZING",
-                                "ACTIVATING/INITIALIZING",
-                                "ACTIVATING/READY",
-                                "ACTIVE/READY"
+                                "INITIALIZING/PREPARED",
+                                "INITIALIZING/ACTIVE",
+                                "READY/ACTIVE"
                         );
                 assertThatCoordinator(coordinator).isActiveAndReady();
             } finally {
@@ -379,5 +400,70 @@ class BootstrapCoordinatorActivationTest {
 
             assertThat(poller.isAlive()).as("snapshot-poller terminated").isFalse();
         }
+    }
+
+    @Test
+    void close_during_activation_waits_for_activation_and_leaves_no_runtime_registrations() throws Exception {
+        // given
+        CountDownLatch samplingRegistrationEntered = new CountDownLatch(1);
+        CountDownLatch releaseSamplingRegistration = new CountDownLatch(1);
+        CountDownLatch closeStarted = new CountDownLatch(1);
+        MBeanServer server = serverBlockingOnSampling(samplingRegistrationEntered, releaseSamplingRegistration);
+
+        try (BootstrapCoordinator coordinator = coordinator().server(server).build()) {
+            AutoconfigureSession session = coordinator.prepare(config());
+            satisfyReadinessBarrier(session);
+
+            try (SdkTracerProvider tracerProvider = providerFor(session)) {
+                FutureTask<Void> activation = new FutureTask<>(() -> coordinator.activate(tracerProvider), null);
+                FutureTask<Void> close = new FutureTask<>(() -> {
+                    closeStarted.countDown();
+                    coordinator.close();
+                }, null);
+                Thread.ofPlatform().daemon().name("bootstrap-activation-close-race").start(activation);
+                assertThat(samplingRegistrationEntered.await(5, TimeUnit.SECONDS)).isTrue();
+
+                // when
+                Thread.ofPlatform().daemon().name("bootstrap-close-activation-race").start(close);
+                assertThat(closeStarted.await(5, TimeUnit.SECONDS)).isTrue();
+
+                // then
+                assertThatThrownBy(() -> close.get(250, TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+                releaseSamplingRegistration.countDown();
+                assertThatCode(() -> activation.get(5, TimeUnit.SECONDS)).doesNotThrowAnyException();
+                assertThatCode(() -> close.get(5, TimeUnit.SECONDS)).doesNotThrowAnyException();
+            }
+
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.CLOSED);
+            assertThat(server.isRegistered(DomainObjectNames.SAMPLING)).isFalse();
+            assertThatDiagnosticMBean(server).isNotRegistered();
+        } finally {
+            releaseSamplingRegistration.countDown();
+        }
+    }
+
+    private static MBeanServer serverBlockingOnSampling(CountDownLatch entered, CountDownLatch release) {
+        MBeanServer delegate = MBeanServerFactory.newMBeanServer();
+        return (MBeanServer) Proxy.newProxyInstance(
+                BootstrapCoordinatorActivationTest.class.getClassLoader(),
+                new Class<?>[] {MBeanServer.class},
+                (proxy, method, arguments) -> {
+                    if ("registerMBean".equals(method.getName())
+                            && arguments != null
+                            && arguments.length == 2
+                            && DomainObjectNames.SAMPLING.equals(arguments[1])) {
+                        entered.countDown();
+                        if (!release.await(5, TimeUnit.SECONDS)) {
+                            throw new AssertionError("Sampling MBean registration was not released");
+                        }
+                    }
+
+                    try {
+                        return method.invoke(delegate, arguments);
+                    } catch (InvocationTargetException failure) {
+                        throw failure.getCause();
+                    }
+                }
+        );
     }
 }

@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import java.util.Objects;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
@@ -42,11 +43,12 @@ final class BootstrapReadinessJournal {
     }
 
     void publishReady(ExtensionReadinessWireSnapshot ready) {
+        requireMonitorHeld("READY");
         snapshot = Objects.requireNonNull(ready, "ready");
     }
 
     void publishFailed(BootstrapFailure failure, String batchId, ExtensionRuntimeEvidence evidence) {
-        requireMonitorHeld();
+        requireMonitorHeld("FAILED");
         Objects.requireNonNull(failure, "failure");
         Objects.requireNonNull(batchId, "batchId");
         Objects.requireNonNull(evidence, "evidence");
@@ -80,9 +82,9 @@ final class BootstrapReadinessJournal {
         return ExtensionRuntimeEvidence.unavailable(failed.extensionVersion());
     }
 
-    private void requireMonitorHeld() {
+    private void requireMonitorHeld(String lifecycle) {
         if (!Thread.holdsLock(monitor)) {
-            String message = "FAILED readiness publication requires the bootstrap lifecycle monitor";
+            String message = lifecycle + " readiness publication requires the bootstrap lifecycle monitor";
             throw new IllegalMonitorStateException(message);
         }
     }
@@ -102,7 +104,7 @@ final class BootstrapReadinessJournal {
     }
 
     private long nextEvidenceGeneration(ExtensionReadinessWireSnapshot current, String publishedBatchId) {
-        if (publishedBatchId.isEmpty()) {
+        if (BatchIds.isNone(publishedBatchId)) {
             return NO_EVIDENCE_GENERATION;
         }
 

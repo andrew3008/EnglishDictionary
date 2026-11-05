@@ -3,10 +3,8 @@ package space.br1440.platform.tracing.autoconfigure;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -187,11 +185,6 @@ class BeanTopologyTest {
         @Nonnull
         public TraceControlBoundaryState currentTraceControlBoundary() {
             return identityDelegate.currentTraceControlBoundary();
-        }
-
-        @Override
-        public void recordException(@Nonnull SpanHandle span, @Nullable Throwable throwable) {
-            Objects.requireNonNull(span, "span");
         }
 
         @Override

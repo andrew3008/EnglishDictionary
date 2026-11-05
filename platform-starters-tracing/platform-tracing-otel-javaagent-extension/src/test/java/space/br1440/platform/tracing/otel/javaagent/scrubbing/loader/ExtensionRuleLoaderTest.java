@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.scrubbing.loader;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -187,6 +188,20 @@ class ExtensionRuleLoaderTest {
     void ordinary_RuntimeException_in_WARNING_mode_is_still_skipped() {
         // given/when
         PlatformThrowables.propagateFatalCauseChain(new IllegalStateException("provider misbehaved"));
+    }
+
+    @Test
+    void ordinary_cause_accessor_failure_does_not_replace_provider_failure_classification() {
+        // given
+        ServiceConfigurationError providerFailure = new ServiceConfigurationError("provider init failed") {
+            @Override
+            public synchronized Throwable getCause() {
+                throw new IllegalStateException("Cause inspection failed");
+            }
+        };
+
+        // when/then
+        assertThat(catchThrowable(() -> PlatformThrowables.propagateFatalCauseChain(providerFailure))).isNull();
     }
 
     private static void writeJar(Path jar, Map<String, String> entries) throws IOException {

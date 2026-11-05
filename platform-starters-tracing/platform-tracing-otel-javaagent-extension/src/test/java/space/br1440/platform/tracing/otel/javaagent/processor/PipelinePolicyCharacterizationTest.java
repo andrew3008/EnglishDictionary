@@ -64,7 +64,7 @@ class PipelinePolicyCharacterizationTest {
 
             // then
             SpanData data = h.exporter().getFinishedSpanItems().getFirst();
-            ValidationAssertions.assertMissingRecorded(data, PlatformAttributes.PLATFORM_RESULT);
+            ValidationAssertions.assertMissingRecorded(data, PlatformAttributes.PLATFORM_TYPE);
             EnrichmentAssertions.assertPlatformResult(data, "success");
             ScrubbingAssertions.assertStringAttributeEmpty(data, "http.request.header.authorization");
         }

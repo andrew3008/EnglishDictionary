@@ -1,7 +1,6 @@
 package space.br1440.platform.tracing.autoconfigure.integrations.aop;
 
 import org.aspectj.lang.annotation.Aspect;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -15,7 +14,6 @@ import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPropertyNames;
-import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 
 @AutoConfiguration
 @AutoConfigureAfter(TracingRuntimeAutoConfiguration.class)
@@ -27,9 +25,7 @@ public class TracingAopAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public TracedAspect platformTracedAspect(TraceOperations traceOperations,
-                                             ObjectProvider<ExceptionRecorder> exceptionRecorderProvider) {
-        ExceptionRecorder recorder = exceptionRecorderProvider.getIfAvailable(ExceptionRecorder::secureDefault);
-        return new TracedAspect(traceOperations, recorder);
+    public TracedAspect platformTracedAspect(TraceOperations traceOperations) {
+        return new TracedAspect(traceOperations);
     }
 }

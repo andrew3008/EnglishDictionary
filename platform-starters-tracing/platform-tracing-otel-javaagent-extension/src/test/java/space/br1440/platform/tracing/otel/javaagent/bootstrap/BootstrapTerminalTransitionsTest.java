@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
@@ -14,10 +13,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.ACTIVATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.SHUTDOWN_CLEANUP_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationExceptionFixtures.rollbackIncomplete;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.ACTIVATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.SHUTDOWN_CLEANUP_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSnapshotAssertions.failureOf;
 
 import java.io.IOException;
@@ -27,8 +25,13 @@ import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.CustomizationStep;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureAdmission;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureSite;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
@@ -42,33 +45,49 @@ import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionR
 class BootstrapTerminalTransitionsTest {
 
     private static final String BATCH_ID = "batch-1";
+    private static final CustomizationStep STEP = CustomizationStep.SPAN_PROCESSOR_INITIALIZATION;
     private static final long READY_EVIDENCE_GENERATION = 1L;
 
     @Test
-    void cleanup_failure_escalates_activation_failure_without_replacing_its_cause() {
+    void terminalize_records_failure_and_publishes_it_in_the_same_section() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixture(lifecycle);
-        IllegalStateException cleanupFailure = new IllegalStateException("Runtime controls cleanup failed");
-        BootstrapResources resources = new BootstrapResources();
-        resources.push(() -> {
-            throw cleanupFailure;
-        }, "runtime-jmx-controls");
         IllegalStateException activationFailure = new IllegalStateException("Activation failed");
 
         // when
-        BootstrapException failure = terminalizeActivationFailure(fixture, resources, activationFailure);
+        FailureAdmission admission = recordActivationFailure(fixture, activationFailure);
 
         // then
-        assertThat(failure.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
-        assertThat(failure.failure().effectiveCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
-        assertThat(failure.getCause()).isSameAs(activationFailure);
-        assertThat(activationFailure.getSuppressed()).singleElement()
-                .satisfies(suppressed -> assertThat(suppressed.getCause()).isSameAs(cleanupFailure));
-        assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
-        BootstrapException stickyFailure = lifecycle.stickyFailure("test");
-        assertThat(stickyFailure.failure().effectiveCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
-        assertThat(stickyFailure.getCause()).isSameAs(activationFailure);
+        assertThat(admission.kind()).isEqualTo(FailureAdmission.Kind.RECORDED);
+        assertThat(admission.projectionFailure()).isNull();
+        assertThat(admission.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
+        assertThat(admission.failure().phase()).isEqualTo("activate");
+        assertThat(admission.failure().cause()).isSameAs(activationFailure);
+        assertThat(fixture.journal().current().failureCode()).isEqualTo(ACTIVATION_FAILED);
+        assertThat(failureOf(fixture.readiness().snapshot()).primaryCode()).isEqualTo(ACTIVATION_FAILED);
+    }
+
+    @Test
+    void escalation_keeps_primary_failure_and_publishes_rollback_incomplete_without_graph_mutation() {
+        // given
+        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
+        Fixture fixture = activeFixture(lifecycle);
+        IllegalStateException activationFailure = new IllegalStateException("Activation failed");
+        IllegalStateException cleanupFailure = new IllegalStateException("Runtime controls cleanup failed");
+        recordActivationFailure(fixture, activationFailure);
+
+        // when
+        FailureAdmission escalation = fixture.transitions().escalate("activate", cleanupFailure, BATCH_ID, fixture.evidence());
+
+        // then
+        assertThat(escalation.kind()).isEqualTo(FailureAdmission.Kind.RECORDED);
+        assertThat(escalation.projectionFailure()).isNull();
+        assertThat(escalation.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
+        assertThat(escalation.failure().effectiveCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
+        assertThat(escalation.failure().cause()).isSameAs(activationFailure);
+        assertThat(activationFailure.getSuppressed()).isEmpty();
+        assertThat(lifecycle.failure()).isSameAs(escalation.failure());
         assertThat(failureOf(fixture.readiness().snapshot()).effectiveCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
         assertThat(failureOf(fixture.readiness().snapshot()).primaryCode()).isEqualTo(ACTIVATION_FAILED);
         assertThat(fixture.journal().current().failureCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
@@ -76,257 +95,56 @@ class BootstrapTerminalTransitionsTest {
     }
 
     @Test
-    void fatal_activation_cause_wins_over_fatal_cleanup_and_preserves_cleanup_identity() {
-        // given
-        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-        Fixture fixture = activeFixture(lifecycle);
-        NoClassDefFoundError activationFailure = new NoClassDefFoundError("Fatal activation failure");
-        AssertionError cleanupFailure = new AssertionError("Fatal cleanup failure");
-        //noinspection resource — close выполняет completeActivationFailure; повторный close бросит тот же отказ
-        BootstrapResources resources = new BootstrapResources();
-        resources.push(() -> {
-            throw cleanupFailure;
-        }, "runtime-jmx-controls");
-
-        // when
-        // then
-        assertThatThrownBy(() -> {
-            throw terminalizeActivationFailure(fixture, resources, activationFailure);
-        }).isSameAs(activationFailure);
-        assertThat(activationFailure.getSuppressed()).containsExactly(cleanupFailure);
-        assertThat(lifecycle.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
-        assertThat(lifecycle.failure().effectiveCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
-        assertThat(lifecycle.failure().cause()).isSameAs(activationFailure);
-    }
-
-    @Test
-    void fatal_activation_cause_wins_over_failure_publication_error() {
-        // given
-        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-        Fixture fixture = activeFixture(lifecycle);
-        NoClassDefFoundError activationFailure = new NoClassDefFoundError("Fatal activation failure");
-        UnsupportedOperationException publicationFailure =
-                new UnsupportedOperationException("Failed readiness publication");
-        BootstrapException classified;
-        synchronized (lifecycle.monitor()) {
-            classified = fixture.transitions().recordActivationFailure(
-                    ACTIVATION_FAILED,
-                    "activation-prologue",
-                    activationFailure,
-                    "",
-                    fixture.evidence()
-            );
-        }
-
-        // when
-        // then
-        assertThatThrownBy(() -> {
-            throw fixture.transitions().completeActivationFailure(
-                    classified,
-                    null,
-                    activationFailure,
-                    publicationFailure,
-                    "",
-                    fixture.evidence()
-            );
-        }).isSameAs(activationFailure);
-        assertThat(activationFailure.getSuppressed()).containsExactly(publicationFailure);
-        assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
-        assertThat(lifecycle.failure().cause()).isSameAs(activationFailure);
-    }
-
-    @Test
-    void publication_failure_with_cleanup_settles_rollback_before_rethrow() {
+    void escalation_projection_failure_is_captured_after_lifecycle_escalation() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithJournalSpy(lifecycle);
         IllegalStateException activationFailure = new IllegalStateException("Activation failed");
         IllegalStateException cleanupFailure = new IllegalStateException("Runtime controls cleanup failed");
-        //noinspection resource — close выполняет completeActivationFailure; повторный close бросит тот же отказ
-        BootstrapResources resources = new BootstrapResources();
-        resources.push(() -> {
-            throw cleanupFailure;
-        }, "runtime-jmx-controls");
-        UnsupportedOperationException publicationFailure =
-                new UnsupportedOperationException("Failed readiness publication");
-        doThrow(publicationFailure)
-                .doCallRealMethod()
-                .when(fixture.journal())
-                .publishFailed(any(BootstrapFailure.class), eq(BATCH_ID), same(fixture.evidence()));
-        Throwable sectionFailure;
-        synchronized (lifecycle.monitor()) {
-            sectionFailure = catchThrowable(() -> {
-                throw fixture.transitions().recordActivationFailure(
-                        ACTIVATION_FAILED,
-                        "readiness-publication",
-                        activationFailure,
-                        BATCH_ID,
-                        fixture.evidence()
-                );
-            });
-        }
-
-        // when
-        Throwable thrown = catchThrowable(() -> {
-            throw fixture.transitions().completeActivationFailure(
-                    null,
-                    resources,
-                    activationFailure,
-                    sectionFailure,
-                    BATCH_ID,
-                    fixture.evidence()
-            );
-        });
-
-        // then
-        assertThat(sectionFailure).isSameAs(publicationFailure);
-        assertThat(thrown).isSameAs(publicationFailure);
-        assertThat(lifecycle.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
-        assertThat(lifecycle.failure().effectiveCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
-        assertThat(lifecycle.failure().cause()).isSameAs(activationFailure);
-        assertThat(BootstrapCleanupFailures.contains(activationFailure, cleanupFailure)).isTrue();
-        assertThat(BootstrapCleanupFailures.contains(activationFailure, publicationFailure)).isTrue();
-        assertThat(fixture.journal().current().primaryFailureCode()).isEqualTo(ACTIVATION_FAILED);
-        assertThat(fixture.journal().current().failureCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
-        verify(fixture.journal(), times(2)).publishFailed(
-                any(BootstrapFailure.class),
-                eq(BATCH_ID),
-                same(fixture.evidence())
-        );
-    }
-
-    @Test
-    void first_fatal_publication_failure_wins_over_later_fatal_cleanup() {
-        // given
-        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-        Fixture fixture = activeFixtureWithJournalSpy(lifecycle);
-        IllegalStateException activationFailure = new IllegalStateException("Activation failed");
         LinkageError publicationFailure = new LinkageError("Fatal readiness publication failure");
-        LinkageError cleanupFailure = new LinkageError("Fatal runtime cleanup failure");
-        //noinspection resource — close выполняет completeActivationFailure; повторный close бросит тот же отказ
-        BootstrapResources resources = new BootstrapResources();
-        resources.push(() -> {
-            throw cleanupFailure;
-        }, "runtime-jmx-controls");
+        recordActivationFailure(fixture, activationFailure);
         doThrow(publicationFailure)
-                .doCallRealMethod()
                 .when(fixture.journal())
                 .publishFailed(any(BootstrapFailure.class), eq(BATCH_ID), same(fixture.evidence()));
-        Throwable sectionFailure;
-        synchronized (lifecycle.monitor()) {
-            sectionFailure = catchThrowable(() -> {
-                throw fixture.transitions().recordActivationFailure(
-                        ACTIVATION_FAILED,
-                        "readiness-publication",
-                        activationFailure,
-                        BATCH_ID,
-                        fixture.evidence()
-                );
-            });
-        }
 
         // when
-        Throwable thrown = catchThrowable(() -> {
-            throw fixture.transitions().completeActivationFailure(
-                    null,
-                    resources,
-                    activationFailure,
-                    sectionFailure,
-                    BATCH_ID,
-                    fixture.evidence()
-            );
-        });
+        FailureAdmission escalation = fixture.transitions().escalate("activate", cleanupFailure, BATCH_ID, fixture.evidence());
 
         // then
-        assertThat(sectionFailure).isSameAs(publicationFailure);
-        assertThat(thrown).isSameAs(publicationFailure);
-        assertThat(publicationFailure.getSuppressed()).containsExactly(cleanupFailure);
-        assertThat(activationFailure.getSuppressed()).containsExactly(publicationFailure, cleanupFailure);
-        assertThat(lifecycle.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
+        assertThat(escalation.kind()).isEqualTo(FailureAdmission.Kind.RECORDED);
+        assertThat(escalation.projectionFailure()).isSameAs(publicationFailure);
         assertThat(lifecycle.failure().effectiveCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
-        assertThat(fixture.journal().current().failureCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
-    }
-
-    @Test
-    void first_fatal_publication_failure_wins_over_later_settlement_failure() {
-        // given
-        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-        Fixture fixture = activeFixtureWithJournalSpy(lifecycle);
-        IllegalStateException activationFailure = new IllegalStateException("Activation failed");
-        LinkageError publicationFailure = new LinkageError("Fatal readiness publication failure");
-        LinkageError cleanupFailure = new LinkageError("Fatal runtime cleanup failure");
-        LinkageError settlementFailure = new LinkageError("Fatal readiness settlement failure");
-        //noinspection resource — close выполняет completeActivationFailure; повторный close бросит тот же отказ
-        BootstrapResources resources = new BootstrapResources();
-        resources.push(() -> {
-            throw cleanupFailure;
-        }, "runtime-jmx-controls");
-        doThrow(publicationFailure)
-                .doThrow(settlementFailure)
-                .when(fixture.journal())
-                .publishFailed(any(BootstrapFailure.class), eq(BATCH_ID), same(fixture.evidence()));
-        Throwable sectionFailure;
-        synchronized (lifecycle.monitor()) {
-            sectionFailure = catchThrowable(() -> {
-                throw fixture.transitions().recordActivationFailure(
-                        ACTIVATION_FAILED,
-                        "readiness-publication",
-                        activationFailure,
-                        BATCH_ID,
-                        fixture.evidence()
-                );
-            });
-        }
-
-        // when
-        Throwable thrown = catchThrowable(() -> {
-            throw fixture.transitions().completeActivationFailure(
-                    null,
-                    resources,
-                    activationFailure,
-                    sectionFailure,
-                    BATCH_ID,
-                    fixture.evidence()
-            );
-        });
-
-        // then
-        assertThat(sectionFailure).isSameAs(publicationFailure);
-        assertThat(thrown).isSameAs(publicationFailure);
-        assertThat(publicationFailure.getSuppressed()).containsExactly(cleanupFailure, settlementFailure);
-        assertThat(activationFailure.getSuppressed()).containsExactly(publicationFailure, cleanupFailure);
-        assertThat(lifecycle.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
-        assertThat(lifecycle.failure().effectiveCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
-    }
-
-    @Test
-    void rollback_marker_escalates_without_mutating_primary_cause_suppressed() {
-        // given
-        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-        Fixture fixture = activeFixture(lifecycle);
-        Throwable activationFailure = rollbackIncomplete(
-                "Runtime MBean rollback was incomplete",
-                new IllegalStateException("Runtime MBean failure")
-        );
-        BootstrapResources resources = new BootstrapResources();
-
-        // when
-        BootstrapException failure = terminalizeActivationFailure(fixture, resources, activationFailure);
-
-        // then
-        assertThat(failure.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
-        assertThat(failure.failure().effectiveCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
-        assertThat(failure.getCause()).isSameAs(activationFailure);
         assertThat(activationFailure.getSuppressed()).isEmpty();
+        assertThat(publicationFailure.getSuppressed()).isEmpty();
+        assertThat(fixture.journal().current().failureCode()).isEqualTo(ACTIVATION_FAILED);
     }
 
+    @Test
+    void repeated_escalation_is_already_failed_without_republication() {
+        // given
+        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
+        Fixture fixture = activeFixtureWithJournalSpy(lifecycle);
+        IllegalStateException activationFailure = new IllegalStateException("Activation failed");
+        IllegalStateException cleanupFailure = new IllegalStateException("Runtime controls cleanup failed");
+        recordActivationFailure(fixture, activationFailure);
+        FailureAdmission first = fixture.transitions().escalate("activate", cleanupFailure, BATCH_ID, fixture.evidence());
+        clearInvocations(fixture.journal());
+
+        // when
+        FailureAdmission repeated = fixture.transitions().escalate("close", cleanupFailure, BATCH_ID, fixture.evidence());
+
+        // then
+        assertThat(repeated.kind()).isEqualTo(FailureAdmission.Kind.ALREADY_FAILED);
+        assertThat(repeated.failure()).isSameAs(first.failure());
+        verify(fixture.journal(), times(0)).publishFailed(any(BootstrapFailure.class), any(), any());
+    }
     @Test
     void early_failure_fence_preserves_ready_evidence_and_avoids_final_republication() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixture(lifecycle);
         IllegalStateException cleanupFailure = new IllegalStateException("Diagnostic readiness cleanup failed");
-        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition acquisition = lifecycle.acquireClose();
 
         // when
         fixture.transitions().publishCloseFailureSnapshot(acquisition.context(), cleanupFailure);
@@ -337,10 +155,10 @@ class BootstrapTerminalTransitionsTest {
                 null,
                 true
         );
-        lifecycle.completeClose(acquisition.flight(), outcome);
+        lifecycle.completeClose(acquisition.operation(), outcome);
 
         // then
-        assertThat(acquisition.owner()).isTrue();
+        assertThat(acquisition.role()).isEqualTo(CloseOperation.Role.OWNER);
         assertThat(outcome).isSameAs(cleanupFailure);
         assertThat(lifecycle.failure().cause()).isSameAs(cleanupFailure);
         assertThat(lifecycle.failure().primaryCode()).isEqualTo(SHUTDOWN_CLEANUP_FAILED);
@@ -360,8 +178,8 @@ class BootstrapTerminalTransitionsTest {
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithMockJournal(lifecycle);
         IllegalStateException activationFailure = new IllegalStateException("Activation failed");
-        BootstrapException classified = recordActivationFailure(fixture, activationFailure);
-        assertThat(classified.getCause()).isSameAs(activationFailure);
+        FailureAdmission admission = recordActivationFailure(fixture, activationFailure);
+        assertThat(admission.failure().cause()).isSameAs(activationFailure);
         clearInvocations(fixture.journal());
         IllegalStateException cleanupFailure = new IllegalStateException("Resource cleanup failed");
         BootstrapCleanupFailures.suppressPreservingPrimary(activationFailure, cleanupFailure);
@@ -385,12 +203,13 @@ class BootstrapTerminalTransitionsTest {
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixture(lifecycle);
         IllegalStateException activationFailure = new IllegalStateException("Activation failed");
-        BootstrapException classified = recordActivationFailure(fixture, activationFailure);
-        assertThat(classified.getCause()).isSameAs(activationFailure);
+        FailureAdmission admission = recordActivationFailure(fixture, activationFailure);
+        assertThat(admission.failure().cause()).isSameAs(activationFailure);
         IllegalStateException cleanupFailure = new IllegalStateException("Resource cleanup failed");
+        BootstrapCleanupFailures.suppressPreservingPrimary(activationFailure, cleanupFailure);
         lifecycle.escalateRollbackIncomplete("activate", cleanupFailure);
         assertThat(fixture.journal().current().failureCode()).isEqualTo(ACTIVATION_FAILED);
-        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition acquisition = lifecycle.acquireClose();
 
         // when
         Throwable outcome;
@@ -401,7 +220,7 @@ class BootstrapTerminalTransitionsTest {
                     null,
                     false
             );
-            lifecycle.completeClose(acquisition.flight(), outcome);
+            lifecycle.completeClose(acquisition.operation(), outcome);
 
             // then
             assertThat(logs.events())
@@ -422,9 +241,10 @@ class BootstrapTerminalTransitionsTest {
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithJournalSpy(lifecycle);
         IllegalStateException activationFailure = new IllegalStateException("Activation failed");
-        BootstrapException classified = recordActivationFailure(fixture, activationFailure);
-        assertThat(classified.getCause()).isSameAs(activationFailure);
+        FailureAdmission admission = recordActivationFailure(fixture, activationFailure);
+        assertThat(admission.failure().cause()).isSameAs(activationFailure);
         IllegalStateException cleanupFailure = new IllegalStateException("Resource cleanup failed");
+        BootstrapCleanupFailures.suppressPreservingPrimary(activationFailure, cleanupFailure);
         lifecycle.escalateRollbackIncomplete("activate", cleanupFailure);
         LinkageError publicationFailure = new LinkageError("Fatal readiness publication failure");
         clearInvocations(fixture.journal());
@@ -433,7 +253,7 @@ class BootstrapTerminalTransitionsTest {
                 eq(BATCH_ID),
                 same(fixture.evidence())
         );
-        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition acquisition = lifecycle.acquireClose();
 
         // when
         Throwable outcome;
@@ -444,7 +264,7 @@ class BootstrapTerminalTransitionsTest {
                     null,
                     false
             );
-            lifecycle.completeClose(acquisition.flight(), outcome);
+            lifecycle.completeClose(acquisition.operation(), outcome);
 
             // then
             assertThat(logs.events())
@@ -462,7 +282,7 @@ class BootstrapTerminalTransitionsTest {
     }
 
     @Test
-    void final_runtime_publication_failure_keeps_cleanup_as_lifecycle_and_flight_root() {
+    void final_runtime_publication_failure_keeps_cleanup_as_lifecycle_and_operation_root() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithMockJournal(lifecycle);
@@ -487,7 +307,7 @@ class BootstrapTerminalTransitionsTest {
     }
 
     @Test
-    void final_publication_error_is_secondary_in_lifecycle_and_root_in_flight() {
+    void final_publication_error_is_secondary_in_lifecycle_and_root_in_operation() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithMockJournal(lifecycle);
@@ -514,7 +334,7 @@ class BootstrapTerminalTransitionsTest {
     }
 
     @Test
-    void early_publication_error_is_secondary_in_lifecycle_and_root_in_flight() {
+    void early_publication_error_is_secondary_in_lifecycle_and_root_in_operation() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithMockJournal(lifecycle);
@@ -540,7 +360,7 @@ class BootstrapTerminalTransitionsTest {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithMockJournal(lifecycle);
-        AssertionError cleanupFailure = new AssertionError("Fatal resource cleanup failure");
+        LinkageError cleanupFailure = new LinkageError("Fatal resource cleanup failure");
         IllegalStateException publicationFailure = new IllegalStateException("Readiness publication failed");
         doThrow(publicationFailure).when(fixture.journal()).publishFailed(
                 any(BootstrapFailure.class),
@@ -564,7 +384,7 @@ class BootstrapTerminalTransitionsTest {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithMockJournal(lifecycle);
-        AssertionError cleanupFailure = new AssertionError("First fatal resource cleanup failure");
+        NoClassDefFoundError cleanupFailure = new NoClassDefFoundError("First fatal resource cleanup failure");
         LinkageError publicationFailure = new LinkageError("Second fatal readiness publication failure");
         doThrow(publicationFailure).when(fixture.journal()).publishFailed(
                 any(BootstrapFailure.class),
@@ -585,13 +405,38 @@ class BootstrapTerminalTransitionsTest {
     }
 
     @Test
+    void assertion_cleanup_error_is_not_promoted_over_fatal_publication_error() {
+        // given
+        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
+        Fixture fixture = activeFixtureWithMockJournal(lifecycle);
+        AssertionError cleanupFailure = new AssertionError("Resource cleanup assertion failure");
+        LinkageError publicationFailure = new LinkageError("Fatal readiness publication failure");
+        doThrow(publicationFailure).when(fixture.journal()).publishFailed(
+                any(BootstrapFailure.class),
+                eq(BATCH_ID),
+                same(fixture.evidence())
+        );
+
+        // when
+        CloseResult result = completeCloseFailure(fixture, cleanupFailure, null);
+
+        // then
+        assertNormalCloseOwnership(fixture, cleanupFailure);
+        assertThat(result.outcome()).isSameAs(publicationFailure);
+        assertThat(cleanupFailure.getSuppressed()).containsExactly(publicationFailure);
+        assertThat(publicationFailure.getSuppressed()).isEmpty();
+        verifySingleFailurePublication(fixture);
+        assertFollowerReplays(lifecycle, result.acquisition(), result.outcome());
+    }
+
+    @Test
     void preexisting_activation_cause_survives_fatal_first_close_outcome() {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithMockJournal(lifecycle);
         IllegalStateException activationFailure = new IllegalStateException("Activation failed");
-        BootstrapException classified = recordActivationFailure(fixture, activationFailure);
-        assertThat(classified.getCause()).isSameAs(activationFailure);
+        FailureAdmission admission = recordActivationFailure(fixture, activationFailure);
+        assertThat(admission.failure().cause()).isSameAs(activationFailure);
         clearInvocations(fixture.journal());
         IllegalStateException cleanupFailure = new IllegalStateException("Resource cleanup failed");
         LinkageError publicationFailure = new LinkageError("Fatal readiness publication failure");
@@ -657,7 +502,7 @@ class BootstrapTerminalTransitionsTest {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithMockJournal(lifecycle);
-        AssertionError cleanupFailure = new AssertionError("First fatal resource cleanup failure");
+        NoClassDefFoundError cleanupFailure = new NoClassDefFoundError("First fatal resource cleanup failure");
         LinkageError publicationFailure = new LinkageError("Later fatal readiness publication failure");
         publicationFailure.addSuppressed(cleanupFailure);
 
@@ -696,7 +541,7 @@ class BootstrapTerminalTransitionsTest {
     }
 
     @Test
-    void shutdown_log_delivery_failure_preserves_cleanup_outcome_and_completes_flight() throws Exception {
+    void shutdown_log_delivery_failure_preserves_cleanup_outcome_and_completes_operation() throws Exception {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithMockJournal(lifecycle);
@@ -721,7 +566,7 @@ class BootstrapTerminalTransitionsTest {
     }
 
     @Test
-    void fatal_shutdown_logging_failure_becomes_secondary_then_flight_root_without_retry() throws Exception {
+    void fatal_shutdown_logging_failure_becomes_secondary_then_operation_root_without_retry() throws Exception {
         // given
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithMockJournal(lifecycle);
@@ -755,8 +600,8 @@ class BootstrapTerminalTransitionsTest {
         BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
         Fixture fixture = activeFixtureWithMockJournal(lifecycle);
         IllegalStateException activationFailure = new IllegalStateException("Activation failed");
-        BootstrapException classified = recordActivationFailure(fixture, activationFailure);
-        assertThat(classified.getCause()).isSameAs(activationFailure);
+        FailureAdmission admission = recordActivationFailure(fixture, activationFailure);
+        assertThat(admission.failure().cause()).isSameAs(activationFailure);
         clearInvocations(fixture.journal());
         IllegalStateException cleanupFailure = new IllegalStateException("Resource cleanup failed");
         LinkageError loggerFailure = new LinkageError("Fatal log delivery failure");
@@ -791,23 +636,29 @@ class BootstrapTerminalTransitionsTest {
         BootstrapReadinessJournal journal = mock(BootstrapReadinessJournal.class);
         Fixture fixture = activeFixture(lifecycle, journal);
         lifecycle.requireOperable("customization");
-        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition acquisition = lifecycle.acquireClose();
         lifecycle.markClosed();
-        lifecycle.completeClose(acquisition.flight(), null);
+        lifecycle.completeClose(acquisition.operation(), null);
         IllegalStateException operationFailure = new IllegalStateException("Customization failed after close");
 
         // when
-        BootstrapException rejection = fixture.transitions().terminalizeCustomizationFailure(
-                ACTIVATION_FAILED,
-                "customization",
+        FailureAdmission rejection = fixture.transitions().terminalize(
+                FailureSite.customization(STEP),
+                STEP.failureCode(),
                 operationFailure,
+                BATCH_ID,
                 fixture.evidence()
         );
 
         // then
-        assertThat(acquisition.owner()).isTrue();
-        assertThat(rejection.failure().effectiveCode()).isEqualTo(ACTIVATION_FAILED);
-        assertThat(rejection.getCause()).isSameAs(operationFailure);
+        assertThat(acquisition.role()).isEqualTo(CloseOperation.Role.OWNER);
+        assertThat(rejection.kind()).isEqualTo(FailureAdmission.Kind.REJECTED);
+        assertThat(rejection.failure().primaryCode()).isEqualTo(STEP.failureCode());
+        assertThat(rejection.failure().effectiveCode()).isEqualTo(STEP.failureCode());
+        assertThat(rejection.failure().phase()).isEqualTo("customization");
+        assertThat(rejection.failure().cause()).isSameAs(operationFailure);
+        assertThat(rejection.claimedSession()).isNull();
+        assertThat(rejection.projectionFailure()).isNull();
         assertThat(lifecycle.state()).isEqualTo(BootstrapState.CLOSED);
         assertThatThrownBy(lifecycle::failure)
                 .isInstanceOf(IllegalStateException.class)
@@ -822,53 +673,57 @@ class BootstrapTerminalTransitionsTest {
         BootstrapReadinessJournal journal = mock(BootstrapReadinessJournal.class);
         Fixture fixture = activeFixture(lifecycle, journal);
         lifecycle.requireOperable("customization");
-        BootstrapLifecycleState.CloseAcquisition acquisition = lifecycle.acquireClose();
+        CloseOperation.CloseAcquisition acquisition = lifecycle.acquireClose();
         IllegalStateException operationFailure = new IllegalStateException("Customization failed during close");
 
         // when
-        BootstrapException rejection = fixture.transitions().terminalizeCustomizationFailure(
-                ACTIVATION_FAILED,
-                "customization",
+        FailureAdmission rejection = fixture.transitions().terminalize(
+                FailureSite.customization(STEP),
+                STEP.failureCode(),
                 operationFailure,
+                BATCH_ID,
                 fixture.evidence()
         );
 
         // then
-        assertThat(acquisition.owner()).isTrue();
-        assertThat(rejection.failure().effectiveCode()).isEqualTo(ACTIVATION_FAILED);
-        assertThat(rejection.getCause()).isSameAs(operationFailure);
+        assertThat(acquisition.role()).isEqualTo(CloseOperation.Role.OWNER);
+        assertThat(rejection.kind()).isEqualTo(FailureAdmission.Kind.REJECTED);
+        assertThat(rejection.failure().primaryCode()).isEqualTo(STEP.failureCode());
+        assertThat(rejection.failure().effectiveCode()).isEqualTo(STEP.failureCode());
+        assertThat(rejection.failure().phase()).isEqualTo("customization");
+        assertThat(rejection.failure().cause()).isSameAs(operationFailure);
+        assertThat(rejection.claimedSession()).isNull();
+        assertThat(rejection.projectionFailure()).isNull();
         assertThat(lifecycle.state()).isEqualTo(BootstrapState.CLOSING);
         assertThatThrownBy(lifecycle::failure)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Bootstrap failure is not recorded");
         verifyNoInteractions(journal);
         lifecycle.markClosed();
-        lifecycle.completeClose(acquisition.flight(), null);
+        lifecycle.completeClose(acquisition.operation(), null);
     }
 
     private static CloseResult completeCloseFailure(Fixture fixture,
                                                     Throwable cleanupFailure,
                                                     Throwable priorPublicationFailure) {
-        BootstrapLifecycleState.CloseAcquisition acquisition = fixture.lifecycle().acquireClose();
-        assertThat(acquisition.owner()).isTrue();
-        assertThat(acquisition.reentrant()).isFalse();
+        CloseOperation.CloseAcquisition acquisition = fixture.lifecycle().acquireClose();
+        assertThat(acquisition.role()).isEqualTo(CloseOperation.Role.OWNER);
         Throwable outcome = fixture.transitions().completeCloseFailure(
                 acquisition.context(),
                 cleanupFailure,
                 priorPublicationFailure,
                 false
         );
-        fixture.lifecycle().completeClose(acquisition.flight(), outcome);
+        fixture.lifecycle().completeClose(acquisition.operation(), outcome);
         return new CloseResult(acquisition, outcome);
     }
 
     private static void assertFollowerReplays(BootstrapLifecycleState lifecycle,
-                                              BootstrapLifecycleState.CloseAcquisition owner,
+                                              CloseOperation.CloseAcquisition owner,
                                               Throwable outcome) {
-        BootstrapLifecycleState.CloseAcquisition follower = lifecycle.acquireClose();
-        assertThat(follower.owner()).isFalse();
-        assertThat(follower.reentrant()).isFalse();
-        assertThat(follower.flight()).isSameAs(owner.flight());
+        CloseOperation.CloseAcquisition follower = lifecycle.acquireClose();
+        assertThat(follower.role()).isEqualTo(CloseOperation.Role.FOLLOWER);
+        assertThat(follower.operation()).isSameAs(owner.operation());
         assertThat(follower.awaitOutcome()).isSameAs(outcome);
     }
 
@@ -896,13 +751,7 @@ class BootstrapTerminalTransitionsTest {
                 readiness,
                 agentInstanceId
         );
-        journal.publishReady(ExtensionReadinessWireSnapshot.ready(
-                (PlatformExtensionReadinessSnapshot.Ready) readiness.snapshot(),
-                agentInstanceId.toString(),
-                BATCH_ID,
-                READY_EVIDENCE_GENERATION,
-                evidence
-        ));
+        publishReady(lifecycle, journal, readiness, agentInstanceId, evidence);
         return activeFixture(lifecycle, journal, readiness, evidence);
     }
 
@@ -925,14 +774,24 @@ class BootstrapTerminalTransitionsTest {
                 readiness,
                 agentInstanceId
         ));
-        journal.publishReady(ExtensionReadinessWireSnapshot.ready(
-                (PlatformExtensionReadinessSnapshot.Ready) readiness.snapshot(),
-                agentInstanceId.toString(),
-                BATCH_ID,
-                READY_EVIDENCE_GENERATION,
-                evidence
-        ));
+        publishReady(lifecycle, journal, readiness, agentInstanceId, evidence);
         return activeFixture(lifecycle, journal, readiness, evidence);
+    }
+
+    private static void publishReady(BootstrapLifecycleState lifecycle,
+                                     BootstrapReadinessJournal journal,
+                                     PlatformExtensionReadiness readiness,
+                                     AgentInstanceId agentInstanceId,
+                                     ExtensionRuntimeEvidence evidence) {
+        synchronized (lifecycle.monitor()) {
+            journal.publishReady(ExtensionReadinessWireSnapshot.ready(
+                    (PlatformExtensionReadinessSnapshot.Ready) readiness.snapshot(),
+                    agentInstanceId.toString(),
+                    BATCH_ID,
+                    READY_EVIDENCE_GENERATION,
+                    evidence
+            ));
+        }
     }
 
     private static Fixture activeFixture(BootstrapLifecycleState lifecycle, BootstrapReadinessJournal journal) {
@@ -945,36 +804,25 @@ class BootstrapTerminalTransitionsTest {
                                          PlatformExtensionReadiness readiness,
                                          ExtensionRuntimeEvidence evidence) {
         BootstrapTerminalTransitions transitions = new BootstrapTerminalTransitions(lifecycle, journal);
+        AutoconfigureSession session = mock(AutoconfigureSession.class);
+        when(session.evidence()).thenReturn(evidence);
+        lifecycle.beginPrepare();
+        lifecycle.completePrepare(session);
+        assertThat(lifecycle.beginActivation()).isSameAs(session);
+        lifecycle.attachResources(new BootstrapResources());
         lifecycle.commitActive();
         return new Fixture(lifecycle, journal, transitions, readiness, evidence);
     }
 
-    private static BootstrapException recordActivationFailure(Fixture fixture, Throwable activationFailure) {
-        synchronized (fixture.lifecycle().monitor()) {
-            return fixture.transitions().recordActivationFailure(
-                    ACTIVATION_FAILED,
-                    "readiness-publication",
-                    activationFailure,
-                    BATCH_ID,
-                    fixture.evidence()
-            );
-        }
-    }
-
-    private static BootstrapException terminalizeActivationFailure(Fixture fixture,
-                                                                   BootstrapResources resources,
-                                                                   Throwable activationFailure) {
-        BootstrapException classified = recordActivationFailure(fixture, activationFailure);
-        return fixture.transitions().completeActivationFailure(
-                classified,
-                resources,
+    private static FailureAdmission recordActivationFailure(Fixture fixture, Throwable activationFailure) {
+        return fixture.transitions().terminalize(
+                FailureSite.activation("readiness-publication"),
+                ACTIVATION_FAILED,
                 activationFailure,
-                null,
                 BATCH_ID,
                 fixture.evidence()
         );
     }
-
     private static ExtensionRuntimeEvidence completeEvidence(PlatformExtensionReadiness readiness) {
         return new ExtensionRuntimeEvidence(
                 "0123456789abcdef",
@@ -995,7 +843,7 @@ class BootstrapTerminalTransitionsTest {
         return readiness;
     }
 
-    private record CloseResult(BootstrapLifecycleState.CloseAcquisition acquisition, Throwable outcome) {
+    private record CloseResult(CloseOperation.CloseAcquisition acquisition, Throwable outcome) {
     }
 
     private record Fixture(BootstrapLifecycleState lifecycle,

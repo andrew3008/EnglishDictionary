@@ -19,9 +19,9 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.ACTIVATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.AGENT_STARTUP_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.ACTIVATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.AGENT_STARTUP_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
 
 import java.io.IOException;
@@ -47,6 +47,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.CustomizationStep;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
@@ -73,7 +76,8 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
 class PlatformStartupLoggingCustomizerTest {
 
-    private static final String CUSTOMIZATION_FAILED = "SPAN_PROCESSOR_INITIALIZATION_FAILED";
+    private static final CustomizationStep STEP = CustomizationStep.SPAN_PROCESSOR_INITIALIZATION;
+    private static final String CUSTOMIZATION_FAILED = STEP.failureCode();
 
     @RegisterExtension
     final AgentLogCapture logs = new AgentLogCapture();
@@ -494,7 +498,7 @@ class PlatformStartupLoggingCustomizerTest {
 
         try (coordinator) {
             coordinator.prepare(config());
-            BootstrapException classified = catchBootstrapFailure(() -> coordinator.execute(CUSTOMIZATION_FAILED, () -> {
+            BootstrapException classified = catchBootstrapFailure(() -> coordinator.execute(STEP, () -> {
                 throw cause;
             }), CUSTOMIZATION_FAILED);
             ExtensionReadinessWireSnapshot failed = coordinator.currentWire();
@@ -755,6 +759,34 @@ class PlatformStartupLoggingCustomizerTest {
     }
 
     @Test
+    void interrupted_delivery_restores_interrupt_after_original_fatal_was_selected() {
+        // given
+        LinkageError cause = new LinkageError("Original SDK linkage failed");
+        IllegalStateException deliveryFailure = new IllegalStateException(
+                "Holder lookup interrupted", new InterruptedException("Holder lookup interrupted"));
+        PlatformStartupLoggingCustomizer customizer = new PlatformStartupLoggingCustomizer(
+                () -> {
+                    throw deliveryFailure;
+                },
+                List::of
+        );
+
+        try {
+            // when
+            Throwable outcome = catchThrowable(() -> customizer.onStartupFailure(cause));
+
+            // then
+            assertThat(outcome).isSameAs(cause);
+            assertThat(Thread.currentThread().isInterrupted()).isTrue();
+            assertThat(cause.getSuppressed()).containsExactly(deliveryFailure);
+            assertThat(startupSummary().errorType()).isEqualTo(LinkageError.class.getName());
+        } finally {
+            //noinspection ResultOfMethodCallIgnored -- очищаем флаг, чтобы не влиять на следующие тесты
+            Thread.interrupted();
+        }
+    }
+
+    @Test
     void ordinary_summary_sink_failure_returns_without_retry_or_cause_replacement() throws Exception {
         // given
         MBeanServer server = MBeanServerFactory.newMBeanServer();
@@ -823,6 +855,42 @@ class PlatformStartupLoggingCustomizerTest {
             assertThat(coordinator.diagnosticSnapshot().failure()).isNull();
             assertThatDiagnosticMBean(server).isNotRegistered();
             verify(sink).write(any(byte[].class));
+        }
+    }
+
+    @Test
+    void fatal_settlement_takes_precedence_over_fatal_summary_for_ordinary_original() throws Exception {
+        // given
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        ScrubbingRuntime runtime = mock(ScrubbingRuntime.class);
+        LinkageError settlementFailure = new LinkageError("Scrubbing cleanup linkage failed");
+        doThrow(settlementFailure).when(runtime).close();
+        BootstrapCoordinator coordinator = coordinator().server(server).scrubberFactory(factory(runtime)).build();
+        ConfigurationException cause = new ConfigurationException("Original startup failure");
+        LinkageError loggingFailure = new LinkageError("Summary linkage failed");
+        OutputStream sink = mock(OutputStream.class);
+        doThrow(loggingFailure).when(sink).write(any(byte[].class));
+
+        try (coordinator) {
+            coordinator.prepare(config());
+            logs.close();
+            try (AutoCloseable ignored = AgentLoggingTestSupport.install(sink)) {
+                AgentLoggingRuntime.shared().applyLevel(AgentLogLevel.INFO);
+
+                // when
+                Throwable outcome = catchThrowable(() -> customizer(coordinator).onStartupFailure(cause));
+
+                // then
+                assertThat(outcome).isSameAs(settlementFailure);
+                assertThat(BootstrapCleanupFailures.contains(cause, settlementFailure)).isTrue();
+                assertThat(BootstrapCleanupFailures.contains(cause, loggingFailure)).isTrue();
+                BootstrapFailure failure = coordinator.diagnosticSnapshot().failure();
+                assertThat(failure.cause()).isSameAs(cause);
+                assertThat(failure.primaryCode()).isEqualTo(AGENT_STARTUP_FAILED);
+                assertThat(failure.effectiveCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
+                assertThatDiagnosticMBean(server).isFailedWith(FAILED_ROLLBACK_INCOMPLETE);
+                verify(runtime).close();
+            }
         }
     }
 
@@ -962,7 +1030,7 @@ class PlatformStartupLoggingCustomizerTest {
         return Stream.of(
                 Arguments.of(originalFatal, null, loggingAfterOriginalFatal, originalFatal),
                 Arguments.of(ordinary, null, loggingAfterOrdinary, loggingAfterOrdinary),
-                Arguments.of(ordinaryWithDelivery, deliveryAfterOrdinary, loggingAfterDelivery, loggingAfterDelivery),
+                Arguments.of(ordinaryWithDelivery, deliveryAfterOrdinary, loggingAfterDelivery, deliveryAfterOrdinary),
                 Arguments.of(originalWithDelivery, deliveryAfterOriginalFatal, loggingAfterBothFatal, originalWithDelivery)
         );
     }

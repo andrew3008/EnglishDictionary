@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.autoconfigure.reactive;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.springframework.http.HttpStatusCode;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.web.server.ServerWebExchange;
@@ -14,7 +13,6 @@ import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
-import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.runtime.propagation.CorrelationIdSupport;
 import space.br1440.platform.tracing.runtime.propagation.RequestIdSupport;
@@ -22,7 +20,6 @@ import space.br1440.platform.tracing.runtime.propagation.RequestIdSupport;
 import io.opentelemetry.api.trace.Span;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.SignalType;
 
 @Slf4j
 public class TraceResponseHeaderWebFilter implements WebFilter {
@@ -33,7 +30,6 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
     private final AtomicBoolean headerReadFailureLogged = new AtomicBoolean();
     private final AtomicBoolean traceContextFailureLogged = new AtomicBoolean();
     private final AtomicBoolean requestAttributeFailureLogged = new AtomicBoolean();
-    private final AtomicBoolean resultAttributeFailureLogged = new AtomicBoolean();
 
     public TraceResponseHeaderWebFilter(TraceOperations traceOperations,
                                         TracingProperties properties,
@@ -69,22 +65,9 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
         wrapped.beforeCommit(() -> Mono.fromRunnable(wrapped::installCanonical));
         ServerWebExchange filteredExchange = exchange.mutate().response(wrapped).build();
         return Mono.defer(() -> {
-                    try {
-                        Span span = Span.current();
-                        if (span.getSpanContext().isValid()) {
-                            span.setAttribute(PlatformAttributes.PLATFORM_REQUEST_ID, requestId);
-                        }
-                    } catch (RuntimeException failure) {
-                        warnOnce(
-                                requestAttributeFailureLogged,
-                                "Failed to set the request id span attribute: {}",
-                                failure
-                        );
-                    }
-
+                    setRequestIdAttribute(requestId);
                     return chain.filter(filteredExchange);
                 })
-                .doFinally(signal -> applyHttpServerResult(wrapped, signal == SignalType.ON_ERROR))
                 .contextWrite(context -> context.put(
                         ReactiveIdentityContextPropagation.KEY,
                         new ReactiveIdentityContextPropagation.IdentityState(
@@ -119,23 +102,14 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
         }
     }
 
-    private void applyHttpServerResult(PlatformOwnedServerHttpResponse response, boolean failed) {
+    private void setRequestIdAttribute(String requestId) {
         try {
             Span span = Span.current();
-            if (!span.getSpanContext().isValid()) {
-                return;
+            if (span.getSpanContext().isValid()) {
+                span.setAttribute(PlatformAttributes.PLATFORM_REQUEST_ID, requestId);
             }
-
-            HttpStatusCode statusCode = response.getStatusCode();
-            boolean errorStatus = (statusCode != null) && (statusCode.value() >= 400);
-            SpanResult result = (failed || errorStatus) ? SpanResult.FAILURE : SpanResult.SUCCESS;
-            span.setAttribute(PlatformAttributes.PLATFORM_RESULT, result.value());
         } catch (RuntimeException failure) {
-            warnOnce(
-                    resultAttributeFailureLogged,
-                    "Failed to set the HTTP server result span attribute: {}",
-                    failure
-            );
+            warnOnce(requestAttributeFailureLogged, "Failed to set the request id span attribute: {}", failure);
         }
     }
 

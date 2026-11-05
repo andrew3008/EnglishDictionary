@@ -2,7 +2,10 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorAssert.assertThatCoordinator;
@@ -11,21 +14,29 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.registerForeignReadinessMBean;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
 
+import java.io.OutputStream;
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
 import javax.management.timer.Timer;
+import jakarta.annotation.Nonnull;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.CustomizationStep;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationException;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingTestSupport;
+import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
 
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
@@ -159,9 +170,155 @@ class BootstrapCoordinatorMissingPreparationTest {
             assertBootstrapFailure(() -> coordinator.prepare(config()), PLATFORM_ACP_NOT_EXECUTED);
             assertBootstrapFailure(() -> coordinator.activate(tracerProvider), PLATFORM_ACP_NOT_EXECUTED);
             assertBootstrapFailure(
-                    () -> coordinator.execute("SPAN_PROCESSOR_INITIALIZATION_FAILED", () -> null),
+                    () -> coordinator.execute(CustomizationStep.SPAN_PROCESSOR_INITIALIZATION, () -> null),
                     PLATFORM_ACP_NOT_EXECUTED
             );
+        }
+    }
+
+    @Test
+    void ordinary_publication_failure_is_attached_to_missing_preparation_cause() {
+        // given
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        IllegalStateException publicationFailure = new IllegalStateException("Failure publication failed");
+        BootstrapCoordinator coordinator = coordinatorFailingPublication(server, publicationFailure);
+
+        try (coordinator; SdkTracerProvider tracerProvider = SdkTracerProvider.builder().build()) {
+            // when
+            BootstrapException failure = catchBootstrapFailure(
+                    () -> coordinator.activate(tracerProvider),
+                    PLATFORM_ACP_NOT_EXECUTED
+            );
+
+            // then
+            assertThat(failure.getCause().getSuppressed()).containsExactly(publicationFailure);
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+            assertThatDiagnosticMBean(server).isRegistered();
+        }
+
+        assertThatDiagnosticMBean(server).isNotRegistered();
+    }
+
+    @Test
+    void fatal_publication_failure_is_thrown_after_missing_preparation_settlement() {
+        // given
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        LinkageError publicationFailure = new LinkageError("Fatal failure publication");
+        BootstrapCoordinator coordinator = coordinatorFailingPublication(server, publicationFailure);
+
+        try (coordinator; SdkTracerProvider tracerProvider = SdkTracerProvider.builder().build()) {
+            // when
+            assertThatThrownBy(() -> coordinator.activate(tracerProvider)).isSameAs(publicationFailure);
+
+            // then
+            BootstrapException sticky = catchBootstrapFailure(
+                    () -> coordinator.prepare(config()),
+                    PLATFORM_ACP_NOT_EXECUTED
+            );
+            assertThat(sticky.getCause().getSuppressed()).containsExactly(publicationFailure);
+            assertThat(publicationFailure.getSuppressed()).isEmpty();
+            assertThatDiagnosticMBean(server).isRegistered();
+        }
+    }
+
+    @Test
+    void publication_failure_without_suppression_is_attached_without_back_reference() {
+        // given
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        NonSuppressingFailure publicationFailure = new NonSuppressingFailure("Failure publication failed");
+        BootstrapCoordinator coordinator = coordinatorFailingPublication(server, publicationFailure);
+
+        try (coordinator; SdkTracerProvider tracerProvider = SdkTracerProvider.builder().build()) {
+            // when
+            BootstrapException failure = catchBootstrapFailure(
+                    () -> coordinator.activate(tracerProvider),
+                    PLATFORM_ACP_NOT_EXECUTED
+            );
+
+            // then
+            assertThat(failure.getCause().getSuppressed()).containsExactly(publicationFailure);
+            publicationFailure.addSuppressed(new IllegalStateException("Ignored secondary"));
+            assertThat(publicationFailure.getSuppressed()).isEmpty();
+            assertThatDiagnosticMBean(server).isRegistered();
+        }
+    }
+
+    @Test
+    @ResourceLock(AgentLogCapture.RESOURCE_LOCK)
+    void fatal_log_failure_is_thrown_after_missing_preparation_settlement() throws Exception {
+        // given
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        LinkageError loggerFailure = new LinkageError("Fatal log delivery failure");
+        FailingOutputStream stream = new FailingOutputStream(loggerFailure);
+        AgentLoggingTestSupport.reset();
+
+        try (BootstrapCoordinator coordinator = coordinator().server(server).build();
+             SdkTracerProvider tracerProvider = SdkTracerProvider.builder().build()) {
+            // when
+            Throwable thrown;
+            try (AutoCloseable ignored = AgentLoggingTestSupport.install(stream)) {
+                thrown = catchThrowable(() -> coordinator.activate(tracerProvider));
+            }
+
+            // then
+            assertThat(thrown).isSameAs(loggerFailure);
+            assertThat(stream.writeAttempts()).isEqualTo(1);
+            BootstrapException sticky = catchBootstrapFailure(
+                    () -> coordinator.prepare(config()),
+                    PLATFORM_ACP_NOT_EXECUTED
+            );
+            assertThat(sticky.getCause().getSuppressed()).containsExactly(loggerFailure);
+            assertThatDiagnosticMBean(server).isFailedWith(PLATFORM_ACP_NOT_EXECUTED);
+        }
+    }
+
+    private static BootstrapCoordinator coordinatorFailingPublication(MBeanServer server, Throwable publicationFailure) {
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
+        PlatformTracingMBeanRegistrar registrar = spy(new PlatformTracingMBeanRegistrar(server, agentInstanceId));
+        PlatformExtensionReadiness readiness = spy(registrar.extensionReadiness());
+        doReturn(readiness).when(registrar).extensionReadiness();
+        doThrow(publicationFailure).when(readiness).fail(anyString(), anyString());
+        return coordinator().agentInstanceId(agentInstanceId).registrar(registrar).build();
+    }
+
+    private static final class NonSuppressingFailure extends RuntimeException {
+
+        private NonSuppressingFailure(String message) {
+            super(message, null, false, true);
+        }
+    }
+
+    private static final class FailingOutputStream extends OutputStream {
+
+        private final Error failure;
+        private int writeAttempts;
+
+        private FailingOutputStream(Error failure) {
+            this.failure = failure;
+        }
+
+        @Override
+        public void write(int value) {
+            failWrite();
+        }
+
+        @Override
+        public void write(@Nonnull byte[] payload) {
+            failWrite();
+        }
+
+        @Override
+        public void write(@Nonnull byte[] payload, int offset, int length) {
+            failWrite();
+        }
+
+        private void failWrite() {
+            writeAttempts++;
+            throw failure;
+        }
+
+        private int writeAttempts() {
+            return writeAttempts;
         }
     }
 }

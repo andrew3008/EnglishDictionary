@@ -6,6 +6,7 @@ import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSn
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
@@ -15,10 +16,8 @@ import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionR
 
 class BootstrapReadinessJournalTest {
 
-    private static final AgentInstanceId AGENT_INSTANCE_ID =
-            AgentInstanceId.parse("00000000-0000-0000-0000-000000000001");
-    private static final AgentInstanceId FOREIGN_AGENT_INSTANCE_ID =
-            AgentInstanceId.parse("00000000-0000-0000-0000-000000000002");
+    private static final AgentInstanceId AGENT_INSTANCE_ID = AgentInstanceId.parse("00000000-0000-0000-0000-000000000001");
+    private static final AgentInstanceId FOREIGN_AGENT_INSTANCE_ID = AgentInstanceId.parse("00000000-0000-0000-0000-000000000002");
 
     private final Object monitor = new Object();
 
@@ -34,6 +33,20 @@ class BootstrapReadinessJournalTest {
                 .isInstanceOf(IllegalMonitorStateException.class)
                 .hasMessage("FAILED readiness publication requires the bootstrap lifecycle monitor");
         assertThat(readiness.snapshot().lifecycle()).isEqualTo(PlatformExtensionLifecycle.INITIALIZING);
+        assertThat(journal.current().lifecycle()).isEqualTo(PlatformExtensionLifecycle.INITIALIZING.name());
+    }
+
+    @Test
+    void readyPublicationRequiresLifecycleMonitor() {
+        // given
+        PlatformExtensionReadiness readiness = PlatformExtensionReadiness.forCurrentExtension();
+        BootstrapReadinessJournal journal = new BootstrapReadinessJournal(monitor, readiness, AGENT_INSTANCE_ID);
+
+        // when
+        // then
+        assertThatThrownBy(() -> journal.publishReady(null))
+                .isInstanceOf(IllegalMonitorStateException.class)
+                .hasMessage("READY readiness publication requires the bootstrap lifecycle monitor");
         assertThat(journal.current().lifecycle()).isEqualTo(PlatformExtensionLifecycle.INITIALIZING.name());
     }
 
@@ -100,13 +113,15 @@ class BootstrapReadinessJournalTest {
         }
 
         BootstrapReadinessJournal journal = new BootstrapReadinessJournal(monitor, readiness, AGENT_INSTANCE_ID);
-        journal.publishReady(ExtensionReadinessWireSnapshot.ready(
-                readiness.completeInitialization(),
-                FOREIGN_AGENT_INSTANCE_ID.toString(),
-                "foreign-batch",
-                7L,
-                evidence(readiness, "foreign")
-        ));
+        synchronized (monitor) {
+            journal.publishReady(ExtensionReadinessWireSnapshot.ready(
+                    readiness.completeInitialization(),
+                    FOREIGN_AGENT_INSTANCE_ID.toString(),
+                    "foreign-batch",
+                    7L,
+                    evidence(readiness, "foreign")
+            ));
+        }
 
         // when
         ExtensionReadinessWireSnapshot failed;

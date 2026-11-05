@@ -25,7 +25,6 @@ import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
-import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
@@ -47,10 +46,8 @@ class TraceResponseHeaderServletFilterFailureLogTest {
     private static final String REQUEST_ID = "request-id";
     private static final String TRACE_CONTEXT_FAILURE_MESSAGE = "trace-context-secret-message";
     private static final String REQUEST_ATTRIBUTE_FAILURE_MESSAGE = "request-attribute-secret-message";
-    private static final String RESULT_ATTRIBUTE_FAILURE_MESSAGE = "result-attribute-secret-message";
     private static final String TRACE_CONTEXT_WARN = "Failed to read the current trace id: java.lang.IllegalStateException";
     private static final String REQUEST_ATTRIBUTE_WARN = "Failed to set the request id span attribute: java.lang.IllegalStateException";
-    private static final String RESULT_ATTRIBUTE_WARN = "Failed to set the HTTP server result span attribute: java.lang.IllegalStateException";
 
     private Logger logger;
     private ListAppender<ILoggingEvent> appender;
@@ -70,7 +67,6 @@ class TraceResponseHeaderServletFilterFailureLogTest {
         chain = mock(FilterChain.class);
         when(request.getHeader(PlatformHeaders.X_REQUEST_ID)).thenReturn(REQUEST_ID);
         when(response.isCommitted()).thenReturn(true);
-        when(response.getStatus()).thenReturn(200);
     }
 
     @AfterEach
@@ -126,33 +122,6 @@ class TraceResponseHeaderServletFilterFailureLogTest {
         // then
         verify(chain, times(3)).doFilter(eq(request), any(HttpServletResponse.class));
         assertBoundedWarnings(REQUEST_ATTRIBUTE_WARN, REQUEST_ATTRIBUTE_FAILURE_MESSAGE);
-    }
-
-    @Test
-    void resultAttributeFailureWarnIsBoundedPerInstanceAndChainContinues() throws Exception {
-        // given
-        ActiveTraceContextView traceContext = emptyTraceContext();
-        TraceResponseHeaderServletFilter first = filter(traceContext);
-        Span span = currentSpan();
-        doThrow(new IllegalStateException(RESULT_ATTRIBUTE_FAILURE_MESSAGE))
-                .when(span)
-                .setAttribute(PlatformAttributes.PLATFORM_RESULT, SpanResult.SUCCESS.value());
-
-        // when
-        try (Scope ignored = Context.current().with(span).makeCurrent()) {
-            first.doFilter(request, response, chain);
-            first.doFilter(request, response, chain);
-
-            // then
-            assertThat(appender.list).hasSize(1);
-
-            // when
-            filter(traceContext).doFilter(request, response, chain);
-        }
-
-        // then
-        verify(chain, times(3)).doFilter(eq(request), any(HttpServletResponse.class));
-        assertBoundedWarnings(RESULT_ATTRIBUTE_WARN, RESULT_ATTRIBUTE_FAILURE_MESSAGE);
     }
 
     private TraceResponseHeaderServletFilter filter(ActiveTraceContextView traceContext) {

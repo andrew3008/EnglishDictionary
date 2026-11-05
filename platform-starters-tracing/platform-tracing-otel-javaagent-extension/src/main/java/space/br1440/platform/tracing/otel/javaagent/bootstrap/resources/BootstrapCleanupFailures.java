@@ -6,22 +6,14 @@ import java.util.IdentityHashMap;
 import java.util.Objects;
 import java.util.Set;
 
+import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
+
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public final class BootstrapCleanupFailures {
 
     private static final String UNKNOWN_RESOURCE_LABEL = "unknown";
-
-    public static Throwable rollback(BootstrapResources resources, Throwable primary) {
-        try {
-            resources.close();
-            return null;
-        } catch (RuntimeException | Error cleanupFailure) {
-            suppressPreservingPrimary(primary, cleanupFailure);
-            return cleanupFailure;
-        }
-    }
 
     public static Throwable aggregate(Throwable aggregate, Throwable failure) {
         if (failure == null) {
@@ -32,41 +24,47 @@ public final class BootstrapCleanupFailures {
             return failure;
         }
 
-        if (failure instanceof Error && !(aggregate instanceof Error)) {
-            if (!contains(aggregate, failure) && !contains(failure, aggregate)) {
-                failure.addSuppressed(aggregate);
+        boolean promote = PlatformThrowables.isFatal(failure) && !PlatformThrowables.isFatal(aggregate);
+        Throwable root = promote ? failure : aggregate;
+        Throwable attached = promote ? aggregate : failure;
+        try {
+            attachIfAcyclic(root, attached);
+            return root;
+        } catch (RuntimeException | Error inspectionFailure) {
+            if (PlatformThrowables.isFatal(root) || !PlatformThrowables.isFatal(inspectionFailure)) {
+                return root;
             }
 
-            return failure;
+            attachBestEffort(inspectionFailure, root);
+            return inspectionFailure;
         }
-
-        if (contains(aggregate, failure) || contains(failure, aggregate)) {
-            return aggregate;
-        }
-
-        aggregate.addSuppressed(failure);
-        return aggregate;
     }
 
     public static void suppressPreservingPrimary(Throwable primary, Throwable secondary) {
-        Throwable requiredPrimary = Objects.requireNonNull(primary, "primary");
-        Throwable requiredSecondary = Objects.requireNonNull(secondary, "secondary");
-
-        synchronized (BootstrapCleanupFailures.class) {
-            if (contains(requiredPrimary, requiredSecondary) || contains(requiredSecondary, requiredPrimary)) {
-                return;
-            }
-
-            requiredPrimary.addSuppressed(requiredSecondary);
-        }
+        attachIfAcyclic(
+                Objects.requireNonNull(primary, "primary"),
+                Objects.requireNonNull(secondary, "secondary")
+        );
     }
 
     public static void rethrow(Throwable failure) {
-        if (failure instanceof Error error) {
-            throw error;
+        switch (Objects.requireNonNull(failure, "failure")) {
+            case Error error -> throw error;
+            case RuntimeException runtimeFailure -> throw runtimeFailure;
+            default -> throw new IllegalStateException(
+                    "Checked failure cannot be rethrown by bootstrap cleanup",
+                    failure
+            );
         }
+    }
 
-        throw (RuntimeException) failure;
+    public static Throwable capture(Runnable closeAction) {
+        try {
+            closeAction.run();
+            return null;
+        } catch (RuntimeException | Error failure) {
+            return failure;
+        }
     }
 
     public static Throwable withResourceLabel(String resourceLabel, Throwable failure) {
@@ -85,31 +83,63 @@ public final class BootstrapCleanupFailures {
                 return cleanupFailure.resourceLabel();
             }
 
-            current = current.getCause();
+            current = causeOf(current);
         }
 
         return UNKNOWN_RESOURCE_LABEL;
     }
 
     public static boolean contains(Throwable root, Throwable target) {
-        Throwable requiredRoot = Objects.requireNonNull(root, "root");
-        Throwable requiredTarget = Objects.requireNonNull(target, "target");
+        Reach reach = reach(
+                Objects.requireNonNull(root, "root"),
+                Objects.requireNonNull(target, "target")
+        );
+        return reach == Reach.FOUND;
+    }
 
+    private static void attachIfAcyclic(Throwable primary, Throwable secondary) {
+        synchronized (BootstrapCleanupFailures.class) {
+            if (reach(primary, secondary) == Reach.ABSENT && reach(secondary, primary) == Reach.ABSENT) {
+                primary.addSuppressed(secondary);
+            }
+        }
+    }
+
+    private static void attachBestEffort(Throwable primary, Throwable secondary) {
+        try {
+            attachIfAcyclic(primary, secondary);
+        } catch (RuntimeException | Error ignored) {
+            // root уже выбран как fatal; повторный отказ inspection его не заменяет
+        }
+    }
+
+    private static Reach reach(Throwable root, Throwable target) {
         Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
         ArrayDeque<Throwable> pending = new ArrayDeque<>();
-        pending.push(requiredRoot);
+        pending.push(root);
+        boolean complete = true;
 
         while (!pending.isEmpty()) {
             Throwable current = pending.pop();
-            if (current == requiredTarget) {
-                return true;
+            if (current == target) {
+                return Reach.FOUND;
             }
 
             if (!visited.add(current)) {
                 continue;
             }
 
-            Throwable cause = current.getCause();
+            Throwable cause = null;
+            try {
+                cause = current.getCause();
+            } catch (RuntimeException | Error accessorFailure) {
+                if (PlatformThrowables.isFatal(accessorFailure)) {
+                    throw accessorFailure;
+                }
+
+                complete = false;
+            }
+
             if (cause != null) {
                 pending.push(cause);
             }
@@ -119,6 +149,24 @@ public final class BootstrapCleanupFailures {
             }
         }
 
-        return false;
+        return complete ? Reach.ABSENT : Reach.UNKNOWN;
+    }
+
+    private static Throwable causeOf(Throwable failure) {
+        try {
+            return failure.getCause();
+        } catch (RuntimeException | Error accessorFailure) {
+            if (PlatformThrowables.isFatal(accessorFailure)) {
+                throw accessorFailure;
+            }
+
+            return null;
+        }
+    }
+
+    private enum Reach {
+        FOUND,
+        ABSENT,
+        UNKNOWN
     }
 }

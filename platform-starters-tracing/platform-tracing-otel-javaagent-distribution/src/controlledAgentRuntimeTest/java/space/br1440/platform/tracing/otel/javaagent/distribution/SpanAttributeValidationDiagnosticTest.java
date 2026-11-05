@@ -16,7 +16,7 @@ import space.br1440.platform.tracing.otel.javaagent.distribution.probe.SpanAttri
 class SpanAttributeValidationDiagnosticTest {
 
     private static final String MISSING_ATTRIBUTE_KEY = "platform.validation.missing";
-    private static final String MISSING_ATTRIBUTE_NAME = "platform.trace.result";
+    private static final String MISSING_ATTRIBUTE_NAME = "platform.trace.type";
     private static final String VALIDATION_ERROR_EVENT = "\"event_code\":\"PTA-VALID-003\"";
     private static final String ERROR_LEVEL = "\"level\":\"ERROR\"";
 

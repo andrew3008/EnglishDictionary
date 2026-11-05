@@ -1,23 +1,19 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_ACP_NOT_EXECUTED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.AGENT_STARTUP_FAILED;
 
 import java.util.Objects;
+import java.util.Optional;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureLog;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureAdmission;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.FailureSite;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.JmxRegistrationException;
-import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
-import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
-import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
-import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
 final class BootstrapTerminalTransitions {
-
-    private static final PlatformAgentLogger log = PlatformAgentLogger.get(BootstrapTerminalTransitions.class);
 
     private final BootstrapLifecycleState lifecycle;
     private final BootstrapReadinessJournal journal;
@@ -28,241 +24,86 @@ final class BootstrapTerminalTransitions {
         this.journal = Objects.requireNonNull(journal, "journal");
     }
 
-    BootstrapException recordActivationFailure(String failureCode,
-                                               String subphase,
-                                               Throwable cause,
-                                               String batchId,
-                                               ExtensionRuntimeEvidence evidence) {
-        return terminalizeFailure(
-                failureCode,
-                "activate",
-                subphase,
-                null,
-                cause,
-                batchId,
-                evidence
-        );
-    }
+    FailureAdmission terminalize(FailureSite site,
+                                 String failureCode,
+                                 Throwable cause,
+                                 String batchId,
+                                 ExtensionRuntimeEvidence evidence) {
+        Objects.requireNonNull(site, "site");
 
-    BootstrapException completeActivationFailure(BootstrapException classified,
-                                                 BootstrapResources resources,
-                                                 Throwable cause,
-                                                 Throwable sectionFailure,
-                                                 String batchId,
-                                                 ExtensionRuntimeEvidence evidence) {
-        if (Thread.holdsLock(lifecycle.monitor())) {
-            throw new IllegalMonitorStateException(
-                    "Activation rollback must run outside the bootstrap lifecycle monitor"
-            );
-        }
-
-        if (sectionFailure != null) {
-            BootstrapCleanupFailures.suppressPreservingPrimary(cause, sectionFailure);
-        }
-
-        Throwable cleanupFailure = (resources == null)
-                ? null
-                : BootstrapCleanupFailures.rollback(resources, cause);
-
-        AutoconfigureSession detachedSession = lifecycle.detachFailedSession();
-        if (detachedSession != null) {
-            try {
-                detachedSession.close();
-            } catch (RuntimeException | Error sessionCleanupFailure) {
-                BootstrapCleanupFailures.suppressPreservingPrimary(cause, sessionCleanupFailure);
-                cleanupFailure = BootstrapCleanupFailures.aggregate(cleanupFailure, sessionCleanupFailure);
-            }
-        }
-
-        Throwable activationOutcome = BootstrapCleanupFailures.aggregate(cause, sectionFailure);
-        activationOutcome = BootstrapCleanupFailures.aggregate(activationOutcome, cleanupFailure);
-
-        BootstrapException effectiveFailure = classified;
-        try {
-            if (cleanupFailure != null || JmxRegistrationException.rollbackIncompleteIn(cause)) {
-                Throwable escalationCause = cleanupFailure == null ? cause : cleanupFailure;
-                synchronized (lifecycle.monitor()) {
-                    lifecycle.escalateRollbackIncomplete("activate", escalationCause);
-                    journal.publishFailed(lifecycle.failure(), batchId, evidence);
-                    effectiveFailure = new BootstrapException(lifecycle.failure());
-                }
-            }
-        } catch (RuntimeException | Error settlementFailure) {
-            activationOutcome = BootstrapCleanupFailures.aggregate(activationOutcome, settlementFailure);
-            throw settlementFailure;
-        } finally {
-            PlatformThrowables.propagateIfFatal(activationOutcome);
-        }
-
-        if (sectionFailure != null) {
-            rethrowSectionFailure(sectionFailure);
-        }
-
-        return Objects.requireNonNull(effectiveFailure, "classified");
-    }
-
-    BootstrapException terminalizePreparationFailure(String failureCode,
-                                                     String subphase,
-                                                     String propertyName,
-                                                     Throwable cause,
-                                                     ExtensionRuntimeEvidence evidence) {
-        return terminalizeFailure(
-                failureCode,
-                "prepare",
-                subphase,
-                propertyName,
-                cause,
-                "",
-                evidence
-        );
-    }
-
-    Throwable completeCleanupFailure(String phase,
-                                     Throwable primaryFailure,
-                                     Throwable cleanupFailure,
-                                     ExtensionRuntimeEvidence evidence) {
-        Objects.requireNonNull(phase, "phase");
-        Objects.requireNonNull(primaryFailure, "primaryFailure");
-        Objects.requireNonNull(cleanupFailure, "cleanupFailure");
-        Objects.requireNonNull(evidence, "evidence");
-
-        Throwable outcome = BootstrapCleanupFailures.aggregate(primaryFailure, cleanupFailure);
-        try {
-            synchronized (lifecycle.monitor()) {
-                lifecycle.escalateRollbackIncomplete(phase, cleanupFailure);
-                journal.publishFailed(lifecycle.failure(), "", evidence);
-                if (primaryFailure instanceof BootstrapException) {
-                    return new BootstrapException(lifecycle.failure());
-                }
-            }
-
-            return outcome;
-        } catch (RuntimeException | Error settlementFailure) {
-            outcome = BootstrapCleanupFailures.aggregate(outcome, settlementFailure);
-            throw settlementFailure;
-        } finally {
-            PlatformThrowables.propagateIfFatal(outcome);
-        }
-    }
-
-    BootstrapException terminalizeCustomizationFailure(String failureCode,
-                                                       String phase,
-                                                       Throwable cause,
-                                                       ExtensionRuntimeEvidence evidence) {
-        return terminalizeFailure(
-                failureCode,
-                phase,
-                phase,
-                null,
-                cause,
-                "",
-                evidence
-        );
-    }
-
-    void failMissingPreparation(ExtensionRuntimeEvidence evidence, Runnable diagnosticRegistration) {
-        Objects.requireNonNull(diagnosticRegistration, "diagnosticRegistration");
-        BootstrapException classified;
         synchronized (lifecycle.monitor()) {
-            if (lifecycle.state() != BootstrapState.NEW) {
-                return;
-            }
-
-            IllegalStateException cause = new IllegalStateException(
-                    "AgentListener.afterAgent invoked without a prior ACP prepare() call"
-            );
-            classified = terminalizeFailure(
-                    PLATFORM_ACP_NOT_EXECUTED,
-                    "activate",
-                    "activate",
-                    null,
-                    cause,
-                    "",
-                    evidence
-            );
+            return project(lifecycle.fail(failureCode, site.phase(), cause), batchId, evidence);
         }
-
-        try {
-            diagnosticRegistration.run();
-        } catch (RuntimeException | Error diagnosticFailure) {
-            BootstrapCleanupFailures.suppressPreservingPrimary(classified.failure().cause(), diagnosticFailure);
-            PlatformThrowables.propagateIfFatal(diagnosticFailure);
-        }
-
-        throw classified;
     }
 
-    void publishCloseFailureSnapshot(BootstrapLifecycleState.CloseContext context,
+    Optional<FailureAdmission> terminalizeStartup(Throwable cause, ExtensionRuntimeEvidence evidence) {
+        synchronized (lifecycle.monitor()) {
+            return lifecycle.failPrepared(AGENT_STARTUP_FAILED, FailureSite.startup().phase(), cause)
+                    .map(admission -> project(admission, BatchIds.NONE, evidence));
+        }
+    }
+
+    Optional<FailureAdmission> recordMissingPreparation(ExtensionRuntimeEvidence evidence) {
+        IllegalStateException cause = new IllegalStateException(
+                "AgentListener.afterAgent invoked without a prior ACP prepare() call"
+        );
+
+        synchronized (lifecycle.monitor()) {
+            return lifecycle.recordMissingPreparation(cause)
+                    .map(admission -> project(admission, BatchIds.NONE, evidence));
+        }
+    }
+
+    FailureAdmission escalate(String phase,
+                              Throwable cleanupFailure,
+                              String batchId,
+                              ExtensionRuntimeEvidence evidence) {
+        synchronized (lifecycle.monitor()) {
+            return project(lifecycle.escalateRollbackIncomplete(phase, cleanupFailure), batchId, evidence);
+        }
+    }
+
+    void publishCloseFailureSnapshot(CloseOperation.CloseContext context,
                                      Throwable cleanupFailure) {
         Objects.requireNonNull(context, "context");
         Objects.requireNonNull(cleanupFailure, "cleanupFailure");
 
         synchronized (lifecycle.monitor()) {
-            BootstrapFailure classified = lifecycle.classifyCloseFailure(context, cleanupFailure);
+            BootstrapFailure classified = BootstrapLifecycleState.classifyCloseFailure(context, cleanupFailure);
             publishCurrentFailure(classified);
         }
     }
 
-    Throwable completeCloseFailure(BootstrapLifecycleState.CloseContext context,
+    Throwable completeCloseFailure(CloseOperation.CloseContext context,
                                    Throwable cleanupFailure,
                                    Throwable priorPublicationFailure,
                                    boolean failureSnapshotPublished) {
         Objects.requireNonNull(context, "context");
         Objects.requireNonNull(cleanupFailure, "cleanupFailure");
 
-        BootstrapFailure settledFailure;
-        Throwable finalPublicationFailure = null;
+        BootstrapFailure recordedFailure;
         Throwable baseOutcome;
         synchronized (lifecycle.monitor()) {
             if (priorPublicationFailure == null
                     && lifecycle.closeFailureAlreadyRecorded(cleanupFailure)) {
-                try {
-                    publishCurrentFailure(lifecycle.failure());
-                    return cleanupFailure;
-                } catch (RuntimeException | Error publicationFailure) {
-                    BootstrapCleanupFailures.suppressPreservingPrimary(
-                            lifecycle.failure().cause(),
-                            publicationFailure
-                    );
-                    return BootstrapCleanupFailures.aggregate(cleanupFailure, publicationFailure);
-                }
+                return BootstrapCleanupFailures.aggregate(cleanupFailure, publishCapturing(lifecycle.failure()));
             }
 
-            settledFailure = lifecycle.recordCloseFailure(context, cleanupFailure);
+            recordedFailure = lifecycle.recordCloseFailure(context, cleanupFailure);
             if (priorPublicationFailure != null) {
                 BootstrapCleanupFailures.suppressPreservingPrimary(
-                        settledFailure.cause(),
+                        recordedFailure.cause(),
                         priorPublicationFailure
                 );
             }
 
-            if (!failureSnapshotPublished) {
-                try {
-                    publishCurrentFailure(settledFailure);
-                } catch (RuntimeException | Error publicationFailure) {
-                    finalPublicationFailure = publicationFailure;
-                    BootstrapCleanupFailures.suppressPreservingPrimary(
-                            settledFailure.cause(),
-                            publicationFailure
-                    );
-                }
-            }
-
+            Throwable finalPublicationFailure = failureSnapshotPublished ? null : publishCapturing(recordedFailure);
             baseOutcome = BootstrapCleanupFailures.aggregate(cleanupFailure, priorPublicationFailure);
             baseOutcome = BootstrapCleanupFailures.aggregate(baseOutcome, finalPublicationFailure);
         }
 
-        Throwable outcomeToLog = baseOutcome;
         try {
-            log.log(BootstrapLogEvent.BOOTSTRAP_PHASE_FAILED, fields -> fields
-                    .putString(AgentLogField.FAILURE_CODE, settledFailure.effectiveCode())
-                    .putString(AgentLogField.PHASE, "close")
-                    .putString(AgentLogField.SUBPHASE, "close")
-                    .putString(
-                            AgentLogField.RESOURCE_LABEL,
-                            BootstrapCleanupFailures.resourceLabel(outcomeToLog)
-                    )
-                    .cause(outcomeToLog));
+            BootstrapFailureLog.closeFailed(recordedFailure, baseOutcome);
             return baseOutcome;
         } catch (RuntimeException | Error loggerFailure) {
             synchronized (lifecycle.monitor()) {
@@ -276,38 +117,33 @@ final class BootstrapTerminalTransitions {
         }
     }
 
-    private BootstrapException terminalizeFailure(String failureCode,
-                                                  String phase,
-                                                  String subphase,
-                                                  String propertyName,
-                                                  Throwable cause,
-                                                  String batchId,
-                                                  ExtensionRuntimeEvidence evidence) {
-        synchronized (lifecycle.monitor()) {
-            BootstrapException classified = lifecycle.fail(
-                    failureCode,
-                    phase,
-                    subphase,
-                    propertyName,
-                    cause
-            );
-            if (lifecycle.state() == BootstrapState.FAILED) {
-                journal.publishFailed(lifecycle.failure(), batchId, evidence);
-            }
-            return classified;
+    private FailureAdmission project(FailureAdmission admission,
+                                     String batchId,
+                                     ExtensionRuntimeEvidence evidence) {
+        if (!admission.recorded()) {
+            return admission;
+        }
+
+        try {
+            journal.publishFailed(admission.failure(), batchId, evidence);
+            return admission;
+        } catch (RuntimeException | Error projectionFailure) {
+            return admission.withProjectionFailure(projectionFailure);
+        }
+    }
+
+    private Throwable publishCapturing(BootstrapFailure failure) {
+        try {
+            publishCurrentFailure(failure);
+            return null;
+        } catch (RuntimeException | Error publicationFailure) {
+            BootstrapCleanupFailures.suppressPreservingPrimary(failure.cause(), publicationFailure);
+            return publicationFailure;
         }
     }
 
     private void publishCurrentFailure(BootstrapFailure failure) {
         ExtensionReadinessWireSnapshot current = journal.current();
         journal.publishFailed(failure, current.batchId(), current.evidence());
-    }
-
-    private static void rethrowSectionFailure(Throwable sectionFailure) {
-        if (sectionFailure instanceof Error error) {
-            throw error;
-        }
-
-        throw (RuntimeException) sectionFailure;
     }
 }

@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.awaitility.Awaitility.await;
@@ -12,8 +13,11 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorAssert.assertThatCoordinator;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_INITIALIZING;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertAdmissionRejection;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchAdmissionRejection;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
@@ -21,9 +25,9 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.recordingReadinessRegistration;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.satisfyReadinessBarrier;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.CONFIGURATION_INITIALIZATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.DIAGNOSTIC_MBEAN_REGISTRATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.CONFIGURATION_INITIALIZATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.DIAGNOSTIC_MBEAN_REGISTRATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
 
 import java.time.Duration;
@@ -34,7 +38,9 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
 
@@ -42,8 +48,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapAdmissionRejectedException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailure;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.ExtensionRuntimeVerifier;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.verification.VerificationException;
@@ -299,9 +311,8 @@ class BootstrapCoordinatorPrepareTest {
         try (BootstrapCoordinator coordinator = coordinator().build()) {
             coordinator.prepare(config());
 
-            // when
-            // then
-            assertBootstrapFailure(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
+            // when/then
+            assertAdmissionRejection(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
         }
     }
 
@@ -322,7 +333,7 @@ class BootstrapCoordinatorPrepareTest {
             assertThat(acceptedRevision.acceptedSequence()).isEqualTo(1L);
 
             // when
-            assertBootstrapFailure(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
+            assertAdmissionRejection(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
             AutoconfigureSession retainedSession = coordinator.session();
 
             // then
@@ -343,7 +354,7 @@ class BootstrapCoordinatorPrepareTest {
             AutoconfigureSession originalSession = coordinator.prepare(config());
 
             // when
-            assertBootstrapFailure(
+            assertAdmissionRejection(
                     () -> coordinator.prepare(config(Map.of(ExtensionPropertyNames.SAMPLING_RATIO, "0.42"))),
                     SECOND_SDK_BUILD
             );
@@ -377,7 +388,7 @@ class BootstrapCoordinatorPrepareTest {
                 long evidenceGeneration = coordinator.currentWire().evidenceGeneration();
 
                 // when
-                assertBootstrapFailure(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
+                assertAdmissionRejection(() -> coordinator.prepare(config()), SECOND_SDK_BUILD);
 
                 // then
                 assertThatCoordinator(coordinator).isActiveAndReady();
@@ -419,14 +430,49 @@ class BootstrapCoordinatorPrepareTest {
     }
 
     @Test
-    void reentrant_prepare_is_rejected_without_terminalizing_or_registering_diagnostics() {
+    void reentrant_prepare_rejection_handled_by_verifier_keeps_outer_prepare_admitted() {
         // given
         ConfigProperties configuration = config();
         AtomicReference<BootstrapCoordinator> coordinatorReference = new AtomicReference<>();
-        AtomicReference<BootstrapException> nestedRejection = new AtomicReference<>();
+        AtomicReference<BootstrapState> nestedState = new AtomicReference<>();
         MBeanServer server = MBeanServerFactory.newMBeanServer();
         ExtensionRuntimeVerifier verifier = extensionVersion -> {
-            BootstrapException rejection = catchBootstrapFailure(
+            assertAdmissionRejection(
+                    () -> {
+                        //noinspection resource — повторный prepare отказывает до выдачи сессии; владение остаётся у координатора
+                        coordinatorReference.get().prepare(configuration);
+                    },
+                    REENTRANT_OR_OUT_OF_ORDER
+            );
+            nestedState.set(coordinatorReference.get().state());
+            return RuntimeEvidenceTestFixtures.evidence(extensionVersion);
+        };
+        BootstrapCoordinator coordinator = coordinator().server(server).verifier(verifier).build();
+        coordinatorReference.set(coordinator);
+
+        try (coordinator) {
+            // when
+            AutoconfigureSession session = coordinator.prepare(configuration);
+
+            // then
+            assertThat(session).isSameAs(coordinator.session());
+            assertThat(nestedState).hasValue(BootstrapState.PREPARING);
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.PREPARED);
+            assertThat(coordinator.currentWire().lifecycle()).isEqualTo(WIRE_INITIALIZING);
+            assertThat(coordinator.currentWire().failureCode()).isEmpty();
+            assertThat(coordinator.diagnosticSnapshot().failure()).isNull();
+        }
+    }
+
+    @Test
+    void reentrant_prepare_rejection_propagated_by_verifier_fails_outer_prepare() {
+        // given
+        ConfigProperties configuration = config();
+        AtomicReference<BootstrapCoordinator> coordinatorReference = new AtomicReference<>();
+        AtomicReference<BootstrapAdmissionRejectedException> nestedRejection = new AtomicReference<>();
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        ExtensionRuntimeVerifier verifier = extensionVersion -> {
+            BootstrapAdmissionRejectedException rejection = catchAdmissionRejection(
                     () -> {
                         //noinspection resource — повторный prepare отказывает до выдачи сессии; владение остаётся у координатора
                         coordinatorReference.get().prepare(configuration);
@@ -447,31 +493,56 @@ class BootstrapCoordinatorPrepareTest {
             );
 
             // then
-            assertThat(propagated).isSameAs(nestedRejection.get());
-            assertThat(propagated.getCause()).isSameAs(nestedRejection.get().getCause());
-            assertThat(propagated.failure().primaryCode()).isEqualTo(REENTRANT_OR_OUT_OF_ORDER);
-            assertThat(propagated.failure().effectiveCode()).isEqualTo(REENTRANT_OR_OUT_OF_ORDER);
-            assertThat(coordinator.state()).isEqualTo(BootstrapState.PREPARING);
-            assertThat(coordinator.currentWire().lifecycle()).isEqualTo(WIRE_INITIALIZING);
-            assertThat(coordinator.currentWire().primaryFailureCode()).isEmpty();
-            assertThat(coordinator.currentWire().failureCode()).isEmpty();
-            assertThatDiagnosticMBean(server).isNotRegistered();
+            assertOuterPrepareFailedByNestedRejection(coordinator, server, propagated, nestedRejection.get());
         }
 
         assertThatDiagnosticMBean(server).isNotRegistered();
     }
 
     @Test
-    void activate_during_prepare_is_rejected_without_terminalizing_or_registering_diagnostics() {
+    void activate_during_prepare_rejection_handled_by_verifier_keeps_outer_prepare_admitted() {
         // given
         ConfigProperties configuration = config();
         AtomicReference<BootstrapCoordinator> coordinatorReference = new AtomicReference<>();
-        AtomicReference<BootstrapException> nestedRejection = new AtomicReference<>();
+        AtomicReference<BootstrapState> nestedState = new AtomicReference<>();
         MBeanServer server = MBeanServerFactory.newMBeanServer();
 
         try (SdkTracerProvider tracerProvider = SdkTracerProvider.builder().build()) {
             ExtensionRuntimeVerifier verifier = extensionVersion -> {
-                BootstrapException rejection = catchBootstrapFailure(
+                assertAdmissionRejection(
+                        () -> coordinatorReference.get().activate(tracerProvider),
+                        REENTRANT_OR_OUT_OF_ORDER
+                );
+                nestedState.set(coordinatorReference.get().state());
+                return RuntimeEvidenceTestFixtures.evidence(extensionVersion);
+            };
+            BootstrapCoordinator coordinator = coordinator().server(server).verifier(verifier).build();
+            coordinatorReference.set(coordinator);
+
+            try (coordinator) {
+                // when
+                coordinator.prepare(configuration);
+
+                // then
+                assertThat(nestedState).hasValue(BootstrapState.PREPARING);
+                assertThat(coordinator.state()).isEqualTo(BootstrapState.PREPARED);
+                assertThat(coordinator.currentWire().lifecycle()).isEqualTo(WIRE_INITIALIZING);
+                assertThat(coordinator.diagnosticSnapshot().failure()).isNull();
+            }
+        }
+    }
+
+    @Test
+    void activate_during_prepare_rejection_propagated_by_verifier_fails_outer_prepare() {
+        // given
+        ConfigProperties configuration = config();
+        AtomicReference<BootstrapCoordinator> coordinatorReference = new AtomicReference<>();
+        AtomicReference<BootstrapAdmissionRejectedException> nestedRejection = new AtomicReference<>();
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+
+        try (SdkTracerProvider tracerProvider = SdkTracerProvider.builder().build()) {
+            ExtensionRuntimeVerifier verifier = extensionVersion -> {
+                BootstrapAdmissionRejectedException rejection = catchAdmissionRejection(
                         () -> coordinatorReference.get().activate(tracerProvider),
                         REENTRANT_OR_OUT_OF_ORDER
                 );
@@ -489,21 +560,12 @@ class BootstrapCoordinatorPrepareTest {
                 );
 
                 // then
-                assertThat(propagated).isSameAs(nestedRejection.get());
-                assertThat(propagated.getCause()).isSameAs(nestedRejection.get().getCause());
-                assertThat(propagated.failure().primaryCode()).isEqualTo(REENTRANT_OR_OUT_OF_ORDER);
-                assertThat(propagated.failure().effectiveCode()).isEqualTo(REENTRANT_OR_OUT_OF_ORDER);
-                assertThat(coordinator.state()).isEqualTo(BootstrapState.PREPARING);
-                assertThat(coordinator.currentWire().lifecycle()).isEqualTo(WIRE_INITIALIZING);
-                assertThat(coordinator.currentWire().primaryFailureCode()).isEmpty();
-                assertThat(coordinator.currentWire().failureCode()).isEmpty();
-                assertThatDiagnosticMBean(server).isNotRegistered();
+                assertOuterPrepareFailedByNestedRejection(coordinator, server, propagated, nestedRejection.get());
             }
         }
 
         assertThatDiagnosticMBean(server).isNotRegistered();
     }
-
     @Test
     void close_during_prepare_waits_for_session_ownership_and_closes_runtime() throws Exception {
         // given
@@ -574,6 +636,30 @@ class BootstrapCoordinatorPrepareTest {
     }
 
     @Test
+    void reentrant_close_during_prepare_is_rejected_and_prepare_ownership_is_released() {
+        // given
+        AtomicReference<BootstrapCoordinator> coordinatorReference = new AtomicReference<>();
+        BootstrapCoordinator coordinator = coordinator()
+                .verifier(extensionVersion -> {
+                    coordinatorReference.get().close();
+                    return RuntimeEvidenceTestFixtures.evidence(extensionVersion);
+                })
+                .build();
+        coordinatorReference.set(coordinator);
+
+        // when
+        Throwable thrown = catchThrowable(() -> coordinator.prepare(config()));
+
+        // then
+        assertThat(thrown).isInstanceOf(BootstrapException.class);
+        assertThat(((BootstrapException) thrown).failure().cause())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Bootstrap close cannot run reentrantly during preparation");
+        assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+        assertThatCode(coordinator::close).doesNotThrowAnyException();
+    }
+
+    @Test
     void fatal_preparation_cleanup_failure_is_settled_before_propagation() {
         // given
         AgentInstanceId agentInstanceId = AgentInstanceId.random();
@@ -610,11 +696,123 @@ class BootstrapCoordinatorPrepareTest {
             assertThat(coordinator.currentWire().primaryFailureCode())
                     .isEqualTo(DIAGNOSTIC_MBEAN_REGISTRATION_FAILED);
             assertThat(coordinator.currentWire().failureCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
-            assertThat(cleanupFailure.getSuppressed())
-                    .anySatisfy(suppressed -> assertThat(suppressed)
-                            .isInstanceOf(BootstrapException.class)
-                            .hasCause(registrationFailure));
+            assertThat(coordinator.diagnosticSnapshot().failure().cause()).isSameAs(registrationFailure);
+            assertThat(BootstrapCleanupFailures.contains(registrationFailure, cleanupFailure)).isTrue();
+            assertThat(BootstrapCleanupFailures.contains(cleanupFailure, registrationFailure)).isFalse();
             verify(scrubbingRuntime).close();
         }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("fatalPreparationFailures")
+    void fatal_preparation_failure_is_recorded_before_propagation(Error verifierFailure) {
+        // given
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        BootstrapCoordinator coordinator = coordinator()
+                .server(server)
+                .verifier(ignored -> {
+                    throw verifierFailure;
+                })
+                .build();
+
+        try (coordinator) {
+            // when
+            Throwable thrown = catchThrowable(() -> coordinator.prepare(config()));
+
+            // then
+            assertThat(thrown).isSameAs(verifierFailure);
+            BootstrapFailure failure = coordinator.diagnosticSnapshot().failure();
+            assertThat(failure).isNotNull();
+            assertThat(failure.primaryCode()).isEqualTo(CONFIGURATION_INITIALIZATION_FAILED);
+            assertThat(failure.phase()).isEqualTo("prepare");
+            assertThat(failure.cause()).isSameAs(verifierFailure);
+            assertThatCoordinator(coordinator).isTerminallyFailedWith(CONFIGURATION_INITIALIZATION_FAILED);
+            assertThatDiagnosticMBean(server).isRegistered();
+        }
+
+        assertThatDiagnosticMBean(server).isNotRegistered();
+    }
+
+    @Test
+    void diagnostic_registration_retry_runs_after_session_release_outside_lifecycle_monitor() throws Exception {
+        // given
+        AgentInstanceId agentInstanceId = AgentInstanceId.random();
+        MBeanServer server = MBeanServerFactory.newMBeanServer();
+        PlatformTracingMBeanRegistrar registrar = spy(new PlatformTracingMBeanRegistrar(server, agentInstanceId));
+        IllegalStateException registrationFailure = new IllegalStateException(
+                "Simulated diagnostic registration failure"
+        );
+        CountDownLatch retryEntered = new CountDownLatch(1);
+        CountDownLatch releaseRetry = new CountDownLatch(1);
+        AtomicInteger registrationCalls = new AtomicInteger();
+        //noinspection resource — registerDiagnosticReadiness в doAnswer() только регистрирует стаб
+        doAnswer(invocation -> {
+            if (registrationCalls.getAndIncrement() == 0) {
+                throw registrationFailure;
+            }
+            retryEntered.countDown();
+            if (!releaseRetry.await(5, TimeUnit.SECONDS)) {
+                throw new AssertionError("Diagnostic registration retry was not released");
+            }
+
+            return invocation.callRealMethod();
+        }).when(registrar).registerDiagnosticReadiness(any());
+        PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
+        ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
+        when(scrubberFactory.buildRuntime(any())).thenReturn(scrubbingRuntime);
+        BootstrapCoordinator coordinator = coordinator()
+                .agentInstanceId(agentInstanceId)
+                .registrar(registrar)
+                .scrubberFactory(scrubberFactory)
+                .build();
+        FutureTask<Throwable> prepare = new FutureTask<>(() -> catchThrowable(() -> coordinator.prepare(config())));
+        Thread prepareThread = Thread.ofPlatform()
+                .daemon()
+                .name("bootstrap-prepare-blocking-diagnostic-registration")
+                .unstarted(prepare);
+
+        try (coordinator) {
+            // when
+            prepareThread.start();
+            assertThat(retryEntered.await(5, TimeUnit.SECONDS)).isTrue();
+
+            // then
+            verify(scrubbingRuntime).close();
+            assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+            releaseRetry.countDown();
+            Throwable thrown = prepare.get(5, TimeUnit.SECONDS);
+            assertThat(thrown).isInstanceOf(BootstrapException.class);
+            BootstrapException failure = (BootstrapException) thrown;
+            assertThat(failure.failure().primaryCode()).isEqualTo(DIAGNOSTIC_MBEAN_REGISTRATION_FAILED);
+            assertThat(failure.getCause()).isSameAs(registrationFailure);
+            assertThat(registrationCalls).hasValue(2);
+            assertThatDiagnosticMBean(server).isFailedWith(DIAGNOSTIC_MBEAN_REGISTRATION_FAILED);
+        } finally {
+            releaseRetry.countDown();
+            prepareThread.join(TimeUnit.SECONDS.toMillis(5));
+        }
+
+        verify(scrubbingRuntime).close();
+    }
+
+    @SuppressWarnings("removal")
+    private static Stream<Error> fatalPreparationFailures() {
+        return Stream.of(
+                new StackOverflowError("Simulated verifier stack exhaustion"),
+                new ThreadDeath()
+        );
+    }
+    private static void assertOuterPrepareFailedByNestedRejection(BootstrapCoordinator coordinator,
+                                                                  MBeanServer server,
+                                                                  BootstrapException propagated,
+                                                                  BootstrapAdmissionRejectedException nestedRejection) {
+        assertThat(propagated.failure().primaryCode()).isEqualTo(REENTRANT_OR_OUT_OF_ORDER);
+        assertThat(propagated.failure().phase()).isEqualTo("prepare");
+        assertThat(propagated.getCause()).isSameAs(nestedRejection);
+        assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+        assertThat(coordinator.currentWire().lifecycle()).isEqualTo(WIRE_FAILED);
+        assertThat(coordinator.currentWire().primaryFailureCode()).isEqualTo(REENTRANT_OR_OUT_OF_ORDER);
+        assertThat(coordinator.currentWire().failureCode()).isEqualTo(REENTRANT_OR_OUT_OF_ORDER);
+        assertThatDiagnosticMBean(server).isRegistered();
     }
 }

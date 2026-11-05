@@ -2,20 +2,29 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorAssert.assertThatCoordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.WIRE_READY;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.config;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.assertBootstrapFailure;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchAdmissionRejection;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.catchBootstrapFailure;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.invalidValidationLevelConfig;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.registerForeignReadinessMBean;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.satisfyReadinessBarrier;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.CONFIGURATION_INITIALIZATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.PLATFORM_SAMPLER_REPLACED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.CONFIGURATION_INITIALIZATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.DUPLICATE_ACTIVATION;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.PLATFORM_SAMPLER_REPLACED;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
 
@@ -25,6 +34,9 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapAdmissionRejectedException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.ShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
@@ -32,8 +44,10 @@ import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.ScrubberFactoryTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.SanitizerBootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
@@ -58,7 +72,7 @@ class BootstrapCoordinatorLoggingTest {
             try (SdkTracerProvider tracerProvider = providerFor(session)) {
                 coordinator.activate(tracerProvider);
                 assertThatThrownBy(() -> coordinator.activate(tracerProvider))
-                        .isInstanceOf(BootstrapException.class);
+                        .isInstanceOf(BootstrapAdmissionRejectedException.class);
             }
 
             // then
@@ -237,5 +251,58 @@ class BootstrapCoordinatorLoggingTest {
                     .satisfies(event -> assertThat(event.throwableDigest())
                             .contains(IllegalStateException.class.getName()));
         }
+    }
+
+    @Test
+    void nested_activation_rejection_from_hook_callback_fails_outer_activation_and_rolls_back_once() {
+        // given
+        AtomicReference<BootstrapCoordinator> coordinatorReference = new AtomicReference<>();
+        AtomicReference<SdkTracerProvider> providerReference = new AtomicReference<>();
+        AtomicReference<BootstrapAdmissionRejectedException> nestedRejection = new AtomicReference<>();
+        ShutdownHookRegistry hooks = (threadName, action) -> {
+            BootstrapAdmissionRejectedException rejection = catchAdmissionRejection(
+                    () -> coordinatorReference.get().activate(providerReference.get()),
+                    DUPLICATE_ACTIVATION
+            );
+            nestedRejection.set(rejection);
+            throw rejection;
+        };
+        ScrubbingRuntime runtime = mock(ScrubbingRuntime.class);
+        PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
+        //noinspection resource -- stubbing buildRuntime не открывает runtime; экземпляр закрывает AutoconfigureSession.close()
+        doReturn(runtime).when(scrubberFactory).buildRuntime(any());
+        BootstrapCoordinator coordinator = coordinator().hooks(hooks).scrubberFactory(scrubberFactory).build();
+        coordinatorReference.set(coordinator);
+
+        try (coordinator) {
+            AutoconfigureSession session = coordinator.prepare(config());
+            try (SdkTracerProvider tracerProvider = providerFor(session)) {
+                providerReference.set(tracerProvider);
+
+                // when
+                Throwable thrown = catchThrowable(() -> coordinator.activate(tracerProvider));
+
+                // then
+                assertThat(thrown).isInstanceOf(BootstrapException.class);
+                BootstrapException failure = (BootstrapException) thrown;
+                assertThat(failure.failure().primaryCode()).isEqualTo(DUPLICATE_ACTIVATION);
+                assertThat(failure.failure().phase()).isEqualTo("activate");
+                assertThat(failure.getCause()).isSameAs(nestedRejection.get());
+                assertThat(coordinator.state()).isEqualTo(BootstrapState.FAILED);
+                verify(runtime, times(1)).close();
+                assertThat(logs.events())
+                        .filteredOn(event -> BootstrapLogEvent.BOOTSTRAP_OPERATION_REJECTED.name().equals(event.eventName()))
+                        .isEmpty();
+                assertThat(logs.events())
+                        .filteredOn(event -> BOOTSTRAP_PHASE_FAILED.equals(event.eventName()))
+                        .singleElement()
+                        .satisfies(event -> assertThat(event.fields())
+                                .containsEntry("failureCode", DUPLICATE_ACTIVATION)
+                                .containsEntry("phase", "activate")
+                                .containsEntry("subphase", "activation-prologue"));
+            }
+        }
+
+        verify(runtime, times(1)).close();
     }
 }

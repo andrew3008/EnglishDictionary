@@ -12,9 +12,9 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.satisfyReadinessBarrier;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.ACTIVATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.SHUTDOWN_CLEANUP_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.ACTIVATION_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.SHUTDOWN_CLEANUP_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSnapshotAssertions.failureOf;
 
 import java.util.List;
@@ -37,18 +37,16 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.CapturingShutdownHookRegistry;
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapResources;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.CustomizationStep;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.ShutdownHookRegistry;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSessionFactory;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
-import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionRuntimeEvidence;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
-import space.br1440.platform.tracing.otel.javaagent.jmx.security.RemoteJmxAssessorTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.logging.CapturedLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentEventCode;
-import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.assembly.PlatformScrubberFactory;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.runtime.ScrubbingRuntime;
@@ -60,7 +58,6 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 @Timeout(value = 20, threadMode = Timeout.ThreadMode.SAME_THREAD)
 class BootstrapTerminalTransitionsConcurrencyTest {
 
-    private static final String BATCH_ID = "batch-1";
     private static final long WAIT_SECONDS = 5L;
     private static final long BLOCK_ASSERTION_MILLIS = 200L;
 
@@ -70,60 +67,43 @@ class BootstrapTerminalTransitionsConcurrencyTest {
     @Test
     void failed_is_visible_before_activation_rollback_starts() {
         // given
-        TerminalFixture fixture = terminalFixture();
-        CountDownLatch rollbackEntered = new CountDownLatch(1);
-        CountDownLatch releaseRollback = new CountDownLatch(1);
-        AtomicBoolean rollbackOutsideMonitor = new AtomicBoolean();
+        AtomicReference<BootstrapCoordinator> coordinatorReference = new AtomicReference<>();
+        AtomicReference<BootstrapState> probedState = new AtomicReference<>();
         AtomicReference<ExtensionReadinessWireSnapshot> rollbackSnapshot = new AtomicReference<>();
-        try (BootstrapResources resources = new BootstrapResources()) {
-            resources.push(() -> {
-                rollbackOutsideMonitor.set(!Thread.holdsLock(fixture.lifecycle().monitor()));
-                rollbackSnapshot.set(fixture.journal().current());
-                rollbackEntered.countDown();
-                awaitLatch(releaseRollback, "rollback release");
-            }, "rollback-probe");
-            IllegalStateException activationCause = new IllegalStateException("Activation failed");
-            FutureTask<BootstrapException> activationTask = new FutureTask<>(() -> {
-                BootstrapException classified = fixture.transitions().recordActivationFailure(
-                        ACTIVATION_FAILED,
-                        "readiness-publication",
-                        activationCause,
-                        BATCH_ID,
-                        fixture.evidence()
-                );
-                return fixture.transitions().completeActivationFailure(
-                        classified,
-                        resources,
-                        activationCause,
-                        null,
-                        BATCH_ID,
-                        fixture.evidence()
-                );
-            });
-            Thread activationThread = daemonThread("failed-before-rollback", activationTask);
+        ControllableRuntimeRegistration runtimeRegistration = new ControllableRuntimeRegistration(() -> {
+            FutureTask<BootstrapState> probe = new FutureTask<>(() -> coordinatorReference.get().state());
+            daemonThread("rollback-monitor-probe", probe).start();
+            probedState.set(awaitTask(probe, "lifecycle probe during activation rollback"));
+            rollbackSnapshot.set(coordinatorReference.get().currentWire());
+        });
+        IllegalStateException activationCause = new IllegalStateException("Activation step failed");
+        BootstrapCoordinator bootstrapCoordinator = coordinator()
+                .registrar(registrarFor(runtimeRegistration))
+                .scrubberFactory(failingScrubberFactory(activationCause))
+                .build();
+        coordinatorReference.set(bootstrapCoordinator);
+        AutoconfigureSession session = bootstrapCoordinator.prepare(config());
+        satisfyReadinessBarrier(session);
 
-            // when
-            activationThread.start();
-            try {
-                awaitLatch(rollbackEntered, "activation rollback entry");
-
-                // then
-                assertThat(rollbackOutsideMonitor).isTrue();
-                assertThat(fixture.lifecycle().state()).isEqualTo(BootstrapState.FAILED);
-                assertThat(rollbackSnapshot.get().lifecycle()).isEqualTo(WIRE_FAILED);
-                assertThat(rollbackSnapshot.get().primaryFailureCode()).isEqualTo(ACTIVATION_FAILED);
-                assertThat(rollbackSnapshot.get().failureCode()).isEqualTo(ACTIVATION_FAILED);
-
-                releaseRollback.countDown();
-                BootstrapException failure = awaitTask(activationTask, "activation rollback");
-                assertThat(failure.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
-                assertThat(failure.failure().effectiveCode()).isEqualTo(ACTIVATION_FAILED);
-                assertThat(failure.getCause()).isSameAs(activationCause);
-            } finally {
-                releaseRollback.countDown();
-                stopThreads(activationThread);
-            }
+        // when
+        Throwable thrown;
+        try (SdkTracerProvider tracerProvider = providerFor(session)) {
+            thrown = catchThrowable(() -> bootstrapCoordinator.activate(tracerProvider));
+        } finally {
+            closeQuietly(bootstrapCoordinator);
         }
+
+        // then
+        assertThat(probedState).hasValue(BootstrapState.FAILED);
+        assertThat(rollbackSnapshot.get().lifecycle()).isEqualTo(WIRE_FAILED);
+        assertThat(rollbackSnapshot.get().primaryFailureCode()).isEqualTo(ACTIVATION_FAILED);
+        assertThat(rollbackSnapshot.get().failureCode()).isEqualTo(ACTIVATION_FAILED);
+        assertThat(thrown).isInstanceOf(BootstrapException.class);
+        BootstrapException failure = (BootstrapException) thrown;
+        assertThat(failure.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
+        assertThat(failure.failure().effectiveCode()).isEqualTo(ACTIVATION_FAILED);
+        assertThat(failure.getCause()).isSameAs(activationCause);
+        assertThat(runtimeRegistration.closeCalls()).isEqualTo(1);
     }
 
     @Test
@@ -205,127 +185,99 @@ class BootstrapTerminalTransitionsConcurrencyTest {
     }
 
     @Test
-    void section_one_publication_failure_still_rolls_back_resources_once() {
+    void failed_publication_does_not_skip_activation_rollback_or_replace_primary_failure() {
         // given
-        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-        AgentInstanceId agentInstanceId = AgentInstanceId.random();
-        PlatformTracingMBeanRegistrar registrar = spy(new PlatformTracingMBeanRegistrar(
-                MBeanServerFactory.newMBeanServer(),
-                agentInstanceId
-        ));
-        PlatformExtensionReadiness readiness = registrar.extensionReadiness();
-        BootstrapReadinessJournal journal = spy(new BootstrapReadinessJournal(
-                lifecycle.monitor(),
-                readiness,
-                agentInstanceId
-        ));
-        BootstrapTerminalTransitions transitions = new BootstrapTerminalTransitions(lifecycle, journal);
-        BootstrapActivation activation = new BootstrapActivation(lifecycle, journal, transitions);
+        AtomicReference<BootstrapCoordinator> coordinatorReference = new AtomicReference<>();
         CapturingShutdownHookRegistry hooks = new CapturingShutdownHookRegistry();
         ControllableRuntimeRegistration runtimeRegistration = new ControllableRuntimeRegistration(() -> {
         });
-        stubRuntimeRegistration(registrar, runtimeRegistration);
-
-        IllegalStateException activationCause = new IllegalStateException("Activation step failed");
-        ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
-        doAnswer(ignored -> {
-            throw activationCause;
-        }).when(scrubbingRuntime).requireInstallationComplete();
-        PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
-        //noinspection resource -- stubbing buildRuntime не открывает runtime; экземпляр закрывает AutoconfigureSession.close()
-        doReturn(scrubbingRuntime).when(scrubberFactory).buildRuntime(any());
-        ExtensionRuntimeEvidence evidence = RuntimeEvidenceTestFixtures.evidence(
-                readiness.snapshot().extensionVersion()
-        );
-        AutoconfigureSessionFactory sessionFactory = new AutoconfigureSessionFactory(
-                scrubberFactory,
-                ignored -> RemoteJmxAssessorTestFixtures.allowingAssessor()
-        );
-        lifecycle.beginPrepare();
-        journal.publishInitializing();
-        AutoconfigureSession session = sessionFactory.create(
-                config(),
-                registrar,
-                agentInstanceId,
-                evidence
-        );
-        lifecycle.completePrepare(session);
-
-        UnsupportedOperationException sectionFailure =
+        PlatformTracingMBeanRegistrar registrar = registrarFor(runtimeRegistration);
+        PlatformExtensionReadiness readiness = spy(registrar.extensionReadiness());
+        doReturn(readiness).when(registrar).extensionReadiness();
+        UnsupportedOperationException publicationFailure =
                 new UnsupportedOperationException("Failed readiness publication");
         AtomicBoolean publicationObservedFailed = new AtomicBoolean();
         AtomicInteger failurePublicationCalls = new AtomicInteger();
         doAnswer(invocation -> {
             if (failurePublicationCalls.getAndIncrement() == 0) {
-                publicationObservedFailed.set(
-                        lifecycle.state() == BootstrapState.FAILED
-                                && lifecycle.failure().primaryCode().equals(ACTIVATION_FAILED)
-                );
-                throw sectionFailure;
+                publicationObservedFailed.set(coordinatorReference.get().state() == BootstrapState.FAILED);
+                throw publicationFailure;
             }
             return invocation.callRealMethod();
-        }).when(journal).publishFailed(any(), any(), any());
+        }).when(readiness).fail(any(), any());
+        IllegalStateException activationCause = new IllegalStateException("Activation step failed");
+        BootstrapCoordinator bootstrapCoordinator = coordinator()
+                .hooks(hooks)
+                .registrar(registrar)
+                .scrubberFactory(failingScrubberFactory(activationCause))
+                .build();
+        coordinatorReference.set(bootstrapCoordinator);
+        AutoconfigureSession session = bootstrapCoordinator.prepare(config());
+        satisfyReadinessBarrier(session);
 
         // when
         Throwable thrown;
         try (SdkTracerProvider tracerProvider = providerFor(session)) {
-            thrown = catchThrowable(() -> activation.activate(
-                    tracerProvider,
-                    () -> hooks.register("test-bootstrap-shutdown", () -> {
-                    })
-            ));
+            thrown = catchThrowable(() -> bootstrapCoordinator.activate(tracerProvider));
+        } finally {
+            closeQuietly(bootstrapCoordinator);
         }
 
         // then
-        assertThat(thrown).isSameAs(sectionFailure);
+        assertThat(thrown).isInstanceOf(BootstrapException.class);
+        BootstrapException failure = (BootstrapException) thrown;
+        assertThat(failure.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
+        assertThat(failure.failure().effectiveCode()).isEqualTo(ACTIVATION_FAILED);
+        assertThat(failure.getCause()).isSameAs(activationCause);
+        assertThat(activationCause.getSuppressed()).containsExactly(publicationFailure);
         assertThat(publicationObservedFailed).isTrue();
         assertThat(failurePublicationCalls).hasValue(1);
-        assertThat(lifecycle.state()).isEqualTo(BootstrapState.FAILED);
-        assertThat(lifecycle.failure().primaryCode()).isEqualTo(ACTIVATION_FAILED);
-        assertThat(lifecycle.failure().effectiveCode()).isEqualTo(ACTIVATION_FAILED);
-        assertThat(lifecycle.failure().cause()).isSameAs(activationCause);
         assertThat(hooks.registrationCount()).isEqualTo(1);
         assertThat(runtimeRegistration.closeCalls()).isEqualTo(1);
     }
 
     @Test
-    void activation_rollback_while_holding_lifecycle_monitor_fails_before_resource_close() {
+    void settlement_under_lifecycle_monitor_fails_before_failure_admission() {
         // given
-        TerminalFixture fixture = terminalFixture();
-        AtomicInteger closeCalls = new AtomicInteger();
-        BootstrapResources resources = new BootstrapResources();
-        resources.push(closeCalls::incrementAndGet, "close-probe");
-        IllegalStateException activationCause = new IllegalStateException("Activation failed");
-        BootstrapException classified = fixture.transitions().recordActivationFailure(
-                ACTIVATION_FAILED,
-                "readiness-publication",
-                activationCause,
-                BATCH_ID,
-                fixture.evidence()
-        );
+        AtomicReference<BootstrapCoordinator> coordinatorReference = new AtomicReference<>();
+        AtomicReference<Throwable> nestedOutcome = new AtomicReference<>();
+        AtomicReference<BootstrapState> stateAfterNested = new AtomicReference<>();
+        IllegalStateException customizationFailure =
+                new IllegalStateException("Customization failed under lifecycle monitor");
+        ShutdownHookRegistry hooks = (threadName, action) -> {
+            nestedOutcome.set(catchThrowable(() -> coordinatorReference.get().execute(
+                    CustomizationStep.SPAN_PROCESSOR_INITIALIZATION,
+                    () -> {
+                        throw customizationFailure;
+                    }
+            )));
+            stateAfterNested.set(coordinatorReference.get().state());
+        };
+        ControllableRuntimeRegistration runtimeRegistration = new ControllableRuntimeRegistration(() -> {
+        });
+        BootstrapCoordinator bootstrapCoordinator = coordinator()
+                .hooks(hooks)
+                .registrar(registrarFor(runtimeRegistration))
+                .build();
+        coordinatorReference.set(bootstrapCoordinator);
+        AutoconfigureSession session = bootstrapCoordinator.prepare(config());
+        satisfyReadinessBarrier(session);
 
         // when
-        Throwable monitorViolation;
-        synchronized (fixture.lifecycle().monitor()) {
-            monitorViolation = catchThrowable(() -> {
-                throw fixture.transitions().completeActivationFailure(
-                        classified,
-                        resources,
-                        activationCause,
-                        null,
-                        BATCH_ID,
-                        fixture.evidence()
-                );
-            });
-        }
+        try (SdkTracerProvider tracerProvider = providerFor(session)) {
+            bootstrapCoordinator.activate(tracerProvider);
 
-        // then
-        assertThat(monitorViolation)
-                .isInstanceOf(IllegalMonitorStateException.class)
-                .hasMessage("Activation rollback must run outside the bootstrap lifecycle monitor");
-        assertThat(closeCalls).hasValue(0);
-        resources.close();
-        assertThat(closeCalls).hasValue(1);
+            // then
+            assertThat(nestedOutcome.get())
+                    .isInstanceOf(IllegalMonitorStateException.class)
+                    .hasMessage("Bootstrap failure handling must run outside the bootstrap lifecycle monitor");
+            assertThat(nestedOutcome.get().getSuppressed()).containsExactly(customizationFailure);
+            assertThat(stateAfterNested).hasValue(BootstrapState.ACTIVATING);
+            assertThat(bootstrapCoordinator.state()).isEqualTo(BootstrapState.ACTIVE);
+            assertThat(phaseFailureEvents()).isEmpty();
+        } finally {
+            closeQuietly(bootstrapCoordinator);
+        }
     }
 
     @Test
@@ -401,7 +353,7 @@ class BootstrapTerminalTransitionsConcurrencyTest {
             assertThat(bootstrapCoordinator.currentWire().failureCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
             assertThat(phaseFailureEvents())
                     .extracting(event -> event.fields().get("failureCode"))
-                    .containsExactly(ACTIVATION_FAILED, FAILED_ROLLBACK_INCOMPLETE);
+                    .containsExactlyInAnyOrder(ACTIVATION_FAILED, FAILED_ROLLBACK_INCOMPLETE);
         } finally {
             Thread closeThread = closeThreadReference.get();
             if (closeThread != null) {
@@ -412,7 +364,7 @@ class BootstrapTerminalTransitionsConcurrencyTest {
     }
 
     @Test
-    void direct_owner_and_hook_follower_share_one_failed_close_flight() {
+    void direct_owner_and_hook_follower_share_one_failed_close_operation() {
         // given
         CountDownLatch cleanupEntered = new CountDownLatch(1);
         CountDownLatch releaseCleanup = new CountDownLatch(1);
@@ -461,7 +413,7 @@ class BootstrapTerminalTransitionsConcurrencyTest {
     }
 
     @Test
-    void hook_owner_and_direct_follower_share_one_failed_close_flight() {
+    void hook_owner_and_direct_follower_share_one_failed_close_operation() {
         // given
         CountDownLatch cleanupEntered = new CountDownLatch(1);
         CountDownLatch releaseCleanup = new CountDownLatch(1);
@@ -679,29 +631,15 @@ class BootstrapTerminalTransitionsConcurrencyTest {
         doReturn(registration).when(registrar).registerRuntimeControls(any());
     }
 
-    private static TerminalFixture terminalFixture() {
-        BootstrapLifecycleState lifecycle = new BootstrapLifecycleState();
-        PlatformExtensionReadiness readiness = readyReadiness();
-        ExtensionRuntimeEvidence evidence = ExtensionRuntimeEvidence.unavailable(
-                readiness.snapshot().extensionVersion()
-        );
-        BootstrapReadinessJournal journal = new BootstrapReadinessJournal(
-                lifecycle.monitor(),
-                readiness,
-                AgentInstanceId.random()
-        );
-        BootstrapTerminalTransitions transitions = new BootstrapTerminalTransitions(lifecycle, journal);
-        lifecycle.commitActive();
-        return new TerminalFixture(lifecycle, journal, transitions, evidence);
-    }
-
-    private static PlatformExtensionReadiness readyReadiness() {
-        PlatformExtensionReadiness readiness = PlatformExtensionReadiness.forCurrentExtension();
-        for (PlatformExtensionCapability capability : PlatformExtensionCapability.values()) {
-            readiness.markInstalled(capability);
-        }
-        readiness.completeInitialization();
-        return readiness;
+    private static PlatformScrubberFactory failingScrubberFactory(Throwable activationCause) {
+        ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
+        doAnswer(ignored -> {
+            throw activationCause;
+        }).when(scrubbingRuntime).requireInstallationComplete();
+        PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
+        //noinspection resource -- stubbing buildRuntime не открывает runtime; экземпляр закрывает AutoconfigureSession.close()
+        doReturn(scrubbingRuntime).when(scrubberFactory).buildRuntime(any());
+        return scrubberFactory;
     }
 
     private static Thread daemonThread(String name, FutureTask<?> task) {
@@ -828,11 +766,5 @@ class BootstrapTerminalTransitionsConcurrencyTest {
         }
 
     private record InterruptedCloseOutcome(Throwable failure, boolean interrupted) {
-    }
-
-    private record TerminalFixture(BootstrapLifecycleState lifecycle,
-                                   BootstrapReadinessJournal journal,
-                                   BootstrapTerminalTransitions transitions,
-                                   ExtensionRuntimeEvidence evidence) {
     }
 }

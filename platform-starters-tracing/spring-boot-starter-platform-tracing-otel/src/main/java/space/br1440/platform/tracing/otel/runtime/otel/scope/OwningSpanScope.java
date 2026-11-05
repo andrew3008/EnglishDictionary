@@ -6,14 +6,11 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
 import space.br1440.platform.common.util.StringUtils;
-import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.otel.mdc.SpanContextMdcProjection;
 import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
 
 import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import lombok.extern.slf4j.Slf4j;
@@ -110,6 +107,10 @@ public final class OwningSpanScope implements AutoCloseable {
         }
     }
 
+    public boolean isRecording() {
+        return span.isRecording();
+    }
+
     @Nonnull
     public OwningSpanScope recordException(@Nullable Throwable throwable) {
         if (throwable != null) {
@@ -142,15 +143,6 @@ public final class OwningSpanScope implements AutoCloseable {
     public void close() {
         if (!closed.compareAndSet(false, true)) {
             return;
-        }
-
-        if (!failureLatched.get()) {
-            try {
-                span.setAttribute(PlatformAttributes.PLATFORM_RESULT, SpanResult.SUCCESS.value());
-                span.setStatus(StatusCode.OK);
-            } catch (RuntimeException e) {
-                log.warn("Failed to apply default result for span '{}': {}", span, e.getMessage());
-            }
         }
 
         try {

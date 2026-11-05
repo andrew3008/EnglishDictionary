@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.CLOSE_FAILURE_EVIDENCE_GENERATION;
@@ -19,9 +20,8 @@ import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCo
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.coordinator;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.providerFor;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.satisfyReadinessBarrier;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.ACTIVATION_FAILED;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
-import static space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapFailureCodes.SHUTDOWN_CLEANUP_FAILED;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.FAILED_ROLLBACK_INCOMPLETE;
+import static space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapFailureCodes.SHUTDOWN_CLEANUP_FAILED;
 import static space.br1440.platform.tracing.otel.javaagent.bootstrap.DiagnosticReadinessMBeanAssert.assertThatDiagnosticMBean;
 import static space.br1440.platform.tracing.otel.javaagent.readiness.ReadinessSnapshotAssertions.failureOf;
 
@@ -49,6 +49,8 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 
 import space.br1440.platform.tracing.otel.javaagent.AutoConfiguredSdkIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapCoordinatorTestSupport.CapturingShutdownHookRegistry;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.BootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.failure.CustomizationStep;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
 import space.br1440.platform.tracing.otel.javaagent.bootstrap.session.AutoconfigureSession;
 import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
@@ -206,7 +208,7 @@ class BootstrapCoordinatorShutdownTest {
     }
 
     @Test
-    void withdrawal_and_failure_publication_failure_still_releases_runtime() {
+    void withdrawal_and_failure_publication_failure_retains_runtime_behind_ready() {
         // given
         MBeanServer delegate = MBeanServerFactory.newMBeanServer();
         IllegalStateException withdrawalFailure = new IllegalStateException("Readiness withdrawal failed");
@@ -219,6 +221,10 @@ class BootstrapCoordinatorShutdownTest {
             runtimeUnregisterCalls.incrementAndGet();
             actual.unregisterMBean(name);
         });
+        PlatformScrubberFactory scrubberFactory = mock(PlatformScrubberFactory.class);
+        ScrubbingRuntime scrubbingRuntime = mock(ScrubbingRuntime.class);
+        //noinspection resource — stubbing buildRuntime не получает ресурс; close() выполняет координатор
+        doReturn(scrubbingRuntime).when(scrubberFactory).buildRuntime(any());
         PlatformExtensionReadiness readiness = spy(PlatformExtensionReadiness.forCurrentExtension());
         IllegalStateException publicationFailure = new IllegalStateException("Failure publication failed");
         AtomicInteger publicationAttempts = new AtomicInteger();
@@ -236,6 +242,7 @@ class BootstrapCoordinatorShutdownTest {
         BootstrapCoordinator coordinator = coordinator()
                 .agentInstanceId(agentInstanceId)
                 .registrar(registrar)
+                .scrubberFactory(scrubberFactory)
                 .hooks(hooks)
                 .build();
         activate(coordinator);
@@ -248,7 +255,10 @@ class BootstrapCoordinatorShutdownTest {
         assertThat(BootstrapCleanupFailures.contains(firstOutcome, withdrawalFailure)).isTrue();
         assertThat(BootstrapCleanupFailures.contains(firstOutcome, publicationFailure)).isTrue();
         assertThat(publicationAttempts).hasValue(2);
-        assertThat(runtimeUnregisterCalls).hasPositiveValue();
+        assertThat(runtimeUnregisterCalls).hasValue(0);
+        assertThat(delegate.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
+        assertThat(delegate.isRegistered(DomainObjectNames.SCRUBBING)).isTrue();
+        verify(scrubbingRuntime, never()).close();
         assertThatDiagnosticMBean(server)
                 .isRegistered()
                 .hasSnapshotEntry(JmxWireContract.FIELD_READINESS_SNAPSHOT_LIFECYCLE, WIRE_READY);
@@ -256,11 +266,12 @@ class BootstrapCoordinatorShutdownTest {
         assertSingleCloseFailureLog("diagnostic-readiness");
 
         int logCount = closeFailureLogCount();
-        int runtimeUnregisterCount = runtimeUnregisterCalls.get();
         assertThat(catchThrowable(coordinator::close)).isSameAs(firstOutcome);
         assertThatCode(hooks::runHook).doesNotThrowAnyException();
         assertThat(publicationAttempts).hasValue(2);
-        assertThat(runtimeUnregisterCalls).hasValue(runtimeUnregisterCount);
+        assertThat(runtimeUnregisterCalls).hasValue(0);
+        assertThat(delegate.isRegistered(DomainObjectNames.SAMPLING)).isTrue();
+        verify(scrubbingRuntime, never()).close();
         assertThat(closeFailureLogCount()).isEqualTo(logCount);
     }
 
@@ -393,12 +404,13 @@ class BootstrapCoordinatorShutdownTest {
                 .registrar(registrar)
                 .build();
         activate(coordinator);
-        IllegalArgumentException activationCause = new IllegalArgumentException("Activation failed");
+        CustomizationStep lateStep = CustomizationStep.EXPORT_PROCESSOR_INITIALIZATION;
+        IllegalArgumentException activationCause = new IllegalArgumentException("Late customization failed");
         BootstrapException activationFailure = catchBootstrapFailure(
-                () -> coordinator.execute(ACTIVATION_FAILED, () -> {
+                () -> coordinator.execute(lateStep, () -> {
                     throw activationCause;
                 }),
-                ACTIVATION_FAILED
+                lateStep.failureCode()
         );
 
         // when
@@ -407,11 +419,11 @@ class BootstrapCoordinatorShutdownTest {
         // then
         assertThat(closeFailure).isNotNull();
         assertThat(activationFailure.getCause()).isSameAs(activationCause);
-        assertThat(coordinator.currentWire().primaryFailureCode()).isEqualTo(ACTIVATION_FAILED);
+        assertThat(coordinator.currentWire().primaryFailureCode()).isEqualTo(lateStep.failureCode());
         assertThat(coordinator.currentWire().failureCode()).isEqualTo(FAILED_ROLLBACK_INCOMPLETE);
         assertThat(BootstrapCleanupFailures.contains(activationCause, cleanupFailure)).isTrue();
         BootstrapException replay = catchBootstrapFailure(
-                () -> coordinator.execute("AFTER_CLOSE", () -> null),
+                () -> coordinator.execute(lateStep, () -> null),
                 FAILED_ROLLBACK_INCOMPLETE
         );
         assertThat(replay.getCause()).isSameAs(activationCause);

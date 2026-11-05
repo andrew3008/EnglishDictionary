@@ -305,7 +305,7 @@ class PlatformCompositeSpanProcessorTest {
                 assertThat(harness.exporter().getFinishedSpanItems()).hasSize(1);
                 assertThat(harness.exporter().getFinishedSpanItems().getFirst().getAttributes()
                         .get(AttributeKey.stringKey("platform.validation.missing")))
-                        .contains(PlatformAttributes.PLATFORM_TYPE, PlatformAttributes.PLATFORM_RESULT);
+                        .isEqualTo(PlatformAttributes.PLATFORM_TYPE);
             }
 
             assertThat(validator.getValidationViolationsTotal()).isEqualTo(1L);

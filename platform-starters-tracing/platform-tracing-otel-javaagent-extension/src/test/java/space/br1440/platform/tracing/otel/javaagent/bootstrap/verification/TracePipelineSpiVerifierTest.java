@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap.verification;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.io.IOException;
 import java.net.URL;
@@ -118,6 +119,33 @@ class TracePipelineSpiVerifierTest {
                 .isInstanceOf(SanitizerBootstrapException.class)
                 .extracting(t -> ((SanitizerBootstrapException) t).code())
                 .isEqualTo(SanitizerBootstrapException.TRACE_PIPELINE_ATTESTATION_FAILED);
+    }
+
+    @Test
+    void discoveryFailureWithThrowingCauseAccessorIsClassifiedWithOriginalCause() {
+        // given
+        IllegalStateException discoveryFailure = new IllegalStateException("Service resource lookup failed") {
+            @Override
+            public synchronized Throwable getCause() {
+                throw new IllegalStateException("Cause inspection failed");
+            }
+        };
+        ClassLoader failingLookup = new ClassLoader(TracePipelineSpiVerifierTest.class.getClassLoader()) {
+            @Override
+            public Enumeration<URL> getResources(String name) {
+                throw discoveryFailure;
+            }
+        };
+
+        // when
+        Throwable outcome = catchThrowable(() -> TracePipelineSpiVerifier.verify(
+                PLATFORM_ORDER, BootstrapAutoConfigurationCustomizerProvider.class, failingLookup));
+
+        // then
+        assertThat(outcome).isInstanceOf(SanitizerBootstrapException.class);
+        assertThat(((SanitizerBootstrapException) outcome).code())
+                .isEqualTo(SanitizerBootstrapException.TRACE_PIPELINE_ATTESTATION_FAILED);
+        assertThat(outcome.getCause()).isSameAs(discoveryFailure);
     }
 
     @Test

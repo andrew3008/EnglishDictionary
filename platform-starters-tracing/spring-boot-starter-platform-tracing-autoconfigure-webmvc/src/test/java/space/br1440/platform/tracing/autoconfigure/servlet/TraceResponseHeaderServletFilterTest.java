@@ -24,6 +24,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.MDC;
 
 import space.br1440.platform.tracing.api.TraceOperations;
@@ -31,7 +33,6 @@ import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
-import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
@@ -40,6 +41,7 @@ import space.br1440.platform.tracing.runtime.propagation.control.DefaultInboundT
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
@@ -49,6 +51,8 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 class TraceResponseHeaderServletFilterTest {
 
     private static final AttributeKey<String> RESULT_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT);
+    private static final AttributeKey<String> REQUEST_ID_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_REQUEST_ID);
+    private static final AttributeKey<String> ERROR_TYPE_KEY = AttributeKey.stringKey("error.type");
 
     private ActiveTraceContextView traceContextView;
     private TracingProperties properties;
@@ -230,49 +234,56 @@ class TraceResponseHeaderServletFilterTest {
         assertThat(runtime.currentCorrelationId()).isEmpty();
     }
 
-    @Test
-    void writesSuccessResultOnCurrentSpanAfterSuccessfulChain() throws Exception {
+    @ParameterizedTest
+    @ValueSource(ints = {200, 400, 500})
+    void doesNotWriteHttpOutcomeOnCurrentSpan(int status) throws Exception {
+        // given
+        when(request.getHeader(eq(PlatformHeaders.X_REQUEST_ID))).thenReturn("req-outcome");
         when(traceContextView.traceId()).thenReturn(Optional.empty());
         when(response.isCommitted()).thenReturn(false);
-        when(response.getStatus()).thenReturn(200);
+        when(response.getStatus()).thenReturn(status);
 
+        // when
         SpanData data = runFilterWithCurrentSpan();
 
-        assertThat(data.getAttributes().get(RESULT_KEY)).isEqualTo(SpanResult.SUCCESS.value());
+        // then
+        assertNoHttpOutcome(data);
     }
 
     @Test
-    void writesFailureResultOnCurrentSpanWhenStatusIsClientError() throws Exception {
-        when(traceContextView.traceId()).thenReturn(Optional.empty());
-        when(response.isCommitted()).thenReturn(false);
-        when(response.getStatus()).thenReturn(400);
-
-        SpanData data = runFilterWithCurrentSpan();
-
-        assertThat(data.getAttributes().get(RESULT_KEY)).isEqualTo(SpanResult.FAILURE.value());
-    }
-
-    @Test
-    void writesFailureResultOnCurrentSpanWhenChainThrows() throws Exception {
+    void doesNotWriteHttpOutcomeWhenChainThrows() throws Exception {
+        // given
+        when(request.getHeader(eq(PlatformHeaders.X_REQUEST_ID))).thenReturn("req-outcome");
         when(traceContextView.traceId()).thenReturn(Optional.empty());
         when(response.isCommitted()).thenReturn(false);
         when(response.getStatus()).thenReturn(200);
         doThrow(new ServletException("boom")).when(chain).doFilter(eq(request), any(HttpServletResponse.class));
-
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
+
         try (SdkTracerProvider provider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build()) {
             Span span = provider.get("test").spanBuilder("http.server").startSpan();
+
+            // when
             try (Scope ignored = span.makeCurrent()) {
                 assertThatThrownBy(() -> filter.doFilter(request, response, chain))
-                        .isInstanceOf(ServletException.class);
+                        .isInstanceOf(ServletException.class)
+                        .hasMessage("boom");
             }
             span.end();
 
-            assertThat(exporter.getFinishedSpanItems().getFirst().getAttributes().get(RESULT_KEY))
-                    .isEqualTo(SpanResult.FAILURE.value());
+            // then
+            assertNoHttpOutcome(exporter.getFinishedSpanItems().getFirst());
         }
+    }
+
+    private static void assertNoHttpOutcome(SpanData data) {
+        assertThat(data.getAttributes().get(REQUEST_ID_KEY)).isEqualTo("req-outcome");
+        assertThat(data.getAttributes().get(RESULT_KEY)).isNull();
+        assertThat(data.getAttributes().get(ERROR_TYPE_KEY)).isNull();
+        assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.UNSET);
+        assertThat(data.getEvents()).isEmpty();
     }
 
     private SpanData runFilterWithCurrentSpan() throws Exception {

@@ -34,17 +34,40 @@ public final class ControlledAgentArtifactMutator {
             "space.br1440.platform.tracing.otel.javaagent.bootstrap.ActivationAgentListener";
     private static final String POST_SDK_FAILURE_LISTENER =
             "space.br1440.platform.tracing.e2e.startup.FailingBeforeActivationAgentListener";
+    private static final String POST_READY_FAILURE_LISTENER =
+            "space.br1440.platform.tracing.e2e.startup.FatalAfterReadyAgentListener";
+    private static final String POST_READY_FAILURE =
+            "space.br1440.platform.tracing.e2e.startup.PostReadyLinkageFailure";
 
     public static Path withFailingBeforeActivationListener(Path source,
                                                            Path target,
                                                            Path listenerFixture) throws IOException {
+        return withAgentListenerFixture(source, target, listenerFixture,
+                POST_SDK_FAILURE_LISTENER, List.of(POST_SDK_FAILURE_LISTENER));
+    }
+
+    public static Path withFatalAfterReadyListener(Path source,
+                                                   Path target,
+                                                   Path listenerFixture) throws IOException {
+        return withAgentListenerFixture(source, target, listenerFixture,
+                POST_READY_FAILURE_LISTENER, List.of(POST_READY_FAILURE_LISTENER, POST_READY_FAILURE));
+    }
+
+    private static Path withAgentListenerFixture(Path source,
+                                                 Path target,
+                                                 Path listenerFixture,
+                                                 String listener,
+                                                 List<String> fixtureClasses) throws IOException {
         JarArchive.Content outer = JarArchive.read(Files.readAllBytes(source));
         JarArchive.Content nested = JarArchive.read(JarArchive.requiredEntry(outer.entries(), EXTENSION_ENTRY));
         JarArchive.Content fixture = JarArchive.read(Files.readAllBytes(listenerFixture));
-        String listenerEntry = POST_SDK_FAILURE_LISTENER.replace('.', '/') + ".class";
-        byte[] listenerClass = JarArchive.requiredEntry(fixture.entries(), listenerEntry);
-        if (nested.entries().putIfAbsent(listenerEntry, listenerClass) != null) {
-            throw new IllegalArgumentException("Post-SDK failure listener is already packaged in the extension");
+        for (String fixtureClass : fixtureClasses) {
+            String classEntry = fixtureClass.replace('.', '/') + ".class";
+            byte[] classBytes = JarArchive.requiredEntry(fixture.entries(), classEntry);
+            if (nested.entries().putIfAbsent(classEntry, classBytes) != null) {
+                throw new IllegalArgumentException("Listener fixture class is already packaged in the extension: "
+                        + fixtureClass);
+            }
         }
 
         String descriptor = new String(
@@ -53,10 +76,10 @@ public final class ControlledAgentArtifactMutator {
                 .filter(line -> !line.isEmpty() && !line.startsWith("#"))
                 .toList();
         if (providers.stream().filter(PLATFORM_LISTENER::equals).count() != 1L
-                || providers.contains(POST_SDK_FAILURE_LISTENER)) {
+                || providers.contains(listener)) {
             throw new IllegalArgumentException("Expected exactly one platform listener and no failure fixture");
         }
-        String mergedDescriptor = descriptor + (descriptor.endsWith("\n") ? "" : "\n") + POST_SDK_FAILURE_LISTENER + "\n";
+        String mergedDescriptor = descriptor + (descriptor.endsWith("\n") ? "" : "\n") + listener + "\n";
         nested.entries().put(AGENT_LISTENER_DESCRIPTOR, mergedDescriptor.getBytes(StandardCharsets.UTF_8));
 
         byte[] mutatedExtension = JarArchive.write(nested);

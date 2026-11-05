@@ -46,10 +46,8 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
     }
 
     private static final AttributeKey<String> PLATFORM_TYPE_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_TYPE);
-    private static final AttributeKey<String> PLATFORM_RESULT_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT);
     private static final List<Map.Entry<AttributeKey<String>, String>> REQUIRED_ATTRIBUTES = List.of(
-            Map.entry(PLATFORM_TYPE_KEY, PlatformAttributes.PLATFORM_TYPE),
-            Map.entry(PLATFORM_RESULT_KEY, PlatformAttributes.PLATFORM_RESULT)
+            Map.entry(PLATFORM_TYPE_KEY, PlatformAttributes.PLATFORM_TYPE)
     );
 
     private static final AttributeKey<String> VALIDATION_MISSING_KEY = AttributeKey.stringKey("platform.validation.missing");

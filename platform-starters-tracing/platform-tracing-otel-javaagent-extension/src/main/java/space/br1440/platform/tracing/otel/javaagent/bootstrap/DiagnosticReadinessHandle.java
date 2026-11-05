@@ -3,6 +3,8 @@ package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 import java.util.Objects;
 import java.util.function.Supplier;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.resources.BootstrapCleanupFailures;
+
 final class DiagnosticReadinessHandle {
 
     private AutoCloseable handle;
@@ -24,7 +26,7 @@ final class DiagnosticReadinessHandle {
     synchronized void close() {
         if (closed) {
             if (closeFailure != null) {
-                rethrow(closeFailure);
+                BootstrapCleanupFailures.rethrow(closeFailure);
             }
             return;
         }
@@ -47,13 +49,5 @@ final class DiagnosticReadinessHandle {
             closeFailure = wrapped;
             throw wrapped;
         }
-    }
-
-    private static void rethrow(Throwable failure) {
-        if (failure instanceof Error error) {
-            throw error;
-        }
-
-        throw (RuntimeException) failure;
     }
 }
