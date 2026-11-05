@@ -1229,6 +1229,7 @@ class BootstrapFailureOwnershipArchTest {
         };
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static DescribedPredicate<JavaAccess<?>> callWithArity(Class<?> owner, String name, int arity) {
         return new DescribedPredicate<>("call %s.%s/%d", owner.getName(), name, arity) {
 

@@ -37,9 +37,7 @@ final class BootstrapCloser {
             case REENTRANT -> {
             }
 
-            case FOLLOWER -> {
-                rethrowIfPresent(acquisition.awaitOutcome());
-            }
+            case FOLLOWER -> rethrowIfPresent(acquisition.awaitOutcome());
 
             case OWNER -> {
                 Throwable outcome = null;
