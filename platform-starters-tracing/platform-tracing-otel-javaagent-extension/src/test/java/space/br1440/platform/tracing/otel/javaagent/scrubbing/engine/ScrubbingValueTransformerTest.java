@@ -348,7 +348,7 @@ class ScrubbingValueTransformerTest {
 
     @ParameterizedTest
     @MethodSource("numericValues")
-    void numericTruncateKeepsValue(AttributeType type, Object input, Object expected) {
+    void numericTruncateKeepsValue(AttributeType type, Object input) {
         // given
         ScrubbingDecision decision = ScrubbingDecision.truncate("key", 0);
 

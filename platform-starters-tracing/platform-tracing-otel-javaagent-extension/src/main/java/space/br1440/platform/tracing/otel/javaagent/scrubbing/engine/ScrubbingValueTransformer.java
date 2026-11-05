@@ -104,7 +104,7 @@ public final class ScrubbingValueTransformer {
         int count = 1;
         if (isArray(type) && value instanceof List<?> values) {
             int size = values.size();
-            count = size >= 0 && size <= MAX_ARRAY_ELEMENTS ? size : 1;
+            count = (size <= MAX_ARRAY_ELEMENTS) ? size : 1;
         }
 
         return sentinel(type, "", count);
@@ -178,7 +178,7 @@ public final class ScrubbingValueTransformer {
         }
 
         int size = values.size();
-        if (size < 0 || size > MAX_ARRAY_ELEMENTS) {
+        if (size > MAX_ARRAY_ELEMENTS) {
             return boundedMask(AttributeType.STRING_ARRAY, Fallback.INPUT_LIMIT);
         }
 
@@ -262,7 +262,7 @@ public final class ScrubbingValueTransformer {
         }
 
         int size = values.size();
-        if (size < 0 || size > MAX_ARRAY_ELEMENTS) {
+        if (size > MAX_ARRAY_ELEMENTS) {
             return boundedMask(type, Fallback.INPUT_LIMIT);
         }
 
