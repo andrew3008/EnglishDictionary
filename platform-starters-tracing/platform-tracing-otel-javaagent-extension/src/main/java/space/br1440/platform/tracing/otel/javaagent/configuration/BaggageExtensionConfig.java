@@ -72,16 +72,24 @@ public final class BaggageExtensionConfig {
         TreeSet<String> seen = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         for (String key : keys) {
             if (!isW3cBaggageToken(key)) {
-                throw invalid(propertyName, propertyName + " contains a key that is not a W3C baggage token: " + key);
+                throw invalid(
+                        propertyName,
+                        propertyName + " contains a key that is not a W3C baggage token: " + key
+                );
             }
 
             if (PlatformBaggageKeys.isReserved(key)) {
-                throw invalid(propertyName, propertyName + " must not contain reserved key " + key);
+                throw invalid(
+                        propertyName,
+                        propertyName + " must not contain reserved key " + key
+                );
             }
 
             if (!seen.add(key)) {
-                throw invalid(propertyName, propertyName + " contains keys that differ only by case: "
-                        + seen.ceiling(key) + " and " + key);
+                throw invalid(
+                        propertyName,
+                        propertyName + " contains keys that differ only by case: " + seen.ceiling(key) + " and " + key
+                );
             }
         }
     }
