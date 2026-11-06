@@ -25,6 +25,7 @@ public final class SpanAttributeValidationDiagnosticProbe {
     private static final String LIFECYCLE_READY = "READY";
     private static final String LIFECYCLE_FAILED = "FAILED";
 
+    public static final String OK_PREFIX = "SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_OK";
     public static final String INVALID_SPAN_NAME = "span-attribute-validation-invalid";
 
     public static void main(String[] arguments) throws Exception {
@@ -49,10 +50,7 @@ public final class SpanAttributeValidationDiagnosticProbe {
         SpanIdentity stimulus = emitInvalidSpan();
         long violationsAfter = waitForViolationGrowth(server, violationsBefore);
 
-        String message = """
-                SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_OK level=%s \
-                violationsBefore=%d violationsAfter=%d traceId=%s spanId=%s%n\
-                """;
+        String message = OK_PREFIX + " level=%s violationsBefore=%d violationsAfter=%d traceId=%s spanId=%s%n";
         System.out.printf(
                 Locale.ROOT,
                 message,

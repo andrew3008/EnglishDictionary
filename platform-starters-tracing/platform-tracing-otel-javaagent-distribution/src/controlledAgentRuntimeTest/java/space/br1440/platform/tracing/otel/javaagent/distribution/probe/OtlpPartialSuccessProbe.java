@@ -16,6 +16,7 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public final class OtlpPartialSuccessProbe {
 
+    public static final String OK_PREFIX = "OTLP_PARTIAL_SUCCESS_PROBE_OK";
     public static final String PROBE_SPAN_NAME = "otlp-partial-success-span";
 
     private static final Duration READINESS_TIMEOUT = Duration.ofSeconds(20);
@@ -36,7 +37,7 @@ public final class OtlpPartialSuccessProbe {
 
         System.out.printf(
                 Locale.ROOT,
-                "OTLP_PARTIAL_SUCCESS_PROBE_OK partialSuccessBatchesDelta=%d rejectedSpansDelta=%d exportedSpansDelta=%d%n",
+                OK_PREFIX + " partialSuccessBatchesDelta=%d rejectedSpansDelta=%d exportedSpansDelta=%d%n",
                 delta.partialSuccessBatches(),
                 delta.rejectedSpans(),
                 delta.exportedSpans());

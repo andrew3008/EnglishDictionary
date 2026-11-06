@@ -19,10 +19,10 @@ import space.br1440.platform.tracing.otel.javaagent.distribution.probe.Controlle
 class ControlledAgentStartupTest {
 
     private static final String EXPECTED_PROBE_CAPABILITIES = "7";
-    private static final String PROBE_OK_PREFIX = "CONTROLLED_AGENT_PROBE_OK";
+    private static final String PROBE_OK_PREFIX = ControlledAgentRuntimeProbe.PROBE_OK_PREFIX;
     private static final String SHUTDOWN_OK_MARKER = ControlledAgentRuntimeProbe.SHUTDOWN_OK_MARKER;
-    private static final String BOOTSTRAP_POLICY_PROBE_OK_PREFIX = "CONTROLLED_AGENT_BOOTSTRAP_POLICY_OK";
-    private static final String VERIFY_BOOTSTRAP_POLICY_ARGUMENT = "verify-bootstrap-policy";
+    private static final String BOOTSTRAP_POLICY_PROBE_OK_PREFIX = ControlledAgentRuntimeProbe.BOOTSTRAP_POLICY_OK_PREFIX;
+    private static final String VERIFY_BOOTSTRAP_POLICY_ARGUMENT = ControlledAgentRuntimeProbe.VERIFY_BOOTSTRAP_POLICY_ARGUMENT;
     private static final String ANY_PTA_EVENT_CODE = "\"event_code\":\"PTA-";
 
     private static final Map<String, String> BOOTSTRAP_POLICY_ENVIRONMENT = Map.of(

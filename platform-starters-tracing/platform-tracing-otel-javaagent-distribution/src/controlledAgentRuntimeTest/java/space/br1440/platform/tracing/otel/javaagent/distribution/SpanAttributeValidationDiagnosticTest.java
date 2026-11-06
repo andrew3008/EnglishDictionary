@@ -88,7 +88,7 @@ class SpanAttributeValidationDiagnosticTest {
             String spanId
     ) {
 
-        private static final String OK_PREFIX = "SPAN_ATTRIBUTE_VALIDATION_DIAGNOSTIC_OK";
+        private static final String OK_PREFIX = SpanAttributeValidationDiagnosticProbe.OK_PREFIX;
         private static final Pattern LINE = Pattern.compile(
                 OK_PREFIX + " level=(\\w+) violationsBefore=(\\d+) violationsAfter=(\\d+) "
                         + "traceId=([0-9a-f]{32}) spanId=([0-9a-f]{16})");

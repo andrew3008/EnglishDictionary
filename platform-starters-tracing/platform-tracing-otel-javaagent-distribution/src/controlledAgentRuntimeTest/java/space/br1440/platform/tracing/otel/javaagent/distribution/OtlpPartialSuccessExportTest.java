@@ -15,7 +15,7 @@ import space.br1440.platform.tracing.otel.javaagent.distribution.probe.OtlpParti
 
 class OtlpPartialSuccessExportTest {
 
-    private static final String OK_PREFIX = "OTLP_PARTIAL_SUCCESS_PROBE_OK";
+    private static final String OK_PREFIX = OtlpPartialSuccessProbe.OK_PREFIX;
     private static final Pattern LINE_PATTERN = Pattern.compile(
             OK_PREFIX + " partialSuccessBatchesDelta=(\\d+) rejectedSpansDelta=(\\d+) exportedSpansDelta=(\\d+)"
     );

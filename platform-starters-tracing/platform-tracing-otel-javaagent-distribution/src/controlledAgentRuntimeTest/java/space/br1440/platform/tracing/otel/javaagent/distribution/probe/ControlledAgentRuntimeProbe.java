@@ -46,7 +46,6 @@ public final class ControlledAgentRuntimeProbe {
     private static final String LIFECYCLE_READY = "READY";
     private static final String LIFECYCLE_FAILED = "FAILED";
     private static final String BOOTSTRAP_LOADER_LABEL = "bootstrap";
-    private static final String VERIFY_BOOTSTRAP_POLICY_ARGUMENT = "verify-bootstrap-policy";
     private static final String SPRING_APPLICATION_RESOURCE = "org/springframework/boot/SpringApplication.class";
     private static final String BOOTSTRAP_POLICY_DROP_PATH = "/bootstrap-policy-probe";
 
@@ -62,6 +61,9 @@ public final class ControlledAgentRuntimeProbe {
     private static final Duration READINESS_POLL_INTERVAL = Duration.ofMillis(50);
     private static final Duration SHUTDOWN_OBSERVER_TIMEOUT = Duration.ofSeconds(20);
 
+    public static final String PROBE_OK_PREFIX = "CONTROLLED_AGENT_PROBE_OK";
+    public static final String BOOTSTRAP_POLICY_OK_PREFIX = "CONTROLLED_AGENT_BOOTSTRAP_POLICY_OK";
+    public static final String VERIFY_BOOTSTRAP_POLICY_ARGUMENT = "verify-bootstrap-policy";
     public static final String SHUTDOWN_OK_MARKER = "CONTROLLED_AGENT_SHUTDOWN_OK";
 
     private static final String AGENT_OWNED_CLASS_MARKER = "io.opentelemetry.sdk.OpenTelemetrySdk";
@@ -88,7 +90,7 @@ public final class ControlledAgentRuntimeProbe {
         verifyProcessValidationState(server, agentInstanceId);
         installShutdownObserver(server);
 
-        System.out.printf("CONTROLLED_AGENT_PROBE_OK version=%s schema=%s capabilities=%d%n",
+        System.out.printf(PROBE_OK_PREFIX + " version=%s schema=%s capabilities=%d%n",
                 probeArguments.version(), JmxWireContract.SCHEMA_ID,
                 JmxWireContract.REQUIRED_CAPABILITIES.size());
     }
@@ -623,7 +625,7 @@ public final class ControlledAgentRuntimeProbe {
             require("BOOTSTRAP".equals(sourceAuthority),
                     "Bootstrap source authority must be BOOTSTRAP, got " + sourceAuthority);
 
-            System.out.printf("CONTROLLED_AGENT_BOOTSTRAP_POLICY_OK sequence=%d%n", acceptedSequence);
+            System.out.printf(BOOTSTRAP_POLICY_OK_PREFIX + " sequence=%d%n", acceptedSequence);
         }
 
         private static Map<String, Double> samplingRouteRatios(CompositeData snapshot) {
