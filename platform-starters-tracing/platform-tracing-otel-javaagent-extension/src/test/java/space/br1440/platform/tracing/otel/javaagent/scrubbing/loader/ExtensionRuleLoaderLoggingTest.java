@@ -81,11 +81,10 @@ class ExtensionRuleLoaderLoggingTest {
         // given
         Path jar = directory.resolve("dirty.jar");
         writeJar(jar, Map.of("io/opentelemetry/Foo.class", "x"));
-        ExtensionRuleLoader loader = new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.ERROR);
 
         // when
         Throwable thrown = catchThrowable(() -> {
-            try (loader) {
+            try (ExtensionRuleLoader loader = new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.ERROR)) {
                 loader.load(jar.toString());
             }
         });
@@ -111,11 +110,10 @@ class ExtensionRuleLoaderLoggingTest {
         // given
         Path jar = directory.resolve("corrupt.jar");
         Files.writeString(jar, "not a jar");
-        ExtensionRuleLoader loader = new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.ERROR);
 
         // when
         Throwable thrown = catchThrowable(() -> {
-            try (loader) {
+            try (ExtensionRuleLoader loader = new ExtensionRuleLoader(ExtensionRuleLoader.ValidationMode.ERROR)) {
                 loader.load(jar.toString());
             }
         });

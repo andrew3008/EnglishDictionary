@@ -146,6 +146,7 @@ class ScrubbingObservationSourceTest {
         assertThat(metricKeys(metrics)).containsExactlyInAnyOrderElementsOf(declaredScrubbingMetricKeys());
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static long metric(TabularData metrics, String key) {
         CompositeData row = metrics.get(new Object[]{key});
         assertThat(row).isNotNull();
