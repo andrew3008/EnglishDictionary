@@ -52,7 +52,13 @@ class PlatformBaggagePropagatorTest {
     );
 
     @ParameterizedTest
-    @ValueSource(strings = {"platform.correlation.id", "Platform.Correlation.Id", "PLATFORM.CORRELATION.ID"})
+    @ValueSource(strings = {
+            "platform.correlation.id",
+            "Platform.Correlation.Id",
+            "PLATFORM.CORRELATION.ID",
+            "platform.request.id",
+            "PLATFORM.qa"
+    })
     void stripsReservedCorrelationOnExtractAndPreservesUnrelatedBaggage(String reservedKey) {
         // given
         Map<String, String> carrier = Map.of("baggage", reservedKey + "=spoofed,traffic_source=x");
@@ -68,9 +74,12 @@ class PlatformBaggagePropagatorTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"platform.correlation.id", "Platform.Correlation.Id", "PLATFORM.CORRELATION.ID"})
+    @ValueSource(strings = {"platform.correlation.id", "platform.request.id", "PLATFORM.qa"})
     void stripsReservedCorrelationOnInjectEvenWhenPolicyAllowsIt(String reservedKey) {
         // given
+        BaggageKeyPolicy policy = new BaggageKeyPolicy(Set.of("tenant_class", reservedKey), List.of());
+        PlatformBaggagePropagator propagator = new PlatformBaggagePropagator(
+                W3CBaggagePropagator.getInstance(), policy);
         Context context = Baggage.builder()
                 .put(reservedKey, "workflow-42")
                 .put("tenant_class", "internal")
@@ -82,7 +91,7 @@ class PlatformBaggagePropagatorTest {
         propagator.inject(context, carrier, SETTER);
 
         // then
-        assertThat(POLICY.allows(reservedKey)).isTrue();
+        assertThat(policy.allows(reservedKey)).isTrue();
         assertThat(carrier).containsOnlyKeys("baggage");
         assertThat(carrier.get("baggage")).isEqualTo("tenant_class=internal");
     }

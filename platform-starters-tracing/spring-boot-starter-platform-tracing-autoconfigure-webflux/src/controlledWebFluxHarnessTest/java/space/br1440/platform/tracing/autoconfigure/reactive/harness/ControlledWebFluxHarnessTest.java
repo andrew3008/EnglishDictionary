@@ -24,11 +24,23 @@ import java.util.concurrent.TimeUnit;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
+
 class ControlledWebFluxHarnessTest {
 
     private static final Duration STARTUP_TIMEOUT = Duration.ofSeconds(120);
     private static final String SAMPLED_TRACE_ID = "4bf92f3577b34da6a3ce929d0e0e4736";
     private static final String UNSAMPLED_TRACE_ID = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    private static final String SERVER_TRACE_ID = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    private static final String SERVER_PARENT_SPAN_ID = "3333333333333333";
+    private static final String SERVER_REQUEST_ID = "req-server-span";
+    private static final String CORRELATION_TRACE_ID = "dddddddddddddddddddddddddddddddd";
+    private static final String CORRELATION_PARENT_SPAN_ID = "4444444444444444";
+    private static final String ABSENT_TRACE_ID = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+    private static final String ABSENT_PARENT_SPAN_ID = "5555555555555555";
+    private static final String CORRELATION_ID = "trusted-correlation";
+    private static final int REMOTE_PARENT_FLAG = 0x200;
 
     @Test
     void controlledAgentPreservesContextAcrossHopsAndCancellation() throws Exception {
@@ -41,10 +53,12 @@ class ControlledWebFluxHarnessTest {
         Path stdout = evidence.resolve("harness.stdout.log");
         Path stderr = evidence.resolve("harness.stderr.log");
         Path arguments = evidence.resolve("harness.jvm.args");
+        try (HarnessOtlpTraceCollector collector = HarnessOtlpTraceCollector.start()) {
         Files.writeString(arguments, String.join(System.lineSeparator(), launchArguments(
                 agent,
                 sha256(agent),
-                classpath
+                classpath,
+                collector.endpoint()
         )), StandardCharsets.UTF_8);
 
         // when
@@ -92,12 +106,51 @@ class ControlledWebFluxHarnessTest {
             assertThat(next).as("next hop").startsWith(
                     "cccccccccccccccccccccccccccccccc|true|true|cccccccccccccccccccccccccccccccc|");
             assertThat(field(next, 3)).isNotEqualTo(field(cancelled, 0));
+            HttpResponse<String> serverRequest = exchange(
+                    client,
+                    port,
+                    "/hop",
+                    traceparent(SERVER_TRACE_ID, SERVER_PARENT_SPAN_ID, "01"),
+                    SERVER_REQUEST_ID
+            );
+            assertThat(serverRequest.headers().firstValue(PlatformHeaders.X_REQUEST_ID)).contains(SERVER_REQUEST_ID);
+            HarnessOtlpTraceCollector.ReceivedSpan server = awaitServerSpan(collector, SERVER_TRACE_ID);
+            assertThat(server.parentSpanId()).isEqualTo(SERVER_PARENT_SPAN_ID);
+            assertThat(server.flags() & REMOTE_PARENT_FLAG).isNotZero();
+            assertThat(server.stringAttributes())
+                    .containsEntry(PlatformAttributes.PLATFORM_REQUEST_ID, SERVER_REQUEST_ID);
+            exchange(
+                    client,
+                    port,
+                    "/hop",
+                    traceparent(CORRELATION_TRACE_ID, CORRELATION_PARENT_SPAN_ID, "01"),
+                    null,
+                    CORRELATION_ID
+            );
+            HarnessOtlpTraceCollector.ReceivedSpan correlated = awaitServerSpan(collector, CORRELATION_TRACE_ID);
+            assertThat(correlated.stringAttributes())
+                    .containsEntry(PlatformAttributes.PLATFORM_CORRELATION_ID, CORRELATION_ID);
+            exchange(
+                    client,
+                    port,
+                    "/hop",
+                    traceparent(ABSENT_TRACE_ID, ABSENT_PARENT_SPAN_ID, "01"),
+                    null,
+                    null
+            );
+            HarnessOtlpTraceCollector.ReceivedSpan absent = awaitServerSpan(collector, ABSENT_TRACE_ID);
+            assertThat(absent.stringAttributes()).doesNotContainKey(PlatformAttributes.PLATFORM_CORRELATION_ID);
+            assertThat(collector.receivedSpans())
+                    .filteredOn(span -> ABSENT_TRACE_ID.equals(span.traceId()))
+                    .allSatisfy(span -> assertThat(span.stringAttributes())
+                            .doesNotContainKey(PlatformAttributes.PLATFORM_CORRELATION_ID));
         } finally {
             process.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
         }
+        }
     }
 
-    private static List<String> launchArguments(Path agent, String sha256, String classpath) {
+    private static List<String> launchArguments(Path agent, String sha256, String classpath, String otlpEndpoint) {
         List<String> arguments = new ArrayList<>();
         arguments.add("-Dfile.encoding=UTF-8");
         arguments.add("-Dstdout.encoding=UTF-8");
@@ -109,10 +162,14 @@ class ControlledWebFluxHarnessTest {
         arguments.add("-Dserver.port=0");
         arguments.add("-Dlogging.level.root=ERROR");
         arguments.add("-Dotel.traces.exporter=otlp");
-        arguments.add("-Dplatform.tracing.exporter.enabled=false");
+        arguments.add("-Dotel.exporter.otlp.traces.protocol=http/protobuf");
+        arguments.add("-Dotel.exporter.otlp.endpoint=" + otlpEndpoint);
+        arguments.add("-Dotel.exporter.otlp.traces.compression=none");
+        arguments.add("-Dotel.bsp.schedule.delay=200");
         arguments.add("-Dotel.metrics.exporter=none");
         arguments.add("-Dotel.logs.exporter=none");
         arguments.add("-Dplatform.tracing.enabled=true");
+        arguments.add("-Dplatform.tracing.propagation.correlation.accept-inbound=true");
         arguments.add("-Dplatform.tracing.control.channel=NONE");
         arguments.add("-Dplatform.tracing.service.name=controlled-webflux-harness");
         arguments.add("-Dplatform.tracing.service.version=1.0.0");
@@ -169,15 +226,60 @@ class ControlledWebFluxHarnessTest {
     }
 
     private static String body(HttpClient client, int port, String path, String traceparent) throws Exception {
+        return exchange(client, port, path, traceparent, null, null).body();
+    }
+
+    private static HttpResponse<String> exchange(HttpClient client,
+                                                 int port,
+                                                 String path,
+                                                 String traceparent,
+                                                 String requestId) throws Exception {
+        return exchange(client, port, path, traceparent, requestId, null);
+    }
+
+    private static HttpResponse<String> exchange(HttpClient client,
+                                                 int port,
+                                                 String path,
+                                                 String traceparent,
+                                                 String requestId,
+                                                 String correlationId) throws Exception {
         HttpRequest.Builder request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
                 .timeout(Duration.ofSeconds(10))
                 .GET();
         if (traceparent != null) {
             request.header("traceparent", traceparent);
         }
+        if (requestId != null) {
+            request.header(PlatformHeaders.X_REQUEST_ID, requestId);
+        }
+        if (correlationId != null) {
+            request.header(PlatformHeaders.X_CORRELATION_ID, correlationId);
+        }
         HttpResponse<String> response = client.send(request.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         assertThat(response.statusCode()).as(path).isEqualTo(200);
-        return response.body();
+        return response;
+    }
+
+    private static HarnessOtlpTraceCollector.ReceivedSpan awaitServerSpan(HarnessOtlpTraceCollector collector,
+                                                                          String traceId) {
+        try {
+            List<HarnessOtlpTraceCollector.ReceivedSpan> spans = await("export of WebFlux SERVER span " + traceId)
+                    .pollInSameThread()
+                    .pollInterval(Duration.ofMillis(200))
+                    .during(Duration.ofMillis(500))
+                    .atMost(Duration.ofSeconds(20))
+                    .until(() -> collector.receivedSpans().stream()
+                                    .filter(span -> traceId.equals(span.traceId()))
+                                    .filter(span -> "SPAN_KIND_SERVER".equals(span.kind()))
+                                    .toList(),
+                            found -> found.size() == 1);
+            return spans.getFirst();
+        } catch (ConditionTimeoutException timeout) {
+            throw new IllegalStateException(
+                    "Expected one SERVER span for " + traceId + ", received " + collector.receivedSpans(),
+                    timeout
+            );
+        }
     }
 
     private static String traceparent(String traceId, String spanId, String flags) {

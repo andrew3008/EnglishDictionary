@@ -49,7 +49,7 @@ class BaggageExtensionConfigTest {
         // then
         assertThat(failure.propertyName()).isEqualTo(BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS);
         assertThat(failure.failure()).hasMessage(BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS
-                + " must not contain reserved key platform.correlation.id");
+                + " must not contain reserved key " + key);
     }
 
     @Test
@@ -81,8 +81,10 @@ class BaggageExtensionConfigTest {
         assertThat(outbound.allows("traffic_source")).isTrue();
         assertThat(outbound.allows("tenant_class")).isTrue();
         assertThat(outbound.allows("platform.correlation.id")).isFalse();
-        assertThat(spanAttributes.allows("platform.correlation.id")).isTrue();
-        assertThat(spanAttributes.allows("Platform.Correlation.Id")).isTrue();
+        assertThat(spanAttributes.allows("traffic_source")).isTrue();
+        assertThat(spanAttributes.allows("tenant_class")).isTrue();
+        assertThat(spanAttributes.allows("platform.correlation.id")).isFalse();
+        assertThat(spanAttributes.allows("Platform.Correlation.Id")).isFalse();
         assertThat(outbound).isSameAs(config.outboundHeaderPolicy());
         assertThat(spanAttributes).isSameAs(config.spanAttributesPolicy());
     }
@@ -101,11 +103,13 @@ class BaggageExtensionConfigTest {
         BaggageKeyPolicy spanAttributes = config.spanAttributesPolicy();
 
         // then
-        assertThat(outbound.allows("TENANT_CLASS")).isTrue();
+        assertThat(outbound.allows("TENANT_CLASS")).isFalse();
+        assertThat(outbound.allows("Tenant_Class")).isTrue();
         assertThat(outbound.allows("outbound_only")).isTrue();
         assertThat(outbound.allows("access_token")).isFalse();
         assertThat(outbound.allows("span_only")).isFalse();
-        assertThat(spanAttributes.allows("tenant_class")).isTrue();
+        assertThat(spanAttributes.allows("tenant_class")).isFalse();
+        assertThat(spanAttributes.allows("Tenant_Class")).isTrue();
         assertThat(spanAttributes.allows("span_only")).isTrue();
         assertThat(spanAttributes.allows("outbound_only")).isFalse();
     }
@@ -146,6 +150,61 @@ class BaggageExtensionConfigTest {
         assertThat(spanAttributes.isEmpty()).isTrue();
         assertThat(outbound.allows("traffic_source")).isFalse();
         assertThat(spanAttributes.allows("platform.correlation.id")).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "platform.correlation.id",
+            "PLATFORM.CORRELATION.ID",
+            "Platform.Foo",
+            "platform.request.id"
+    })
+    void both_allowlists_reject_reserved_keys(String key) {
+        // when
+        ConfigurationPropertyException outbound = catchThrowableOfType(
+                ConfigurationPropertyException.class,
+                () -> config(Map.of(BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS, key)));
+        ConfigurationPropertyException spanAttributes = catchThrowableOfType(
+                ConfigurationPropertyException.class,
+                () -> config(Map.of(BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS, key)));
+
+        // then
+        assertThat(outbound.propertyName()).isEqualTo(BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS);
+        assertThat(outbound.failure()).hasMessageContaining(key);
+        assertThat(spanAttributes.propertyName()).isEqualTo(BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS);
+        assertThat(spanAttributes.failure()).hasMessageContaining(key);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"a b", "a=b", "a;b", "ключ"})
+    void both_allowlists_reject_keys_that_are_not_w3c_tokens(String key) {
+        // when
+        ConfigurationPropertyException outbound = catchThrowableOfType(
+                ConfigurationPropertyException.class,
+                () -> config(Map.of(BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS, "traffic_source," + key)));
+        ConfigurationPropertyException spanAttributes = catchThrowableOfType(
+                ConfigurationPropertyException.class,
+                () -> config(Map.of(BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS, "traffic_source," + key)));
+
+        // then
+        assertThat(outbound.failure()).hasMessageContaining("not a W3C baggage token");
+        assertThat(spanAttributes.failure()).hasMessageContaining("not a W3C baggage token");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Foo,foo", "foo,foo"})
+    void both_allowlists_reject_keys_that_differ_only_by_case(String keys) {
+        // when
+        ConfigurationPropertyException outbound = catchThrowableOfType(
+                ConfigurationPropertyException.class,
+                () -> config(Map.of(BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS, keys)));
+        ConfigurationPropertyException spanAttributes = catchThrowableOfType(
+                ConfigurationPropertyException.class,
+                () -> config(Map.of(BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS, keys)));
+
+        // then
+        assertThat(outbound.failure()).hasMessageContaining("differ only by case");
+        assertThat(spanAttributes.failure()).hasMessageContaining("differ only by case");
     }
 
     private static BaggageExtensionConfig config(Map<String, String> properties) {

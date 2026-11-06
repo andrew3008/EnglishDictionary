@@ -28,6 +28,7 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
     private final TracingProperties properties;
     private final InboundTraceControlExtractor traceControlExtractor;
     private final AtomicBoolean headerReadFailureLogged = new AtomicBoolean();
+    private final AtomicBoolean correlationHeaderReadFailureLogged = new AtomicBoolean();
     private final AtomicBoolean traceContextFailureLogged = new AtomicBoolean();
     private final AtomicBoolean requestAttributeFailureLogged = new AtomicBoolean();
 
@@ -65,7 +66,7 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
         wrapped.beforeCommit(() -> Mono.fromRunnable(wrapped::installCanonical));
         ServerWebExchange filteredExchange = exchange.mutate().response(wrapped).build();
         return Mono.defer(() -> {
-                    setRequestIdAttribute(requestId);
+                    setIdentityAttributes(requestId, correlationId);
                     return chain.filter(filteredExchange);
                 })
                 .contextWrite(context -> context.put(
@@ -97,19 +98,23 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
                     exchange.getRequest().getHeaders().get(PlatformHeaders.X_CORRELATION_ID)
             );
         } catch (RuntimeException failure) {
-            warnOnce(headerReadFailureLogged, "Failed to read an inbound tracing header: {}", failure);
+            warnOnce(correlationHeaderReadFailureLogged,
+                    "Failed to read inbound header X-Correlation-Id: {}", failure);
             return null;
         }
     }
 
-    private void setRequestIdAttribute(String requestId) {
+    private void setIdentityAttributes(String requestId, @Nullable String correlationId) {
         try {
             Span span = Span.current();
             if (span.getSpanContext().isValid()) {
                 span.setAttribute(PlatformAttributes.PLATFORM_REQUEST_ID, requestId);
+                if (correlationId != null) {
+                    span.setAttribute(PlatformAttributes.PLATFORM_CORRELATION_ID, correlationId);
+                }
             }
         } catch (RuntimeException failure) {
-            warnOnce(requestAttributeFailureLogged, "Failed to set the request id span attribute: {}", failure);
+            warnOnce(requestAttributeFailureLogged, "Failed to set the request identity span attributes: {}", failure);
         }
     }
 

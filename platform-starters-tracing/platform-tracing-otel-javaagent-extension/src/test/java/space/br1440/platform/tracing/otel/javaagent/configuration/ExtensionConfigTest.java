@@ -311,7 +311,7 @@ class ExtensionConfigTest {
         assertThat(outboundPolicy.allows("platform.correlation.id")).isFalse();
         assertThat(spanPolicy.allows("traffic_source")).isTrue();
         assertThat(spanPolicy.allows("tenant_class")).isTrue();
-        assertThat(spanPolicy.allows("platform.correlation.id")).isTrue();
+        assertThat(spanPolicy.allows("platform.correlation.id")).isFalse();
     }
 
     @Test

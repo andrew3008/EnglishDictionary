@@ -14,6 +14,10 @@ public final class CorrelationIdSupport {
 
     public static final int MAX_LENGTH = CanonicalIdGrammar.MAX_LENGTH;
 
+    public static boolean isCanonical(@Nullable String value) {
+        return CanonicalIdGrammar.isCanonical(value);
+    }
+
     @Nonnull
     public static String requireCanonical(@Nullable String correlationId) {
         Objects.requireNonNull(correlationId, "correlationId");
@@ -41,7 +45,7 @@ public final class CorrelationIdSupport {
             return null;
         }
 
-        String value = headerValues.get(0);
+        String value = headerValues.getFirst();
         return CanonicalIdGrammar.isCanonical(value) ? value : null;
     }
 }

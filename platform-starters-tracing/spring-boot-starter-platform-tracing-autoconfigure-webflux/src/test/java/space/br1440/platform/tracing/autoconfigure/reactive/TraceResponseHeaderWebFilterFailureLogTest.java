@@ -46,7 +46,7 @@ class TraceResponseHeaderWebFilterFailureLogTest {
     );
     private static final List<String> WARN_MESSAGES = List.of(
             "Failed to read the current trace id: java.lang.IllegalStateException",
-            "Failed to set the request id span attribute: java.lang.IllegalStateException"
+            "Failed to set the request identity span attributes: java.lang.IllegalStateException"
     );
 
     private Logger logger;

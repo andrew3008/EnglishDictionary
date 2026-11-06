@@ -52,6 +52,7 @@ class TraceResponseHeaderServletFilterTest {
 
     private static final AttributeKey<String> RESULT_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT);
     private static final AttributeKey<String> REQUEST_ID_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_REQUEST_ID);
+    private static final AttributeKey<String> CORRELATION_ID_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_CORRELATION_ID);
     private static final AttributeKey<String> ERROR_TYPE_KEY = AttributeKey.stringKey("error.type");
 
     private ActiveTraceContextView traceContextView;
@@ -232,6 +233,78 @@ class TraceResponseHeaderServletFilterTest {
         // then
         assertThat(seenInsideChain.get()).contains("trusted-correlation");
         assertThat(runtime.currentCorrelationId()).isEmpty();
+    }
+
+    @Test
+    void writesAcceptedCorrelationIdOnTheCurrentSpan() throws Exception {
+        // given
+        properties.getPropagation().getCorrelation().setAcceptInbound(true);
+        when(request.getHeader(eq(PlatformHeaders.X_REQUEST_ID))).thenReturn("req-correlation");
+        when(request.getHeaders(eq(PlatformHeaders.X_CORRELATION_ID)))
+                .thenReturn(Collections.enumeration(List.of("trusted-correlation")));
+        when(traceContextView.traceId()).thenReturn(Optional.empty());
+        when(response.isCommitted()).thenReturn(false);
+
+        // when
+        SpanData data = runFilterWithCurrentSpan();
+
+        // then
+        assertThat(data.getAttributes().get(CORRELATION_ID_KEY)).isEqualTo("trusted-correlation");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"has space", "a,b"})
+    void doesNotWriteCorrelationAttributeForInvalidHeader(String correlationId) throws Exception {
+        // given
+        properties.getPropagation().getCorrelation().setAcceptInbound(true);
+        when(request.getHeader(eq(PlatformHeaders.X_REQUEST_ID))).thenReturn("req-correlation");
+        when(request.getHeaders(eq(PlatformHeaders.X_CORRELATION_ID)))
+                .thenReturn(Collections.enumeration(List.of(correlationId)));
+        when(traceContextView.traceId()).thenReturn(Optional.empty());
+        when(response.isCommitted()).thenReturn(false);
+
+        // when
+        SpanData data = runFilterWithCurrentSpan();
+
+        // then
+        assertThat(data.getAttributes().get(CORRELATION_ID_KEY)).isNull();
+    }
+
+    @Test
+    void doesNotWriteCorrelationAttributeForDuplicateOrMissingHeader() throws Exception {
+        // given
+        properties.getPropagation().getCorrelation().setAcceptInbound(true);
+        when(request.getHeader(eq(PlatformHeaders.X_REQUEST_ID))).thenReturn("req-correlation");
+        when(request.getHeaders(eq(PlatformHeaders.X_CORRELATION_ID)))
+                .thenReturn(Collections.enumeration(List.of("first-value", "second-value")));
+        when(request.getHeader("baggage")).thenReturn("platform.correlation.id=spoofed");
+        when(traceContextView.traceId()).thenReturn(Optional.empty());
+        when(response.isCommitted()).thenReturn(false);
+
+        // when
+        SpanData duplicated = runFilterWithCurrentSpan();
+        when(request.getHeaders(eq(PlatformHeaders.X_CORRELATION_ID))).thenReturn(Collections.emptyEnumeration());
+        SpanData missing = runFilterWithCurrentSpan();
+
+        // then
+        assertThat(duplicated.getAttributes().get(CORRELATION_ID_KEY)).isNull();
+        assertThat(missing.getAttributes().get(CORRELATION_ID_KEY)).isNull();
+    }
+
+    @Test
+    void doesNotWriteCorrelationAttributeWhenAcceptInboundIsDisabled() throws Exception {
+        // given
+        when(request.getHeader(eq(PlatformHeaders.X_REQUEST_ID))).thenReturn("req-correlation");
+        when(request.getHeaders(eq(PlatformHeaders.X_CORRELATION_ID)))
+                .thenReturn(Collections.enumeration(List.of("trusted-correlation")));
+        when(traceContextView.traceId()).thenReturn(Optional.empty());
+        when(response.isCommitted()).thenReturn(false);
+
+        // when
+        SpanData data = runFilterWithCurrentSpan();
+
+        // then
+        assertThat(data.getAttributes().get(CORRELATION_ID_KEY)).isNull();
     }
 
     @ParameterizedTest

@@ -11,6 +11,18 @@ import org.junit.jupiter.api.Test;
 class CorrelationIdSupportTest {
 
     @Test
+    void isCanonicalRejectsNullEmptyAndNonCanonicalValues() {
+        // when/then
+        assertThat(CorrelationIdSupport.isCanonical(null)).isFalse();
+        assertThat(CorrelationIdSupport.isCanonical("")).isFalse();
+        assertThat(CorrelationIdSupport.isCanonical(" ")).isFalse();
+        assertThat(CorrelationIdSupport.isCanonical(" a")).isFalse();
+        assertThat(CorrelationIdSupport.isCanonical("a".repeat(129))).isFalse();
+        assertThat(CorrelationIdSupport.isCanonical("a".repeat(128))).isTrue();
+        assertThat(CorrelationIdSupport.isCanonical("Valid_Id-123")).isTrue();
+    }
+
+    @Test
     void requireCanonicalAcceptsValidGrammar() {
         // when/then
         assertThat(CorrelationIdSupport.requireCanonical("Valid_Id-123")).isEqualTo("Valid_Id-123");

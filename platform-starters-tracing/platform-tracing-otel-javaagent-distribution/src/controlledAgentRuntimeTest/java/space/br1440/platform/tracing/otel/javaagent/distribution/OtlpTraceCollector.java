@@ -146,7 +146,8 @@ final class OtlpTraceCollector implements AutoCloseable {
                 Map.copyOf(attributes),
                 parentSpanId,
                 span.getStatus().getCodeValue(),
-                span.getStatus().getMessage()
+                span.getStatus().getMessage(),
+                span.getKind().name()
         );
     }
 
@@ -184,6 +185,7 @@ final class OtlpTraceCollector implements AutoCloseable {
                         Map<String, String> stringAttributes,
                         String parentSpanId,
                         int statusCode,
-                        String statusDescription) {
+                        String statusDescription,
+                        String kind) {
     }
 }

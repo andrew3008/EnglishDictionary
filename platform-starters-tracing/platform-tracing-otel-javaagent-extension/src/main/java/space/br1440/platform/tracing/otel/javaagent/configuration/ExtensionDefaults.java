@@ -4,7 +4,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-import space.br1440.platform.tracing.api.propagation.PlatformBaggageKeys;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.validation.SpanAttributeValidationLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
@@ -44,7 +43,7 @@ public final class ExtensionDefaults {
     public static final List<String> DEFAULT_BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS = List.of("traffic_source", "tenant_class");
     public static final List<String> DEFAULT_BAGGAGE_OUTBOUND_HEADER_DENY_PATTERNS = List.of("password", "secret", "token");
     public static final List<String> DEFAULT_BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS =
-            List.of("traffic_source", "tenant_class", PlatformBaggageKeys.CORRELATION_ID);
+            List.of("traffic_source", "tenant_class");
     public static final List<String> DEFAULT_BAGGAGE_SPAN_ATTRIBUTES_DENY_PATTERNS = List.of("password", "secret", "token");
 
     public static final boolean DEFAULT_ENABLED = true;

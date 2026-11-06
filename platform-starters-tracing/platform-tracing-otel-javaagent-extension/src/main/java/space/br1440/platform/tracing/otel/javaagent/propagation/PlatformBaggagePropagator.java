@@ -44,15 +44,11 @@ final class PlatformBaggagePropagator implements TextMapPropagator {
     }
 
     private Context stripReserved(Context context) {
-        return filter(context, PlatformBaggagePropagator::isReserved);
+        return filter(context, PlatformBaggageKeys::isReserved);
     }
 
     private Context applyOutboundPolicy(Context context) {
-        return filter(context, key -> isReserved(key) || !outboundPolicy.allows(key));
-    }
-
-    private static boolean isReserved(String key) {
-        return PlatformBaggageKeys.CORRELATION_ID.equalsIgnoreCase(key);
+        return filter(context, key -> PlatformBaggageKeys.isReserved(key) || !outboundPolicy.allows(key));
     }
 
     private static Context filter(Context context, Predicate<String> shouldRemove) {

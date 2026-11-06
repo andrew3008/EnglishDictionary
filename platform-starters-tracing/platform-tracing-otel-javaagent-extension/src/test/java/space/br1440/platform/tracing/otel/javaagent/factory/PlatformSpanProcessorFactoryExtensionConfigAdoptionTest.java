@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -23,6 +24,7 @@ import space.br1440.platform.tracing.otel.javaagent.identity.AgentInstanceId;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.processor.BaggageSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
@@ -64,13 +66,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return null; }
-            @Override public List<String> getList(String name) {
-                if (ExtensionPropertyNames.BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS.equals(name)) {
-                    return List.of();
-                }
-
-                return List.of();
-            }
+            @Override public List<String> getList(String name) { return List.of(); }
             @Override public Map<String, String> getMap(String name) { return null; }
         });
     }
@@ -179,15 +175,17 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         return registrarSlotOwner(r, "composite");
     }
 
-    private static Object firstCompositeDelegate(PlatformCompositeSpanProcessor composite) throws Exception {
+    private static List<Object> compositeDelegates(PlatformCompositeSpanProcessor composite) throws Exception {
         Field delegatesField = PlatformCompositeSpanProcessor.class.getDeclaredField("delegates");
         delegatesField.setAccessible(true);
         List<?> delegates = (List<?>) delegatesField.get(composite);
-
-        Object namedDelegate = delegates.getFirst();
-        Method delegateAccessor = namedDelegate.getClass().getDeclaredMethod("delegate");
-        delegateAccessor.setAccessible(true);
-        return delegateAccessor.invoke(namedDelegate);
+        List<Object> unwrapped = new ArrayList<>();
+        for (Object namedDelegate : delegates) {
+            Method delegateAccessor = namedDelegate.getClass().getDeclaredMethod("delegate");
+            delegateAccessor.setAccessible(true);
+            unwrapped.add(delegateAccessor.invoke(namedDelegate));
+        }
+        return unwrapped;
     }
 
     @Nested
@@ -212,7 +210,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             // then
             assertThat(getComposite(registrar).getProcessorErrorCounts().keySet())
                     .as("validation, enrichment, and request id propagation are mandatory factory delegates")
-                    .containsExactly("validation", "enrichment", "request_id_propagation");
+                    .containsExactly("baggage", "validation", "enrichment", "request_id_propagation");
         }
 
         @Test
@@ -233,7 +231,12 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             // then
             ValidatingSpanProcessor validating = getValidating(registrar);
             assertThat(validating).isNotNull();
-            assertThat(firstCompositeDelegate(getComposite(registrar))).isSameAs(validating);
+            assertThat(compositeDelegates(getComposite(registrar)))
+                    .filteredOn(ValidatingSpanProcessor.class::isInstance)
+                    .singleElement()
+                    .isSameAs(validating);
+            assertThat(compositeDelegates(getComposite(registrar)).getFirst())
+                    .isInstanceOf(BaggageSpanProcessor.class);
         }
 
         @Test
@@ -580,7 +583,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         }
 
         @Test
-        void empty_processor_allowlist_does_not_register_baggage_processor() throws Exception {
+        void empty_processor_allowlist_still_registers_baggage_processor_first() throws Exception {
             // given
             PlatformTracingMBeanRegistrar registrar = new PlatformTracingMBeanRegistrar(AgentInstanceId.random());
 
@@ -610,13 +613,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                 @Override public Long getLong(String name) { return null; }
                 @Override public Double getDouble(String name) { return null; }
                 @Override public Duration getDuration(String name) { return null; }
-                @Override public List<String> getList(String name) {
-                    if (ExtensionPropertyNames.BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS.equals(name)) {
-                        return List.of();
-                    }
-
-                    return List.of();
-                }
+                @Override public List<String> getList(String name) { return List.of(); }
 
                 @Override public Map<String, String> getMap(String name) { return null; }
             });
@@ -628,8 +625,11 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                     TracingSettingsSource.fromStartup(extensionConfig, registrar.agentInstanceId()));
 
             // then
-            assertThat(getComposite(registrar).getProcessorErrorCounts())
-                    .doesNotContainKey("baggage");
+            assertThat(extensionConfig.baggage().spanAttributesPolicy().isEmpty())
+                    .as("explicitly empty allowlist must not fall back to default keys")
+                    .isTrue();
+            assertThat(getComposite(registrar).getProcessorErrorCounts().keySet())
+                    .startsWith("baggage");
         }
 
         @Test
@@ -731,7 +731,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             // then
             assertThat(policy.allows("traffic_source")).isTrue();
             assertThat(policy.allows("tenant_class")).isTrue();
-            assertThat(policy.allows("platform.correlation.id")).isTrue();
+            assertThat(policy.allows("platform.correlation.id")).isFalse();
             assertThat(policy.allows("unlisted")).isFalse();
         }
     }

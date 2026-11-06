@@ -67,6 +67,13 @@ dependencies {
     )
     controlledWebFluxHarnessImplementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-webflux')
     controlledWebFluxHarnessImplementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    controlledWebFluxHarnessTestImplementation "io.opentelemetry.proto:opentelemetry-proto:${libs.versions.bom.otelproto.get()}"
+    controlledWebFluxHarnessTestImplementation "com.google.protobuf:protobuf-java:${libs.versions.bom.protobuf.get()}"
+}
+
+tasks.named('check') {
+    dependsOn 'controlledWebFluxHarnessTest'
 }
 
 tasks.register('controlledWebFluxHarnessTest', Test) {

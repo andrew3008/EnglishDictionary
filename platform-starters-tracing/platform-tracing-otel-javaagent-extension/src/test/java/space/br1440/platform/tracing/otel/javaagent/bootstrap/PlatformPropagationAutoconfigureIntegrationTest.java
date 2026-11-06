@@ -301,7 +301,7 @@ class PlatformPropagationAutoconfigureIntegrationTest {
                 Arguments.of("platform.tracing.baggage.outbound-header.allowed-keys", "platform.correlation.id",
                         "must not contain reserved key platform.correlation.id"),
                 Arguments.of("platform.tracing.baggage.outbound-header.allowed-keys", "Platform.Correlation.Id",
-                        "must not contain reserved key platform.correlation.id")
+                        "must not contain reserved key Platform.Correlation.Id")
         );
     }
 

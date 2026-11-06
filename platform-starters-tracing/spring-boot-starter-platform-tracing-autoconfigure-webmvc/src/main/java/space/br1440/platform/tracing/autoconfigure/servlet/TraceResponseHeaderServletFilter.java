@@ -37,6 +37,7 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
     private final RequestIdentityBoundarySupport identityBoundary;
     private final InboundTraceControlExtractor traceControlExtractor;
     private final AtomicBoolean headerReadFailureLogged = new AtomicBoolean();
+    private final AtomicBoolean correlationHeaderReadFailureLogged = new AtomicBoolean();
     private final AtomicBoolean traceContextFailureLogged = new AtomicBoolean();
     private final AtomicBoolean requestAttributeFailureLogged = new AtomicBoolean();
 
@@ -69,9 +70,10 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
         }
         capturedTraceId.ifPresent(wrapped::protectTraceId);
 
+        String correlationId = resolveInboundCorrelationId(request);
         try (CorrelationScope ignored = identityBoundary.openRequestScope(requestId, traceControl.forceTrace(), traceControl.qaTrace());
-             CorrelationScope ignoredCorrelation = openInboundCorrelationScope(request)) {
-            setRequestIdAttribute(requestId);
+             CorrelationScope ignoredCorrelation = openCorrelationScope(correlationId)) {
+            setIdentityAttributes(requestId, correlationId);
 
             if (!response.isCommitted()) {
                 wrapped.installCanonical();
@@ -81,23 +83,29 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
         }
     }
 
-    private void setRequestIdAttribute(String requestId) {
+    private void setIdentityAttributes(String requestId, @Nullable String correlationId) {
         try {
             Span span = Span.current();
             if (span.getSpanContext().isValid()) {
                 span.setAttribute(PlatformAttributes.PLATFORM_REQUEST_ID, requestId);
+                if (correlationId != null) {
+                    span.setAttribute(PlatformAttributes.PLATFORM_CORRELATION_ID, correlationId);
+                }
             }
         } catch (RuntimeException attributeFailure) {
-            warnOnce(requestAttributeFailureLogged, "Failed to set the request id span attribute: {}", attributeFailure);
+            warnOnce(requestAttributeFailureLogged, "Failed to set the request identity span attributes: {}", attributeFailure);
         }
     }
 
-    private CorrelationScope openInboundCorrelationScope(HttpServletRequest request) {
+    @Nullable
+    private String resolveInboundCorrelationId(HttpServletRequest request) {
         if (!properties.getPropagation().getCorrelation().isAcceptInbound()) {
-            return () -> { };
+            return null;
         }
+        return CorrelationIdSupport.resolveInbound(readCorrelationHeaders(request));
+    }
 
-        String correlationId = CorrelationIdSupport.resolveInbound(readCorrelationHeaders(request));
+    private CorrelationScope openCorrelationScope(@Nullable String correlationId) {
         return (correlationId == null) ? () -> { } : identityBoundary.openCorrelationScope(correlationId);
     }
 
@@ -116,7 +124,8 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
             Enumeration<String> values = request.getHeaders(PlatformHeaders.X_CORRELATION_ID);
             return (values == null) ? List.of() : Collections.list(values);
         } catch (RuntimeException failure) {
-            warnOnce(headerReadFailureLogged, "Failed to read an inbound tracing header: {}", failure);
+            warnOnce(correlationHeaderReadFailureLogged,
+                    "Failed to read inbound header X-Correlation-Id: {}", failure);
             return List.of();
         }
     }

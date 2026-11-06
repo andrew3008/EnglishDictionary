@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.configuration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -16,8 +17,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 class BaggageKeyPolicyTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"tenant_class", "Tenant_Class", "TENANT_CLASS"})
-    void allows_keys_independently_of_case(String key) {
+    @ValueSource(strings = {"tenant_class", "TENANT_CLASS"})
+    void allowlist_is_case_sensitive(String key) {
         // given
         BaggageKeyPolicy policy = new BaggageKeyPolicy(Set.of("Tenant_Class"), List.of());
 
@@ -25,7 +26,30 @@ class BaggageKeyPolicyTest {
         boolean allowed = policy.allows(key);
 
         // then
-        assertThat(allowed).isTrue();
+        assertThat(allowed).isFalse();
+        assertThat(policy.allows("Tenant_Class")).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Password", "user_PASSWORD"})
+    void deny_pattern_matches_the_original_key_without_case(String key) {
+        // given
+        BaggageKeyPolicy policy = new BaggageKeyPolicy(
+                Set.of(key),
+                List.of(Pattern.compile("password", Pattern.CASE_INSENSITIVE)));
+
+        // when
+        boolean allowed = policy.allows(key);
+
+        // then
+        assertThat(allowed).isFalse();
+    }
+
+    @Test
+    void null_constructor_arguments_are_rejected() {
+        // when/then
+        assertThatNullPointerException().isThrownBy(() -> new BaggageKeyPolicy(null, List.of()));
+        assertThatNullPointerException().isThrownBy(() -> new BaggageKeyPolicy(Set.of(), null));
     }
 
     @ParameterizedTest

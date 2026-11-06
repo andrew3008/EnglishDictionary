@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-import space.br1440.platform.tracing.otel.javaagent.configuration.BaggageKeyPolicy;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
@@ -58,7 +57,7 @@ public final class PlatformSpanProcessorFactory {
     private List<SpanProcessor> buildDelegates(ExtensionConfig extConfig,
                                                TracingSettingsSource acceptedPolicy) {
         List<SpanProcessor> delegates = new ArrayList<>();
-        baggageProcessor(extConfig).ifPresent(delegates::add);
+        delegates.add(new BaggageSpanProcessor(extConfig.baggage().spanAttributesPolicy()));
         validatingProcessor(acceptedPolicy, delegates);
         delegates.add(new EnrichingSpanProcessor());
         delegates.add(new RequestIdPropagatingSpanProcessor());
@@ -67,15 +66,6 @@ public final class PlatformSpanProcessorFactory {
         metricsProcessor(extConfig).ifPresent(delegates::add);
         scrubbingProcessor(extConfig).ifPresent(delegates::add);
         return delegates;
-    }
-
-    private Optional<SpanProcessor> baggageProcessor(ExtensionConfig extConfig) {
-        BaggageKeyPolicy policy = extConfig.baggage().spanAttributesPolicy();
-        if (policy.isEmpty()) {
-            return Optional.empty();
-        }
-
-        return Optional.of(new BaggageSpanProcessor(policy));
     }
 
     private Optional<SpanProcessor> scrubbingProcessor(ExtensionConfig extConfig) {

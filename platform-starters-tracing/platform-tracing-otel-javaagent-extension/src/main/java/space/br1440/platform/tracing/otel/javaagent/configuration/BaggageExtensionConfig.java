@@ -12,8 +12,8 @@ import static space.br1440.platform.tracing.otel.javaagent.configuration.Extensi
 import static space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames.BAGGAGE_SPAN_ATTRIBUTES_DENY_PATTERNS;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -41,19 +41,7 @@ public final class BaggageExtensionConfig {
                 BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS,
                 DEFAULT_BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS
         );
-
-        boolean containsCorrelationId = outboundHeaderAllowedKeys.stream()
-                .map(key -> key.toLowerCase(Locale.ROOT))
-                .anyMatch(PlatformBaggageKeys.CORRELATION_ID::equals);
-        if (containsCorrelationId) {
-            String message = "%s must not contain reserved key %s"
-                    .formatted(BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS, PlatformBaggageKeys.CORRELATION_ID);
-
-            throw new ConfigurationPropertyException(
-                    BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS,
-                    new ConfigurationException(message)
-            );
-        }
+        validateAllowlist(BAGGAGE_OUTBOUND_HEADER_ALLOWED_KEYS, outboundHeaderAllowedKeys);
 
         this.outboundHeaderPolicy = new BaggageKeyPolicy(
                 Set.copyOf(outboundHeaderAllowedKeys),
@@ -64,19 +52,64 @@ public final class BaggageExtensionConfig {
                 )
         );
 
+        List<String> spanAttributeAllowedKeys = reader.listValue(
+                BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS,
+                DEFAULT_BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS
+        );
+        validateAllowlist(BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS, spanAttributeAllowedKeys);
+
         this.spanAttributesPolicy = new BaggageKeyPolicy(
-                Set.copyOf(
-                        reader.listValue(
-                                BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS,
-                                DEFAULT_BAGGAGE_SPAN_ATTRIBUTES_ALLOWED_KEYS
-                        )
-                ),
+                Set.copyOf(spanAttributeAllowedKeys),
                 compileDenyPatterns(
                         reader,
                         BAGGAGE_SPAN_ATTRIBUTES_DENY_PATTERNS,
                         DEFAULT_BAGGAGE_SPAN_ATTRIBUTES_DENY_PATTERNS
                 )
         );
+    }
+
+    static void validateAllowlist(String propertyName, List<String> keys) {
+        TreeSet<String> seen = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        for (String key : keys) {
+            if (!isW3cBaggageToken(key)) {
+                throw invalid(propertyName, propertyName + " contains a key that is not a W3C baggage token: " + key);
+            }
+
+            if (PlatformBaggageKeys.isReserved(key)) {
+                throw invalid(propertyName, propertyName + " must not contain reserved key " + key);
+            }
+
+            if (!seen.add(key)) {
+                throw invalid(propertyName, propertyName + " contains keys that differ only by case: "
+                        + seen.ceiling(key) + " and " + key);
+            }
+        }
+    }
+
+    static boolean isW3cBaggageToken(String key) {
+        if (key == null || key.isEmpty()) {
+            return false;
+        }
+
+        for (int index = 0; index < key.length(); index++) {
+            char character = key.charAt(index);
+            if (character <= 0x20 || character >= 0x7F || isSeparator(character)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static boolean isSeparator(char character) {
+        return switch (character) {
+            case '(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']', '?', '=', '{', '}' -> true;
+            default -> false;
+        };
+    }
+
+    private static ConfigurationPropertyException invalid(String propertyName, String message) {
+        return new ConfigurationPropertyException(propertyName, new ConfigurationException(message));
     }
 
     private static List<Pattern> compileDenyPatterns(ExtensionConfigReader reader,

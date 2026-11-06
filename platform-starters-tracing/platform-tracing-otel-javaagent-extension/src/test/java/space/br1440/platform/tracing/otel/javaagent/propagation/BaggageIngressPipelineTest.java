@@ -52,7 +52,7 @@ class BaggageIngressPipelineTest {
 
         Context extracted = propagator.extract(
                 Context.root(),
-                Map.of("baggage", "platform.correlation.id=spoofed,tenant_class=gold"),
+                Map.of("baggage", "platform.correlation.id=spoofed,PLATFORM.x=hidden,tenant_class=gold"),
                 GETTER
         );
 
@@ -69,5 +69,6 @@ class BaggageIngressPipelineTest {
         assertThat(attributes.get(AttributeKey.stringKey("baggage.tenant_class"))).isEqualTo("gold");
         assertThat(attributes.get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_CORRELATION_ID))).isNull();
         assertThat(attributes.get(AttributeKey.stringKey("baggage.platform.correlation.id"))).isNull();
+        assertThat(attributes.get(AttributeKey.stringKey("baggage.platform.x"))).isNull();
     }
 }

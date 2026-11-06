@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
@@ -48,6 +50,7 @@ class TraceResponseHeaderWebFilterTest {
     private static final String OUTCOME_REQUEST_ID = "req-outcome";
     private static final AttributeKey<String> RESULT_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT);
     private static final AttributeKey<String> REQUEST_ID_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_REQUEST_ID);
+    private static final AttributeKey<String> CORRELATION_ID_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_CORRELATION_ID);
     private static final AttributeKey<String> ERROR_TYPE_KEY = AttributeKey.stringKey("error.type");
 
     @BeforeAll
@@ -169,13 +172,75 @@ class TraceResponseHeaderWebFilterTest {
     }
 
     @Test
+    void writesAcceptedCorrelationIdOnTheCurrentSpan() {
+        // given
+        TracingProperties properties = new TracingProperties();
+        properties.getPropagation().getCorrelation().setAcceptInbound(true);
+        TraceResponseHeaderWebFilter filter = filterWith(traceOperationsWithoutTraceId(), properties);
+        MockServerWebExchange exchange = exchangeFor(
+                "/correlation-span", PlatformHeaders.X_CORRELATION_ID, "trusted-correlation");
+
+        // when
+        SpanData data = runWithCurrentSpan(() -> filter.filter(exchange, chain()).block());
+
+        // then
+        assertThat(data.getAttributes().get(CORRELATION_ID_KEY)).isEqualTo("trusted-correlation");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"has space", "a,b"})
+    void doesNotWriteCorrelationAttributeForInvalidHeader(String correlationId) {
+        // given
+        TracingProperties properties = new TracingProperties();
+        properties.getPropagation().getCorrelation().setAcceptInbound(true);
+        TraceResponseHeaderWebFilter filter = filterWith(traceOperationsWithoutTraceId(), properties);
+        MockServerWebExchange exchange = exchangeFor("/correlation-invalid", PlatformHeaders.X_CORRELATION_ID, correlationId);
+
+        // when
+        SpanData data = runWithCurrentSpan(() -> filter.filter(exchange, chain()).block());
+
+        // then
+        assertThat(data.getAttributes().get(CORRELATION_ID_KEY)).isNull();
+    }
+
+    @Test
+    void doesNotWriteCorrelationAttributeForDuplicateMissingOrDisabledHeader() {
+        // given
+        TracingProperties accepting = new TracingProperties();
+        accepting.getPropagation().getCorrelation().setAcceptInbound(true);
+        TraceResponseHeaderWebFilter acceptingFilter = filterWith(traceOperationsWithoutTraceId(), accepting);
+        MockServerWebExchange duplicated = MockServerWebExchange.from(MockServerHttpRequest.get("/correlation-duplicated")
+                .header(PlatformHeaders.X_CORRELATION_ID, "first-value", "second-value")
+                .header("baggage", "platform.correlation.id=spoofed")
+                .build());
+        MockServerWebExchange missing = exchangeFor("/correlation-missing");
+        TraceResponseHeaderWebFilter disabledFilter = filterWith(traceOperationsWithoutTraceId());
+        MockServerWebExchange disabled = exchangeFor(
+                "/correlation-disabled-span", PlatformHeaders.X_CORRELATION_ID, "trusted-correlation");
+
+        // when
+        SpanData duplicatedData = runWithCurrentSpan(() -> acceptingFilter.filter(duplicated, chain()).block());
+        SpanData missingData = runWithCurrentSpan(() -> acceptingFilter.filter(missing, chain()).block());
+        SpanData disabledData = runWithCurrentSpan(() -> disabledFilter.filter(disabled, chain()).block());
+
+        // then
+        assertThat(duplicatedData.getAttributes().get(CORRELATION_ID_KEY)).isNull();
+        assertThat(missingData.getAttributes().get(CORRELATION_ID_KEY)).isNull();
+        assertThat(disabledData.getAttributes().get(CORRELATION_ID_KEY)).isNull();
+    }
+
+    private static WebFilterChain chain() {
+        return ignored -> Mono.empty();
+    }
+
+    @Test
     void beforeCommitOverwritesDownstreamHeaderMutation() {
         // given
         TraceResponseHeaderWebFilter filter = filterWith(traceOperationsWithTraceId());
         MockServerWebExchange exchange = exchangeFor("/overwrite");
         WebFilterChain chain = current -> {
             current.getResponse().getHeaders().set(PlatformHeaders.X_TRACE_ID, "evil");
-            current.getResponse().getHeaders().set("x-trace-id", "evil-lower");
+            current.getResponse().getHeaders().set(PlatformHeaders.X_TRACE_ID.toLowerCase(Locale.ROOT), "evil-lower");
             return Mono.empty();
         };
 

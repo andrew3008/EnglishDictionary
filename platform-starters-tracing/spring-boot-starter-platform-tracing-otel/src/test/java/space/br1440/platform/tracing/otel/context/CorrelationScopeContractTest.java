@@ -9,6 +9,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import io.opentelemetry.api.baggage.Baggage;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Scope;
@@ -23,10 +24,12 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 
 import space.br1440.platform.tracing.api.context.CorrelationScope;
+import space.br1440.platform.tracing.api.propagation.PlatformBaggageKeys;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.mdc.IdentityMdcProjection;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
@@ -61,6 +64,7 @@ class CorrelationScopeContractTest {
         try (CorrelationScope outer = operations.openCorrelationScope("OUTER")) {
             assertCurrentCorrelation("OUTER");
             try (CorrelationScope inner = operations.openCorrelationScope("INNER")) {
+                assertThat(inner).isNotSameAs(outer);
                 assertCurrentCorrelation("INNER");
             }
             assertCurrentCorrelation("OUTER");
@@ -72,26 +76,26 @@ class CorrelationScopeContractTest {
 
     @Test
     void closeIsIdempotentAndOutOfOrderCloseIsRejectedWithoutMutation() {
-        CorrelationScope outer = operations.openCorrelationScope("OUTER");
-        CorrelationScope inner = operations.openCorrelationScope("INNER");
+        try (CorrelationScope outer = operations.openCorrelationScope("OUTER");
+             CorrelationScope inner = operations.openCorrelationScope("INNER")) {
+            assertThatThrownBy(outer::close)
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("LIFO");
+            assertCurrentCorrelation("INNER");
 
-        assertThatThrownBy(outer::close)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("LIFO");
-        assertCurrentCorrelation("INNER");
+            inner.close();
+            assertCurrentCorrelation("OUTER");
+        }
 
-        inner.close();
-        outer.close();
-        outer.close();
         assertThat(operations.traceContext().correlationId()).isEmpty();
     }
 
     @Test
     void invalidAndNullInputsFailBeforeMutation() {
         try (CorrelationScope ignored = operations.openCorrelationScope("BASE")) {
-            assertThatThrownBy(() -> operations.openCorrelationScope(" invalid "))
+            assertThatThrownBy(() -> openAndCloseCorrelationScope(" invalid "))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> operations.openCorrelationScope(null))
+            assertThatThrownBy(() -> openAndCloseCorrelationScope(null))
                     .isInstanceOf(NullPointerException.class);
             assertCurrentCorrelation("BASE");
         }
@@ -118,14 +122,13 @@ class CorrelationScopeContractTest {
 
     @Test
     void crossThreadCloseFailsAndOwnerCanStillClose() {
-        CorrelationScope scope = operations.openCorrelationScope("OWNER");
+        try (CorrelationScope scope = operations.openCorrelationScope("OWNER")) {
+            assertThatThrownBy(() -> CompletableFuture.runAsync(scope::close).join())
+                    .isInstanceOf(CompletionException.class)
+                    .hasCauseInstanceOf(IllegalStateException.class);
+            assertCurrentCorrelation("OWNER");
+        }
 
-        assertThatThrownBy(() -> CompletableFuture.runAsync(scope::close).join())
-                .isInstanceOf(CompletionException.class)
-                .hasCauseInstanceOf(IllegalStateException.class);
-        assertCurrentCorrelation("OWNER");
-
-        scope.close();
         assertThat(operations.traceContext().correlationId()).isEmpty();
     }
 
@@ -158,6 +161,9 @@ class CorrelationScopeContractTest {
         Span parent = openTelemetry.getTracer("test").spanBuilder("parent").startSpan();
         try (Scope ignored = parent.makeCurrent();
              CorrelationScope correlation = operations.openCorrelationScope("BUSINESS")) {
+            assertThat(correlation).isNotNull();
+            assertThat(IdentityMdcProjection.currentCorrelationId()).contains("BUSINESS");
+            assertThat(Baggage.current().getEntryValue(PlatformBaggageKeys.CORRELATION_ID)).isEqualTo("BUSINESS");
             operations.spans().operation("child").run(() -> { });
         } finally {
             parent.end();
@@ -170,6 +176,12 @@ class CorrelationScopeContractTest {
 
         assertThat(parentData.getAttributes().get(key)).isNull();
         assertThat(childData.getAttributes().get(key)).isEqualTo("BUSINESS");
+    }
+
+    private void openAndCloseCorrelationScope(String correlationId) {
+        try (CorrelationScope scope = operations.openCorrelationScope(correlationId)) {
+            assertThat(scope).isNotNull();
+        }
     }
 
     private void assertCurrentCorrelation(String expected) {

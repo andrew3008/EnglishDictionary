@@ -47,7 +47,7 @@ class TraceResponseHeaderServletFilterFailureLogTest {
     private static final String TRACE_CONTEXT_FAILURE_MESSAGE = "trace-context-secret-message";
     private static final String REQUEST_ATTRIBUTE_FAILURE_MESSAGE = "request-attribute-secret-message";
     private static final String TRACE_CONTEXT_WARN = "Failed to read the current trace id: java.lang.IllegalStateException";
-    private static final String REQUEST_ATTRIBUTE_WARN = "Failed to set the request id span attribute: java.lang.IllegalStateException";
+    private static final String REQUEST_ATTRIBUTE_WARN = "Failed to set the request identity span attributes: java.lang.IllegalStateException";
 
     private Logger logger;
     private ListAppender<ILoggingEvent> appender;
