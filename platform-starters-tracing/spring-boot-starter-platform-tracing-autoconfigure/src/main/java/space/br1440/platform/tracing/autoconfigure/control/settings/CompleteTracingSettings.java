@@ -8,6 +8,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireContract;
 import space.br1440.platform.tracing.autoconfigure.jmx.contract.generated.JmxWireUtf8Meter;
@@ -47,30 +49,37 @@ public final class CompleteTracingSettings {
         );
     }
 
+    @JsonProperty("samplingEnabled")
     public boolean samplingEnabled() {
         return samplingEnabled;
     }
 
+    @JsonProperty("samplingRatio")
     public double samplingRatio() {
         return samplingRatio;
     }
 
+    @JsonProperty("samplingRouteRatios")
     public Map<String, Double> samplingRouteRatios() {
         return samplingRouteRatios;
     }
 
+    @JsonProperty("validationLevel")
     public String validationLevel() {
         return validationLevel;
     }
 
+    @JsonProperty("exporterEnabled")
     public boolean exporterEnabled() {
         return exporterEnabled;
     }
 
+    @JsonProperty("traceControlHeadersEnabled")
     public boolean traceControlHeadersEnabled() {
         return traceControlHeadersEnabled;
     }
 
+    @JsonProperty("diagnosticsLogLevel")
     public String diagnosticsLogLevel() {
         return diagnosticsLogLevel;
     }
