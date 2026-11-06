@@ -246,6 +246,11 @@ public final class ExtensionRuleLoader implements AutoCloseable {
                             Throwable cause) {
         failedEntries.add(new FailedEntry(name, reason));
         if (validationMode == ValidationMode.ERROR) {
+            log.log(ScrubbingLogEvent.SCRUBBING_PROVIDER_FAILED, fields -> fields
+                    .putString(AgentLogField.NAME, name)
+                    .putString(AgentLogField.REASON, reason.name())
+                    .putString(AgentLogField.FAILURE_CONTEXT, safeDetails));
+
             throw new IllegalStateException(
                     "ERROR validation failed for '" + name + "': " + reason + " (" + safeDetails + ")",
                     cause

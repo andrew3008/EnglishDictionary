@@ -301,6 +301,7 @@ openTypes:
       - failures
       - hash_missing_key
       - circuit_breakers.failures.total
+      - circuit_breakers.open
       - skipped_circuit_open
       - attributes_verified
       - runtime_state

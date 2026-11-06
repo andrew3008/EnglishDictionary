@@ -39,6 +39,9 @@ class JmxWireContractMapKeyRendererTest {
         Object circuitBreakerFailures = contractClass
                 .getField("KEY_SCRUBBING_METRICS_CIRCUIT_BREAKERS_FAILURES_TOTAL")
                 .get(null);
+        Object circuitBreakersOpen = contractClass
+                .getField("KEY_SCRUBBING_METRICS_CIRCUIT_BREAKERS_OPEN")
+                .get(null);
         Object skippedCircuitOpen = contractClass
                 .getField("KEY_SCRUBBING_METRICS_SKIPPED_CIRCUIT_OPEN")
                 .get(null);
@@ -46,6 +49,7 @@ class JmxWireContractMapKeyRendererTest {
         // then
         assertThat(exportBatches).isEqualTo("export_batches");
         assertThat(circuitBreakerFailures).isEqualTo("circuit_breakers.failures.total");
+        assertThat(circuitBreakersOpen).isEqualTo("circuit_breakers.open");
         assertThat(skippedCircuitOpen).isEqualTo("skipped_circuit_open");
     }
 

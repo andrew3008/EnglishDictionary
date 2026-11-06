@@ -70,7 +70,7 @@ public enum ScrubbingLogEvent implements AgentLogEventType {
             noCause(
                     AgentEventCode.SCRUB_PROVIDER_FAILED, WARN,
                     "Scrubbing provider failed",
-                    AgentLogField.NAME, AgentLogField.REASON
+                    AgentLogField.NAME, AgentLogField.REASON, AgentLogField.FAILURE_CONTEXT
             )
     ),
 

@@ -100,6 +100,7 @@ public final class ScrubbingObservationSource {
         snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_FAILURES, runtime.failures());
         snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_HASH_MISSING_KEY, runtime.hashMissingKey());
         snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_CIRCUIT_BREAKERS_FAILURES_TOTAL, runtime.totalBreakerFailures());
+        snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_CIRCUIT_BREAKERS_OPEN, runtime.openBreakerCount());
         snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_SKIPPED_CIRCUIT_OPEN, runtime.skippedCircuitOpen());
         snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_ATTRIBUTES_VERIFIED, attributesVerified ? 1L : 0L);
         snapshot.put(JmxWireContract.KEY_SCRUBBING_METRICS_RUNTIME_STATE,
