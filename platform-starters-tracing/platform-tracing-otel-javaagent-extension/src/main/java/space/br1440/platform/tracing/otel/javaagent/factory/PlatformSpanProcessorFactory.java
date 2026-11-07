@@ -6,12 +6,16 @@ import java.util.Objects;
 import java.util.Optional;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.PlatformTracingMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogFields;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.BootstrapLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 import space.br1440.platform.tracing.otel.javaagent.processor.BaggageSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ClassificationSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.ClassificationThresholdOrderException;
 import space.br1440.platform.tracing.otel.javaagent.processor.EnrichingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.RequestIdPropagatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProcessor;
@@ -49,9 +53,22 @@ public final class PlatformSpanProcessorFactory {
             installComposite(tpBuilder, delegates);
             return tpBuilder;
         } catch (Throwable t) {
-            log.log(BootstrapLogEvent.SPAN_PROCESSOR_REGISTRATION_FAILED, fields -> fields.cause(t));
+            log.log(BootstrapLogEvent.SPAN_PROCESSOR_REGISTRATION_FAILED, fields -> recordRegistrationFailure(fields, t));
             throw t;
         }
+    }
+
+    private static void recordRegistrationFailure(AgentLogFields fields, Throwable failure) {
+        fields.cause(failure);
+        if (failure instanceof ClassificationThresholdOrderException order) {
+            fields.putString(AgentLogField.REASON, order.reason())
+                    .putString(AgentLogField.PROPERTY_NAME, ExtensionPropertyNames.CLASSIFICATION_SLOW_THRESHOLD)
+                    .putString(AgentLogField.FAILURE_CONTEXT, thresholdFailureContext(order));
+        }
+    }
+
+    private static String thresholdFailureContext(ClassificationThresholdOrderException order) {
+        return "normal=" + order.normalThreshold() + ",slow=" + order.slowThreshold();
     }
 
     private List<SpanProcessor> buildDelegates(ExtensionConfig extConfig,

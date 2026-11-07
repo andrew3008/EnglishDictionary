@@ -73,7 +73,8 @@ public enum BootstrapLogEvent implements AgentLogEventType {
     SPAN_PROCESSOR_REGISTRATION_FAILED(
             requiresCause(
                     AgentEventCode.BOOT_PROCESSOR_REGISTRATION, ERROR,
-                    "Span processor registration failed"
+                    "Span processor registration failed",
+                    AgentLogField.REASON, AgentLogField.PROPERTY_NAME, AgentLogField.FAILURE_CONTEXT
             )
     ),
 

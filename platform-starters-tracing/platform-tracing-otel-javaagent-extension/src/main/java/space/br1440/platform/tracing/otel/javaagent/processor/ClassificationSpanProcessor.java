@@ -36,11 +36,7 @@ public final class ClassificationSpanProcessor implements PlatformEndingSpanProc
         this.normalThresholdNanos = normalThreshold.toNanos();
 
         if (slowThresholdNanos <= normalThresholdNanos) {
-            throw new IllegalArgumentException("""
-                    slowThreshold (%s) must be strictly greater than normalThreshold (%s); \
-                    otherwise the 'slow' classification is unreachable"""
-                    .formatted(slowThreshold, normalThreshold)
-            );
+            throw new ClassificationThresholdOrderException(slowThreshold, normalThreshold);
         }
     }
 

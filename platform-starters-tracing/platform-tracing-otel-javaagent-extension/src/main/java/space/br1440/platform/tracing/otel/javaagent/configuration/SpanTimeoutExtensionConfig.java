@@ -16,11 +16,13 @@ import static space.br1440.platform.tracing.otel.javaagent.configuration.Extensi
 import static space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames.SPAN_TIMEOUT_SCAN_INTERVAL;
 
 import java.time.Duration;
+import java.util.Set;
 
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.logging.event.SpanTimeoutLogEvent;
 import space.br1440.platform.tracing.otel.javaagent.logging.schema.AgentLogField;
 
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 
@@ -29,6 +31,16 @@ import lombok.experimental.Accessors;
 public final class SpanTimeoutExtensionConfig {
 
     private static final PlatformAgentLogger log = PlatformAgentLogger.get(SpanTimeoutExtensionConfig.class);
+    private static final String SPAN_TIMEOUT_PROPERTY_PREFIX = "platform.tracing.span-timeout.";
+    private static final Set<String> SPAN_TIMEOUT_PROPERTY_NAMES = Set.of(
+            SPAN_TIMEOUT_ENABLED,
+            SPAN_TIMEOUT_MAX_SPAN_AGE,
+            SPAN_TIMEOUT_MAX_TRACE_AGE,
+            SPAN_TIMEOUT_SCAN_INTERVAL,
+            SPAN_TIMEOUT_MAX_TRACKED_TRACES,
+            SPAN_TIMEOUT_MAX_TRACKED_SPANS,
+            SPAN_TIMEOUT_MAX_TRACKED_SPANS_PER_TRACE
+    );
 
     private final boolean enabled;
     private final Duration maxSpanAge;
@@ -49,6 +61,18 @@ public final class SpanTimeoutExtensionConfig {
 
         ExtensionConfigReader.requireOrdered(maxSpanAge, SPAN_TIMEOUT_MAX_SPAN_AGE, maxTraceAge, SPAN_TIMEOUT_MAX_TRACE_AGE);
         warnIfGlobalBudgetBelowPerTraceCapacity();
+        rejectUnknownSpanTimeoutProperties();
+    }
+
+    private static void rejectUnknownSpanTimeoutProperties() {
+        for (String name : System.getProperties().stringPropertyNames()) {
+            if (!name.startsWith(SPAN_TIMEOUT_PROPERTY_PREFIX) || SPAN_TIMEOUT_PROPERTY_NAMES.contains(name)) {
+                continue;
+            }
+
+            ConfigurationException exception = new ConfigurationException("Unknown property '" + name + "'");
+            throw new ConfigurationPropertyException(name, exception);
+        }
     }
 
     private void warnIfGlobalBudgetBelowPerTraceCapacity() {

@@ -164,7 +164,7 @@ class ExtensionConfigTest {
         assertThat(propertyFailure.propertyName())
                 .isEqualTo(ExtensionPropertyNames.SCRUBBING_MISSING_KEY_POLICY);
         assertThat(propertyFailure.failure())
-                .hasMessage("platform.tracing.scrubbing.missing-key-policy must be one of: MASK, FAIL_FAST");
+                .hasMessage("Invalid property 'platform.tracing.scrubbing.missing-key-policy'. Accepted values: MASK, FAIL_FAST");
     }
 
     @Test
@@ -236,7 +236,7 @@ class ExtensionConfigTest {
                 .satisfies(failure -> {
                     ConfigurationPropertyException propertyFailure = (ConfigurationPropertyException) failure;
                     assertThat(propertyFailure.propertyName()).isEqualTo(ExtensionPropertyNames.RESOURCE_VALIDATION_MODE);
-                    assertThat(propertyFailure.failure()).hasMessageContaining("must be one of: WARNING, ERROR");
+                    assertThat(propertyFailure.failure()).hasMessageContaining("Accepted values: WARNING, ERROR");
                 });
     }
 
@@ -341,6 +341,46 @@ class ExtensionConfigTest {
 
         // then
         assertThat(config.spanTimeout().maxSpanAge()).isEqualTo(Duration.ofSeconds(10));
+    }
+
+    @Test
+    void unknown_span_timeout_system_property_is_rejected() {
+        // given
+        String name = "platform.tracing.span-timeout.span";
+        System.setProperty(name, "6s");
+        try {
+            // when
+            Throwable thrown = catchThrowable(() -> new ExtensionConfig(emptyConfig()));
+
+            // then
+            assertThat(thrown).isInstanceOf(ConfigurationPropertyException.class);
+            ConfigurationPropertyException exception = (ConfigurationPropertyException) thrown;
+            assertThat(exception.propertyName()).isEqualTo(name);
+            assertThat(exception.failure().getMessage()).contains(name);
+        } finally {
+            System.clearProperty(name);
+        }
+    }
+
+    @Test
+    void canonical_span_timeout_system_properties_are_accepted() {
+        // given
+        System.setProperty(ExtensionPropertyNames.SPAN_TIMEOUT_MAX_SPAN_AGE, "6s");
+        System.setProperty(ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACE_AGE, "15s");
+        try {
+            // when
+            ExtensionConfig config = new ExtensionConfig(durationsConfig(Map.of(
+                    ExtensionPropertyNames.SPAN_TIMEOUT_MAX_SPAN_AGE, Duration.ofSeconds(6),
+                    ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACE_AGE, Duration.ofSeconds(15)
+            )));
+
+            // then
+            assertThat(config.spanTimeout().maxSpanAge()).isEqualTo(Duration.ofSeconds(6));
+            assertThat(config.spanTimeout().maxTraceAge()).isEqualTo(Duration.ofSeconds(15));
+        } finally {
+            System.clearProperty(ExtensionPropertyNames.SPAN_TIMEOUT_MAX_SPAN_AGE);
+            System.clearProperty(ExtensionPropertyNames.SPAN_TIMEOUT_MAX_TRACE_AGE);
+        }
     }
 
     @Test
